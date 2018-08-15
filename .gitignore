@@ -1,0 +1,15 @@
+*.sdf
+*.suo
+/Obj/
+/Debug/
+/Bin/
+*.opensdf
+*.bat
+*.o
+.vs/*
+*.tlog
+include/Misha.V1/
+include/Src.V1/
+include/Src.V2/
+*.pdf
+*.zip

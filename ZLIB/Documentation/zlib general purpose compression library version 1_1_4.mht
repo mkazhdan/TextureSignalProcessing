@@ -1,0 +1,1955 @@
+From: <Saved by Windows Internet Explorer 7>
+Subject: zlib general purpose compression library version 1.1.4
+Date: Mon, 7 Apr 2008 10:13:30 -0400
+MIME-Version: 1.0
+Content-Type: text/html;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+Content-Location: http://www.zlib.net/manual.html
+X-MimeOLE: Produced By Microsoft MimeOLE V6.00.2900.3198
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD><TITLE>zlib general purpose compression library version =
+1.1.4</TITLE>
+<META http-equiv=3DContent-Type content=3D"text/html; =
+charset=3DISO-8859-1">
+<SCRIPT language=3DJavaScript>=0A=
+<!--=0A=
+function mail_to(name, domain)=0A=
+{=0A=
+  document.write("<a class=3D\"link\" href=3D\"mail" + "to:" + name +=0A=
+                 "&#64;" + domain + "\">");=0A=
+}=0A=
+//-->=0A=
+</SCRIPT>
+
+<META content=3D"MSHTML 6.00.6000.16608" name=3DGENERATOR></HEAD>
+<BODY text=3Dblack vLink=3Dred aLink=3Dnavy link=3Dred =
+bgColor=3Dwhite><!-- background=3D"zlibbg.gif" -->
+<H1>zlib 1.1.4 Manual </H1>
+<HR>
+<A name=3DContents>
+<H2>Contents</H2>
+<OL type=3DI>
+  <LI><A href=3D"http://www.zlib.net/manual.html#Prologue">Prologue</A>=20
+  <LI><A =
+href=3D"http://www.zlib.net/manual.html#Introduction">Introduction</A>=20
+  <LI><A href=3D"http://www.zlib.net/manual.html#Utility =
+functions">Utility=20
+  functions</A>=20
+  <LI><A href=3D"http://www.zlib.net/manual.html#Basic functions">Basic=20
+  functions</A>=20
+  <LI><A href=3D"http://www.zlib.net/manual.html#Advanced =
+functions">Advanced=20
+  functions</A>=20
+  <LI><A =
+href=3D"http://www.zlib.net/manual.html#Constants">Constants</A>=20
+  <LI><A href=3D"http://www.zlib.net/manual.html#struct =
+z_stream_s">struct=20
+  z_stream_s</A>=20
+  <LI><A href=3D"http://www.zlib.net/manual.html#Checksum =
+functions">Checksum=20
+  functions</A>=20
+  <LI><A href=3D"http://www.zlib.net/manual.html#Misc">Misc</A> =
+</LI></OL>
+<HR>
+<A name=3DPrologue>
+<H2>Prologue </H2>'zlib' general purpose compression library version =
+1.1.4,=20
+March 11th, 2002=20
+<P>Copyright (C) 1995-2002 Jean-loup Gailly and Mark Adler=20
+<P>This software is provided 'as-is', without any express or implied =
+warranty.=20
+In no event will the authors be held liable for any damages arising from =
+the use=20
+of this software.=20
+<P>Permission is granted to anyone to use this software for any purpose, =
+
+including commercial applications, and to alter it and redistribute it =
+freely,=20
+subject to the following restrictions:=20
+<OL>
+  <LI>The origin of this software must not be misrepresented ; you must =
+not=20
+  claim that you wrote the original software. If you use this software =
+in a=20
+  product, an acknowledgment in the product documentation would be =
+appreciated=20
+  but is not required.=20
+  <LI>Altered source versions must be plainly marked as such, and must =
+not be=20
+  misrepresented as being the original software.=20
+  <LI>This notice may not be removed or altered from any source =
+distribution.=20
+  </LI></OL>
+<DL>
+  <DT>Jean-loup Gailly=20
+  <DD>
+  <SCRIPT>mail_to("jloup","gzip.org");</SCRIPT>
+  jloup@gzip.org</A>=20
+  <DT>Mark Adler=20
+  <DD>
+  <SCRIPT>mail_to("madler","alumni.caltech.edu");</SCRIPT>
+  madler@alumni.caltech.edu</A> </DD></DL>The data format used by the =
+zlib library=20
+is described by RFCs (Request for Comments) 1950 to 1952 in the files <A =
+
+href=3D"http://www.ietf.org/rfc/rfc1950.txt">rfc1950.txt </A>(zlib =
+format), <A=20
+href=3D"http://www.ietf.org/rfc/rfc1951.txt">rfc1951.txt </A>(<A=20
+href=3D"http://www.zlib.net/manual.html#deflate">deflate</A> format) and =
+<A=20
+href=3D"http://www.ietf.org/rfc/rfc1952.txt">rfc1952.txt </A>(gzip =
+format).=20
+<P>This manual is converted from zlib.h by
+<SCRIPT>mail_to("piaip","csie.ntu.edu.tw");</SCRIPT>
+ piaip </A>
+<P>Visit <A href=3D"http://www.zlib.org/">http://www.zlib.org/</A> for =
+the=20
+official zlib web page.=20
+<P>
+<HR>
+<A name=3DIntroduction>
+<H2>Introduction </H2>The 'zlib' compression library provides in-memory=20
+compression and decompression functions, including integrity checks of =
+the=20
+uncompressed data. This version of the library supports only one =
+compression=20
+method (deflation) but other algorithms will be added later and will =
+have the=20
+same stream interface.=20
+<P>Compression can be done in a single step if the buffers are large =
+enough (for=20
+example if an input file is mmap'ed), or can be done by repeated calls =
+of the=20
+compression function. In the latter case, the application must provide =
+more=20
+input and/or consume the output (providing more output space) before =
+each call.=20
+<P>The library also supports reading and writing files in gzip (.gz) =
+format with=20
+an interface similar to that of stdio.=20
+<P>The library does not install any signal handler. The decoder checks =
+the=20
+consistency of the compressed data, so the library should never crash =
+even in=20
+case of corrupted input.=20
+<P>
+<HR>
+<A name=3D"Utility functions">
+<H2>Utility functions </H2>The following utility functions are =
+implemented on=20
+top of the <A href=3D"http://www.zlib.net/manual.html#Basic =
+functions">basic=20
+stream-oriented functions</A>. To simplify the interface, some default =
+options=20
+are assumed (compression level and memory usage, standard memory =
+allocation=20
+functions). The source code of these utility functions can easily be =
+modified if=20
+you need special options.=20
+<H3>Function list </H3>
+<UL>
+  <LI>int <A =
+href=3D"http://www.zlib.net/manual.html#compress">compress</A> (Bytef=20
+  *dest, uLongf *destLen, const Bytef *source, uLong sourceLen);=20
+  <LI>int <A =
+href=3D"http://www.zlib.net/manual.html#compress2">compress2</A>=20
+  (Bytef *dest, uLongf *destLen, const Bytef *source, uLong sourceLen, =
+int=20
+  level);=20
+  <LI>int <A =
+href=3D"http://www.zlib.net/manual.html#uncompress">uncompress</A>=20
+  (Bytef *dest, uLongf *destLen, const Bytef *source, uLong sourceLen);=20
+  <LI>typedef voidp gzFile;=20
+  <LI>gzFile <A =
+href=3D"http://www.zlib.net/manual.html#gzopen">gzopen</A> (const=20
+  char *path, const char *mode);=20
+  <LI>gzFile <A =
+href=3D"http://www.zlib.net/manual.html#gzdopen">gzdopen</A> (int=20
+  fd, const char *mode);=20
+  <LI>int <A =
+href=3D"http://www.zlib.net/manual.html#gzsetparams">gzsetparams</A>=20
+  (gzFile file, int level, int strategy);=20
+  <LI>int <A href=3D"http://www.zlib.net/manual.html#gzread">gzread</A> =
+(gzFile=20
+  file, voidp buf, unsigned len);=20
+  <LI>int <A =
+href=3D"http://www.zlib.net/manual.html#gzwrite">gzwrite</A> (gzFile=20
+  file, const voidp buf, unsigned len);=20
+  <LI>int VA <A =
+href=3D"http://www.zlib.net/manual.html#gzprintf">gzprintf</A>=20
+  (gzFile file, const char *format, ...);=20
+  <LI>int <A href=3D"http://www.zlib.net/manual.html#gzputs">gzputs</A> =
+(gzFile=20
+  file, const char *s);=20
+  <LI>char * <A =
+href=3D"http://www.zlib.net/manual.html#gzgets">gzgets</A> (gzFile=20
+  file, char *buf, int len);=20
+  <LI>int <A href=3D"http://www.zlib.net/manual.html#gzputc">gzputc</A> =
+(gzFile=20
+  file, int c);=20
+  <LI>int <A href=3D"http://www.zlib.net/manual.html#gzgetc">gzgetc</A> =
+(gzFile=20
+  file);=20
+  <LI>int <A =
+href=3D"http://www.zlib.net/manual.html#gzflush">gzflush</A> (gzFile=20
+  file, int flush);=20
+  <LI>z_off_t <A =
+href=3D"http://www.zlib.net/manual.html#gzseek">gzseek</A>=20
+  (gzFile file, z_off_t offset, int whence);=20
+  <LI>z_off_t <A =
+href=3D"http://www.zlib.net/manual.html#gztell">gztell</A>=20
+  (gzFile file);=20
+  <LI>int <A =
+href=3D"http://www.zlib.net/manual.html#gzrewind">gzrewind</A>=20
+  (gzFile file);=20
+  <LI>int <A href=3D"http://www.zlib.net/manual.html#gzeof">gzeof</A> =
+(gzFile=20
+  file);=20
+  <LI>int <A =
+href=3D"http://www.zlib.net/manual.html#gzclose">gzclose</A> (gzFile=20
+  file);=20
+  <LI>const char * <A =
+href=3D"http://www.zlib.net/manual.html#gzerror">gzerror</A>=20
+  (gzFile file, int *errnum); </LI></UL>
+<H3>Function description </H3>
+<DL><FONT color=3Dblue>
+  <DT>int <A name=3Dcompress>compress</A> (Bytef *dest, uLongf *destLen, =
+const=20
+  Bytef *source, uLong sourceLen);</FONT>=20
+  <DD>Compresses the source buffer into the destination buffer. =
+sourceLen is the=20
+  byte length of the source buffer. Upon entry, destLen is the total =
+size of the=20
+  destination buffer, which must be at least 0.1% larger than sourceLen =
+plus 12=20
+  bytes. Upon exit, destLen is the actual size of the compressed buffer.
+  <P>This function can be used to <A=20
+  href=3D"http://www.zlib.net/manual.html#compress">compress</A> a whole =
+file at=20
+  once if the input file is mmap'ed.
+  <P><A href=3D"http://www.zlib.net/manual.html#compress">compress</A> =
+returns <A=20
+  href=3D"http://www.zlib.net/manual.html#Z_OK">Z_OK</A> if success, <A=20
+  href=3D"http://www.zlib.net/manual.html#Z_MEM_ERROR">Z_MEM_ERROR</A> =
+if there=20
+  was not enough memory, <A=20
+  href=3D"http://www.zlib.net/manual.html#Z_BUF_ERROR">Z_BUF_ERROR</A> =
+if there=20
+  was not enough room in the output buffer.
+  <P><FONT color=3Dblue></P>
+  <DT>int <A name=3Dcompress2>compress2</A> (Bytef *dest, uLongf =
+*destLen, const=20
+  Bytef *source, uLong sourceLen, int level);</FONT>=20
+  <DD>Compresses the source buffer into the destination buffer. The =
+level=20
+  parameter has the same meaning as in <A=20
+  href=3D"http://www.zlib.net/manual.html#deflateInit">deflateInit</A>. =
+sourceLen=20
+  is the byte length of the source buffer. Upon entry, destLen is the =
+total size=20
+  of the destination buffer, which must be at least 0.1% larger than =
+sourceLen=20
+  plus 12 bytes. Upon exit, destLen is the actual size of the compressed =
+buffer.=20
+
+  <P><A href=3D"http://www.zlib.net/manual.html#compress2">compress2</A> =
+returns=20
+  <A href=3D"http://www.zlib.net/manual.html#Z_OK">Z_OK</A> if success, =
+<A=20
+  href=3D"http://www.zlib.net/manual.html#Z_MEM_ERROR">Z_MEM_ERROR</A> =
+if there=20
+  was not enough memory, <A=20
+  href=3D"http://www.zlib.net/manual.html#Z_BUF_ERROR">Z_BUF_ERROR</A> =
+if there=20
+  was not enough room in the output buffer, <A=20
+  =
+href=3D"http://www.zlib.net/manual.html#Z_STREAM_ERROR">Z_STREAM_ERROR</A=
+> if=20
+  the level parameter is invalid.=20
+  <P><FONT color=3Dblue></P>
+  <DT>int <A name=3Duncompress>uncompress</A> (Bytef *dest, uLongf =
+*destLen, const=20
+  Bytef *source, uLong sourceLen);</FONT>=20
+  <DD>Decompresses the source buffer into the destination buffer. =
+sourceLen is=20
+  the byte length of the source buffer. Upon entry, destLen is the total =
+size of=20
+  the destination buffer, which must be large enough to hold the entire=20
+  uncompressed data. (The size of the uncompressed data must have been =
+saved=20
+  previously by the compressor and transmitted to the decompressor by =
+some=20
+  mechanism outside the scope of this compression library.) Upon exit, =
+destLen=20
+  is the actual size of the uncompressed buffer.=20
+  <P>This function can be used to decompress a whole file at once if the =
+input=20
+  file is mmap'ed.=20
+  <P><A =
+href=3D"http://www.zlib.net/manual.html#uncompress">uncompress</A> =
+returns=20
+  <A href=3D"http://www.zlib.net/manual.html#Z_OK">Z_OK</A> if success, =
+<A=20
+  href=3D"http://www.zlib.net/manual.html#Z_MEM_ERROR">Z_MEM_ERROR</A> =
+if there=20
+  was not enough memory, <A=20
+  href=3D"http://www.zlib.net/manual.html#Z_BUF_ERROR">Z_BUF_ERROR</A> =
+if there=20
+  was not enough room in the output buffer, or <A=20
+  href=3D"http://www.zlib.net/manual.html#Z_DATA_ERROR">Z_DATA_ERROR</A> =
+if the=20
+  input data was corrupted.=20
+  <P></P>
+  <DT>typedef voidp gzFile;=20
+  <DD>
+  <P><FONT color=3Dblue></P>
+  <DT>gzFile <A name=3Dgzopen>gzopen</A> (const char *path, const char=20
+  *mode);</FONT>=20
+  <DD>Opens a gzip (.gz) file for reading or writing. The mode parameter =
+is as=20
+  in fopen ("rb" or "wb") but can also include a compression level =
+("wb9") or a=20
+  strategy: 'f' for filtered data as in "wb6f", 'h' for Huffman only =
+compression=20
+  as in "wb1h". (See the description of <A=20
+  href=3D"http://www.zlib.net/manual.html#deflateInit2">deflateInit2</A> =
+for more=20
+  information about the strategy parameter.)=20
+  <P><A href=3D"http://www.zlib.net/manual.html#gzopen">gzopen</A> can =
+be used to=20
+  read a file which is not in gzip format ; in this case <A=20
+  href=3D"http://www.zlib.net/manual.html#gzread">gzread</A> will =
+directly read=20
+  from the file without decompression.=20
+  <P><A href=3D"http://www.zlib.net/manual.html#gzopen">gzopen</A> =
+returns NULL if=20
+  the file could not be opened or if there was insufficient memory to =
+allocate=20
+  the (de)compression <A =
+href=3D"http://www.zlib.net/manual.html#state">state</A>=20
+  ; errno can be checked to distinguish the two cases (if errno is zero, =
+the=20
+  zlib error is <A=20
+  href=3D"http://www.zlib.net/manual.html#Z_MEM_ERROR">Z_MEM_ERROR</A>). =
+
+  <P><FONT color=3Dblue></P>
+  <DT>gzFile <A name=3Dgzdopen>gzdopen</A> (int fd, const char =
+*mode);</FONT>=20
+  <DD><A href=3D"http://www.zlib.net/manual.html#gzdopen">gzdopen</A>() =
+associates=20
+  a gzFile with the file descriptor fd. File descriptors are obtained =
+from calls=20
+  like open, dup, creat, pipe or fileno (in the file has been previously =
+opened=20
+  with fopen). The mode parameter is as in <A=20
+  href=3D"http://www.zlib.net/manual.html#gzopen">gzopen</A>.=20
+  <P>The next call of <A=20
+  href=3D"http://www.zlib.net/manual.html#gzclose">gzclose</A> on the =
+returned=20
+  gzFile will also close the file descriptor fd, just like =
+fclose(fdopen(fd),=20
+  mode) closes the file descriptor fd. If you want to keep fd open, use =
+<A=20
+  href=3D"http://www.zlib.net/manual.html#gzdopen">gzdopen</A>(dup(fd), =
+mode).=20
+  <P><A href=3D"http://www.zlib.net/manual.html#gzdopen">gzdopen</A> =
+returns NULL=20
+  if there was insufficient memory to allocate the (de)compression <A=20
+  href=3D"http://www.zlib.net/manual.html#state">state</A>.=20
+  <P><FONT color=3Dblue></P>
+  <DT>int <A name=3Dgzsetparams>gzsetparams</A> (gzFile file, int level, =
+int=20
+  strategy);</FONT>=20
+  <DD>Dynamically update the compression level or strategy. See the =
+description=20
+  of <A =
+href=3D"http://www.zlib.net/manual.html#deflateInit2">deflateInit2</A> =
+for=20
+  the meaning of these parameters.=20
+  <P><A =
+href=3D"http://www.zlib.net/manual.html#gzsetparams">gzsetparams</A>=20
+  returns <A href=3D"http://www.zlib.net/manual.html#Z_OK">Z_OK</A> if =
+success, or=20
+  <A =
+href=3D"http://www.zlib.net/manual.html#Z_STREAM_ERROR">Z_STREAM_ERROR</A=
+> if=20
+  the file was not opened for writing.=20
+  <P><FONT color=3Dblue></P>
+  <DT>int <A name=3Dgzread>gzread</A> (gzFile file, voidp buf, unsigned=20
+  len);</FONT>=20
+  <DD>Reads the given number of uncompressed bytes from the compressed =
+file. If=20
+  the input file was not in gzip format, <A=20
+  href=3D"http://www.zlib.net/manual.html#gzread">gzread</A> copies the =
+given=20
+  number of bytes into the buffer.=20
+  <P><A href=3D"http://www.zlib.net/manual.html#gzread">gzread</A> =
+returns the=20
+  number of uncompressed bytes actually read (0 for end of file, -1 for =
+error).=20
+  <P><FONT color=3Dblue></P>
+  <DT>int <A name=3Dgzwrite>gzwrite</A> (gzFile file, const voidp buf, =
+unsigned=20
+  len);</FONT>=20
+  <DD>Writes the given number of uncompressed bytes into the compressed =
+file. <A=20
+  href=3D"http://www.zlib.net/manual.html#gzwrite">gzwrite</A> returns =
+the number=20
+  of uncompressed bytes actually written (0 in case of error).=20
+  <P><FONT color=3Dblue></P>
+  <DT>int VA <A name=3Dgzprintf>gzprintf</A> (gzFile file, const char =
+*format,=20
+  ...);</FONT>=20
+  <DD>Converts, formats, and writes the args to the compressed file =
+under=20
+  control of the format string, as in fprintf. <A=20
+  href=3D"http://www.zlib.net/manual.html#gzprintf">gzprintf</A> returns =
+the=20
+  number of uncompressed bytes actually written (0 in case of error).=20
+  <P><FONT color=3Dblue></P>
+  <DT>int <A name=3Dgzputs>gzputs</A> (gzFile file, const char =
+*s);</FONT>=20
+  <DD>Writes the given null-terminated string to the compressed file, =
+excluding=20
+  the terminating null character.=20
+  <P><A href=3D"http://www.zlib.net/manual.html#gzputs">gzputs</A> =
+returns the=20
+  number of characters written, or -1 in case of error.=20
+  <P><FONT color=3Dblue></P>
+  <DT>char * <A name=3Dgzgets>gzgets</A> (gzFile file, char *buf, int =
+len);</FONT>=20
+
+  <DD>Reads bytes from the compressed file until len-1 characters are =
+read, or a=20
+  newline character is read and transferred to buf, or an end-of-file =
+condition=20
+  is encountered. The string is then terminated with a null character.=20
+  <P><A href=3D"http://www.zlib.net/manual.html#gzgets">gzgets</A> =
+returns buf, or=20
+  <A href=3D"http://www.zlib.net/manual.html#Z_NULL">Z_NULL</A> in case =
+of error.=20
+  <P><FONT color=3Dblue></P>
+  <DT>int <A name=3Dgzputc>gzputc</A> (gzFile file, int c);</FONT>=20
+  <DD>Writes c, converted to an unsigned char, into the compressed file. =
+<A=20
+  href=3D"http://www.zlib.net/manual.html#gzputc">gzputc</A> returns the =
+value=20
+  that was written, or -1 in case of error.=20
+  <P><FONT color=3Dblue></P>
+  <DT>int <A name=3Dgzgetc>gzgetc</A> (gzFile file);</FONT>=20
+  <DD>Reads one byte from the compressed file. <A=20
+  href=3D"http://www.zlib.net/manual.html#gzgetc">gzgetc</A> returns =
+this byte or=20
+  -1 in case of end of file or error.=20
+  <P><FONT color=3Dblue></P>
+  <DT>int <A name=3Dgzflush>gzflush</A> (gzFile file, int flush);</FONT> =
+
+  <DD>Flushes all pending output into the compressed file. The parameter =
+flush=20
+  is as in the <A =
+href=3D"http://www.zlib.net/manual.html#deflate">deflate</A>()=20
+  function. The return value is the zlib error number (see function <A=20
+  href=3D"http://www.zlib.net/manual.html#gzerror">gzerror</A> below). =
+<A=20
+  href=3D"http://www.zlib.net/manual.html#gzflush">gzflush</A> returns =
+<A=20
+  href=3D"http://www.zlib.net/manual.html#Z_OK">Z_OK</A> if the flush =
+parameter is=20
+  <A href=3D"http://www.zlib.net/manual.html#Z_FINISH">Z_FINISH</A> and =
+all output=20
+  could be flushed.=20
+  <P><A href=3D"http://www.zlib.net/manual.html#gzflush">gzflush</A> =
+should be=20
+  called only when strictly necessary because it can degrade =
+compression.=20
+  <P><FONT color=3Dblue></P>
+  <DT>z_off_t <A name=3Dgzseek>gzseek</A> (gzFile file, z_off_t offset, =
+int=20
+  whence);</FONT>=20
+  <DD>Sets the starting position for the next <A=20
+  href=3D"http://www.zlib.net/manual.html#gzread">gzread</A> or <A=20
+  href=3D"http://www.zlib.net/manual.html#gzwrite">gzwrite</A> on the =
+given=20
+  compressed file. The offset represents a number of bytes in the =
+uncompressed=20
+  data stream. The whence parameter is defined as in lseek(2); the value =
+
+  SEEK_END is not supported.=20
+  <P>If the file is opened for reading, this function is emulated but =
+can be=20
+  extremely slow. If the file is opened for writing, only forward seeks =
+are=20
+  supported ; <A =
+href=3D"http://www.zlib.net/manual.html#gzseek">gzseek</A> then=20
+  compresses a sequence of zeroes up to the new starting position.=20
+  <P><A href=3D"http://www.zlib.net/manual.html#gzseek">gzseek</A> =
+returns the=20
+  resulting offset location as measured in bytes from the beginning of =
+the=20
+  uncompressed stream, or -1 in case of error, in particular if the file =
+is=20
+  opened for writing and the new starting position would be before the =
+current=20
+  position.=20
+  <P><FONT color=3Dblue></P>
+  <DT>int <A name=3Dgzrewind>gzrewind</A> (gzFile file);</FONT>=20
+  <DD>Rewinds the given file. This function is supported only for =
+reading.=20
+  <P><A =
+href=3D"http://www.zlib.net/manual.html#gzrewind">gzrewind</A>(file) is=20
+  equivalent to (int)<A=20
+  href=3D"http://www.zlib.net/manual.html#gzseek">gzseek</A>(file, 0L, =
+SEEK_SET)=20
+  <P><FONT color=3Dblue></P>
+  <DT>z_off_t <A name=3Dgztell>gztell</A> (gzFile file);</FONT>=20
+  <DD>Returns the starting position for the next <A=20
+  href=3D"http://www.zlib.net/manual.html#gzread">gzread</A> or <A=20
+  href=3D"http://www.zlib.net/manual.html#gzwrite">gzwrite</A> on the =
+given=20
+  compressed file. This position represents a number of bytes in the=20
+  uncompressed data stream.=20
+  <P><A href=3D"http://www.zlib.net/manual.html#gztell">gztell</A>(file) =
+is=20
+  equivalent to <A=20
+  href=3D"http://www.zlib.net/manual.html#gzseek">gzseek</A>(file, 0L, =
+SEEK_CUR)=20
+  <P><FONT color=3Dblue></P>
+  <DT>int <A name=3Dgzeof>gzeof</A> (gzFile file);</FONT>=20
+  <DD>Returns 1 when EOF has previously been detected reading the given =
+input=20
+  stream, otherwise zero.=20
+  <P><FONT color=3Dblue></P>
+  <DT>int <A name=3Dgzclose>gzclose</A> (gzFile file);</FONT>=20
+  <DD>Flushes all pending output if necessary, closes the compressed =
+file and=20
+  deallocates all the (de)compression <A=20
+  href=3D"http://www.zlib.net/manual.html#state">state</A>. The return =
+value is=20
+  the zlib error number (see function <A=20
+  href=3D"http://www.zlib.net/manual.html#gzerror">gzerror</A> below).=20
+  <P><FONT color=3Dblue></P>
+  <DT>const char * <A name=3Dgzerror>gzerror</A> (gzFile file, int=20
+  *errnum);</FONT>=20
+  <DD>Returns the error message for the last error which occurred on the =
+given=20
+  compressed file. errnum is set to zlib error number. If an error =
+occurred in=20
+  the file system and not in the compression library, errnum is set to =
+<A=20
+  href=3D"http://www.zlib.net/manual.html#Z_ERRNO">Z_ERRNO</A> and the =
+application=20
+  may consult errno to get the exact error code.=20
+  <P></P></DD></DL>
+<HR>
+<A name=3D"Basic functions">
+<H2>Basic functions </H2>
+<H3>Function list </H3>
+<UL>
+  <LI>const char * <A=20
+  href=3D"http://www.zlib.net/manual.html#zlibVersion">zlibVersion</A> =
+(void);=20
+  <LI>int <A =
+href=3D"http://www.zlib.net/manual.html#deflateInit">deflateInit</A>=20
+  (<A href=3D"http://www.zlib.net/manual.html#z_streamp">z_streamp</A> =
+strm, int=20
+  level);=20
+  <LI>int <A =
+href=3D"http://www.zlib.net/manual.html#deflate">deflate</A> (<A=20
+  href=3D"http://www.zlib.net/manual.html#z_streamp">z_streamp</A> strm, =
+int=20
+  flush);=20
+  <LI>int <A =
+href=3D"http://www.zlib.net/manual.html#deflateEnd">deflateEnd</A>=20
+  (<A href=3D"http://www.zlib.net/manual.html#z_streamp">z_streamp</A> =
+strm);=20
+  <LI>int <A =
+href=3D"http://www.zlib.net/manual.html#inflateInit">inflateInit</A>=20
+  (<A href=3D"http://www.zlib.net/manual.html#z_streamp">z_streamp</A> =
+strm);=20
+  <LI>int <A =
+href=3D"http://www.zlib.net/manual.html#inflate">inflate</A> (<A=20
+  href=3D"http://www.zlib.net/manual.html#z_streamp">z_streamp</A> strm, =
+int=20
+  flush);=20
+  <LI>int <A =
+href=3D"http://www.zlib.net/manual.html#inflateEnd">inflateEnd</A>=20
+  (<A href=3D"http://www.zlib.net/manual.html#z_streamp">z_streamp</A> =
+strm);=20
+</LI></UL>
+<H3>Function description </H3>
+<DL><FONT color=3Dblue>
+  <DT>const char * <A name=3DzlibVersion>zlibVersion</A> (void);</FONT>=20
+  <DD>The application can compare <A=20
+  href=3D"http://www.zlib.net/manual.html#zlibVersion">zlibVersion</A> =
+and=20
+  ZLIB_VERSION for consistency. If the first character differs, the =
+library code=20
+  actually used is not compatible with the zlib.h header file used by =
+the=20
+  application. This check is automatically made by <A=20
+  href=3D"http://www.zlib.net/manual.html#deflateInit">deflateInit</A> =
+and <A=20
+  href=3D"http://www.zlib.net/manual.html#inflateInit">inflateInit</A>.=20
+  <P><FONT color=3Dblue></P>
+  <DT>int <A name=3DdeflateInit>deflateInit</A> (<A=20
+  href=3D"http://www.zlib.net/manual.html#z_streamp">z_streamp</A> strm, =
+int=20
+  level);</FONT>=20
+  <DD>Initializes the internal stream <A=20
+  href=3D"http://www.zlib.net/manual.html#state">state</A> for =
+compression. The=20
+  fields <A href=3D"http://www.zlib.net/manual.html#zalloc">zalloc</A>, =
+<A=20
+  href=3D"http://www.zlib.net/manual.html#zfree">zfree</A> and <A=20
+  href=3D"http://www.zlib.net/manual.html#opaque">opaque</A> must be =
+initialized=20
+  before by the caller. If <A=20
+  href=3D"http://www.zlib.net/manual.html#zalloc">zalloc</A> and <A=20
+  href=3D"http://www.zlib.net/manual.html#zfree">zfree</A> are set to <A =
+
+  href=3D"http://www.zlib.net/manual.html#Z_NULL">Z_NULL</A>, <A=20
+  href=3D"http://www.zlib.net/manual.html#deflateInit">deflateInit</A> =
+updates=20
+  them to use default allocation functions.=20
+  <P>The compression level must be <A=20
+  =
+href=3D"http://www.zlib.net/manual.html#Z_DEFAULT_COMPRESSION">Z_DEFAULT_=
+COMPRESSION</A>,=20
+  or between 0 and 9: 1 gives best speed, 9 gives best compression, 0 =
+gives no=20
+  compression at all (the input data is simply copied a block at a =
+time).=20
+  <P><A=20
+  =
+href=3D"http://www.zlib.net/manual.html#Z_DEFAULT_COMPRESSION">Z_DEFAULT_=
+COMPRESSION</A>=20
+  requests a default compromise between speed and compression (currently =
+
+  equivalent to level 6).=20
+  <P><A =
+href=3D"http://www.zlib.net/manual.html#deflateInit">deflateInit</A>=20
+  returns <A href=3D"http://www.zlib.net/manual.html#Z_OK">Z_OK</A> if =
+success, <A=20
+  href=3D"http://www.zlib.net/manual.html#Z_MEM_ERROR">Z_MEM_ERROR</A> =
+if there=20
+  was not enough memory, <A=20
+  =
+href=3D"http://www.zlib.net/manual.html#Z_STREAM_ERROR">Z_STREAM_ERROR</A=
+> if=20
+  level is not a valid compression level, <A=20
+  =
+href=3D"http://www.zlib.net/manual.html#Z_VERSION_ERROR">Z_VERSION_ERROR<=
+/A> if=20
+  the zlib library version (<A=20
+  =
+href=3D"http://www.zlib.net/manual.html#zlib_version">zlib_version</A>) =
+is=20
+  incompatible with the version assumed by the caller (ZLIB_VERSION). <A =
+
+  href=3D"http://www.zlib.net/manual.html#msg">msg</A> is set to null if =
+there is=20
+  no error message. <A=20
+  href=3D"http://www.zlib.net/manual.html#deflateInit">deflateInit</A> =
+does not=20
+  perform any compression: this will be done by <A=20
+  href=3D"http://www.zlib.net/manual.html#deflate">deflate</A>().=20
+  <P><FONT color=3Dblue></P>
+  <DT>int <A name=3Ddeflate>deflate</A> (<A=20
+  href=3D"http://www.zlib.net/manual.html#z_streamp">z_streamp</A> strm, =
+int=20
+  flush);</FONT>=20
+  <DD><A href=3D"http://www.zlib.net/manual.html#deflate">deflate</A> =
+compresses=20
+  as much data as possible, and stops when the input buffer becomes =
+empty or the=20
+  output buffer becomes full. It may introduce some output latency =
+(reading=20
+  input without producing any output) except when forced to flush.
+  <P>The detailed semantics are as follows. <A=20
+  href=3D"http://www.zlib.net/manual.html#deflate">deflate</A> performs =
+one or=20
+  both of the following actions:=20
+  <UL>
+    <LI>Compress more input starting at <A=20
+    href=3D"http://www.zlib.net/manual.html#next_in">next_in</A> and =
+update <A=20
+    href=3D"http://www.zlib.net/manual.html#next_in">next_in</A> and <A=20
+    href=3D"http://www.zlib.net/manual.html#avail_in">avail_in</A> =
+accordingly. If=20
+    not all input can be processed (because there is not enough room in =
+the=20
+    output buffer), <A=20
+    href=3D"http://www.zlib.net/manual.html#next_in">next_in</A> and <A=20
+    href=3D"http://www.zlib.net/manual.html#avail_in">avail_in</A> are =
+updated and=20
+    processing will resume at this point for the next call of <A=20
+    href=3D"http://www.zlib.net/manual.html#deflate">deflate</A>().=20
+    <LI>Provide more output starting at <A=20
+    href=3D"http://www.zlib.net/manual.html#next_out">next_out</A> and =
+update <A=20
+    href=3D"http://www.zlib.net/manual.html#next_out">next_out</A> and =
+<A=20
+    href=3D"http://www.zlib.net/manual.html#avail_out">avail_out</A> =
+accordingly.=20
+    This action is forced if the parameter flush is non zero. Forcing =
+flush=20
+    frequently degrades the compression ratio, so this parameter should =
+be set=20
+    only when necessary (in interactive applications). Some output may =
+be=20
+    provided even if flush is not set. </LI></UL>
+  <P>Before the call of <A=20
+  href=3D"http://www.zlib.net/manual.html#deflate">deflate</A>(), the =
+application=20
+  should ensure that at least one of the actions is possible, by =
+providing more=20
+  input and/or consuming more output, and updating <A=20
+  href=3D"http://www.zlib.net/manual.html#avail_in">avail_in</A> or <A=20
+  href=3D"http://www.zlib.net/manual.html#avail_out">avail_out</A> =
+accordingly ;=20
+  <A href=3D"http://www.zlib.net/manual.html#avail_out">avail_out</A> =
+should never=20
+  be zero before the call. The application can consume the compressed =
+output=20
+  when it wants, for example when the output buffer is full (<A=20
+  href=3D"http://www.zlib.net/manual.html#avail_out">avail_out</A> =
+=3D=3D 0), or after=20
+  each call of <A =
+href=3D"http://www.zlib.net/manual.html#deflate">deflate</A>().=20
+  If <A href=3D"http://www.zlib.net/manual.html#deflate">deflate</A> =
+returns <A=20
+  href=3D"http://www.zlib.net/manual.html#Z_OK">Z_OK</A> and with zero =
+<A=20
+  href=3D"http://www.zlib.net/manual.html#avail_out">avail_out</A>, it =
+must be=20
+  called again after making room in the output buffer because there =
+might be=20
+  more output pending.=20
+  <P>If the parameter flush is set to <A=20
+  =
+href=3D"http://www.zlib.net/manual.html#Z_SYNC_FLUSH">Z_SYNC_FLUSH</A>, =
+all=20
+  pending output is flushed to the output buffer and the output is =
+aligned on a=20
+  byte boundary, so that the decompressor can get all input data =
+available so=20
+  far. (In particular <A=20
+  href=3D"http://www.zlib.net/manual.html#avail_in">avail_in</A> is zero =
+after the=20
+  call if enough output space has been provided before the call.) =
+Flushing may=20
+  degrade compression for some compression algorithms and so it should =
+be used=20
+  only when necessary.=20
+  <P>If flush is set to <A=20
+  =
+href=3D"http://www.zlib.net/manual.html#Z_FULL_FLUSH">Z_FULL_FLUSH</A>, =
+all=20
+  output is flushed as with <A=20
+  =
+href=3D"http://www.zlib.net/manual.html#Z_SYNC_FLUSH">Z_SYNC_FLUSH</A>, =
+and the=20
+  compression <A =
+href=3D"http://www.zlib.net/manual.html#state">state</A> is reset=20
+  so that decompression can restart from this point if previous =
+compressed data=20
+  has been damaged or if random access is desired. Using <A=20
+  href=3D"http://www.zlib.net/manual.html#Z_FULL_FLUSH">Z_FULL_FLUSH</A> =
+too often=20
+  can seriously degrade the compression.=20
+  <P>If <A href=3D"http://www.zlib.net/manual.html#deflate">deflate</A> =
+returns=20
+  with <A =
+href=3D"http://www.zlib.net/manual.html#avail_out">avail_out</A> =3D=3D =
+0,=20
+  this function must be called again with the same value of the flush =
+parameter=20
+  and more output space (updated <A=20
+  href=3D"http://www.zlib.net/manual.html#avail_out">avail_out</A>), =
+until the=20
+  flush is complete (<A=20
+  href=3D"http://www.zlib.net/manual.html#deflate">deflate</A> returns =
+with=20
+  non-zero <A =
+href=3D"http://www.zlib.net/manual.html#avail_out">avail_out</A>).=20
+  <P>If the parameter flush is set to <A=20
+  href=3D"http://www.zlib.net/manual.html#Z_FINISH">Z_FINISH</A>, =
+pending input is=20
+  processed, pending output is flushed and <A=20
+  href=3D"http://www.zlib.net/manual.html#deflate">deflate</A> returns =
+with <A=20
+  href=3D"http://www.zlib.net/manual.html#Z_STREAM_END">Z_STREAM_END</A> =
+if there=20
+  was enough output space ; if <A=20
+  href=3D"http://www.zlib.net/manual.html#deflate">deflate</A> returns =
+with <A=20
+  href=3D"http://www.zlib.net/manual.html#Z_OK">Z_OK</A>, this function =
+must be=20
+  called again with <A=20
+  href=3D"http://www.zlib.net/manual.html#Z_FINISH">Z_FINISH</A> and =
+more output=20
+  space (updated <A=20
+  href=3D"http://www.zlib.net/manual.html#avail_out">avail_out</A>) but =
+no more=20
+  input data, until it returns with <A=20
+  href=3D"http://www.zlib.net/manual.html#Z_STREAM_END">Z_STREAM_END</A> =
+or an=20
+  error. After <A =
+href=3D"http://www.zlib.net/manual.html#deflate">deflate</A> has=20
+  returned <A=20
+  =
+href=3D"http://www.zlib.net/manual.html#Z_STREAM_END">Z_STREAM_END</A>, =
+the only=20
+  possible operations on the stream are <A=20
+  href=3D"http://www.zlib.net/manual.html#deflateReset">deflateReset</A> =
+or <A=20
+  href=3D"http://www.zlib.net/manual.html#deflateEnd">deflateEnd</A>.=20
+  <P><A href=3D"http://www.zlib.net/manual.html#Z_FINISH">Z_FINISH</A> =
+can be used=20
+  immediately after <A=20
+  href=3D"http://www.zlib.net/manual.html#deflateInit">deflateInit</A> =
+if all the=20
+  compression is to be done in a single step. In this case, <A=20
+  href=3D"http://www.zlib.net/manual.html#avail_out">avail_out</A> must =
+be at=20
+  least 0.1% larger than <A=20
+  href=3D"http://www.zlib.net/manual.html#avail_in">avail_in</A> plus 12 =
+bytes. If=20
+  <A href=3D"http://www.zlib.net/manual.html#deflate">deflate</A> does =
+not return=20
+  <A =
+href=3D"http://www.zlib.net/manual.html#Z_STREAM_END">Z_STREAM_END</A>, =
+then=20
+  it must be called again as described above.=20
+  <P><A href=3D"http://www.zlib.net/manual.html#deflate">deflate</A>() =
+sets=20
+  strm-&gt; <A href=3D"http://www.zlib.net/manual.html#adler">adler</A> =
+to the <A=20
+  href=3D"http://www.zlib.net/manual.html#adler32">adler32</A> checksum =
+of all=20
+  input read so far (that is, <A=20
+  href=3D"http://www.zlib.net/manual.html#total_in">total_in</A> bytes). =
+
+  <P><A href=3D"http://www.zlib.net/manual.html#deflate">deflate</A>() =
+may update=20
+  <A href=3D"http://www.zlib.net/manual.html#data_type">data_type</A> if =
+it can=20
+  make a good guess about the input data type (<A=20
+  href=3D"http://www.zlib.net/manual.html#Z_ASCII">Z_ASCII</A> or <A=20
+  href=3D"http://www.zlib.net/manual.html#Z_BINARY">Z_BINARY</A>). In =
+doubt, the=20
+  data is considered binary. This field is only for information purposes =
+and=20
+  does not affect the compression algorithm in any manner.=20
+  <P><A href=3D"http://www.zlib.net/manual.html#deflate">deflate</A>() =
+returns <A=20
+  href=3D"http://www.zlib.net/manual.html#Z_OK">Z_OK</A> if some =
+progress has been=20
+  made (more input processed or more output produced), <A=20
+  href=3D"http://www.zlib.net/manual.html#Z_STREAM_END">Z_STREAM_END</A> =
+if all=20
+  input has been consumed and all output has been produced (only when =
+flush is=20
+  set to <A =
+href=3D"http://www.zlib.net/manual.html#Z_FINISH">Z_FINISH</A>), <A=20
+  =
+href=3D"http://www.zlib.net/manual.html#Z_STREAM_ERROR">Z_STREAM_ERROR</A=
+> if=20
+  the stream <A href=3D"http://www.zlib.net/manual.html#state">state</A> =
+was=20
+  inconsistent (for example if <A=20
+  href=3D"http://www.zlib.net/manual.html#next_in">next_in</A> or <A=20
+  href=3D"http://www.zlib.net/manual.html#next_out">next_out</A> was =
+NULL), <A=20
+  href=3D"http://www.zlib.net/manual.html#Z_BUF_ERROR">Z_BUF_ERROR</A> =
+if no=20
+  progress is possible (for example <A=20
+  href=3D"http://www.zlib.net/manual.html#avail_in">avail_in</A> or <A=20
+  href=3D"http://www.zlib.net/manual.html#avail_out">avail_out</A> was =
+zero).=20
+  <P><FONT color=3Dblue></P>
+  <DT>int <A name=3DdeflateEnd>deflateEnd</A> (<A=20
+  href=3D"http://www.zlib.net/manual.html#z_streamp">z_streamp</A> =
+strm);</FONT>=20
+  <DD>All dynamically allocated data structures for this stream are =
+freed. This=20
+  function discards any unprocessed input and does not flush any pending =
+output.=20
+
+  <P><A =
+href=3D"http://www.zlib.net/manual.html#deflateEnd">deflateEnd</A> =
+returns=20
+  <A href=3D"http://www.zlib.net/manual.html#Z_OK">Z_OK</A> if success, =
+<A=20
+  =
+href=3D"http://www.zlib.net/manual.html#Z_STREAM_ERROR">Z_STREAM_ERROR</A=
+> if=20
+  the stream <A href=3D"http://www.zlib.net/manual.html#state">state</A> =
+was=20
+  inconsistent, <A=20
+  href=3D"http://www.zlib.net/manual.html#Z_DATA_ERROR">Z_DATA_ERROR</A> =
+if the=20
+  stream was freed prematurely (some input or output was discarded). In =
+the=20
+  error case, <A href=3D"http://www.zlib.net/manual.html#msg">msg</A> =
+may be set=20
+  but then points to a static string (which must not be deallocated).=20
+  <P><FONT color=3Dblue></P>
+  <DT>int <A name=3DinflateInit>inflateInit</A> (<A=20
+  href=3D"http://www.zlib.net/manual.html#z_streamp">z_streamp</A> =
+strm);</FONT>=20
+  <DD>Initializes the internal stream <A=20
+  href=3D"http://www.zlib.net/manual.html#state">state</A> for =
+decompression. The=20
+  fields <A =
+href=3D"http://www.zlib.net/manual.html#next_in">next_in</A>, <A=20
+  href=3D"http://www.zlib.net/manual.html#avail_in">avail_in</A>, <A=20
+  href=3D"http://www.zlib.net/manual.html#zalloc">zalloc</A>, <A=20
+  href=3D"http://www.zlib.net/manual.html#zfree">zfree</A> and <A=20
+  href=3D"http://www.zlib.net/manual.html#opaque">opaque</A> must be =
+initialized=20
+  before by the caller. If <A=20
+  href=3D"http://www.zlib.net/manual.html#next_in">next_in</A> is not <A =
+
+  href=3D"http://www.zlib.net/manual.html#Z_NULL">Z_NULL</A> and <A=20
+  href=3D"http://www.zlib.net/manual.html#avail_in">avail_in</A> is =
+large enough=20
+  (the exact value depends on the compression method), <A=20
+  href=3D"http://www.zlib.net/manual.html#inflateInit">inflateInit</A> =
+determines=20
+  the compression method from the zlib header and allocates all data =
+structures=20
+  accordingly ; otherwise the allocation will be deferred to the first =
+call of=20
+  <A href=3D"http://www.zlib.net/manual.html#inflate">inflate</A>. If <A =
+
+  href=3D"http://www.zlib.net/manual.html#zalloc">zalloc</A> and <A=20
+  href=3D"http://www.zlib.net/manual.html#zfree">zfree</A> are set to <A =
+
+  href=3D"http://www.zlib.net/manual.html#Z_NULL">Z_NULL</A>, <A=20
+  href=3D"http://www.zlib.net/manual.html#inflateInit">inflateInit</A> =
+updates=20
+  them to use default allocation functions.=20
+  <P><A =
+href=3D"http://www.zlib.net/manual.html#inflateInit">inflateInit</A>=20
+  returns <A href=3D"http://www.zlib.net/manual.html#Z_OK">Z_OK</A> if =
+success, <A=20
+  href=3D"http://www.zlib.net/manual.html#Z_MEM_ERROR">Z_MEM_ERROR</A> =
+if there=20
+  was not enough memory, <A=20
+  =
+href=3D"http://www.zlib.net/manual.html#Z_VERSION_ERROR">Z_VERSION_ERROR<=
+/A> if=20
+  the zlib library version is incompatible with the version assumed by =
+the=20
+  caller. <A href=3D"http://www.zlib.net/manual.html#msg">msg</A> is set =
+to null=20
+  if there is no error message. <A=20
+  href=3D"http://www.zlib.net/manual.html#inflateInit">inflateInit</A> =
+does not=20
+  perform any decompression apart from reading the zlib header if =
+present: this=20
+  will be done by <A=20
+  href=3D"http://www.zlib.net/manual.html#inflate">inflate</A>(). (So <A =
+
+  href=3D"http://www.zlib.net/manual.html#next_in">next_in</A> and <A=20
+  href=3D"http://www.zlib.net/manual.html#avail_in">avail_in</A> may be =
+modified,=20
+  but <A href=3D"http://www.zlib.net/manual.html#next_out">next_out</A> =
+and <A=20
+  href=3D"http://www.zlib.net/manual.html#avail_out">avail_out</A> are =
+unchanged.)=20
+
+  <P><FONT color=3Dblue></P>
+  <DT>int <A name=3Dinflate>inflate</A> (<A=20
+  href=3D"http://www.zlib.net/manual.html#z_streamp">z_streamp</A> strm, =
+int=20
+  flush);</FONT>=20
+  <DD><A href=3D"http://www.zlib.net/manual.html#inflate">inflate</A> =
+decompresses=20
+  as much data as possible, and stops when the input buffer becomes =
+empty or the=20
+  output buffer becomes full. It may some introduce some output latency =
+(reading=20
+  input without producing any output) except when forced to flush.=20
+  <P>The detailed semantics are as follows. <A=20
+  href=3D"http://www.zlib.net/manual.html#inflate">inflate</A> performs =
+one or=20
+  both of the following actions:=20
+  <UL>
+    <LI>Decompress more input starting at <A=20
+    href=3D"http://www.zlib.net/manual.html#next_in">next_in</A> and =
+update <A=20
+    href=3D"http://www.zlib.net/manual.html#next_in">next_in</A> and <A=20
+    href=3D"http://www.zlib.net/manual.html#avail_in">avail_in</A> =
+accordingly. If=20
+    not all input can be processed (because there is not enough room in =
+the=20
+    output buffer), <A=20
+    href=3D"http://www.zlib.net/manual.html#next_in">next_in</A> is =
+updated and=20
+    processing will resume at this point for the next call of <A=20
+    href=3D"http://www.zlib.net/manual.html#inflate">inflate</A>().=20
+    <LI>Provide more output starting at <A=20
+    href=3D"http://www.zlib.net/manual.html#next_out">next_out</A> and =
+update <A=20
+    href=3D"http://www.zlib.net/manual.html#next_out">next_out</A> and =
+<A=20
+    href=3D"http://www.zlib.net/manual.html#avail_out">avail_out</A> =
+accordingly.=20
+    <A href=3D"http://www.zlib.net/manual.html#inflate">inflate</A>() =
+provides as=20
+    much output as possible, until there is no more input data or no =
+more space=20
+    in the output buffer (see below about the flush parameter). =
+</LI></UL>
+  <P>Before the call of <A=20
+  href=3D"http://www.zlib.net/manual.html#inflate">inflate</A>(), the =
+application=20
+  should ensure that at least one of the actions is possible, by =
+providing more=20
+  input and/or consuming more output, and updating the next_* and =
+avail_* values=20
+  accordingly. The application can consume the uncompressed output when =
+it=20
+  wants, for example when the output buffer is full (<A=20
+  href=3D"http://www.zlib.net/manual.html#avail_out">avail_out</A> =
+=3D=3D 0), or after=20
+  each call of <A =
+href=3D"http://www.zlib.net/manual.html#inflate">inflate</A>().=20
+  If <A href=3D"http://www.zlib.net/manual.html#inflate">inflate</A> =
+returns <A=20
+  href=3D"http://www.zlib.net/manual.html#Z_OK">Z_OK</A> and with zero =
+<A=20
+  href=3D"http://www.zlib.net/manual.html#avail_out">avail_out</A>, it =
+must be=20
+  called again after making room in the output buffer because there =
+might be=20
+  more output pending.=20
+  <P>If the parameter flush is set to <A=20
+  =
+href=3D"http://www.zlib.net/manual.html#Z_SYNC_FLUSH">Z_SYNC_FLUSH</A>, =
+<A=20
+  href=3D"http://www.zlib.net/manual.html#inflate">inflate</A> flushes =
+as much=20
+  output as possible to the output buffer. The flushing behavior of <A=20
+  href=3D"http://www.zlib.net/manual.html#inflate">inflate</A> is not =
+specified=20
+  for values of the flush parameter other than <A=20
+  href=3D"http://www.zlib.net/manual.html#Z_SYNC_FLUSH">Z_SYNC_FLUSH</A> =
+and <A=20
+  href=3D"http://www.zlib.net/manual.html#Z_FINISH">Z_FINISH</A>, but =
+the current=20
+  implementation actually flushes as much output as possible anyway.=20
+  <P><A href=3D"http://www.zlib.net/manual.html#inflate">inflate</A>() =
+should=20
+  normally be called until it returns <A=20
+  href=3D"http://www.zlib.net/manual.html#Z_STREAM_END">Z_STREAM_END</A> =
+or an=20
+  error. However if all decompression is to be performed in a single =
+step (a=20
+  single call of <A =
+href=3D"http://www.zlib.net/manual.html#inflate">inflate</A>),=20
+  the parameter flush should be set to <A=20
+  href=3D"http://www.zlib.net/manual.html#Z_FINISH">Z_FINISH</A>. In =
+this case all=20
+  pending input is processed and all pending output is flushed ; <A=20
+  href=3D"http://www.zlib.net/manual.html#avail_out">avail_out</A> must =
+be large=20
+  enough to hold all the uncompressed data. (The size of the =
+uncompressed data=20
+  may have been saved by the compressor for this purpose.) The next =
+operation on=20
+  this stream must be <A=20
+  href=3D"http://www.zlib.net/manual.html#inflateEnd">inflateEnd</A> to =
+deallocate=20
+  the decompression <A =
+href=3D"http://www.zlib.net/manual.html#state">state</A>.=20
+  The use of <A =
+href=3D"http://www.zlib.net/manual.html#Z_FINISH">Z_FINISH</A> is=20
+  never required, but can be used to inform <A=20
+  href=3D"http://www.zlib.net/manual.html#inflate">inflate</A> that a =
+faster=20
+  routine may be used for the single <A=20
+  href=3D"http://www.zlib.net/manual.html#inflate">inflate</A>() call.=20
+  <P>If a preset dictionary is needed at this point (see <A=20
+  =
+href=3D"http://www.zlib.net/manual.html#inflateSetDictionary">inflateSetD=
+ictionary</A>=20
+  below), <A =
+href=3D"http://www.zlib.net/manual.html#inflate">inflate</A> sets=20
+  strm-<A href=3D"http://www.zlib.net/manual.html#adler">adler</A> to =
+the <A=20
+  href=3D"http://www.zlib.net/manual.html#adler32">adler32</A> checksum =
+of the=20
+  dictionary chosen by the compressor and returns <A=20
+  href=3D"http://www.zlib.net/manual.html#Z_NEED_DICT">Z_NEED_DICT</A> ; =
+otherwise=20
+  it sets strm-&gt; <A =
+href=3D"http://www.zlib.net/manual.html#adler">adler</A> to=20
+  the <A href=3D"http://www.zlib.net/manual.html#adler32">adler32</A> =
+checksum of=20
+  all output produced so far (that is, <A=20
+  href=3D"http://www.zlib.net/manual.html#total_out">total_out</A> =
+bytes) and=20
+  returns <A href=3D"http://www.zlib.net/manual.html#Z_OK">Z_OK</A>, <A=20
+  href=3D"http://www.zlib.net/manual.html#Z_STREAM_END">Z_STREAM_END</A> =
+or an=20
+  error code as described below. At the end of the stream, <A=20
+  href=3D"http://www.zlib.net/manual.html#inflate">inflate</A>() checks =
+that its=20
+  computed <A =
+href=3D"http://www.zlib.net/manual.html#adler32">adler32</A>=20
+  checksum is equal to that saved by the compressor and returns <A=20
+  href=3D"http://www.zlib.net/manual.html#Z_STREAM_END">Z_STREAM_END</A> =
+only if=20
+  the checksum is correct.=20
+  <P><A href=3D"http://www.zlib.net/manual.html#inflate">inflate</A>() =
+returns <A=20
+  href=3D"http://www.zlib.net/manual.html#Z_OK">Z_OK</A> if some =
+progress has been=20
+  made (more input processed or more output produced), <A=20
+  href=3D"http://www.zlib.net/manual.html#Z_STREAM_END">Z_STREAM_END</A> =
+if the=20
+  end of the compressed data has been reached and all uncompressed =
+output has=20
+  been produced, <A=20
+  href=3D"http://www.zlib.net/manual.html#Z_NEED_DICT">Z_NEED_DICT</A> =
+if a preset=20
+  dictionary is needed at this point, <A=20
+  href=3D"http://www.zlib.net/manual.html#Z_DATA_ERROR">Z_DATA_ERROR</A> =
+if the=20
+  input data was corrupted (input stream not conforming to the zlib =
+format or=20
+  incorrect <A =
+href=3D"http://www.zlib.net/manual.html#adler32">adler32</A>=20
+  checksum), <A=20
+  =
+href=3D"http://www.zlib.net/manual.html#Z_STREAM_ERROR">Z_STREAM_ERROR</A=
+> if=20
+  the stream structure was inconsistent (for example if <A=20
+  href=3D"http://www.zlib.net/manual.html#next_in">next_in</A> or <A=20
+  href=3D"http://www.zlib.net/manual.html#next_out">next_out</A> was =
+NULL), <A=20
+  href=3D"http://www.zlib.net/manual.html#Z_MEM_ERROR">Z_MEM_ERROR</A> =
+if there=20
+  was not enough memory, <A=20
+  href=3D"http://www.zlib.net/manual.html#Z_BUF_ERROR">Z_BUF_ERROR</A> =
+if no=20
+  progress is possible or if there was not enough room in the output =
+buffer when=20
+  <A href=3D"http://www.zlib.net/manual.html#Z_FINISH">Z_FINISH</A> is =
+used. In=20
+  the <A =
+href=3D"http://www.zlib.net/manual.html#Z_DATA_ERROR">Z_DATA_ERROR</A>=20
+  case, the application may then call <A=20
+  href=3D"http://www.zlib.net/manual.html#inflateSync">inflateSync</A> =
+to look for=20
+  a good compression block.=20
+  <P><FONT color=3Dblue></P>
+  <DT>int <A name=3DinflateEnd>inflateEnd</A> (<A=20
+  href=3D"http://www.zlib.net/manual.html#z_streamp">z_streamp</A> =
+strm);</FONT>=20
+  <DD>All dynamically allocated data structures for this stream are =
+freed. This=20
+  function discards any unprocessed input and does not flush any pending =
+output.=20
+
+  <P><A =
+href=3D"http://www.zlib.net/manual.html#inflateEnd">inflateEnd</A> =
+returns=20
+  <A href=3D"http://www.zlib.net/manual.html#Z_OK">Z_OK</A> if success, =
+<A=20
+  =
+href=3D"http://www.zlib.net/manual.html#Z_STREAM_ERROR">Z_STREAM_ERROR</A=
+> if=20
+  the stream <A href=3D"http://www.zlib.net/manual.html#state">state</A> =
+was=20
+  inconsistent. In the error case, <A=20
+  href=3D"http://www.zlib.net/manual.html#msg">msg</A> may be set but =
+then points=20
+  to a static string (which must not be deallocated). </P></DD></DL>
+<HR>
+<A name=3D"Advanced functions">
+<H2>Advanced functions </H2>The following functions are needed only in =
+some=20
+special applications.=20
+<H3>Function list </H3>
+<UL>
+  <LI>int <A=20
+  href=3D"http://www.zlib.net/manual.html#deflateInit2">deflateInit2</A> =
+(<A=20
+  href=3D"http://www.zlib.net/manual.html#z_streamp">z_streamp</A> strm, =
+
+  <LI>int <A=20
+  =
+href=3D"http://www.zlib.net/manual.html#deflateSetDictionary">deflateSetD=
+ictionary</A>=20
+  (<A href=3D"http://www.zlib.net/manual.html#z_streamp">z_streamp</A> =
+strm, const=20
+  Bytef *dictionary, uInt dictLength);=20
+  <LI>int <A =
+href=3D"http://www.zlib.net/manual.html#deflateCopy">deflateCopy</A>=20
+  (<A href=3D"http://www.zlib.net/manual.html#z_streamp">z_streamp</A> =
+dest, <A=20
+  href=3D"http://www.zlib.net/manual.html#z_streamp">z_streamp</A> =
+source);=20
+  <LI>int <A=20
+  href=3D"http://www.zlib.net/manual.html#deflateReset">deflateReset</A> =
+(<A=20
+  href=3D"http://www.zlib.net/manual.html#z_streamp">z_streamp</A> =
+strm);=20
+  <LI>int <A=20
+  =
+href=3D"http://www.zlib.net/manual.html#deflateParams">deflateParams</A> =
+(<A=20
+  href=3D"http://www.zlib.net/manual.html#z_streamp">z_streamp</A> strm, =
+int=20
+  level, int strategy);=20
+  <LI>int <A=20
+  href=3D"http://www.zlib.net/manual.html#inflateInit2">inflateInit2</A> =
+(<A=20
+  href=3D"http://www.zlib.net/manual.html#z_streamp">z_streamp</A> strm, =
+int=20
+  windowBits);=20
+  <LI>int <A=20
+  =
+href=3D"http://www.zlib.net/manual.html#inflateSetDictionary">inflateSetD=
+ictionary</A>=20
+  (<A href=3D"http://www.zlib.net/manual.html#z_streamp">z_streamp</A> =
+strm, const=20
+  Bytef *dictionary, uInt dictLength);=20
+  <LI>int <A =
+href=3D"http://www.zlib.net/manual.html#inflateSync">inflateSync</A>=20
+  (<A href=3D"http://www.zlib.net/manual.html#z_streamp">z_streamp</A> =
+strm);=20
+  <LI>int <A=20
+  href=3D"http://www.zlib.net/manual.html#inflateReset">inflateReset</A> =
+(<A=20
+  href=3D"http://www.zlib.net/manual.html#z_streamp">z_streamp</A> =
+strm); </LI></UL>
+<H3>Function description </H3>
+<DL><FONT color=3Dblue>
+  <DT>int <A name=3DdeflateInit2>deflateInit2</A> (<A=20
+  href=3D"http://www.zlib.net/manual.html#z_streamp">z_streamp</A> strm, =
+int=20
+  level, int method, int windowBits, int memLevel, int strategy);</FONT> =
+
+  <DD>This is another version of <A=20
+  href=3D"http://www.zlib.net/manual.html#deflateInit">deflateInit</A> =
+with more=20
+  compression options. The fields <A=20
+  href=3D"http://www.zlib.net/manual.html#next_in">next_in</A>, <A=20
+  href=3D"http://www.zlib.net/manual.html#zalloc">zalloc</A>, <A=20
+  href=3D"http://www.zlib.net/manual.html#zfree">zfree</A> and <A=20
+  href=3D"http://www.zlib.net/manual.html#opaque">opaque</A> must be =
+initialized=20
+  before by the caller.
+  <P>The method parameter is the compression method. It must be <A=20
+  href=3D"http://www.zlib.net/manual.html#Z_DEFLATED">Z_DEFLATED</A> in =
+this=20
+  version of the library.
+  <P>The windowBits parameter is the base two logarithm of the window =
+size (the=20
+  size of the history buffer). It should be in the range 8..15 for this =
+version=20
+  of the library. Larger values of this parameter result in better =
+compression=20
+  at the expense of memory usage. The default value is 15 if <A=20
+  href=3D"http://www.zlib.net/manual.html#deflateInit">deflateInit</A> =
+is used=20
+  instead.
+  <P>The memLevel parameter specifies how much memory should be =
+allocated for=20
+  the internal compression <A=20
+  href=3D"http://www.zlib.net/manual.html#state">state</A>. memLevel=3D1 =
+uses=20
+  minimum memory but is slow and reduces compression ratio ; =
+memLevel=3D9 uses=20
+  maximum memory for optimal speed. The default value is 8. See zconf.h =
+for=20
+  total memory usage as a function of windowBits and memLevel.
+  <P>The strategy parameter is used to tune the compression algorithm. =
+Use the=20
+  value <A=20
+  =
+href=3D"http://www.zlib.net/manual.html#Z_DEFAULT_STRATEGY">Z_DEFAULT_STR=
+ATEGY</A>=20
+  for normal data, <A=20
+  href=3D"http://www.zlib.net/manual.html#Z_FILTERED">Z_FILTERED</A> for =
+data=20
+  produced by a filter (or predictor), or <A=20
+  =
+href=3D"http://www.zlib.net/manual.html#Z_HUFFMAN_ONLY">Z_HUFFMAN_ONLY</A=
+> to=20
+  force Huffman encoding only (no string match). Filtered data consists =
+mostly=20
+  of small values with a somewhat random distribution. In this case, the =
+
+  compression algorithm is tuned to <A=20
+  href=3D"http://www.zlib.net/manual.html#compress">compress</A> them =
+better. The=20
+  effect of <A =
+href=3D"http://www.zlib.net/manual.html#Z_FILTERED">Z_FILTERED</A>=20
+  is to force more Huffman coding and less string matching ; it is =
+somewhat=20
+  intermediate between Z_DEFAULT and <A=20
+  =
+href=3D"http://www.zlib.net/manual.html#Z_HUFFMAN_ONLY">Z_HUFFMAN_ONLY</A=
+>. The=20
+  strategy parameter only affects the compression ratio but not the =
+correctness=20
+  of the compressed output even if it is not set appropriately.
+  <P><A =
+href=3D"http://www.zlib.net/manual.html#deflateInit2">deflateInit2</A>=20
+  returns <A href=3D"http://www.zlib.net/manual.html#Z_OK">Z_OK</A> if =
+success, <A=20
+  href=3D"http://www.zlib.net/manual.html#Z_MEM_ERROR">Z_MEM_ERROR</A> =
+if there=20
+  was not enough memory, <A=20
+  =
+href=3D"http://www.zlib.net/manual.html#Z_STREAM_ERROR">Z_STREAM_ERROR</A=
+> if a=20
+  parameter is invalid (such as an invalid method). <A=20
+  href=3D"http://www.zlib.net/manual.html#msg">msg</A> is set to null if =
+there is=20
+  no error message. <A=20
+  href=3D"http://www.zlib.net/manual.html#deflateInit2">deflateInit2</A> =
+does not=20
+  perform any compression: this will be done by <A=20
+  href=3D"http://www.zlib.net/manual.html#deflate">deflate</A>().
+  <P><FONT color=3Dblue></P>
+  <DT>int <A name=3DdeflateSetDictionary>deflateSetDictionary</A> (<A=20
+  href=3D"http://www.zlib.net/manual.html#z_streamp">z_streamp</A> strm, =
+const=20
+  Bytef *dictionary, uInt dictLength);</FONT>=20
+  <DD>Initializes the compression dictionary from the given byte =
+sequence=20
+  without producing any compressed output. This function must be called=20
+  immediately after <A=20
+  href=3D"http://www.zlib.net/manual.html#deflateInit">deflateInit</A>, =
+<A=20
+  href=3D"http://www.zlib.net/manual.html#deflateInit2">deflateInit2</A> =
+or <A=20
+  =
+href=3D"http://www.zlib.net/manual.html#deflateReset">deflateReset</A>, =
+before=20
+  any call of <A =
+href=3D"http://www.zlib.net/manual.html#deflate">deflate</A>. The=20
+  compressor and decompressor must use exactly the same dictionary (see =
+<A=20
+  =
+href=3D"http://www.zlib.net/manual.html#inflateSetDictionary">inflateSetD=
+ictionary</A>).
+  <P>The dictionary should consist of strings (byte sequences) that are =
+likely=20
+  to be encountered later in the data to be compressed, with the most =
+commonly=20
+  used strings preferably put towards the end of the dictionary. Using a =
+
+  dictionary is most useful when the data to be compressed is short and =
+can be=20
+  predicted with good accuracy ; the data can then be compressed better =
+than=20
+  with the default empty dictionary.
+  <P>Depending on the size of the compression data structures selected =
+by <A=20
+  href=3D"http://www.zlib.net/manual.html#deflateInit">deflateInit</A> =
+or <A=20
+  =
+href=3D"http://www.zlib.net/manual.html#deflateInit2">deflateInit2</A>, =
+a part=20
+  of the dictionary may in effect be discarded, for example if the =
+dictionary is=20
+  larger than the window size in <A=20
+  href=3D"http://www.zlib.net/manual.html#deflate">deflate</A> or =
+deflate2. Thus=20
+  the strings most likely to be useful should be put at the end of the=20
+  dictionary, not at the front.
+  <P>Upon return of this function, strm-&gt; <A=20
+  href=3D"http://www.zlib.net/manual.html#adler">adler</A> is set to the =
+Adler32=20
+  value of the dictionary ; the decompressor may later use this value to =
+
+  determine which dictionary has been used by the compressor. (The =
+Adler32 value=20
+  applies to the whole dictionary even if only a subset of the =
+dictionary is=20
+  actually used by the compressor.)
+  <P><A=20
+  =
+href=3D"http://www.zlib.net/manual.html#deflateSetDictionary">deflateSetD=
+ictionary</A>=20
+  returns <A href=3D"http://www.zlib.net/manual.html#Z_OK">Z_OK</A> if =
+success, or=20
+  <A =
+href=3D"http://www.zlib.net/manual.html#Z_STREAM_ERROR">Z_STREAM_ERROR</A=
+> if=20
+  a parameter is invalid (such as NULL dictionary) or the stream <A=20
+  href=3D"http://www.zlib.net/manual.html#state">state</A> is =
+inconsistent (for=20
+  example if <A =
+href=3D"http://www.zlib.net/manual.html#deflate">deflate</A> has=20
+  already been called for this stream or if the compression method is =
+bsort). <A=20
+  =
+href=3D"http://www.zlib.net/manual.html#deflateSetDictionary">deflateSetD=
+ictionary</A>=20
+  does not perform any compression: this will be done by <A=20
+  href=3D"http://www.zlib.net/manual.html#deflate">deflate</A>().
+  <P><FONT color=3Dblue></P>
+  <DT>int <A name=3DdeflateCopy>deflateCopy</A> (<A=20
+  href=3D"http://www.zlib.net/manual.html#z_streamp">z_streamp</A> dest, =
+<A=20
+  href=3D"http://www.zlib.net/manual.html#z_streamp">z_streamp</A> =
+source);</FONT>=20
+
+  <DD>Sets the destination stream as a complete copy of the source =
+stream.
+  <P>This function can be useful when several compression strategies =
+will be=20
+  tried, for example when there are several ways of pre-processing the =
+input=20
+  data with a filter. The streams that will be discarded should then be =
+freed by=20
+  calling <A =
+href=3D"http://www.zlib.net/manual.html#deflateEnd">deflateEnd</A>.=20
+  Note that <A=20
+  href=3D"http://www.zlib.net/manual.html#deflateCopy">deflateCopy</A> =
+duplicates=20
+  the internal compression <A=20
+  href=3D"http://www.zlib.net/manual.html#state">state</A> which can be =
+quite=20
+  large, so this strategy is slow and can consume lots of memory.
+  <P><A =
+href=3D"http://www.zlib.net/manual.html#deflateCopy">deflateCopy</A>=20
+  returns <A href=3D"http://www.zlib.net/manual.html#Z_OK">Z_OK</A> if =
+success, <A=20
+  href=3D"http://www.zlib.net/manual.html#Z_MEM_ERROR">Z_MEM_ERROR</A> =
+if there=20
+  was not enough memory, <A=20
+  =
+href=3D"http://www.zlib.net/manual.html#Z_STREAM_ERROR">Z_STREAM_ERROR</A=
+> if=20
+  the source stream <A =
+href=3D"http://www.zlib.net/manual.html#state">state</A>=20
+  was inconsistent (such as <A=20
+  href=3D"http://www.zlib.net/manual.html#zalloc">zalloc</A> being =
+NULL). <A=20
+  href=3D"http://www.zlib.net/manual.html#msg">msg</A> is left unchanged =
+in both=20
+  source and destination.
+  <P><FONT color=3Dblue></P>
+  <DT>int <A name=3DdeflateReset>deflateReset</A> (<A=20
+  href=3D"http://www.zlib.net/manual.html#z_streamp">z_streamp</A> =
+strm);</FONT>=20
+  <DD>This function is equivalent to <A=20
+  href=3D"http://www.zlib.net/manual.html#deflateEnd">deflateEnd</A> =
+followed by=20
+  <A =
+href=3D"http://www.zlib.net/manual.html#deflateInit">deflateInit</A>, =
+but=20
+  does not free and reallocate all the internal compression <A=20
+  href=3D"http://www.zlib.net/manual.html#state">state</A>. The stream =
+will keep=20
+  the same compression level and any other attributes that may have been =
+set by=20
+  <A =
+href=3D"http://www.zlib.net/manual.html#deflateInit2">deflateInit2</A>.
+  <P><A =
+href=3D"http://www.zlib.net/manual.html#deflateReset">deflateReset</A>=20
+  returns <A href=3D"http://www.zlib.net/manual.html#Z_OK">Z_OK</A> if =
+success, or=20
+  <A =
+href=3D"http://www.zlib.net/manual.html#Z_STREAM_ERROR">Z_STREAM_ERROR</A=
+> if=20
+  the source stream <A =
+href=3D"http://www.zlib.net/manual.html#state">state</A>=20
+  was inconsistent (such as <A=20
+  href=3D"http://www.zlib.net/manual.html#zalloc">zalloc</A> or <A=20
+  href=3D"http://www.zlib.net/manual.html#state">state</A> being NULL).
+  <P><FONT color=3Dblue></P>
+  <DT>int <A name=3DdeflateParams>deflateParams</A> (<A=20
+  href=3D"http://www.zlib.net/manual.html#z_streamp">z_streamp</A> strm, =
+int=20
+  level, int strategy);</FONT>=20
+  <DD>Dynamically update the compression level and compression strategy. =
+The=20
+  interpretation of level and strategy is as in <A=20
+  =
+href=3D"http://www.zlib.net/manual.html#deflateInit2">deflateInit2</A>. =
+This can=20
+  be used to switch between compression and straight copy of the input =
+data, or=20
+  to switch to a different kind of input data requiring a different =
+strategy. If=20
+  the compression level is changed, the input available so far is =
+compressed=20
+  with the old level (and may be flushed); the new level will take =
+effect only=20
+  at the next call of <A=20
+  href=3D"http://www.zlib.net/manual.html#deflate">deflate</A>().
+  <P>Before the call of <A=20
+  =
+href=3D"http://www.zlib.net/manual.html#deflateParams">deflateParams</A>,=
+ the=20
+  stream <A href=3D"http://www.zlib.net/manual.html#state">state</A> =
+must be set=20
+  as for a call of <A=20
+  href=3D"http://www.zlib.net/manual.html#deflate">deflate</A>(), since =
+the=20
+  currently available input may have to be compressed and flushed. In=20
+  particular, strm-&gt; <A=20
+  href=3D"http://www.zlib.net/manual.html#avail_out">avail_out</A> must =
+be=20
+  non-zero.
+  <P><A =
+href=3D"http://www.zlib.net/manual.html#deflateParams">deflateParams</A> =
+
+  returns <A href=3D"http://www.zlib.net/manual.html#Z_OK">Z_OK</A> if =
+success, <A=20
+  =
+href=3D"http://www.zlib.net/manual.html#Z_STREAM_ERROR">Z_STREAM_ERROR</A=
+> if=20
+  the source stream <A =
+href=3D"http://www.zlib.net/manual.html#state">state</A>=20
+  was inconsistent or if a parameter was invalid, <A=20
+  href=3D"http://www.zlib.net/manual.html#Z_BUF_ERROR">Z_BUF_ERROR</A> =
+if=20
+  strm-&gt;avail_out was zero.
+  <P><FONT color=3Dblue></P>
+  <DT>int <A name=3DinflateInit2>inflateInit2</A> (<A=20
+  href=3D"http://www.zlib.net/manual.html#z_streamp">z_streamp</A> strm, =
+int=20
+  windowBits);</FONT>=20
+  <DD>This is another version of <A=20
+  href=3D"http://www.zlib.net/manual.html#inflateInit">inflateInit</A> =
+with an=20
+  extra parameter. The fields <A=20
+  href=3D"http://www.zlib.net/manual.html#next_in">next_in</A>, <A=20
+  href=3D"http://www.zlib.net/manual.html#avail_in">avail_in</A>, <A=20
+  href=3D"http://www.zlib.net/manual.html#zalloc">zalloc</A>, <A=20
+  href=3D"http://www.zlib.net/manual.html#zfree">zfree</A> and <A=20
+  href=3D"http://www.zlib.net/manual.html#opaque">opaque</A> must be =
+initialized=20
+  before by the caller.
+  <P>The windowBits parameter is the base two logarithm of the maximum =
+window=20
+  size (the size of the history buffer). It should be in the range 8..15 =
+for=20
+  this version of the library. The default value is 15 if <A=20
+  href=3D"http://www.zlib.net/manual.html#inflateInit">inflateInit</A> =
+is used=20
+  instead. If a compressed stream with a larger window size is given as =
+input,=20
+  <A href=3D"http://www.zlib.net/manual.html#inflate">inflate</A>() will =
+return=20
+  with the error code <A=20
+  href=3D"http://www.zlib.net/manual.html#Z_DATA_ERROR">Z_DATA_ERROR</A> =
+instead=20
+  of trying to allocate a larger window.
+  <P><A =
+href=3D"http://www.zlib.net/manual.html#inflateInit2">inflateInit2</A>=20
+  returns <A href=3D"http://www.zlib.net/manual.html#Z_OK">Z_OK</A> if =
+success, <A=20
+  href=3D"http://www.zlib.net/manual.html#Z_MEM_ERROR">Z_MEM_ERROR</A> =
+if there=20
+  was not enough memory, <A=20
+  =
+href=3D"http://www.zlib.net/manual.html#Z_STREAM_ERROR">Z_STREAM_ERROR</A=
+> if a=20
+  parameter is invalid (such as a negative memLevel). <A=20
+  href=3D"http://www.zlib.net/manual.html#msg">msg</A> is set to null if =
+there is=20
+  no error message. <A=20
+  href=3D"http://www.zlib.net/manual.html#inflateInit2">inflateInit2</A> =
+does not=20
+  perform any decompression apart from reading the zlib header if =
+present: this=20
+  will be done by <A=20
+  href=3D"http://www.zlib.net/manual.html#inflate">inflate</A>(). (So <A =
+
+  href=3D"http://www.zlib.net/manual.html#next_in">next_in</A> and <A=20
+  href=3D"http://www.zlib.net/manual.html#avail_in">avail_in</A> may be =
+modified,=20
+  but <A href=3D"http://www.zlib.net/manual.html#next_out">next_out</A> =
+and <A=20
+  href=3D"http://www.zlib.net/manual.html#avail_out">avail_out</A> are =
+unchanged.)
+  <P><FONT color=3Dblue></P>
+  <DT>int <A name=3DinflateSetDictionary>inflateSetDictionary</A> (<A=20
+  href=3D"http://www.zlib.net/manual.html#z_streamp">z_streamp</A> strm, =
+const=20
+  Bytef *dictionary, uInt dictLength);</FONT>=20
+  <DD>Initializes the decompression dictionary from the given =
+uncompressed byte=20
+  sequence. This function must be called immediately after a call of <A=20
+  href=3D"http://www.zlib.net/manual.html#inflate">inflate</A> if this =
+call=20
+  returned <A=20
+  href=3D"http://www.zlib.net/manual.html#Z_NEED_DICT">Z_NEED_DICT</A>. =
+The=20
+  dictionary chosen by the compressor can be determined from the Adler32 =
+value=20
+  returned by this call of <A=20
+  href=3D"http://www.zlib.net/manual.html#inflate">inflate</A>. The =
+compressor and=20
+  decompressor must use exactly the same dictionary (see <A=20
+  =
+href=3D"http://www.zlib.net/manual.html#deflateSetDictionary">deflateSetD=
+ictionary</A>).
+  <P><A=20
+  =
+href=3D"http://www.zlib.net/manual.html#inflateSetDictionary">inflateSetD=
+ictionary</A>=20
+  returns <A href=3D"http://www.zlib.net/manual.html#Z_OK">Z_OK</A> if =
+success, <A=20
+  =
+href=3D"http://www.zlib.net/manual.html#Z_STREAM_ERROR">Z_STREAM_ERROR</A=
+> if a=20
+  parameter is invalid (such as NULL dictionary) or the stream <A=20
+  href=3D"http://www.zlib.net/manual.html#state">state</A> is =
+inconsistent, <A=20
+  href=3D"http://www.zlib.net/manual.html#Z_DATA_ERROR">Z_DATA_ERROR</A> =
+if the=20
+  given dictionary doesn't match the expected one (incorrect Adler32 =
+value). <A=20
+  =
+href=3D"http://www.zlib.net/manual.html#inflateSetDictionary">inflateSetD=
+ictionary</A>=20
+  does not perform any decompression: this will be done by subsequent =
+calls of=20
+  <A href=3D"http://www.zlib.net/manual.html#inflate">inflate</A>().
+  <P><FONT color=3Dblue></P>
+  <DT>int <A name=3DinflateSync>inflateSync</A> (<A=20
+  href=3D"http://www.zlib.net/manual.html#z_streamp">z_streamp</A> =
+strm);</FONT>=20
+  <DD>Skips invalid compressed data until a full flush point (see above =
+the=20
+  description of <A =
+href=3D"http://www.zlib.net/manual.html#deflate">deflate</A>=20
+  with <A =
+href=3D"http://www.zlib.net/manual.html#Z_FULL_FLUSH">Z_FULL_FLUSH</A>)=20
+  can be found, or until all available input is skipped. No output is =
+provided.
+  <P><A =
+href=3D"http://www.zlib.net/manual.html#inflateSync">inflateSync</A>=20
+  returns <A href=3D"http://www.zlib.net/manual.html#Z_OK">Z_OK</A> if a =
+full=20
+  flush point has been found, <A=20
+  href=3D"http://www.zlib.net/manual.html#Z_BUF_ERROR">Z_BUF_ERROR</A> =
+if no more=20
+  input was provided, <A=20
+  href=3D"http://www.zlib.net/manual.html#Z_DATA_ERROR">Z_DATA_ERROR</A> =
+if no=20
+  flush point has been found, or <A=20
+  =
+href=3D"http://www.zlib.net/manual.html#Z_STREAM_ERROR">Z_STREAM_ERROR</A=
+> if=20
+  the stream structure was inconsistent. In the success case, the =
+application=20
+  may save the current current value of <A=20
+  href=3D"http://www.zlib.net/manual.html#total_in">total_in</A> which =
+indicates=20
+  where valid compressed data was found. In the error case, the =
+application may=20
+  repeatedly call <A=20
+  href=3D"http://www.zlib.net/manual.html#inflateSync">inflateSync</A>, =
+providing=20
+  more input each time, until success or end of the input data.
+  <P><FONT color=3Dblue></P>
+  <DT>int <A name=3DinflateReset>inflateReset</A> (<A=20
+  href=3D"http://www.zlib.net/manual.html#z_streamp">z_streamp</A> =
+strm);</FONT>=20
+  <DD>This function is equivalent to <A=20
+  href=3D"http://www.zlib.net/manual.html#inflateEnd">inflateEnd</A> =
+followed by=20
+  <A =
+href=3D"http://www.zlib.net/manual.html#inflateInit">inflateInit</A>, =
+but=20
+  does not free and reallocate all the internal decompression <A=20
+  href=3D"http://www.zlib.net/manual.html#state">state</A>. The stream =
+will keep=20
+  attributes that may have been set by <A=20
+  =
+href=3D"http://www.zlib.net/manual.html#inflateInit2">inflateInit2</A>.=20
+  <P><A =
+href=3D"http://www.zlib.net/manual.html#inflateReset">inflateReset</A>=20
+  returns <A href=3D"http://www.zlib.net/manual.html#Z_OK">Z_OK</A> if =
+success, or=20
+  <A =
+href=3D"http://www.zlib.net/manual.html#Z_STREAM_ERROR">Z_STREAM_ERROR</A=
+> if=20
+  the source stream <A =
+href=3D"http://www.zlib.net/manual.html#state">state</A>=20
+  was inconsistent (such as <A=20
+  href=3D"http://www.zlib.net/manual.html#zalloc">zalloc</A> or <A=20
+  href=3D"http://www.zlib.net/manual.html#state">state</A> being NULL).=20
+  <P></P></DD></DL>
+<HR>
+<A name=3D"Checksum functions">
+<H2>Checksum functions </H2>These functions are not related to =
+compression but=20
+are exported anyway because they might be useful in applications using =
+the=20
+compression library.=20
+<H3>Function list </H3>
+<UL>
+  <LI>uLong <A =
+href=3D"http://www.zlib.net/manual.html#adler32">adler32</A> (uLong=20
+  <A href=3D"http://www.zlib.net/manual.html#adler">adler</A>, const =
+Bytef *buf,=20
+  uInt len);=20
+  <LI>uLong <A href=3D"http://www.zlib.net/manual.html#crc32">crc32</A> =
+(uLong=20
+  crc, const Bytef *buf, uInt len); </LI></UL>
+<H3>Function description </H3>
+<DL><FONT color=3Dblue>
+  <DT>uLong <A name=3Dadler32>adler32</A> (uLong <A=20
+  href=3D"http://www.zlib.net/manual.html#adler">adler</A>, const Bytef =
+*buf, uInt=20
+  len);</FONT>=20
+  <DD>Update a running Adler-32 checksum with the bytes buf[0..len-1] =
+and return=20
+  the updated checksum. If buf is NULL, this function returns the =
+required=20
+  initial value for the checksum.=20
+  <P>An Adler-32 checksum is almost as reliable as a CRC32 but can be =
+computed=20
+  much faster. Usage example: <PRE>
+     uLong <A href=3D"http://www.zlib.net/manual.html#adler">adler</A> =
+=3D <A href=3D"http://www.zlib.net/manual.html#adler32">adler32</A>(0L, =
+<A href=3D"http://www.zlib.net/manual.html#Z_NULL">Z_NULL</A>, 0);
+
+     while (read_buffer(buffer, length) !=3D EOF) {
+       <A href=3D"http://www.zlib.net/manual.html#adler">adler</A> =3D =
+<A href=3D"http://www.zlib.net/manual.html#adler32">adler32</A>(<A =
+href=3D"http://www.zlib.net/manual.html#adler">adler</A>, buffer, =
+length);
+     }
+     if (<A href=3D"http://www.zlib.net/manual.html#adler">adler</A> =
+!=3D original_adler) error();
+   </PRE><FONT color=3Dblue>
+  <DT>uLong <A name=3Dcrc32>crc32</A> (uLong crc, const Bytef *buf, uInt =
+
+  len);</FONT>=20
+  <DD>Update a running crc with the bytes buf[0..len-1] and return the =
+updated=20
+  crc. If buf is NULL, this function returns the required initial value =
+for the=20
+  crc. Pre- and post-conditioning (one's complement) is performed within =
+this=20
+  function so it shouldn't be done by the application. Usage example: =
+<PRE>
+     uLong crc =3D <A =
+href=3D"http://www.zlib.net/manual.html#crc32">crc32</A>(0L, <A =
+href=3D"http://www.zlib.net/manual.html#Z_NULL">Z_NULL</A>, 0);
+
+     while (read_buffer(buffer, length) !=3D EOF) {
+       crc =3D <A =
+href=3D"http://www.zlib.net/manual.html#crc32">crc32</A>(crc, buffer, =
+length);
+     }
+     if (crc !=3D original_crc) error();
+   </PRE></DD></DL>
+<HR>
+<A name=3D"struct z_stream_s">
+<H2>struct z_stream_s </H2><FONT color=3Dblue><A =
+name=3Dz_stream_s><PRE>typedef struct z_stream_s {
+    Bytef    *<A name=3Dnext_in>next_in</A>;  /* next input byte */
+    uInt     <A name=3Davail_in>avail_in</A>;  /* number of bytes =
+available at <A =
+href=3D"http://www.zlib.net/manual.html#next_in">next_in</A> */
+    uLong    <A name=3Dtotal_in>total_in</A>;  /* total nb of input =
+bytes read so far */
+
+    Bytef    *<A name=3Dnext_out>next_out</A>; /* next output byte =
+should be put there */
+    uInt     <A name=3Davail_out>avail_out</A>; /* remaining free space =
+at <A href=3D"http://www.zlib.net/manual.html#next_out">next_out</A> */
+    uLong    <A name=3Dtotal_out>total_out</A>; /* total nb of bytes =
+output so far */
+
+    char     *<A name=3Dmsg>msg</A>;      /* last error message, NULL if =
+no error */
+    struct internal_state FAR *<A name=3Dstate>state</A>; /* not visible =
+by applications */
+
+    alloc_func <A name=3Dzalloc>zalloc</A>;  /* used to allocate the =
+internal <A href=3D"http://www.zlib.net/manual.html#state">state</A> */
+    free_func  <A name=3Dzfree>zfree</A>;   /* used to free the internal =
+<A href=3D"http://www.zlib.net/manual.html#state">state</A> */
+    voidpf     <A name=3Dopaque>opaque</A>;  /* private data object =
+passed to <A href=3D"http://www.zlib.net/manual.html#zalloc">zalloc</A> =
+and <A href=3D"http://www.zlib.net/manual.html#zfree">zfree</A> */
+
+    int     <A name=3Ddata_type>data_type</A>;  /* best guess about the =
+data type: ascii or binary */
+    uLong   <A name=3Dadler>adler</A>;      /* <A =
+href=3D"http://www.zlib.net/manual.html#adler32">adler32</A> value of =
+the uncompressed data */
+    uLong   <A name=3Dreserved>reserved</A>;   /* <A =
+href=3D"http://www.zlib.net/manual.html#reserved">reserved</A> for =
+future use */
+} <A href=3D"http://www.zlib.net/manual.html#z_stream_s">z_stream</A> ;
+
+typedef <A =
+href=3D"http://www.zlib.net/manual.html#z_stream_s">z_stream</A> FAR * =
+<A name=3Dz_streamp>z_streamp</A>;  =FF=20
+</PRE></FONT>The application must update <A=20
+href=3D"http://www.zlib.net/manual.html#next_in">next_in</A> and <A=20
+href=3D"http://www.zlib.net/manual.html#avail_in">avail_in</A> when <A=20
+href=3D"http://www.zlib.net/manual.html#avail_in">avail_in</A> has =
+dropped to=20
+zero. It must update <A=20
+href=3D"http://www.zlib.net/manual.html#next_out">next_out</A> and <A=20
+href=3D"http://www.zlib.net/manual.html#avail_out">avail_out</A> when <A =
+
+href=3D"http://www.zlib.net/manual.html#avail_out">avail_out</A> has =
+dropped to=20
+zero. The application must initialize <A=20
+href=3D"http://www.zlib.net/manual.html#zalloc">zalloc</A>, <A=20
+href=3D"http://www.zlib.net/manual.html#zfree">zfree</A> and <A=20
+href=3D"http://www.zlib.net/manual.html#opaque">opaque</A> before =
+calling the init=20
+function. All other fields are set by the compression library and must =
+not be=20
+updated by the application.=20
+<P>The <A href=3D"http://www.zlib.net/manual.html#opaque">opaque</A> =
+value=20
+provided by the application will be passed as the first parameter for =
+calls of=20
+<A href=3D"http://www.zlib.net/manual.html#zalloc">zalloc</A> and <A=20
+href=3D"http://www.zlib.net/manual.html#zfree">zfree</A>. This can be =
+useful for=20
+custom memory management. The compression library attaches no meaning to =
+the <A=20
+href=3D"http://www.zlib.net/manual.html#opaque">opaque</A> value.=20
+<P><A href=3D"http://www.zlib.net/manual.html#zalloc">zalloc</A> must =
+return <A=20
+href=3D"http://www.zlib.net/manual.html#Z_NULL">Z_NULL</A> if there is =
+not enough=20
+memory for the object. If zlib is used in a multi-threaded application, =
+<A=20
+href=3D"http://www.zlib.net/manual.html#zalloc">zalloc</A> and <A=20
+href=3D"http://www.zlib.net/manual.html#zfree">zfree</A> must be thread =
+safe.=20
+<P>On 16-bit systems, the functions <A=20
+href=3D"http://www.zlib.net/manual.html#zalloc">zalloc</A> and <A=20
+href=3D"http://www.zlib.net/manual.html#zfree">zfree</A> must be able to =
+allocate=20
+exactly 65536 bytes, but will not be required to allocate more than this =
+if the=20
+symbol MAXSEG_64K is defined (see zconf.h). WARNING: On MSDOS, pointers =
+returned=20
+by <A href=3D"http://www.zlib.net/manual.html#zalloc">zalloc</A> for =
+objects of=20
+exactly 65536 bytes *must* have their offset normalized to zero. The =
+default=20
+allocation function provided by this library ensures this (see zutil.c). =
+To=20
+reduce memory requirements and avoid any allocation of 64K objects, at =
+the=20
+expense of compression ratio, compile the library with -DMAX_WBITS=3D14 =
+(see=20
+zconf.h).=20
+<P>The fields <A =
+href=3D"http://www.zlib.net/manual.html#total_in">total_in</A>=20
+and <A href=3D"http://www.zlib.net/manual.html#total_out">total_out</A> =
+can be=20
+used for statistics or progress reports. After compression, <A=20
+href=3D"http://www.zlib.net/manual.html#total_in">total_in</A> holds the =
+total=20
+size of the uncompressed data and may be saved for use in the =
+decompressor=20
+(particularly if the decompressor wants to decompress everything in a =
+single=20
+step).=20
+<P>
+<HR>
+<A name=3DConstants>
+<H2>Constants </H2><FONT color=3Dblue><PRE>#define <A =
+name=3DZ_NO_FLUSH>Z_NO_FLUSH</A>      0
+#define <A name=3DZ_PARTIAL_FLUSH>Z_PARTIAL_FLUSH</A> 1=20
+	/* will be removed, use <A =
+href=3D"http://www.zlib.net/manual.html#Z_SYNC_FLUSH">Z_SYNC_FLUSH</A> =
+instead */
+#define <A name=3DZ_SYNC_FLUSH>Z_SYNC_FLUSH</A>    2
+#define <A name=3DZ_FULL_FLUSH>Z_FULL_FLUSH</A>    3
+#define <A name=3DZ_FINISH>Z_FINISH</A>        4
+/* Allowed flush values ; see <A =
+href=3D"http://www.zlib.net/manual.html#deflate">deflate</A>() below for =
+details */
+
+#define <A name=3DZ_OK>Z_OK</A>            0
+#define <A name=3DZ_STREAM_END>Z_STREAM_END</A>    1
+#define <A name=3DZ_NEED_DICT>Z_NEED_DICT</A>     2
+#define <A name=3DZ_ERRNO>Z_ERRNO</A>        (-1)
+#define <A name=3DZ_STREAM_ERROR>Z_STREAM_ERROR</A> (-2)
+#define <A name=3DZ_DATA_ERROR>Z_DATA_ERROR</A>   (-3)
+#define <A name=3DZ_MEM_ERROR>Z_MEM_ERROR</A>    (-4)
+#define <A name=3DZ_BUF_ERROR>Z_BUF_ERROR</A>    (-5)
+#define <A name=3DZ_VERSION_ERROR>Z_VERSION_ERROR</A> (-6)
+/* Return codes for the compression/decompression functions. Negative
+ * values are errors, positive values are used for special but normal =
+events.
+ */
+
+#define <A name=3DZ_NO_COMPRESSION>Z_NO_COMPRESSION</A>         0
+#define <A name=3DZ_BEST_SPEED>Z_BEST_SPEED</A>             1
+#define <A name=3DZ_BEST_COMPRESSION>Z_BEST_COMPRESSION</A>       9
+#define <A name=3DZ_DEFAULT_COMPRESSION>Z_DEFAULT_COMPRESSION</A>  (-1)
+/* compression levels */
+
+#define <A name=3DZ_FILTERED>Z_FILTERED</A>            1
+#define <A name=3DZ_HUFFMAN_ONLY>Z_HUFFMAN_ONLY</A>        2
+#define <A name=3DZ_DEFAULT_STRATEGY>Z_DEFAULT_STRATEGY</A>    0
+/* compression strategy ; see <A =
+href=3D"http://www.zlib.net/manual.html#deflateInit2">deflateInit2</A>() =
+below for details */
+
+#define <A name=3DZ_BINARY>Z_BINARY</A>   0
+#define <A name=3DZ_ASCII>Z_ASCII</A>    1
+#define <A name=3DZ_UNKNOWN>Z_UNKNOWN</A>  2
+/* Possible values of the <A =
+href=3D"http://www.zlib.net/manual.html#data_type">data_type</A> field =
+*/
+
+#define <A name=3DZ_DEFLATED>Z_DEFLATED</A>   8
+/* The <A href=3D"http://www.zlib.net/manual.html#deflate">deflate</A> =
+compression method (the only one supported in this version) */
+
+#define <A name=3DZ_NULL>Z_NULL</A>  0  /* for initializing <A =
+href=3D"http://www.zlib.net/manual.html#zalloc">zalloc</A>, <A =
+href=3D"http://www.zlib.net/manual.html#zfree">zfree</A>, <A =
+href=3D"http://www.zlib.net/manual.html#opaque">opaque</A> */
+
+#define <A name=3Dzlib_version>zlib_version</A> <A =
+href=3D"http://www.zlib.net/manual.html#zlibVersion">zlibVersion</A>()
+/* for compatibility with versions less than 1.0.2 */
+</PRE></FONT>
+<HR>
+<A name=3DMisc>
+<H2>Misc </H2><A=20
+href=3D"http://www.zlib.net/manual.html#deflateInit">deflateInit</A> and =
+<A=20
+href=3D"http://www.zlib.net/manual.html#inflateInit">inflateInit</A> are =
+macros to=20
+allow checking the zlib version and the compiler's view of <A=20
+href=3D"http://www.zlib.net/manual.html#z_stream_s">z_stream</A>.=20
+<P>Other functions:=20
+<DL><FONT color=3Dblue>
+  <DT>const char * <A name=3DzError>zError</A> (int err);</FONT> <FONT =
+color=3Dblue>
+  <DT>int <A name=3DinflateSyncPoint>inflateSyncPoint</A> (<A=20
+  href=3D"http://www.zlib.net/manual.html#z_streamp">z_streamp</A> =
+z);</FONT>=20
+  <FONT color=3Dblue>
+  <DT>const uLongf * <A name=3Dget_crc_table>get_crc_table</A> =
+(void);</FONT>=20
+</DT></DL>
+<HR>
+<FONT size=3D-1>Last update: 13 april 2002<BR>piapi@csie.ntu.edu.tw=20
+</FONT></BODY></HTML>
