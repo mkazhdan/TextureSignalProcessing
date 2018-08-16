@@ -570,34 +570,28 @@ int InitializeMassAndStiffness( std::vector< Real >& deepMassCoefficients , std:
 	}
 
 	//clock_t m_begin = clock();
-	if (!InitializeMassAndStiffness(parameterMetric, atlasCharts, hierarchy.gridAtlases[0], boundaryProlongation.fineBoundaryIndex, boundaryProlongation.numFineBoundarNodes, deepMassCoefficients, deepStiffnessCoefficients, fineBoundaryBoundaryMassMatrix, fineBoundaryBoundaryStiffnessMatrix, boundaryDeepMassMatrix, boundaryDeepStiffnessMatrix,
-		computeCellBasedStiffness, inputSignal, fineBoundarySignal, texelToCellCoeffs, fineBoundaryCellStiffnessRHSMatrix)) {
+	if( !InitializeMassAndStiffness( parameterMetric , atlasCharts , hierarchy.gridAtlases[0] , boundaryProlongation.fineBoundaryIndex , boundaryProlongation.numFineBoundarNodes , deepMassCoefficients , deepStiffnessCoefficients , fineBoundaryBoundaryMassMatrix , fineBoundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix ,
+		computeCellBasedStiffness , inputSignal , fineBoundarySignal , texelToCellCoeffs , fineBoundaryCellStiffnessRHSMatrix ) )
+	{
 		printf("ERROR: Unable to initialize fine mass and stiffness! \n");
 		return 0;
 	}
 
-	SparseMatrix< Real , int > temp = fineBoundaryBoundaryMassMatrix*boundaryProlongation.coarseBoundaryFineBoundaryProlongation;
+	SparseMatrix< Real , int > temp = fineBoundaryBoundaryMassMatrix * boundaryProlongation.coarseBoundaryFineBoundaryProlongation;
 	boundaryBoundaryMassMatrix = boundaryProlongation.fineBoundaryCoarseBoundaryRestriction * temp;
 
-	temp = fineBoundaryBoundaryStiffnessMatrix*boundaryProlongation.coarseBoundaryFineBoundaryProlongation;
+	temp = fineBoundaryBoundaryStiffnessMatrix * boundaryProlongation.coarseBoundaryFineBoundaryProlongation;
 	boundaryBoundaryStiffnessMatrix = boundaryProlongation.fineBoundaryCoarseBoundaryRestriction * temp;
 
-	if (1) {
-		std::vector< Real > in(boundaryBoundaryMassMatrix.Rows(), 1.0);
-		std::vector< Real > out(boundaryBoundaryMassMatrix.Rows(), 0.0);
-		boundaryBoundaryMassMatrix.Multiply(GetPointer(in), GetPointer(out));
-		for (int i = 0; i < out.size(); i++) {
-			if (out[i] == 0.0) printf( "[WARNING] Zero row at index %d. \n", i);
-		}
+	if( 1 )
+	{
+		std::vector< Real > in( boundaryBoundaryMassMatrix.Rows() , 1.0 );
+		std::vector< Real > out( boundaryBoundaryMassMatrix.Rows() , 0.0 );
+		boundaryBoundaryMassMatrix.Multiply( GetPointer(in) , GetPointer(out) );
+		for( int i=0 ; i<out.size() ; i++ ) if( out[i]==0.0 ) printf( "[WARNING] Zero row at index %d. Try running with jittering.\n" , i );
 	}
 
-
-	if (computeCellBasedStiffness) {
-		for (int c = 0; c < 3; c++) {
-			boundaryCellBasedStiffnessRHSMatrix[c] = boundaryProlongation.fineBoundaryCoarseBoundaryRestriction * fineBoundaryCellStiffnessRHSMatrix[c];
-		}
-	}
-
+	if( computeCellBasedStiffness ) for( int c=0 ; c<3 ; c++ ) boundaryCellBasedStiffnessRHSMatrix[c] = boundaryProlongation.fineBoundaryCoarseBoundaryRestriction * fineBoundaryCellStiffnessRHSMatrix[c];
 	return 1;
 }
 
