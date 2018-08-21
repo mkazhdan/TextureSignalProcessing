@@ -155,7 +155,7 @@ int SolveCG(SPDOperator& L, int iters, int dim, const T* b, T* x, TDotT dot, CGS
 
 	L(x, r);
 #pragma omp parallel for reduction( + : delta_new )
-	for (int i = 0; i<dim; i++) d[i] = r[i] = b[i] - r[i], delta_new += dot(r[i], r[i]);
+	for( int i=0 ; i<dim ; i++ ){ d[i] = r[i] = b[i] - r[i] ; delta_new += dot(r[i], r[i]); }
 
 	delta_0 = delta_new;
 	if (delta_new<eps)

@@ -39,6 +39,8 @@ DAMAGE.
 #include <Src/TexturedMeshVisualization.h>
 #include <Misha/Miscellany.h>
 
+#define INTEGRATION_SAMPLES 6
+
 cmdLineParameter< char* > Input( "in" );
 cmdLineParameter< char* > Output( "out" );
 cmdLineReadable MinimalCurvature( "minimal" );
@@ -50,6 +52,7 @@ cmdLineParameter< float > LICInterpolationWeight( "licInterpolation" , 1e4 );
 cmdLineParameter< float > SharpeningInterpolationWeight( "sharpInterpolation" , 1e4 );
 cmdLineParameter< float > SharpeningGradientModulation( "sharpModulation" , 100 );
 cmdLineParameter< int   > Levels( "levels" , 4 );
+cmdLineParameter< int   > MatrixQuadrature( "mQuadrature" , 6 );
 
 
 cmdLineParameter< char* > CameraConfig("camera");
@@ -72,6 +75,7 @@ cmdLineReadable* params[] =
 	&Input , &Output , &MinimalCurvature , &VectorField , &IntrinsicVectorField , &Width,&Height , &LICInterpolationWeight , &SharpeningInterpolationWeight , &SharpeningGradientModulation , &CameraConfig, &Levels,&UseDirectSolver,&Threads,&DisplayMode,&MultigridBlockHeight,&MultigridBlockWidth,&MultigridPaddedHeight,&MultigridPaddedWidth,&Verbose,
 	&DetailVerbose , &RandomJitter ,
 	&Single ,
+	&MatrixQuadrature ,
 	NULL
 };
 
@@ -86,6 +90,7 @@ void ShowUsage(const char* ex)
 	printf( "\t[--%s <sharpening gradient modulation>=%f]\n" , SharpeningGradientModulation.name , SharpeningGradientModulation.value );
 	printf( "\t[--%s <texture width>=%d]\n" , Width.name  , Width.value  );
 	printf( "\t[--%s <texture height>=%d]\n", Height.name , Height.value );
+	printf( "\t[--%s <system matrix quadrature points per triangle>=%d]\n" , MatrixQuadrature.name , MatrixQuadrature.value );
 	printf( "\t[--%s]\n" , IntrinsicVectorField.name );
 	printf( "\t[--%s]\n" , MinimalCurvature.name );
 	printf( "\t[--%s]\n" , UseDirectSolver.name );
@@ -657,11 +662,30 @@ int LineConvolution<Real>::InitializeSystem( const int width , const int height 
 		SparseMatrix<double, int> __boundaryCellBasedStiffnessRHSMatrix[3];
 
 		t_begin = clock();
-		if (!InitializeMassAndStiffness(anisoDeepMassCoefficients, anisoDeepStiffnessCoefficients,
-			anisoBoundaryBoundaryMassMatrix, anisoBoundaryBoundaryStiffnessMatrix, anisoBoundaryDeepMassMatrix, anisoBoundaryDeepStiffnessMatrix,
-			hierarchy, parameterMetric, atlasCharts, boundaryProlongation, false, __inputSignal, __texelToCellCoeffs, __boundaryCellBasedStiffnessRHSMatrix)) {
-			printf("ERROR : Failed intialization! \n");
-			return 0;
+		{
+			int ret = 0;
+			switch( MatrixQuadrature.value )
+			{
+			case 1:
+				ret = InitializeMassAndStiffness< 1>( anisoDeepMassCoefficients , anisoDeepStiffnessCoefficients , anisoBoundaryBoundaryMassMatrix , anisoBoundaryBoundaryStiffnessMatrix , anisoBoundaryDeepMassMatrix , anisoBoundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix );
+				break;
+			case 3:
+				ret = InitializeMassAndStiffness< 3>( anisoDeepMassCoefficients , anisoDeepStiffnessCoefficients , anisoBoundaryBoundaryMassMatrix , anisoBoundaryBoundaryStiffnessMatrix , anisoBoundaryDeepMassMatrix , anisoBoundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix );
+				break;
+			case 6:
+				ret = InitializeMassAndStiffness< 6>( anisoDeepMassCoefficients , anisoDeepStiffnessCoefficients , anisoBoundaryBoundaryMassMatrix , anisoBoundaryBoundaryStiffnessMatrix , anisoBoundaryDeepMassMatrix , anisoBoundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix );
+				break;
+			case 32:
+				ret = InitializeMassAndStiffness<32>( anisoDeepMassCoefficients , anisoDeepStiffnessCoefficients , anisoBoundaryBoundaryMassMatrix , anisoBoundaryBoundaryStiffnessMatrix , anisoBoundaryDeepMassMatrix , anisoBoundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix );
+				break;
+			default:
+				fprintf( stderr , "[ERROR] Only 1-, 3-, 6-, and 32-point quadrature supported for triangles\n" );
+			}
+			if( !ret )
+			{
+				fprintf( stderr , "[ERROR] Failed intialization!\n" );
+				return 0;
+			}
 		}
 		if( Verbose.set ) printf( "\tInitialized mass and stiffness: %.2f(s)\n" , double(clock() - t_begin) / CLOCKS_PER_SEC);
 
@@ -701,11 +725,30 @@ int LineConvolution<Real>::InitializeSystem( const int width , const int height 
 		SparseMatrix<double, int> __boundaryCellBasedStiffnessRHSMatrix[3];
 
 		t_begin = clock();
-		if (!InitializeMassAndStiffness(deepMassCoefficients, deepStiffnessCoefficients,
-			boundaryBoundaryMassMatrix, boundaryBoundaryStiffnessMatrix, boundaryDeepMassMatrix, boundaryDeepStiffnessMatrix,
-			hierarchy, parameterMetric, atlasCharts, boundaryProlongation, false, __inputSignal, __texelToCellCoeffs, __boundaryCellBasedStiffnessRHSMatrix)) {
-			printf("ERROR : Failed intialization! \n");
-			return 0;
+		{
+			int ret = 0;
+			switch( MatrixQuadrature.value )
+			{
+			case 1:
+				ret = InitializeMassAndStiffness< 1>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix );
+				break;
+			case 3:
+				ret = InitializeMassAndStiffness< 3>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix );
+				break;
+			case 6:
+				ret = InitializeMassAndStiffness< 6>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix );
+				break;
+			case 32:
+				ret = InitializeMassAndStiffness< 32>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix );
+				break;
+			default:
+				fprintf( stderr , "[ERROR] Only 1-, 3-, 6-, and 32-point quadrature supported for triangles\n" );
+			}
+			if( !ret )
+			{
+				fprintf( stderr , "[ERROR] Failed intialization!\n" );
+				return 0;
+			}
 		}
 		if( Verbose.set ) printf( "\tInitialized mass and stiffness: %.2f(s)\n" , double(clock() - t_begin) / CLOCKS_PER_SEC);
 

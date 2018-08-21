@@ -77,6 +77,14 @@ struct TriangleIntegrator
 	static const double Weights[];
 	static const Point2D< double > Positions[];
 };
+template<> const double TriangleIntegrator<1>::Weights[] =
+{
+	1.
+};
+template<> const Point2D< double > TriangleIntegrator<1>::Positions[] =
+{
+	Point2D< double >( 1./3 , 1./3 )
+};
 template<> const double TriangleIntegrator<3>::Weights[] =
 {
 	1./3 ,

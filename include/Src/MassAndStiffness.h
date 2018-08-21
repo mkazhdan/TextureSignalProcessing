@@ -30,15 +30,16 @@ DAMAGE.
 #include "Hierarchy.h"
 #include "PolygonClipping.h"
 
-template< typename Real >
+template< unsigned int Samples , typename Real >
 int InitializeChartMassAndStiffness
 (
 	const std::vector< SquareMatrix< Real , 2 > >& texture_metrics ,
 	const AtlasChart& atlasChart ,
 	const GridChart& gridChart ,
-	const std::vector< int > & boundaryAndDeepIndex , const std::vector< int >& fineBoundaryIndex ,
-	std::vector< Real > & deepMassCoefficients ,
-	std::vector< Real > & deepStiffnessCoefficients ,
+	const std::vector< int >& boundaryAndDeepIndex ,
+	const std::vector< int >& fineBoundaryIndex ,
+	std::vector< Real >& deepMassCoefficients ,
+	std::vector< Real >& deepStiffnessCoefficients ,
 	std::vector< Eigen::Triplet< Real > >& boundaryBoundaryMassTriplets ,
 	std::vector< Eigen::Triplet< Real > >& boundaryBoundaryStiffnessTriplets ,
 	std::vector< Eigen::Triplet< Real > >& boundaryDeepMassTriplets ,
@@ -52,20 +53,20 @@ int InitializeChartMassAndStiffness
 {
 	std::vector< SquareMatrix< Real , 4 > > cellStiffness;
 	std::vector< SquareMatrix< Real , 4 > > cellMass;
-	cellMass.resize(gridChart.numInteriorCells);
-	cellStiffness.resize(gridChart.numInteriorCells);
+	cellMass.resize( gridChart.numInteriorCells );
+	cellStiffness.resize( gridChart.numInteriorCells );
 
 	std::vector< SquareMatrix< Real , 6 > > triangleElementStiffness;
 	std::vector< SquareMatrix< Real , 6 > > triangleElementMass;
-	triangleElementMass.resize(gridChart.numBoundaryTriangles);
-	triangleElementStiffness.resize(gridChart.numBoundaryTriangles);
+	triangleElementMass.resize( gridChart.numBoundaryTriangles );
+	triangleElementStiffness.resize( gridChart.numBoundaryTriangles );
 
 	////Rasterize
 	int zeroAreaElementCount = 0;
-	Real precision_error = (Real)1e-3;
+	Real PRECISION_ERROR = (Real)1e-3;
 
-	auto InUnitSquare =   [&]( Point2D< Real > p ){ return !( p[0]<0-precision_error || p[1]<0-precision_error || p[0]>1+precision_error || p[1]>1+precision_error ); };
-	auto InUnitTriangle = [&]( Point2D< Real > p ){ return !( p[0]<0-precision_error || p[1]<0-precision_error || ( p[0]+p[1] )>1+precision_error ); };
+	auto InUnitSquare =   [&]( Point2D< Real > p ){ return !( p[0]<0-PRECISION_ERROR || p[1]<0-PRECISION_ERROR || p[0]>1+PRECISION_ERROR || p[1]>1+PRECISION_ERROR ); };
+	auto InUnitTriangle = [&]( Point2D< Real > p ){ return !( p[0]<0-PRECISION_ERROR || p[1]<0-PRECISION_ERROR || ( p[0]+p[1] )>1+PRECISION_ERROR ); };
 	auto CellInTriangle = [&]( int i , int j , const std::vector< Point2D< Real > >& vertices )
 	{
 		Real x1 = (Real)i*gridChart.cellSizeW , x2 = (Real)(i+1)*gridChart.cellSizeW;
@@ -84,15 +85,8 @@ int InitializeChartMassAndStiffness
 	};
 
 	// Compute the square-root of the weights to make taking the weighted dot-product faster
-	const Real _integrator4_sampleWeight[] =
-	{
-		(Real)sqrt( TriangleIntegrator< 6 >::Weights[0] ) ,
-		(Real)sqrt( TriangleIntegrator< 6 >::Weights[1] ) ,
-		(Real)sqrt( TriangleIntegrator< 6 >::Weights[2] ) ,
-		(Real)sqrt( TriangleIntegrator< 6 >::Weights[3] ) ,
-		(Real)sqrt( TriangleIntegrator< 6 >::Weights[4] ) ,
-		(Real)sqrt( TriangleIntegrator< 6 >::Weights[5] )
-	};
+	Real _integrator_sampleWeight[Samples];
+	for( int s=0 ; s<Samples ; s++ ) _integrator_sampleWeight[s] = (Real)sqrt( TriangleIntegrator< Samples >::Weights[s] );
 	SquareMatrix< Real , 2 > cell_to_texture_differential;
 	cell_to_texture_differential(0,0) = gridChart.cellSizeW;
 	cell_to_texture_differential(1,1) = gridChart.cellSizeH;
@@ -104,26 +98,23 @@ int InitializeChartMassAndStiffness
 		for( int p=2 ; p<polygon.size() ; p++ )
 		{
 			Point2D< Real > dm[2] = { polygon[p-1]-polygon[0] , polygon[p]-polygon[0] };
-			Point2D< Real > fragment_samples[6];
-			for( int s=0 ; s<6 ; s++ )
-			{
-				fragment_samples[s] = polygon[0] + dm[0] * TriangleIntegrator<6>::Positions[s][0] + dm[1] * TriangleIntegrator<6>::Positions[s][1];
-			}
+			Point2D< Real > fragment_samples[Samples];
+			for( int s=0 ; s<Samples ; s++ ) fragment_samples[s] = polygon[0] + dm[0] * TriangleIntegrator<Samples>::Positions[s][0] + dm[1] * TriangleIntegrator<Samples>::Positions[s][1];
 
-			//Integrate scalar product and gradient field
-			Real sampleValues[6][4];
-			Point2D< Real > sampleGradients[6][4];
-			for( int s=0 ; s<6 ; s++ )
+			// Integrate scalar product and gradient field
+			Real sampleValues[Samples][4];
+			Point2D< Real > sampleGradients[Samples][4];
+			for( int s=0 ; s<Samples ; s++ )
 			{
 				BilinearElementValuesAndGradients( fragment_samples[s] , sampleValues[s] , sampleGradients[s] );
 				for( int k=0 ; k<4 ; k++ )
 				{
-					sampleValues   [s][k] *= _integrator4_sampleWeight[s];
-					sampleGradients[s][k] *= _integrator4_sampleWeight[s];
+					sampleValues   [s][k] *= _integrator_sampleWeight[s];
+					sampleGradients[s][k] *= _integrator_sampleWeight[s];
 				}
 			}
 
-			for( int k=0 ; k<4 ; k++ ) for( int l=0 ; l<4 ; l++ ) for( int s=0 ; s<6 ; s++ )
+			for( int k=0 ; k<4 ; k++ ) for( int l=0 ; l<4 ; l++ ) for( int s=0 ; s<Samples ; s++ )
 			{
 				interior_cell_mass(l,k) += sampleValues[s][k] * sampleValues[s][l] / 2.;
 				for( int m=0 ; m<2 ; m++ ) for( int n=0 ; n<2 ; n++ ) interior_cell_stiffnesses[m][n](l,k) += sampleGradients[s][l][m] * sampleGradients[s][k][n] / 2.;
@@ -202,10 +193,10 @@ int InitializeChartMassAndStiffness
 						for( int x=0 ; x<2 ; x++ ) for( int y=0 ; y<2 ; y++ ) fragment_to_element_differential(x,y) = dm[x][y];
 						Real fragment_to_element_area_scale_factor = fabs( fragment_to_element_differential.determinant() );
 
-						Point2D< Real > fragment_samples[6];
-						for( int s=0 ; s<6 ; s++ )
+						Point2D< Real > fragment_samples[Samples];
+						for( int s=0 ; s<Samples ; s++ )
 						{
-							fragment_samples[s] = polygon[0] + dm[0] * TriangleIntegrator<6>::Positions[s][0] + dm[1] * TriangleIntegrator<6>::Positions[s][1];
+							fragment_samples[s] = polygon[0] + dm[0] * TriangleIntegrator<Samples>::Positions[s][0] + dm[1] * TriangleIntegrator<Samples>::Positions[s][1];
 							if( !InUnitSquare( fragment_samples[s] ) ){ printf( "[ERROR] Interior sample out of unit box! (%f %f)\n" , fragment_samples[s][0] , fragment_samples[s][1]) ; return 0; }
 						}
 
@@ -215,22 +206,22 @@ int InitializeChartMassAndStiffness
 						// -- pre-multiplying the gradients by the inverse of the metric
 						// so that the computation within the inner loop is faster.
 						Real fragment_area = element_area_scale_factor * fragment_to_element_area_scale_factor / 2.0;
-						Real sampleValues[6][4];
-						Point2D< Real > sampleGradients[6][4] , _sampleGradients[6][4];
-						for( int s=0 ; s<6 ; s++ )
+						Real sampleValues[Samples][4];
+						Point2D< Real > sampleGradients[Samples][4] , _sampleGradients[Samples][4];
+						for( int s=0 ; s<Samples ; s++ )
 						{
 							BilinearElementValuesAndGradients( fragment_samples[s] , sampleValues[s] , sampleGradients[s] );
 							for( int k=0 ; k<4 ; k++ )
 							{
-								sampleValues[s][k] *= _integrator4_sampleWeight[s];
-								sampleGradients[s][k] *= _integrator4_sampleWeight[s];
+								sampleValues[s][k] *= _integrator_sampleWeight[s];
+								sampleGradients[s][k] *= _integrator_sampleWeight[s];
 								_sampleGradients[s][k] = element_metric_inverse * sampleGradients[s][k];
 							}
 						}
 						for( int k=0 ; k<4 ; k++ ) for( int l=0 ; l<4 ; l++ )
 						{
 							Real vIntegral=0 , gIntegral=0;
-							for( int s=0 ; s<6 ; s++ )
+							for( int s=0 ; s<Samples ; s++ )
 							{
 								vIntegral += sampleValues[s][k] * sampleValues[s][l];
 								gIntegral += Point2D< Real >::Dot( sampleGradients[s][l] , _sampleGradients[s][k] );
@@ -245,8 +236,6 @@ int InitializeChartMassAndStiffness
 			}
 			else if( localBoundaryIndex!=-1 )
 			{
-				Real fine_precision_error = 1e-4;
-
 				std::vector< BoundaryIndexedTriangle > cellBoundaryTriangles = gridChart.boundaryTriangles[localBoundaryIndex];
 
 				// Iterate over all elements in the cell
@@ -294,11 +283,10 @@ int InitializeChartMassAndStiffness
 							{
 								polygonArea += fragment_area;
 
-								Point2D< Real > fragment_samples[6]; //Belong to unit right triangles
-
-								for( int s=0 ; s<6 ; s++ )
+								Point2D< Real > fragment_samples[Samples];
+								for( int s=0 ; s<Samples ; s++ )
 								{
-									fragment_samples[s] = polygon.vertices[0] + dm[0] * TriangleIntegrator<6>::Positions[s][0] + dm[1] * TriangleIntegrator<6>::Positions[s][1];
+									fragment_samples[s] = polygon.vertices[0] + dm[0] * TriangleIntegrator<Samples>::Positions[s][0] + dm[1] * TriangleIntegrator<Samples>::Positions[s][1];
 									if( !InUnitTriangle( fragment_samples[s] ) ){ printf( "[ERROR] Boundary sample out of unit right triangle! (%f %f)\n" , fragment_samples[s][0] , fragment_samples[s][1] ) ; return 0; }
 									else
 									{
@@ -309,16 +297,15 @@ int InitializeChartMassAndStiffness
 									}
 								}
 
-								Real sampleValues[6][6];
-								Point2D< Real > sampleGradients[6][6] , _sampleGradients[6][6];
-
-								for( int s=0 ; s<6 ; s++ )
+								Real sampleValues[Samples][6];
+								Point2D< Real > sampleGradients[Samples][6] , _sampleGradients[Samples][6];
+								for( int s=0 ; s<Samples ; s++ )
 								{
 									QuadraticElementValuesAndGradients( fragment_samples[s] , sampleValues[s] , sampleGradients[s] );
 									for( int k=0 ; k<6 ; k++ )
 									{
-										sampleValues[s][k] *= _integrator4_sampleWeight[s];
-										sampleGradients[s][k] *= _integrator4_sampleWeight[s];
+										sampleValues[s][k] *= _integrator_sampleWeight[s];
+										sampleGradients[s][k] *= _integrator_sampleWeight[s];
 										_sampleGradients[s][k] = element_metric_inverse * sampleGradients[s][k];										
 									}
 								}
@@ -326,7 +313,7 @@ int InitializeChartMassAndStiffness
 								for( int k=0 ; k<6 ; k++ ) for( int l=0 ; l<6 ; l++ )
 								{
 									Real vIntegral=0 , gIntegral=0;
-									for( int s=0 ; s<6 ; s++ )
+									for( int s=0 ; s<Samples ; s++ )
 									{
 										vIntegral += sampleValues[s][k] * sampleValues[s][l];
 										gIntegral += Point2D< Real >::Dot( sampleGradients[s][k] , _sampleGradients[s][l] );
@@ -344,7 +331,7 @@ int InitializeChartMassAndStiffness
 
 						Real integratedPolygonMass = 0;
 						for( int k=0 ; k<6 ; k++ ) for( int l=0 ; l<6 ; l++ ) integratedPolygonMass += polygonMass(k,l);
-						if( fabs( integratedPolygonMass - polygonArea )>precision_error )
+						if( fabs( integratedPolygonMass - polygonArea )>PRECISION_ERROR )
 						{
 							printf( "[ERROR] out of precision! \n");
 							//return 0;
@@ -480,12 +467,26 @@ int InitializeChartMassAndStiffness
 	return 1;
 }
 
-template< typename Real >
-int InitializeMassAndStiffness( const std::vector<std::vector<SquareMatrix< Real , 2 > > >& parameterMetric , const std::vector< AtlasChart >& atlasCharts , const GridAtlas& gridAtlas , const std::vector< int >& fineBoundaryIndex , const int numFineBoundaryNodes ,
-	std::vector< Real>& deepMassCoefficients, std::vector< Real>& deepStiffnessCoefficients ,
-	SparseMatrix< Real , int >& boundaryBoundaryMassMatrix , SparseMatrix< Real , int >& boundaryBoundaryStiffnessMatrix ,
-	SparseMatrix< Real , int >& boundaryDeepMassMatrix , SparseMatrix< Real , int >& boundaryDeepStiffnessMatrix ,
-	bool computeCellBasedStiffness , const std::vector< Point3D< Real > >& inputSignal , const std::vector< Point3D< Real > >& boundarySignal , std::vector< Real >& texelToCellCoeffs , SparseMatrix< Real , int > boundaryCellBasedStiffnessRHSMatrix[3] )
+template< unsigned int Samples , typename Real >
+int InitializeMassAndStiffness
+(
+	const std::vector< std::vector< SquareMatrix< Real , 2 > > >& parameterMetric ,
+	const std::vector< AtlasChart >& atlasCharts ,
+	const GridAtlas& gridAtlas ,
+	const std::vector< int >& fineBoundaryIndex ,
+	const int numFineBoundaryNodes ,
+	std::vector< Real >& deepMassCoefficients ,
+	std::vector< Real >& deepStiffnessCoefficients ,
+	SparseMatrix< Real , int >& boundaryBoundaryMassMatrix ,
+	SparseMatrix< Real , int >& boundaryBoundaryStiffnessMatrix ,
+	SparseMatrix< Real , int >& boundaryDeepMassMatrix ,
+	SparseMatrix< Real , int >& boundaryDeepStiffnessMatrix ,
+	bool computeCellBasedStiffness ,
+	const std::vector< Point3D< Real > >& inputSignal ,
+	const std::vector< Point3D< Real > >& boundarySignal ,
+	std::vector< Real >& texelToCellCoeffs ,
+	SparseMatrix< Real , int > boundaryCellBasedStiffnessRHSMatrix[3] 
+)
 {
 
 	const std::vector<GridChart> & gridCharts = gridAtlas.gridCharts;
@@ -509,9 +510,12 @@ int InitializeMassAndStiffness( const std::vector<std::vector<SquareMatrix< Real
 		std::vector< Eigen::Triplet< Real > > chartBoundaryDeepMassTriplets;
 		std::vector< Eigen::Triplet< Real > > chartBoundaryDeepStiffnessTriplets;
 		std::vector< Eigen::Triplet< Real > > chartBoundaryCellStiffnessTriplets[3];
-		InitializeChartMassAndStiffness(parameterMetric[i], atlasCharts[i], gridCharts[i], boundaryAndDeepIndex, fineBoundaryIndex, deepMassCoefficients, deepStiffnessCoefficients, chartBoundaryBoundaryMassTriplets, chartBoundaryBoundaryStiffnessTriplets,
-			chartBoundaryDeepMassTriplets, chartBoundaryDeepStiffnessTriplets,
-			computeCellBasedStiffness ,inputSignal, boundarySignal, texelToCellCoeffs, chartBoundaryCellStiffnessTriplets);
+		InitializeChartMassAndStiffness< Samples >
+		(
+			parameterMetric[i] , atlasCharts[i] , gridCharts[i] , boundaryAndDeepIndex , fineBoundaryIndex , deepMassCoefficients , deepStiffnessCoefficients , chartBoundaryBoundaryMassTriplets , chartBoundaryBoundaryStiffnessTriplets ,
+			chartBoundaryDeepMassTriplets , chartBoundaryDeepStiffnessTriplets ,
+			computeCellBasedStiffness , inputSignal , boundarySignal , texelToCellCoeffs , chartBoundaryCellStiffnessTriplets
+		);
 #pragma omp critical
 		{
 			boundaryBoundaryMassTriplets.insert(boundaryBoundaryMassTriplets.end(), chartBoundaryBoundaryMassTriplets.begin(), chartBoundaryBoundaryMassTriplets.end());
@@ -538,13 +542,24 @@ int InitializeMassAndStiffness( const std::vector<std::vector<SquareMatrix< Real
 	return 1;
 }
 
-template< typename Real >
-int InitializeMassAndStiffness( std::vector< Real >& deepMassCoefficients , std::vector< Real > & deepStiffnessCoefficients ,
-	SparseMatrix< Real , int >& boundaryBoundaryMassMatrix , SparseMatrix< Real , int >& boundaryBoundaryStiffnessMatrix ,
-	SparseMatrix< Real , int >& boundaryDeepMassMatrix , SparseMatrix< Real , int >& boundaryDeepStiffnessMatrix ,
-	const HierarchicalSystem& hierarchy , const std::vector< std::vector< SquareMatrix< Real , 2 > > >& parameterMetric , const std::vector< AtlasChart >& atlasCharts ,
-	const BoundaryProlongationData& boundaryProlongation , bool computeCellBasedStiffness ,
-	const std::vector< Point3D< Real > >& inputSignal , std::vector< Real >& texelToCellCoeffs , SparseMatrix< Real , int > boundaryCellBasedStiffnessRHSMatrix[3] )
+template< unsigned int Samples , typename Real >
+int InitializeMassAndStiffness
+(
+	std::vector< Real >& deepMassCoefficients ,
+	std::vector< Real > & deepStiffnessCoefficients ,
+	SparseMatrix< Real , int >& boundaryBoundaryMassMatrix ,
+	SparseMatrix< Real , int >& boundaryBoundaryStiffnessMatrix ,
+	SparseMatrix< Real , int >& boundaryDeepMassMatrix ,
+	SparseMatrix< Real , int >& boundaryDeepStiffnessMatrix ,
+	const HierarchicalSystem& hierarchy ,
+	const std::vector< std::vector< SquareMatrix< Real , 2 > > >& parameterMetric ,
+	const std::vector< AtlasChart >& atlasCharts ,
+	const BoundaryProlongationData& boundaryProlongation ,
+	bool computeCellBasedStiffness ,
+	const std::vector< Point3D< Real > >& inputSignal ,
+	std::vector< Real >& texelToCellCoeffs ,
+	SparseMatrix< Real , int > boundaryCellBasedStiffnessRHSMatrix[3]
+)
 {
 
 	//(2) Initialize mass and stiffness
@@ -570,10 +585,9 @@ int InitializeMassAndStiffness( std::vector< Real >& deepMassCoefficients , std:
 	}
 
 	//clock_t m_begin = clock();
-	if( !InitializeMassAndStiffness( parameterMetric , atlasCharts , hierarchy.gridAtlases[0] , boundaryProlongation.fineBoundaryIndex , boundaryProlongation.numFineBoundarNodes , deepMassCoefficients , deepStiffnessCoefficients , fineBoundaryBoundaryMassMatrix , fineBoundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix ,
-		computeCellBasedStiffness , inputSignal , fineBoundarySignal , texelToCellCoeffs , fineBoundaryCellStiffnessRHSMatrix ) )
+	if( !InitializeMassAndStiffness< Samples >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0] , boundaryProlongation.fineBoundaryIndex , boundaryProlongation.numFineBoundarNodes , deepMassCoefficients , deepStiffnessCoefficients , fineBoundaryBoundaryMassMatrix , fineBoundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , computeCellBasedStiffness , inputSignal , fineBoundarySignal , texelToCellCoeffs , fineBoundaryCellStiffnessRHSMatrix ) )
 	{
-		printf("ERROR: Unable to initialize fine mass and stiffness! \n");
+		fprintf( stderr , "[ERROR] Unable to initialize fine mass and stiffness! \n");
 		return 0;
 	}
 

@@ -105,7 +105,8 @@ double QuadraticElementValue(int elementIndex, Point2D<double> pos) {
 	}
 }
 
-Point2D<double> QuadraticElementGradient(int elementIndex, Point2D<double> pos) {
+Point2D<double> QuadraticElementGradient( int elementIndex , Point2D< double > pos )
+{
 	switch (elementIndex) {
 	case 0:
 		return  Point2D<double>(4 * pos[0] + 4 * pos[1] - 3.0, 4 * pos[0] + 4 * pos[1] - 3.0);
@@ -142,17 +143,87 @@ void QuadraticElementValuesAndGradients( Point2D< double > pos , double values[]
 	values[5] = -4*xx - 4*xy        + 4*x           , gradients[5] = Point2D< double >( -8*x - 4*y + 4 , -4*x           );
 }
 
-Point2D<double> QuadraticGradient(double values[6], Point2D<double> pos) {
-	Point2D<double> cumValue(0, 0);
-	for (int k = 0; k < 6; k++) cumValue += (QuadraticElementGradient(k, pos)*values[k]);
-	return cumValue;
+// For the node at (0.0,0.0):
+//		F(x,y) = a x^2 + b y^2 + c xy + d x + e y + f
+//		F(0.0,0.0) = 1 => f = 1                 => F(x,y) = a x^2 + b y^2 + c xy + d x + e y + 1
+//		F(1.0,0.0) = 0 => a + d + 1 = 0         => F(x,y) = a x^2 + b y^2 + c xy - (a+1) x + e y + 1
+//		F(0.0,1.0) = 0 => b + e + 1 = 0         => F(x,y) = a x^2 + b y^2 + c xy - (a+1) x - (b+1) y + 1
+//		F(0.5,0.0) = 0 => a/4 - (a+1)/2 + 1 = 0 => F(x,y) = 2 x^2 + b y^2 + c xy - 3 x - (b+1) y + 1
+//		F(0.0,0.5) = 0 => b/4 - (b+1)/2 + 1 = 0 => F(x,y) = 2 x^2 + 2 y^2 + c xy - 3 x - 3 y + 1
+//		F(0.5,0.5) = 0 => c/4 - 1 = 0           => F(x,y) = 2 x^2 + 2 y^2 + 4 xy - 3 x - 3 y + 1
+// For the node at (1.0,0.0):
+//		F(x,y) = a x^2 + b y^2 + c xy + d x + e y + f
+//		F(0.0,0.0) = 0 => f = 0             => F(x,y) = a x^2 + b y^2 + c xy + d x + e y
+//		F(1.0,0.0) = 1 => a + d = 1         => F(x,y) = a x^2 + b y^2 + c xy + (1-a) x + e y
+//		F(0.0,1.0) = 0 => b + e = 0         => F(x,y) = a x^2 + b y^2 + c xy + (1-a) x - b y
+//		F(0.5,0.0) = 0 => a/4 + (1-a)/2 = 0 => F(x,y) = 2 x^2 + b y^2 + c xy - x - b y
+//		F(0.0,0.5) = 0 => b/4 - b/2 = 0     => F(x,y) = 2 x^2         + c xy - x
+//		F(0.5,0.5) = 0 => c/4 = 0           => F(x,y) = 2 x^2                - x
+// For the node at (0.0,1.0):
+//		F(x,y) = 2 y^2 - y
+// For the node at (0.5,0.0):
+//		F(x,y) = a x^2 + c xy + d x
+//		F(1.0,0.0) = 0 => a + d = 0     => F(x,y) =  a x^2 + c xy - a x
+//		F(0.5,0.0) = 1 => a/4 - a/2 = 1 => F(x,y) = -4 x^2 + c xy + 4 x
+//		F(0.5,0.5) = 0 => c/4 + 1 = 0   => F(x,y) = -4 x^2 - 4 xy + 4 x
+// For the node at (0.0,0.5):
+//		F(x,y) = -4 y^2 - 4 xy + 4y
+// For the node at (0.5,0.5):
+//		F(x,y) = c xy
+//		F(0.5,0.5) = 1 => c/4 = 1 => F(x,y) = 4 xy
+
+// 0 -> (0.0,0.0)
+// 1 -> (1.0,0.0)
+// 2 -> (0.0,1.0)
+// 3 -> (0.5,0.5)
+// 4 -> (0.0,0.5)
+// 5 -> (0.5,0.0)
+/////////////////////
+// Function values //
+//////////////////////////////////////////////////////////////////
+// (0.0,0.0) -> F(x,y) =   2 x^2 + 2 y^2 + 4 xy - 3 x - 3 y + 1 //
+// (1.0,0.0) -> F(x,y) =   2 x^2                - 1 x           //
+// (0.0,1.0) -> F(x,y) =           2 y^2              - 1 y     //
+// (0.5,0.5) -> F(x,y) =                   4 xy                 //
+// (0.0,0.5) -> F(x,y) =         - 4 y^2 - 4 xy       + 4 y     //
+// (0.5,0.0) -> F(x,y) = - 4 x^2         - 4 xy + 4 x           //
+//////////////////////////////////////////////////////////////////
+
+////////////////////////
+// Function gradients //
+/////////////////////////////////////////////////////////////////
+// (0.0,0.0) -> G(x,y) = (   4 x + 4 y - 3 ,   4 y + 4 x - 3 ) //
+// (1.0,0.0) -> G(x,y) = (   4 x       - 1 ,               0 ) //
+// (0.0,1.0) -> G(x,y) = (               0 ,   4 y       - 1 ) //
+// (0.5,0.5) -> G(x,y) = (         4 y     ,         4 x     ) //
+// (0.0,0.5) -> G(x,y) = (       - 4 y     , - 8 y - 4 x + 4 ) //
+// (0.5,0.0) -> G(x,y) = ( - 8 x - 4 y + 4 ,       - 4 x     ) //
+/////////////////////////////////////////////////////////////////
+template< class Real >
+Real QuadraticValue( const Real values[6] , Point2D< Real > pos )
+{
+	Real xx = pos[0] * pos[0] , xy = pos[0]*pos[1] , yy = pos[1] * pos[1] , x = pos[0] , y = pos[1];
+	return
+		(   2 * xx + 2 * yy + 4 * xy - 3 * x - 3 * y + 1 ) * values[0] +
+		(   2 * xx                   - 1 * x             ) * values[1] +
+		(            2 * yy                  - 1 * y     ) * values[2] +
+		(                     4 * xy                     ) * values[3] +
+		(          - 4 * yy - 4 * xy         + 4 * y     ) * values[4] +
+		( - 4 * xx          - 4 * xy + 4 * x             ) * values[5] ;
+}
+template< class Real >
+Point2D< Real > QuadraticGradient( const Real values[6] , Point2D< Real > pos )
+{
+	Real x = pos[0] , y = pos[1];
+	return 
+		Point2D< Real >(   4 * x + 4 * y - 3 ,   4 * y + 4 * x - 3 ) * values[0] +
+		Point2D< Real >(   4 * x         - 1 ,                   0 ) * values[1] +
+		Point2D< Real >(                   0 ,   4 * y         - 1 ) * values[2] +
+		Point2D< Real >(           4 * y     ,           4 * x     ) * values[3] +
+		Point2D< Real >(         - 4 * y     , - 8 * y - 4 * x + 4 ) * values[4] +
+		Point2D< Real >( - 8 * x - 4 * y + 4 ,         - 4 * x     ) * values[5] ;
 }
 
-double QuadraticValue(double values[6], Point2D<double> pos) {
-	double cumValue = 0;
-	for (int k = 0; k < 6; k++) cumValue += (QuadraticElementValue(k, pos)*values[k]);
-	return cumValue;
-}
 
 double LinearElementValue(int elementIndex, Point2D<double> pos) {
 	switch (elementIndex) {
@@ -190,13 +261,25 @@ Point2D<double> LinearElementGradient(int elementIndex) {
 	}
 }
 
-double BilinearValue(double f[4], Point2D<double> pos) {
-	return f[0] * (1.0 - pos[0]) * (1.0 - pos[1]) + f[1] * pos[0] * (1.0 - pos[1]) + f[2] * pos[0] * pos[1] + f[3] * (1.0 - pos[0]) * pos[1];
+template< class Real >
+Point2D< Real > BilinearValue( const Real values[4] , Point2D< Real > pos )
+{
+	Real x = pos[0] , y = pos[1];
+	return
+		( 1 - x ) * ( 1 - y ) * values[0] +
+		(     x ) * ( 1 - y ) * values[1] +
+		(     x ) * (     y ) * values[2] +
+		( 1 - x ) * (     y ) * values[3] ;
 }
-
-
-Point2D<double> BilinearGradient(double f[4], Point2D<double> pos) {
-	return Point2D<double>(pos[1] - 1.0, pos[0] - 1.0)*f[0] + Point2D<double>(1.0 - pos[1], -pos[0])*f[1] + Point2D<double>(pos[1], pos[0])*f[2] + Point2D<double>(-pos[1], 1.0 - pos[0])*f[3];
+template< class Real >
+Point2D< Real > BilinearGradient( const Real values[4] , Point2D< Real > pos )
+{
+	Real x = pos[0] , y = pos[1];
+	return
+		Point2D< Real >(   y - 1 ,   x - 1 ) * values[0] +
+		Point2D< Real >( - y + 1 , - x     ) * values[1] +
+		Point2D< Real >(   y     ,   x     ) * values[2] +
+		Point2D< Real >( - y     , - x + 1 ) * values[3] ;
 }
 
 double BilinearElementValue(int elementIndex, Point2D<double> pos) {

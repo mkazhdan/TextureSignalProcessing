@@ -47,6 +47,8 @@ cmdLineParameter< int   > Levels( "levels" , 4 );
 cmdLineParameter< char* > CameraConfig( "camera" );
 cmdLineParameter< int   > Threads( "threads" , omp_get_num_procs() );
 cmdLineParameter< int   > DisplayMode( "display" , TWO_REGION_DISPLAY );
+cmdLineParameter< int   > MatrixQuadrature( "mQuadrature" , 6 );
+cmdLineParameter< int   > VectorFieldQuadrature( "vfQuadrature" , 6 );
 
 cmdLineParameter< int   > MultigridBlockHeight( "mBlockH" , 16 );
 cmdLineParameter< int   > MultigridBlockWidth( "mBlockW" , 128 );
@@ -62,19 +64,23 @@ cmdLineReadable Double( "double" );
 
 cmdLineReadable* params[] =
 {
-	&Input , &Width , &Height,&DiffusionInterpolationWeight,&CameraConfig, &Levels,&UseDirectSolver,&Threads,&DisplayMode,&MultigridBlockHeight,&MultigridBlockWidth,&MultigridPaddedHeight,&MultigridPaddedWidth,&MultigridUpdateVcycles,&Verbose,
-	&DetailVerbose , &RandomJitter,
-	&Double,
+	&Input , &Width , &Height , &DiffusionInterpolationWeight , &CameraConfig , &Levels , &UseDirectSolver , &Threads , &DisplayMode , &MultigridBlockHeight , &MultigridBlockWidth , &MultigridPaddedHeight , &MultigridPaddedWidth , &MultigridUpdateVcycles ,
+	&Verbose , &DetailVerbose ,
+	&RandomJitter ,
+	&Double ,
+	&MatrixQuadrature , &VectorFieldQuadrature ,
 	NULL
 };
 
-void ShowUsage(const char* ex)
+void ShowUsage( const char* ex )
 {
 	printf( "Usage %s:\n", ex );
 	printf( "\t --%s <input mesh>\n" , Input.name );
 	printf( "\t[--%s <texture width>=%d]\n" , Width.name , Width.value );
 	printf( "\t[--%s <texture height>=%d]\n" , Height.name , Height.value );
 	printf( "\t[--%s <diffusion interpolation weight>=%f]\n" , DiffusionInterpolationWeight.name , DiffusionInterpolationWeight.value );
+	printf( "\t[--%s <system matrix quadrature points per triangle>=%d]\n" , MatrixQuadrature.name , MatrixQuadrature.value );
+	printf( "\t[--%s <normalized vector field quadrature points per triangle>=%d]\n" , VectorFieldQuadrature.name , VectorFieldQuadrature.value );
 	printf( "\t[--%s]\n" , UseDirectSolver.name );
 	printf( "\t[--%s]\n" , RandomJitter.name );
 	printf( "\t[--%s]\n" , Verbose.name );
@@ -93,8 +99,9 @@ void ShowUsage(const char* ex)
 	printf( "\t[--%s <multigrid update VCycles>=%d]\n" , MultigridUpdateVcycles.name , MultigridUpdateVcycles.value );
 }
 
-template<class Real>
-class Geodesics {
+template< class Real >
+class Geodesics
+{
 public:
 	static TexturedMesh mesh;
 	static int textureWidth;
@@ -551,9 +558,9 @@ int Geodesics<Real>::UpdateSolution(bool verbose, bool detailVerbose) {
 	clock_t begin;
 
 	//(1)Update smoothed input solution
-	if (verbose) begin = clock();
-	VCycle(multigridSmoothImpulseVariables, multigridSmoothImpulseCoefficients, multigridIndices, boundarySmoothImpulseSolver, coarseSmoothImpulseSolver, detailVerbose, detailVerbose);
-	if (verbose) printf("Smoothing impulse %.4f \n", double(clock() - begin) / CLOCKS_PER_SEC);
+	if( verbose ) begin = clock();
+	VCycle( multigridSmoothImpulseVariables , multigridSmoothImpulseCoefficients , multigridIndices , boundarySmoothImpulseSolver , coarseSmoothImpulseSolver , detailVerbose , detailVerbose );
+	if( verbose ) printf( "Smoothing impulse %.4f\n" , double(clock() - begin) / CLOCKS_PER_SEC );
 
 	//(2) Integrate normalized vector field
 	const std::vector<int> & boundaryGlobalIndex = hierarchy.gridAtlases[0].boundaryGlobalIndex;
@@ -648,11 +655,30 @@ int Geodesics<Real>::InitializeSystem( const int width , const int height )
 	}
 
 	t_begin = clock();
-	if (!InitializeMassAndStiffness(deepMassCoefficients, deepStiffnessCoefficients,
-		boundaryBoundaryMassMatrix, boundaryBoundaryStiffnessMatrix, boundaryDeepMassMatrix, boundaryDeepStiffnessMatrix,
-		hierarchy, parameterMetric, atlasCharts, boundaryProlongation, false, __inputSignal, __texelToCellCoeffs, __boundaryCellBasedStiffnessRHSMatrix)) {
-		printf("ERROR : Failed intialization! \n");
-		return 0;
+	{
+		int ret = 0;
+		switch( MatrixQuadrature.value )
+		{
+		case 1:
+			ret = InitializeMassAndStiffness< 1>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix );
+			break;
+		case 3:
+			ret = InitializeMassAndStiffness< 3>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix );
+			break;
+		case 6:
+			ret = InitializeMassAndStiffness< 6>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix );
+			break;
+		case 32:
+			ret = InitializeMassAndStiffness<32>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix );
+			break;
+		default:
+			fprintf( stderr , "[ERROR] Only 1-, 3-, 6-, and 32-point quadrature supported for triangles\n" );
+		}
+		if( !ret )
+		{
+			fprintf( stderr , "[ERROR] Failed intialization!\n" );
+			return 0;
+		}
 	}
 	if( Verbose.set ) printf( "\tInitialized mass and stiffness: %.2f(s)\n" , double(clock() - t_begin) / CLOCKS_PER_SEC);
 
@@ -733,7 +759,7 @@ int Geodesics<Real>::InitializeSystem( const int width , const int height )
 
 //////////////////////////////////// Initialize cell samples
 
-	if (!InitializeGridAtladInteriorCellLines(atlasCharts, hierarchy.gridAtlases[0].gridCharts, interiorCellLines, interiorCellLineIndex)) {
+	if (!InitializeGridAtlasInteriorCellLines(atlasCharts, hierarchy.gridAtlases[0].gridCharts, interiorCellLines, interiorCellLineIndex)) {
 		printf("Unable to initialize interior cell lines! \n");
 		return 0;
 	}
@@ -750,10 +776,30 @@ int Geodesics<Real>::InitializeSystem( const int width , const int height )
 	squareElementLineSamples.resize( interiorCellLines.size() );
 
 	t_begin = clock();
-	if (!InitializeVectorFieldIntegration( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , squareElementLineSamples , triangleElementSamples ) )
 	{
-		printf( "[ERROR] Unable to initialize vector field integration samples!\n" );
-		return 0;
+		int ret = 0;
+		switch( VectorFieldQuadrature.value )
+		{
+		case 1:
+			ret = InitializeVectorFieldIntegration< 1>( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , squareElementLineSamples , triangleElementSamples );
+			break;
+		case 3:
+			ret = InitializeVectorFieldIntegration< 3>( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , squareElementLineSamples , triangleElementSamples );
+			break;
+		case 6:
+			ret = InitializeVectorFieldIntegration< 6>( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , squareElementLineSamples , triangleElementSamples );
+			break;
+		case 32:
+			ret = InitializeVectorFieldIntegration<32>( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , squareElementLineSamples , triangleElementSamples );
+			break;
+		default:
+			fprintf( stderr , "[ERROR] Only 1-, 3-, 6-, and 32-point quadrature supported for triangles\n" );
+		}
+		if( !ret )
+		{
+			fprintf( stderr , "[ERROR] Unable to initialize vector field integration samples!\n" );
+			return 0;
+		}
 	}
 	if( Verbose.set) printf( "\tInitialized vector field integration: %.2f(s)\n" , double(clock() - t_begin) / CLOCKS_PER_SEC);
 
@@ -951,6 +997,7 @@ int main( int argc , char* argv[] )
 {
 	cmdLineParse(argc - 1, argv + 1, params);
 	if( !Input.set ){ ShowUsage( argv[0] ) ; return EXIT_FAILURE; }
+	if( !VectorFieldQuadrature.set ) VectorFieldQuadrature.value = MatrixQuadrature.value;
 	omp_set_num_threads( Threads.value );
 	if( Double.set ) _main< double >( argc , argv );
 	else             _main< float  >( argc , argv );

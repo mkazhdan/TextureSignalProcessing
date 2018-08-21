@@ -39,9 +39,15 @@ public:
 	int length;
 };
 
-int InitializeGridChartInteriorCellLines(const AtlasChart & atlasChart, const GridChart & gridChart, std::vector<InteriorCellLine> & interiorCellLines, std::vector<std::pair<int, int>> & interiorCellLineIndex) {
-
-	const Image<int> & cellType = gridChart.cellType;
+int InitializeGridChartInteriorCellLines
+(
+	const AtlasChart& atlasChart ,
+	const GridChart& gridChart ,
+	std::vector< InteriorCellLine >& interiorCellLines ,
+	std::vector< std::pair< int , int > >& interiorCellLineIndex
+)
+{
+	const Image< int >& cellType = gridChart.cellType;
 	int width = cellType.width();
 	int height = cellType.height();
 
@@ -94,7 +100,13 @@ int InitializeGridChartInteriorCellLines(const AtlasChart & atlasChart, const Gr
 	return 1;
 }
 
-int InitializeGridAtladInteriorCellLines( const std::vector<AtlasChart>& atlasCharts , const std::vector<GridChart> & gridCharts , std::vector<InteriorCellLine> & interiorCellLines , std::vector<std::pair< int , int > >& interiorCellLineIndex )
+int InitializeGridAtlasInteriorCellLines
+(
+	const std::vector< AtlasChart >& atlasCharts ,
+	const std::vector< GridChart >& gridCharts ,
+	std::vector< InteriorCellLine >& interiorCellLines ,
+	std::vector< std::pair< int , int > >& interiorCellLineIndex
+)
 {
 	for( int i=0 ; i<gridCharts.size() ; i++ ) InitializeGridChartInteriorCellLines( atlasCharts[i] , gridCharts[i] , interiorCellLines , interiorCellLineIndex );
 	return 1;
@@ -108,7 +120,7 @@ int InitializeGridAtladInteriorCellLines( const std::vector<AtlasChart>& atlasCh
 //		fragment: a triangle in the decomposition of the clipping of the atlas triangle to the elements
 //		element:  either a square or a triangle (depending on whether the cell is interior or not)
 //		texture: the texture space grid
-template< class Real >
+template< unsigned int Samples , typename Real >
 int InitializeVectorFieldIntegration
 (
 	const std::vector< SquareMatrix< double , 2 > >& texture_metrics ,
@@ -121,11 +133,10 @@ int InitializeVectorFieldIntegration
 )
 {
 	////Rasterize
-	double largestPrecisionError = 0;
-	const double precision_error = 1e-3;
+	const double PRECISION_ERROR = 1e-3;
 
-	auto InUnitSquare =   [&]( Point2D< double > p ){ return !( p[0]<0-precision_error || p[1]<0-precision_error || p[0]>1+precision_error || p[1]>1+precision_error ); };
-	auto InUnitTriangle = [&]( Point2D< double > p ){ return !( p[0]<0-precision_error || p[1]<0-precision_error || ( p[0]+p[1] )>1+precision_error ); };
+	auto InUnitSquare =   [&]( Point2D< double > p ){ return !( p[0]<0-PRECISION_ERROR || p[1]<0-PRECISION_ERROR || p[0]>1+PRECISION_ERROR || p[1]>1+PRECISION_ERROR ); };
+	auto InUnitTriangle = [&]( Point2D< double > p ){ return !( p[0]<0-PRECISION_ERROR || p[1]<0-PRECISION_ERROR || ( p[0]+p[1] )>1+PRECISION_ERROR ); };
 	auto CellInTriangle = [&]( int i , int j , const std::vector< Point2D< double > >& vertices )
 	{
 		double x1 = (double)i*gridChart.cellSizeW , x2 = (double)(i+1)*gridChart.cellSizeW;
@@ -159,15 +170,15 @@ int InitializeVectorFieldIntegration
 			for( int x=0 ; x<2 ; x++ ) for( int y=0 ; y<2 ; y++ ) fragment_to_element_differential(x,y) = dm[x][y];
 			double fragment_to_element_area_scale_factor = fabs( fragment_to_element_differential.determinant() );
 
-			Point2D< double > fragment_samples[6];
-			for( int s=0 ; s<6 ; s++ ) fragment_samples[s] = polygon[0] + dm[0] * TriangleIntegrator<6>::Positions[s][0] + dm[1] * TriangleIntegrator<6>::Positions[s][1];
+			Point2D< double > fragment_samples[Samples];
+			for( int s=0 ; s<Samples ; s++ ) fragment_samples[s] = polygon[0] + dm[0] * TriangleIntegrator<Samples>::Positions[s][0] + dm[1] * TriangleIntegrator<Samples>::Positions[s][1];
 
 			// Compute the integrated gradients of each bilinear basis functions
 			for( int k=0 ; k<4 ; k++ )
 			{
 				Point2D< double > integrated_gradient;
 				// Compute the integrated gradient of the bilinear basis function in the frame of the cell, weighted by the area of the unit triangle
-				for( int s=0 ; s<6 ; s++ ) integrated_gradient += BilinearElementGradient( k , fragment_samples[s] ) * TriangleIntegrator<6>::Weights[s];
+				for( int s=0 ; s<Samples ; s++ ) integrated_gradient += BilinearElementGradient( k , fragment_samples[s] ) * TriangleIntegrator<Samples>::Weights[s];
 				interior_cell_v[k] += integrated_gradient * fragment_to_element_area_scale_factor / 2.0;
 			}
 		}
@@ -223,9 +234,9 @@ int InitializeVectorFieldIntegration
 				SquareElementLineSampleInfo< Real > squareElementLineSample;
 				squareElementLineSample.cellOffset = cellLineOffset;
 
-				squareElementLineSample.pos = Point2D< Real >( interior_cell_barycenter );
+				squareElementLineSample.integrationData.pos = Point2D< Real >( interior_cell_barycenter );
 				for( int x=0 ; x<2 ; x++ ) for( int y=0 ; y<2 ; y++ ) squareElementLineSample.tensor(x,y) = (Real)element_metric_inverse(x,y);
-				for( int k=0 ; k<4 ; k++ ) squareElementLineSample.v[k] = squareElementLineSample.tensor * Point2D< Real >( interior_cell_v[k] * element_area_scale_factor );
+				for( int k=0 ; k<4 ; k++ ) squareElementLineSample.integrationData.v[k] = squareElementLineSample.tensor * Point2D< Real >( interior_cell_v[k] * element_area_scale_factor );
 #pragma omp critical
 				squareElementLineSamples[ cellLineId ].push_back( squareElementLineSample );
 			}
@@ -268,7 +279,7 @@ int InitializeVectorFieldIntegration
 
 					if( !InUnitSquare( polygonBarycenter ) ){ printf( "[ERROR] Center out of unit square! (%f %f)\n" , polygonBarycenter[0] , polygonBarycenter[1] ) ; return 0; }
 
-					squareElementLineSample.pos = Point2D< Real >( (Real)polygonBarycenter[0] , (Real)polygonBarycenter[1] );
+					squareElementLineSample.integrationData.pos = Point2D< Real >( (Real)polygonBarycenter[0] , (Real)polygonBarycenter[1] );
 					for( int x=0 ; x<2 ; x++ ) for( int y=0 ; y<2 ; y++ ) squareElementLineSample.tensor(x,y) = (Real)element_metric_inverse(x,y);
 
 					for( int p=2 ; p<polygon.size() ; p++ )
@@ -278,10 +289,10 @@ int InitializeVectorFieldIntegration
 						for( int x=0 ; x<2 ; x++ ) for( int y=0 ; y<2 ; y++ ) fragment_to_element_differential(x,y) = dm[x][y];
 						double fragment_to_element_area_scale_factor = fabs( fragment_to_element_differential.determinant() );
 
-						Point2D< double > fragment_samples[6];
-						for( int s=0 ; s<6 ; s++ )
+						Point2D< double > fragment_samples[Samples];
+						for( int s=0 ; s<Samples ; s++ )
 						{
-							fragment_samples[s] = polygon[0] + dm[0] * TriangleIntegrator<6>::Positions[s][0] + dm[1] * TriangleIntegrator<6>::Positions[s][1];
+							fragment_samples[s] = polygon[0] + dm[0] * TriangleIntegrator<Samples>::Positions[s][0] + dm[1] * TriangleIntegrator<Samples>::Positions[s][1];
 							if( !InUnitSquare( fragment_samples[s] ) ){ printf( "[ERROR] Sample out of unit square! (%f %f)\n" , fragment_samples[s][0] , fragment_samples[s][1]) ; return 0; }
 						}
 
@@ -290,13 +301,13 @@ int InitializeVectorFieldIntegration
 						{
 							Point2D< double > integrated_gradient;
 							// Compute the integrated gradient of the bilinear basis function in the frame of the cell, weighted by the area of the unit triangle
-							for( int s=0 ; s<6 ; s++ ) integrated_gradient += BilinearElementGradient( k , fragment_samples[s] ) * TriangleIntegrator<6>::Weights[s];
+							for( int s=0 ; s<Samples ; s++ ) integrated_gradient += BilinearElementGradient( k , fragment_samples[s] ) * TriangleIntegrator<Samples>::Weights[s];
 							// [MK] Why the division by 2?
-							squareElementLineSample.v[k] += Point2D< Real >( integrated_gradient * element_area_scale_factor * fragment_to_element_area_scale_factor / 2.0 );
+							squareElementLineSample.integrationData.v[k] += Point2D< Real >( integrated_gradient * element_area_scale_factor * fragment_to_element_area_scale_factor / 2.0 );
 						}
 					}
 					// Dualize the samples so that integration is simple a dot-product
-					for( int k=0 ; k<4 ; k++ ) squareElementLineSample.v[k] = squareElementLineSample.tensor * squareElementLineSample.v[k];
+					for( int k=0 ; k<4 ; k++ ) squareElementLineSample.integrationData.v[k] = squareElementLineSample.tensor * squareElementLineSample.integrationData.v[k];
 #pragma omp critical
 					squareElementLineSamples[cellLineId].push_back(squareElementLineSample);
 				}
@@ -361,7 +372,7 @@ int InitializeVectorFieldIntegration
 
 						if( !InUnitTriangle( polygonBarycenter ) ){ printf( "[ERROR] Center out of unit right triangle! (%f %f)\n", polygonBarycenter[0] , polygonBarycenter[1] ) ; return 0; }
 
-						triangleElementSample.pos = Point2D< Real >( (Real)polygonBarycenter[0] , (Real)polygonBarycenter[1] );
+						triangleElementSample.integrationData.pos = Point2D< Real >( (Real)polygonBarycenter[0] , (Real)polygonBarycenter[1] );
 						for( int x=0 ; x<2 ; x++ ) for( int y=0 ; y<2 ; y++ ) triangleElementSample.tensor(x,y) = (Real)element_metric_inverse(x,y);
 						// Iterate over all fragments
 						for( int p=2 ; p<polygon.size() ; p++ )
@@ -376,11 +387,10 @@ int InitializeVectorFieldIntegration
 
 							if( fragment_area>0 )
 							{
-								Point2D< double > fragment_samples[6];
-
-								for( int s=0 ; s<6 ; s++ )
+								Point2D< double > fragment_samples[Samples];
+								for( int s=0 ; s<Samples ; s++ )
 								{
-									fragment_samples[s] = polygon[0] + dm[0] * TriangleIntegrator<6>::Positions[s][0] + dm[1] * TriangleIntegrator<6>::Positions[s][1];
+									fragment_samples[s] = polygon[0] + dm[0] * TriangleIntegrator<Samples>::Positions[s][0] + dm[1] * TriangleIntegrator<Samples>::Positions[s][1];
 									if( !InUnitTriangle( fragment_samples[s] ) ){ printf( "[ERROR] Sample out of unit right triangle! (%f %f)\n" , fragment_samples[s][0] , fragment_samples[s][1] ) ; return 0; }
 									else
 									{
@@ -395,9 +405,9 @@ int InitializeVectorFieldIntegration
 								for( int k=0 ; k<6 ; k++ ) // which function
 								{
 									Point2D< double > integrated_gradient;
-									for( int s=0 ; s<6 ; s++ ) integrated_gradient += QuadraticElementGradient( k , fragment_samples[s] ) * TriangleIntegrator<6>::Weights[s];
+									for( int s=0 ; s<Samples ; s++ ) integrated_gradient += QuadraticElementGradient( k , fragment_samples[s] ) * TriangleIntegrator<Samples>::Weights[s];
 									// [MK] Why the division by 2?
-									triangleElementSample.v[k] += Point2D< Real >( integrated_gradient * fragment_area );
+									triangleElementSample.integrationData.v[k] += Point2D< Real >( integrated_gradient * fragment_area );
 								}
 							}
 							else
@@ -428,7 +438,7 @@ int InitializeVectorFieldIntegration
 							}
 						}
 						// Dualize the samples so that integration is simple a dot-product
-						for( int k=0 ; k<6 ; k++ ) triangleElementSample.v[k] = triangleElementSample.tensor * triangleElementSample.v[k];
+						for( int k=0 ; k<6 ; k++ ) triangleElementSample.integrationData.v[k] = triangleElementSample.tensor * triangleElementSample.integrationData.v[k];
 #pragma omp critical
 						triangleElementSamples.push_back( triangleElementSample );
 					}
@@ -437,17 +447,14 @@ int InitializeVectorFieldIntegration
 			}
 		}
 	}
-
-	if( 0 ) printf( "Largest precision error %g\n" , largestPrecisionError );
-
 	return 1;
 }
 
-template< class Real >
+template< unsigned int Samples , typename Real >
 int InitializeVectorFieldIntegration
 (
 	const std::vector<std::vector< SquareMatrix< double , 2 > > >& parameterMetric ,
-	const std::vector< AtlasChart > atlasCharts ,
+	const std::vector< AtlasChart >& atlasCharts ,
 	const std::vector< GridChart >& gridCharts ,
 	const std::vector< std::pair< int , int > >& interiorCellLineIndex ,
 	const std::vector< int >& fineBoundaryIndex ,
@@ -457,13 +464,8 @@ int InitializeVectorFieldIntegration
 {
 #pragma omp parallel for
 	for( int i=0 ; i<gridCharts.size() ; i++ )
-	{
-		if( !InitializeVectorFieldIntegration( parameterMetric[i] , atlasCharts[i] , gridCharts[i] , interiorCellLineIndex , fineBoundaryIndex , squareElementLineSamples , triangleElementSamples ) )
-		{
-			fprintf( stderr , "[ERROR] Failed to intialized vector field integration: %d\n" , i );
-			exit( 0 );
-		}
-	}
+		if( !InitializeVectorFieldIntegration< Samples >( parameterMetric[i] , atlasCharts[i] , gridCharts[i] , interiorCellLineIndex , fineBoundaryIndex , squareElementLineSamples , triangleElementSamples ) )
+			fprintf( stderr , "[ERROR] Failed to intialize vector field integration: %d\n" , i ) , exit( 0 );
 	return 1;
 }
 
@@ -529,16 +531,9 @@ int IntegrateVectorField
 
 				currentOffset++;
 			}
-			Point2D< Real > pos = sample->pos;
-			// Compute the gradient in the frame of the cell
 
-			Point2D< Real > gradientVector =
-				Point2D< Real >( (Real)(   pos[1] - 1.0 ) , (Real)(   pos[0] - 1.0 ) ) * cornerValues[0] +
-				Point2D< Real >( (Real)( - pos[1] + 1.0 ) , (Real)( - pos[0]       ) ) * cornerValues[1] +
-				Point2D< Real >( (Real)(   pos[1]       ) , (Real)(   pos[0]       ) ) * cornerValues[2] +
-				Point2D< Real >( (Real)( - pos[1]       ) , (Real)( - pos[0] + 1.0 ) ) * cornerValues[3] ;
-			gradientVector = VectorFunction( gradientVector , sample->tensor );
-			for( int k=0 ; k<4 ; k++ ) rhsValues[k] += Point2D<Real>::Dot( gradientVector , sample->v[k] );
+			Point2D< Real > gradientVector = VectorFunction( BilinearGradient( cornerValues , sample->integrationData.pos ) , sample->tensor );
+			for( int k=0 ; k<4 ; k++ ) rhsValues[k] += Point2D<Real>::Dot( gradientVector , sample->integrationData.v[k] );
 			sample++;
 		}
 
@@ -568,84 +563,14 @@ int IntegrateVectorField
 
 	if( verbose ) printf( "Integrating squares %.4f\n" , double( clock()-begin ) / CLOCKS_PER_SEC );
 
-
-	// For the node at (0.0,0.0):
-	//		F(x,y) = a x^2 + b y^2 + c xy + d x + e y + f
-	//		F(0.0,0.0) = 1 => f = 1                 => F(x,y) = a x^2 + b y^2 + c xy + d x + e y + 1
-	//		F(1.0,0.0) = 0 => a + d + 1 = 0         => F(x,y) = a x^2 + b y^2 + c xy - (a+1) x + e y + 1
-	//		F(0.0,1.0) = 0 => b + e + 1 = 0         => F(x,y) = a x^2 + b y^2 + c xy - (a+1) x - (b+1) y + 1
-	//		F(0.5,0.0) = 0 => a/4 - (a+1)/2 + 1 = 0 => F(x,y) = 2 x^2 + b y^2 + c xy - 3 x - (b+1) y + 1
-	//		F(0.0,0.5) = 0 => b/4 - (b+1)/2 + 1 = 0 => F(x,y) = 2 x^2 + 2 y^2 + c xy - 3 x - 3 y + 1
-	//		F(0.5,0.5) = 0 => c/4 - 1 = 0           => F(x,y) = 2 x^2 + 2 y^2 + 4 xy - 3 x - 3 y + 1
-	// For the node at (1.0,0.0):
-	//		F(x,y) = a x^2 + b y^2 + c xy + d x + e y + f
-	//		F(0.0,0.0) = 0 => f = 0             => F(x,y) = a x^2 + b y^2 + c xy + d x + e y
-	//		F(1.0,0.0) = 1 => a + d = 1         => F(x,y) = a x^2 + b y^2 + c xy + (1-a) x + e y
-	//		F(0.0,1.0) = 0 => b + e = 0         => F(x,y) = a x^2 + b y^2 + c xy + (1-a) x - b y
-	//		F(0.5,0.0) = 0 => a/4 + (1-a)/2 = 0 => F(x,y) = 2 x^2 + b y^2 + c xy - x - b y
-	//		F(0.0,0.5) = 0 => b/4 - b/2 = 0     => F(x,y) = 2 x^2         + c xy - x
-	//		F(0.5,0.5) = 0 => c/4 = 0           => F(x,y) = 2 x^2                - x
-	// For the node at (0.0,1.0):
-	//		F(x,y) = 2 y^2 - y
-	// For the node at (0.5,0.0):
-	//		F(x,y) = a x^2 + c xy + d x
-	//		F(1.0,0.0) = 0 => a + d = 0     => F(x,y) =  a x^2 + c xy - a x
-	//		F(0.5,0.0) = 1 => a/4 - a/2 = 1 => F(x,y) = -4 x^2 + c xy + 4 x
-	//		F(0.5,0.5) = 0 => c/4 + 1 = 0   => F(x,y) = -4 x^2 - 4 xy + 4 x
-	// For the node at (0.0,0.5):
-	//		F(x,y) = -4 y^2 - 4 xy + 4y
-	// For the node at (0.5,0.5):
-	//		F(x,y) = c xy
-	//		F(0.5,0.5) = 1 => c/4 = 1 => F(x,y) = 4 xy
-
-	/////////////////////
-	// Function values //
-	//////////////////////////////////////////////////////////////////
-	// (0.0,0.0) -> F(x,y) =   2 x^2 + 2 y^2 + 4 xy - 3 x - 3 y + 1 //
-	// (0.5,0.0) -> F(x,y) = - 4 x^2         - 4 xy + 4 x           //
-	// (1.0,0.0) -> F(x,y) =   2 x^2                - 1 x           //
-	// (0.5,0.5) -> F(x,y) =                   4 xy                 //
-	// (0.0,1.0) -> F(x,y) =           2 y^2              -   y     //
-	// (0.0,0.5) -> F(x,y) =         - 4 y^2 - 4 xy       + 4 y     //
-	//////////////////////////////////////////////////////////////////
-
-	////////////////////////
-	// Function gradients //
-	/////////////////////////////////////////////////////////////////
-	// (0.0,0.0) -> G(x,y) = (   4 x + 4 y - 3 ,   4 y + 4 x - 3 ) //
-	// (1.0,0.0) -> G(x,y) = (   4 x       - 1 ,               0 ) //
-	// (0.0,1.0) -> G(x,y) = (               0 ,   4 y       - 1 ) //
-	// (0.5,0.5) -> G(x,y) = (         4 y     ,         4 x     ) //
-	// (0.0,0.5) -> G(x,y) = (       - 4 y     , - 8 y - 4 x + 4 ) //
-	// (0.5,0.0) -> G(x,y) = ( - 8 x - 4 y + 4 ,       - 4 x     ) //
-	/////////////////////////////////////////////////////////////////
-
 	begin = clock();
 	for( int i=0 ; i<triangleElementSamples.size() ; i++ )
 	{
 		const TriangleElementSampleInfo< Real >& sample = triangleElementSamples[i];
 		// The values of the potential at the vertices and edge mid-points
-		Real cornerValues[6] = { boundary_potential[ sample.fineNodes[0] ] , boundary_potential[ sample.fineNodes[1] ] , boundary_potential[ sample.fineNodes[2] ] , boundary_potential[ sample.fineNodes[3] ] , boundary_potential[ sample.fineNodes[4] ] , boundary_potential[ sample.fineNodes[5] ] };
-		// 0 -> (0.0,0.0)
-		// 1 -> (1.0,0.0)
-		// 2 -> (0.0,1.0)
-		// 3 -> (0.5,0.5)
-		// 4 -> (0.0,0.5)
-		// 5 -> (0.5,0.0)
-
-		//Point2D<Real> sampledDiffusedGradient = BilinearGradient(cornerValues, sample.pos);
-
-		Point2D< Real > pos = sample.pos;
-		// Compute the negative gradient in the right triangle frame
-		Point2D< Real > gradientVector = 
-			Point2D< Real >(   4 * pos[0] + 4 * pos[1] - 3 ,   4 * pos[1] + 4 * pos[0] - 3 ) * cornerValues[0] +
-			Point2D< Real >(   4 * pos[0]              - 1 ,                             0 ) * cornerValues[1] +
-			Point2D< Real >(                             0 ,   4 * pos[1]              - 1 ) * cornerValues[2] +
-			Point2D< Real >(                4 * pos[1]     ,                4 * pos[0]     ) * cornerValues[3] +
-			Point2D< Real >(              - 4 * pos[1]     , - 8 * pos[1] - 4 * pos[0] + 4 ) * cornerValues[4] +
-			Point2D< Real >( - 8 * pos[0] - 4 * pos[1] + 4 ,              - 4 * pos[0]     ) * cornerValues[5] ;
-		gradientVector = VectorFunction( gradientVector , sample.tensor );
-		for( int k=0 ; k<6 ; k++ ) boundary_rhs[ sample.fineNodes[k] ] += Point2D< Real >::Dot( gradientVector , sample.v[k] );
+		Real cornerValues[] = { boundary_potential[ sample.fineNodes[0] ] , boundary_potential[ sample.fineNodes[1] ] , boundary_potential[ sample.fineNodes[2] ] , boundary_potential[ sample.fineNodes[3] ] , boundary_potential[ sample.fineNodes[4] ] , boundary_potential[ sample.fineNodes[5] ] };
+		Point2D< Real > gradientVector = VectorFunction( QuadraticGradient( cornerValues , sample.integrationData.pos ) , sample.tensor );
+		for( int k=0 ; k<6 ; k++ ) boundary_rhs[ sample.fineNodes[k] ] += Point2D< Real >::Dot( gradientVector , sample.integrationData.v[k] );
 	}
 	if( verbose ) printf( "Integrating triangles %.4f\n" , double( clock()-begin ) / CLOCKS_PER_SEC);
 	return 1;

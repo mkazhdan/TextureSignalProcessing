@@ -35,9 +35,13 @@ DAMAGE.
 template< class Real >
 struct SquareElementLineSampleInfo
 {
-	Point2D< Real > pos;				// The barycenter of the intersection of the triangle with the (square) element
-	SquareMatrix< Real , 2 > tensor;	// The metric tensor
-	Point2D< Real > v[4];				// The integrated gradients of the four incident bilinear basis functions, dualized
+	struct IntegrationData
+	{
+		Point2D< Real > pos;			// The barycenter of the intersection of the triangle with the (square) element
+		Point2D< Real > v[4];			// The integrated gradients of the four incident bilinear basis functions, dualized
+	};
+	IntegrationData integrationData;
+	SquareMatrix< Real , 2 > tensor;	// The metric tensor defined by the intersecting triangle
 	int cellOffset;
 	static bool Compare( const SquareElementLineSampleInfo< Real >& a , const SquareElementLineSampleInfo< Real >& b ){ return a.cellOffset<b.cellOffset; }
 };
@@ -48,10 +52,13 @@ struct SquareElementLineSampleInfo
 template< class Real >
 struct TriangleElementSampleInfo
 {
-	int cellId;
-	Point2D< Real > pos;				// The barycenter of the intersection of the triangle with  the (triangle) element
-	SquareMatrix< Real , 2 > tensor;	// The metric tensor
-	Point2D< Real > v[6];				// The integrated gradients of the six incident quadratic basis functions, dualized
+	struct IntegrationData
+	{
+		Point2D< Real > pos;			// The barycenter of the intersection of the triangle with the (triangle) element
+		Point2D< Real > v[6];			// The integrated gradients of the six incident quadratic basis functions, dualized
+	};
+	IntegrationData integrationData;
+	SquareMatrix< Real , 2 > tensor;	// The metric tensor defined by the intersecting triangle
 	int fineNodes[6];
 };
 
