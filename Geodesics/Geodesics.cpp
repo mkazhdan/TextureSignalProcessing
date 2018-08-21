@@ -997,7 +997,6 @@ int main( int argc , char* argv[] )
 {
 	cmdLineParse(argc - 1, argv + 1, params);
 	if( !Input.set ){ ShowUsage( argv[0] ) ; return EXIT_FAILURE; }
-	if( !VectorFieldQuadrature.set ) VectorFieldQuadrature.value = MatrixQuadrature.value;
 	omp_set_num_threads( Threads.value );
 	if( Double.set ) _main< double >( argc , argv );
 	else             _main< float  >( argc , argv );
