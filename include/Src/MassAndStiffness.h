@@ -359,8 +359,8 @@ int InitializeChartMassAndStiffness
 	};
 
 	for (int i = 0; i < gridChart.interiorCellCorners.size(); i++) {
-		const CellIndex & indicesGlobal = gridChart.interiorCellGlobalCorners[i];
-		const CellIndex & indicesInterior = gridChart.interiorCellCorners[i];
+		const BilinearElementIndex & indicesGlobal = gridChart.interiorCellGlobalCorners[i];
+		const BilinearElementIndex & indicesInterior = gridChart.interiorCellCorners[i];
 
 		const int localCellIndex = gridChart.interiorCellIndexToLocalCellIndex[i];
 		const int globalCellIndex = localCellIndex + gridChart.globalIndexCellOffset;
@@ -431,8 +431,8 @@ int InitializeChartMassAndStiffness
 
 		for (int b = 0; b < gridChart.boundaryTriangles[c].size(); b++) {
 			const int i = gridChart.boundaryTriangles[c][b].id;
-			const TriangleElementIndex & indices = gridChart.boundaryTriangles[c][b].indices;
-			TriangleElementIndex fineTriangleElementIndices;
+			const QuadraticElementIndex & indices = gridChart.boundaryTriangles[c][b].indices;
+			QuadraticElementIndex fineTriangleElementIndices;
 			for (int k = 0; k < 6; k++) fineTriangleElementIndices[k] = fineBoundaryIndex[indices[k]];
 
 			//Add cell data

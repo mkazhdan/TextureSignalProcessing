@@ -317,17 +317,17 @@ int InitializeGridChartsActiveNodes(const int chartId, const AtlasChart & atlasC
 	lastGlobalTexelBoundaryIndex += lastLocalTexelBoundaryIndex;
 
 	Image<int> & localCellIndex = gridChart.localCellIndex;
-	std::vector<CellIndex> & cellIndices = gridChart.cellIndices;
+	std::vector< BilinearElementIndex > & bilinearElementIndices = gridChart.bilinearElementIndices;
 	localCellIndex.resize(width - 1, height - 1);
 	for (int i = 0; i < localCellIndex.size(); i++)localCellIndex[i] = -1;
 
 	Image<int> & localInteriorCellIndex = gridChart.localInteriorCellIndex;
-	std::vector<CellIndex> & interiorCellCorners = gridChart.interiorCellCorners;
+	std::vector< BilinearElementIndex > & interiorCellCorners = gridChart.interiorCellCorners;
 	localInteriorCellIndex.resize(width - 1, height - 1);
 	for (int i = 0; i < localInteriorCellIndex.size(); i++)localInteriorCellIndex[i] = -1;
 
 
-	std::vector<CellIndex> & interiorCellGlobalCorners = gridChart.interiorCellGlobalCorners;
+	std::vector< BilinearElementIndex > & interiorCellGlobalCorners = gridChart.interiorCellGlobalCorners;
 
 	Image<int> & localBoundaryCellIndex = gridChart.localBoundaryCellIndex;
 	localBoundaryCellIndex.resize(width - 1, height - 1);
@@ -346,7 +346,7 @@ int InitializeGridChartsActiveNodes(const int chartId, const AtlasChart & atlasC
 			lastLocalCellIndex++;
 			int globalTexelIndices[4] = { globalTexelIndex(i, j), globalTexelIndex(i + 1, j), globalTexelIndex(i + 1, j + 1), globalTexelIndex(i, j + 1) };
 			if (globalTexelIndices[0] != -1 && globalTexelIndices[1] != -1 && globalTexelIndices[2] != -1 && globalTexelIndices[3] != -1) {
-				cellIndices.push_back(CellIndex(globalTexelIndices[0], globalTexelIndices[1], globalTexelIndices[2], globalTexelIndices[3]));
+				bilinearElementIndices.push_back( BilinearElementIndex( globalTexelIndices[0] , globalTexelIndices[1] , globalTexelIndices[2] , globalTexelIndices[3] ) );
 			}
 			else {
 				printf("ERROR: Active cell adjacent to unactive node! \n");
@@ -364,11 +364,12 @@ int InitializeGridChartsActiveNodes(const int chartId, const AtlasChart & atlasC
 
 				int globalTexelInteriorIndices[4] = { globalTexelInteriorIndex(i, j), globalTexelInteriorIndex(i + 1, j), globalTexelInteriorIndex(i + 1, j + 1), globalTexelInteriorIndex(i, j + 1) };
 				if (globalTexelInteriorIndices[0] != -1 && globalTexelInteriorIndices[1] != -1 && globalTexelInteriorIndices[2] != -1 && globalTexelInteriorIndices[3] != -1) {
-					interiorCellCorners.push_back(CellIndex(globalTexelInteriorIndices[0], globalTexelInteriorIndices[1], globalTexelInteriorIndices[2], globalTexelInteriorIndices[3]));
-					interiorCellGlobalCorners.push_back(CellIndex(globalTexelIndices[0], globalTexelIndices[1], globalTexelIndices[2], globalTexelIndices[3]));
+					interiorCellCorners.push_back( BilinearElementIndex( globalTexelInteriorIndices[0] , globalTexelInteriorIndices[1] , globalTexelInteriorIndices[2] , globalTexelInteriorIndices[3] ) );
+					interiorCellGlobalCorners.push_back( BilinearElementIndex( globalTexelIndices[0] , globalTexelIndices[1] , globalTexelIndices[2] , globalTexelIndices[3] ) );
 				}
-				else {
-					printf("ERROR: Interior cell adjacent to non interior node! \n");
+				else
+				{
+					fprintf( stderr , "[ERROR] Interior cell adjacent to non interior node!\n" );
 					return 0;
 				}
 				lastLocalInteriorCellIndex++;
@@ -581,13 +582,12 @@ int InitializeTextureNodes(const std::vector<GridChart> & gridCharts, std::vecto
 	return 1;
 }
 
-int InitializeCellNodes(const std::vector<GridChart> & gridCharts, std::vector<CellIndex> & cellNodes) {
-	for (int c = 0; c < gridCharts.size(); c++) {
-		const GridChart & gridChart = gridCharts[c];
-		const std::vector<CellIndex> & localCellNodes = gridChart.cellIndices;
-		for (int i = 0; i < localCellNodes.size(); i++) {
-			cellNodes.push_back(localCellNodes[i]);
-		}
+int InitializeCellNodes(const std::vector<GridChart> & gridCharts, std::vector< BilinearElementIndex > & cellNodes) {
+	for( int c=0 ; c<gridCharts.size() ; c++ )
+	{
+		const GridChart& gridChart = gridCharts[c];
+		const std::vector< BilinearElementIndex >& localBilinearElementIndices = gridChart.bilinearElementIndices;
+		for( int i=0 ; i<localBilinearElementIndices.size() ; i++ ) cellNodes.push_back( localBilinearElementIndices[i] );
 	}
 	return 1;
 }
@@ -819,7 +819,7 @@ int InitializeHierarchy(const std::vector<int> & oppositeHalfEdge, const int wid
 
 
 
-int InitializeHierarchy(TexturedMesh & mesh, const int width, const int height, const int levels, std::vector<TextureNodeInfo> & textureNodes, std::vector<CellIndex> & cellNodes,
+int InitializeHierarchy(TexturedMesh & mesh, const int width, const int height, const int levels, std::vector<TextureNodeInfo> & textureNodes, std::vector< BilinearElementIndex > & cellNodes,
 	HierarchicalSystem & hierarchy, std::vector<AtlasChart> & atlasCharts,const MultigridBlockInfo & multigridBlockInfo, bool verbose = false, bool detailVerbose = false, bool computeProlongation = false) {
 
 	clock_t t_begin;

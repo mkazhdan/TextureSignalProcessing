@@ -34,7 +34,7 @@ struct BoundaryIndexedTriangle
 	int atlasVertexParentEdge[3];
 	int atlasVertexIndices[3];
 	int atlasEdgeIndices[3];
-	TriangleElementIndex indices;
+	QuadraticElementIndex indices;
 	Point2D< double >& operator [] ( size_t idx ){ return vertices[idx]; }
 	const Point2D< double >& operator [] ( size_t idx ) const { return vertices[idx]; }
 };

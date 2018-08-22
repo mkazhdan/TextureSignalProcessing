@@ -129,7 +129,7 @@ public:
 	static Padding padding;
 
 	static HierarchicalSystem hierarchy;
-	static std::vector<CellIndex> cellIndices;
+	static std::vector< BilinearElementIndex > bilinearElementIndices;
 
 	static std::vector<TextureNodeInfo> textureNodes;
 	static Image<int> nodeIndex;
@@ -216,8 +216,6 @@ public:
 	static SparseMatrix< double , int> boundaryDeepStiffnessMatrix;
 
 	//Samples
-	static std::vector< TriangleElementSampleInfo< Real > > triangleElementSamples;
-	static std::vector< std::vector< SquareElementLineSampleInfo< Real > > > squareElementLineSamples;
 	static std::vector<InteriorCellLine> interiorCellLines;
 	static std::vector<std::pair<int, int>> interiorCellLineIndex;
 
@@ -279,7 +277,7 @@ template<class Real> SparseMatrix<double, int>									LineConvolution<Real>::st
 
 template<class Real> std::vector<TextureNodeInfo>								LineConvolution<Real>::textureNodes;
 template<class Real> Image<int>													LineConvolution<Real>::nodeIndex;
-template<class Real> std::vector<CellIndex>										LineConvolution<Real>::cellIndices;
+template<class Real> std::vector< BilinearElementIndex >						LineConvolution<Real>::bilinearElementIndices;
 
 template<class Real> int														LineConvolution<Real>::levels;
 template<class Real> HierarchicalSystem											LineConvolution<Real>::hierarchy;
@@ -314,8 +312,6 @@ template<class Real> std::vector< typename VectorPrecisionType< Real >::VectorTy
 template<class Real> static std::vector< typename VectorPrecisionType< Real >::VectorType > mass_x0;
 template<class Real> static std::vector< typename VectorPrecisionType< Real >::VectorType > stiffness_x0;
 //Samples
-template<class Real> std::vector< TriangleElementSampleInfo< Real > >				LineConvolution<Real>::triangleElementSamples;
-template<class Real> std::vector< std::vector< SquareElementLineSampleInfo< Real > > >	LineConvolution<Real>::squareElementLineSamples;
 template<class Real> std::vector<InteriorCellLine>									LineConvolution<Real>::interiorCellLines;
 template<class Real> std::vector<std::pair<int, int>>								LineConvolution<Real>::interiorCellLineIndex;
 
@@ -580,8 +576,9 @@ int LineConvolution<Real>::InitializeSystem( const int width , const int height 
 		
 	t_begin = clock();
 	MultigridBlockInfo multigridBlockInfo(MultigridBlockWidth.value, MultigridBlockHeight.value, MultigridPaddedWidth.value, MultigridPaddedHeight.value, 0);
-	if (!InitializeHierarchy(mesh, width, height, levels, textureNodes, cellIndices, hierarchy, atlasCharts,multigridBlockInfo, true, DetailVerbose.set)) {
-		printf("ERROR : Failed intialization! \n");
+	if( !InitializeHierarchy( mesh , width , height , levels , textureNodes , bilinearElementIndices , hierarchy , atlasCharts , multigridBlockInfo , true , DetailVerbose.set ) )
+	{
+		fprintf( stderr , "[ERROR] Failed intialization!\n" );
 		return 0;
 	}
 	if( Verbose.set ) printf( "\tInitialized hierarchy: %.2f(s)\n" , double(clock() - t_begin) / CLOCKS_PER_SEC);

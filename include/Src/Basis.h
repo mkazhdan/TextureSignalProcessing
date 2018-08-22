@@ -55,26 +55,27 @@ public:
 };
 
 
-class CellIndex
+class BilinearElementIndex
 {
 protected:
 	unsigned int v[4];
 public:
-	CellIndex(void) { v[0] = v[1] = v[2] = v[3] = 0; }
-	CellIndex(unsigned int v0, unsigned int v1, unsigned int v2, unsigned int v3) { v[0] = v0; v[1] = v1; v[2] = v2; v[3] = v3; }
-	unsigned int &operator[](unsigned int idx) { return v[idx]; }
-	unsigned int  operator[](unsigned int idx) const { return v[idx]; }
+	BilinearElementIndex( void ) { v[0] = v[1] = v[2] = v[3] = 0; }
+	BilinearElementIndex( unsigned int v0 , unsigned int v1 , unsigned int v2 , unsigned int v3 ) { v[0] = v0 , v[1] = v1 , v[2] = v2 , v[3] = v3; }
+	unsigned int &operator[]( unsigned int idx )       { return v[idx]; }
+	unsigned int  operator[]( unsigned int idx ) const { return v[idx]; }
 };
 
 
-class TriangleElementIndex {
+class QuadraticElementIndex
+{
 protected:
 	unsigned int v[6];
 public:
-	TriangleElementIndex(void) { v[0] = v[1] = v[2] = v[3] = v[4] = v[5] = 0; }
-	TriangleElementIndex(unsigned int v0, unsigned int v1, unsigned int v2, unsigned int v3, unsigned int v4, unsigned int v5) { v[0] = v0; v[1] = v1; v[2] = v2; v[3] = v3; v[4] = v4; v[5] = v5; }
-	unsigned int &operator[](unsigned int idx) { return v[idx]; }
-	unsigned int  operator[](unsigned int idx) const { return v[idx]; }
+	QuadraticElementIndex( void ) { v[0] = v[1] = v[2] = v[3] = v[4] = v[5] = 0; }
+	QuadraticElementIndex( unsigned int v0 , unsigned int v1 , unsigned int v2 , unsigned int v3 , unsigned int v4 , unsigned int v5 ){ v[0] = v0 , v[1] = v1 , v[2] = v2 , v[3] = v3 , v[4] = v4 , v[5] = v5; }
+	unsigned int &operator[]( unsigned int idx )       { return v[idx]; }
+	unsigned int  operator[]( unsigned int idx ) const { return v[idx]; }
 };
 
 

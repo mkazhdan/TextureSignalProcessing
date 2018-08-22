@@ -764,7 +764,7 @@ int InitializeCoarseBoundaryToFineBoundaryProlongation(const GridAtlas & gridAtl
 				double texelWeight = BilinearElementValue(k, nodePosition) / double(nodeDegree);
 				if (fabs(texelWeight) > 1e-11) {
 					auxiliarNodesCumWeight[auxiliarId] += texelWeight;
-					int texelIndex = gridChart.cellIndices[cellId][k];
+					int texelIndex = gridChart.bilinearElementIndices[cellId][k];
 					if (nodeInfo[texelIndex].nodeType == 2) {
 						printf("ERROR: Deep texel cannot be in the support of an auxiliar node. Weight %g (A)\n", texelWeight);
 						for (int _k = 0; _k < 4; _k++) printf("Neighbours weight %g \n", BilinearElementValue(_k, nodePosition) / double(nodeDegree));

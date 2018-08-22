@@ -141,7 +141,7 @@ public:
 
 	static std::vector<AtlasChart> atlasCharts;
 
-	static std::vector<CellIndex> cellIndices;
+	static std::vector< BilinearElementIndex > bilinearElementIndices;
 	
 	static std::vector<TextureNodeInfo> textureNodes;
 
@@ -239,7 +239,7 @@ template<class Real> double														TextureFilter<Real>::interpolationWeigh
 template<class Real> double														TextureFilter<Real>::gradientModulation;
 
 template<class Real> std::vector<TextureNodeInfo>								TextureFilter<Real>::textureNodes;
-template<class Real> std::vector<CellIndex>										TextureFilter<Real>::cellIndices;
+template<class Real> std::vector< BilinearElementIndex >						TextureFilter<Real>::bilinearElementIndices;
 
 template<class Real> int														TextureFilter<Real>::levels;
 template<class Real> HierarchicalSystem											TextureFilter<Real>::hierarchy;
@@ -366,7 +366,7 @@ void TextureFilter<Real>::Idle() {
 			
 			float modulationSign = positiveModulation ? 1.f : -1.f;
 			modulationVartiation *= modulationSign;
-			for (int i = 0; i < cellIndices.size(); i++) {
+			for (int i = 0; i < bilinearElementIndices.size(); i++) {
 				float distanceRatio = Point3D<float>::Length(cellCenterPositions[i] - selectedPoint) / radius;
 				float factor = 1.0 - distanceRatio;
 				factor = factor < 0 ? 0 : factor*factor*(-2.0*factor + 3.0);
@@ -394,7 +394,7 @@ void TextureFilter<Real>::Idle() {
 			Real diff = (Real)(visualization.slideBarCursorPosition - visualization.slideBarCursorOldPosition);
 			visualization.slideBarCursorOldPosition = visualization.slideBarCursorPosition;
 
-			for (int i = 0; i < cellIndices.size(); i++) {
+			for (int i = 0; i < bilinearElementIndices.size(); i++) {
 				Real uniformModulationMaskValue = std::max<Real>(0, std::min<Real>(1.0, uniformCellModulationMask[i] + diff));
 				uniformCellModulationMask[i] = uniformModulationMaskValue;
 				cellModulationMask[i] = RescaleFunction(uniformModulationMaskValue);
@@ -711,7 +711,7 @@ int TextureFilter<Real>::InitializeSystem( const int width , const int height )
 
 	t_begin = clock();
 	MultigridBlockInfo multigridBlockInfo(MultigridBlockWidth.value, MultigridBlockHeight.value,MultigridPaddedWidth.value,MultigridPaddedHeight.value, 0);
-	if( !InitializeHierarchy( mesh , width , height , levels , textureNodes , cellIndices , hierarchy , atlasCharts , multigridBlockInfo , true , DetailVerbose.set ) )
+	if( !InitializeHierarchy( mesh , width , height , levels , textureNodes , bilinearElementIndices , hierarchy , atlasCharts , multigridBlockInfo , true , DetailVerbose.set ) )
 	{
 		printf("ERROR : Failed intialization! \n");
 		return 0;
@@ -1004,15 +1004,15 @@ int TextureFilter<Real>::Init( void )
 
 	for (int c = 0; c < 3; c++) texelStiffness[c].resize(textureNodes.size());
 
-	cellModulationMask.resize(cellIndices.size(), 1);
-	uniformCellModulationMask.resize(cellIndices.size(), 0.5);
+	cellModulationMask.resize( bilinearElementIndices.size() , 1 );
+	uniformCellModulationMask.resize( bilinearElementIndices.size() , 0.5 );
 
-	cellCenterPositions.resize(cellIndices.size());
-	for (int i = 0; i < cellIndices.size(); i++){
-		cellCenterPositions[i] = (textureNodePositions[cellIndices[i][0]] +
-								  textureNodePositions[cellIndices[i][1]] +
-								  textureNodePositions[cellIndices[i][2]] +
-								  textureNodePositions[cellIndices[i][3]]) / 4.0;
+	cellCenterPositions.resize( bilinearElementIndices.size() );
+	for (int i = 0; i < bilinearElementIndices.size(); i++){
+		cellCenterPositions[i] = (textureNodePositions[ bilinearElementIndices[i][0] ] +
+								  textureNodePositions[ bilinearElementIndices[i][1] ] +
+								  textureNodePositions[ bilinearElementIndices[i][2] ] +
+								  textureNodePositions[ bilinearElementIndices[i][3] ]) / 4.0;
 	}
 
 	if (1) {

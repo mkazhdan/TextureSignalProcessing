@@ -61,6 +61,9 @@ cmdLineReadable Verbose( "verbose" );
 cmdLineReadable DetailVerbose( "detail" );
 cmdLineReadable UseDirectSolver( "useDirectSolver" );
 cmdLineReadable Double( "double" );
+#ifdef MISHA_CODE
+cmdLineReadable PreciseIntegration( "preciseIntegration" );
+#endif // MISHA_CODE
 
 cmdLineReadable* params[] =
 {
@@ -69,6 +72,9 @@ cmdLineReadable* params[] =
 	&RandomJitter ,
 	&Double ,
 	&MatrixQuadrature , &VectorFieldQuadrature ,
+#ifdef MISHA_CODE
+	&PreciseIntegration ,
+#endif // MISHA_CODE
 	NULL
 };
 
@@ -81,6 +87,9 @@ void ShowUsage( const char* ex )
 	printf( "\t[--%s <diffusion interpolation weight>=%f]\n" , DiffusionInterpolationWeight.name , DiffusionInterpolationWeight.value );
 	printf( "\t[--%s <system matrix quadrature points per triangle>=%d]\n" , MatrixQuadrature.name , MatrixQuadrature.value );
 	printf( "\t[--%s <normalized vector field quadrature points per triangle>=%d]\n" , VectorFieldQuadrature.name , VectorFieldQuadrature.value );
+#ifdef MISHA_CODE
+	printf( "\t[--%s]\n" , PreciseIntegration.name );
+#endif // MISHA_CODE
 	printf( "\t[--%s]\n" , UseDirectSolver.name );
 	printf( "\t[--%s]\n" , RandomJitter.name );
 	printf( "\t[--%s]\n" , Verbose.name );
@@ -116,7 +125,7 @@ public:
 
 	static HierarchicalSystem hierarchy;
 
-	static std::vector<CellIndex> cellIndices;
+	static std::vector< BilinearElementIndex > bilinearElementIndices;
 
 	static std::vector<TextureNodeInfo> textureNodes;
 	static Image<int> nodeIndex;
@@ -182,8 +191,13 @@ public:
 	static std::vector<Real> fineBoundaryRHS;
 
 	//Samples
-	static std::vector< TriangleElementSampleInfo< Real > > triangleElementSamples;
-	static std::vector< std::vector< SquareElementLineSampleInfo< Real > > > squareElementLineSamples;
+#ifdef MISHA_CODE
+	static std::vector< QuadraticElementGradientSample< Real > > quadraticElementGradientSamples;
+	static std::vector< std::vector< BilinearElementGradientSample< Real > > > bilinearElementGradientSamples;
+#else // !MISHA_CODE
+	static std::vector< QuadraticElementGradientSample< Real > > quadraticElementGradientSamples;
+	static std::vector< std::vector< BilinearElementGradientSample< Real > > > bilinearElementGradientSamples;
+#endif // MISHA_CODE
 	static std::vector<InteriorCellLine> interiorCellLines;
 	static std::vector<std::pair<int, int>> interiorCellLineIndex;
 
@@ -237,7 +251,7 @@ template<class Real> double														Geodesics<Real>::geodesicInterpolationW
 
 template<class Real> std::vector<TextureNodeInfo>								Geodesics<Real>::textureNodes;
 template<class Real> Image<int>													Geodesics<Real>::nodeIndex;
-template<class Real> std::vector<CellIndex>										Geodesics<Real>::cellIndices;
+template<class Real> std::vector< BilinearElementIndex >						Geodesics<Real>::bilinearElementIndices;
 
 template<class Real> int														Geodesics<Real>::levels;
 template<class Real> HierarchicalSystem											Geodesics<Real>::hierarchy;
@@ -270,8 +284,13 @@ template<class Real> std::vector<Real>												Geodesics<Real>::smoothedImpul
 template<class Real> std::vector<Real>												Geodesics<Real>::integratedVFProlongation;
 
 //Samples
-template<class Real> std::vector< TriangleElementSampleInfo< Real > >				Geodesics<Real>::triangleElementSamples;
-template<class Real> std::vector< std::vector< SquareElementLineSampleInfo< Real > > >	Geodesics<Real>::squareElementLineSamples;
+#ifdef MISHA_CODE
+template< class Real > std::vector< QuadraticElementGradientSample< Real > >		Geodesics<Real>::quadraticElementGradientSamples;
+template< class Real > std::vector< std::vector< BilinearElementGradientSample< Real > > >	Geodesics<Real>::bilinearElementGradientSamples;
+#else // !MISHA_CODE
+template<class Real> std::vector< QuadraticElementGradientSample< Real > >			Geodesics<Real>::quadraticElementGradientSamples;
+template<class Real> std::vector< std::vector< BilinearElementGradientSample< Real > > >	Geodesics<Real>::bilinearElementGradientSamples;
+#endif // MISHA_CODE
 template<class Real> std::vector<InteriorCellLine>									Geodesics<Real>::interiorCellLines;
 template<class Real> std::vector<std::pair<int, int>>								Geodesics<Real>::interiorCellLineIndex;
 
@@ -321,7 +340,7 @@ void Geodesics<Real>::ComputeExactSolution( bool verbose )
 		if( len2>0 ) return -v / (Real)sqrt( len2 );
 		else         return -v;
 	};
-	if( !IntegrateVectorField< Real >( interiorCellLines , squareElementLineSamples , triangleElementSamples , exactSmoothImpulseSolution , VectorFunction , fineGeodesicDistanceRHS , fineBoundaryValues , fineBoundaryRHS , true ) )
+	if( !IntegrateVectorField< Real >( interiorCellLines , bilinearElementGradientSamples , quadraticElementGradientSamples , exactSmoothImpulseSolution , VectorFunction , fineGeodesicDistanceRHS , fineBoundaryValues , fineBoundaryRHS , true ) )
 	{
 		printf( "[ERROR] Unable to integrate normalized vector field!\n" );
 	}
@@ -579,9 +598,10 @@ int Geodesics<Real>::UpdateSolution(bool verbose, bool detailVerbose) {
 		if( len2>0 ) return -v / (Real)sqrt( len2 );
 		else         return -v;
 	};
-	if( !IntegrateVectorField< Real >( interiorCellLines , squareElementLineSamples , triangleElementSamples , multigridSmoothImpulseVariables[0].x , VectorFunction , multigridGeodesicDistanceVariables[0].rhs , fineBoundaryValues , fineBoundaryRHS ) )
+
+	if( !IntegrateVectorField< Real >( interiorCellLines , bilinearElementGradientSamples , quadraticElementGradientSamples , multigridSmoothImpulseVariables[0].x , VectorFunction , multigridGeodesicDistanceVariables[0].rhs , fineBoundaryValues , fineBoundaryRHS ) )
 	{
-		printf( "[ERROR] Unable to integrate normalized vector field!\n" );
+		fprintf( stderr , "[ERROR] Unable to integrate normalized vector field!\n" );
 	}
 	if (verbose) printf("Integrating normalized vector field %.4f \n", double(clock() - begin) / CLOCKS_PER_SEC);
 
@@ -613,7 +633,7 @@ int Geodesics<Real>::InitializeSystem( const int width , const int height )
 	
 	t_begin = clock();
 	MultigridBlockInfo multigridBlockInfo(MultigridBlockWidth.value, MultigridBlockHeight.value, MultigridPaddedWidth.value, MultigridPaddedHeight.value, 0);
-	if( !InitializeHierarchy( mesh , width , height , levels , textureNodes , cellIndices , hierarchy , atlasCharts , multigridBlockInfo , true , DetailVerbose.set ) )
+	if( !InitializeHierarchy( mesh , width , height , levels , textureNodes , bilinearElementIndices , hierarchy , atlasCharts , multigridBlockInfo , true , DetailVerbose.set ) )
 	{
 		printf("ERROR : Failed intialization! \n");
 		return 0;
@@ -773,25 +793,40 @@ int Geodesics<Real>::InitializeSystem( const int width , const int height )
 	std::vector<int> fineBoundaryIndex = boundaryProlongation.fineBoundaryIndex;
 	int numFineBoundarNodes = boundaryProlongation.numFineBoundarNodes;
 
-	squareElementLineSamples.resize( interiorCellLines.size() );
+	bilinearElementGradientSamples.resize( interiorCellLines.size() );
 
 	t_begin = clock();
 	{
 		int ret = 0;
 		switch( VectorFieldQuadrature.value )
 		{
+#ifdef MISHA_CODE
 		case 1:
-			ret = InitializeVectorFieldIntegration< 1>( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , squareElementLineSamples , triangleElementSamples );
+			ret = InitializeVectorFieldIntegration< 1>( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , bilinearElementGradientSamples , quadraticElementGradientSamples , !PreciseIntegration.set );
 			break;
 		case 3:
-			ret = InitializeVectorFieldIntegration< 3>( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , squareElementLineSamples , triangleElementSamples );
+			ret = InitializeVectorFieldIntegration< 3>( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , bilinearElementGradientSamples , quadraticElementGradientSamples , !PreciseIntegration.set );
 			break;
 		case 6:
-			ret = InitializeVectorFieldIntegration< 6>( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , squareElementLineSamples , triangleElementSamples );
+			ret = InitializeVectorFieldIntegration< 6>( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , bilinearElementGradientSamples , quadraticElementGradientSamples , !PreciseIntegration.set );
 			break;
 		case 32:
-			ret = InitializeVectorFieldIntegration<32>( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , squareElementLineSamples , triangleElementSamples );
+			ret = InitializeVectorFieldIntegration<32>( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , bilinearElementGradientSamples , quadraticElementGradientSamples , !PreciseIntegration.set );
 			break;
+#else // !MISHA_CODE
+		case 1:
+			ret = InitializeVectorFieldIntegration< 1>( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , bilinearElementGradientSamples , quadraticElementGradientSamples );
+			break;
+		case 3:
+			ret = InitializeVectorFieldIntegration< 3>( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , bilinearElementGradientSamples , quadraticElementGradientSamples );
+			break;
+		case 6:
+			ret = InitializeVectorFieldIntegration< 6>( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , bilinearElementGradientSamples , quadraticElementGradientSamples );
+			break;
+		case 32:
+			ret = InitializeVectorFieldIntegration<32>( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , bilinearElementGradientSamples , quadraticElementGradientSamples );
+			break;
+#endif // MISHA_CODE
 		default:
 			fprintf( stderr , "[ERROR] Only 1-, 3-, 6-, and 32-point quadrature supported for triangles\n" );
 		}
@@ -801,14 +836,14 @@ int Geodesics<Real>::InitializeSystem( const int width , const int height )
 			return 0;
 		}
 	}
-	if( Verbose.set) printf( "\tInitialized vector field integration: %.2f(s)\n" , double(clock() - t_begin) / CLOCKS_PER_SEC);
+	if( Verbose.set ) printf( "\tInitialized vector field integration: %.2f(s)\n" , double(clock() - t_begin) / CLOCKS_PER_SEC);
 
 	coarseBoundaryValues.resize(hierarchy.gridAtlases[0].numTexels - hierarchy.gridAtlases[0].numDeepTexels);
 	coarseBoundaryRHS.resize(hierarchy.gridAtlases[0].numTexels - hierarchy.gridAtlases[0].numDeepTexels);
 	fineBoundaryValues.resize(numFineBoundarNodes);
 	fineBoundaryRHS.resize(numFineBoundarNodes);
 
-	for( int i=0 ; i<squareElementLineSamples.size() ; i++ )  std::sort( squareElementLineSamples[i].begin() , squareElementLineSamples[i].end() , SquareElementLineSampleInfo< Real >::Compare );
+	for( int i=0 ; i<bilinearElementGradientSamples.size() ; i++ ) std::sort( bilinearElementGradientSamples[i].begin() , bilinearElementGradientSamples[i].end() , BilinearElementGradientSample< Real >::Compare );
 
 	int numTexels = hierarchy.gridAtlases[0].numTexels;
 	int numFineNodes = hierarchy.gridAtlases[0].numFineNodes;
