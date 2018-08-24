@@ -41,7 +41,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Include", "Include", "{FC29
 		include\Src\Metric.inl = include\Src\Metric.inl
 		include\Src\Padding.h = include\Src\Padding.h
 		include\Src\PolygonClipping.h = include\Src\PolygonClipping.h
-		include\Src\PrecisionType.inl = include\Src\PrecisionType.inl
 		include\Src\ProlongationAndRestriction.inl = include\Src\ProlongationAndRestriction.inl
 		include\Src\QuadratureIntergration.inl = include\Src\QuadratureIntergration.inl
 		include\Src\RightTriangleQuadrature.h = include\Src\RightTriangleQuadrature.h
@@ -100,6 +99,11 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "JPEG", "JPEG\JPEG.vcxproj", "{0BE55595-4080-4265-82AF-51108EC956B2}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LineIntegralConvolution", "LineIntegralConvolution\LineIntegralConvolution.vcxproj", "{53350EE4-5B9C-4977-8E91-4FE6E84D9E38}"
+	ProjectSection(ProjectDependencies) = postProject
+		{B5899B32-FAC2-477E-99AA-86736B97F2FC} = {B5899B32-FAC2-477E-99AA-86736B97F2FC}
+		{0BE55595-4080-4265-82AF-51108EC956B2} = {0BE55595-4080-4265-82AF-51108EC956B2}
+		{D3D173AB-D306-4179-BEC4-95CE1B14E647} = {D3D173AB-D306-4179-BEC4-95CE1B14E647}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ReactionDiffusion", "ReactionDiffusion\ReactionDiffusion.vcxproj", "{E2DE783C-D9A1-4EB6-A8F4-5E8FA84C0BAA}"
 	ProjectSection(ProjectDependencies) = postProject
