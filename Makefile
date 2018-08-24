@@ -1,17 +1,21 @@
-all:
-	cd Geodesics               && make
-	cd LineIntegralConvolution && make
-	cd TextureFiltering        && make
-	cd ReactionDiffusion       && make
 
-debug:
-	cd Geodesics               && make debug
-	cd LineIntegralConvolution && make debug
-	cd TextureFiltering        && make debug
-	cd ReactionDiffusion       && make debug
-	
-clean:
-	cd Geodesics               && make clean
-	cd LineIntegralConvolution && make clean
-	cd TextureFiltering        && make clean
-	cd ReactionDiffusion       && make clean
+export CFLAGS += -DGLM_FORCE_RADIANS=1  # avoid some warnings in include/glm
+
+programs = Geodesics LineIntegralConvolution TextureFiltering ReactionDiffusion
+
+# Allow "make -j" to operate in parallel over the programs.
+all: $(programs)
+$(programs):
+	$(MAKE) -C $@
+
+programs_debug = $(foreach n,$(programs),debug_$(n))  # pseudo-dependency to allow "make -j" parallelism
+debug: $(programs_debug)
+$(programs_debug):
+	$(MAKE) -C $(@:debug_%:%) debug
+
+programs_clean = $(foreach n,$(programs),clean_$(n))  # pseudo-dependency to allow "make -j" parallelism
+clean: $(programs_clean)
+$(programs_clean):
+	$(MAKE) -C $(@:clean_%=%) clean
+
+.PHONY: $(programs) $(programs_debug) $(programs_clean)
