@@ -39,15 +39,16 @@ DAMAGE.
 #include <Src/TexturedMeshVisualization.h>
 
 const float StripeRates[] = { 0.062f , 0.062f };
-const float DotRates   [] = { 0.0367f , 0.0649f };
+const float    DotRates[] = { 0.0367f , 0.0649f };
 
 cmdLineParameter< char* > Input( "in" );
 cmdLineParameter< int   > Width( "width" , 512 );
 cmdLineParameter< int   > Height( "height" , 512 );
-cmdLineParameter< float > Speed( "speed" , 4.f );
+cmdLineParameter< float > Speed( "speed" , 10.f );
 cmdLineParameterArray< float , 2 > FeedKillRates( "fk" , StripeRates );
 cmdLineParameter< float > DiffusionScale( "diff" , 1.f );
 cmdLineParameter< float > SamplesFraction( "samples" , 0.01f );
+cmdLineParameter< float > AreaScale( "areaScale" , 1.f );
 cmdLineParameter< int   > Levels( "levels" , 4 );
 cmdLineParameter< char* > CameraConfig( "camera" );
 cmdLineParameter< int   > Threads( "threads" , omp_get_num_procs() );
@@ -71,7 +72,7 @@ cmdLineReadable Dots( "dots" );
 cmdLineReadable* params[] =
 {
 	&Input , &Width , &Height , &Speed , &FeedKillRates , &DiffusionScale , &SamplesFraction , &CameraConfig , &Levels , &UseDirectSolver , &Threads , &DisplayMode , &MultigridBlockHeight , &MultigridBlockWidth , &MultigridPaddedHeight , &MultigridPaddedWidth ,
-	&Verbose , &DetailVerbose ,
+	&Verbose , &DetailVerbose , &AreaScale ,
 	&RandomJitter ,
 	&Double ,
 	&MatrixQuadrature , &RHSQuadrature ,
@@ -89,6 +90,7 @@ void ShowUsage( const char* ex )
 	printf( "\t[--%s <feed/kill rates>=%f %f]\n" , FeedKillRates.name , FeedKillRates.values[0] , FeedKillRates.values[1] );
 	printf( "\t[--%s <diffusion scale>=%f]\n" , DiffusionScale.name , DiffusionScale.value );
 	printf( "\t[--%s <samples fraction>=%f]\n" , SamplesFraction.name , SamplesFraction.value );
+	printf( "\t[--%s <area scale factor>=%f]\n" , AreaScale.name , AreaScale.value );
 	printf( "\t[--%s <system matrix quadrature points per triangle>=%d]\n" , MatrixQuadrature.name , MatrixQuadrature.value );
 	printf( "\t[--%s <right-hand-side quadrature points per triangle>=%d]\n" , RHSQuadrature.name , RHSQuadrature.value );
 	printf( "\t[--%s]\n" , PreciseIntegration.name );
@@ -209,7 +211,7 @@ public:
 	static int SetRightHandSide( bool verbose=false );
 	static int UpdateExactSolution( bool verbose=false );
 	static int UpdateApproximateSolution( bool verbose=false , bool detailVerbose=false );
-	static int InitializeSystem( const int width , const int height );
+	static int InitializeSystem( const int width , const int height , float areaScale );
 	static int InitializeConcentrations( void );
 
 	static void Display( void ){ visualization.Display(); }
@@ -307,7 +309,14 @@ int GrayScottReactionDiffusion< Real >::SetRightHandSide( bool verbose )
 	coarseBoundaryFineBoundaryProlongation.Multiply( &coarseBoundaryValues[0] , &fineBoundaryValues[0] );
 
 	for( int ab=0 ; ab<2 ; ab++ ) MultiplyBySystemMatrix_NoReciprocals( deepMassCoefficients , boundaryDeepMassMatrix , boundaryBoundaryMassMatrix , hierarchy.gridAtlases[0].boundaryGlobalIndex , hierarchy.gridAtlases[0].rasterLines , multigridVariables[ab][0].x , multigridVariables[ab][0].rhs );
-	auto ABFunction = [&]( Point2D< Real > ab , SquareMatrix< Real , 2 > ){ return Point2D< Real >( (Real)( speed * ( - ab[0] * ab[1] * ab[1] + feed * ( 1 - ab[0] ) ) ) ,  (Real)( speed * (   ab[0] * ab[1] * ab[1] - ( kill + feed ) * ab[1] ) ) ); };
+	auto ABFunction = [&]( Point2D< Real > ab , SquareMatrix< Real , 2 > )
+	{ 
+		return Point2D< Real >
+			(
+				(Real)( speed * ( - ab[0] * ab[1] * ab[1] + feed * ( 1 - ab[0] ) ) ) ,
+				(Real)( speed * (   ab[0] * ab[1] * ab[1] - ( kill + feed ) * ab[1] ) )
+			);
+	};
 	memset( &ab_rhs[0] , 0 , ab_rhs.size() * sizeof( Point2D< Real > ) );
 	memset( &fineBoundaryRHS[0] , 0 , fineBoundaryRHS.size() * sizeof( Point2D< Real > ) );
 	if( !Integrate< Real >( interiorCellLines , bilinearElementScalarSamples , quadraticElementScalarSamples , ab_x , fineBoundaryValues , ABFunction , ab_rhs , fineBoundaryRHS ) )
@@ -361,7 +370,11 @@ int GrayScottReactionDiffusion< Real >::UpdateApproximateSolution( bool verbose 
 	// (2) Solve the linear systems
 	{
 		clock_t begin = clock();
-		for( int ab=0 ; ab<2 ; ab++ ) VCycle( multigridVariables[ab] , multigridCoefficients[ab] , multigridIndices , boundarySolvers[ab] , coarseSolvers[ab] , detailVerbose , detailVerbose );
+		for( int ab=0 ; ab<2 ; ab++ )
+		{
+			VCycle( multigridVariables[ab] , multigridCoefficients[ab] , multigridIndices , boundarySolvers[ab] , coarseSolvers[ab] , detailVerbose , detailVerbose );
+			for( int i=0 ; i<multigridVariables[ab][0].x.size() ; i++ ) multigridVariables[ab][0].x[i] = std::max< Real >( multigridVariables[ab][0].x[i] , 0 );
+		}
 		if( verbose ) printf( "Sovled v-cycles %.3f(s)\n" , double(clock() - begin) / CLOCKS_PER_SEC );
 	}
 
@@ -594,7 +607,7 @@ int GrayScottReactionDiffusion< Real >::InitializeConcentrations( void )
 }
 
 template< class Real >
-int GrayScottReactionDiffusion< Real >::InitializeSystem( const int width , const int height )
+int GrayScottReactionDiffusion< Real >::InitializeSystem( const int width , const int height , float areaScale )
 {
 	clock_t t_begin;
 
@@ -622,7 +635,7 @@ int GrayScottReactionDiffusion< Real >::InitializeSystem( const int width , cons
 	if( !InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric ) ){ fprintf( stderr , "[ERROR] Unable to initialize metric\n") ; return 0; }
 
 	// Scale the metric so that the area is equal to the resolution
-	for( int i=0 ; i<parameterMetric.size() ; i++ ) for( int j=0 ; j<parameterMetric[i].size() ; j++ ) parameterMetric[i][j] *= width*height / 4;
+	for( int i=0 ; i<parameterMetric.size() ; i++ ) for( int j=0 ; j<parameterMetric[i].size() ; j++ ) parameterMetric[i][j] *= areaScale * width * height / 2;
 
 	t_begin = clock();
 	{
@@ -840,7 +853,7 @@ int GrayScottReactionDiffusion< Real >::Init( void )
 
 
 	clock_t t = clock();
-	if( !InitializeSystem( textureWidth , textureHeight ) ){ fprintf( stderr , "[ERROR] Failed to initialize system\n") ; return 0; }
+	if( !InitializeSystem( textureWidth , textureHeight , AreaScale.value ) ){ fprintf( stderr , "[ERROR] Failed to initialize system\n") ; return 0; }
 	if( !InitializeConcentrations() ){ fprintf( stderr , "[ERROR] Failed to initialize concentrations\n") ; return 0; }
 
 	if( Verbose.set )
