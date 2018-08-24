@@ -28,27 +28,26 @@ DAMAGE.
 #ifndef MISCELLANY_INCLUDED
 #define MISCELLANY_INCLUDED
 
-namespace Miscellany
-{
-
-	//////////////////
-	// OpenMP Stuff //
-	//////////////////
+//////////////////
+// OpenMP Stuff //
+//////////////////
 #ifdef _OPENMP
 #include <omp.h>
 #else // !_OPENMP
-	inline int omp_get_num_procs  ( void ){ return 1; }
-	inline int omp_get_max_threads( void ){ return 1; }
-	inline int omp_get_thread_num ( void ){ return 0; }
-	inline void omp_set_num_threads( int ){}
-	inline void omp_set_nested( int ){}
-	struct omp_lock_t{};
-	inline void omp_init_lock( omp_lock_t* ){}
-	inline void omp_set_lock( omp_lock_t* ){}
-	inline void omp_unset_lock( omp_lock_t* ){}
-	inline void omp_destroy_lock( omp_lock_t* ){}
+inline int omp_get_num_procs  ( void ){ return 1; }
+inline int omp_get_max_threads( void ){ return 1; }
+inline int omp_get_thread_num ( void ){ return 0; }
+inline void omp_set_num_threads( int ){}
+inline void omp_set_nested( int ){}
+struct omp_lock_t{};
+inline void omp_init_lock( omp_lock_t* ){}
+inline void omp_set_lock( omp_lock_t* ){}
+inline void omp_unset_lock( omp_lock_t* ){}
+inline void omp_destroy_lock( omp_lock_t* ){}
 #endif // _OPENMP
 
+namespace Miscellany
+{
 	////////////////
 	// Time Stuff //
 	////////////////

@@ -25,8 +25,6 @@ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING 
 ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
 DAMAGE.
 */
-#include <Src/PrecisionType.inl>
-
 #include <Misha/CmdLineParser.h> 
 #include <Misha/Miscellany.h>
 #include <Src/SimpleMesh.h>
@@ -150,33 +148,35 @@ public:
 	static SparseMatrix< double, int > filteringMatrix;
 	//RHS computation
 	static std::vector<InteriorTexelToCellLine> interiorTexelToCellLines;
-	static std::vector< typename VectorPrecisionType< Real >::VectorType > interiorTexelToCellCoeffs;
+	static std::vector< Point3D< Real > > interiorTexelToCellCoeffs;
 	static SparseMatrix<Real, int> boundaryCellBasedStiffnessRHSMatrix[3];
 	static std::vector<Real> boundaryTexelStiffness[3];
-	static std::vector< typename VectorPrecisionType< Real >::VectorType > texelModulatedStiffness;
+	static std::vector< Point3D< Real > > texelModulatedStiffness;
 
-	static std::vector< typename VectorPrecisionType< Real >::VectorType > mass_x0;
-	static std::vector< typename VectorPrecisionType< Real >::VectorType > stiffness_x0;
-	static std::vector< typename VectorPrecisionType< Real >::VectorType > exactSolution;
+	static std::vector< Point3D< Real > > mass_x0;
+	static std::vector< Point3D< Real > > stiffness_x0;
+	static std::vector< Point3D< Real > > exactSolution;
 
+	static std::vector< MultigridLevelCoefficients< Real > > multigridFilteringCoefficients;
+	static std::vector< MultigridLevelVariables< Point3D< Real > > > multigridFilteringVariables;
+	static std::vector< MultigridLevelIndices< Real > > multigridIndices;
 
-	static std::vector<MultigridLevelCoefficients<Real>> multigridFilteringCoefficients;
-	static std::vector< MultigridLevelVariables< typename VectorPrecisionType< Real >::VectorType > > multigridFilteringVariables;
-	static std::vector<MultigridLevelIndices<Real>> multigridIndices;
-
-#if USE_CHOLMOD
-	typedef  std::vector<CholmodCholeskySolver3<Real>> BoundarySolverType;
-	typedef  CholmodCholeskySolver3<Real>  CoarseSolverType;
-	typedef  CholmodCholeskySolver3<Real> DirectSolverType;
-#elif USE_EIGEN_SIMPLICIAL
-	typedef  std::vector<EigenCholeskySolver3<Real>> BoundarySolverType;
-	typedef  EigenCholeskySolver3<Real>  CoarseSolverType;
-	typedef  EigenCholeskySolver3<Real> DirectSolverType;
+#if defined( USE_CHOLMOD )
+	typedef  std::vector< CholmodCholeskySolver< Real , 3 > > BoundarySolverType;
+	typedef  CholmodCholeskySolver< Real , 3 > CoarseSolverType;
+	typedef  CholmodCholeskySolver< Real , 3 > DirectSolverType;
+#elif defined( USE_EIGEN_SIMPLICIAL )
+	typedef  std::vector< EigenCholeskySolver< Real , 3 > > BoundarySolverType;
+	typedef  EigenCholeskySolver< Real , 3 > CoarseSolverType;
+	typedef  EigenCholeskySolver< Real , 3 > DirectSolverType;
+#elif defined( USE_EIGEN_PARDISO )
+	typedef  std::vector< EigenPardisoSolver< Real , 3 > > BoundarySolverType;
+	typedef  EigenPardisoSolver< Real , 3 > CoarseSolverType;
+	typedef  EigenPardisoSolver< Real , 3 > DirectSolverType;
 #else
-	typedef  std::vector<EigenPardisoSolver3<Real>> BoundarySolverType;
-	typedef  EigenPardisoSolver3<Real> CoarseSolverType;
-	typedef  EigenPardisoSolver3<Real> DirectSolverType;
+#error "[ERROR] No solver defined!"
 #endif
+
 	static BoundarySolverType boundarySolver;
 	static CoarseSolverType coarseSolver;
 	static DirectSolverType directSolver;
@@ -209,9 +209,9 @@ public:
 	static int InitializeSystem(const int width, const int height);
 	static int _InitializeSystem( std::vector<std::vector<SquareMatrix<double, 2>>>& parameterMetric , BoundaryProlongationData& boundaryProlongation , std::vector<Point3D<double>>& inputSignal , std::vector<double>& texelToCellCoeffs );
 
-	static void UpdateFilteredColorTexture(const std::vector< typename VectorPrecisionType< Real >::VectorType > & solution);
+	static void UpdateFilteredColorTexture( const std::vector< Point3D< Real > >& solution );
+	static void UpdateFilteredTexture( const std::vector< Point3D< Real > >& solution );
 
-	static void UpdateFilteredTexture(const std::vector< typename VectorPrecisionType< Real >::VectorType > & solution);
 	static void UpdateMaskTexture();
 
 
@@ -255,12 +255,12 @@ template<class Real> std::vector<Real>													TextureFilter<Real>::cellModu
 template<class Real> std::vector<Real>													TextureFilter<Real>::uniformCellModulationMask;
 
 template<class Real> Image<Point3D<float>>												TextureFilter<Real>::filteredTexture;
-template<class Real> std::vector< typename VectorPrecisionType< Real >::VectorType >	TextureFilter<Real>::stiffness_x0;
-template<class Real> std::vector< typename VectorPrecisionType< Real >::VectorType >	TextureFilter<Real>::mass_x0;
-template<class Real> std::vector< typename VectorPrecisionType< Real >::VectorType >	TextureFilter<Real>::exactSolution;
+template<class Real> std::vector< Point3D< Real > >										TextureFilter<Real>::stiffness_x0;
+template<class Real> std::vector< Point3D< Real > >										TextureFilter<Real>::mass_x0;
+template<class Real> std::vector< Point3D< Real > >										TextureFilter<Real>::exactSolution;
 
 template<class Real> std::vector<MultigridLevelCoefficients<Real>>						TextureFilter<Real>::multigridFilteringCoefficients;
-template<class Real> std::vector< MultigridLevelVariables< typename VectorPrecisionType< Real >::VectorType > >					TextureFilter<Real>::multigridFilteringVariables;
+template<class Real> std::vector< MultigridLevelVariables< Point3D< Real > > >			TextureFilter<Real>::multigridFilteringVariables;
 template<class Real> std::vector<MultigridLevelIndices<Real>>							TextureFilter<Real>::multigridIndices;
 
 
@@ -271,10 +271,10 @@ template<class Real> typename TextureFilter<Real>::DirectSolverType						Texture
 template<class Real> std::vector<AtlasChart>											TextureFilter<Real>::atlasCharts;
 
 template<class Real> std::vector<InteriorTexelToCellLine>								TextureFilter<Real>::interiorTexelToCellLines;
-template<class Real> std::vector< typename VectorPrecisionType< Real >::VectorType >	TextureFilter<Real>::interiorTexelToCellCoeffs;
+template<class Real> std::vector< Point3D< Real > >										TextureFilter<Real>::interiorTexelToCellCoeffs;
 template<class Real> SparseMatrix<Real, int>											TextureFilter<Real>::boundaryCellBasedStiffnessRHSMatrix[3];
 template<class Real> std::vector<Real>													TextureFilter<Real>::boundaryTexelStiffness[3];
-template<class Real> std::vector< typename VectorPrecisionType< Real >::VectorType >	TextureFilter<Real>::texelModulatedStiffness;
+template<class Real> std::vector< Point3D< Real > >										TextureFilter<Real>::texelModulatedStiffness;
 
 template<class Real> std::vector<Point3D<float>>										TextureFilter<Real>::textureNodePositions;
 template<class Real> std::vector<Real>													TextureFilter<Real>::uniformTexelModulationMask;
@@ -321,7 +321,7 @@ void TextureFilter<Real>::UpdateMaskTexture(){
 }
 
 template<class Real>
-void TextureFilter<Real>::UpdateFilteredColorTexture( const std::vector< typename VectorPrecisionType< Real >::VectorType > & solution )
+void TextureFilter< Real >::UpdateFilteredColorTexture( const std::vector< Point3D< Real > > & solution )
 {
 #pragma omp parallel for
 	for (int i = 0; i < textureNodes.size(); i++) {
@@ -336,7 +336,7 @@ void TextureFilter<Real>::UpdateFilteredColorTexture( const std::vector< typenam
 }
 
 template<class Real>
-void TextureFilter<Real>::UpdateFilteredTexture( const std::vector< typename VectorPrecisionType< Real >::VectorType > & solution )
+void TextureFilter<Real>::UpdateFilteredTexture( const std::vector< Point3D< Real > > & solution )
 {
 #pragma omp parallel for
 	for (int i = 0; i < textureNodes.size(); i++) {
@@ -625,7 +625,7 @@ int TextureFilter<Real>::UpdateSolution( bool verbose , bool detailVerbose )
 		clock_t p_begin;
 		if (verbose) p_begin = clock();
 
-		CellStiffnessToTexelStiffness(cellModulationMask, interiorTexelToCellLines, interiorTexelToCellCoeffs, boundaryCellBasedStiffnessRHSMatrix, boundaryTexelStiffness, hierarchy.gridAtlases[0].boundaryGlobalIndex, texelModulatedStiffness);
+		CellStiffnessToTexelStiffness< Real , 3 >(cellModulationMask, interiorTexelToCellLines, interiorTexelToCellCoeffs, boundaryCellBasedStiffnessRHSMatrix, boundaryTexelStiffness, hierarchy.gridAtlases[0].boundaryGlobalIndex, texelModulatedStiffness);
 #pragma omp parallel for
 		for( int i=0 ; i<numTexels ; i++ ) multigridFilteringVariables[0].rhs[i] = mass_x0[i]*interpolationWeight + texelModulatedStiffness[i];
 
@@ -736,12 +736,12 @@ int TextureFilter<Real>::InitializeSystem( const int width , const int height )
 		return 0;
 	}
 
-	std::vector< typename VectorPrecisionType< Real >::VectorType > _x0;
+	std::vector< Point3D< Real > > _x0;
 	_x0.resize(textureNodes.size());
 	
 	for (int i = 0; i < textureNodes.size(); i++) {
 		Point3D<float> texelValue = mesh.texture(textureNodes[i].ci, textureNodes[i].cj);
-		_x0[i] = VectorPrecisionType< Real >::SetData( texelValue[0] , texelValue[1] , texelValue[2] );
+		_x0[i] = Point3D< Real >( texelValue[0] , texelValue[1] , texelValue[2] );
 	}
 
 	std::vector<Point3D<double>> inputSignal(textureNodes.size());
@@ -760,7 +760,7 @@ int TextureFilter<Real>::InitializeSystem( const int width , const int height )
 	if( !_InitializeSystem( parameterMetric , boundaryProlongation , inputSignal , texelToCellCoeffs ) ) return 0;
 
 	interiorTexelToCellCoeffs.resize(4 * hierarchy.gridAtlases[0].numDeepTexels);
-	for( int i=0 ; i<4 * hierarchy.gridAtlases[0].numDeepTexels ; i++ ) interiorTexelToCellCoeffs[i] = VectorPrecisionType< Real >::SetData(Real(texelToCellCoeffs[3*i + 0]), Real(texelToCellCoeffs[3*i + 1]), Real(texelToCellCoeffs[3*i + 2]));
+	for( int i=0 ; i<4*hierarchy.gridAtlases[0].numDeepTexels ; i++ ) interiorTexelToCellCoeffs[i] = Point3D< Real >( Real(texelToCellCoeffs[3*i+0]) , Real(texelToCellCoeffs[3*i+1]) , Real(texelToCellCoeffs[3*i+2]) );
 	
 	if (!InitializeInteriorTexelToCellLines(interiorTexelToCellLines, hierarchy.gridAtlases[0])) {
 		printf("ERROR: Interior texel to cell not initialized! \n");
@@ -804,7 +804,7 @@ int TextureFilter<Real>::InitializeSystem( const int width , const int height )
 
 	multigridFilteringVariables.resize(levels);
 	for (int i = 0; i < levels; i++){
-		MultigridLevelVariables< typename VectorPrecisionType< Real >::VectorType >& variables = multigridFilteringVariables[i];
+		MultigridLevelVariables< Point3D< Real > >& variables = multigridFilteringVariables[i];
 		variables.x.resize(hierarchy.gridAtlases[i].numTexels);
 		variables.rhs.resize(hierarchy.gridAtlases[i].numTexels);
 		variables.residual.resize(hierarchy.gridAtlases[i].numTexels);

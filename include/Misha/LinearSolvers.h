@@ -656,7 +656,7 @@ public:
 #endif // USE_EIGEN
 
 #ifdef USE_CHOLMOD
-template< int channels>
+template< int channels >
 class CholmodSolver
 {
 public:
@@ -685,10 +685,10 @@ public:
 };
 
 
-template< int channels> template< class Real, class MatrixRowIterator > CholmodSolver<channels>::CholmodSolver(const SparseMatrixInterface< Real, MatrixRowIterator >& M) { _init(M), _update(M); }
+template< int channels > template< class Real, class MatrixRowIterator > CholmodSolver< channels >::CholmodSolver(const SparseMatrixInterface< Real, MatrixRowIterator >& M) { _init(M), _update(M); }
 
-template< int channels> template< class Real, class MatrixRowIterator >
-void CholmodSolver<channels>::_init(const SparseMatrixInterface< Real, MatrixRowIterator >& M)
+template< int channels > template< class Real, class MatrixRowIterator >
+void CholmodSolver< channels >::_init(const SparseMatrixInterface< Real, MatrixRowIterator >& M)
 {
 	if (!cholmod_C_set) CHOLMOD(start)(&cholmod_C);
 	cholmod_C_set = true;
@@ -729,8 +729,8 @@ void CholmodSolver<channels>::_init(const SparseMatrixInterface< Real, MatrixRow
 
 	cholmod_b = CHOLMOD(allocate_dense)(dim, channels, dim, cholmod_M->xtype, &cholmod_C);
 }
-template< int channels> template< class Real, class MatrixRowIterator >
-bool CholmodSolver<channels>::_update(const SparseMatrixInterface< Real, MatrixRowIterator >& M)
+template< int channels > template< class Real, class MatrixRowIterator >
+bool CholmodSolver< channels >::_update(const SparseMatrixInterface< Real, MatrixRowIterator >& M)
 {
 	double *_x = (double*)cholmod_M->x;
 	int off = 0;
@@ -768,17 +768,17 @@ bool CholmodSolver<channels>::_update(const SparseMatrixInterface< Real, MatrixR
 	return true;
 }
 
-template< int channels>
-CholmodSolver<channels>::~CholmodSolver(void)
+template< int channels >
+CholmodSolver< channels >::~CholmodSolver(void)
 {
 	if (cholmod_L) CHOLMOD(free_factor)(&cholmod_L, &cholmod_C), cholmod_L = NULL;
 	if (cholmod_b) CHOLMOD(free_dense)(&cholmod_b, &cholmod_C), cholmod_b = NULL;
 	if (cholmod_M) CHOLMOD(free_sparse)(&cholmod_M, &cholmod_C), cholmod_M = NULL;
 }
 
-template< int channels>
+template< int channels >
 template< class Real >
-void CholmodSolver<channels>::solve(ConstPointer(Real) b, Pointer(Real) x)
+void CholmodSolver< channels >::solve(ConstPointer(Real) b, Pointer(Real) x)
 {
 	int numEntries = dim*channels;
 	double* _b = (double*)cholmod_b->x;
@@ -798,8 +798,8 @@ void CholmodSolver<channels>::solve(ConstPointer(Real) b, Pointer(Real) x)
 	CHOLMOD(free_dense)(&cholmod_x, &cholmod_C);
 }
 
-template< int channels>
-int CholmodSolver<channels>::nonZeros(void) const
+template< int channels >
+int CholmodSolver< channels >::nonZeros(void) const
 {
 	long long nz = 0;
 	if (cholmod_L->xtype != CHOLMOD_PATTERN && !(cholmod_L->is_super)) for (int i = 0; i<cholmod_L->n; i++) nz += ((SOLVER_LONG*)cholmod_L->nz)[i];

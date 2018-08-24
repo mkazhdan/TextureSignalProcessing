@@ -1203,17 +1203,27 @@ int AddProlongation(const std::vector<ProlongationLine> & prolongationLines, con
 	return 1;
 }
 
-template<class Real, class Data>
-int CellStiffnessToTexelStiffness( const std::vector<Real> & cellSharpenningMask, const std::vector<InteriorTexelToCellLine> & interiorTexelToCellLines, const std::vector<Data> & interiorTexelToCellCoeffs, SparseMatrix<Real, int> boundaryCellBasedStiffnessRHSMatrix[3], std::vector<Real> boundaryTexelValues[3], const std::vector<int> & boundaryGlobalIndex, std::vector<Data> & texelModulatedStiffness, bool verbose = false){
-
+template< class Real , unsigned int Channels , class Data >
+int CellStiffnessToTexelStiffness
+(
+	const std::vector< Real >& cellSharpenningMask ,
+	const std::vector< InteriorTexelToCellLine >& interiorTexelToCellLines ,
+	const std::vector< Data >& interiorTexelToCellCoeffs ,
+	SparseMatrix< Real , int > boundaryCellBasedStiffnessRHSMatrix[Channels] ,
+	std::vector< Real > boundaryTexelValues[Channels] ,
+	const std::vector< int > & boundaryGlobalIndex ,
+	std::vector< Data >& texelModulatedStiffness ,
+	bool verbose=false
+)
+{
 	//Update Boundary Texels
 	clock_t t_begin; 
-	if (verbose) t_begin = clock();
+	if( verbose ) t_begin = clock();
 #pragma omp parallel for
-	for (int c = 0; c < 3; c++)  boundaryCellBasedStiffnessRHSMatrix[c].Multiply(&cellSharpenningMask[0], &boundaryTexelValues[c][0]);
+	for( int c=0 ; c<Channels ; c++ ) boundaryCellBasedStiffnessRHSMatrix[c].Multiply( &cellSharpenningMask[0] , &boundaryTexelValues[c][0] );
 #pragma omp parallel for
-	for( int i=0 ; i<boundaryGlobalIndex.size() ; i++ ) texelModulatedStiffness[ boundaryGlobalIndex[i] ] = VectorPrecisionType< Real >::SetData( boundaryTexelValues[0][i] , boundaryTexelValues[1][i] , boundaryTexelValues[2][i] );
-	if (verbose) printf("\t Boundary update %.4f \n", double(clock() - t_begin) / CLOCKS_PER_SEC);
+	for( int i=0 ; i<boundaryGlobalIndex.size() ; i++ ) for( int c=0 ; c<Channels ; c++ ) texelModulatedStiffness[ boundaryGlobalIndex[i] ][c] = boundaryTexelValues[c][i];
+	if( verbose ) printf( "\tBoundary updated: %.3f(s) \n" , double(clock() - t_begin) / CLOCKS_PER_SEC );
 	//Update Interior Texels
 
 	auto UpdateRow = [&](int r)
@@ -1225,10 +1235,9 @@ int CellStiffnessToTexelStiffness( const std::vector<Real> & cellSharpenningMask
 		int lineLenght = interiorTexelToCellLines[r].texelEndIndex - interiorTexelToCellLines[r].texelStartIndex + 1;
 		for (int i = 0; i < lineLenght; i++) {
 			out[i] = coeff[4 * i + 0] * previousCellRow[i] + coeff[4 * i + 1] * previousCellRow[i + 1] +
-					coeff[4 * i + 2] * nextCellRow[i] + coeff[4 * i + 3] * nextCellRow[i + 1];
+				coeff[4 * i + 2] * nextCellRow[i] + coeff[4 * i + 3] * nextCellRow[i + 1];
 		}
 	};
-
 
 	if (verbose) t_begin = clock();
 	int threads = omp_get_max_threads();
@@ -1242,7 +1251,53 @@ int CellStiffnessToTexelStiffness( const std::vector<Real> & cellSharpenningMask
 	if (verbose) printf("\t Interior update %.4f \n", double(clock() - t_begin) / CLOCKS_PER_SEC);
 	return 1;
 }
+template< class Real >
+int CellStiffnessToTexelStiffness
+(
+	const std::vector< Real >& cellSharpenningMask ,
+	const std::vector< InteriorTexelToCellLine >& interiorTexelToCellLines ,
+	const std::vector< Real >& interiorTexelToCellCoeffs ,
+	SparseMatrix< Real , int > boundaryCellBasedStiffnessRHSMatrix ,
+	std::vector< Real > boundaryTexelValues ,
+	const std::vector< int > & boundaryGlobalIndex ,
+	std::vector< Real >& texelModulatedStiffness ,
+	bool verbose=false
+)
+{
+	//Update Boundary Texels
+	clock_t t_begin; 
+	if( verbose ) t_begin = clock();
+	boundaryCellBasedStiffnessRHSMatrix.Multiply( &cellSharpenningMask[0] , &boundaryTexelValues[0] );
+#pragma omp parallel for
+	for( int i=0 ; i<boundaryGlobalIndex.size() ; i++ ) texelModulatedStiffness[ boundaryGlobalIndex[i] ] = boundaryTexelValues[i];
+	if( verbose ) printf( "\tBoundary updated: %.3f(s) \n" , double(clock() - t_begin) / CLOCKS_PER_SEC );
+	//Update Interior Texels
 
+	auto UpdateRow = [&](int r)
+	{
+		Real* out = texelModulatedStiffness.data() + interiorTexelToCellLines[r].texelStartIndex;
+		const Real* previousCellRow = cellSharpenningMask.data() + interiorTexelToCellLines[r].previousCellStartIndex;
+		const Real* nextCellRow = cellSharpenningMask.data() + interiorTexelToCellLines[r].nextCellStartIndex;
+		const Real * coeff = interiorTexelToCellCoeffs.data() + interiorTexelToCellLines[r].coeffOffset * 4;
+		int lineLenght = interiorTexelToCellLines[r].texelEndIndex - interiorTexelToCellLines[r].texelStartIndex + 1;
+		for (int i = 0; i < lineLenght; i++) {
+			out[i] = coeff[4 * i + 0] * previousCellRow[i] + coeff[4 * i + 1] * previousCellRow[i + 1] +
+				coeff[4 * i + 2] * nextCellRow[i] + coeff[4 * i + 3] * nextCellRow[i + 1];
+		}
+	};
+
+	if (verbose) t_begin = clock();
+	int threads = omp_get_max_threads();
+#pragma omp parallel for
+	for (int t = 0; t < threads; t++) {
+		const int tId = omp_get_thread_num();
+		const int firstLine = (int)(interiorTexelToCellLines.size() *tId) / threads;
+		const int lastLine = (int)(interiorTexelToCellLines.size() * (tId + 1)) / threads;
+		for (int r = firstLine; r < lastLine; r++) UpdateRow(r);
+	}
+	if (verbose) printf("\t Interior update %.4f \n", double(clock() - t_begin) / CLOCKS_PER_SEC);
+	return 1;
+}
 
 template<class Real, class DataType, class BoundarySolver, class CoarseSolver>
 int VCycle(	std::vector<MultigridLevelVariables<DataType>> & variables,

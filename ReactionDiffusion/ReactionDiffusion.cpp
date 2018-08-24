@@ -26,9 +26,6 @@ ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF S
 DAMAGE.
 */
 
-#define SMALL_TEXTURE
-
-#include <Src/PrecisionType.inl>
 #include <Misha/CmdLineParser.h> 
 #include <Misha/Miscellany.h>
 #include <Src/SimpleMesh.h>
@@ -36,7 +33,7 @@ DAMAGE.
 #include <Misha/FEM.h>
 #include <Src/Solver.h>
 #include <Src/Hierarchy.h>
-#include <Src/VectorFieldIntergration.inl>
+#include <Src/QuadratureIntergration.inl>
 #include <Src/MassAndStiffness.h>
 #include <Src/Padding.h>
 #include <Src/TexturedMeshVisualization.h>
@@ -151,18 +148,20 @@ public:
 	static std::vector< MultigridLevelCoefficients< Real > > multigridCoefficients[2];
 	static std::vector< MultigridLevelVariables   < Real > > multigridVariables[2];
 
-#if USE_CHOLMOD
-	typedef  std::vector< CholmodCholeskySolver1< Real > > BoundarySolverType;
-	typedef  CholmodCholeskySolver1< Real >  CoarseSolverType;
-	typedef  CholmodCholeskySolver1< Real > DirectSolverType;
-#elif USE_EIGEN_SIMPLICIAL
-	typedef  std::vector< EigenCholeskySolver1< Real > > BoundarySolverType;
-	typedef  EigenCholeskySolver1< Real >  CoarseSolverType;
-	typedef  EigenCholeskySolver1< Real > DirectSolverType;
+#if defined( USE_CHOLMOD )
+	typedef  std::vector< CholmodCholeskySolver< Real , 1 > > BoundarySolverType;
+	typedef  CholmodCholeskySolver< Real , 1 >  CoarseSolverType;
+	typedef  CholmodCholeskySolver< Real , 1 > DirectSolverType;
+#elif defined( USE_EIGEN_SIMPLICIAL )
+	typedef  std::vector< EigenCholeskySolver< Real , 1 > > BoundarySolverType;
+	typedef  EigenCholeskySolver< Real , 1 >  CoarseSolverType;
+	typedef  EigenCholeskySolver< Real , 1 > DirectSolverType;
+#elif defined( USE_EIGEN_PARDISO )
+	typedef  std::vector< EigenPardisoSolver< Real , 1 > > BoundarySolverType;
+	typedef  EigenPardisoSolver< Real , 1 > CoarseSolverType;
+	typedef  EigenPardisoSolver< Real , 1 > DirectSolverType;
 #else
-	typedef  std::vector< EigenPardisoSolver1< Real > > BoundarySolverType;
-	typedef  EigenPardisoSolver1< Real > CoarseSolverType;
-	typedef  EigenPardisoSolver1< Real > DirectSolverType;
+#error "[ERROR] No solver defined!"
 #endif
 
 	static BoundarySolverType boundarySolvers[2];
@@ -174,9 +173,9 @@ public:
 	static SparseMatrix< Real , int > coarseBoundaryFineBoundaryProlongation;
 	static SparseMatrix< Real , int > fineBoundaryCoarseBoundaryRestriction;
 	static std::vector< Point2D< Real > > coarseBoundaryValues;
-	static std::vector< Real > coarseBoundaryRHS;
+	static std::vector< Point2D< Real > > coarseBoundaryRHS;
 	static std::vector< Point2D< Real > > fineBoundaryValues;
-	static std::vector< Real > fineBoundaryRHS;
+	static std::vector< Point2D< Real > > fineBoundaryRHS;
 
 	//Samples
 	static std::vector< QuadraticElementScalarSample< Real > > quadraticElementScalarSamples;
@@ -275,9 +274,9 @@ template< class Real > SparseMatrix< Real , int >									GrayScottReactionDiffu
 template< class Real > SparseMatrix< Real , int >									GrayScottReactionDiffusion< Real >::fineBoundaryCoarseBoundaryRestriction;
 
 template< class Real > std::vector< Point2D< Real > >								GrayScottReactionDiffusion< Real >::coarseBoundaryValues;
-template< class Real > std::vector< Real >											GrayScottReactionDiffusion< Real >::coarseBoundaryRHS;
+template< class Real > std::vector< Point2D< Real > >								GrayScottReactionDiffusion< Real >::coarseBoundaryRHS;
 template< class Real > std::vector< Point2D< Real > >								GrayScottReactionDiffusion< Real >::fineBoundaryValues;
-template< class Real > std::vector< Real >											GrayScottReactionDiffusion< Real >::fineBoundaryRHS;
+template< class Real > std::vector< Point2D< Real > >								GrayScottReactionDiffusion< Real >::fineBoundaryRHS;
 
 template< class Real > std::vector< double >										GrayScottReactionDiffusion< Real >::deepMassCoefficients;
 template< class Real > std::vector< double >										GrayScottReactionDiffusion< Real >::deepStiffnessCoefficients;
@@ -298,6 +297,7 @@ int GrayScottReactionDiffusion< Real >::SetRightHandSide( bool verbose )
 
 	// [MK] Should pull this out and initialize it once
 	static std::vector< Point2D< Real > > ab_x( multigridVariables[0][0].x.size() );
+	static std::vector< Point2D< Real > > ab_rhs( multigridVariables[0][0].rhs.size() );
 	for( int ab=0 ; ab<2 ; ab++ )
 #pragma omp parallel for
 		for( int i=0 ; i<ab_x.size() ; i++ ) ab_x[i][ab] = multigridVariables[ab][0].x[i];
@@ -307,26 +307,21 @@ int GrayScottReactionDiffusion< Real >::SetRightHandSide( bool verbose )
 	coarseBoundaryFineBoundaryProlongation.Multiply( &coarseBoundaryValues[0] , &fineBoundaryValues[0] );
 
 	for( int ab=0 ; ab<2 ; ab++ ) MultiplyBySystemMatrix_NoReciprocals( deepMassCoefficients , boundaryDeepMassMatrix , boundaryBoundaryMassMatrix , hierarchy.gridAtlases[0].boundaryGlobalIndex , hierarchy.gridAtlases[0].rasterLines , multigridVariables[ab][0].x , multigridVariables[ab][0].rhs );
-	auto AFunction = [&]( Point2D< Real > ab , SquareMatrix< Real , 2 > ){ return (Real)( speed * ( - ab[0] * ab[1] * ab[1] + feed * ( 1 - ab[0] ) ) ); };
-	auto BFunction = [&]( Point2D< Real > ab , SquareMatrix< Real , 2 > ){ return (Real)( speed * (   ab[0] * ab[1] * ab[1] - ( kill + feed ) * ab[1] ) ); };
-
-	memset( &fineBoundaryRHS[0] , 0 , fineBoundaryRHS.size() * sizeof(Real) );
-	if( !Integrate< Real >( interiorCellLines , bilinearElementScalarSamples , quadraticElementScalarSamples , ab_x , fineBoundaryValues , AFunction , multigridVariables[0][0].rhs , fineBoundaryRHS ) )
+	auto ABFunction = [&]( Point2D< Real > ab , SquareMatrix< Real , 2 > ){ return Point2D< Real >( (Real)( speed * ( - ab[0] * ab[1] * ab[1] + feed * ( 1 - ab[0] ) ) ) ,  (Real)( speed * (   ab[0] * ab[1] * ab[1] - ( kill + feed ) * ab[1] ) ) ); };
+	memset( &ab_rhs[0] , 0 , ab_rhs.size() * sizeof( Point2D< Real > ) );
+	memset( &fineBoundaryRHS[0] , 0 , fineBoundaryRHS.size() * sizeof( Point2D< Real > ) );
+	if( !Integrate< Real >( interiorCellLines , bilinearElementScalarSamples , quadraticElementScalarSamples , ab_x , fineBoundaryValues , ABFunction , ab_rhs , fineBoundaryRHS ) )
 	{
-		fprintf( stderr , "[ERROR] Unable to integrate concentration A!\n" );
+		fprintf( stderr , "[ERROR] Unable to integrate concentrations!\n" );
 	}
 	fineBoundaryCoarseBoundaryRestriction.Multiply( &fineBoundaryRHS[0] , &coarseBoundaryRHS[0] );
-#pragma omp parallel for
-	for( int i=0 ; i<boundaryGlobalIndex.size() ; i++ ) multigridVariables[0][0].rhs[ boundaryGlobalIndex[i] ] += coarseBoundaryRHS[i];
-
-	memset( &fineBoundaryRHS[0] , 0 , fineBoundaryRHS.size() * sizeof(Real) );
-	if( !Integrate< Real >( interiorCellLines , bilinearElementScalarSamples , quadraticElementScalarSamples , ab_x , fineBoundaryValues , BFunction , multigridVariables[1][0].rhs , fineBoundaryRHS ) )
+	for( int ab=0 ; ab<2 ; ab++ )
 	{
-		fprintf( stderr , "[ERROR] Unable to integrate concentration B!\n" );
-	}
-	fineBoundaryCoarseBoundaryRestriction.Multiply( &fineBoundaryRHS[0] , &coarseBoundaryRHS[0] );
 #pragma omp parallel for
-	for( int i=0 ; i<boundaryGlobalIndex.size() ; i++ ) multigridVariables[1][0].rhs[ boundaryGlobalIndex[i] ] += coarseBoundaryRHS[i];
+		for( int i=0 ; i<ab_rhs.size() ; i++ ) multigridVariables[ab][0].rhs[i] += ab_rhs[i][ab];
+#pragma omp parallel for
+		for( int i=0 ; i<boundaryGlobalIndex.size() ; i++ ) multigridVariables[ab][0].rhs[ boundaryGlobalIndex[i] ] += coarseBoundaryRHS[i][ab];
+	}
 	return 1;
 }
 
@@ -381,30 +376,18 @@ void GrayScottReactionDiffusion< Real >::UpdateOutputBuffer( const std::vector< 
 	{
 		int ci = textureNodes[i].ci;
 		int cj = textureNodes[i].cj;
-#ifdef SMALL_TEXTURE
 		int offset = textureWidth*cj + ci;
-#else // !SMALL_TEXTURE
-		int offset = 3 * ( textureWidth*cj + ci );
-#endif // SMALL_TEXTURE
 		float value = (float)solution[i];
 		value = std::max< float >( 0.f , std::min< Real >( 1.f , value*2.f ) );
 		value = 1.f - value;
 		value *= 0.75f;
 
 		unsigned char color = (unsigned char)( value*255.f );
-#ifdef SMALL_TEXTURE
 		outputBuffer[offset] = color;
-#else // !SMALL_TEXTURE
-		outputBuffer[offset+0] = outputBuffer[offset+1] = outputBuffer[offset+2] = color;
-#endif // SMALL_TEXTURE
 	}
 
 	glBindTexture( GL_TEXTURE_2D , visualization.textureBuffer );
-#ifdef SMALL_TEXTURE
 	glTexImage2D( GL_TEXTURE_2D , 0 , GL_RGBA , textureWidth , textureHeight , 0 , GL_LUMINANCE , GL_UNSIGNED_BYTE , (GLvoid*)&outputBuffer[0] );
-#else // !SMALL_TEXTURE
-	glTexImage2D( GL_TEXTURE_2D , 0 , GL_RGBA , textureWidth , textureHeight , 0 , GL_RGB , GL_UNSIGNED_BYTE , (GLvoid*)&outputBuffer[0] );
-#endif // SMALL_TEXTURE
 	glBindTexture( GL_TEXTURE_2D , 0 );
 
 	glutPostRedisplay();
@@ -591,11 +574,7 @@ void GrayScottReactionDiffusion< Real >::ExportTextureCallBack( Visualization* v
 {
 	Image< Point3D< float > > outputImage;
 	outputImage.resize( textureWidth , textureHeight );
-#ifdef SMALL_TEXTURE
 	for( int i=0 ; i<outputImage.size() ; i++ ) outputImage[i] = Point3D< float >( outputBuffer[i] , outputBuffer[i] , outputBuffer[i] ) / 255.f;
-#else // !SMALL_TEXTURE
-	for( int i=0 ; i<outputImage.size() ; i++ ) outputImage[i] = Point3D< float >( outputBuffer[3*i] , outputBuffer[3*i+1] , outputBuffer[3*i+2] ) / 255.f;
-#endif // SMALL_TEXTURE
 	if( padding.nonTrivial ) UnpadImage( padding , outputImage );
 	outputImage.write( prompt );
 }
@@ -762,13 +741,8 @@ int GrayScottReactionDiffusion< Real >::InitializeSystem( const int width , cons
 template< class Real >
 void GrayScottReactionDiffusion< Real >::InitializeVisualization( const int width , const int height )
 {
-#ifdef SMALL_TEXTURE
 	outputBuffer = new unsigned char[ height*width];
 	memset( outputBuffer , 204 , height * width * sizeof(unsigned char) );
-#else // !SMALL_TEXTURE
-	outputBuffer = new unsigned char[ height*width* 3];
-	memset( outputBuffer , 204 , height * width * 3 * sizeof(unsigned char) );
-#endif // SMALL_TEXTURE
 
 	int tCount = (int)mesh.triangles.size();
 

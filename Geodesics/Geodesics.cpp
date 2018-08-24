@@ -26,7 +26,6 @@ ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF S
 DAMAGE.
 */
 
-#include <Src/PrecisionType.inl>
 #include <Misha/CmdLineParser.h> 
 #include <Misha/Miscellany.h>
 #include <Src/SimpleMesh.h>
@@ -34,7 +33,7 @@ DAMAGE.
 #include <Misha/FEM.h>
 #include <Src/Solver.h>
 #include <Src/Hierarchy.h>
-#include <Src/VectorFieldIntergration.inl>
+#include <Src/QuadratureIntergration.inl>
 #include <Src/MassAndStiffness.h>
 #include <Src/Padding.h>
 #include <Src/TexturedMeshVisualization.h>
@@ -146,18 +145,20 @@ public:
 	static std::vector<MultigridLevelCoefficients<Real>> multigridGeodesicDistanceCoefficients;
 	static std::vector<MultigridLevelVariables<Real>> multigridGeodesicDistanceVariables;
 
-#if USE_CHOLMOD
-	typedef  std::vector<CholmodCholeskySolver1<Real>> BoundarySolverType;
-	typedef  CholmodCholeskySolver1<Real>  CoarseSolverType;
-	typedef  CholmodCholeskySolver1<Real> DirectSolverType;
-#elif USE_EIGEN_SIMPLICIAL
-	typedef  std::vector<EigenCholeskySolver1<Real>> BoundarySolverType;
-	typedef  EigenCholeskySolver1<Real>  CoarseSolverType;
-	typedef  EigenCholeskySolver1<Real> DirectSolverType;
+#if defined( USE_CHOLMOD )
+	typedef  std::vector< CholmodCholeskySolver< Real , 1 > , 1 > BoundarySolverType;
+	typedef  CholmodCholeskySolver< Real , 1 >  CoarseSolverType;
+	typedef  CholmodCholeskySolver< Real , 1 > DirectSolverType;
+#elif defined( USE_EIGEN_SIMPLICIAL )
+	typedef  std::vector< EigenCholeskySolver< Real , 1 > > BoundarySolverType;
+	typedef  EigenCholeskySolver< Real , 1 > CoarseSolverType;
+	typedef  EigenCholeskySolver< Real , 1 > DirectSolverType;
+#elif defined( USE_EIGEN_PARDISO )
+	typedef  std::vector< EigenPardisoSolver< Real , 1 > > BoundarySolverType;
+	typedef  EigenPardisoSolver< Real , 1 > CoarseSolverType;
+	typedef  EigenPardisoSolver< Real , 1 > DirectSolverType;
 #else
-	typedef  std::vector<EigenPardisoSolver1<Real>> BoundarySolverType;
-	typedef  EigenPardisoSolver1<Real> CoarseSolverType;
-	typedef  EigenPardisoSolver1<Real> DirectSolverType;
+#error "[ERROR] No solver defined!"
 #endif
 
 	static BoundarySolverType	boundarySmoothImpulseSolver;

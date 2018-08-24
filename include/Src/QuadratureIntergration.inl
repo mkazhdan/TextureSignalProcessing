@@ -112,6 +112,10 @@ int InitializeGridAtlasInteriorCellLines
 	return 1;
 }
 
+//////////////////////////////////////
+// Pre-compute the integration info //
+//////////////////////////////////////
+
 // In what follows we have the following mappings:
 // fragment -> element -> texture:
 //		fragment: a triangle in the decomposition of the clipping of the atlas triangle to the elements
@@ -545,18 +549,21 @@ int InitializeIntegration
 	return 1;
 }
 
+///////////////////////////
+// Compute the integrals //
+///////////////////////////
 template< class Real , typename T , typename ValueFunctionType >
 void IntegrateBilinear
 (
 	const BilinearElementScalarSample< Real >& sample ,
 	const ValueFunctionType& ValueFunction ,
 	const T cornerValues[] ,
-	Real rhsValues[]
+	T rhsValues[]
 )
 {
 	for( int s=0 ; s<(int)sample.size() ; s++ )
 	{
-		Real scalar = ValueFunction( BilinearValue( cornerValues , sample[s].pos ) , sample.tensor );
+		T scalar = ValueFunction( BilinearValue( cornerValues , sample[s].pos ) , sample.tensor );
 		for( int k=0 ; k<4 ; k++ ) rhsValues[k] += scalar * sample[s].dualValues[k];
 	}
 }
@@ -566,13 +573,13 @@ void IntegrateBilinear
 	const BilinearElementGradientSample< Real >& sample ,
 	const GradientFunctionType& GradientFunction ,
 	const T cornerValues[] ,
-	Real rhsValues[]
+	T rhsValues[]
 )
 {
 	for( int s=0 ; s<(int)sample.size() ; s++ )
 	{
-		Point2D< Real > gradientVector = GradientFunction( BilinearGradient( cornerValues , sample[s].pos ) , sample.tensor );
-		for( int k=0 ; k<4 ; k++ ) rhsValues[k] += Point2D< Real >::Dot( gradientVector , sample[s].dualGradients[k] );
+		Point2D< T > gradientVector = GradientFunction( BilinearGradient( cornerValues , sample[s].pos ) , sample.tensor );
+		for( int k=0 ; k<4 ; k++ ) for( int d=0 ; d<2 ; d++ ) rhsValues[k] += gradientVector[d] * sample[s].dualGradients[k][d];
 	}
 }
 
@@ -582,12 +589,12 @@ void IntegrateQuadratic
 	const QuadraticElementScalarSample< Real >& sample ,
 	const ValueFunctionType& ValueFunction ,
 	const T cornerValues[] ,
-	Real rhsValues[]
+	T rhsValues[]
 )
 {
 	for( int s=0 ; s<(int)sample.size() ; s++ )
 	{
-		Real scalar = ValueFunction( QuadraticValue( cornerValues , sample[s].pos ) , sample.tensor );
+		T scalar = ValueFunction( QuadraticValue( cornerValues , sample[s].pos ) , sample.tensor );
 		for( int k=0 ; k<6 ; k++ ) rhsValues[k] += scalar * sample[s].dualValues[k];
 	}
 }
@@ -597,13 +604,13 @@ void IntegrateQuadratic
 	const QuadraticElementGradientSample< Real >& sample ,
 	const GradientFunctionType& VectorFunction ,
 	const T cornerValues[] ,
-	Real rhsValues[]
+	T rhsValues[]
 )
 {
 	for( int s=0 ; s<(int)sample.size() ; s++ )
 	{
-		Point2D< Real > gradientVector = VectorFunction( QuadraticGradient( cornerValues , sample[s].pos ) , sample.tensor );
-		for( int k=0 ; k<6 ; k++ ) rhsValues[k] += Point2D< Real >::Dot( gradientVector , sample[s].dualGradients[k] );
+		Point2D< T > gradientVector = VectorFunction( QuadraticGradient( cornerValues , sample[s].pos ) , sample.tensor );
+		for( int k=0 ; k<6 ; k++ ) for( int d=0 ; d<2 ; d++ ) rhsValues[k] += gradientVector[d] * sample[s].dualGradients[k][d];
 	}
 }
 
@@ -616,8 +623,8 @@ int Integrate
 	const std::vector< T >& potential ,
 	const std::vector< T >& boundary_potential ,
 	const SampleFunctionType& SampleFunction ,
-	std::vector< Real >& rhs ,
-	std::vector< Real >& boundary_rhs ,
+	std::vector< T >& rhs ,
+	std::vector< T >& boundary_rhs ,
 	bool verbose=false
 )
 {
@@ -627,8 +634,8 @@ int Integrate
 		const T* _inPrevious = &potential[ interiorCellLines[r].prevLineIndex ];
 		const T*     _inNext = &potential[ interiorCellLines[r].nextLineIndex ];
 
-		Real* _outPrevious = &rhs[ interiorCellLines[r].prevLineIndex ];
-		Real*     _outNext = &rhs[ interiorCellLines[r].nextLineIndex ];
+		T* _outPrevious = &rhs[ interiorCellLines[r].prevLineIndex ];
+		T*     _outNext = &rhs[ interiorCellLines[r].nextLineIndex ];
 
 		T cornerValues[4];
 		cornerValues[0] = *_inPrevious;
@@ -638,7 +645,7 @@ int Integrate
 		_inNext++;
 		cornerValues[2] = *_inNext;
 
-		Real rhsValues[] = { 0 , 0 , 0 , 0 };
+		T rhsValues[] = { T() , T() , T() , T() };
 
 		int numSamples = (int)bilinearElementSamples[r].size();
 		const BilinearElementSample* samplePtr = &bilinearElementSamples[r][0];
@@ -661,9 +668,9 @@ int Integrate
 				*_outNext += rhsValues[3];
 				_outNext++;
 				rhsValues[0] = rhsValues[1];
-				rhsValues[1] = 0;
+				rhsValues[1] = T();
 				rhsValues[3] = rhsValues[2];
-				rhsValues[2] = 0;
+				rhsValues[2] = T();
 
 				currentOffset++;
 			}
@@ -697,17 +704,14 @@ int Integrate
 	if( verbose ) printf( "Integrated bilinear: %.2f(s)\n" , double( clock()-begin ) / CLOCKS_PER_SEC );
 
 	begin = clock();
-#pragma omp parallel for
 	for( int i=0 ; i<quadraticElementSamples.size() ; i++ )
 	{
 		const QuadraticElementSample& sample = quadraticElementSamples[i];
 		// The values of the potential at the vertices and edge mid-points
 		T cornerValues[] = { boundary_potential[ sample.fineNodes[0] ] , boundary_potential[ sample.fineNodes[1] ] , boundary_potential[ sample.fineNodes[2] ] , boundary_potential[ sample.fineNodes[3] ] , boundary_potential[ sample.fineNodes[4] ] , boundary_potential[ sample.fineNodes[5] ] };
-		Real rhsValues[] = { 0 , 0 , 0 , 0 , 0 , 0 };
+		T rhsValues[] = { T() , T() , T() , T() , T() , T() };
 		IntegrateQuadratic< Real , T >( sample , SampleFunction , cornerValues , rhsValues );
-		for( int k=0 ; k<6 ; k++ )
-#pragma omp atomic
-			boundary_rhs[ sample.fineNodes[k] ] += rhsValues[k];
+		for( int k=0 ; k<6 ; k++ ) boundary_rhs[ sample.fineNodes[k] ] += rhsValues[k];
 	}
 	if( verbose ) printf( "Integrated quadratic: %.2f(s)\n" , double( clock()-begin ) / CLOCKS_PER_SEC );
 	return 1;

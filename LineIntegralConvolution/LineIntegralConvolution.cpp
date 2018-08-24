@@ -25,7 +25,7 @@ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING 
 ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
 DAMAGE.
 */
-#include <Src/PrecisionType.inl>
+
 #include <Misha/CmdLineParser.h> 
 #include <Src/Basis.h>
 #include <Misha/FEM.h>
@@ -33,7 +33,6 @@ DAMAGE.
 #include <Src/HSV.h>
 #include <Src/Solver.h>
 #include <Src/Hierarchy.h>
-#include <Src/VectorFieldIntergration.inl>
 #include <Src/MassAndStiffness.h>
 #include <Src/Padding.h>
 #include <Src/TexturedMeshVisualization.h>
@@ -152,33 +151,35 @@ public:
 	static double lineConvolutionRange;
 	static double modulationRange;
 
-	static std::vector< typename VectorPrecisionType< Real >::VectorType > randSignal;
+	static std::vector< Point3D< Real > > randSignal;
 
-	static std::vector< typename VectorPrecisionType< Real >::VectorType > exactLineConvolutionSolution;
-	static std::vector< typename VectorPrecisionType< Real >::VectorType > exactModulationSolution;
-	static std::vector< typename VectorPrecisionType< Real >::VectorType > mass_x0;
-	static std::vector< typename VectorPrecisionType< Real >::VectorType > stiffness_x0;
+	static std::vector< Point3D< Real > > exactLineConvolutionSolution;
+	static std::vector< Point3D< Real > > exactModulationSolution;
+	static std::vector< Point3D< Real > > mass_x0;
+	static std::vector< Point3D< Real > > stiffness_x0;
 
 	//Impulse Smoothing
-	static std::vector<MultigridLevelCoefficients<Real>> multigridLineConvolutionCoefficients;
-	static std::vector< MultigridLevelVariables< typename VectorPrecisionType< Real >::VectorType > > multigridLineConvolutionVariables;
+	static std::vector< MultigridLevelCoefficients< Real > > multigridLineConvolutionCoefficients;
+	static std::vector< MultigridLevelVariables< Point3D< Real > > > multigridLineConvolutionVariables;
 
 	//Geodesic Distance
-	static std::vector<MultigridLevelCoefficients<Real>> multigridModulationCoefficients;
-	static std::vector< MultigridLevelVariables< typename VectorPrecisionType< Real >::VectorType > > multigridModulationVariables;
+	static std::vector< MultigridLevelCoefficients< Real > > multigridModulationCoefficients;
+	static std::vector< MultigridLevelVariables< Point3D< Real > > > multigridModulationVariables;
 
-#if USE_CHOLMOD
-	typedef  std::vector<CholmodCholeskySolver3<Real>> BoundarySolverType;
-	typedef  CholmodCholeskySolver3<Real>  CoarseSolverType;
-	typedef  CholmodCholeskySolver3<Real> DirectSolverType;
-#elif USE_EIGEN_SIMPLICIAL
-	typedef  std::vector<EigenCholeskySolver3<Real>> BoundarySolverType;
-	typedef  EigenCholeskySolver3<Real>  CoarseSolverType;
-	typedef  EigenCholeskySolver3<Real> DirectSolverType;
+#if defined( USE_CHOLMOD )
+	typedef  std::vector< CholmodCholeskySolver< Real , 3 > > BoundarySolverType;
+	typedef  CholmodCholeskySolver< Real , 3 >  CoarseSolverType;
+	typedef  CholmodCholeskySolver< Real , 3 > DirectSolverType;
+#elif defined( USE_EIGEN_SIMPLICIAL )
+	typedef  std::vector< EigenCholeskySolver< Real , 3 > > BoundarySolverType;
+	typedef  EigenCholeskySolver< Real , 3 >  CoarseSolverType;
+	typedef  EigenCholeskySolver< Real , 3 > DirectSolverType;
+#elif defined( USE_EIGEN_PARDISO )
+	typedef  std::vector< EigenPardisoSolver< Real , 3 > > BoundarySolverType;
+	typedef  EigenPardisoSolver< Real , 3 > CoarseSolverType;
+	typedef  EigenPardisoSolver< Real , 3 > DirectSolverType;
 #else
-	typedef  std::vector<EigenPardisoSolver3<Real>> BoundarySolverType;
-	typedef  EigenPardisoSolver3<Real> CoarseSolverType;
-	typedef  EigenPardisoSolver3<Real> DirectSolverType;
+#error "[ERROR] No solver defined!"
 #endif
 
 	static BoundarySolverType	boundaryLineConvolutionSolver;
@@ -215,30 +216,26 @@ public:
 	static SparseMatrix< double , int> boundaryDeepMassMatrix;
 	static SparseMatrix< double , int> boundaryDeepStiffnessMatrix;
 
-	//Samples
-	static std::vector<InteriorCellLine> interiorCellLines;
-	static std::vector<std::pair<int, int>> interiorCellLineIndex;
-
 	static unsigned char * outputBuffer;
 
 	//Visulization
 	static TexturedMeshVisualization visualization;
 
-	static void UpdateOutputBuffer( const std::vector< typename VectorPrecisionType< Real >::VectorType > & solution );
+	static void UpdateOutputBuffer( const std::vector< Point3D< Real > > & solution );
 
 	static void SharpeningInterpolationWeightCallBack(Visualization* v, const char* prompt);
 	static void SharpeningGradientModulationCallBack(Visualization* v, const char* prompt);
 	static void LICInterpolationWeightCallBack(Visualization* v, const char* prompt);
 
-	static bool stopUpdate;
+	static bool update;
 
-	static void StopUpdateCallBack(Visualization* v, const char* prompt);
+	static void ToggleUpdateCallBack(Visualization* v, const char* prompt);
 	static void ExportTextureCallBack(Visualization* v, const char* prompt);
 
 	static int Init();
 	static void InitializeVisualization(const int width, const int height);
 	static void ComputeExactSolution(bool verbose = false);
-	static int UpdateSolution(bool verbose = false, bool detailVerbose = false);
+	static int UpdateSolution( bool verbose=false , bool detailVerbose=false );
 	static int InitializeSystem( const int width , const int height , double scale );
 
 	static void Display(void) { visualization.Display(); }
@@ -286,13 +283,13 @@ template<class Real> unsigned char *											LineConvolution<Real>::outputBuff
 template<class Real> std::vector<MultigridLevelIndices<Real>>					LineConvolution<Real>::multigridIndices;
 
 //Impulse Smoothing
-template<class Real> std::vector<MultigridLevelCoefficients<Real>>							LineConvolution<Real>::multigridLineConvolutionCoefficients;
-template<class Real> std::vector< MultigridLevelVariables< typename VectorPrecisionType< Real >::VectorType > >		LineConvolution<Real>::multigridLineConvolutionVariables;
-template<class Real> typename LineConvolution<Real>::CoarseSolverType						LineConvolution<Real>::coarseLineConvolutionSolver;
+template<class Real> std::vector<MultigridLevelCoefficients<Real>>				LineConvolution<Real>::multigridLineConvolutionCoefficients;
+template<class Real> std::vector< MultigridLevelVariables< Point3D< Real > > >	LineConvolution<Real>::multigridLineConvolutionVariables;
+template<class Real> typename LineConvolution<Real>::CoarseSolverType			LineConvolution<Real>::coarseLineConvolutionSolver;
 
 //Geodesic Distance
-template<class Real> std::vector<MultigridLevelCoefficients<Real>>							LineConvolution<Real>::multigridModulationCoefficients;
-template<class Real> std::vector< MultigridLevelVariables< typename VectorPrecisionType< Real >::VectorType > >		LineConvolution<Real>::multigridModulationVariables;
+template<class Real> std::vector<MultigridLevelCoefficients<Real>>				LineConvolution<Real>::multigridModulationCoefficients;
+template<class Real> std::vector< MultigridLevelVariables< Point3D< Real > > >	LineConvolution<Real>::multigridModulationVariables;
 template<class Real> typename LineConvolution<Real>::CoarseSolverType						LineConvolution<Real>::coarseModulationSolver;
 
 template<class Real> typename LineConvolution<Real>::DirectSolverType						LineConvolution<Real>::fineLineConvolutionSolver;
@@ -301,19 +298,16 @@ template<class Real> typename LineConvolution<Real>::DirectSolverType						LineC
 template<class Real>  typename LineConvolution<Real>::BoundarySolverType					LineConvolution<Real>::boundaryLineConvolutionSolver;
 template<class Real>  typename LineConvolution<Real>::BoundarySolverType					LineConvolution<Real>::boundaryModulationSolver;
 
-template<class Real> std::vector< typename VectorPrecisionType< Real >::VectorType >		LineConvolution<Real>::randSignal;
+template<class Real> std::vector< Point3D< Real > >		LineConvolution<Real>::randSignal;
 
-template<class Real> std::vector< typename VectorPrecisionType< Real >::VectorType >		LineConvolution<Real>::exactLineConvolutionSolution;
-template<class Real> std::vector< typename VectorPrecisionType< Real >::VectorType >		LineConvolution<Real>::exactModulationSolution;
+template<class Real> std::vector< Point3D< Real > >		LineConvolution<Real>::exactLineConvolutionSolution;
+template<class Real> std::vector< Point3D< Real > >		LineConvolution<Real>::exactModulationSolution;
 
-template<class Real> std::vector< typename VectorPrecisionType< Real >::VectorType >		LineConvolution<Real>::mass_x0;
-template<class Real> std::vector< typename VectorPrecisionType< Real >::VectorType >		LineConvolution<Real>::stiffness_x0;
+template<class Real> std::vector< Point3D< Real > >		LineConvolution<Real>::mass_x0;
+template<class Real> std::vector< Point3D< Real > >		LineConvolution<Real>::stiffness_x0;
 
-template<class Real> static std::vector< typename VectorPrecisionType< Real >::VectorType > mass_x0;
-template<class Real> static std::vector< typename VectorPrecisionType< Real >::VectorType > stiffness_x0;
-//Samples
-template<class Real> std::vector<InteriorCellLine>									LineConvolution<Real>::interiorCellLines;
-template<class Real> std::vector<std::pair<int, int>>								LineConvolution<Real>::interiorCellLineIndex;
+template<class Real> static std::vector< Point3D< Real > > mass_x0;
+template<class Real> static std::vector< Point3D< Real > > stiffness_x0;
 
 template<class Real> int															LineConvolution<Real>::impulseTexel = -1;
 template<class Real> std::vector<Point3D<float>>									LineConvolution<Real>::textureNodePositions;
@@ -343,7 +337,7 @@ template<class Real> SparseMatrix<double, int>										LineConvolution<Real>::b
 template<class Real> SparseMatrix<double, int>										LineConvolution<Real>::boundaryDeepMassMatrix;
 template<class Real> SparseMatrix<double, int>										LineConvolution<Real>::boundaryDeepStiffnessMatrix;
 
-template<class Real> bool															LineConvolution<Real>::stopUpdate = false;
+template<class Real> bool															LineConvolution<Real>::update = false;
 template<class Real>
 void LineConvolution<Real>::ComputeExactSolution( bool verbose )
 {
@@ -367,7 +361,7 @@ void LineConvolution<Real>::ComputeExactSolution( bool verbose )
 	MultiplyBySystemMatrix_NoReciprocals( deepStiffnessCoefficients , boundaryDeepStiffnessMatrix , boundaryBoundaryStiffnessMatrix , hierarchy.gridAtlases[0].boundaryGlobalIndex , hierarchy.gridAtlases[0].rasterLines , exactLineConvolutionSolution , stiffness_x0 );
 
 #pragma omp parallel for
-	for( int i=0 ; i<textureNodes.size() ; i++ ) multigridModulationVariables[0].rhs[i] = mass_x0[i] * sharpeningInterpolationWeight + sharpeningGradientModulation * stiffness_x0[i];
+	for( int i=0 ; i<textureNodes.size() ; i++ ) multigridModulationVariables[0].rhs[i] = mass_x0[i] * sharpeningInterpolationWeight + stiffness_x0[i] * sharpeningGradientModulation;
 
 	//(3) Modulation
 	if( verbose ) begin = clock();
@@ -376,7 +370,7 @@ void LineConvolution<Real>::ComputeExactSolution( bool verbose )
 }
 
 template<class Real>
-void LineConvolution<Real>::UpdateOutputBuffer( const std::vector< typename VectorPrecisionType< Real >::VectorType > & solution )
+void LineConvolution<Real>::UpdateOutputBuffer( const std::vector< Point3D< Real > > & solution )
 {
 
 #pragma omp parallel for
@@ -396,15 +390,11 @@ void LineConvolution<Real>::UpdateOutputBuffer( const std::vector< typename Vect
 	glutPostRedisplay();
 }
 
-template<class Real>
-void LineConvolution<Real>::Idle() {
-	
-	if (!stopUpdate) {
-		if (!UpdateSolution()) {
-			printf("Updated solution failed! \n");
-		}
-		UpdateOutputBuffer(multigridModulationVariables[0].x);
-	}
+template< class Real >
+void LineConvolution<Real>::Idle( void )
+{
+	if( update && !UpdateSolution() ) fprintf( stderr , "[ERROR] Updated solution failed! \n");
+	UpdateOutputBuffer( multigridModulationVariables[0].x );
 }
 
 template<class Real>
@@ -459,7 +449,7 @@ void LineConvolution<Real>::MotionFunc(int x, int y) {
 
 template<class Real>
 void LineConvolution<Real>::SharpeningInterpolationWeightCallBack(Visualization* v, const char* prompt) {
-	stopUpdate = false;
+	update = false;
 	for( int i=0 ; i<multigridLineConvolutionVariables[0].x.size() ; i++) multigridLineConvolutionVariables[0].x[i] *= 0;
 	for( int i=0 ; i<multigridModulationVariables[0].x.size() ; i++) multigridModulationVariables[0].x[i] *= 0;
 
@@ -484,7 +474,7 @@ void LineConvolution<Real>::SharpeningInterpolationWeightCallBack(Visualization*
 
 template<class Real>
 void LineConvolution<Real>::LICInterpolationWeightCallBack(Visualization* v, const char* prompt) {
-	stopUpdate = false;
+	update = false;
 	for( int i=0 ; i<multigridLineConvolutionVariables[0].x.size() ; i++) multigridLineConvolutionVariables[0].x[i] *= 0;
 	for( int i=0 ; i<multigridModulationVariables[0].x.size() ; i++) multigridModulationVariables[0].x[i] *= 0;
 
@@ -511,7 +501,7 @@ void LineConvolution<Real>::LICInterpolationWeightCallBack(Visualization* v, con
 
 template<class Real>
 void LineConvolution<Real>::SharpeningGradientModulationCallBack(Visualization* v, const char* prompt) {
-	stopUpdate = false;
+	update = false;
 	for( int i=0 ; i<multigridLineConvolutionVariables[0].x.size() ; i++ ) multigridLineConvolutionVariables[0].x[i] *= 0;
 	for( int i=0 ; i<multigridModulationVariables[0].x.size() ; i++ ) multigridModulationVariables[0].x[i] *= 0;
 
@@ -523,9 +513,7 @@ void LineConvolution<Real>::SharpeningGradientModulationCallBack(Visualization* 
 }
 
 template<class Real>
-void LineConvolution<Real>::StopUpdateCallBack(Visualization* v, const char* prompt) {
-	stopUpdate = !stopUpdate;
-}
+void LineConvolution<Real>::ToggleUpdateCallBack(Visualization* v, const char* prompt){ update = !update; }
 
 template<class Real>
 void LineConvolution<Real>::ExportTextureCallBack( Visualization* v , const char* prompt )
@@ -558,7 +546,7 @@ int LineConvolution<Real>::UpdateSolution( bool verbose , bool detailVerbose )
 	MultiplyBySystemMatrix_NoReciprocals(deepStiffnessCoefficients, boundaryDeepStiffnessMatrix, boundaryBoundaryStiffnessMatrix, hierarchy.gridAtlases[0].boundaryGlobalIndex, hierarchy.gridAtlases[0].rasterLines, multigridLineConvolutionVariables[0].x, stiffness_x0);
 
 #pragma omp parallel for
-	for( int i=0 ; i<textureNodes.size() ; i++ ) multigridModulationVariables[0].rhs[i] = mass_x0[i] * sharpeningInterpolationWeight + sharpeningGradientModulation * stiffness_x0[i];
+	for( int i=0 ; i<textureNodes.size() ; i++ ) multigridModulationVariables[0].rhs[i] = mass_x0[i] * sharpeningInterpolationWeight + stiffness_x0[i] * sharpeningGradientModulation;
 
 	//(3) Update geodesic distance solution	
 	if (verbose) begin = clock();
@@ -786,7 +774,7 @@ int LineConvolution<Real>::InitializeSystem( const int width , const int height 
 	//////////////////////////////////// Initialize multigrid variables
 	multigridLineConvolutionVariables.resize(levels);
 	for (int i = 0; i < levels; i++) {
-		MultigridLevelVariables< typename VectorPrecisionType< Real >::VectorType >& variables = multigridLineConvolutionVariables[i];
+		MultigridLevelVariables< Point3D< Real > >& variables = multigridLineConvolutionVariables[i];
 		variables.x.resize(hierarchy.gridAtlases[i].numTexels);
 		variables.rhs.resize(hierarchy.gridAtlases[i].numTexels);
 		variables.residual.resize(hierarchy.gridAtlases[i].numTexels);
@@ -797,7 +785,7 @@ int LineConvolution<Real>::InitializeSystem( const int width , const int height 
 
 	multigridModulationVariables.resize(levels);
 	for (int i = 0; i < levels; i++) {
-		MultigridLevelVariables< typename VectorPrecisionType< Real >::VectorType >& variables = multigridModulationVariables[i];
+		MultigridLevelVariables< Point3D< Real > >& variables = multigridModulationVariables[i];
 		variables.x.resize(hierarchy.gridAtlases[i].numTexels);
 		variables.rhs.resize(hierarchy.gridAtlases[i].numTexels);
 		variables.residual.resize(hierarchy.gridAtlases[i].numTexels);
@@ -817,14 +805,15 @@ int LineConvolution<Real>::InitializeSystem( const int width , const int height 
 	for ( int i=0 ; i<randSignal.size() ; i++ )
 	{
 		Point3D< float > randomColor = HSV2RGB( double( rand() ) / double(RAND_MAX), 1 , 1 );
-		randSignal[i] = VectorPrecisionType< Real >::SetData( randomColor[0] , randomColor[1] , randomColor[2] );
+		randSignal[i] = Point3D< Real >( randomColor[0] , randomColor[1] , randomColor[2] );
 	}
 
 	for( int i=0 ; i<multigridLineConvolutionVariables[0].x.size() ; i++) multigridLineConvolutionVariables[0].x[i] *= 0;
 	for( int i=0 ; i<multigridModulationVariables[0].x.size() ; i++) multigridModulationVariables[0].x[i] *= 0;
 
 	if( UseDirectSolver.set ) ComputeExactSolution();
-	else for( int i=0 ; i<4 ; i++ ) UpdateSolution();
+	else for( int i=0 ; i<multigridModulationVariables[0].x.size() ; i++) multigridModulationVariables[0].x[i] = randSignal[i];
+
 	return 1;
 }
 
@@ -873,8 +862,7 @@ void LineConvolution<Real>::InitializeVisualization(const int width, const int h
 	visualization.callBacks.push_back(Visualization::KeyboardCallBack(&visualization, 'g', "sharpening gradient modulation", "Sharpening Gradient Modulation" , SharpeningGradientModulationCallBack));
 	visualization.callBacks.push_back(Visualization::KeyboardCallBack(&visualization, 'y', "sharpening interpolation weight", "Sharpening Interpolation Weight" , SharpeningInterpolationWeightCallBack));
 	visualization.callBacks.push_back(Visualization::KeyboardCallBack(&visualization, 's', "export texture", "Output Texture" , ExportTextureCallBack));
-	visualization.callBacks.push_back(Visualization::KeyboardCallBack(&visualization, 'j', "toggle update", StopUpdateCallBack));
-
+	visualization.callBacks.push_back(Visualization::KeyboardCallBack(&visualization, ' ', "toggle update", ToggleUpdateCallBack));
 
 	visualization.UpdateVertexBuffer();
 	visualization.UpdateFaceBuffer();
