@@ -31,7 +31,7 @@ This software supports gradient-domain signal processing within a texture atlas.
 <b>Source Code:</b>
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version1.00/TSP.Source.zip">ZIP</a> <a href="https://github.com/mkazhdan/TextureSignalProcessing">GitHub</a><br>
 <B>Data:</B>
-<A HREF="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/TSP.Data.zip">ZIP</A><BR>
+<A HREF="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/TSP.Data.zip">ZIP</A><br>
 <b>Older Versions:</b>
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version1.00/">V1</a>
 </ul>
@@ -84,7 +84,8 @@ The default value for this parameter is 1.
 <details>
 <summary>
 <font size="+1"><b>LineIntegralConvolution</b></font>:
-Creates a <a href="https://en.wikipedia.org/wiki/Line_integral_convolution">line integral convolution</A> visualization of a vector-field by defining a new metric on the surface that stretches distances along the vector-field values, diffuses a random color texture with respect to the new anisotropic metric, and then sharpens the resulting signal.
+Creates a <a href="https://en.wikipedia.org/wiki/Line_integral_convolution">line integral convolution</A> visualization of a vector-field by defining a new metric on the surface that stretches distances along the vector-field values, diffuses a random color texture with respect to the new anisotropic metric, and then sharpens the resulting signal.<BR>
+Hit [SPACE] to start the iterative solver.
 </summary>
 <dt><b>--in</b> &lt;<i>input mesh name</i>&gt;</dt>
 <dd> This string specifies the name of the mesh.<br>
@@ -160,10 +161,6 @@ In the interactive viewer the source can be set by holding the [SHIFT] key down 
 The input mesh is assumed to be in <a href="http://www.cc.gatech.edu/projects/large_models/ply.html">PLY</a> format, giving the set of vertices with the x-, y-, and z-coordinates of the positions encoded by the properties <i>x</i>, <i>y</i>, and the set of polygons encoded by two lists. The first gives the indices of the vertices in the polygon (integers). The second gives the texture coordinates at each polygon corner (pairs of floats).<br>
 </dd>
 
-<dt>[<b>--out</b> &lt;<i>output texture</i>&gt;]</dt>
-<dd> This string is the name of the file to which the processed texture will be written.</B>
-</dd>
-
 <dt>[<b>--interpolation</b> &lt;<i>sharpening interpolation weight</i>&gt;]</dt>
 <dd> This floating point values gives the interpolation weight used for diffusing the initial delta function.<BR>
 The default value for this parameter is 10000.
@@ -196,7 +193,8 @@ The default value for this parameter is 2048.
 <details>
 <summary>
 <font size="+1"><b>ReactionDiffusion</b></font>:
-An interactive tool for visualization of reaction-diffusion based on the <A HREF="https://groups.csail.mit.edu/mac/projects/amorphous/GrayScott/">Gray-Scott model</A>.
+An interactive tool for visualization of reaction-diffusion based on the <A HREF="https://groups.csail.mit.edu/mac/projects/amorphous/GrayScott/">Gray-Scott model</A>.<BR>
+Hit [SPACE] to start the reaction-diffusion process.
 </summary>
 <dt><b>--in</b> &lt;<i>input mesh name</i>&gt;</dt>
 <dd> This string specifies the the name of the mesh.<br>
@@ -205,12 +203,12 @@ The input mesh is assumed to be in <a href="http://www.cc.gatech.edu/projects/la
 
 <dt>[<b>--width</b> &lt;<i>output texture width</i>&gt;]</dt>
 <dd> This integers specifies the width of the output texture.</B>
-The default value for this parameter is 2048.
+The default value for this parameter is 512.
 </dd>
 
 <dt>[<b>--height</b> &lt;<i>output texture height</i>&gt;]</dt>
 <dd> This integers specifies the height of the output texture.</B>
-The default value for this parameter is 2048.
+The default value for this parameter is 512.
 </dd>
 
 </dd><dt>[<b>--useDirectSolver</B>]</dt>
