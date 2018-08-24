@@ -1,4 +1,4 @@
-<center><h2>Gradient Domain Texture Processing (Version 1.00)</h2></center>
+<center><h2>Gradient Domain Texture Processing (Version 2.00)</h2></center>
 <center>
 <a href="#LINKS">links</a>
 <a href="#EXECUTABLES">executables</a>
@@ -31,10 +31,9 @@ This software supports gradient-domain signal processing within a texture atlas.
 <b>Source Code:</b>
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version1.00/TSP.Source.zip">ZIP</a> <a href="https://github.com/mkazhdan/TextureSignalProcessing">GitHub</a><br>
 <B>Data:</B>
-<A HREF="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/TSP.Data.zip">ZIP</A>
-<!--
+<A HREF="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/TSP.Data.zip">ZIP</A><BR>
 <b>Older Versions:</b>
--->
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version1.00/">V1</a>
 </ul>
 <hr>
 <a name="EXECUTABLES"><b>EXECUTABLES</b></a><br>
@@ -102,7 +101,7 @@ The latter are encoded using double-precision floating point values and should b
 <dd> This string is the name of the file to which the processed texture will be written.</B>
 </dd>
 
-<dt>[<b>--licInterpolation</b> &lt;<i>line integral convoluation interpolation weight</i>&gt;]</dt>
+<dt>[<b>--licInterpolation</b> &lt;<i>line integral convolution interpolation weight</i>&gt;]</dt>
 <dd> This floating point values gives the interpolation weight used for the line integral convolution.<BR>
 The default value for this parameter is 10000.
 </dd>
@@ -153,7 +152,7 @@ The default value for this parameter is 2048.
 <details>
 <summary>
 <font size="+1"><b>Geodesics</b></font>:
-An interactive tool for visualizatin single-source geodesics using the <A HREF="https://www.cs.cmu.edu/~kmcrane/Projects/HeatMethod/">heat method</A>.<BR>
+An interactive tool for visualization of single-source geodesics using the <A HREF="https://www.cs.cmu.edu/~kmcrane/Projects/HeatMethod/">heat method</A>.<BR>
 In the interactive viewer the source can be set by holding the [SHIFT] key down and clicking/dragging with either mouse button.
 </summary>
 <dt><b>--in</b> &lt;<i>input mesh name</i>&gt;</dt>
@@ -165,19 +164,9 @@ The input mesh is assumed to be in <a href="http://www.cc.gatech.edu/projects/la
 <dd> This string is the name of the file to which the processed texture will be written.</B>
 </dd>
 
-<dt>[<b>--licInterpolation</b> &lt;<i>line integral convoluation interpolation weight</i>&gt;]</dt>
-<dd> This floating point values gives the interpolation weight used for the line integral convolution.<BR>
+<dt>[<b>--interpolation</b> &lt;<i>sharpening interpolation weight</i>&gt;]</dt>
+<dd> This floating point values gives the interpolation weight used for diffusing the initial delta function.<BR>
 The default value for this parameter is 10000.
-</dd>
-
-<dt>[<b>--sharpInterpolation</b> &lt;<i>sharpening interpolation weight</i>&gt;]</dt>
-<dd> This floating point values gives the interpolation weight used for sharpening the line integral convolution results.<BR>
-The default value for this parameter is 10000.
-</dd>
-
-<dt>[<b>--modulation</b> &lt;<i>sharpening gradient modulation</i>&gt;]</dt>
-<dd> This floating point values gives the gradient modulation used for sharpening the line integral convolution results.<BR>
-The default value for this parameter is 100.
 </dd>
 
 <dt>[<b>--width</b> &lt;<i>output texture width</i>&gt;]</dt>
@@ -190,8 +179,38 @@ The default value for this parameter is 2048.
 The default value for this parameter is 2048.
 </dd>
 
-</dd><dt>[<b>--minor</B>]</dt>
-<dd> If enabled, this flag specifies that the directions of minimal principal curvature should be used to define the vector field (instead of the default maximal principal curvature directions).
+</dd><dt>[<b>--useDirectSolver</B>]</dt>
+<dd> If enabled, this flag specifies that a direct solver should be used (instead of the default multigrid solver).
+</dd>
+
+</dd><dt>[<b>--jitter</B>]</dt>
+<dd> If enabled, this flag specifies that the texture coordinates should be jittered slightly. (This is used to avoid singular situations when mesh vertices fall directly on edges in the texture grid. In such a situation, the executable will issue a warning <B>"Zero row at index ..."</B>.)
+</dd>
+
+</details>
+</dl>
+</ul>
+
+<ul>
+<dl>
+<details>
+<summary>
+<font size="+1"><b>ReactionDiffusion</b></font>:
+An interactive tool for visualization of reaction-diffusion based on the <A HREF="https://groups.csail.mit.edu/mac/projects/amorphous/GrayScott/">Gray-Scott model</A>.
+</summary>
+<dt><b>--in</b> &lt;<i>input mesh name</i>&gt;</dt>
+<dd> This string specifies the the name of the mesh.<br>
+The input mesh is assumed to be in <a href="http://www.cc.gatech.edu/projects/large_models/ply.html">PLY</a> format, giving the set of vertices with the x-, y-, and z-coordinates of the positions encoded by the properties <i>x</i>, <i>y</i>, and the set of polygons encoded by two lists. The first gives the indices of the vertices in the polygon (integers). The second gives the texture coordinates at each polygon corner (pairs of floats).<br>
+</dd>
+
+<dt>[<b>--width</b> &lt;<i>output texture width</i>&gt;]</dt>
+<dd> This integers specifies the width of the output texture.</B>
+The default value for this parameter is 2048.
+</dd>
+
+<dt>[<b>--height</b> &lt;<i>output texture height</i>&gt;]</dt>
+<dd> This integers specifies the height of the output texture.</B>
+The default value for this parameter is 2048.
 </dd>
 
 </dd><dt>[<b>--useDirectSolver</B>]</dt>
@@ -200,6 +219,10 @@ The default value for this parameter is 2048.
 
 </dd><dt>[<b>--jitter</B>]</dt>
 <dd> If enabled, this flag specifies that the texture coordinates should be jittered slightly. (This is used to avoid singular situations when mesh vertices fall directly on edges in the texture grid. In such a situation, the executable will issue a warning <B>"Zero row at index ..."</B>.)
+</dd>
+
+</dd><dt>[<b>--dots</B>]</dt>
+<dd> If enabled, this flag specifies that the feed/kill parameters for dot-formation should be used. Otherwise, the feed/kill parameters for stripes are used.
 </dd>
 
 </details>
@@ -239,13 +262,9 @@ For testing purposes, a number of <A HREF="http://www.cs.jhu.edu/~misha/Code/Tex
 <summary>
 <a name="CHANGES"><b>HISTORY OF CHANGES</b></a><br>
 </summary>
-<!--
-<a href="http://www.cs.jhu.edu/~misha/Code/PoissonRecon/Version3/">Version 3</a>:
+<a href="http://www.cs.jhu.edu/~misha/Code/PoissonRecon/Version2.00/">Version 2</a>:
 <ol>
-<li> The implementation of the <b>--samplesPerNode</b> parameter has been modified so that a value of "1" more closely corresponds to a distribution with one sample per leaf node.
-</li><li> The code has been modified to support compilation under MSVC 2010 and the associated solution and project files are now provided. (Due to a bug in the Visual Studios compiler, this required modifying the implementation of some of the bit-shifting operators.)
-</li></ol>
--->
+<li> Added support for reaction diffusion based on the Gray-Scott model.</li></ol>
 </details>
 
 
