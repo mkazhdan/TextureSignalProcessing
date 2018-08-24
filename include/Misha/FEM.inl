@@ -1133,12 +1133,13 @@ Real FEM::RiemannianMesh< Real >::flow( ConstPointer( CoordinateXForm< Real > ) 
 // FEM::RiemannianMesh //
 /////////////////////////
 template< class Real >
-inline void FEM::RiemannianMesh< Real >::makeUnitArea( void )
+inline void FEM::RiemannianMesh< Real >::makeArea( Real area )
 {
 	double scale = 0;
 #pragma omp parallel for reduction( + : scale )
 	for( int i=0 ; i<_tCount ; i++ ) scale += sqrt( _g[i].determinant() );
 	scale = 2. / scale;
+	scale *= area;
 #pragma omp parallel for
 	for( int i=0 ; i<_tCount ; i++ ) _g[i] *= (Real)scale;
 }

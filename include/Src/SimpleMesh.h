@@ -37,14 +37,14 @@ class MeshSample{
 public:
 	MeshSample(){
 		tId = -1;
-		baricentricCoords = Point2D<double>(0, 0);
+		barycentricCoords = Point2D<double>(0, 0);
 	}
-	MeshSample(int _tId, Point2D<double> _baricentricCoords){
+	MeshSample(int _tId, Point2D<double> _barycentricCoords){
 		tId = _tId;
-		baricentricCoords = _baricentricCoords;
+		barycentricCoords = _barycentricCoords;
 	}
 	int tId;
-	Point2D<double> baricentricCoords;
+	Point2D<double> barycentricCoords;
 };
 
 unsigned long long SetMeshEdgeKey(const unsigned long i0, const unsigned long i1){

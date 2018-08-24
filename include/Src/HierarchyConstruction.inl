@@ -81,8 +81,8 @@ int InitializeGridChartsActiveNodes(const int chartId, const AtlasChart & atlasC
 	triangleId.resize(width, height);
 	for (int i = 0; i < triangleId.size(); i++)triangleId[i] = -1;
 
-	Image<Point2D<double>> & baricentricCoords = gridChart.baricentricCoords;
-	baricentricCoords.resize(width, height);
+	Image<Point2D<double>> & barycentricCoords = gridChart.barycentricCoords;
+	barycentricCoords.resize(width, height);
 
 	//(1) Add interior texels
 	for (int t = 0; t < atlasChart.triangles.size(); t++) {
@@ -92,20 +92,20 @@ int InitializeGridChartsActiveNodes(const int chartId, const AtlasChart & atlasC
 		int maxCorner[2];
 		GetTriangleIntegerBBox(tPos, 1.0 / cellSizeW, 1.0 / cellSizeH, minCorner, maxCorner);
 
-		SquareMatrix< double, 2 > baricentricMap = GetBaricentricMap(tPos);
+		SquareMatrix< double, 2 > barycentricMap = GetBarycentricMap(tPos);
 
 		for (int j = minCorner[1]; j <= maxCorner[1]; j++) {
 			for (int i = minCorner[0]; i <= maxCorner[0]; i++) {
 				Point2D< double > texel_pos = Point2D< double >(double(i)*cellSizeW, double(j)*cellSizeH) - tPos[0];
-				Point2D< double > baricentricCoord = baricentricMap*texel_pos;
-				if (baricentricCoord[0] >= 0.f && baricentricCoord[1] >= 0.f && (baricentricCoord[0] + baricentricCoord[1]) <= 1.f) {
+				Point2D< double > barycentricCoord = barycentricMap*texel_pos;
+				if (barycentricCoord[0] >= 0.f && barycentricCoord[1] >= 0.f && (barycentricCoord[0] + barycentricCoord[1]) <= 1.f) {
 					if (nodeType(i, j) != -1) {
 						printf("Node already covered!\n");
 						return 0;
 					}
 					nodeType(i, j) = 1;
 					triangleId(i, j) = atlasChart.meshTriangleIndices[t];
-					baricentricCoords(i, j) = baricentricCoord;
+					barycentricCoords(i, j) = barycentricCoord;
 				}
 			}
 		}
@@ -129,7 +129,7 @@ int InitializeGridChartsActiveNodes(const int chartId, const AtlasChart & atlasC
 		Point2D< double > tPos[3];
 		for (int k = 0; k < 3; k++) tPos[k] = atlasChart.vertices[atlasChart.triangles[tIndex][k]] - gridChart.corner;
 
-		SquareMatrix< double, 2 > baricentricMap = GetBaricentricMap(tPos);
+		SquareMatrix< double, 2 > barycentricMap = GetBarycentricMap(tPos);
 
 		Point2D< double > edgeNormal;
 		double edgeLevel;
@@ -177,21 +177,21 @@ int InitializeGridChartsActiveNodes(const int chartId, const AtlasChart & atlasC
 								nodeType(nIndices[0], nIndices[1]) = 0;
 
 								Point2D< double > texel_pos = Point2D< double >(double(nIndices[0])*cellSizeW, double(nIndices[1])*cellSizeH) - tPos[0];
-								Point2D< double > baricentricCoord = baricentricMap*texel_pos;
+								Point2D< double > barycentricCoord = barycentricMap*texel_pos;
 
 								if (triangleId(nIndices[0], nIndices[1]) == -1) {
 									triangleId(nIndices[0], nIndices[1]) = atlasChart.meshTriangleIndices[tIndex];
-									baricentricCoords(nIndices[0], nIndices[1]) = baricentricCoord;
+									barycentricCoords(nIndices[0], nIndices[1]) = barycentricCoord;
 								}
 								else {//Update the position to the closest triangle
-									Point2D< double > oldBaricentricCoord = baricentricCoords(nIndices[0], nIndices[1]);
-									Point3D< double > oldBaricentricCoord3(1.0 - oldBaricentricCoord[0] - oldBaricentricCoord[1], oldBaricentricCoord[0], oldBaricentricCoord[1]);
-									Point3D< double > newBaricentricCoord3(1.0 - baricentricCoord[0] - baricentricCoord[1], baricentricCoord[0], baricentricCoord[1]);
-									double minOld = std::min<double>(std::min<double>(oldBaricentricCoord3[0], oldBaricentricCoord3[1]), oldBaricentricCoord3[2]);
-									double minNew = std::min<double>(std::min<double>(newBaricentricCoord3[0], newBaricentricCoord3[1]), newBaricentricCoord3[2]);
+									Point2D< double > oldBarycentricCoord = barycentricCoords(nIndices[0], nIndices[1]);
+									Point3D< double > oldBarycentricCoord3(1.0 - oldBarycentricCoord[0] - oldBarycentricCoord[1], oldBarycentricCoord[0], oldBarycentricCoord[1]);
+									Point3D< double > newBarycentricCoord3(1.0 - barycentricCoord[0] - barycentricCoord[1], barycentricCoord[0], barycentricCoord[1]);
+									double minOld = std::min<double>(std::min<double>(oldBarycentricCoord3[0], oldBarycentricCoord3[1]), oldBarycentricCoord3[2]);
+									double minNew = std::min<double>(std::min<double>(newBarycentricCoord3[0], newBarycentricCoord3[1]), newBarycentricCoord3[2]);
 									if (minNew > minOld) {
 										triangleId(nIndices[0], nIndices[1]) = atlasChart.meshTriangleIndices[tIndex];
-										baricentricCoords(nIndices[0], nIndices[1]) = baricentricCoord;
+										barycentricCoords(nIndices[0], nIndices[1]) = barycentricCoord;
 									}
 								}
 							}
@@ -213,21 +213,21 @@ int InitializeGridChartsActiveNodes(const int chartId, const AtlasChart & atlasC
 					nodeType(nIndices[0], nIndices[1]) = 0;
 
 					Point2D< double > texel_pos = Point2D< double >(double(nIndices[0])*cellSizeW, double(nIndices[1])*cellSizeH) - tPos[0];
-					Point2D< double > baricentricCoord = baricentricMap*texel_pos;
+					Point2D< double > barycentricCoord = barycentricMap*texel_pos;
 
 					if (triangleId(nIndices[0], nIndices[1]) == -1) {
 						triangleId(nIndices[0], nIndices[1]) = atlasChart.meshTriangleIndices[tIndex];
-						baricentricCoords(nIndices[0], nIndices[1]) = baricentricCoord;
+						barycentricCoords(nIndices[0], nIndices[1]) = barycentricCoord;
 					}
 					else {//Update the position to the closest triangle
-						Point2D< double > oldBaricentricCoord = baricentricCoords(nIndices[0], nIndices[1]);
-						Point3D< double > oldBaricentricCoord3(1.0 - oldBaricentricCoord[0] - oldBaricentricCoord[1], oldBaricentricCoord[0], oldBaricentricCoord[1]);
-						Point3D< double > newBaricentricCoord3(1.0 - baricentricCoord[0] - baricentricCoord[1], baricentricCoord[0], baricentricCoord[1]);
-						double minOld = std::min<double>(std::min<double>(oldBaricentricCoord3[0], oldBaricentricCoord3[1]), oldBaricentricCoord3[2]);
-						double minNew = std::min<double>(std::min<double>(newBaricentricCoord3[0], newBaricentricCoord3[1]), newBaricentricCoord3[2]);
+						Point2D< double > oldBarycentricCoord = barycentricCoords(nIndices[0], nIndices[1]);
+						Point3D< double > oldBarycentricCoord3(1.0 - oldBarycentricCoord[0] - oldBarycentricCoord[1], oldBarycentricCoord[0], oldBarycentricCoord[1]);
+						Point3D< double > newBarycentricCoord3(1.0 - barycentricCoord[0] - barycentricCoord[1], barycentricCoord[0], barycentricCoord[1]);
+						double minOld = std::min<double>(std::min<double>(oldBarycentricCoord3[0], oldBarycentricCoord3[1]), oldBarycentricCoord3[2]);
+						double minNew = std::min<double>(std::min<double>(newBarycentricCoord3[0], newBarycentricCoord3[1]), newBarycentricCoord3[2]);
 						if (minNew > minOld) {
 							triangleId(nIndices[0], nIndices[1]) = atlasChart.meshTriangleIndices[tIndex];
-							baricentricCoords(nIndices[0], nIndices[1]) = baricentricCoord;
+							barycentricCoords(nIndices[0], nIndices[1]) = barycentricCoord;
 						}
 					}
 
@@ -572,7 +572,7 @@ int InitializeTextureNodes(const std::vector<GridChart> & gridCharts, std::vecto
 				textureNode.cj = gridChart.cornerCoords[1] + j;
 				textureNode.chartId = c;
 				textureNode.tId = gridChart.triangleId(i, j);
-				textureNode.baricentricCoords = gridChart.baricentricCoords(i, j);
+				textureNode.barycentricCoords = gridChart.barycentricCoords(i, j);
 				textureNode.isInterior = gridChart.nodeType(i, j) > 0;
 				textureNodes.push_back(textureNode);
 			}

@@ -672,11 +672,17 @@ int LineConvolution<Real>::InitializeSystem( const int width , const int height 
 			case 6:
 				ret = InitializeMassAndStiffness< 6>( anisoDeepMassCoefficients , anisoDeepStiffnessCoefficients , anisoBoundaryBoundaryMassMatrix , anisoBoundaryBoundaryStiffnessMatrix , anisoBoundaryDeepMassMatrix , anisoBoundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix );
 				break;
+			case 12:
+				ret = InitializeMassAndStiffness<12>( anisoDeepMassCoefficients , anisoDeepStiffnessCoefficients , anisoBoundaryBoundaryMassMatrix , anisoBoundaryBoundaryStiffnessMatrix , anisoBoundaryDeepMassMatrix , anisoBoundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix );
+				break;
+			case 24:
+				ret = InitializeMassAndStiffness<24>( anisoDeepMassCoefficients , anisoDeepStiffnessCoefficients , anisoBoundaryBoundaryMassMatrix , anisoBoundaryBoundaryStiffnessMatrix , anisoBoundaryDeepMassMatrix , anisoBoundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix );
+				break;
 			case 32:
 				ret = InitializeMassAndStiffness<32>( anisoDeepMassCoefficients , anisoDeepStiffnessCoefficients , anisoBoundaryBoundaryMassMatrix , anisoBoundaryBoundaryStiffnessMatrix , anisoBoundaryDeepMassMatrix , anisoBoundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix );
 				break;
 			default:
-				fprintf( stderr , "[ERROR] Only 1-, 3-, 6-, and 32-point quadrature supported for triangles\n" );
+				fprintf( stderr , "[ERROR] Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles\n" );
 			}
 			if( !ret )
 			{
@@ -735,11 +741,17 @@ int LineConvolution<Real>::InitializeSystem( const int width , const int height 
 			case 6:
 				ret = InitializeMassAndStiffness< 6>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix );
 				break;
+			case 12:
+				ret = InitializeMassAndStiffness<12>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix );
+				break;
+			case 24:
+				ret = InitializeMassAndStiffness<24>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix );
+				break;
 			case 32:
-				ret = InitializeMassAndStiffness< 32>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix );
+				ret = InitializeMassAndStiffness<32>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix );
 				break;
 			default:
-				fprintf( stderr , "[ERROR] Only 1-, 3-, 6-, and 32-point quadrature supported for triangles\n" );
+				fprintf( stderr , "[ERROR] Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles\n" );
 			}
 			if( !ret )
 			{
@@ -921,7 +933,7 @@ int LineConvolution<Real>::Init() {
 		printf( "Peak Memory (MB): %d\n" , Miscellany::MemoryInfo::PeakMemoryUsageMB() );
 	}
 
-	//Assign position to exterior nodes using baricentric-exponential map
+	//Assign position to exterior nodes using barycentric-exponential map
 	FEM::RiemannianMesh< double > * Rmesh = new FEM::RiemannianMesh< double >(GetPointer(mesh.triangles), mesh.triangles.size());
 	Rmesh->setMetricFromEmbedding(GetPointer(mesh.vertices));
 	Rmesh->makeUnitArea();
@@ -932,12 +944,12 @@ int LineConvolution<Real>::Init() {
 			FEM::HermiteSamplePoint< double > _p;
 			_p.tIdx = textureNodes[i].tId;
 			_p.p = Point2D< double >((double)1. / 3, (double)1. / 3);
-			_p.v = textureNodes[i].baricentricCoords - _p.p;
+			_p.v = textureNodes[i].barycentricCoords - _p.p;
 
 			Rmesh->exp(xForms, _p);
 
 			textureNodes[i].tId = _p.tIdx;
-			textureNodes[i].baricentricCoords = _p.p;
+			textureNodes[i].barycentricCoords = _p.p;
 		}
 	}
 	textureNodePositions.resize(textureNodes.size());

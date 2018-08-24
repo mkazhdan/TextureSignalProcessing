@@ -32,22 +32,22 @@ class TextureNodeInfo {
 public:
 	TextureNodeInfo() {
 		tId = -1;
-		baricentricCoords = Point2D<double>(0, 0);
+		barycentricCoords = Point2D<double>(0, 0);
 		ci = -1;
 		cj = -1;
 		chartId = -1;
 		isInterior = false;
 	}
-	TextureNodeInfo(int _tId, Point2D<double> _baricentricCoords, int _ci, int _cj, int _chartId, bool _isInterior) {
+	TextureNodeInfo(int _tId, Point2D<double> _barycentricCoords, int _ci, int _cj, int _chartId, bool _isInterior) {
 		tId = _tId;
-		baricentricCoords = _baricentricCoords;
+		barycentricCoords = _barycentricCoords;
 		ci = _ci;
 		cj = _cj;
 		chartId = _chartId;
 		isInterior = _isInterior;
 	}
 	int tId;
-	Point2D<double> baricentricCoords;
+	Point2D<double> barycentricCoords;
 	int ci;
 	int cj;
 	int chartId;
@@ -144,6 +144,26 @@ void QuadraticElementValuesAndGradients( Point2D< double > pos , double values[]
 	values[5] = -4*xx - 4*xy        + 4*x           , gradients[5] = Point2D< double >( -8*x - 4*y + 4 , -4*x           );
 }
 
+template< class Real , typename T >
+T BilinearValue( const T values[4] , Point2D< Real > pos )
+{
+	Real x = pos[0] , y = pos[1];
+	return
+		values[0] * ( 1 - x ) * ( 1 - y ) +
+		values[1] * (     x ) * ( 1 - y ) +
+		values[2] * (     x ) * (     y ) +
+		values[3] * ( 1 - x ) * (     y ) ;
+}
+template< class Real , typename T >
+Point2D< T > BilinearGradient( const T values[4] , Point2D< Real > pos )
+{
+	Real x = pos[0] , y = pos[1];
+	return
+		Point2D< T >( values[0] * (   y - 1 ) , values[0] * (   x - 1 ) ) +
+		Point2D< T >( values[1] * ( - y + 1 ) , values[1] * ( - x     ) ) +
+		Point2D< T >( values[2] * (   y     ) , values[2] * (   x     ) ) +
+		Point2D< T >( values[3] * ( - y     ) , values[3] * ( - x + 1 ) ) ;
+}
 // For the node at (0.0,0.0):
 //		F(x,y) = a x^2 + b y^2 + c xy + d x + e y + f
 //		F(0.0,0.0) = 1 => f = 1                 => F(x,y) = a x^2 + b y^2 + c xy + d x + e y + 1
@@ -200,29 +220,29 @@ void QuadraticElementValuesAndGradients( Point2D< double > pos , double values[]
 // (0.0,0.5) -> G(x,y) = (       - 4 y     , - 8 y - 4 x + 4 ) //
 // (0.5,0.0) -> G(x,y) = ( - 8 x - 4 y + 4 ,       - 4 x     ) //
 /////////////////////////////////////////////////////////////////
-template< class Real >
-Real QuadraticValue( const Real values[6] , Point2D< Real > pos )
+template< class Real , typename T >
+T QuadraticValue( const T values[6] , Point2D< Real > pos )
 {
 	Real xx = pos[0] * pos[0] , xy = pos[0]*pos[1] , yy = pos[1] * pos[1] , x = pos[0] , y = pos[1];
 	return
-		(   2 * xx + 2 * yy + 4 * xy - 3 * x - 3 * y + 1 ) * values[0] +
-		(   2 * xx                   - 1 * x             ) * values[1] +
-		(            2 * yy                  - 1 * y     ) * values[2] +
-		(                     4 * xy                     ) * values[3] +
-		(          - 4 * yy - 4 * xy         + 4 * y     ) * values[4] +
-		( - 4 * xx          - 4 * xy + 4 * x             ) * values[5] ;
+		values[0] * (   2 * xx + 2 * yy + 4 * xy - 3 * x - 3 * y + 1 ) +
+		values[1] * (   2 * xx                   - 1 * x             ) +
+		values[2] * (            2 * yy                  - 1 * y     ) +
+		values[3] * (                     4 * xy                     ) +
+		values[4] * (          - 4 * yy - 4 * xy         + 4 * y     ) +
+		values[5] * ( - 4 * xx          - 4 * xy + 4 * x             ) ;
 }
-template< class Real >
-Point2D< Real > QuadraticGradient( const Real values[6] , Point2D< Real > pos )
+template< class Real , typename T >
+Point2D< T > QuadraticGradient( const T values[6] , Point2D< Real > pos )
 {
 	Real x = pos[0] , y = pos[1];
 	return 
-		Point2D< Real >(   4 * x + 4 * y - 3 ,   4 * y + 4 * x - 3 ) * values[0] +
-		Point2D< Real >(   4 * x         - 1 ,                   0 ) * values[1] +
-		Point2D< Real >(                   0 ,   4 * y         - 1 ) * values[2] +
-		Point2D< Real >(           4 * y     ,           4 * x     ) * values[3] +
-		Point2D< Real >(         - 4 * y     , - 8 * y - 4 * x + 4 ) * values[4] +
-		Point2D< Real >( - 8 * x - 4 * y + 4 ,         - 4 * x     ) * values[5] ;
+		Point2D< T >( values[0] * (   4 * x + 4 * y - 3 ) , values[0] * (   4 * y + 4 * x - 3 ) ) +
+		Point2D< T >( values[1] * (   4 * x         - 1 ) , values[1] * (                   0 ) ) +
+		Point2D< T >( values[2] * (                   0 ) , values[2] * (   4 * y         - 1 ) ) +
+		Point2D< T >( values[3] * (           4 * y     ) , values[3] * (           4 * x     ) ) +
+		Point2D< T >( values[4] * (         - 4 * y     ) , values[4] * ( - 8 * y - 4 * x + 4 ) ) +
+		Point2D< T >( values[5] * ( - 8 * x - 4 * y + 4 ) , values[5] * (         - 4 * x     ) ) ;
 }
 
 
@@ -260,27 +280,6 @@ Point2D<double> LinearElementGradient(int elementIndex) {
 		return Point2D<double>(0, 0);
 		break;
 	}
-}
-
-template< class Real >
-Point2D< Real > BilinearValue( const Real values[4] , Point2D< Real > pos )
-{
-	Real x = pos[0] , y = pos[1];
-	return
-		( 1 - x ) * ( 1 - y ) * values[0] +
-		(     x ) * ( 1 - y ) * values[1] +
-		(     x ) * (     y ) * values[2] +
-		( 1 - x ) * (     y ) * values[3] ;
-}
-template< class Real >
-Point2D< Real > BilinearGradient( const Real values[4] , Point2D< Real > pos )
-{
-	Real x = pos[0] , y = pos[1];
-	return
-		Point2D< Real >(   y - 1 ,   x - 1 ) * values[0] +
-		Point2D< Real >( - y + 1 , - x     ) * values[1] +
-		Point2D< Real >(   y     ,   x     ) * values[2] +
-		Point2D< Real >( - y     , - x + 1 ) * values[3] ;
 }
 
 double BilinearElementValue(int elementIndex, Point2D<double> pos) {

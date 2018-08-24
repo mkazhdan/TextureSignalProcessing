@@ -526,7 +526,7 @@ void GetEdgeIntegerBBox(Point2D< double > tPos[3], const double invCellSizeW, co
 	maxCorner[1] = static_cast<int>(ceil(double(fmaxy)*invCellSizeH));
 }
 
-SquareMatrix< double, 2 > GetBaricentricMap(Point2D< double > tPos[3]) {
+SquareMatrix< double, 2 > GetBarycentricMap(Point2D< double > tPos[3]) {
 	SquareMatrix< double, 2 > parametrizationMap;
 	parametrizationMap.coords[0][0] = tPos[1][0] - tPos[0][0];
 	parametrizationMap.coords[0][1] = tPos[1][1] - tPos[0][1];

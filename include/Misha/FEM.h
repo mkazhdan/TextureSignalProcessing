@@ -292,7 +292,8 @@ namespace FEM
 		template< class Vertex > void setMetricFromEmbedding( ConstPointer( Vertex ) vertices );
 		void setMetricFromEdgeLengths( ConstPointer( Real ) edgeLengths );
 		void setMetricFromSquareEdgeLengths( ConstPointer( Real ) squareEdgeLengths );
-		void makeUnitArea( void );
+		void makeUnitArea( void ){ makeArea( (Real)1. ); }
+		void makeArea( Real area );
 		Real area( void ) const;
 		Real area( int tIdx ) const;
 		Real squareEdgeLength( int heIdx ) const;

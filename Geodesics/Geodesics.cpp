@@ -50,10 +50,10 @@ cmdLineParameter< int   > DisplayMode( "display" , TWO_REGION_DISPLAY );
 cmdLineParameter< int   > MatrixQuadrature( "mQuadrature" , 6 );
 cmdLineParameter< int   > VectorFieldQuadrature( "vfQuadrature" , 6 );
 
-cmdLineParameter< int   > MultigridBlockHeight( "mBlockH" , 16 );
-cmdLineParameter< int   > MultigridBlockWidth( "mBlockW" , 128 );
-cmdLineParameter< int   > MultigridPaddedHeight( "mPadH" , 0 );
-cmdLineParameter< int   > MultigridPaddedWidth( "mPadW" , 2 );
+cmdLineParameter< int   > MultigridBlockHeight ( "mBlockH" ,  16 );
+cmdLineParameter< int   > MultigridBlockWidth  ( "mBlockW" , 128 );
+cmdLineParameter< int   > MultigridPaddedHeight( "mPadH"   ,   0 );
+cmdLineParameter< int   > MultigridPaddedWidth ( "mPadW"   ,   2 );
 cmdLineParameter< int   > MultigridUpdateVcycles( "mVCycles" , 6 );
 
 cmdLineReadable RandomJitter( "jitter" );
@@ -61,9 +61,7 @@ cmdLineReadable Verbose( "verbose" );
 cmdLineReadable DetailVerbose( "detail" );
 cmdLineReadable UseDirectSolver( "useDirectSolver" );
 cmdLineReadable Double( "double" );
-#ifdef MISHA_CODE
 cmdLineReadable PreciseIntegration( "preciseIntegration" );
-#endif // MISHA_CODE
 
 cmdLineReadable* params[] =
 {
@@ -72,9 +70,7 @@ cmdLineReadable* params[] =
 	&RandomJitter ,
 	&Double ,
 	&MatrixQuadrature , &VectorFieldQuadrature ,
-#ifdef MISHA_CODE
 	&PreciseIntegration ,
-#endif // MISHA_CODE
 	NULL
 };
 
@@ -87,9 +83,7 @@ void ShowUsage( const char* ex )
 	printf( "\t[--%s <diffusion interpolation weight>=%f]\n" , DiffusionInterpolationWeight.name , DiffusionInterpolationWeight.value );
 	printf( "\t[--%s <system matrix quadrature points per triangle>=%d]\n" , MatrixQuadrature.name , MatrixQuadrature.value );
 	printf( "\t[--%s <normalized vector field quadrature points per triangle>=%d]\n" , VectorFieldQuadrature.name , VectorFieldQuadrature.value );
-#ifdef MISHA_CODE
 	printf( "\t[--%s]\n" , PreciseIntegration.name );
-#endif // MISHA_CODE
 	printf( "\t[--%s]\n" , UseDirectSolver.name );
 	printf( "\t[--%s]\n" , RandomJitter.name );
 	printf( "\t[--%s]\n" , Verbose.name );
@@ -101,9 +95,9 @@ void ShowUsage( const char* ex )
 	printf( "\t[--%s <display mode>=%d]\n" , DisplayMode.name , DisplayMode.value );
 	printf( "\t\t%d] One Region \n" , ONE_REGION_DISPLAY );
 	printf( "\t\t%d] Two Region \n" , TWO_REGION_DISPLAY );
-	printf( "\t[--%s <multigrid block width>=%d]\n" , MultigridBlockWidth.name , MultigridBlockWidth.value );
-	printf( "\t[--%s <multigrid block height>=%d]\n" , MultigridBlockHeight.name , MultigridBlockHeight.value );
-	printf( "\t[--%s <multigrid padded width>=%d]\n" , MultigridPaddedWidth.name , MultigridPaddedWidth.value );
+	printf( "\t[--%s <multigrid block width>=%d]\n"   , MultigridBlockWidth.name   , MultigridBlockWidth.value   );
+	printf( "\t[--%s <multigrid block height>=%d]\n"  , MultigridBlockHeight.name  , MultigridBlockHeight.value  );
+	printf( "\t[--%s <multigrid padded width>=%d]\n"  , MultigridPaddedWidth.name  , MultigridPaddedWidth.value  );
 	printf( "\t[--%s <multigrid padded height>=%d]\n" , MultigridPaddedHeight.name , MultigridPaddedHeight.value );
 	printf( "\t[--%s <multigrid update VCycles>=%d]\n" , MultigridUpdateVcycles.name , MultigridUpdateVcycles.value );
 }
@@ -143,12 +137,6 @@ public:
 
 	static double smoothImpulseRange;
 	static double geodesicDistanceRange;
-
-	static std::vector<Real> exactSmoothImpulseSolution;
-	static std::vector<Real> exactGeodesicDistanceSolution;
-
-	static std::vector<Real> smoothedImpulseProlongation;
-	static std::vector<Real> integratedVFProlongation;
 
 	//Impulse Smoothing
 	static std::vector<MultigridLevelCoefficients<Real>> multigridSmoothImpulseCoefficients;
@@ -191,13 +179,8 @@ public:
 	static std::vector<Real> fineBoundaryRHS;
 
 	//Samples
-#ifdef MISHA_CODE
 	static std::vector< QuadraticElementGradientSample< Real > > quadraticElementGradientSamples;
 	static std::vector< std::vector< BilinearElementGradientSample< Real > > > bilinearElementGradientSamples;
-#else // !MISHA_CODE
-	static std::vector< QuadraticElementGradientSample< Real > > quadraticElementGradientSamples;
-	static std::vector< std::vector< BilinearElementGradientSample< Real > > > bilinearElementGradientSamples;
-#endif // MISHA_CODE
 	static std::vector<InteriorCellLine> interiorCellLines;
 	static std::vector<std::pair<int, int>> interiorCellLineIndex;
 
@@ -211,21 +194,21 @@ public:
 	static int mouseX, mouseY;
 	static bool mouseSelectionActive;
 
-	static void UpdateOutputBuffer(const std::vector<Real> & solution);
+	static void UpdateOutputBuffer( const std::vector< Real >& solution );
 
-	static void ExportTextureCallBack(Visualization* v, const char* prompt);
+	static void ExportTextureCallBack( Visualization* v , const char* prompt );
 	static int Init();
-	static void InitializeVisualization(const int width, const int height);
-	static void ComputeExactSolution(bool verbose = false);
-	static int UpdateSolution(bool verbose = false, bool detailVerbose = false);
-	static int InitializeSystem(const int width, const int height);
+	static void InitializeVisualization( const int width , const int height );
+	static void ComputeExactSolution( bool verbose=false );
+	static int UpdateSolution( bool verbose=false , bool detailVerbose=false );
+	static int InitializeSystem( const int width , const int height );
 
-	static void Display(void) { visualization.Display(); }
-	static void MouseFunc(int button, int state, int x, int y);
-	static void MotionFunc(int x, int y);
-	static void Reshape(int w, int h) { visualization.Reshape(w, h); }
-	static void KeyboardFunc(unsigned char key, int x, int y) { visualization.KeyboardFunc(key, x, y); }
-	static void Idle();
+	static void Display( void ){ visualization.Display(); }
+	static void MouseFunc( int button , int state , int x , int y );
+	static void MotionFunc( int x , int y );
+	static void Reshape( int w , int h ){ visualization.Reshape(w,h); }
+	static void KeyboardFunc( unsigned char key , int x , int y ){ visualization.KeyboardFunc( key , x , y ); }
+	static void Idle( void );
 };
 
 template<class Real> TexturedMesh												Geodesics<Real>::mesh;
@@ -260,37 +243,24 @@ template<class Real> unsigned char *											Geodesics<Real>::outputBuffer;
 template<class Real> std::vector<MultigridLevelIndices<Real>>					Geodesics<Real>::multigridIndices;
 
 //Impulse Smoothing
-template<class Real> std::vector<MultigridLevelCoefficients<Real>>						Geodesics<Real>::multigridSmoothImpulseCoefficients;
-template<class Real> std::vector<MultigridLevelVariables<Real>>							Geodesics<Real>::multigridSmoothImpulseVariables;
-template<class Real> typename Geodesics<Real>::CoarseSolverType						Geodesics<Real>::coarseSmoothImpulseSolver;
+template<class Real> std::vector<MultigridLevelCoefficients<Real>>				Geodesics<Real>::multigridSmoothImpulseCoefficients;
+template<class Real> std::vector<MultigridLevelVariables<Real>>					Geodesics<Real>::multigridSmoothImpulseVariables;
+template<class Real> typename Geodesics<Real>::CoarseSolverType					Geodesics<Real>::coarseSmoothImpulseSolver;
 
 //Geodesic Distance
-template<class Real> std::vector<MultigridLevelCoefficients<Real>>						Geodesics<Real>::multigridGeodesicDistanceCoefficients;
-template<class Real> std::vector<MultigridLevelVariables<Real>>							Geodesics<Real>::multigridGeodesicDistanceVariables;
-template<class Real> typename Geodesics<Real>::CoarseSolverType						Geodesics<Real>::coarseGeodesicDistanceSolver;
+template<class Real> std::vector<MultigridLevelCoefficients<Real>>				Geodesics<Real>::multigridGeodesicDistanceCoefficients;
+template<class Real> std::vector<MultigridLevelVariables<Real>>					Geodesics<Real>::multigridGeodesicDistanceVariables;
+template<class Real> typename Geodesics<Real>::CoarseSolverType					Geodesics<Real>::coarseGeodesicDistanceSolver;
 
-template<class Real> typename Geodesics<Real>::DirectSolverType						Geodesics<Real>::fineSmoothImpulseSolver;
-template<class Real> typename Geodesics<Real>::DirectSolverType						Geodesics<Real>::fineGeodesicDistanceSolver;
+template<class Real> typename Geodesics<Real>::DirectSolverType					Geodesics<Real>::fineSmoothImpulseSolver;
+template<class Real> typename Geodesics<Real>::DirectSolverType					Geodesics<Real>::fineGeodesicDistanceSolver;
 
-template<class Real>  typename Geodesics<Real>::BoundarySolverType					Geodesics<Real>::boundarySmoothImpulseSolver;
-template<class Real>  typename Geodesics<Real>::BoundarySolverType					Geodesics<Real>::boundaryGeodesicDistanceSolver;
-
-
-
-template<class Real> std::vector<Real>												Geodesics<Real>::exactSmoothImpulseSolution;
-template<class Real> std::vector<Real>												Geodesics<Real>::exactGeodesicDistanceSolution;
-
-template<class Real> std::vector<Real>												Geodesics<Real>::smoothedImpulseProlongation;
-template<class Real> std::vector<Real>												Geodesics<Real>::integratedVFProlongation;
+template<class Real>  typename Geodesics<Real>::BoundarySolverType				Geodesics<Real>::boundarySmoothImpulseSolver;
+template<class Real>  typename Geodesics<Real>::BoundarySolverType				Geodesics<Real>::boundaryGeodesicDistanceSolver;
 
 //Samples
-#ifdef MISHA_CODE
 template< class Real > std::vector< QuadraticElementGradientSample< Real > >		Geodesics<Real>::quadraticElementGradientSamples;
 template< class Real > std::vector< std::vector< BilinearElementGradientSample< Real > > >	Geodesics<Real>::bilinearElementGradientSamples;
-#else // !MISHA_CODE
-template<class Real> std::vector< QuadraticElementGradientSample< Real > >			Geodesics<Real>::quadraticElementGradientSamples;
-template<class Real> std::vector< std::vector< BilinearElementGradientSample< Real > > >	Geodesics<Real>::bilinearElementGradientSamples;
-#endif // MISHA_CODE
 template<class Real> std::vector<InteriorCellLine>									Geodesics<Real>::interiorCellLines;
 template<class Real> std::vector<std::pair<int, int>>								Geodesics<Real>::interiorCellLineIndex;
 
@@ -318,6 +288,8 @@ void Geodesics<Real>::ComputeExactSolution( bool verbose )
 
 	//(1) Smoothing impulse	
 	if (verbose) begin = clock();
+	std::vector< Real >& exactSmoothImpulseSolution = multigridSmoothImpulseVariables[0].x;
+	std::vector< Real >& exactGeodesicDistanceSolution = multigridGeodesicDistanceVariables[0].x;
 	solve( fineSmoothImpulseSolver , exactSmoothImpulseSolution , multigridSmoothImpulseVariables[0].rhs );
 	if (verbose) printf("Smoothing impulse %.4f \n", double(clock() - begin) / CLOCKS_PER_SEC);
 
@@ -331,7 +303,7 @@ void Geodesics<Real>::ComputeExactSolution( bool verbose )
 	if (verbose) printf("Coarse to fine %.4f \n", double(clock() - begin) / CLOCKS_PER_SEC);
 
 
-	std::vector< Real > fineGeodesicDistanceRHS( exactGeodesicDistanceSolution.size() );
+	std::vector< Real >& fineGeodesicDistanceRHS = multigridGeodesicDistanceVariables[0].rhs;
 	if( verbose ) begin = clock();
 	auto VectorFunction = []( Point2D< Real > v , SquareMatrix< Real , 2 > tensor )
 	{
@@ -340,7 +312,9 @@ void Geodesics<Real>::ComputeExactSolution( bool verbose )
 		if( len2>0 ) return -v / (Real)sqrt( len2 );
 		else         return -v;
 	};
-	if( !IntegrateVectorField< Real >( interiorCellLines , bilinearElementGradientSamples , quadraticElementGradientSamples , exactSmoothImpulseSolution , VectorFunction , fineGeodesicDistanceRHS , fineBoundaryValues , fineBoundaryRHS , true ) )
+	memset( &multigridGeodesicDistanceVariables[0].rhs[0] , 0 , multigridGeodesicDistanceVariables[0].rhs.size() * sizeof(Real) );
+	memset( &fineBoundaryRHS[0] , 0 , fineBoundaryRHS.size() * sizeof(Real) );
+	if( !Integrate< Real >( interiorCellLines , bilinearElementGradientSamples , quadraticElementGradientSamples , exactSmoothImpulseSolution , fineBoundaryValues , VectorFunction , fineGeodesicDistanceRHS , fineBoundaryRHS ) )
 	{
 		printf( "[ERROR] Unable to integrate normalized vector field!\n" );
 	}
@@ -498,10 +472,10 @@ void Geodesics<Real>::MouseFunc(int button, int state, int x, int y) {
 			if (UseDirectSolver.set){
 				clock_t begin;
 				if( DetailVerbose.set ) begin = clock();
-				ComputeExactSolution(Verbose.set);
+				ComputeExactSolution( DetailVerbose.set );
 				if( DetailVerbose.set ) printf("Exact solution %.4f \n", double(clock() - begin) / CLOCKS_PER_SEC);
 
-				UpdateOutputBuffer(exactGeodesicDistanceSolution);
+				UpdateOutputBuffer(multigridGeodesicDistanceVariables[0].x);
 			}
 			else {
 				UpdateSolution();
@@ -573,7 +547,8 @@ void Geodesics<Real>::ExportTextureCallBack(Visualization* v, const char* prompt
 }
 
 template<class Real>
-int Geodesics<Real>::UpdateSolution(bool verbose, bool detailVerbose) {
+int Geodesics<Real>::UpdateSolution( bool verbose , bool detailVerbose )
+{
 	clock_t begin;
 
 	//(1)Update smoothed input solution
@@ -599,7 +574,9 @@ int Geodesics<Real>::UpdateSolution(bool verbose, bool detailVerbose) {
 		else         return -v;
 	};
 
-	if( !IntegrateVectorField< Real >( interiorCellLines , bilinearElementGradientSamples , quadraticElementGradientSamples , multigridSmoothImpulseVariables[0].x , VectorFunction , multigridGeodesicDistanceVariables[0].rhs , fineBoundaryValues , fineBoundaryRHS ) )
+	memset( &multigridGeodesicDistanceVariables[0].rhs[0] , 0 , multigridGeodesicDistanceVariables[0].rhs.size() * sizeof(Real) );
+	memset( &fineBoundaryRHS[0] , 0 , fineBoundaryRHS.size() * sizeof(Real) );
+	if( !Integrate< Real >( interiorCellLines , bilinearElementGradientSamples , quadraticElementGradientSamples , multigridSmoothImpulseVariables[0].x , fineBoundaryValues , VectorFunction , multigridGeodesicDistanceVariables[0].rhs , fineBoundaryRHS ) )
 	{
 		fprintf( stderr , "[ERROR] Unable to integrate normalized vector field!\n" );
 	}
@@ -669,10 +646,7 @@ int Geodesics<Real>::InitializeSystem( const int width , const int height )
 	std::vector<double> __texelToCellCoeffs;
 	SparseMatrix<double, int> __boundaryCellBasedStiffnessRHSMatrix[3];
 
-	if (!InitializeMetric(mesh,EMBEDDING_METRIC,atlasCharts, parameterMetric)) {
-		printf("ERROR: Unable to initialize metric \n");
-		return 0;
-	}
+	if( !InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric ) ){ fprintf( stderr , "[ERROR] Unable to initialize metric\n") ; return 0; }
 
 	t_begin = clock();
 	{
@@ -688,11 +662,17 @@ int Geodesics<Real>::InitializeSystem( const int width , const int height )
 		case 6:
 			ret = InitializeMassAndStiffness< 6>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix );
 			break;
+		case 12:
+			ret = InitializeMassAndStiffness<12>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix );
+			break;
+		case 24:
+			ret = InitializeMassAndStiffness<24>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix );
+			break;
 		case 32:
 			ret = InitializeMassAndStiffness<32>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix );
 			break;
 		default:
-			fprintf( stderr , "[ERROR] Only 1-, 3-, 6-, and 32-point quadrature supported for triangles\n" );
+			fprintf( stderr , "[ERROR] Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles\n" );
 		}
 		if( !ret )
 		{
@@ -710,7 +690,7 @@ int Geodesics<Real>::InitializeSystem( const int width , const int height )
 		FullMatrixConstruction(hierarchy.gridAtlases[0], deepStiffnessCoefficients, boundaryBoundaryStiffnessMatrix, boundaryDeepStiffnessMatrix, stiffness);
 		smoothImpulseMatrix = mass * diffusionInterpolationWeight + stiffness;
 		geodesicDistanceMatrix = mass * geodesicInterpolationWeight + stiffness;
-		printf("Assembling matrices =  %.4f \n", double(clock() - t_begin) / CLOCKS_PER_SEC);
+		printf( "\tAssembled matrices: %.2f(s) \n", double(clock() - t_begin) / CLOCKS_PER_SEC );
 	}
 
 //////////////////////////////////// Initialize multigrid indices
@@ -800,35 +780,26 @@ int Geodesics<Real>::InitializeSystem( const int width , const int height )
 		int ret = 0;
 		switch( VectorFieldQuadrature.value )
 		{
-#ifdef MISHA_CODE
 		case 1:
-			ret = InitializeVectorFieldIntegration< 1>( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , bilinearElementGradientSamples , quadraticElementGradientSamples , !PreciseIntegration.set );
+			ret = InitializeIntegration<  1 , Real >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , bilinearElementGradientSamples , quadraticElementGradientSamples , !PreciseIntegration.set );
 			break;
 		case 3:
-			ret = InitializeVectorFieldIntegration< 3>( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , bilinearElementGradientSamples , quadraticElementGradientSamples , !PreciseIntegration.set );
+			ret = InitializeIntegration<  3 , Real >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , bilinearElementGradientSamples , quadraticElementGradientSamples , !PreciseIntegration.set );
 			break;
 		case 6:
-			ret = InitializeVectorFieldIntegration< 6>( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , bilinearElementGradientSamples , quadraticElementGradientSamples , !PreciseIntegration.set );
+			ret = InitializeIntegration<  6 , Real >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , bilinearElementGradientSamples , quadraticElementGradientSamples , !PreciseIntegration.set );
+			break;
+		case 12:
+			ret = InitializeIntegration< 12 , Real >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , bilinearElementGradientSamples , quadraticElementGradientSamples , !PreciseIntegration.set );
+			break;
+		case 24:
+			ret = InitializeIntegration< 24 , Real >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , bilinearElementGradientSamples , quadraticElementGradientSamples , !PreciseIntegration.set );
 			break;
 		case 32:
-			ret = InitializeVectorFieldIntegration<32>( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , bilinearElementGradientSamples , quadraticElementGradientSamples , !PreciseIntegration.set );
+			ret = InitializeIntegration< 32 , Real >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , bilinearElementGradientSamples , quadraticElementGradientSamples , !PreciseIntegration.set );
 			break;
-#else // !MISHA_CODE
-		case 1:
-			ret = InitializeVectorFieldIntegration< 1>( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , bilinearElementGradientSamples , quadraticElementGradientSamples );
-			break;
-		case 3:
-			ret = InitializeVectorFieldIntegration< 3>( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , bilinearElementGradientSamples , quadraticElementGradientSamples );
-			break;
-		case 6:
-			ret = InitializeVectorFieldIntegration< 6>( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , bilinearElementGradientSamples , quadraticElementGradientSamples );
-			break;
-		case 32:
-			ret = InitializeVectorFieldIntegration<32>( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , bilinearElementGradientSamples , quadraticElementGradientSamples );
-			break;
-#endif // MISHA_CODE
 		default:
-			fprintf( stderr , "[ERROR] Only 1-, 3-, 6-, and 32-point quadrature supported for triangles\n" );
+			fprintf( stderr , "[ERROR] Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles\n" );
 		}
 		if( !ret )
 		{
@@ -837,7 +808,6 @@ int Geodesics<Real>::InitializeSystem( const int width , const int height )
 		}
 	}
 	if( Verbose.set ) printf( "\tInitialized vector field integration: %.2f(s)\n" , double(clock() - t_begin) / CLOCKS_PER_SEC);
-
 	coarseBoundaryValues.resize(hierarchy.gridAtlases[0].numTexels - hierarchy.gridAtlases[0].numDeepTexels);
 	coarseBoundaryRHS.resize(hierarchy.gridAtlases[0].numTexels - hierarchy.gridAtlases[0].numDeepTexels);
 	fineBoundaryValues.resize(numFineBoundarNodes);
@@ -847,11 +817,6 @@ int Geodesics<Real>::InitializeSystem( const int width , const int height )
 
 	int numTexels = hierarchy.gridAtlases[0].numTexels;
 	int numFineNodes = hierarchy.gridAtlases[0].numFineNodes;
-
-	exactSmoothImpulseSolution.resize(numTexels);
-	exactGeodesicDistanceSolution.resize(numTexels);
-	smoothedImpulseProlongation.resize(numFineNodes);
-	integratedVFProlongation.resize(numFineNodes);
 
 	return 1;
 
@@ -962,7 +927,7 @@ int Geodesics<Real>::Init( void ){
 		printf( "Peak Memory (MB): %d\n" , Miscellany::MemoryInfo::PeakMemoryUsageMB() );
 	}
 
-	//Assign position to exterior nodes using baricentric-exponential map
+	//Assign position to exterior nodes using barycentric-exponential map
 	FEM::RiemannianMesh< double > * Rmesh = new FEM::RiemannianMesh< double >(GetPointer(mesh.triangles), mesh.triangles.size());
 	Rmesh->setMetricFromEmbedding(GetPointer(mesh.vertices));
 	Rmesh->makeUnitArea();
@@ -973,19 +938,19 @@ int Geodesics<Real>::Init( void ){
 			FEM::HermiteSamplePoint< double > _p;
 			_p.tIdx = textureNodes[i].tId;
 			_p.p = Point2D< double >((double)1. / 3, (double)1. / 3);
-			_p.v = textureNodes[i].baricentricCoords - _p.p;
+			_p.v = textureNodes[i].barycentricCoords - _p.p;
 
 			Rmesh->exp(xForms, _p);
 
 			textureNodes[i].tId = _p.tIdx;
-			textureNodes[i].baricentricCoords = _p.p;
+			textureNodes[i].barycentricCoords = _p.p;
 		}
 	}
 	
 	textureNodePositions.resize( textureNodes.size() );
 	for( int i=0 ; i<textureNodePositions.size() ; i++ )
 	{
-		Point2D< double > barincetricCoords = textureNodes[i].baricentricCoords;
+		Point2D< double > barincetricCoords = textureNodes[i].barycentricCoords;
 		int tId = textureNodes[i].tId;
 		Point3D<float> surfacePosition =
 			mesh.vertices[ mesh.triangles[tId][0] ] * ( 1.0-barincetricCoords[0]-barincetricCoords[1] ) +

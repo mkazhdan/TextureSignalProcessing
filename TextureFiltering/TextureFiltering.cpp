@@ -103,10 +103,10 @@ void ShowUsage( const char* ex )
 	printf( "\t[--%s <multigrid padded width>=%d]\n"   , MultigridPaddedWidth.name   , MultigridPaddedWidth.value   );
 	printf( "\t[--%s <multigrid padded height>=%d]\n"  , MultigridPaddedHeight.name  , MultigridPaddedHeight.value  );
 	printf( "\t[--%s <multigrid update VCycles>=%d]\n" , MultigridUpdateVcycles.name , MultigridUpdateVcycles.value );
-
 }
 
-enum {
+enum
+{
 	INPUT_TEXTURE,
 	OUTPUT_TEXTURE,
 	TEXTURE_COUNT
@@ -656,11 +656,17 @@ int TextureFilter< float >::_InitializeSystem( std::vector<std::vector<SquareMat
 		case 6:
 			ret = InitializeMassAndStiffness< 6>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts,boundaryProlongation , true , inputSignal , texelToCellCoeffs , _boundaryCellBasedStiffnessRHSMatrix );
 			break;
+		case 12:
+			ret = InitializeMassAndStiffness<12>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts,boundaryProlongation , true , inputSignal , texelToCellCoeffs , _boundaryCellBasedStiffnessRHSMatrix );
+			break;
+		case 24:
+			ret = InitializeMassAndStiffness<24>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts,boundaryProlongation , true , inputSignal , texelToCellCoeffs , _boundaryCellBasedStiffnessRHSMatrix );
+			break;
 		case 32:
 			ret = InitializeMassAndStiffness<32>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts,boundaryProlongation , true , inputSignal , texelToCellCoeffs , _boundaryCellBasedStiffnessRHSMatrix );
 			break;
 		default:
-			fprintf( stderr , "[ERROR] Only 1-, 3-, 6-, and 32-point quadrature supported for triangles\n" );
+			fprintf( stderr , "[ERROR] Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles\n" );
 		}
 		if( !ret )
 		{
@@ -689,11 +695,17 @@ int TextureFilter< double >::_InitializeSystem( std::vector<std::vector<SquareMa
 		case 6:
 			InitializeMassAndStiffness< 6>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , true , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix );
 			break;
+		case 12:
+			InitializeMassAndStiffness<12>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , true , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix );
+			break;
+		case 24:
+			InitializeMassAndStiffness<24>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , true , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix );
+			break;
 		case 32:
 			InitializeMassAndStiffness<32>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , true , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix );
 			break;
 		default:
-			fprintf( stderr , "[ERROR] Only 1-, 3-, 6-, and 32-point quadrature supported for triangles\n" );
+			fprintf( stderr , "[ERROR] Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles\n" );
 		}
 		if( !ret )
 		{
@@ -969,7 +981,7 @@ int TextureFilter<Real>::Init( void )
 		printf( "Peak Memory (MB): %d\n" , Miscellany::MemoryInfo::PeakMemoryUsageMB() );
 	}
 
-	//Assign position to exterior nodes using baricentric-exponential map
+	//Assign position to exterior nodes using barycentric-exponential map
 	FEM::RiemannianMesh< double > * Rmesh = new FEM::RiemannianMesh< double >(GetPointer(mesh.triangles), mesh.triangles.size());
 	Rmesh->setMetricFromEmbedding(GetPointer(mesh.vertices));
 	Rmesh->makeUnitArea();
@@ -980,19 +992,19 @@ int TextureFilter<Real>::Init( void )
 			FEM::HermiteSamplePoint< double > _p;
 			_p.tIdx = textureNodes[i].tId;
 			_p.p = Point2D< double >((double)1. / 3, (double)1. / 3);
-			_p.v = textureNodes[i].baricentricCoords - _p.p;
+			_p.v = textureNodes[i].barycentricCoords - _p.p;
 
 			Rmesh->exp(xForms, _p);
 
 			textureNodes[i].tId = _p.tIdx;
-			textureNodes[i].baricentricCoords = _p.p;
+			textureNodes[i].barycentricCoords = _p.p;
 		}
 	}
 	//
 
 	textureNodePositions.resize(textureNodes.size());
 	for (int i = 0; i < textureNodePositions.size(); i++){
-		Point2D<double> barincetricCoords = textureNodes[i].baricentricCoords;
+		Point2D<double> barincetricCoords = textureNodes[i].barycentricCoords;
 		int tId = textureNodes[i].tId;
 		Point3D<float> surfacePosition = mesh.vertices[mesh.triangles[tId][0]] * (1.0 - barincetricCoords[0] - barincetricCoords[1]) +
 										 mesh.vertices[mesh.triangles[tId][1]] * barincetricCoords[0] +

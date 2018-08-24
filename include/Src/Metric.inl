@@ -265,29 +265,25 @@ int InitializePrincipalCurvatureDirection( const TexturedMesh& mesh , std::vecto
 template< typename Real >
 int InitializeEmbeddingMetric( const TexturedMesh& mesh , bool normalizeArea , std::vector< SquareMatrix< Real , 2 > >& embeddingMetric )
 {
-	embeddingMetric.resize(mesh.triangles.size());
+	embeddingMetric.resize( mesh.triangles.size() );
 
 	Real totalMass = 0;
 
-	for (int t = 0; t < mesh.triangles.size(); t++) {
-
+	for( int t=0 ; t<mesh.triangles.size() ; t++ )
+	{
 		Point3D< Real > vPos[3];
-		for (int i = 0; i < 3; i++) vPos[i] = mesh.vertices[mesh.triangles[t][i]];
+		for( int i=0 ; i<3 ; i++ ) vPos[i] = mesh.vertices[ mesh.triangles[t][i] ];
 
-		SquareMatrix< Real , 2> g;
+		SquareMatrix< Real , 2 > g;
 		Point3D< Real > dv[2] = { vPos[1] - vPos[0], vPos[2] - vPos[0] };
-		for (int k = 0; k < 2; k++)for (int l = 0; l < 2; l++)g(k, l) = Point3D< Real >::Dot(dv[k], dv[l]);
+		for( int k=0 ; k<2 ; k++ ) for ( int l=0 ; l<2 ; l++ ) g(k,l) = Point3D< Real >::Dot( dv[k] , dv[l] );
 
-		totalMass += sqrt(g.determinant()) / 2;
+		totalMass += sqrt( g.determinant() ) / 2;
 
 		embeddingMetric[t] = g;
 	}
 
-	if (normalizeArea) {
-		for (int t = 0; t < mesh.triangles.size(); t++) {
-			embeddingMetric[t] /= totalMass;
-		}
-	}
+	if( normalizeArea ) for( int t=0 ; t<mesh.triangles.size() ; t++ ) embeddingMetric[t] /= totalMass;
 
 	return 1;
 }
@@ -325,28 +321,27 @@ int InitializeUniformMetric( const TexturedMesh& mesh , bool normalizeArea , std
 template< typename Real >
 int InitializeParameterMetric( const TexturedMesh& mesh , const std::vector< SquareMatrix< Real , 2 > >& embeddingMetric , const std::vector< AtlasChart >& atlasCharts , std::vector< std::vector< SquareMatrix< Real , 2 > > >& parameterMetric )
 {
-	parameterMetric.resize(atlasCharts.size());
-	for (int i = 0; i < atlasCharts.size(); i++) {
-		parameterMetric[i].resize(atlasCharts[i].meshTriangleIndices.size());
-		for (int k = 0; k < atlasCharts[i].meshTriangleIndices.size(); k++) {
+	parameterMetric.resize( atlasCharts.size() );
+	for( int i=0 ; i<atlasCharts.size() ; i++ )
+	{
+		parameterMetric[i].resize( atlasCharts[i].meshTriangleIndices.size() );
+		for( int k=0 ; k<atlasCharts[i].meshTriangleIndices.size() ; k++ )
+		{
 			int t = atlasCharts[i].meshTriangleIndices[k];
-			Point3D< Real > vPos[3];
-			for (int i = 0; i < 3; i++) vPos[i] = mesh.vertices[mesh.triangles[t][i]];
 
 			SquareMatrix< Real , 2 > embedding_metric = embeddingMetric[t];
 
 			Point2D< Real > tPos[3];
-			for (int i = 0; i < 3; i++) tPos[i] = mesh.textureCoordinates[3 * t + i];
+			for ( int i=0 ; i<3 ; i++ ) tPos[i] = mesh.textureCoordinates[3*t+i];
 
 			Point2D< Real > dp[2] = { tPos[1] - tPos[0], tPos[2] - tPos[0] };
 
 			//Parametric map
-			SquareMatrix<Real, 2> parametric_map_differential;
-			parametric_map_differential(0, 0) = dp[0][0];
-			parametric_map_differential(0, 1) = dp[0][1];
-
-			parametric_map_differential(1, 0) = dp[1][0];
-			parametric_map_differential(1, 1) = dp[1][1];
+			SquareMatrix< Real , 2 > parametric_map_differential;
+			parametric_map_differential(0,0) = dp[0][0];
+			parametric_map_differential(0,1) = dp[0][1];
+			parametric_map_differential(1,0) = dp[1][0];
+			parametric_map_differential(1,1) = dp[1][1];
 
 			SquareMatrix< Real , 2 > inverse_parametric_map_differential = parametric_map_differential.inverse();
 			SquareMatrix< Real , 2 > parameter_metric = inverse_parametric_map_differential.transpose() * embedding_metric * inverse_parametric_map_differential;
@@ -365,7 +360,7 @@ int InitializeMetric( TexturedMesh& mesh , const int metricMode , const std::vec
 	InitializeEmbeddingMetric( mesh , true , embeddingMetric );
 
 	if     ( metricMode==EMBEDDING_METRIC ) surfaceMetric = embeddingMetric;
-	else if( metricMode==UNIFORM_METRIC ) InitializeUniformMetric( mesh , true , surfaceMetric );
+	else if( metricMode==UNIFORM_METRIC   ) InitializeUniformMetric( mesh , true , surfaceMetric );
 	else{ fprintf( stderr , "[ERROR] Unrecognized  metric!\n") ; return 0; }
 	InitializeParameterMetric( mesh , surfaceMetric , atlasCharts , parameterMetric );
 	return 1;

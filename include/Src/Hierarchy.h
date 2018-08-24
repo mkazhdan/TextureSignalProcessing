@@ -29,9 +29,94 @@ DAMAGE.
 #define HIERARCHICAL_SYSTEM_INCLUDED
 
 #include "IndexedPolygon.h"
-#define MISHA_CODE
 
-#ifdef MISHA_CODE
+template< typename Real >
+struct BilinearElementScalarSample
+{
+	struct SampleData
+	{
+		SampleData( void ){ memset( dualValues , 0 , sizeof(Real) * 4 ); }
+		Point2D< Real > pos;			// The sample position inside the element
+		Real dualValues[4];				// The integrated values of the four incident bilinear basis functions, dualized
+	};
+	SquareMatrix< Real , 2 > tensor;	// The inverse metric tensor defined by the intersecting triangle
+	int cellOffset;
+	static bool Compare( const BilinearElementScalarSample& a , const BilinearElementScalarSample& b ){ return a.cellOffset<b.cellOffset; }
+
+	BilinearElementScalarSample( void ) : _sampleNum(0) , _samples(NULL) {}
+	BilinearElementScalarSample( unsigned int sz ) : _sampleNum(0) , _samples(NULL) { resize(sz); }
+	BilinearElementScalarSample( const BilinearElementScalarSample& bilinearElementScalarSample ) : _sampleNum(0) , _samples(NULL)
+	{
+		resize( bilinearElementScalarSample._sampleNum );
+		memcpy( _samples , bilinearElementScalarSample._samples , sizeof( SampleData ) * _sampleNum );
+		tensor = bilinearElementScalarSample.tensor;
+		cellOffset = bilinearElementScalarSample.cellOffset;
+	}
+	BilinearElementScalarSample& operator = ( const BilinearElementScalarSample& bilinearElementScalarSample )
+	{
+		resize( bilinearElementScalarSample._sampleNum );
+		memcpy( _samples , bilinearElementScalarSample._samples , sizeof( SampleData ) * _sampleNum );
+		tensor = bilinearElementScalarSample.tensor;
+		cellOffset = bilinearElementScalarSample.cellOffset;
+		return *this;
+	}
+	~BilinearElementScalarSample( void ){ resize(0); }
+	void resize( unsigned int sz )
+	{
+		if( _samples ){ delete[] _samples ; _samples = NULL; }
+		_sampleNum = 0;
+		if( sz ){ _samples = new SampleData[sz] ; _sampleNum = sz; }
+	}
+	unsigned int size( void ) const { return _sampleNum; }
+	SampleData& operator[]( unsigned int idx )       { return _samples[idx]; }
+	const SampleData& operator[]( unsigned int idx ) const { return _samples[idx]; }
+protected:
+	unsigned int _sampleNum;
+	SampleData* _samples;
+};
+template< typename Real >
+struct QuadraticElementScalarSample
+{
+	struct SampleData
+	{
+		SampleData( void ){ memset( dualValues , 0 , sizeof(Real) * 6 ); }
+		Point2D< Real > pos;			// The sample position inside the element
+		Real dualValues[6];				// The integrated values of the six incident quadratic basis functions, dualized
+	};
+	SquareMatrix< Real , 2 > tensor;	// The inverse metric tensor defined by the intersecting triangle
+	int fineNodes[6];
+
+	QuadraticElementScalarSample( void ) : _sampleNum(0) , _samples(NULL) {}
+	QuadraticElementScalarSample( unsigned int sz ) : _sampleNum(0) , _samples(NULL) { resize(sz); }
+	QuadraticElementScalarSample( const QuadraticElementScalarSample& quadraticElementScalarSample ) : _sampleNum(0) , _samples(NULL)
+	{
+		resize( quadraticElementScalarSample._sampleNum );
+		memcpy( _samples , quadraticElementScalarSample._samples , sizeof( SampleData ) * _sampleNum );
+		tensor = quadraticElementScalarSample.tensor;
+		memcpy( fineNodes , quadraticElementScalarSample.fineNodes , sizeof(int)*6 );
+	}
+	QuadraticElementScalarSample& operator = ( const QuadraticElementScalarSample& quadraticElementScalarSample )
+	{
+		resize( quadraticElementScalarSample._sampleNum );
+		memcpy( _samples , quadraticElementScalarSample._samples , sizeof( SampleData ) * _sampleNum );
+		tensor = quadraticElementScalarSample.tensor;
+		memcpy( fineNodes , quadraticElementScalarSample.fineNodes , sizeof(int)*6 );
+		return *this;
+	}
+	~QuadraticElementScalarSample( void ){ resize(0); }
+	void resize( unsigned int sz )
+	{
+		if( _samples ){ delete[] _samples ; _samples = NULL; }
+		_sampleNum = 0;
+		if( sz ){ _samples = new SampleData[sz] ; _sampleNum = sz; }
+	}
+	unsigned int size( void ) const { return _sampleNum; }
+	SampleData& operator[]( unsigned int idx )       { return _samples[idx]; }
+	const SampleData& operator[]( unsigned int idx ) const { return _samples[idx]; }
+protected:
+	unsigned int _sampleNum;
+	SampleData* _samples;
+};
 template< typename Real >
 struct BilinearElementGradientSample
 {
@@ -81,7 +166,7 @@ struct QuadraticElementGradientSample
 	struct SampleData
 	{
 		Point2D< Real > pos;				// The sample position inside the element
-		Point2D< Real > dualGradients[6];	// The integrated gradients of the size incident quadratic basis functions, dualized
+		Point2D< Real > dualGradients[6];	// The integrated gradients of the six incident quadratic basis functions, dualized
 	};
 	SquareMatrix< Real , 2 > tensor;		// The inverse metric tensor defined by the intersecting triangle
 	int fineNodes[6];
@@ -117,41 +202,6 @@ protected:
 	unsigned int _sampleNum;
 	SampleData* _samples;
 };
-#else // !MISHA_CODE
-
-// Data values associated to interior cells
-// All values are represented with respect to the coordinate frame of the (square) element [which is also the cell]
-template< class Real >
-struct BilinearElementGradientSample
-{
-	struct IntegrationData
-	{
-		Point2D< Real > pos;				// The barycenter of the intersection of the triangle with the (square) element
-		Point2D< Real > dualGradients[4];	// The integrated gradients of the four incident bilinear basis functions, dualized
-	};
-	SquareMatrix< Real , 2 > tensor;		// The metric tensor defined by the intersecting triangle
-	IntegrationData integrationData;
-	int cellOffset;
-	static bool Compare( const BilinearElementGradientSample& a , const BilinearElementGradientSample& b ){ return a.cellOffset<b.cellOffset; }
-};
-
-
-// Data values associated to boundary cells
-// All values are represented with respect to the coordinate frame of the (triangular) element
-template< class Real >
-struct QuadraticElementGradientSample
-{
-	struct IntegrationData
-	{
-		Point2D< Real > pos;				// The barycenter of the intersection of the triangle with the (triangle) element
-		Point2D< Real > dualGradients[6];	// The integrated gradients of the six incident quadratic basis functions, dualized
-	};
-	SquareMatrix< Real , 2 > tensor;	// The metric tensor defined by the intersecting triangle
-	IntegrationData integrationData;
-	int fineNodes[6];
-};
-#endif // MISHA_CODE
-
 
 class RasterLine
 {
@@ -315,7 +365,7 @@ public:
 	std::vector<AuxiliarNode> auxiliarNodes;
 
 	Image<int> triangleId;
-	Image<Point2D<double>> baricentricCoords;
+	Image<Point2D<double>> barycentricCoords;
 };
 
 
@@ -402,15 +452,16 @@ public:
 	SparseMatrix<Real, int> boundaryBoundaryMatrix;
 };
 
-template<class DataType>
-class MultigridLevelVariables {
+template< class DataType >
+class MultigridLevelVariables
+{
 public:
-	std::vector<DataType> x;
-	std::vector<DataType> rhs;
-	std::vector<DataType> residual;
-	std::vector<DataType> boundary_rhs;
-	std::vector<DataType> boundary_value;
-	std::vector<DataType> variable_boundary_value;
+	std::vector< DataType > x;
+	std::vector< DataType > rhs;
+	std::vector< DataType > residual;
+	std::vector< DataType > boundary_rhs;
+	std::vector< DataType > boundary_value;
+	std::vector< DataType > variable_boundary_value;
 };
 
 template<class Real>

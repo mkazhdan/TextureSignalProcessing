@@ -862,7 +862,6 @@ int MultiplyBySystemMatrix(const std::vector<Real> & deepCoefficients, const Spa
 
 	auto UpdateRow = [&](int r)
 	{
-
 		Data* _out = (Data*)out.data() + rasterLines[r].lineStartIndex;
 		const Data* _inCurrent = (Data*)in.data() + rasterLines[r].lineStartIndex;
 		const Data* _inPrevious = (Data*)in.data() + rasterLines[r].prevLineIndex;
@@ -886,7 +885,6 @@ int MultiplyBySystemMatrix(const std::vector<Real> & deepCoefficients, const Spa
 		}
 	};
 
-
 	if (verbose) t_begin = clock();
 
 	int threads = omp_get_max_threads();
@@ -906,28 +904,40 @@ int MultiplyBySystemMatrix(const std::vector<Real> & deepCoefficients, const Spa
 }
 
 template< class Real , class Data >
-int MultiplyBySystemMatrix_NoReciprocals( const std::vector< Real >& deepCoefficients , const SparseMatrix< Real , int >& boundaryDeepMatrix , const SparseMatrix< Real , int >& boundaryBoundaryMatrix , const std::vector< int >& boundaryGlobalIndex , const std::vector< RasterLine >& rasterLines , const std::vector< Data >& in , std::vector< Data > & out , bool verbose = false )
+int MultiplyBySystemMatrix_NoReciprocals
+(
+	const std::vector< Real >& deepCoefficients ,
+	const SparseMatrix< Real , int >& boundaryDeepMatrix ,
+	const SparseMatrix< Real , int >& boundaryBoundaryMatrix ,
+	const std::vector< int >& boundaryGlobalIndex ,
+	const std::vector< RasterLine >& rasterLines ,
+	const std::vector< Data >& in ,
+	std::vector< Data > & out ,
+	bool verbose = false
+)
 {
 	clock_t t_begin;
 
 	int numBoundaryVariables = (int)boundaryGlobalIndex.size();
 
-	std::vector< Data > inBoundaryValues;
-	inBoundaryValues.resize(numBoundaryVariables);
-	for (int i = 0; i < numBoundaryVariables; i++) inBoundaryValues[i] = in[boundaryGlobalIndex[i]];
+	// Pull out the boundary values from the input array
+	std::vector< Data > outBoundaryValues( numBoundaryVariables );
+	std::vector< Data >  inBoundaryValues( numBoundaryVariables );
+	for( int i=0 ; i<numBoundaryVariables ; i++ ) inBoundaryValues[i] = in[ boundaryGlobalIndex[i] ];
 
-	std::vector<Data> outBoundaryValues;
-	outBoundaryValues.resize(numBoundaryVariables);
+	t_begin = clock();
+	//  Perform the boundary -> boundary multiplication
+	boundaryBoundaryMatrix.Multiply( &inBoundaryValues[0] , &outBoundaryValues[0] );
+	// Perform the interior -> boundary multiplication
+	boundaryDeepMatrix.Multiply( &in[0] , &outBoundaryValues[0] , MULTIPLY_ADD );
+	if( verbose ) printf( "\tMultiply boundary = %.4f\n" , double(clock() - t_begin) / (CLOCKS_PER_SEC) );
 
-	if( verbose ) t_begin = clock();
-	boundaryBoundaryMatrix.Multiply(&inBoundaryValues[0], &outBoundaryValues[0]);
-	boundaryDeepMatrix.Multiply(&in[0], &outBoundaryValues[0], MULTIPLY_ADD);
-	if( verbose ) printf("\t Multiply boundary =  %.4f \n", double(clock() - t_begin) / (CLOCKS_PER_SEC));
-
+	// Write the boundary values back into the output array
 #pragma omp parallel for
-	for (int i = 0; i < numBoundaryVariables; i++) out[boundaryGlobalIndex[i]] = outBoundaryValues[i];
+	for( int i=0 ; i<numBoundaryVariables ; i++ ) out[ boundaryGlobalIndex[i] ] = outBoundaryValues[i];
 
-	auto UpdateRow = [&](int r)
+	// Perform the interior -> interior multiplication
+	auto UpdateRow = [&]( int r )
 	{
 
 		Data* _out = (Data*)out.data() + rasterLines[r].lineStartIndex;
@@ -935,10 +945,10 @@ int MultiplyBySystemMatrix_NoReciprocals( const std::vector< Real >& deepCoeffic
 		const Data* _inPrevious = (Data*)in.data() + rasterLines[r].prevLineIndex;
 		const Data* _inNext     = (Data*)in.data() + rasterLines[r].nextLineIndex;
 
-		int lineLength = (rasterLines[r].lineEndIndex - rasterLines[r].lineStartIndex + 1);
+		int lineLength = ( rasterLines[r].lineEndIndex - rasterLines[r].lineStartIndex + 1 );
 		int lineDeepStart = rasterLines[r].coeffStartIndex;
-		const Real* _deepCoefficients = &deepCoefficients[10 * lineDeepStart];
-		for (int i = 0; i < lineLength; _deepCoefficients += 10, i++)
+		const Real* _deepCoefficients = &deepCoefficients[10*lineDeepStart];
+		for( int i=0 ; i<lineLength ; _deepCoefficients+=10 , i++)
 		{
 			_out[i] =(Data)
 				(
@@ -956,21 +966,22 @@ int MultiplyBySystemMatrix_NoReciprocals( const std::vector< Real >& deepCoeffic
 	};
 
 
-	if (verbose) t_begin = clock();
+	t_begin = clock();
 
 	int threads = omp_get_max_threads();
-	std::vector<int> lineRange(threads + 1);
+	std::vector< int > lineRange( threads+1 );
 	int blockSize = (int)rasterLines.size() / threads;
-	for (int t = 0; t < threads; t++) lineRange[t] = t*blockSize;
+	for( int t=0 ; t<threads ; t++ ) lineRange[t] = t*blockSize;
 	lineRange[threads] = (int)rasterLines.size();
 #pragma omp parallel for
-	for (int t = 0; t < threads; t++) {
+	for( int t=0 ; t<threads ; t++ )
+	{
 		const int tId = omp_get_thread_num();
 		const int firstLine = lineRange[tId];
-		const int lastLine = lineRange[tId + 1];
-		for (int r = firstLine; r < lastLine; r++) UpdateRow(r);
+		const int lastLine = lineRange[tId+1];
+		for( int r=firstLine ; r<lastLine ; r++ ) UpdateRow(r);
 	}
-	if (verbose) printf("\t Multiply deep %.4f \n", double(clock() - t_begin) / CLOCKS_PER_SEC);
+	if( verbose ) printf( "\tMultiply deep = %.4f \n" , double(clock() - t_begin) / CLOCKS_PER_SEC );
 	return 1;
 }
 
