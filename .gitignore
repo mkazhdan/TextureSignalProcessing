@@ -13,3 +13,13 @@ include/Src.V1/
 include/Src.V2/
 *.pdf
 *.zip
+
+*.VC.db
+*.vcxproj.user
+Geodesics/x64/
+JPEG/x64/
+LineIntegralConvolution/x64/
+PNG/x64/
+ReactionDiffusion/x64/
+TextureFiltering/x64/
+ZLIB/x64/
