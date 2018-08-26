@@ -1,5 +1,6 @@
 
-export CFLAGS += -DGLM_FORCE_RADIANS=1  # avoid some warnings in include/glm
+##export CFLAGS += -DGLM_FORCE_RADIANS=1  # avoid some warnings in include/glm
+## For some reason, enabling GLM_FORCE_RADIANS seems to invert the camera
 
 programs = Geodesics LineIntegralConvolution TextureFiltering ReactionDiffusion
 
