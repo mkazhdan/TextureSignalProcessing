@@ -40,6 +40,8 @@ DAMAGE.
 
 const float StripeRates[] = { 0.062f , 0.062f };
 const float    DotRates[] = { 0.0367f , 0.0649f };
+const float DefaultStripesSamplesFraction = 0.01f;
+const float DefaultDotsSamplesFraction = 0.001f;
 
 cmdLineParameter< char* > Input( "in" );
 cmdLineParameter< char* > Output( "out" );
@@ -49,14 +51,14 @@ cmdLineParameter< int   > Height( "height" , 512 );
 cmdLineParameter< float > Speed( "speed" , 10.f );
 cmdLineParameterArray< float , 2 > FeedKillRates( "fk" , StripeRates );
 cmdLineParameter< float > DiffusionScale( "diff" , 1.f );
-cmdLineParameter< float > SamplesFraction( "samples" , 0.01f );
+cmdLineParameter< float > SamplesFraction( "samples" );
 cmdLineParameter< float > AreaScale( "areaScale" , 1.f );
 cmdLineParameter< int   > Levels( "levels" , 4 );
 cmdLineParameter< char* > CameraConfig( "camera" );
 cmdLineParameter< int   > Threads( "threads" , omp_get_num_procs() );
 cmdLineParameter< int   > DisplayMode( "display" , TWO_REGION_DISPLAY );
 cmdLineParameter< int   > MatrixQuadrature( "mQuadrature" , 6 );
-cmdLineParameter< int   > RHSQuadrature( "rhsQuadrature" , 6 );
+cmdLineParameter< int   > RHSQuadrature( "rhsQuadrature" , 3 );
 
 cmdLineParameter< int   > MultigridBlockHeight ( "mBlockH" ,  16 );
 cmdLineParameter< int   > MultigridBlockWidth  ( "mBlockW" , 128 );
@@ -68,7 +70,7 @@ cmdLineReadable Verbose( "verbose" );
 cmdLineReadable DetailVerbose( "detail" );
 cmdLineReadable UseDirectSolver( "useDirectSolver" );
 cmdLineReadable Double( "double" );
-cmdLineReadable PreciseIntegration( "preciseIntegration" );
+cmdLineReadable ApproximateIntegration( "approximateIntegration" );
 cmdLineReadable Dots( "dots" );
 
 cmdLineReadable* params[] =
@@ -78,7 +80,7 @@ cmdLineReadable* params[] =
 	&RandomJitter ,
 	&Double ,
 	&MatrixQuadrature , &RHSQuadrature ,
-	&PreciseIntegration , &Dots ,
+	&ApproximateIntegration , &Dots ,
 	NULL
 };
 
@@ -93,11 +95,11 @@ void ShowUsage( const char* ex )
 	printf( "\t[--%s <time-step>=%f]\n" , Speed.name , Speed.value );
 	printf( "\t[--%s <feed/kill rates>=%f %f]\n" , FeedKillRates.name , FeedKillRates.values[0] , FeedKillRates.values[1] );
 	printf( "\t[--%s <diffusion scale>=%f]\n" , DiffusionScale.name , DiffusionScale.value );
-	printf( "\t[--%s <samples fraction>=%f]\n" , SamplesFraction.name , SamplesFraction.value );
+	printf( "\t[--%s <samples fraction>=%f / %f]\n" , SamplesFraction.name , DefaultStripesSamplesFraction , DefaultDotsSamplesFraction );
 	printf( "\t[--%s <area scale factor>=%f]\n" , AreaScale.name , AreaScale.value );
 	printf( "\t[--%s <system matrix quadrature points per triangle>=%d]\n" , MatrixQuadrature.name , MatrixQuadrature.value );
 	printf( "\t[--%s <right-hand-side quadrature points per triangle>=%d]\n" , RHSQuadrature.name , RHSQuadrature.value );
-	printf( "\t[--%s]\n" , PreciseIntegration.name );
+	printf( "\t[--%s]\n" , ApproximateIntegration.name );
 	printf( "\t[--%s]\n" , UseDirectSolver.name );
 	printf( "\t[--%s]\n" , RandomJitter.name );
 	printf( "\t[--%s]\n" , Dots.name );
@@ -131,6 +133,7 @@ public:
 	static int levels;
 	static int steps;
 	static char stepsString[];
+	static int whichConcentration;
 
 	static Padding padding;
 
@@ -211,6 +214,8 @@ public:
 
 	static int updateCount;
 
+	static void SetConcentration1CallBack( Visualization* v , const char* prompt );
+	static void SetConcentration2CallBack( Visualization* v , const char* prompt );
 	static void ToggleUpdateCallBack( Visualization* v , const char* prompt );
 	static void IncrementUpdateCallBack( Visualization* v , const char* prompt );
 	static void ExportTextureCallBack( Visualization* v , const char* prompt );
@@ -297,6 +302,7 @@ template< class Real > SparseMatrix< double , int >									GrayScottReactionDif
 template< class Real > SparseMatrix< double , int >									GrayScottReactionDiffusion< Real >::boundaryDeepMassMatrix;
 template< class Real > SparseMatrix< double , int >									GrayScottReactionDiffusion< Real >::boundaryDeepStiffnessMatrix;
 
+template< class Real > int															GrayScottReactionDiffusion< Real >::whichConcentration = 1;
 template< class Real > int															GrayScottReactionDiffusion< Real >::updateCount = 0;
 
 template< class Real >
@@ -362,18 +368,13 @@ int GrayScottReactionDiffusion< Real >::UpdateExactSolution( bool verbose )
 			solve( fineSolvers[ab] , multigridVariables[ab][0].x , multigridVariables[ab][0].rhs );
 			for( int i=0 ; i<multigridVariables[ab][0].x.size() ; i++ ) multigridVariables[ab][0].x[i] = std::max< Real >( multigridVariables[ab][0].x[i] , 0 );
 		}
-		if( verbose ) printf( "Smoothing impulse %.4f\n" , double(clock() - begin) / CLOCKS_PER_SEC );
+		if( verbose ) printf( "Performed direct solve %.4f\n" , double(clock() - begin) / CLOCKS_PER_SEC );
 	}
 	return 1;
 }
 template< class Real >
 int GrayScottReactionDiffusion< Real >::UpdateApproximateSolution( bool verbose , bool detailVerbose )
 {
-	//////////////////////////////////////////////////////////////////////////////////////////////////////
-	// ( D + d * diff1 * S ) a[t+d] = D( a[t] + d * ( - a[t] * b[t] * b[t] + feed * ( 1 - a[t] ) ) )    //
-	// ( D + d * diff2 * S ) b[t+d] = D( b[t] + d * (   a[t] * b[t] * b[t] - ( kill + feed ) * b[t] ) ) //
-	//////////////////////////////////////////////////////////////////////////////////////////////////////
-
 	// (1) Compute the right-hand-sides
 	{
 		clock_t begin = clock();
@@ -389,7 +390,7 @@ int GrayScottReactionDiffusion< Real >::UpdateApproximateSolution( bool verbose 
 			VCycle( multigridVariables[ab] , multigridCoefficients[ab] , multigridIndices , boundarySolvers[ab] , coarseSolvers[ab] , detailVerbose , detailVerbose );
 			for( int i=0 ; i<multigridVariables[ab][0].x.size() ; i++ ) multigridVariables[ab][0].x[i] = std::max< Real >( multigridVariables[ab][0].x[i] , 0 );
 		}
-		if( verbose ) printf( "Sovled v-cycles %.3f(s)\n" , double(clock() - begin) / CLOCKS_PER_SEC );
+		if( verbose ) printf( "Performed v-cycle: %.3f(s)\n" , double(clock() - begin) / CLOCKS_PER_SEC );
 	}
 
 	return 1;
@@ -436,7 +437,8 @@ void GrayScottReactionDiffusion< Real >::Idle( void )
 		steps++;
 		sprintf( stepsString , "Steps: %d" , steps );
 	}
-	UpdateOutputBuffer( multigridVariables[1][0].x );
+//	UpdateOutputBuffer( multigridVariables[1][0].x );
+	UpdateOutputBuffer( multigridVariables[whichConcentration][0].x );
 #else
 	int selectedTexel = -1;
 	if (mouseSelectionActive){
@@ -597,7 +599,7 @@ void GrayScottReactionDiffusion< Real >::MotionFunc( int x , int y )
 			if      ( visualization.rotating ) visualization.camera.rotateUp( visualization.center , rUp ) , visualization.camera.rotateRight( visualization.center , rRight );
 #endif // GLM_FORCE_RADIANS
 			else if( visualization.scaling   ) visualization.camera.moveForward( pForward);
-			else if( visualization.panning   ) visualization.camera.moveRight( pRight ) , visualization.camera.moveUp( pUp );
+			else if( visualization.panning   ) visualization.camera.moveRight( -pRight ) , visualization.camera.moveUp( -pUp );
 		}
 		glutPostRedisplay();
 	}
@@ -657,7 +659,7 @@ int GrayScottReactionDiffusion< Real >::InitializeSystem( const int width , cons
 	if( !InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric ) ){ fprintf( stderr , "[ERROR] Unable to initialize metric\n") ; return 0; }
 
 	// Scale the metric so that the area is equal to the resolution
-	for( int i=0 ; i<parameterMetric.size() ; i++ ) for( int j=0 ; j<parameterMetric[i].size() ; j++ ) parameterMetric[i][j] *= areaScale * width * height / 2;
+	for( int i=0 ; i<parameterMetric.size() ; i++ ) for( int j=0 ; j<parameterMetric[i].size() ; j++ ) parameterMetric[i][j] *= areaScale * textureNodes.size() / 2;
 
 	t_begin = clock();
 	{
@@ -749,12 +751,12 @@ int GrayScottReactionDiffusion< Real >::InitializeSystem( const int width , cons
 		int ret = 0;
 		switch( RHSQuadrature.value )
 		{
-		case  1: ret = InitializeIntegration<  1 , Real >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , bilinearElementScalarSamples , quadraticElementScalarSamples , !PreciseIntegration.set ) ; break;
-		case  3: ret = InitializeIntegration<  3 , Real >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , bilinearElementScalarSamples , quadraticElementScalarSamples , !PreciseIntegration.set ) ; break;
-		case  6: ret = InitializeIntegration<  6 , Real >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , bilinearElementScalarSamples , quadraticElementScalarSamples , !PreciseIntegration.set ) ; break;
-		case 12: ret = InitializeIntegration< 12 , Real >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , bilinearElementScalarSamples , quadraticElementScalarSamples , !PreciseIntegration.set ) ; break;
-		case 24: ret = InitializeIntegration< 24 , Real >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , bilinearElementScalarSamples , quadraticElementScalarSamples , !PreciseIntegration.set ) ; break;
-		case 32: ret = InitializeIntegration< 32 , Real >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , bilinearElementScalarSamples , quadraticElementScalarSamples , !PreciseIntegration.set ) ; break;
+		case  1: ret = InitializeIntegration<  1 , Real >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , bilinearElementScalarSamples , quadraticElementScalarSamples , ApproximateIntegration.set ) ; break;
+		case  3: ret = InitializeIntegration<  3 , Real >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , bilinearElementScalarSamples , quadraticElementScalarSamples , ApproximateIntegration.set ) ; break;
+		case  6: ret = InitializeIntegration<  6 , Real >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , bilinearElementScalarSamples , quadraticElementScalarSamples , ApproximateIntegration.set ) ; break;
+		case 12: ret = InitializeIntegration< 12 , Real >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , bilinearElementScalarSamples , quadraticElementScalarSamples , ApproximateIntegration.set ) ; break;
+		case 24: ret = InitializeIntegration< 24 , Real >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , bilinearElementScalarSamples , quadraticElementScalarSamples , ApproximateIntegration.set ) ; break;
+		case 32: ret = InitializeIntegration< 32 , Real >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , bilinearElementScalarSamples , quadraticElementScalarSamples , ApproximateIntegration.set ) ; break;
 		default: fprintf( stderr , "[ERROR] Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles\n" );
 		}
 		if( !ret ){ fprintf( stderr , "[ERROR] Unable to initialize vector field integration samples!\n" ) ; return 0; }
@@ -809,6 +811,10 @@ void GrayScottReactionDiffusion< Real >::InitializeVisualization( const int widt
 	}
 
 	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization,  's' , "export texture" , "Output Texture" , ExportTextureCallBack ) );
+	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , ' ' , "toggle update" , ToggleUpdateCallBack ) );
+	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , '+' , "increment update" , IncrementUpdateCallBack ) );
+	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , '2' , "show concentration 2" , SetConcentration2CallBack ) );
+	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , '1' , "show concentration 1" , SetConcentration1CallBack ) );
 
 	visualization.UpdateVertexBuffer();
 	visualization.UpdateFaceBuffer();
@@ -823,17 +829,17 @@ void GrayScottReactionDiffusion< Real >::InitializeVisualization( const int widt
 	}
 	visualization.UpdateTextureBuffer();
 
-	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , ' ' , "toggle update" , ToggleUpdateCallBack ) );
-	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , '+' , "increment update" , IncrementUpdateCallBack ) );
 
 	visualization.info.push_back( stepsString );
 }
-template< class Real > void GrayScottReactionDiffusion< Real >::ToggleUpdateCallBack( Visualization* v , const char* prompt )
+template< class Real > void GrayScottReactionDiffusion< Real >::SetConcentration1CallBack( Visualization* , const char* ){ whichConcentration = 0; }
+template< class Real > void GrayScottReactionDiffusion< Real >::SetConcentration2CallBack( Visualization* , const char* ){ whichConcentration = 1; }
+template< class Real > void GrayScottReactionDiffusion< Real >::ToggleUpdateCallBack( Visualization* , const char* )
 {
 	if( updateCount ) updateCount = 0;
 	else              updateCount = -1;
 }
-template< class Real > void GrayScottReactionDiffusion< Real >::IncrementUpdateCallBack( Visualization* v , const char* prompt )
+template< class Real > void GrayScottReactionDiffusion< Real >::IncrementUpdateCallBack( Visualization* , const char* )
 {
 	if( updateCount<0 ) updateCount = 1;
 	else updateCount++;
@@ -990,6 +996,11 @@ int main( int argc , char* argv[] )
 {
 	cmdLineParse( argc-1 , argv+1 , params );
 	if( !Input.set ){ ShowUsage( argv[0] ) ; return EXIT_FAILURE; }
+	if( !SamplesFraction.set )
+	{
+		if( Dots.set ) SamplesFraction.value = DefaultDotsSamplesFraction;
+		else           SamplesFraction.value = DefaultStripesSamplesFraction;
+	}
 	if( Dots.set && !FeedKillRates.set ) FeedKillRates.values[0] = DotRates[0] , FeedKillRates.values[1] = DotRates[1];
 	omp_set_num_threads( Threads.value );
 	if( Double.set ) _main< double >( argc , argv );
