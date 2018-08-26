@@ -53,7 +53,6 @@ cmdLineParameter< int   > MultigridBlockHeight ( "mBlockH" ,  16 );
 cmdLineParameter< int   > MultigridBlockWidth  ( "mBlockW" , 128 );
 cmdLineParameter< int   > MultigridPaddedHeight( "mPadH"   ,   0 );
 cmdLineParameter< int   > MultigridPaddedWidth ( "mPadW"   ,   2 );
-cmdLineParameter< int   > MultigridUpdateVcycles( "mVCycles" , 6 );
 
 cmdLineReadable RandomJitter( "jitter" );
 cmdLineReadable Verbose( "verbose" );
@@ -64,7 +63,7 @@ cmdLineReadable PreciseIntegration( "preciseIntegration" );
 
 cmdLineReadable* params[] =
 {
-	&Input , &Width , &Height , &DiffusionInterpolationWeight , &CameraConfig , &Levels , &UseDirectSolver , &Threads , &DisplayMode , &MultigridBlockHeight , &MultigridBlockWidth , &MultigridPaddedHeight , &MultigridPaddedWidth , &MultigridUpdateVcycles ,
+	&Input , &Width , &Height , &DiffusionInterpolationWeight , &CameraConfig , &Levels , &UseDirectSolver , &Threads , &DisplayMode , &MultigridBlockHeight , &MultigridBlockWidth , &MultigridPaddedHeight , &MultigridPaddedWidth ,
 	&Verbose , &DetailVerbose ,
 	&RandomJitter ,
 	&Double ,
@@ -98,7 +97,6 @@ void ShowUsage( const char* ex )
 	printf( "\t[--%s <multigrid block height>=%d]\n"  , MultigridBlockHeight.name  , MultigridBlockHeight.value  );
 	printf( "\t[--%s <multigrid padded width>=%d]\n"  , MultigridPaddedWidth.name  , MultigridPaddedWidth.value  );
 	printf( "\t[--%s <multigrid padded height>=%d]\n" , MultigridPaddedHeight.name , MultigridPaddedHeight.value );
-	printf( "\t[--%s <multigrid update VCycles>=%d]\n" , MultigridUpdateVcycles.name , MultigridUpdateVcycles.value );
 }
 
 template< class Real >
@@ -111,6 +109,7 @@ public:
 	static double diffusionInterpolationWeight;
 	static double geodesicInterpolationWeight;
 	static int levels;
+	static int updateCount;
 	
 	static Padding padding;
 	
@@ -185,9 +184,6 @@ public:
 	static std::vector<InteriorCellLine> interiorCellLines;
 	static std::vector<std::pair<int, int>> interiorCellLineIndex;
 
-	static int updateVCycles;
-	static int cycleCount;
-
 	static unsigned char * outputBuffer;
 
 	//Visulization
@@ -197,6 +193,8 @@ public:
 
 	static void UpdateOutputBuffer( const std::vector< Real >& solution );
 
+	static void ToggleUpdateCallBack( Visualization* v , const char* prompt );
+	static void IncrementUpdateCallBack( Visualization* v , const char* prompt );
 	static void ExportTextureCallBack( Visualization* v , const char* prompt );
 	static int Init();
 	static void InitializeVisualization( const int width , const int height );
@@ -279,8 +277,7 @@ template<class Real> std::vector<Real>												Geodesics<Real>::coarseBoundar
 template<class Real> std::vector<Real>												Geodesics<Real>::fineBoundaryValues;
 template<class Real> std::vector<Real>												Geodesics<Real>::fineBoundaryRHS;
 
-template<class Real> int															Geodesics<Real>::updateVCycles;
-template<class Real> int															Geodesics<Real>::cycleCount;
+template< class Real > int															Geodesics< Real >::updateCount = -1;
 
 template<class Real>
 void Geodesics<Real>::ComputeExactSolution( bool verbose )
@@ -288,18 +285,16 @@ void Geodesics<Real>::ComputeExactSolution( bool verbose )
 	clock_t begin;
 
 	//(1) Smoothing impulse	
-	if (verbose) begin = clock();
-	std::vector< Real >& exactSmoothImpulseSolution = multigridSmoothImpulseVariables[0].x;
-	std::vector< Real >& exactGeodesicDistanceSolution = multigridGeodesicDistanceVariables[0].x;
-	solve( fineSmoothImpulseSolver , exactSmoothImpulseSolution , multigridSmoothImpulseVariables[0].rhs );
-	if (verbose) printf("Smoothing impulse %.4f \n", double(clock() - begin) / CLOCKS_PER_SEC);
+	begin = clock();
+	solve( fineSmoothImpulseSolver , multigridSmoothImpulseVariables[0].x , multigridSmoothImpulseVariables[0].rhs );
+	if( verbose ) printf( "Smoothing impulse %.4f\n" , double(clock() - begin) / CLOCKS_PER_SEC);
 
 	//(1) Integrating vector field	
 	const std::vector<int> & boundaryGlobalIndex = hierarchy.gridAtlases[0].boundaryGlobalIndex;
 
 	if (verbose) begin = clock();
 #pragma omp parallel for
-	for (int i = 0; i < boundaryGlobalIndex.size(); i++) coarseBoundaryValues[i] = exactSmoothImpulseSolution[boundaryGlobalIndex[i]];
+	for (int i = 0; i < boundaryGlobalIndex.size(); i++) coarseBoundaryValues[i] = multigridSmoothImpulseVariables[0].x[boundaryGlobalIndex[i]];
 	coarseBoundaryFineBoundaryProlongation.Multiply(&coarseBoundaryValues[0], &fineBoundaryValues[0]);
 	if (verbose) printf("Coarse to fine %.4f \n", double(clock() - begin) / CLOCKS_PER_SEC);
 
@@ -315,7 +310,7 @@ void Geodesics<Real>::ComputeExactSolution( bool verbose )
 	};
 	memset( &multigridGeodesicDistanceVariables[0].rhs[0] , 0 , multigridGeodesicDistanceVariables[0].rhs.size() * sizeof(Real) );
 	memset( &fineBoundaryRHS[0] , 0 , fineBoundaryRHS.size() * sizeof(Real) );
-	if( !Integrate< Real >( interiorCellLines , bilinearElementGradientSamples , quadraticElementGradientSamples , exactSmoothImpulseSolution , fineBoundaryValues , VectorFunction , fineGeodesicDistanceRHS , fineBoundaryRHS ) )
+	if( !Integrate< Real >( interiorCellLines , bilinearElementGradientSamples , quadraticElementGradientSamples , multigridSmoothImpulseVariables[0].x , fineBoundaryValues , VectorFunction , fineGeodesicDistanceRHS , fineBoundaryRHS ) )
 	{
 		printf( "[ERROR] Unable to integrate normalized vector field!\n" );
 	}
@@ -330,13 +325,13 @@ void Geodesics<Real>::ComputeExactSolution( bool verbose )
 
 	//(3) Update geodesic distance solution	
 	if( verbose ) begin = clock();
-	solve( fineGeodesicDistanceSolver , exactGeodesicDistanceSolution , fineGeodesicDistanceRHS );
+	solve( fineGeodesicDistanceSolver , multigridGeodesicDistanceVariables[0].x , fineGeodesicDistanceRHS );
 	if( verbose ) printf( "Computing geodesic distance %.4f\n" , double( clock()-begin ) / CLOCKS_PER_SEC );
 
-	Real expectedMinDistance = exactGeodesicDistanceSolution[impulseTexel];
+	Real expectedMinDistance = multigridGeodesicDistanceVariables[0].x[impulseTexel];
 
 #pragma omp parallel for
-	for( int i=0 ; i<exactGeodesicDistanceSolution.size() ; i++ ) exactGeodesicDistanceSolution[i] -= expectedMinDistance;
+	for( int i=0 ; i<multigridGeodesicDistanceVariables[0].x.size() ; i++ ) multigridGeodesicDistanceVariables[0].x[i] -= expectedMinDistance;
 }
 
 
@@ -378,9 +373,11 @@ void Geodesics<Real>::UpdateOutputBuffer(const std::vector<Real> & solution) {
 }
 
 template<class Real>
-void Geodesics<Real>::Idle() {
+void Geodesics<Real>::Idle( void )
+{
 	int selectedTexel = -1;
-	if (mouseSelectionActive){
+	if( mouseSelectionActive )
+	{
 		Point3D<float> selectedPoint;
 		bool validSelection = false;
 		if (visualization.showMesh) {
@@ -405,32 +402,29 @@ void Geodesics<Real>::Idle() {
 			}
 		}
 
-		if (impulseTexel != selectedTexel && selectedTexel != -1){
+		if( impulseTexel!=selectedTexel && selectedTexel!=-1 )
+		{
 			impulseTexel = selectedTexel;
-			memset(&multigridSmoothImpulseVariables[0].rhs[0], 0, multigridSmoothImpulseVariables[0].rhs.size() * sizeof(Real));
+			memset( &multigridSmoothImpulseVariables[0].rhs[0] , 0 , multigridSmoothImpulseVariables[0].rhs.size() * sizeof(Real) );
 			multigridSmoothImpulseVariables[0].rhs[impulseTexel] = 1.0;
-			memset(&multigridSmoothImpulseVariables[0].x[0], 0, multigridSmoothImpulseVariables[0].x.size() * sizeof(Real));
-			memset(&multigridGeodesicDistanceVariables[0].x[0], 0, multigridGeodesicDistanceVariables[0].x.size() * sizeof(Real));
-
-			cycleCount = 0;
+			memset( &multigridSmoothImpulseVariables[0].x[0] , 0 , multigridSmoothImpulseVariables[0].x.size() * sizeof(Real) );
+			memset( &multigridGeodesicDistanceVariables[0].x[0] , 0 , multigridGeodesicDistanceVariables[0].x.size() * sizeof(Real) );
 		}
-
 	}
 
-	if (impulseTexel != -1) {
-		if (cycleCount < updateVCycles) {
-			if (!UpdateSolution()) {
-				printf("Updated solution failed! \n");
-			}
-			UpdateOutputBuffer(multigridGeodesicDistanceVariables[0].x);
-			cycleCount++;
+	if( impulseTexel!=-1 )
+	{
+		if( updateCount )
+		{
+			if( !UpdateSolution() ) fprintf( stderr , "Updated solution failed!\n" );
+			UpdateOutputBuffer( multigridGeodesicDistanceVariables[0].x );
 		}
 	}
 }
 
 template<class Real>
-void Geodesics<Real>::MouseFunc(int button, int state, int x, int y) {
-
+void Geodesics<Real>::MouseFunc( int button , int state , int x , int y )
+{
 	visualization.newX = x; visualization.newY = y;
 	visualization.rotating = visualization.scaling = visualization.panning = false;
 
@@ -469,29 +463,28 @@ void Geodesics<Real>::MouseFunc(int button, int state, int x, int y) {
 			memset(&multigridSmoothImpulseVariables[0].x[0], 0, multigridSmoothImpulseVariables[0].x.size() * sizeof(Real));
 			memset(&multigridGeodesicDistanceVariables[0].x[0], 0, multigridGeodesicDistanceVariables[0].x.size() * sizeof(Real));
 		}
-		if (impulseTexel != -1) {
-			if (UseDirectSolver.set){
-				clock_t begin;
-				if( DetailVerbose.set ) begin = clock();
+		if( impulseTexel!=-1 )
+		{
+			if( UseDirectSolver.set )
+			{
+				clock_t begin = clock();
 				ComputeExactSolution( DetailVerbose.set );
 				if( DetailVerbose.set ) printf("Exact solution %.4f \n", double(clock() - begin) / CLOCKS_PER_SEC);
 
 				UpdateOutputBuffer(multigridGeodesicDistanceVariables[0].x);
 			}
-			else {
-				UpdateSolution();
-				UpdateOutputBuffer(multigridGeodesicDistanceVariables[0].x);
-			}
 			glutPostRedisplay();
 		}
 	}
-	else {
+	else
+	{
 		mouseSelectionActive = false;
-		if (button == GLUT_LEFT_BUTTON) {
-			if (glutGetModifiers() & GLUT_ACTIVE_CTRL) visualization.panning = true;
+		if( button==GLUT_LEFT_BUTTON )
+		{
+			if( glutGetModifiers() & GLUT_ACTIVE_CTRL ) visualization.panning = true;
 			else                                        visualization.rotating = true;
 		}
-		else if (button == GLUT_RIGHT_BUTTON) visualization.scaling = true;
+		else if( button==GLUT_RIGHT_BUTTON ) visualization.scaling = true;
 	}
 }
 
@@ -862,6 +855,8 @@ void Geodesics<Real>::InitializeVisualization( const int width , const int heigh
 	}
 
 	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization,  's' , "export texture" , "Output Texture" , ExportTextureCallBack ) );
+	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , ' ' , "toggle update" , ToggleUpdateCallBack ) );
+	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , '+' , "increment update" , IncrementUpdateCallBack ) );
 
 	visualization.UpdateVertexBuffer();
 	visualization.UpdateFaceBuffer();
@@ -877,14 +872,24 @@ void Geodesics<Real>::InitializeVisualization( const int width , const int heigh
 	visualization.UpdateTextureBuffer();
 }
 
+template< class Real > void Geodesics< Real >::ToggleUpdateCallBack( Visualization* v , const char* prompt )
+{
+	if( updateCount ) updateCount = 0;
+	else              updateCount = -1;
+}
+template< class Real > void Geodesics< Real >::IncrementUpdateCallBack( Visualization* v , const char* prompt )
+{
+	if( updateCount<0 ) updateCount = 1;
+	else updateCount++;
+}
+
 template< class Real >
-int Geodesics<Real>::Init( void ){
+int Geodesics<Real>::Init( void )
+{
 	levels = Levels.value;
 	diffusionInterpolationWeight = DiffusionInterpolationWeight.value;
 	textureWidth = Width.value;
 	textureHeight = Height.value;
-	updateVCycles = MultigridUpdateVcycles.value;
-	cycleCount = updateVCycles;
 
 	if (!ReadTexturedMesh( mesh , Input.value , NULL , DetailVerbose.set ) )
 	{
@@ -929,25 +934,26 @@ int Geodesics<Real>::Init( void ){
 	}
 
 	//Assign position to exterior nodes using barycentric-exponential map
-	FEM::RiemannianMesh< double > * Rmesh = new FEM::RiemannianMesh< double >(GetPointer(mesh.triangles), mesh.triangles.size());
-	Rmesh->setMetricFromEmbedding(GetPointer(mesh.vertices));
-	Rmesh->makeUnitArea();
-	Pointer(FEM::CoordinateXForm< double >) xForms = Rmesh->getCoordinateXForms();
+	{
+		FEM::RiemannianMesh< double > rMesh( GetPointer( mesh.triangles ) , mesh.triangles.size() );
+		rMesh.setMetricFromEmbedding( GetPointer( mesh.vertices ) );
+		rMesh.makeUnitArea();
+		Pointer( FEM::CoordinateXForm< double > ) xForms = rMesh.getCoordinateXForms();
 
-	for (int i = 0; i<textureNodes.size(); i++) {
-		if (textureNodes[i].tId != -1 && !textureNodes[i].isInterior) {
+		for( int i=0 ; i<textureNodes.size() ; i++ ) if( textureNodes[i].tId!=-1 && !textureNodes[i].isInterior )
+		{
 			FEM::HermiteSamplePoint< double > _p;
 			_p.tIdx = textureNodes[i].tId;
-			_p.p = Point2D< double >((double)1. / 3, (double)1. / 3);
+			_p.p = Point2D< double >( 1./3 , 1./3 );
 			_p.v = textureNodes[i].barycentricCoords - _p.p;
 
-			Rmesh->exp(xForms, _p);
+			rMesh.exp(xForms, _p);
 
 			textureNodes[i].tId = _p.tIdx;
 			textureNodes[i].barycentricCoords = _p.p;
 		}
 	}
-	
+
 	textureNodePositions.resize( textureNodes.size() );
 	for( int i=0 ; i<textureNodePositions.size() ; i++ )
 	{

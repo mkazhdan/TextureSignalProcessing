@@ -42,6 +42,7 @@ DAMAGE.
 
 cmdLineParameter< char* > Input( "in" );
 cmdLineParameter< char* > Output( "out" );
+cmdLineParameter< int   > OutputVCycles( "outVCycles" , 10 );
 cmdLineReadable MinimalCurvature( "minimal" );
 cmdLineReadable Single( "single" );
 cmdLineParameter< char* > VectorField( "vf" );
@@ -75,6 +76,7 @@ cmdLineReadable* params[] =
 	&DetailVerbose , &RandomJitter ,
 	&Single ,
 	&MatrixQuadrature ,
+	&OutputVCycles ,
 	NULL
 };
 
@@ -83,6 +85,7 @@ void ShowUsage(const char* ex)
 	printf( "Usage %s:\n" , ex );
 	printf( "\t --%s <input mesh>\n" , Input.name );
 	printf( "\t[--%s <output texture>\n" , Output.name );
+	printf( "\t[--%s <output v-cycles>=%d]\n" , OutputVCycles.name , OutputVCycles.value );
 	printf( "\t[--%s <vector field file>\n" , VectorField.name );
 	printf( "\t[--%s <LIC interpolation weight>=%f]\n" , LICInterpolationWeight.name , LICInterpolationWeight.value );
 	printf( "\t[--%s <sharpening interpolation weight>=%f]\n" , SharpeningInterpolationWeight.name , SharpeningInterpolationWeight.value   );
@@ -153,8 +156,6 @@ public:
 
 	static std::vector< Point3D< Real > > randSignal;
 
-	static std::vector< Point3D< Real > > exactLineConvolutionSolution;
-	static std::vector< Point3D< Real > > exactModulationSolution;
 	static std::vector< Point3D< Real > > mass_x0;
 	static std::vector< Point3D< Real > > stiffness_x0;
 
@@ -221,20 +222,22 @@ public:
 	//Visulization
 	static TexturedMeshVisualization visualization;
 
+	static void SetOutputBuffer( const std::vector< Point3D< Real > > & solution );
 	static void UpdateOutputBuffer( const std::vector< Point3D< Real > > & solution );
 
 	static void SharpeningInterpolationWeightCallBack(Visualization* v, const char* prompt);
 	static void SharpeningGradientModulationCallBack(Visualization* v, const char* prompt);
 	static void LICInterpolationWeightCallBack(Visualization* v, const char* prompt);
 
-	static bool update;
+	static int updateCount;
 
 	static void ToggleUpdateCallBack(Visualization* v, const char* prompt);
+	static void IncrementUpdateCallBack( Visualization* v , const char* prompt );
 	static void ExportTextureCallBack(Visualization* v, const char* prompt);
 
 	static int Init();
-	static void InitializeVisualization(const int width, const int height);
-	static void ComputeExactSolution(bool verbose = false);
+	static void InitializeVisualization( const int width , const int height );
+	static void ComputeExactSolution( bool verbose= false );
 	static int UpdateSolution( bool verbose=false , bool detailVerbose=false );
 	static int InitializeSystem( const int width , const int height , double scale );
 
@@ -300,9 +303,6 @@ template<class Real>  typename LineConvolution<Real>::BoundarySolverType					Lin
 
 template<class Real> std::vector< Point3D< Real > >		LineConvolution<Real>::randSignal;
 
-template<class Real> std::vector< Point3D< Real > >		LineConvolution<Real>::exactLineConvolutionSolution;
-template<class Real> std::vector< Point3D< Real > >		LineConvolution<Real>::exactModulationSolution;
-
 template<class Real> std::vector< Point3D< Real > >		LineConvolution<Real>::mass_x0;
 template<class Real> std::vector< Point3D< Real > >		LineConvolution<Real>::stiffness_x0;
 
@@ -337,8 +337,8 @@ template<class Real> SparseMatrix<double, int>										LineConvolution<Real>::b
 template<class Real> SparseMatrix<double, int>										LineConvolution<Real>::boundaryDeepMassMatrix;
 template<class Real> SparseMatrix<double, int>										LineConvolution<Real>::boundaryDeepStiffnessMatrix;
 
-template<class Real> bool															LineConvolution<Real>::update = false;
-template<class Real>
+template< class Real > int															LineConvolution<Real>::updateCount = 0;
+template< class Real >
 void LineConvolution<Real>::ComputeExactSolution( bool verbose )
 {
 	clock_t begin;
@@ -349,51 +349,60 @@ void LineConvolution<Real>::ComputeExactSolution( bool verbose )
 #pragma omp parallel for
 	for( int i=0 ; i<textureNodes.size() ; i++ ) multigridLineConvolutionVariables[0].rhs[i] *= licInterpolationWeight;
 
-	if( verbose ) begin = clock();
-	solve( fineLineConvolutionSolver , exactLineConvolutionSolution , multigridLineConvolutionVariables[0].rhs );
+	begin = clock();
+	solve( fineLineConvolutionSolver , multigridLineConvolutionVariables[0].x , multigridLineConvolutionVariables[0].rhs );
 	if( verbose ) printf( "Line convolution %.4f\n" , double( clock()-begin ) / CLOCKS_PER_SEC );
 
 	//(2) Compute modulation RHS
 	mass_x0.resize( textureNodes.size() );
-	MultiplyBySystemMatrix_NoReciprocals( deepMassCoefficients , boundaryDeepMassMatrix , boundaryBoundaryMassMatrix , hierarchy.gridAtlases[0].boundaryGlobalIndex , hierarchy.gridAtlases[0].rasterLines , exactLineConvolutionSolution , mass_x0 );
+	MultiplyBySystemMatrix_NoReciprocals( deepMassCoefficients , boundaryDeepMassMatrix , boundaryBoundaryMassMatrix , hierarchy.gridAtlases[0].boundaryGlobalIndex , hierarchy.gridAtlases[0].rasterLines , multigridLineConvolutionVariables[0].x , mass_x0 );
 
 	stiffness_x0.resize(textureNodes.size());
-	MultiplyBySystemMatrix_NoReciprocals( deepStiffnessCoefficients , boundaryDeepStiffnessMatrix , boundaryBoundaryStiffnessMatrix , hierarchy.gridAtlases[0].boundaryGlobalIndex , hierarchy.gridAtlases[0].rasterLines , exactLineConvolutionSolution , stiffness_x0 );
+	MultiplyBySystemMatrix_NoReciprocals( deepStiffnessCoefficients , boundaryDeepStiffnessMatrix , boundaryBoundaryStiffnessMatrix , hierarchy.gridAtlases[0].boundaryGlobalIndex , hierarchy.gridAtlases[0].rasterLines , multigridLineConvolutionVariables[0].x , stiffness_x0 );
 
 #pragma omp parallel for
 	for( int i=0 ; i<textureNodes.size() ; i++ ) multigridModulationVariables[0].rhs[i] = mass_x0[i] * sharpeningInterpolationWeight + stiffness_x0[i] * sharpeningGradientModulation;
 
 	//(3) Modulation
 	if( verbose ) begin = clock();
-	solve( fineModulationSolver , exactModulationSolution , multigridModulationVariables[0].rhs );
+	solve( fineModulationSolver , multigridModulationVariables[0].x , multigridModulationVariables[0].rhs );
 	if (verbose ) printf( "Modulation %.4f \n" , double( clock()-begin ) / CLOCKS_PER_SEC);
 }
 
 template<class Real>
-void LineConvolution<Real>::UpdateOutputBuffer( const std::vector< Point3D< Real > > & solution )
+void LineConvolution<Real>::SetOutputBuffer( const std::vector< Point3D< Real > >& solution )
 {
-
 #pragma omp parallel for
-	for (int i = 0; i < textureNodes.size(); i++){
+	for( int i=0 ; i<textureNodes.size() ; i++ )
+	{
 		int ci = textureNodes[i].ci;
 		int cj = textureNodes[i].cj;
 		int offset = 3 * (textureWidth*cj + ci);
-		outputBuffer[offset + 0] = (unsigned char)(std::min<double>(std::max<double>(0, solution[i][0]),1.0)*255.0);
-		outputBuffer[offset + 1] = (unsigned char)(std::min<double>(std::max<double>(0, solution[i][1]), 1.0)*255.0);
-		outputBuffer[offset + 2] = (unsigned char)(std::min<double>(std::max<double>(0, solution[i][2]), 1.0)*255.0);
+		outputBuffer[offset+0] = (unsigned char)( std::min< double >( std::max< double >( 0 , solution[i][0] ) , 1.0 )*255.0 );
+		outputBuffer[offset+1] = (unsigned char)( std::min< double >( std::max< double >( 0 , solution[i][1] ) , 1.0 )*255.0 );
+		outputBuffer[offset+2] = (unsigned char)( std::min< double >( std::max< double >( 0 , solution[i][2] ) , 1.0 )*255.0 );
 	}
+}
+
+template<class Real>
+void LineConvolution<Real>::UpdateOutputBuffer( const std::vector< Point3D< Real > >& solution )
+{
+	SetOutputBuffer( solution );
 
 	glBindTexture(GL_TEXTURE_2D, visualization.textureBuffer);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, textureWidth, textureHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, (GLvoid*)&outputBuffer[0]);
 	glBindTexture(GL_TEXTURE_2D, 0);
-
 	glutPostRedisplay();
 }
 
 template< class Real >
 void LineConvolution<Real>::Idle( void )
 {
-	if( update && !UpdateSolution() ) fprintf( stderr , "[ERROR] Updated solution failed! \n");
+	if( updateCount )
+	{
+		if( !UpdateSolution() ) fprintf( stderr , "[ERROR] Updated solution failed!\n" );
+		else if( updateCount>0 ) updateCount--;
+	}
 	UpdateOutputBuffer( multigridModulationVariables[0].x );
 }
 
@@ -448,8 +457,8 @@ void LineConvolution<Real>::MotionFunc(int x, int y) {
 
 
 template<class Real>
-void LineConvolution<Real>::SharpeningInterpolationWeightCallBack(Visualization* v, const char* prompt) {
-	update = false;
+void LineConvolution<Real>::SharpeningInterpolationWeightCallBack( Visualization* v , const char* prompt )
+{
 	for( int i=0 ; i<multigridLineConvolutionVariables[0].x.size() ; i++) multigridLineConvolutionVariables[0].x[i] *= 0;
 	for( int i=0 ; i<multigridModulationVariables[0].x.size() ; i++) multigridModulationVariables[0].x[i] *= 0;
 
@@ -466,15 +475,16 @@ void LineConvolution<Real>::SharpeningInterpolationWeightCallBack(Visualization*
 		printf("ERROR : Failed system update! \n");
 	}
 
-	if (UseDirectSolver.set) {
+	if( UseDirectSolver.set )
+	{
 		ComputeExactSolution();
-		UpdateOutputBuffer(exactModulationSolution);
+		UpdateOutputBuffer( multigridModulationVariables[0].x );
 	}
 }
 
-template<class Real>
-void LineConvolution<Real>::LICInterpolationWeightCallBack(Visualization* v, const char* prompt) {
-	update = false;
+template< class Real >
+void LineConvolution< Real >::LICInterpolationWeightCallBack( Visualization* v , const char* prompt )
+{
 	for( int i=0 ; i<multigridLineConvolutionVariables[0].x.size() ; i++) multigridLineConvolutionVariables[0].x[i] *= 0;
 	for( int i=0 ; i<multigridModulationVariables[0].x.size() ; i++) multigridModulationVariables[0].x[i] *= 0;
 
@@ -491,29 +501,39 @@ void LineConvolution<Real>::LICInterpolationWeightCallBack(Visualization* v, con
 		printf("ERROR : Failed system update! \n");
 	}
 
-	if (UseDirectSolver.set) {
+	if( UseDirectSolver.set )
+	{
 		ComputeExactSolution();
-		UpdateOutputBuffer(exactModulationSolution);
+		UpdateOutputBuffer( multigridModulationVariables[0].x );
 	}
 
 
 }
 
-template<class Real>
-void LineConvolution<Real>::SharpeningGradientModulationCallBack(Visualization* v, const char* prompt) {
-	update = false;
+template< class Real >
+void LineConvolution< Real >::SharpeningGradientModulationCallBack( Visualization* v , const char* prompt )
+{
 	for( int i=0 ; i<multigridLineConvolutionVariables[0].x.size() ; i++ ) multigridLineConvolutionVariables[0].x[i] *= 0;
 	for( int i=0 ; i<multigridModulationVariables[0].x.size() ; i++ ) multigridModulationVariables[0].x[i] *= 0;
 
 	sharpeningGradientModulation = atof(prompt);
-	if (UseDirectSolver.set) {
+	if( UseDirectSolver.set )
+	{
 		ComputeExactSolution();
-		UpdateOutputBuffer(exactModulationSolution);
+		UpdateOutputBuffer( multigridModulationVariables[0].x );
 	}
 }
 
-template<class Real>
-void LineConvolution<Real>::ToggleUpdateCallBack(Visualization* v, const char* prompt){ update = !update; }
+template< class Real > void LineConvolution< Real >::ToggleUpdateCallBack( Visualization* v , const char* prompt )
+{
+	if( updateCount ) updateCount = 0;
+	else              updateCount = -1;
+}
+template< class Real > void LineConvolution< Real >::IncrementUpdateCallBack( Visualization* v , const char* prompt )
+{
+	if( updateCount<0 ) updateCount = 1;
+	else updateCount++;
+}
 
 template<class Real>
 void LineConvolution<Real>::ExportTextureCallBack( Visualization* v , const char* prompt )
@@ -526,7 +546,7 @@ void LineConvolution<Real>::ExportTextureCallBack( Visualization* v , const char
 }
 
 template<class Real>
-int LineConvolution<Real>::UpdateSolution( bool verbose , bool detailVerbose )
+int LineConvolution< Real >::UpdateSolution( bool verbose , bool detailVerbose )
 {
 	clock_t begin;
 
@@ -797,9 +817,6 @@ int LineConvolution<Real>::InitializeSystem( const int width , const int height 
 	int numTexels = hierarchy.gridAtlases[0].numTexels;
 	int numFineNodes = hierarchy.gridAtlases[0].numFineNodes;
 
-	exactLineConvolutionSolution.resize( numTexels );
-	exactModulationSolution.resize( numTexels );
-
 	randSignal.resize( textureNodes.size() );
 
 	for ( int i=0 ; i<randSignal.size() ; i++ )
@@ -817,22 +834,19 @@ int LineConvolution<Real>::InitializeSystem( const int width , const int height 
 	return 1;
 }
 
-template<class Real>
-void LineConvolution<Real>::InitializeVisualization(const int width, const int height) {
-
-	outputBuffer = new unsigned char[height*width * 3];
-	memset(outputBuffer, 204, height * width * 3 * sizeof(unsigned char));
-
+template< class Real >
+void LineConvolution< Real >::InitializeVisualization( const int width , const int height )
+{
 	int tCount = (int)mesh.triangles.size();
 
-	visualization.triangles.resize(tCount);
-	visualization.vertices.resize(3 * tCount);
-	visualization.colors.resize(3 * tCount, Point3D<double>(0.75, 0.75, 0.75));
-	visualization.textureCoordinates.resize(3 * tCount);
-	visualization.normals.resize(3 * tCount);
+	visualization.triangles.resize( tCount );
+	visualization.vertices.resize( 3*tCount );
+	visualization.colors.resize( 3*tCount , Point3D< double >( 0.75 , 0.75 , 0.75 ) );
+	visualization.textureCoordinates.resize( 3*tCount );
+	visualization.normals.resize( 3*tCount );
 
 
-	for (int i = 0; i < tCount; i++) for (int k = 0; k < 3; k++) visualization.triangles[i][k] = 3 * i + k;
+	for( int i=0 ; i<tCount ; i++ ) for( int k=0 ; k<3 ; k++ ) visualization.triangles[i][k] = 3*i+k;
 
 	for (int i = 0; i<tCount; i++) {
 		for (int j = 0; j < 3; j++) {
@@ -858,21 +872,23 @@ void LineConvolution<Real>::InitializeVisualization(const int width, const int h
 		}
 	}
 
-	visualization.callBacks.push_back(Visualization::KeyboardCallBack(&visualization, 'f', "lic interpolation weight", "LIC Interpolation Weight" , LICInterpolationWeightCallBack));
-	visualization.callBacks.push_back(Visualization::KeyboardCallBack(&visualization, 'g', "sharpening gradient modulation", "Sharpening Gradient Modulation" , SharpeningGradientModulationCallBack));
-	visualization.callBacks.push_back(Visualization::KeyboardCallBack(&visualization, 'y', "sharpening interpolation weight", "Sharpening Interpolation Weight" , SharpeningInterpolationWeightCallBack));
-	visualization.callBacks.push_back(Visualization::KeyboardCallBack(&visualization, 's', "export texture", "Output Texture" , ExportTextureCallBack));
-	visualization.callBacks.push_back(Visualization::KeyboardCallBack(&visualization, ' ', "toggle update", ToggleUpdateCallBack));
+	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , 'f' , "lic interpolation weight" , "LIC Interpolation Weight" , LICInterpolationWeightCallBack ) );
+	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , 'g' , "sharpening gradient modulation" , "Sharpening Gradient Modulation" , SharpeningGradientModulationCallBack ) );
+	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , 'y' , "sharpening interpolation weight" , "Sharpening Interpolation Weight" , SharpeningInterpolationWeightCallBack ) );
+	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , 's' , "export texture" , "Output Texture" , ExportTextureCallBack ) );
+	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , ' ' , "toggle update" , ToggleUpdateCallBack ) );
+	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , '+' , "increment update" , IncrementUpdateCallBack ) );
 
 	visualization.UpdateVertexBuffer();
 	visualization.UpdateFaceBuffer();
 	visualization.UpdateTextureBuffer();
 
-	UpdateOutputBuffer( UseDirectSolver.set ? exactModulationSolution : multigridModulationVariables[0].x );
+	UpdateOutputBuffer( multigridModulationVariables[0].x );
 }
 
 template<class Real>
-int LineConvolution<Real>::Init() {
+int LineConvolution<Real>::Init( void )
+{
 	levels = Levels.value;
 	textureWidth = Width.value;
 	textureHeight = Height.value;
@@ -922,62 +938,68 @@ int LineConvolution<Real>::Init() {
 	}
 
 	//Assign position to exterior nodes using barycentric-exponential map
-	FEM::RiemannianMesh< double > * Rmesh = new FEM::RiemannianMesh< double >(GetPointer(mesh.triangles), mesh.triangles.size());
-	Rmesh->setMetricFromEmbedding(GetPointer(mesh.vertices));
-	Rmesh->makeUnitArea();
-	Pointer(FEM::CoordinateXForm< double >) xForms = Rmesh->getCoordinateXForms();
+	{
+		FEM::RiemannianMesh< double > rMesh( GetPointer( mesh.triangles ) , mesh.triangles.size() );
+		rMesh.setMetricFromEmbedding( GetPointer( mesh.vertices ) );
+		rMesh.makeUnitArea();
+		Pointer( FEM::CoordinateXForm< double > ) xForms = rMesh.getCoordinateXForms();
 
-	for (int i = 0; i<textureNodes.size(); i++) {
-		if (textureNodes[i].tId != -1 && !textureNodes[i].isInterior) {
+		for( int i=0 ; i<textureNodes.size() ; i++ ) if( textureNodes[i].tId!=-1 && !textureNodes[i].isInterior )
+		{
 			FEM::HermiteSamplePoint< double > _p;
 			_p.tIdx = textureNodes[i].tId;
-			_p.p = Point2D< double >((double)1. / 3, (double)1. / 3);
+			_p.p = Point2D< double >( 1./3 , 1./3 );
 			_p.v = textureNodes[i].barycentricCoords - _p.p;
 
-			Rmesh->exp(xForms, _p);
+			rMesh.exp(xForms, _p);
 
 			textureNodes[i].tId = _p.tIdx;
 			textureNodes[i].barycentricCoords = _p.p;
 		}
 	}
+
 	textureNodePositions.resize(textureNodes.size());
+
+	outputBuffer = new unsigned char[ textureHeight*textureWidth*3 ];
+	memset( outputBuffer , 204 , textureHeight*textureWidth*3*sizeof( unsigned char ) );
+
 	return 1;
 }
 
 template<class Real>
 int _main(int argc, char* argv[])
 {
-	if (!LineConvolution<Real>::Init()) return 0;
+	if( !LineConvolution< Real >::Init() ) return 0;
 	if( !Output.set )
 	{
-		glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE);
-		LineConvolution<Real>::visualization.displayMode = DisplayMode.value;
-		if (DisplayMode.value == ONE_REGION_DISPLAY) {
-			LineConvolution<Real>::visualization.screenWidth = 800;
-			LineConvolution<Real>::visualization.screenHeight = 800;
-		}
-		else if (DisplayMode.value == TWO_REGION_DISPLAY) {
-			LineConvolution<Real>::visualization.screenWidth = 1440;
-			LineConvolution<Real>::visualization.screenHeight = 720;
-		}
-		LineConvolution<Real>::visualization.UpdateMainFrameSize();
-		glutInitWindowSize(LineConvolution<Real>::visualization.screenWidth, LineConvolution<Real>::visualization.screenHeight);
-		glutInit(&argc, argv);
+		glutInitDisplayMode( GLUT_RGB | GLUT_DOUBLE );
+		LineConvolution< Real >::visualization.displayMode = DisplayMode.value;
+		if     ( DisplayMode.value==ONE_REGION_DISPLAY ) LineConvolution<Real>::visualization.screenWidth =  800 , LineConvolution<Real>::visualization.screenHeight = 800;
+		else if( DisplayMode.value==TWO_REGION_DISPLAY ) LineConvolution<Real>::visualization.screenWidth = 1440 , LineConvolution<Real>::visualization.screenHeight = 720;
+		LineConvolution< Real >::visualization.UpdateMainFrameSize();
+		glutInitWindowSize( LineConvolution< Real >::visualization.screenWidth , LineConvolution< Real >::visualization.screenHeight );
+		glutInit( &argc , argv );
 		char windowName[1024];
-		sprintf(windowName, "Line Integral Convolution");
-		glutCreateWindow(windowName);
-		if (glewInit() != GLEW_OK) fprintf(stderr, "[ERROR] glewInit failed\n"), exit(0);
-		glutDisplayFunc(LineConvolution<Real>::Display);
-		glutReshapeFunc(LineConvolution<Real>::Reshape);
-		glutMouseFunc(LineConvolution<Real>::MouseFunc);
-		glutMotionFunc(LineConvolution<Real>::MotionFunc);
-		glutKeyboardFunc(LineConvolution<Real>::KeyboardFunc);
-		if (!UseDirectSolver.set)glutIdleFunc(LineConvolution<Real>::Idle);
-		if (CameraConfig.set) LineConvolution<Real>::visualization.ReadSceneConfigurationCallBack(&LineConvolution<Real>::visualization, CameraConfig.value);
-		LineConvolution<Real>::InitializeVisualization(LineConvolution<Real>::textureWidth, LineConvolution<Real>::textureHeight);
+		sprintf( windowName , "Line Integral Convolution" );
+		glutCreateWindow( windowName );
+		if( glewInit()!=GLEW_OK ) fprintf( stderr , "[ERROR] glewInit failed\n" ) , exit(0);
+		glutDisplayFunc( LineConvolution< Real >::Display );
+		glutReshapeFunc( LineConvolution< Real >::Reshape );
+		glutMouseFunc( LineConvolution< Real >::MouseFunc );
+		glutMotionFunc( LineConvolution< Real >::MotionFunc );
+		glutKeyboardFunc( LineConvolution< Real >::KeyboardFunc );
+		if( !UseDirectSolver.set )glutIdleFunc( LineConvolution< Real >::Idle );
+		if( CameraConfig.set ) LineConvolution< Real >::visualization.ReadSceneConfigurationCallBack( &LineConvolution< Real >::visualization , CameraConfig.value );
+		LineConvolution< Real >::InitializeVisualization( LineConvolution< Real >::textureWidth , LineConvolution< Real >::textureHeight );
 		glutMainLoop();
 	}
-	else LineConvolution<Real>::ExportTextureCallBack( &LineConvolution<Real>::visualization , Output.value );
+	else
+	{
+		if( UseDirectSolver.set ) LineConvolution< Real >::ComputeExactSolution();
+		else for( int i=0 ; i<OutputVCycles.value ; i++ ) LineConvolution< Real >::UpdateSolution();
+		LineConvolution< Real >::SetOutputBuffer( LineConvolution< Real >::multigridModulationVariables[0].x );
+		LineConvolution< Real >::ExportTextureCallBack( &LineConvolution<Real>::visualization , Output.value );
+	}
 	return 1;
 }
 

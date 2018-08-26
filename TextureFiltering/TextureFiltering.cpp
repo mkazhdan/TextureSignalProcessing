@@ -25,6 +25,9 @@ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING 
 ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
 DAMAGE.
 */
+
+//#define MISHA_CODE
+
 #include <Misha/CmdLineParser.h> 
 #include <Misha/Miscellany.h>
 #include <Src/SimpleMesh.h>
@@ -46,6 +49,7 @@ const std::string fragment_shader_src =
 
 cmdLineParameterArray< char* , 2 > Input( "in" );
 cmdLineParameter< char* > Output( "out" );
+cmdLineParameter< int   > OutputVCycles( "outVCycles" , 6 );
 cmdLineParameter< float > InterpolationWeight( "interpolation" , 1e3 );
 cmdLineParameter< float > GradientModulation( "modulation" , 1.0 );
 cmdLineParameter< int   > DisplayMode("display",FOUR_REGION_DISPLAY);
@@ -57,7 +61,6 @@ cmdLineParameter< int   > MultigridBlockHeight("mBlockH", 16);
 cmdLineParameter< int   > MultigridBlockWidth ("mBlockW", 128);
 cmdLineParameter< int   > MultigridPaddedHeight("mPadH", 0);
 cmdLineParameter< int   > MultigridPaddedWidth("mPadW", 2);
-cmdLineParameter< int   > MultigridUpdateVcycles("mVCycles", 6);
 
 cmdLineReadable RandomJitter("jitter");
 cmdLineParameter< char* > CameraConfig("camera");
@@ -68,9 +71,10 @@ cmdLineReadable Double( "double" );
 cmdLineReadable* params[] =
 {
 	&Input , &Output , &InterpolationWeight , &GradientModulation , &CameraConfig , &Levels , &UseDirectSolver , &Threads , &DisplayMode , &Verbose ,
-	&DetailVerbose , &MultigridBlockHeight , &MultigridBlockWidth , &MultigridPaddedHeight , &MultigridPaddedWidth , &MultigridUpdateVcycles , &RandomJitter ,
+	&DetailVerbose , &MultigridBlockHeight , &MultigridBlockWidth , &MultigridPaddedHeight , &MultigridPaddedWidth , &RandomJitter ,
 	&Double ,
 	&MatrixQuadrature ,
+	&OutputVCycles ,
 	NULL
 };
 
@@ -79,8 +83,9 @@ void ShowUsage( const char* ex )
 	printf( "Usage %s:\n" , ex );
 
 	printf( "\t --%s <input mesh and texture>\n" , Input.name );
-	printf( "\t --%s <output texture>\n" , Output.name );
- 	printf( "\t[--%s <interpolation weight>=%f]\n" , InterpolationWeight.name , InterpolationWeight.value );
+	printf( "\t[--%s <output texture>]\n" , Output.name );
+	printf( "\t[--%s <output v-cycles>=%d]\n" , OutputVCycles.name , OutputVCycles.value );
+	printf( "\t[--%s <interpolation weight>=%f]\n" , InterpolationWeight.name , InterpolationWeight.value );
 	printf( "\t[--%s <gradient modulation>=%f]\n" , GradientModulation.name , GradientModulation.value );
 	printf( "\t[--%s <system matrix quadrature points per triangle>=%d]\n" , MatrixQuadrature.name , MatrixQuadrature.value );
 	printf( "\t[--%s]\n" , UseDirectSolver.name );
@@ -100,7 +105,6 @@ void ShowUsage( const char* ex )
 	printf( "\t[--%s <multigrid block height>=%d]\n"   , MultigridBlockHeight.name   , MultigridBlockHeight.value   );
 	printf( "\t[--%s <multigrid padded width>=%d]\n"   , MultigridPaddedWidth.name   , MultigridPaddedWidth.value   );
 	printf( "\t[--%s <multigrid padded height>=%d]\n"  , MultigridPaddedHeight.name  , MultigridPaddedHeight.value  );
-	printf( "\t[--%s <multigrid update VCycles>=%d]\n" , MultigridUpdateVcycles.name , MultigridUpdateVcycles.value );
 }
 
 enum
@@ -155,7 +159,10 @@ public:
 
 	static std::vector< Point3D< Real > > mass_x0;
 	static std::vector< Point3D< Real > > stiffness_x0;
+#ifdef MISHA_CODE
+#else // !MISHA_CODE
 	static std::vector< Point3D< Real > > exactSolution;
+#endif // MISHA_CODE
 
 	static std::vector< MultigridLevelCoefficients< Real > > multigridFilteringCoefficients;
 	static std::vector< MultigridLevelVariables< Point3D< Real > > > multigridFilteringVariables;
@@ -190,13 +197,14 @@ public:
 	static SparseMatrix<double, int> boundaryDeepMassMatrix;
 	static SparseMatrix<double, int> boundaryDeepStiffnessMatrix;
 
-	static int updateVCycles;
-	static int cycleCount;
-
 	static Padding padding;
 
 	//Visulization
 	static TextureFilteringVisualization visualization;
+	static int updateCount;
+
+	static void ToggleUpdateCallBack( Visualization* v , const char* prompt );
+	static void IncrementUpdateCallBack( Visualization* v , const char* prompt );
 	static void ExportTextureCallBack(Visualization* v, const char* prompt);
 
 	static void GradientModulationCallBack(Visualization* v, const char* prompt);
@@ -205,7 +213,7 @@ public:
 	static int Init();
 	static void InitializeVisualization();
 	static int UpdateSolution(bool verbose = false, bool detailVerbose = false);
-	static void ComputeExactSolution(bool verbose = false);
+	static void ComputeExactSolution( bool verbose=false );
 	static int InitializeSystem(const int width, const int height);
 	static int _InitializeSystem( std::vector<std::vector<SquareMatrix<double, 2>>>& parameterMetric , BoundaryProlongationData& boundaryProlongation , std::vector<Point3D<double>>& inputSignal , std::vector<double>& texelToCellCoeffs );
 
@@ -220,7 +228,7 @@ public:
 	static void MotionFunc(int x, int y);
 	static void Reshape(int w, int h){ visualization.Reshape(w, h); }
 	static void KeyboardFunc(unsigned char key, int x, int y){ visualization.KeyboardFunc(key, x, y); }
-	static void Idle();
+	static void Idle( void );
 
 };
 
@@ -257,7 +265,10 @@ template<class Real> std::vector<Real>													TextureFilter<Real>::uniformC
 template<class Real> Image<Point3D<float>>												TextureFilter<Real>::filteredTexture;
 template<class Real> std::vector< Point3D< Real > >										TextureFilter<Real>::stiffness_x0;
 template<class Real> std::vector< Point3D< Real > >										TextureFilter<Real>::mass_x0;
+#ifdef MISHA_CODE
+#else // !MISHA_CODE
 template<class Real> std::vector< Point3D< Real > >										TextureFilter<Real>::exactSolution;
+#endif // MISHA_CODE
 
 template<class Real> std::vector<MultigridLevelCoefficients<Real>>						TextureFilter<Real>::multigridFilteringCoefficients;
 template<class Real> std::vector< MultigridLevelVariables< Point3D< Real > > >			TextureFilter<Real>::multigridFilteringVariables;
@@ -288,9 +299,7 @@ template<class Real>  SparseMatrix<double, int>											TextureFilter<Real>::b
 template<class Real>  SparseMatrix<double, int>											TextureFilter<Real>::boundaryBoundaryStiffnessMatrix;
 template<class Real>  SparseMatrix<double, int>											TextureFilter<Real>::boundaryDeepMassMatrix;
 template<class Real>  SparseMatrix<double, int>											TextureFilter<Real>::boundaryDeepStiffnessMatrix;
-
-template<class Real> int																TextureFilter<Real>::updateVCycles;
-template<class Real> int																TextureFilter<Real>::cycleCount;
+template< class Real > int																TextureFilter< Real >::updateCount = -1;
 
 template<class Real>
 void TextureFilter<Real>::UpdateMaskTexture(){
@@ -335,118 +344,149 @@ void TextureFilter< Real >::UpdateFilteredColorTexture( const std::vector< Point
 	}
 }
 
-template<class Real>
-void TextureFilter<Real>::UpdateFilteredTexture( const std::vector< Point3D< Real > > & solution )
+template< class Real >
+void TextureFilter< Real >::UpdateFilteredTexture( const std::vector< Point3D< Real > >& solution )
 {
 #pragma omp parallel for
-	for (int i = 0; i < textureNodes.size(); i++) {
-		int ci = textureNodes[i].ci;
-		int cj = textureNodes[i].cj;
-		filteredTexture(ci,cj) = Point3D<float>(solution[i][0], solution[i][1], solution[i][2]);
+	for( int i=0 ; i<textureNodes.size() ; i++ )
+	{
+		int ci = textureNodes[i].ci , cj = textureNodes[i].cj;
+		filteredTexture(ci,cj) = Point3D< float >( solution[i][0] , solution[i][1] , solution[i][2] );
 	}
 }
 
-template<class Real>
-void TextureFilter<Real>::Idle() {
-
-	auto RescaleFunction = [](double x) {
+template< class Real >
+void TextureFilter< Real >::Idle( void )
+{
+	auto RescaleFunction = []( double x )
+	{
 		//return x*(2.0 *x + 1);
 		return 2.0 *x;
 	};
 
 	float radius = 0.1;
 	float modulationVartiation = 0.2;
-	if (visualization.isBrushActive) {
-		Point3D<float> selectedPoint;
+	if( visualization.isBrushActive )
+	{
+		Point3D< float > selectedPoint;
 		bool validSelection = false;
-		if (visualization.showMesh) {
-			validSelection = visualization.select(visualization.diskX, visualization.diskY, selectedPoint);
-		}
-		if (validSelection) {
-			
+		if( visualization.showMesh ) validSelection = visualization.select( visualization.diskX , visualization.diskY , selectedPoint );
+
+		if( validSelection )
+		{			
 			float modulationSign = positiveModulation ? 1.f : -1.f;
 			modulationVartiation *= modulationSign;
-			for (int i = 0; i < bilinearElementIndices.size(); i++) {
-				float distanceRatio = Point3D<float>::Length(cellCenterPositions[i] - selectedPoint) / radius;
+			for( int i=0 ; i<bilinearElementIndices.size() ; i++ )
+			{
+				float distanceRatio = Point3D< float >::Length(cellCenterPositions[i] - selectedPoint) / radius;
 				float factor = 1.0 - distanceRatio;
 				factor = factor < 0 ? 0 : factor*factor*(-2.0*factor + 3.0);
-				Real uniformModulationMaskValue = std::max<Real>(0, std::min<Real>(1.0, uniformCellModulationMask[i] + modulationVartiation * factor));
+				Real uniformModulationMaskValue = std::max< Real >( 0 , std::min< Real >( 1.0 , uniformCellModulationMask[i] + modulationVartiation * factor ) );
 				uniformCellModulationMask[i] = uniformModulationMaskValue;
-				cellModulationMask[i] = RescaleFunction(uniformModulationMaskValue);
+				cellModulationMask[i] = RescaleFunction( uniformModulationMaskValue );
 			}
-			if (1){
-				for (int i = 0; i < textureNodePositions.size(); i++) {
-					float distanceRatio = Point3D<float>::Length(textureNodePositions[i] - selectedPoint) / radius;
+			if( true )
+			{
+				for( int i=0 ; i<textureNodePositions.size() ; i++ )
+				{
+					float distanceRatio = Point3D< float >::Length( textureNodePositions[i] - selectedPoint ) / radius;
 					float factor = 1.0 - distanceRatio;
 					factor = factor < 0 ? 0 : factor*factor*(-2.0*factor + 3.0);
-					Real modulationMaskValue = std::max<Real>(0, std::min<Real>(1.0, uniformTexelModulationMask[i] + modulationVartiation * factor));
+					Real modulationMaskValue = std::max< Real >( 0 , std::min< Real >( 1.0 , uniformTexelModulationMask[i] + modulationVartiation * factor ) );
 					uniformTexelModulationMask[i] = modulationMaskValue;
 				}
 				UpdateMaskTexture();
 			}
-
-			cycleCount = 0;
 		}
 	}
-	else if (visualization.isSlideBarActive) {
-		if (visualization.slideBarCursorOldPosition != visualization.slideBarCursorPosition) {
-
+	else if( visualization.isSlideBarActive )
+	{
+		if( visualization.slideBarCursorOldPosition!=visualization.slideBarCursorPosition )
+		{
 			Real diff = (Real)(visualization.slideBarCursorPosition - visualization.slideBarCursorOldPosition);
 			visualization.slideBarCursorOldPosition = visualization.slideBarCursorPosition;
 
-			for (int i = 0; i < bilinearElementIndices.size(); i++) {
-				Real uniformModulationMaskValue = std::max<Real>(0, std::min<Real>(1.0, uniformCellModulationMask[i] + diff));
+			for( int i=0 ; i<bilinearElementIndices.size() ; i++ )
+			{
+				Real uniformModulationMaskValue = std::max< Real >( 0 , std::min< Real >( 1.0 , uniformCellModulationMask[i] + diff ) );
 				uniformCellModulationMask[i] = uniformModulationMaskValue;
-				cellModulationMask[i] = RescaleFunction(uniformModulationMaskValue);
+				cellModulationMask[i] = RescaleFunction( uniformModulationMaskValue );
 			}
 
-			if (1) {
-				for (int i = 0; i < textureNodePositions.size(); i++) {
-					Real modulationMaskValue = std::max<Real>(0, std::min<Real>(1.0, uniformTexelModulationMask[i] + diff));
+			if( true )
+			{
+				for( int i=0 ; i<textureNodePositions.size() ; i++ )
+				{
+					Real modulationMaskValue = std::max< Real >( 0 , std::min< Real >( 1.0 , uniformTexelModulationMask[i] + diff ) );
 					uniformTexelModulationMask[i] = modulationMaskValue;
 				}
 				UpdateMaskTexture();
 			}
-			cycleCount = 0;
 		}
 	}
 
-	if (cycleCount < updateVCycles) {
-		if (!UpdateSolution()) {
-			printf("Updated solution failed! \n");
-		}
+	if( updateCount && !UseDirectSolver.set )
+	{
+		if( !UpdateSolution() ) fprintf( stderr , "[ERROR] Updated solution failed!\n" );
 
-		if (visualization.textureType == COLOR_TEXTURE) {
-			UpdateFilteredColorTexture(multigridFilteringVariables[0].x);
+		if( visualization.textureType==COLOR_TEXTURE )
+		{
+			UpdateFilteredColorTexture( multigridFilteringVariables[0].x );
 			visualization.UpdateColorTextureBuffer();
 		}
-		else {
-			UpdateFilteredTexture(multigridFilteringVariables[0].x);
-			visualization.UpdateTextureBuffer(filteredTexture);
+		else
+		{
+			UpdateFilteredTexture( multigridFilteringVariables[0].x );
+			visualization.UpdateTextureBuffer( filteredTexture );
 		}
-		cycleCount++;
+		if( updateCount>0 ) updateCount--;
 	}
 	
 }
 
-template<class Real>
-void TextureFilter<Real>::MouseFunc(int button, int state, int x, int y) {
-
+template< class Real >
+void TextureFilter< Real >::MouseFunc( int button , int state , int x , int y )
+{
+	if( state==GLUT_UP && UseDirectSolver.set && ( visualization.isBrushActive || visualization.isSlideBarActive ) )
+	{
+		CellStiffnessToTexelStiffness< Real , 3 >( cellModulationMask , interiorTexelToCellLines , interiorTexelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , boundaryTexelStiffness , hierarchy.gridAtlases[0].boundaryGlobalIndex , texelModulatedStiffness );
+		int numTexels = (int)multigridFilteringVariables[0].rhs.size();
+#pragma omp parallel for
+		for( int i=0 ; i<numTexels ; i++ ) multigridFilteringVariables[0].rhs[i] = mass_x0[i]*interpolationWeight + texelModulatedStiffness[i];
+		ComputeExactSolution( DetailVerbose.set );
+		if( visualization.textureType==COLOR_TEXTURE )
+		{
+#ifdef MISHA_CODE
+			UpdateFilteredColorTexture( multigridFilteringVariables[0].x );
+#else // !MISHA_CODE
+			UpdateFilteredColorTexture( exactSolution );
+#endif // MISHA_CODE
+			visualization.UpdateColorTextureBuffer();
+		}
+		else
+		{
+#ifdef MISHA_CODE
+			UpdateFilteredTexture( multigridFilteringVariables[0].x );
+#else // !MISHA_CODE
+			UpdateFilteredTexture( exactSolution );
+#endif // MISHA_CODE
+			visualization.UpdateTextureBuffer( filteredTexture );
+		}
+	}
 	visualization.newX = x; visualization.newY = y;
 	visualization.rotating = visualization.scaling = visualization.panning = false;
 	visualization.isSlideBarActive = false;
 	visualization.isBrushActive = false;
 
-	if (state == GLUT_DOWN && glutGetModifiers() & GLUT_ACTIVE_SHIFT) {
+	if( state==GLUT_DOWN && glutGetModifiers() & GLUT_ACTIVE_SHIFT )
+	{
 		visualization.isBrushActive = true;
 		gradientModulationUpdated = false;
 		visualization.diskX = x;
 		visualization.diskY = y;
 
-		if (button == GLUT_LEFT_BUTTON) {
-			positiveModulation = true;
-		}
-		else if (button == GLUT_RIGHT_BUTTON) positiveModulation = false;
+		if     ( button==GLUT_LEFT_BUTTON  ) positiveModulation = true;
+		else if( button==GLUT_RIGHT_BUTTON ) positiveModulation = false;
 	}
 	else if( visualization.showSlideBar && x>10 && x<visualization._screenWidth-10 && y>18 && y<32 ) // Slide bar update
 	{
@@ -458,18 +498,17 @@ void TextureFilter<Real>::MouseFunc(int button, int state, int x, int y) {
 	}
 	else
 	{
-		if (visualization.showMesh) {
+		if( visualization.showMesh )
+		{
 			visualization.newX = x; visualization.newY = y;
 
 			visualization.rotating = visualization.scaling = visualization.panning = false;
-			if (button == GLUT_LEFT_BUTTON) {
-				if (glutGetModifiers() & GLUT_ACTIVE_CTRL) visualization.panning = true;
+			if( button==GLUT_LEFT_BUTTON )
+			{
+				if( glutGetModifiers() & GLUT_ACTIVE_CTRL ) visualization.panning = true;
 				else                                        visualization.rotating = true;
 			}
-			else if (button == GLUT_RIGHT_BUTTON) visualization.scaling = true;
-		}
-		else {
-
+			else if( button==GLUT_RIGHT_BUTTON ) visualization.scaling = true;
 		}
 	}
 
@@ -524,6 +563,17 @@ void TextureFilter<Real>::MotionFunc(int x, int y) {
 	glutPostRedisplay();
 }
 
+template< class Real > void TextureFilter< Real >::ToggleUpdateCallBack( Visualization* v , const char* prompt )
+{
+	if( updateCount ) updateCount = 0;
+	else              updateCount = -1;
+}
+template< class Real > void TextureFilter< Real >::IncrementUpdateCallBack( Visualization* v , const char* prompt )
+{
+	if( updateCount<0 ) updateCount = 1;
+	else updateCount++;
+}
+
 template<class Real>
 void TextureFilter<Real>::ExportTextureCallBack( Visualization* v , const char* prompt )
 {
@@ -551,21 +601,30 @@ void TextureFilter<Real>::ExportTextureCallBack( Visualization* v , const char* 
 template<class Real>
 void  TextureFilter<Real>::GradientModulationCallBack( Visualization* v , const char* prompt )
 {
-	cycleCount = 0;
-
 	gradientModulation = atof(prompt);
 #pragma omp parallel for
 	for( int i=0 ; i<multigridFilteringVariables[0].rhs.size() ; i++ ) multigridFilteringVariables[0].rhs[i] = mass_x0[i] * interpolationWeight + stiffness_x0[i] * gradientModulation;
 
-	if (UseDirectSolver.set) {
+	if( UseDirectSolver.set )
+	{
 		ComputeExactSolution();
-		if (visualization.textureType == COLOR_TEXTURE) {
-			UpdateFilteredColorTexture(exactSolution);
+		if( visualization.textureType==COLOR_TEXTURE )
+		{
+#ifdef MISHA_CODE
+			UpdateFilteredColorTexture( multigridFilteringVariables[0].x );
+#else // !MISHA_CODE
+			UpdateFilteredColorTexture( exactSolution );
+#endif // MISHA_CODE
 			visualization.UpdateColorTextureBuffer();
 		}
-		else {
-			UpdateFilteredTexture(exactSolution);
-			visualization.UpdateTextureBuffer(filteredTexture);
+		else
+		{
+#ifdef MISHA_CODE
+			UpdateFilteredTexture( multigridFilteringVariables[0].x );
+#else // !MISHA_CODE
+			UpdateFilteredTexture( exactSolution );
+#endif // MISHA_CODE
+			visualization.UpdateTextureBuffer( filteredTexture );
 		}
 	}
 	sprintf( gradientModulationStr , "Gradient modulation: %e\n" , gradientModulation );
@@ -574,8 +633,6 @@ void  TextureFilter<Real>::GradientModulationCallBack( Visualization* v , const 
 template<class Real>
 void  TextureFilter<Real>::InterpolationWeightCallBack( Visualization* v , const char* prompt )
 {
-	cycleCount = 0;
-	
 	interpolationWeight = atof(prompt);
 	if( UseDirectSolver.set ) filteringMatrix = mass*interpolationWeight + stiffness;
 	clock_t t_begin = clock();
@@ -585,7 +642,7 @@ void  TextureFilter<Real>::InterpolationWeightCallBack( Visualization* v , const
 		boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix ,
 		coarseSolver , boundarySolver , directSolver ,
 		filteringMatrix , DetailVerbose.set , false , UseDirectSolver.set ) ) {
-		printf("ERROR : Failed system update! \n");
+		fprintf( stderr , "[ERROR] Failed system update!\n" );
 	}
 	if( Verbose.set ) printf( "\tInitialized multigrid coefficients: %.2f(s)\n" , double(clock() - t_begin) / CLOCKS_PER_SEC);
 
@@ -595,13 +652,23 @@ void  TextureFilter<Real>::InterpolationWeightCallBack( Visualization* v , const
 	if( UseDirectSolver.set )
 	{
 		ComputeExactSolution();
-		if (visualization.textureType == COLOR_TEXTURE) {
-			UpdateFilteredColorTexture(exactSolution);
+		if( visualization.textureType==COLOR_TEXTURE )
+		{
+#ifdef MISHA_CODE
+			UpdateFilteredColorTexture( multigridFilteringVariables[0].x );
+#else // !MISHA_CODE
+			UpdateFilteredColorTexture( exactSolution );
+#endif // MISHA_CODE
 			visualization.UpdateColorTextureBuffer();
 		}
-		else {
-			UpdateFilteredTexture(exactSolution);
-			visualization.UpdateTextureBuffer(filteredTexture);
+		else
+		{
+#ifdef MISHA_CODE
+			UpdateFilteredTexture( multigridFilteringVariables[0].x );
+#else // !MISHA_CODE
+			UpdateFilteredTexture( exactSolution );
+#endif // MISHA_CODE
+			visualization.UpdateTextureBuffer( filteredTexture );
 		}
 	}
 	sprintf( interpolationStr , "Interpolation weight: %e\n" , interpolationWeight );
@@ -609,11 +676,15 @@ void  TextureFilter<Real>::InterpolationWeightCallBack( Visualization* v , const
 
 
 template<class Real>
-void TextureFilter<Real>::ComputeExactSolution(bool verbose) {
-	clock_t t_begin;
-	if(verbose)t_begin = clock();
-	solve(directSolver, exactSolution, multigridFilteringVariables[0].rhs);
-	if (verbose) printf("Solving time =  %.4f \n", double(clock() - t_begin) / CLOCKS_PER_SEC);
+void TextureFilter<Real>::ComputeExactSolution( bool verbose )
+{
+	clock_t t_begin = clock();
+#ifdef MISHA_CODE
+	solve( directSolver , multigridFilteringVariables[0].x , multigridFilteringVariables[0].rhs );
+#else // !MISHA_CODE
+	solve( directSolver , exactSolution , multigridFilteringVariables[0].rhs );
+#endif // MISHA_CODE
+	if( verbose ) printf( "Solving time =  %.4f\n" , double(clock() - t_begin) / CLOCKS_PER_SEC );
 }
 
 template<class Real>
@@ -622,18 +693,17 @@ int TextureFilter<Real>::UpdateSolution( bool verbose , bool detailVerbose )
 	if( !gradientModulationUpdated )
 	{
 		int numTexels = (int)multigridFilteringVariables[0].rhs.size();
-		clock_t p_begin;
-		if (verbose) p_begin = clock();
+		clock_t p_begin = clock();
 
 		CellStiffnessToTexelStiffness< Real , 3 >(cellModulationMask, interiorTexelToCellLines, interiorTexelToCellCoeffs, boundaryCellBasedStiffnessRHSMatrix, boundaryTexelStiffness, hierarchy.gridAtlases[0].boundaryGlobalIndex, texelModulatedStiffness);
 #pragma omp parallel for
 		for( int i=0 ; i<numTexels ; i++ ) multigridFilteringVariables[0].rhs[i] = mass_x0[i]*interpolationWeight + texelModulatedStiffness[i];
 
-		if (verbose) printf("RHS update time %.4f  \n", double(clock() - p_begin) / CLOCKS_PER_SEC);	
+		if( verbose ) printf("RHS update time %.4f  \n", double(clock() - p_begin) / CLOCKS_PER_SEC);	
 		gradientModulationUpdated = true;
 	}
 
-	VCycle(multigridFilteringVariables, multigridFilteringCoefficients, multigridIndices, boundarySolver, coarseSolver, verbose, detailVerbose);
+	VCycle( multigridFilteringVariables , multigridFilteringCoefficients , multigridIndices , boundarySolver , coarseSolver , verbose , detailVerbose );
 
 	return 1;
 }
@@ -730,6 +800,11 @@ int TextureFilter<Real>::InitializeSystem( const int width , const int height )
 	}
 	if( Verbose.set ) printf( "\tInitialized hierarchy: %.2f(s)\n" , double(clock() - t_begin) / CLOCKS_PER_SEC);
 
+#ifdef MISHA_CODE
+#else // !MISHA_CODE
+	exactSolution.resize( textureNodes.size() );
+#endif // MISHA_CODE
+
 	BoundaryProlongationData boundaryProlongation;
 	if (!InitializeBoundaryProlongationData(hierarchy.gridAtlases[0], boundaryProlongation)){
 		printf("ERROR : Failed boundary prolongation! \n");
@@ -800,10 +875,11 @@ int TextureFilter<Real>::InitializeSystem( const int width , const int height )
 		printf("ERROR : Failed system update! \n");
 		return 0;
 	}
-	if( Verbose.set ) printf( "\tInitialized multigrid coefficients: %.2f(s)\n" , double(clock() - t_begin) / CLOCKS_PER_SEC);
+	if( Verbose.set ) printf( "\tInitialized multigrid coefficients: %.2f(s)\n" , double(clock() - t_begin) / CLOCKS_PER_SEC );
 
 	multigridFilteringVariables.resize(levels);
-	for (int i = 0; i < levels; i++){
+	for( int i=0 ; i<levels ; i++ )
+	{
 		MultigridLevelVariables< Point3D< Real > >& variables = multigridFilteringVariables[i];
 		variables.x.resize(hierarchy.gridAtlases[i].numTexels);
 		variables.rhs.resize(hierarchy.gridAtlases[i].numTexels);
@@ -825,25 +901,23 @@ int TextureFilter<Real>::InitializeSystem( const int width , const int height )
 		multigridFilteringVariables[0].rhs[i] = mass_x0[i] * interpolationWeight + stiffness_x0[i] * gradientModulation;
 	}
 
-	
-	if (UseDirectSolver.set) {
-		exactSolution.resize(textureNodes.size());
-		ComputeExactSolution(Verbose.set);
-	}
-	else for (int i = 0; i < updateVCycles; i++) UpdateSolution();
-
 	filteredTexture.resize(width, height);
 	for (int i = 0; i < filteredTexture.size(); i++) filteredTexture[i] = Point3D<float>(0.5f, 0.5f, 0.5f);
 
-	if(UseDirectSolver.set) UpdateFilteredTexture(exactSolution);
-	else UpdateFilteredTexture(multigridFilteringVariables[0].x);
+
+#ifdef MISHA_CODE
+	if( UseDirectSolver.set ) ComputeExactSolution( Verbose.set );
+	UpdateFilteredTexture( multigridFilteringVariables[0].x );
+#else // !MISHA_CODE
+	if( UseDirectSolver.set ){ ComputeExactSolution( Verbose.set ) ; UpdateFilteredTexture( exactSolution ); }
+	else UpdateFilteredTexture( multigridFilteringVariables[0].x );
+#endif // MISHA_CODE
 	return 1;
 }
 
 template<class Real>
-void TextureFilter<Real>::InitializeVisualization(){
-
-
+void TextureFilter<Real>::InitializeVisualization( void )
+{
 	visualization.textureWidth = textureWidth;
 	visualization.textureHeight = textureHeight;
 
@@ -885,9 +959,11 @@ void TextureFilter<Real>::InitializeVisualization(){
 		}
 	}
 
-	visualization.callBacks.push_back(Visualization::KeyboardCallBack(&visualization, 's', "export texture", "Output Texture", ExportTextureCallBack));
-	visualization.callBacks.push_back(Visualization::KeyboardCallBack(&visualization, 'y', "interpolation weight", "Interpolation Weight", InterpolationWeightCallBack));
-	visualization.callBacks.push_back(Visualization::KeyboardCallBack(&visualization, 'g', "gradient modulation", "Gradient Modulation", GradientModulationCallBack));
+	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , 's' , "export texture" , "Output Texture", ExportTextureCallBack ) );
+	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , 'y' , "interpolation weight" , "Interpolation Weight" , InterpolationWeightCallBack ) );
+	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , 'g' , "gradient modulation" , "Gradient Modulation" , GradientModulationCallBack ) );
+	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , ' ' , "toggle update" , ToggleUpdateCallBack ) );
+	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , '+' , "increment update" , IncrementUpdateCallBack ) );
 
 	visualization.info.push_back( gradientModulationStr );
 	visualization.info.push_back( interpolationStr );
@@ -919,14 +995,12 @@ void TextureFilter<Real>::InitializeVisualization(){
 	visualization.UpdateMaskTextureBuffer();
 }
 
-template<class Real>
-int TextureFilter<Real>::Init( void )
+template< class Real >
+int TextureFilter< Real >::Init( void )
 {
 	levels = std::max<int>(Levels.value,1);
 	interpolationWeight = InterpolationWeight.value;
 	gradientModulation = GradientModulation.value;
-	updateVCycles = MultigridUpdateVcycles.value;
-	cycleCount = updateVCycles;
 
 	sprintf( gradientModulationStr , "Gradient modulation: %e\n" , gradientModulation );
 	sprintf( interpolationStr , "Interpolation: %e\n" , interpolationWeight );
@@ -982,25 +1056,25 @@ int TextureFilter<Real>::Init( void )
 	}
 
 	//Assign position to exterior nodes using barycentric-exponential map
-	FEM::RiemannianMesh< double > * Rmesh = new FEM::RiemannianMesh< double >(GetPointer(mesh.triangles), mesh.triangles.size());
-	Rmesh->setMetricFromEmbedding(GetPointer(mesh.vertices));
-	Rmesh->makeUnitArea();
-	Pointer(FEM::CoordinateXForm< double >) xForms = Rmesh->getCoordinateXForms();
+	{
+		FEM::RiemannianMesh< double > rMesh( GetPointer( mesh.triangles ) , mesh.triangles.size() );
+		rMesh.setMetricFromEmbedding( GetPointer( mesh.vertices ) );
+		rMesh.makeUnitArea();
+		Pointer( FEM::CoordinateXForm< double > ) xForms = rMesh.getCoordinateXForms();
 
-	for (int i = 0; i<textureNodes.size(); i++){
-		if (textureNodes[i].tId != -1 && !textureNodes[i].isInterior) {
+		for( int i=0 ; i<textureNodes.size() ; i++ ) if( textureNodes[i].tId!=-1 && !textureNodes[i].isInterior )
+		{
 			FEM::HermiteSamplePoint< double > _p;
 			_p.tIdx = textureNodes[i].tId;
-			_p.p = Point2D< double >((double)1. / 3, (double)1. / 3);
+			_p.p = Point2D< double >( 1./3 , 1./3 );
 			_p.v = textureNodes[i].barycentricCoords - _p.p;
 
-			Rmesh->exp(xForms, _p);
-
+			rMesh.exp(xForms, _p);
+			
 			textureNodes[i].tId = _p.tIdx;
 			textureNodes[i].barycentricCoords = _p.p;
 		}
 	}
-	//
 
 	textureNodePositions.resize(textureNodes.size());
 	for (int i = 0; i < textureNodePositions.size(); i++){
@@ -1027,50 +1101,41 @@ int TextureFilter<Real>::Init( void )
 								  textureNodePositions[ bilinearElementIndices[i][3] ]) / 4.0;
 	}
 
-	if (1) {
+	if( true )
+	{
 		int multiChartTexelCount = 0;
-		Image<int> texelId;
+		Image< int > texelId;
 		texelId.resize(textureWidth, textureHeight);
-		for (int i = 0; i < texelId.size(); i++)texelId[i] = -1;
-		for (int i = 0; i < textureNodes.size(); i++) {
-			int ci = textureNodes[i].ci;
-			int cj = textureNodes[i].cj;
-			if (texelId(ci, cj) != -1) {
-				if(0) printf("WARNING: Texel (%d %d) belong to multiple charts! \n", ci, cj);
+		for( int i=0 ; i<texelId.size() ; i++ ) texelId[i] = -1;
+		for( int i=0 ; i<textureNodes.size() ; i++)
+		{
+			int ci = textureNodes[i].ci , cj = textureNodes[i].cj;
+			if( texelId(ci,cj)!=-1 )
+			{
+				if( false ) fprintf( stderr , "[WARNING] Texel (%d %d) belong to multiple charts!\n" , ci , cj );
 				multiChartTexelCount++;
 			}
-			texelId(ci, cj) = i;
+			texelId(ci,cj) = i;
 		}
-		if (multiChartTexelCount)printf("WARNING: %d texels belong to multiple charts! \n", multiChartTexelCount);
+		if( multiChartTexelCount ) fprintf( stderr , "[WARNING] %d texels belong to multiple charts!\n" , multiChartTexelCount );
 	}
+
 	return 1;
 }
 
 template<class Real>
 int _main(int argc, char* argv[])
 {
-	if (!TextureFilter<Real>::Init()) return 0;
+	if( !TextureFilter< Real >::Init() ) return 0;
 
 	if( !Output.set )
 	{
-		glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE);
+		glutInitDisplayMode( GLUT_RGB | GLUT_DOUBLE );
 		TextureFilter<Real>::visualization.displayMode = DisplayMode.value;
-		if (DisplayMode.value == ONE_REGION_DISPLAY) {
-			TextureFilter<Real>::visualization.screenWidth = 800;
-			TextureFilter<Real>::visualization.screenHeight = 800;
-		}
-		else if (DisplayMode.value == TWO_REGION_DISPLAY) {
-			TextureFilter<Real>::visualization.screenWidth = 1600;
-			TextureFilter<Real>::visualization.screenHeight = 800;
-		}
-		else if (DisplayMode.value == THREE_REGION_DISPLAY) {
-			TextureFilter<Real>::visualization.screenWidth = 1200;
-			TextureFilter<Real>::visualization.screenHeight = 800;
-		}
-		else if (DisplayMode.value == FOUR_REGION_DISPLAY) {
-			TextureFilter<Real>::visualization.screenWidth = 1500;
-			TextureFilter<Real>::visualization.screenHeight = 600;
-		}
+		if     ( DisplayMode.value==ONE_REGION_DISPLAY   ) TextureFilter< Real >::visualization.screenWidth =  800 , TextureFilter< Real >::visualization.screenHeight = 800;
+		else if( DisplayMode.value==TWO_REGION_DISPLAY   ) TextureFilter< Real >::visualization.screenWidth = 1600 , TextureFilter< Real >::visualization.screenHeight = 800;
+		else if( DisplayMode.value==THREE_REGION_DISPLAY ) TextureFilter< Real >::visualization.screenWidth = 1200 , TextureFilter< Real >::visualization.screenHeight = 800;
+		else if( DisplayMode.value==FOUR_REGION_DISPLAY  ) TextureFilter< Real >::visualization.screenWidth = 1500 , TextureFilter< Real >::visualization.screenHeight = 600;
 		TextureFilter<Real>::visualization.UpdateMainFrameSize();
 		glutInitWindowSize(TextureFilter<Real>::visualization.screenWidth, TextureFilter<Real>::visualization.screenHeight);
 		glutInit(&argc, argv);
@@ -1083,13 +1148,19 @@ int _main(int argc, char* argv[])
 		glutMouseFunc(TextureFilter<Real>::MouseFunc);
 		glutMotionFunc(TextureFilter<Real>::MotionFunc);
 		glutKeyboardFunc(TextureFilter<Real>::KeyboardFunc);
-		if (!UseDirectSolver.set) glutIdleFunc(TextureFilter<Real>::Idle);
+//		if( !UseDirectSolver.set ) glutIdleFunc( TextureFilter<Real>::Idle );
+		glutIdleFunc( TextureFilter< Real >::Idle );
 		if (CameraConfig.set) TextureFilter<Real>::visualization.ReadSceneConfigurationCallBack(&TextureFilter<Real>::visualization, CameraConfig.value);
 		TextureFilter<Real>::InitializeVisualization();
 		TextureFilter<Real>::visualization.showSlideBar = true;
 		glutMainLoop(); 
 	}
-	else TextureFilter<Real>::ExportTextureCallBack( &TextureFilter<Real>::visualization , Output.value );
+	else
+	{
+		if( UseDirectSolver.set ) TextureFilter< Real >::ComputeExactSolution( Verbose.set );
+		else for ( int i=0 ; i<OutputVCycles.value ; i++ ) TextureFilter< Real >::UpdateSolution();
+		TextureFilter< Real >::ExportTextureCallBack( &TextureFilter< Real >::visualization , Output.value );
+	}
 
 	return 0;
 }

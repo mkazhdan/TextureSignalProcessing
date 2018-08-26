@@ -42,6 +42,8 @@ const float StripeRates[] = { 0.062f , 0.062f };
 const float    DotRates[] = { 0.0367f , 0.0649f };
 
 cmdLineParameter< char* > Input( "in" );
+cmdLineParameter< char* > Output( "out" );
+cmdLineParameter< int   > OutputSteps( "outSteps" , 1000 );
 cmdLineParameter< int   > Width( "width" , 512 );
 cmdLineParameter< int   > Height( "height" , 512 );
 cmdLineParameter< float > Speed( "speed" , 10.f );
@@ -71,7 +73,7 @@ cmdLineReadable Dots( "dots" );
 
 cmdLineReadable* params[] =
 {
-	&Input , &Width , &Height , &Speed , &FeedKillRates , &DiffusionScale , &SamplesFraction , &CameraConfig , &Levels , &UseDirectSolver , &Threads , &DisplayMode , &MultigridBlockHeight , &MultigridBlockWidth , &MultigridPaddedHeight , &MultigridPaddedWidth ,
+	&Input , &Output , &OutputSteps , &Width , &Height , &Speed , &FeedKillRates , &DiffusionScale , &SamplesFraction , &CameraConfig , &Levels , &UseDirectSolver , &Threads , &DisplayMode , &MultigridBlockHeight , &MultigridBlockWidth , &MultigridPaddedHeight , &MultigridPaddedWidth ,
 	&Verbose , &DetailVerbose , &AreaScale ,
 	&RandomJitter ,
 	&Double ,
@@ -84,6 +86,8 @@ void ShowUsage( const char* ex )
 {
 	printf( "Usage %s:\n", ex );
 	printf( "\t --%s <input mesh>\n" , Input.name );
+	printf( "\t[--%s <output texture>\n" , Output.name );
+	printf( "\t[--%s <output steps>=%d]\n" , OutputSteps.name , OutputSteps.value );
 	printf( "\t[--%s <texture width>=%d]\n" , Width.name , Width.value );
 	printf( "\t[--%s <texture height>=%d]\n" , Height.name , Height.value );
 	printf( "\t[--%s <time-step>=%f]\n" , Speed.name , Speed.value );
@@ -125,6 +129,8 @@ public:
 	static double speed;
 	static double samplesFraction;
 	static int levels;
+	static int steps;
+	static char stepsString[];
 
 	static Padding padding;
 
@@ -200,11 +206,13 @@ public:
 	static int mouseX , mouseY;
 	static bool mouseSelectionActive;
 
+	static void SetOutputBuffer( const std::vector< Real >& solution );
 	static void UpdateOutputBuffer( const std::vector< Real >& solution );
 
-	static bool update;
+	static int updateCount;
 
 	static void ToggleUpdateCallBack( Visualization* v , const char* prompt );
+	static void IncrementUpdateCallBack( Visualization* v , const char* prompt );
 	static void ExportTextureCallBack( Visualization* v , const char* prompt );
 	static int Init( void );
 	static void InitializeVisualization( const int width , const int height );
@@ -249,6 +257,8 @@ template< class Real > std::vector< TextureNodeInfo >								GrayScottReactionDi
 template< class Real > Image< int >													GrayScottReactionDiffusion< Real >::nodeIndex;
 template< class Real > std::vector< BilinearElementIndex >							GrayScottReactionDiffusion< Real >::bilinearElementIndices;
 
+template< class Real > int															GrayScottReactionDiffusion< Real >::steps;
+template< class Real > char															GrayScottReactionDiffusion< Real >::stepsString[1024];
 template< class Real > int															GrayScottReactionDiffusion< Real >::levels;
 template< class Real > HierarchicalSystem											GrayScottReactionDiffusion< Real >::hierarchy;
 
@@ -287,7 +297,7 @@ template< class Real > SparseMatrix< double , int >									GrayScottReactionDif
 template< class Real > SparseMatrix< double , int >									GrayScottReactionDiffusion< Real >::boundaryDeepMassMatrix;
 template< class Real > SparseMatrix< double , int >									GrayScottReactionDiffusion< Real >::boundaryDeepStiffnessMatrix;
 
-template< class Real > bool															GrayScottReactionDiffusion< Real >::update = false;
+template< class Real > int															GrayScottReactionDiffusion< Real >::updateCount = 0;
 
 template< class Real >
 int GrayScottReactionDiffusion< Real >::SetRightHandSide( bool verbose )
@@ -347,7 +357,11 @@ int GrayScottReactionDiffusion< Real >::UpdateExactSolution( bool verbose )
 	// (2) Solve the linear systems
 	{
 		clock_t begin = clock();
-		for( int ab=0 ; ab<2 ; ab++ ) solve( fineSolvers[ab] , multigridVariables[ab][0].x , multigridVariables[ab][0].rhs );
+		for( int ab=0 ; ab<2 ; ab++ )
+		{
+			solve( fineSolvers[ab] , multigridVariables[ab][0].x , multigridVariables[ab][0].rhs );
+			for( int i=0 ; i<multigridVariables[ab][0].x.size() ; i++ ) multigridVariables[ab][0].x[i] = std::max< Real >( multigridVariables[ab][0].x[i] , 0 );
+		}
 		if( verbose ) printf( "Smoothing impulse %.4f\n" , double(clock() - begin) / CLOCKS_PER_SEC );
 	}
 	return 1;
@@ -382,7 +396,7 @@ int GrayScottReactionDiffusion< Real >::UpdateApproximateSolution( bool verbose 
 }
 
 template< class Real >
-void GrayScottReactionDiffusion< Real >::UpdateOutputBuffer( const std::vector< Real > & solution )
+void GrayScottReactionDiffusion< Real >::SetOutputBuffer( const std::vector< Real > & solution )
 {
 #pragma omp parallel for
 	for( int i=0 ; i<textureNodes.size() ; i++ )
@@ -398,7 +412,11 @@ void GrayScottReactionDiffusion< Real >::UpdateOutputBuffer( const std::vector< 
 		unsigned char color = (unsigned char)( value*255.f );
 		outputBuffer[offset] = color;
 	}
-
+}
+template< class Real >
+void GrayScottReactionDiffusion< Real >::UpdateOutputBuffer( const std::vector< Real > & solution )
+{
+	SetOutputBuffer( solution );
 	glBindTexture( GL_TEXTURE_2D , visualization.textureBuffer );
 	glTexImage2D( GL_TEXTURE_2D , 0 , GL_RGBA , textureWidth , textureHeight , 0 , GL_LUMINANCE , GL_UNSIGNED_BYTE , (GLvoid*)&outputBuffer[0] );
 	glBindTexture( GL_TEXTURE_2D , 0 );
@@ -410,10 +428,13 @@ template<class Real>
 void GrayScottReactionDiffusion< Real >::Idle( void )
 {
 #if 1
-	if( update )
+	if( updateCount )
 	{
 		if( UseDirectSolver.set ){ if( !UpdateExactSolution()       ) fprintf( stderr , "[WARNING] Exact update failed!\n" ); }
 		else                     { if( !UpdateApproximateSolution() ) fprintf( stderr , "[WARNING] Approximate update failed!\n" ); }
+		if( updateCount>0 ) updateCount--;
+		steps++;
+		sprintf( stepsString , "Steps: %d" , steps );
 	}
 	UpdateOutputBuffer( multigridVariables[1][0].x );
 #else
@@ -595,6 +616,7 @@ void GrayScottReactionDiffusion< Real >::ExportTextureCallBack( Visualization* v
 template< class Real >
 int GrayScottReactionDiffusion< Real >::InitializeConcentrations( void )
 {
+	steps = 0;
 	for( int i=0 ; i<multigridVariables[0][0].x.size() ; i++ ) multigridVariables[0][0].x[i] = 1;
 	for( int i=0 ; i<multigridVariables[1][0].x.size() ; i++ ) multigridVariables[1][0].x[i] = 0;
 	if( seedTexel!=-1 ) multigridVariables[1][0].x[seedTexel] = 1;
@@ -754,9 +776,6 @@ int GrayScottReactionDiffusion< Real >::InitializeSystem( const int width , cons
 template< class Real >
 void GrayScottReactionDiffusion< Real >::InitializeVisualization( const int width , const int height )
 {
-	outputBuffer = new unsigned char[ height*width];
-	memset( outputBuffer , 204 , height * width * sizeof(unsigned char) );
-
 	int tCount = (int)mesh.triangles.size();
 
 	visualization.triangles.resize( tCount );
@@ -804,13 +823,26 @@ void GrayScottReactionDiffusion< Real >::InitializeVisualization( const int widt
 	}
 	visualization.UpdateTextureBuffer();
 
-	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , ' ', "toggle update" , ToggleUpdateCallBack ) );
+	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , ' ' , "toggle update" , ToggleUpdateCallBack ) );
+	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , '+' , "increment update" , IncrementUpdateCallBack ) );
+
+	visualization.info.push_back( stepsString );
 }
-template< class Real > void GrayScottReactionDiffusion< Real >::ToggleUpdateCallBack( Visualization* v , const char* prompt ){ update = !update; }
+template< class Real > void GrayScottReactionDiffusion< Real >::ToggleUpdateCallBack( Visualization* v , const char* prompt )
+{
+	if( updateCount ) updateCount = 0;
+	else              updateCount = -1;
+}
+template< class Real > void GrayScottReactionDiffusion< Real >::IncrementUpdateCallBack( Visualization* v , const char* prompt )
+{
+	if( updateCount<0 ) updateCount = 1;
+	else updateCount++;
+}
 
 template< class Real >
 int GrayScottReactionDiffusion< Real >::Init( void )
 {
+	sprintf( stepsString , "Steps: 0" );
 	levels = Levels.value;
 	feed = FeedKillRates.values[0];
 	kill = FeedKillRates.values[1];
@@ -863,12 +895,12 @@ int GrayScottReactionDiffusion< Real >::Init( void )
 		printf( "Peak Memory (MB): %d\n" , Miscellany::MemoryInfo::PeakMemoryUsageMB() );
 	}
 
-	// Assign position to exterior nodes using barycentric-exponential map
+	//Assign position to exterior nodes using barycentric-exponential map
 	{
-		FEM::RiemannianMesh< double > * Rmesh = new FEM::RiemannianMesh< double >( GetPointer( mesh.triangles ) , mesh.triangles.size() );
-		Rmesh->setMetricFromEmbedding( GetPointer( mesh.vertices ) );
-		Rmesh->makeUnitArea();
-		Pointer( FEM::CoordinateXForm< double > ) xForms = Rmesh->getCoordinateXForms();
+		FEM::RiemannianMesh< double > rMesh( GetPointer( mesh.triangles ) , mesh.triangles.size() );
+		rMesh.setMetricFromEmbedding( GetPointer( mesh.vertices ) );
+		rMesh.makeUnitArea();
+		Pointer( FEM::CoordinateXForm< double > ) xForms = rMesh.getCoordinateXForms();
 
 		for( int i=0 ; i<textureNodes.size() ; i++ ) if( textureNodes[i].tId!=-1 && !textureNodes[i].isInterior )
 		{
@@ -877,12 +909,11 @@ int GrayScottReactionDiffusion< Real >::Init( void )
 			_p.p = Point2D< double >( 1./3 , 1./3 );
 			_p.v = textureNodes[i].barycentricCoords - _p.p;
 
-			Rmesh->exp( xForms , _p );
+			rMesh.exp(xForms, _p);
 
 			textureNodes[i].tId = _p.tIdx;
 			textureNodes[i].barycentricCoords = _p.p;
 		}
-		delete Rmesh;
 	}
 
 	textureNodePositions.resize( textureNodes.size() );
@@ -896,6 +927,10 @@ int GrayScottReactionDiffusion< Real >::Init( void )
 			mesh.vertices[ mesh.triangles[tId][2] ] * barycentricCoords[1];
 		textureNodePositions[i] = surfacePosition;
 	}
+
+	outputBuffer = new unsigned char[ textureHeight*textureWidth];
+	memset( outputBuffer , 204 , textureHeight * textureWidth * sizeof(unsigned char) );
+
 	return 1;
 }
 
@@ -904,29 +939,49 @@ int _main( int argc , char* argv[] )
 {
 	if( !GrayScottReactionDiffusion< Real >::Init() ) return 0;
 
-	glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE);
-	GrayScottReactionDiffusion< Real >::visualization.displayMode = DisplayMode.value;
-	if     ( DisplayMode.value==ONE_REGION_DISPLAY ) GrayScottReactionDiffusion< Real >::visualization.screenWidth =  800 , GrayScottReactionDiffusion< Real >::visualization.screenHeight = 800;
-	else if( DisplayMode.value==TWO_REGION_DISPLAY ) GrayScottReactionDiffusion< Real >::visualization.screenWidth = 1440 , GrayScottReactionDiffusion< Real >::visualization.screenHeight = 720;
+	if( !Output.set )
+	{
+		glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE);
+		GrayScottReactionDiffusion< Real >::visualization.displayMode = DisplayMode.value;
+		if     ( DisplayMode.value==ONE_REGION_DISPLAY ) GrayScottReactionDiffusion< Real >::visualization.screenWidth =  800 , GrayScottReactionDiffusion< Real >::visualization.screenHeight = 800;
+		else if( DisplayMode.value==TWO_REGION_DISPLAY ) GrayScottReactionDiffusion< Real >::visualization.screenWidth = 1440 , GrayScottReactionDiffusion< Real >::visualization.screenHeight = 720;
 
-	GrayScottReactionDiffusion< Real >::visualization.UpdateMainFrameSize();
-	glutInitWindowSize( GrayScottReactionDiffusion< Real >::visualization.screenWidth , GrayScottReactionDiffusion< Real >::visualization.screenHeight );
+		GrayScottReactionDiffusion< Real >::visualization.UpdateMainFrameSize();
+		glutInitWindowSize( GrayScottReactionDiffusion< Real >::visualization.screenWidth , GrayScottReactionDiffusion< Real >::visualization.screenHeight );
 
-	glutInit(&argc, argv);
-	char windowName[1024];
-	sprintf( windowName , "Gray-Scott Reaction Diffusion");
-	glutCreateWindow( windowName );
-	if( glewInit()!=GLEW_OK ) fprintf(stderr, "[ERROR] glewInit failed\n" ) , exit(0);
-	glutDisplayFunc ( GrayScottReactionDiffusion< Real >::Display );
-	glutReshapeFunc ( GrayScottReactionDiffusion< Real >::Reshape );
-	glutMouseFunc   ( GrayScottReactionDiffusion< Real >::MouseFunc );
-	glutMotionFunc  ( GrayScottReactionDiffusion< Real >::MotionFunc );
-	glutKeyboardFunc( GrayScottReactionDiffusion< Real >::KeyboardFunc );
-	glutIdleFunc    ( GrayScottReactionDiffusion< Real >::Idle );
-	if( CameraConfig.set ) GrayScottReactionDiffusion< Real >::visualization.ReadSceneConfigurationCallBack( &GrayScottReactionDiffusion< Real >::visualization , CameraConfig.value );
-	GrayScottReactionDiffusion< Real >::InitializeVisualization( GrayScottReactionDiffusion< Real >::textureWidth , GrayScottReactionDiffusion<Real>::textureHeight );
-	glutMainLoop();
-
+		glutInit(&argc, argv);
+		char windowName[1024];
+		sprintf( windowName , "Gray-Scott Reaction Diffusion");
+		glutCreateWindow( windowName );
+		if( glewInit()!=GLEW_OK ) fprintf(stderr, "[ERROR] glewInit failed\n" ) , exit(0);
+		glutDisplayFunc ( GrayScottReactionDiffusion< Real >::Display );
+		glutReshapeFunc ( GrayScottReactionDiffusion< Real >::Reshape );
+		glutMouseFunc   ( GrayScottReactionDiffusion< Real >::MouseFunc );
+		glutMotionFunc  ( GrayScottReactionDiffusion< Real >::MotionFunc );
+		glutKeyboardFunc( GrayScottReactionDiffusion< Real >::KeyboardFunc );
+		glutIdleFunc    ( GrayScottReactionDiffusion< Real >::Idle );
+		if( CameraConfig.set ) GrayScottReactionDiffusion< Real >::visualization.ReadSceneConfigurationCallBack( &GrayScottReactionDiffusion< Real >::visualization , CameraConfig.value );
+		GrayScottReactionDiffusion< Real >::InitializeVisualization( GrayScottReactionDiffusion< Real >::textureWidth , GrayScottReactionDiffusion<Real>::textureHeight );
+		glutMainLoop();
+	}
+	else
+	{
+		clock_t t = clock();
+		for( int i=0 ; i<OutputSteps.value ; i++ )
+		{
+			if( Verbose.set ) printf( "%d / %d \r" , i+1 , OutputSteps.value );
+			if( UseDirectSolver.set ) GrayScottReactionDiffusion< Real >::UpdateExactSolution();
+			else                      GrayScottReactionDiffusion< Real >::UpdateApproximateSolution();
+		}
+		if( Verbose.set )
+		{
+			printf( "\n" );
+			double total_time = double( clock()-t ) / CLOCKS_PER_SEC;
+			printf( "Reaction-diffusion total time / time per iteration: %.2f(s) / %.4f(s)\n" , total_time , total_time / OutputSteps.value );
+		}
+		GrayScottReactionDiffusion< Real >::SetOutputBuffer( GrayScottReactionDiffusion< Real >::multigridVariables[1][0].x );
+		GrayScottReactionDiffusion< Real >::ExportTextureCallBack( &GrayScottReactionDiffusion<Real>::visualization , Output.value );
+	}
 	return 0;
 
 }
