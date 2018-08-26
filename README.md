@@ -90,7 +90,7 @@ The default value for this parameter is 1.
 <details>
 <summary>
 <font size="+1"><b>LineIntegralConvolution</b></font>:
-Supports the <a href="https://en.wikipedia.org/wiki/Line_integral_convolution">line integral convolution</A> visualization of a vector-field by defining a new metric on the surface that stretches distances along the vector-field values, diffusing a random color texture with respect to the new anisotropic metric, and then sharpening the resulting signal.
+Supports the <a href="https://en.wikipedia.org/wiki/Line_integral_convolution">line-integral-convolution</A> visualization of a vector-field by defining a new metric on the surface that stretches distances along the vector-field values, diffusing a random color texture with respect to the new anisotropic metric, and then sharpening the resulting signal.
 If no output texture is specified, the executable will launch an interactive viewer that supports iteratively stepping through the diffusion.<BR>
 Hit [SPACE] to start the iterative solver or hit "+" to advance one iteration at a time.
 </summary>
@@ -99,18 +99,18 @@ Hit [SPACE] to start the iterative solver or hit "+" to advance one iteration at
 The input mesh is assumed to be in <a href="http://www.cc.gatech.edu/projects/large_models/ply.html">PLY</a> format, giving the set of vertices with the x-, y-, and z-coordinates of the positions encoded by the properties <i>x</i>, <i>y</i>, and <i>z</i> the set of polygons encoded by two lists. The first gives the indices of the vertices in the polygon (integers). The second gives the texture coordinates at each polygon corner (pairs of floats).<br>
 </dd>
 
-<dt>[<b>--vf</b> &lt;<i>vector field file</i>&gt;]</dt>
-<DD>This string specifies the file containing the vector field for visualization. (If this parameter is not specified, the principal curvature direction is used.)<BR>
+<dt>[<b>--vf</b> &lt;<i>vector-field file</i>&gt;]</dt>
+<DD>This string specifies the file containing the vector-field for visualization. (If this parameter is not specified, the principal curvature direction is used.)<BR>
 This file is assumed to be in binary, with the first four bytes storing an integer representing the number of vectors (this should be equal to the number of triangles in the mesh) followed by the list of vectors.
-The latter are encoded using double-precision floating point values and should be <I>8</I>*<I>num_triangles</I>*<I>dim</I> bytes, with <I>num_triangles</I> the number of triangles/vectors and <I>dim</I> the dimension of vector field. (The value of <I>dim</I> is equal to two if the <B>--intrinsicVF</B> is specified an three otherwise.)
+The latter are encoded using double-precision floating point values and should be <I>8</I>*<I>num_triangles</I>*<I>dim</I> bytes, with <I>num_triangles</I> the number of triangles/vectors and <I>dim</I> the dimension of vector-field. (The value of <I>dim</I> is equal to two if the <B>--intrinsicVF</B> is specified an three otherwise.)
 </DD>
 
 </dd><dt>[<b>--intrinsicVF</B>]</dt>
-<dd> If enabled and a vector field is specified, this flag indicates that the vector values are represented with two values per vector, using an intrinsic frame. Specifically, for triangle ( <I>v</I><SUB>0</SUB> , <I>v</I><SUB>1</SUB> , <I>v</I><SUB>2</SUB> ), the two-dimensional coefficients ( <I>x</I> , <I>y</I> ) correspond to the three-dimensional tangent vector ( <I>x</I>&middot;(<I>v</I><SUB>1</SUB>-<I>v</I><SUB>0</SUB>) , <I>y</I>&middot;(<I>v</I><SUB>2</SUB>-<I>v</I><SUB>0</SUB>) ).
+<dd> If enabled and a vector-field is specified, this flag indicates that the vector values are represented with two values per vector, using an intrinsic frame. Specifically, for triangle ( <I>v</I><SUB>0</SUB> , <I>v</I><SUB>1</SUB> , <I>v</I><SUB>2</SUB> ), the two-dimensional coefficients ( <I>x</I> , <I>y</I> ) correspond to the three-dimensional tangent vector ( <I>x</I>&middot;(<I>v</I><SUB>1</SUB>-<I>v</I><SUB>0</SUB>) , <I>y</I>&middot;(<I>v</I><SUB>2</SUB>-<I>v</I><SUB>0</SUB>) ).
 </dd>
 
 <dt>[<b>--out</b> &lt;<i>output texture</i>&gt;]</dt>
-<dd> This string is the name of the file to which the line integral convolution texture will be written.</B>
+<dd> This string is the name of the file to which the line-integral-convolution texture will be written.</B>
 </dd>
 
 <dt>[<b>--outVCycles</b> &lt;<i>output v-cycles</i>&gt;]</dt>
@@ -118,18 +118,18 @@ The latter are encoded using double-precision floating point values and should b
 The default value for this parameter is 10.
 </dd>
 
-<dt>[<b>--licInterpolation</b> &lt;<i>line integral convolution interpolation weight</i>&gt;]</dt>
-<dd> This floating point values gives the interpolation weight used for the line integral convolution.<BR>
+<dt>[<b>--licInterpolation</b> &lt;<i>line-integral-convolution interpolation weight</i>&gt;]</dt>
+<dd> This floating point values gives the interpolation weight used for the line-integral-convolution.<BR>
 The default value for this parameter is 10000.
 </dd>
 
 <dt>[<b>--sharpInterpolation</b> &lt;<i>sharpening interpolation weight</i>&gt;]</dt>
-<dd> This floating point values gives the interpolation weight used for sharpening the line integral convolution results.<BR>
+<dd> This floating point values gives the interpolation weight used for sharpening the line-integral-convolution results.<BR>
 The default value for this parameter is 10000.
 </dd>
 
 <dt>[<b>--modulation</b> &lt;<i>sharpening gradient modulation</i>&gt;]</dt>
-<dd> This floating point values gives the gradient modulation used for sharpening the line integral convolution results.<BR>
+<dd> This floating point values gives the gradient modulation used for sharpening the line-integral-convolution results.<BR>
 The default value for this parameter is 100.
 </dd>
 
@@ -144,7 +144,7 @@ The default value for this parameter is 2048.
 </dd>
 
 </dd><dt>[<b>--minor</B>]</dt>
-<dd> If enabled, this flag specifies that the directions of minimal principal curvature should be used to define the vector field (instead of the default maximal principal curvature directions).
+<dd> If enabled, this flag specifies that the directions of minimal principal curvature should be used to define the vector-field (instead of the default maximal principal curvature directions).
 </dd>
 
 </dd><dt>[<b>--useDirectSolver</B>]</dt>
@@ -252,7 +252,7 @@ The default value for this parameter is 512.
 <hr>
 <a name="USAGE"><b>USAGE EXAMPLES (WITH SAMPLE DATA)</b></a><br>
 For testing purposes, a number of <A HREF="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/TSP.Data.zip">textured mapped models</A> are provided (using the <U>.ply</U> extension).
-Of these, <I>David</I> and <I>Julius</I> include normal maps (using the <U>.normap</U> extension) and <I>Fertility</I> includes the eight harmonic vector fields (using the <U>.vf</U> extension).
+Of these, <I>David</I> and <I>Julius</I> include normal maps (using the <U>.normap</U> extension) and <I>Fertility</I> includes the eight harmonic vector-fields (using the <U>.vf</U> extension).
 
 <ul>
 <dl>
@@ -276,13 +276,13 @@ Here a modulation weight less than 1 indicates that gradients should be dampened
 </summary>
 To run this executable you must specify the input mesh:
 <blockquote><code>% LineIntegralConvolution --in TSP.Data\Fertility\fertility.ply</code></blockquote>
-This opens a viewer visualizing a vector field by performing anisotropic diffusion to simulate line-integral-convolution. (To start the iterative solver, press the [SPACE] key.) By default, the vector-field used is defined by the (maximal) principal curvature directions.<BR>
+This opens a viewer visualizing a vector-field by performing anisotropic diffusion to simulate line-integral-convolution. (To start the iterative solver, press the [SPACE] key.) By default, the vector-field used is defined by the (maximal) principal curvature directions.<BR>
 You can also explicitly prescribe the vector-field:
 <blockquote><code>% LineIntegralConvolution --in TSP.Data\Fertility\fertility.ply --vf TSP.Data\Fertility\harmonic-001.vf --intrinsicVF</code></blockquote>
-(The latter flag is required because the vector-field in the file is represented using two intrinsic coordinates per triangle instead of three extrinsic ones.)<BR>
-You can also bypass the viewer and output a the line-integral-convolution texture to a file:
+(The <b>--intrinsicVF</b> flag is required because the vector-field in the file is represented using two intrinsic coordinates per triangle instead of three extrinsic ones.)<BR>
+You can also bypass the viewer and output the line-integral-convolution texture to a file:
 <blockquote><code>% LineIntegralConvolution --in TSP.Data\Hand\hand.ply --minimal --out hand.minimal.jpg</code></blockquote>
-Here a visualization of the minimal principal curvature directions are written out as a texture image.
+Here a visualization of the minimal principal curvature directions is written out as a texture image.
 </details>
 </dl>
 
@@ -293,7 +293,7 @@ Here a visualization of the minimal principal curvature directions are written o
 </summary>
 To run this executable you must specify the input mesh:
 <blockquote><code>% ReactionDiffusion --in TSP.Data\Bunny\bunny.ply</code></blockquote>
-This opens a viewer allowing the user to prescribe the source of the geodesic by holding the [SHIFT] and clicking on the source location with either mouse button.
+This opens a viewer allowing the user to prescribe the source of the geodesic by holding the [SHIFT] button and clicking on the source location with either mouse button.
 </details>
 </dl>
 
@@ -308,7 +308,7 @@ To run this executable you must specify the input mesh:
 This opens a viewer visualizing the "stripes" reaction-diffusion process. (To start the process, press the [SPACE] key.)<BR>
 You can also bypass the viewer and output the reaction-diffusion texture to a file:
 <blockquote><code>% ReactionDiffusion --in TSP.Data\David\david.ply --out david.dots.jpg --dots --outSteps 4000</code></blockquote>
-Here a the "dots" pattern is written out to an image. (Empirically, we have found that this reaction-diffusion process takes more steps to converge, hence the larger number of steps.)
+Here a "dots" pattern is written out to an image. (Empirically, we have found that this reaction-diffusion process takes more steps to converge, hence the larger number of steps.)
 </details>
 </dl>
 
@@ -332,7 +332,7 @@ Here a the "dots" pattern is written out to an image. (Empirically, we have foun
 </summary>
 <a href="http://www.cs.jhu.edu/~misha/Code/PoissonRecon/Version2.00/">Version 2</a>:
 <ol>
-<li> Added support for reaction diffusion based on the Gray-Scott model.</li></ol>
+<li> Added support for reaction-diffusion based on the Gray-Scott model.</li></ol>
 </details>
 
 
