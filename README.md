@@ -307,7 +307,7 @@ To run this executable you must specify the input mesh:
 <blockquote><code>% ReactionDiffusion --in TSP.Data\Camel\camel.ply</code></blockquote>
 This opens a viewer visualizing the "stripes" reaction-diffusion process. (To start the process, press the [SPACE] key.)<BR>
 You can also bypass the viewer and output the reaction-diffusion texture to a file:
-<blockquote><code>% ReactionDiffusion --in TSP.Data\David\david.ply --out david.dots.jpg --dots --outSteps 4000</code></blockquote>
+<blockquote><code>% ReactionDiffusion --in TSP.Data\David\david.ply --out david.dots.jpg --dots --outSteps 2000</code></blockquote>
 Here a "dots" pattern is written out to an image. (Empirically, we have found that this reaction-diffusion process takes more steps to converge, hence the larger number of steps.)
 </details>
 </dl>
