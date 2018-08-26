@@ -15,8 +15,9 @@
 This software supports gradient-domain signal processing within a texture atlas. Supported applications include:
 <UL>
 <LI>(localized) texture smoothing and sharpening,</LI>
-<LI>vector-field visualization akin to line-integral convolution, and</LI>
-<LI>computation of single-source geodesics.</LI>
+<LI>vector-field visualization akin to line-integral convolution,</LI>
+<LI>computation of single-source geodesics, and</LI>
+<LI>simulation of reaction-diffusion following the Gray-Scott model.</LI>
 </UL>
 <hr>
 <a name="LINKS"><b>LINKS</b></a><br>
@@ -89,7 +90,8 @@ The default value for this parameter is 1.
 <details>
 <summary>
 <font size="+1"><b>LineIntegralConvolution</b></font>:
-Creates a <a href="https://en.wikipedia.org/wiki/Line_integral_convolution">line integral convolution</A> visualization of a vector-field by defining a new metric on the surface that stretches distances along the vector-field values, diffuses a random color texture with respect to the new anisotropic metric, and then sharpens the resulting signal.<BR>
+Supports the <a href="https://en.wikipedia.org/wiki/Line_integral_convolution">line integral convolution</A> visualization of a vector-field by defining a new metric on the surface that stretches distances along the vector-field values, diffusing a random color texture with respect to the new anisotropic metric, and then sharpening the resulting signal.
+If no output texture is specified, the executable will launch an interactive viewer that supports iteratively stepping through the diffusion.<BR>
 Hit [SPACE] to start the iterative solver or hit "+" to advance one iteration at a time.
 </summary>
 <dt><b>--in</b> &lt;<i>input mesh name</i>&gt;</dt>
@@ -203,7 +205,8 @@ The default value for this parameter is 2048.
 <details>
 <summary>
 <font size="+1"><b>ReactionDiffusion</b></font>:
-An interactive tool for visualization of reaction-diffusion based on the <A HREF="https://groups.csail.mit.edu/mac/projects/amorphous/GrayScott/">Gray-Scott model</A>.<BR>
+Performs simulation of reaction-diffusion based on the <A HREF="https://groups.csail.mit.edu/mac/projects/amorphous/GrayScott/">Gray-Scott model</A>.
+If no output texture is specified, the executable will launch an interactive viewer that supports iteratively stepping through the reaction-diffusion process.<BR>
 Hit [SPACE] to start the reaction-diffusion process or hit "+" to advance one step at a time.
 </summary>
 <dt><b>--in</b> &lt;<i>input mesh name</i>&gt;</dt>
