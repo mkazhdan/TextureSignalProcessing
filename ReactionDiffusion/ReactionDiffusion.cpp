@@ -428,7 +428,6 @@ void GrayScottReactionDiffusion< Real >::UpdateOutputBuffer( const std::vector< 
 template<class Real>
 void GrayScottReactionDiffusion< Real >::Idle( void )
 {
-#if 1
 	if( updateCount )
 	{
 		if( UseDirectSolver.set ){ if( !UpdateExactSolution()       ) fprintf( stderr , "[WARNING] Exact update failed!\n" ); }
@@ -437,57 +436,8 @@ void GrayScottReactionDiffusion< Real >::Idle( void )
 		steps++;
 		sprintf( stepsString , "Steps: %d" , steps );
 	}
-//	UpdateOutputBuffer( multigridVariables[1][0].x );
 	UpdateOutputBuffer( multigridVariables[whichConcentration][0].x );
-#else
-	int selectedTexel = -1;
-	if (mouseSelectionActive){
-		Point3D<float> selectedPoint;
-		bool validSelection = false;
-		if (visualization.showMesh) {
-			visualization.select(mouseX, mouseY, selectedPoint);
-			float minDistance = FLT_MAX;
-			for (int i = 0; i < textureNodePositions.size(); i++) {
-				float squaredDistance = Point3D<float>::SquareNorm(textureNodePositions[i] - selectedPoint);
-				if (squaredDistance < minDistance) {
-					minDistance = squaredDistance;
-					selectedTexel = i;
-				}
-			}
-		}
-		else {
-			Point2D<float> ip = visualization.selectImagePos(mouseX, mouseY);
-			//printf("Texture Coord %f %f \n", ip[0], ip[1]);
-			int i = floor(ip[0] * float(nodeIndex.width()) - 0.5f);
-			int j = floor((1.0 - ip[1]) * float(nodeIndex.height()) - 0.5f);
-			//printf("Image pos %d %d \n", i, j);
-			if (i >= 0 && i < nodeIndex.width() && j >= 0 && j < nodeIndex.height()) {
-				selectedTexel = nodeIndex(i, j);
-			}
-		}
 
-		if (seedTexel != selectedTexel && selectedTexel != -1){
-			seedTexel = selectedTexel;
-			memset(&multigridSmoothImpulseVariables[0].rhs[0], 0, multigridSmoothImpulseVariables[0].rhs.size() * sizeof(Real));
-			multigridSmoothImpulseVariables[0].rhs[seedTexel] = 1.0;
-			memset(&multigridSmoothImpulseVariables[0].x[0], 0, multigridSmoothImpulseVariables[0].x.size() * sizeof(Real));
-			memset(&multigridGeodesicDistanceVariables[0].x[0], 0, multigridGeodesicDistanceVariables[0].x.size() * sizeof(Real));
-
-			cycleCount = 0;
-		}
-
-	}
-
-	if (seedTexel != -1) {
-		if (cycleCount < updateVCycles) {
-			if (!UpdateSolution()) {
-				printf("Updated solution failed! \n");
-			}
-			UpdateOutputBuffer(multigridGeodesicDistanceVariables[0].x);
-			cycleCount++;
-		}
-	}
-#endif
 }
 
 template< class Real >
@@ -526,27 +476,7 @@ void GrayScottReactionDiffusion< Real >::MouseFunc( int button , int state , int
 			seedTexel = selectedTexel;
 			InitializeConcentrations();
 		}
-printf( "Seed texel = %d\n" , seedTexel );
 	}
-#if 0
-		if( seedTexel!=-1 )
-		{
-			if( UseDirectSolver.set )
-			{
-				clock_t begin = clock();
-				ComputeExactSolution( DetailVerbose.set );
-				if( DetailVerbose.set ) printf( "Computed exact solution in %.2f(s)\n", double(clock() - begin) / CLOCKS_PER_SEC );
-				UpdateOutputBuffer( exactGeodesicDistanceSolution );
-			}
-			else
-			{
-				UpdateSolution();
-				UpdateOutputBuffer( multigridGeodesicDistanceVariables[0].x );
-			}
-			glutPostRedisplay();
-		}
-	}
-#endif
 	else
 	{
 		mouseSelectionActive = false;
