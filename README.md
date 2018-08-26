@@ -49,7 +49,7 @@ The modulation can be set locally by holding the [SHIFT] key down and either dra
 </summary>
 <dt><b>--in</b> &lt;<i>input mesh and texture names</i>&gt;</dt>
 <dd> These two strings specify the the names of the mesh and the texture image.<br>
-The input mesh is assumed to be in <a href="http://www.cc.gatech.edu/projects/large_models/ply.html">PLY</a> format, giving the set of vertices with the x-, y-, and z-coordinates of the positions encoded by the properties <i>x</i>, <i>y</i>, and the set of polygons encoded by two lists. The first gives the indices of the vertices in the polygon (integers). The second gives the texture coordinates at each polygon corner (pairs of floats).<br>
+The input mesh is assumed to be in <a href="http://www.cc.gatech.edu/projects/large_models/ply.html">PLY</a> format, giving the set of vertices with the x-, y-, and z-coordinates of the positions encoded by the properties <i>x</i>, <i>y</i>, and <i>z</i> the set of polygons encoded by two lists. The first gives the indices of the vertices in the polygon (integers). The second gives the texture coordinates at each polygon corner (pairs of floats).<br>
 The input texture is assumed to be an image if the file extension is <I>png</I>, <I>jpg</I>, or <I>jpeg</I>, and a normal map if the extension is <I>normap</I>.
 </dd>
 
@@ -96,7 +96,7 @@ Hit [SPACE] to start the iterative solver or hit "+" to advance one iteration at
 </summary>
 <dt><b>--in</b> &lt;<i>input mesh name</i>&gt;</dt>
 <dd> This string specifies the name of the mesh.<br>
-The input mesh is assumed to be in <a href="http://www.cc.gatech.edu/projects/large_models/ply.html">PLY</a> format, giving the set of vertices with the x-, y-, and z-coordinates of the positions encoded by the properties <i>x</i>, <i>y</i>, and the set of polygons encoded by two lists. The first gives the indices of the vertices in the polygon (integers). The second gives the texture coordinates at each polygon corner (pairs of floats).<br>
+The input mesh is assumed to be in <a href="http://www.cc.gatech.edu/projects/large_models/ply.html">PLY</a> format, giving the set of vertices with the x-, y-, and z-coordinates of the positions encoded by the properties <i>x</i>, <i>y</i>, and <i>z</i> the set of polygons encoded by two lists. The first gives the indices of the vertices in the polygon (integers). The second gives the texture coordinates at each polygon corner (pairs of floats).<br>
 </dd>
 
 <dt>[<b>--vf</b> &lt;<i>vector field file</i>&gt;]</dt>
@@ -106,11 +106,11 @@ The latter are encoded using double-precision floating point values and should b
 </DD>
 
 </dd><dt>[<b>--intrinsicVF</B>]</dt>
-<dd> If enabled and a vector field is specified, this flag indicates that the vector values are represented with two values per vector field, using an intrinsic frame. Specifically, for triangle ( <I>v</I><SUB>0</SUB> , <I>v</I><SUB>1</SUB> , <I>v</I><SUB>2</SUB> ), the two-dimensional coefficients ( <I>x</I> , <I>y</I> ) correspond to the three-dimensional tangent vector ( <I>x</I>&middot;(<I>v</I><SUB>1</SUB>-<I>v</I><SUB>0</SUB>) , <I>y</I>&middot;(<I>v</I><SUB>2</SUB>-<I>v</I><SUB>0</SUB>) ).
+<dd> If enabled and a vector field is specified, this flag indicates that the vector values are represented with two values per vector, using an intrinsic frame. Specifically, for triangle ( <I>v</I><SUB>0</SUB> , <I>v</I><SUB>1</SUB> , <I>v</I><SUB>2</SUB> ), the two-dimensional coefficients ( <I>x</I> , <I>y</I> ) correspond to the three-dimensional tangent vector ( <I>x</I>&middot;(<I>v</I><SUB>1</SUB>-<I>v</I><SUB>0</SUB>) , <I>y</I>&middot;(<I>v</I><SUB>2</SUB>-<I>v</I><SUB>0</SUB>) ).
 </dd>
 
 <dt>[<b>--out</b> &lt;<i>output texture</i>&gt;]</dt>
-<dd> This string is the name of the file to which the processed texture will be written.</B>
+<dd> This string is the name of the file to which the line integral convolution texture will be written.</B>
 </dd>
 
 <dt>[<b>--outVCycles</b> &lt;<i>output v-cycles</i>&gt;]</dt>
@@ -170,22 +170,22 @@ In the interactive viewer the source can be set by holding the [SHIFT] key down 
 </summary>
 <dt><b>--in</b> &lt;<i>input mesh name</i>&gt;</dt>
 <dd> This string specifies the the name of the mesh.<br>
-The input mesh is assumed to be in <a href="http://www.cc.gatech.edu/projects/large_models/ply.html">PLY</a> format, giving the set of vertices with the x-, y-, and z-coordinates of the positions encoded by the properties <i>x</i>, <i>y</i>, and the set of polygons encoded by two lists. The first gives the indices of the vertices in the polygon (integers). The second gives the texture coordinates at each polygon corner (pairs of floats).<br>
+The input mesh is assumed to be in <a href="http://www.cc.gatech.edu/projects/large_models/ply.html">PLY</a> format, giving the set of vertices with the x-, y-, and z-coordinates of the positions encoded by the properties <i>x</i>, <i>y</i>, and <i>z</i> the set of polygons encoded by two lists. The first gives the indices of the vertices in the polygon (integers). The second gives the texture coordinates at each polygon corner (pairs of floats).<br>
 </dd>
 
-<dt>[<b>--interpolation</b> &lt;<i>sharpening interpolation weight</i>&gt;]</dt>
+<dt>[<b>--interpolation</b> &lt;<i>diffusion interpolation weight</i>&gt;]</dt>
 <dd> This floating point values gives the interpolation weight used for diffusing the initial delta function.<BR>
 The default value for this parameter is 10000.
 </dd>
 
 <dt>[<b>--width</b> &lt;<i>output texture width</i>&gt;]</dt>
 <dd> This integers specifies the width of the output texture.</B>
-The default value for this parameter is 2048.
+The default value for this parameter is 1024.
 </dd>
 
 <dt>[<b>--height</b> &lt;<i>output texture height</i>&gt;]</dt>
 <dd> This integers specifies the height of the output texture.</B>
-The default value for this parameter is 2048.
+The default value for this parameter is 1024.
 </dd>
 
 </dd><dt>[<b>--useDirectSolver</B>]</dt>
@@ -211,7 +211,7 @@ Hit [SPACE] to start the reaction-diffusion process or hit "+" to advance one st
 </summary>
 <dt><b>--in</b> &lt;<i>input mesh name</i>&gt;</dt>
 <dd> This string specifies the the name of the mesh.<br>
-The input mesh is assumed to be in <a href="http://www.cc.gatech.edu/projects/large_models/ply.html">PLY</a> format, giving the set of vertices with the x-, y-, and z-coordinates of the positions encoded by the properties <i>x</i>, <i>y</i>, and the set of polygons encoded by two lists. The first gives the indices of the vertices in the polygon (integers). The second gives the texture coordinates at each polygon corner (pairs of floats).<br>
+The input mesh is assumed to be in <a href="http://www.cc.gatech.edu/projects/large_models/ply.html">PLY</a> format, giving the set of vertices with the x-, y-, and z-coordinates of the positions encoded by the properties <i>x</i>, <i>y</i>, and <i>z</i> the set of polygons encoded by two lists. The first gives the indices of the vertices in the polygon (integers). The second gives the texture coordinates at each polygon corner (pairs of floats).<br>
 </dd>
 
 <dt>[<b>--out</b> &lt;<i>output texture</i>&gt;]</dt>
