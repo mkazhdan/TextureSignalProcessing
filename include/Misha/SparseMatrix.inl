@@ -29,6 +29,7 @@ DAMAGE.
 #include <float.h>
 #include <complex>
 #include <unordered_map>
+#include <omp.h>
 
 ///////////////////
 //  SparseMatrix //
