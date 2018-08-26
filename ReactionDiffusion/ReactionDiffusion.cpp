@@ -496,7 +496,6 @@ void GrayScottReactionDiffusion< Real >::MouseFunc( int button , int state , int
 	visualization.newX = x , visualization.newY = y;
 	visualization.rotating = visualization.scaling = visualization.panning = false;
 
-#if 0
 	if( state==GLUT_DOWN && glutGetModifiers() & GLUT_ACTIVE_SHIFT )
 	{
 		int selectedTexel = -1;
@@ -525,11 +524,11 @@ void GrayScottReactionDiffusion< Real >::MouseFunc( int button , int state , int
 		if( selectedTexel!=-1 && selectedTexel!=seedTexel )
 		{
 			seedTexel = selectedTexel;
-			memset( &multigridSmoothImpulseVariables[0].rhs[0] , 0 , multigridSmoothImpulseVariables[0].rhs.size() * sizeof(Real) );
-			multigridSmoothImpulseVariables[0].rhs[impulseTexel] = 1.0;
-			memset( &multigridSmoothImpulseVariables[0].x[0] , 0 , multigridSmoothImpulseVariables[0].x.size() * sizeof(Real) );
-			memset( &multigridGeodesicDistanceVariables[0].x[0] , 0 , multigridGeodesicDistanceVariables[0].x.size() * sizeof(Real) );
+			InitializeConcentrations();
 		}
+printf( "Seed texel = %d\n" , seedTexel );
+	}
+#if 0
 		if( seedTexel!=-1 )
 		{
 			if( UseDirectSolver.set )
@@ -547,8 +546,8 @@ void GrayScottReactionDiffusion< Real >::MouseFunc( int button , int state , int
 			glutPostRedisplay();
 		}
 	}
-	else
 #endif
+	else
 	{
 		mouseSelectionActive = false;
 		if( button==GLUT_LEFT_BUTTON )
