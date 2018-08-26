@@ -56,6 +56,11 @@ The input texture is assumed to be an image if the file extension is <I>png</I>,
 <dd> This string is the name of the file to which the processed texture will be written.</B>
 </dd>
 
+<dt>[<b>--outVCycles</b> &lt;<i>output v-cycles</i>&gt;]</dt>
+<dd> This integer specifies the number of v-cycles to use if the processed texture is output to a file and a direct solver is not used.</B>
+The default value for this parameter is 6.
+</dd>
+
 <dt>[<b>--interpolation</b> &lt;<i>interpolation weight</i>&gt;]</dt>
 <dd> This floating point values gives the interpolation weight.<BR>
 The default value for this parameter is 1000.
@@ -85,7 +90,7 @@ The default value for this parameter is 1.
 <summary>
 <font size="+1"><b>LineIntegralConvolution</b></font>:
 Creates a <a href="https://en.wikipedia.org/wiki/Line_integral_convolution">line integral convolution</A> visualization of a vector-field by defining a new metric on the surface that stretches distances along the vector-field values, diffuses a random color texture with respect to the new anisotropic metric, and then sharpens the resulting signal.<BR>
-Hit [SPACE] to start the iterative solver.
+Hit [SPACE] to start the iterative solver or hit "+" to advance one iteration at a time.
 </summary>
 <dt><b>--in</b> &lt;<i>input mesh name</i>&gt;</dt>
 <dd> This string specifies the name of the mesh.<br>
@@ -98,8 +103,17 @@ This file is assumed to be in binary, with the first four bytes storing an integ
 The latter are encoded using double-precision floating point values and should be <I>8</I>*<I>num_triangles</I>*<I>dim</I> bytes, with <I>num_triangles</I> the number of triangles/vectors and <I>dim</I> the dimension of vector field. (The value of <I>dim</I> is equal to two if the <B>--intrinsicVF</B> is specified an three otherwise.)
 </DD>
 
+</dd><dt>[<b>--intrinsicVF</B>]</dt>
+<dd> If enabled and a vector field is specified, this flag indicates that the vector values are represented with two values per vector field, using an intrinsic frame. Specifically, for triangle ( <I>v</I><SUB>0</SUB> , <I>v</I><SUB>1</SUB> , <I>v</I><SUB>2</SUB> ), the two-dimensional coefficients ( <I>x</I> , <I>y</I> ) correspond to the three-dimensional tangent vector ( <I>x</I>&middot;(<I>v</I><SUB>1</SUB>-<I>v</I><SUB>0</SUB>) , <I>y</I>&middot;(<I>v</I><SUB>2</SUB>-<I>v</I><SUB>0</SUB>) ).
+</dd>
+
 <dt>[<b>--out</b> &lt;<i>output texture</i>&gt;]</dt>
 <dd> This string is the name of the file to which the processed texture will be written.</B>
+</dd>
+
+<dt>[<b>--outVCycles</b> &lt;<i>output v-cycles</i>&gt;]</dt>
+<dd> This integer specifies the number of v-cycles to use if the processed texture is output to a file and a direct solver is not used.</B>
+The default value for this parameter is 10.
 </dd>
 
 <dt>[<b>--licInterpolation</b> &lt;<i>line integral convolution interpolation weight</i>&gt;]</dt>
@@ -125,10 +139,6 @@ The default value for this parameter is 2048.
 <dt>[<b>--height</b> &lt;<i>output texture height</i>&gt;]</dt>
 <dd> This integers specifies the height of the output texture.</B>
 The default value for this parameter is 2048.
-</dd>
-
-</dd><dt>[<b>--intrinsicVF</B>]</dt>
-<dd> If enabled and a vector field is specified, this flag indicates that the vector values are represented with two values per vector field, using an intrinsic frame. Specifically, for triangle ( <I>v</I><SUB>0</SUB> , <I>v</I><SUB>1</SUB> , <I>v</I><SUB>2</SUB> ), the two-dimensional coefficients ( <I>x</I> , <I>y</I> ) correspond to the three-dimensional tangent vector ( <I>x</I>&middot;(<I>v</I><SUB>1</SUB>-<I>v</I><SUB>0</SUB>) , <I>y</I>&middot;(<I>v</I><SUB>2</SUB>-<I>v</I><SUB>0</SUB>) ).
 </dd>
 
 </dd><dt>[<b>--minor</B>]</dt>
@@ -194,11 +204,20 @@ The default value for this parameter is 2048.
 <summary>
 <font size="+1"><b>ReactionDiffusion</b></font>:
 An interactive tool for visualization of reaction-diffusion based on the <A HREF="https://groups.csail.mit.edu/mac/projects/amorphous/GrayScott/">Gray-Scott model</A>.<BR>
-Hit [SPACE] to start the reaction-diffusion process.
+Hit [SPACE] to start the reaction-diffusion process or hit "+" to advance one step at a time.
 </summary>
 <dt><b>--in</b> &lt;<i>input mesh name</i>&gt;</dt>
 <dd> This string specifies the the name of the mesh.<br>
 The input mesh is assumed to be in <a href="http://www.cc.gatech.edu/projects/large_models/ply.html">PLY</a> format, giving the set of vertices with the x-, y-, and z-coordinates of the positions encoded by the properties <i>x</i>, <i>y</i>, and the set of polygons encoded by two lists. The first gives the indices of the vertices in the polygon (integers). The second gives the texture coordinates at each polygon corner (pairs of floats).<br>
+</dd>
+
+<dt>[<b>--out</b> &lt;<i>output texture</i>&gt;]</dt>
+<dd> This string is the name of the file to which the reaction-diffusion texture will be written.</B>
+</dd>
+
+<dt>[<b>--outSteps</b> &lt;<i>output reaction-diffusion steps</i>&gt;]</dt>
+<dd> This integer specifies the number of reaction-diffusion steps to be taken.</B>
+The default value for this parameter is 1000.
 </dd>
 
 <dt>[<b>--width</b> &lt;<i>output texture width</i>&gt;]</dt>
@@ -227,9 +246,10 @@ The default value for this parameter is 512.
 </dl>
 </ul>
 
-<!--
 <hr>
 <a name="USAGE"><b>USAGE EXAMPLES (WITH SAMPLE DATA)</b></a><br>
+For testing purposes, a number of <A HREF="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/TSP.Data.zip">textured mapped models</A> are provided (using the <U>.ply</U> extension).
+Of these, <I>David</I> and <I>Julius</I> include normal maps (using the <U>.normap</U> extension) and <I>Fertility</I> includes the eight harmonic vector fields (using the <U>.vf</U> extension).
 
 <ul>
 <dl>
@@ -237,12 +257,59 @@ The default value for this parameter is 512.
 <summary>
 <font size="+1"><b>TextureFiltering</b></font>
 </summary>
-For testing purposes, a number of <A HREF="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Data.zip">datasets</A> are provided.
-<ol>
+To run this executable you must specify the input mesh as well as the texture itself:
+<blockquote><code>% TextureFiltering --in TSP.Data\David\david.ply TSP.Data\David\david.normap</code></blockquote>
+This opens a viewer allowing the user to prescribe both global gradient modulation weights (through the slider) and local modulation weights (through a paint-brush interface, by depressing the [SHIFT] key and dragging with the left mouse button to sharpen and the right mouse button to smooth).<BR>
+You can also bypass the viewer and output a globally sharpened/smoothed texture to a file:
+<blockquote><code>% TextureFiltering --in TSP.Data\Julius\julius.ply TSP.Data\Julius\julius.normap --out julius.smooth.normap --modulation 0 --interpolation 100</code></blockquote>
+Here a modulation weight less than 1 indicates that gradients should be dampened (resulting in smoothing) and a small interpolation weight reduces the interpolation penalty, exaggerating the smoothing.
 </details>
 </dl>
+
+<dl>
+<details>
+<summary>
+<font size="+1"><b>LineIntegralConvolution</b></font>
+</summary>
+To run this executable you must specify the input mesh:
+<blockquote><code>% LineIntegralConvolution --in TSP.Data\Fertility\fertility.ply</code></blockquote>
+This opens a viewer visualizing a vector field by performing anisotropic diffusion to simulate line-integral-convolution. (To start the iterative solver, press the [SPACE] key.) By default, the vector-field used is defined by the (maximal) principal curvature directions.<BR>
+You can also explicitly prescribe the vector-field:
+<blockquote><code>% LineIntegralConvolution --in TSP.Data\Fertility\fertility.ply --vf TSP.Data\Fertility\harmonic-001.vf --intrinsicVF</code></blockquote>
+(The latter flag is required because the vector-field in the file is represented using two intrinsic coordinates per triangle instead of three extrinsic ones.)<BR>
+You can also bypass the viewer and output a the line-integral-convolution texture to a file:
+<blockquote><code>% LineIntegralConvolution --in TSP.Data\Hand\hand.ply --minimal --out hand.minimal.jpg</code></blockquote>
+Here a visualization of the minimal principal curvature directions are written out as a texture image.
+</details>
+</dl>
+
+<dl>
+<details>
+<summary>
+<font size="+1"><b>Geodesics</b></font>
+</summary>
+To run this executable you must specify the input mesh:
+<blockquote><code>% ReactionDiffusion --in TSP.Data\Bunny\bunny.ply</code></blockquote>
+This opens a viewer allowing the user to prescribe the source of the geodesic by holding the [SHIFT] and clicking on the source location with either mouse button.
+</details>
+</dl>
+
+
+<dl>
+<details>
+<summary>
+<font size="+1"><b>ReactionDiffusion</b></font>
+</summary>
+To run this executable you must specify the input mesh:
+<blockquote><code>% ReactionDiffusion --in TSP.Data\Camel\camel.ply</code></blockquote>
+This opens a viewer visualizing the "stripes" reaction-diffusion process. (To start the process, press the [SPACE] key.)<BR>
+You can also bypass the viewer and output the reaction-diffusion texture to a file:
+<blockquote><code>% ReactionDiffusion --in TSP.Data\David\david.ply --out david.dots.jpg --dots --outSteps 4000</code></blockquote>
+Here a the "dots" pattern is written out to an image. (Empirically, we have found that this reaction-diffusion process takes more steps to converge, hence the larger number of steps.)
+</details>
+</dl>
+
 </ul>
--->
 
 <hr>
 <details>
