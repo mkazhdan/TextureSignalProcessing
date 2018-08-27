@@ -46,16 +46,18 @@ DAMAGE.
 #endif // M_PI
 
 
-enum {
+enum
+{
 	ONE_REGION_DISPLAY,
 	TWO_REGION_DISPLAY,
 	THREE_REGION_DISPLAY,
 	FOUR_REGION_DISPLAY,
 };
 
-class TexturedMeshVisualization : public Visualization {
+class TexturedMeshVisualization : public Visualization
+{
 public:
-	TexturedMeshVisualization();
+	TexturedMeshVisualization( void );
 
 	//For visualization of normal maps
 	void PhongShading(GLuint & textureBufferId);

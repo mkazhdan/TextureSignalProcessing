@@ -409,7 +409,12 @@ void Visualization::Display( void )
 			glVertex2f(     0 , screenHeight-fontHeight*2 );
 		}
 		glEnd();
-		writeLeftString( 10 , screenHeight-fontHeight-fontHeight/2 , promptString );
+		double t = Miscellany::Time();
+		t -= floor( t );
+		static char _promptString[1024];
+		if( t<0.5 ) sprintf( _promptString , "%s " , promptString );
+		else        sprintf( _promptString , "%s_" , promptString );
+		writeLeftString( 10 , screenHeight-fontHeight-fontHeight/2 , _promptString );
 		font = _font;
 		fontHeight = _fontHeight;
 	}
