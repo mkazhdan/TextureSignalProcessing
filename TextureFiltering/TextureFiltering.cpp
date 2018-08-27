@@ -26,8 +26,6 @@ ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF S
 DAMAGE.
 */
 
-//#define MISHA_CODE
-
 #include <Misha/CmdLineParser.h> 
 #include <Misha/Miscellany.h>
 #include <Src/SimpleMesh.h>
@@ -115,7 +113,8 @@ enum
 };
 
 template<class Real>
-class TextureFilter{
+class TextureFilter
+{
 public:
 	static TexturedMesh mesh;
 	static int textureWidth;
@@ -159,10 +158,6 @@ public:
 
 	static std::vector< Point3D< Real > > mass_x0;
 	static std::vector< Point3D< Real > > stiffness_x0;
-#ifdef MISHA_CODE
-#else // !MISHA_CODE
-	static std::vector< Point3D< Real > > exactSolution;
-#endif // MISHA_CODE
 
 	static std::vector< MultigridLevelCoefficients< Real > > multigridFilteringCoefficients;
 	static std::vector< MultigridLevelVariables< Point3D< Real > > > multigridFilteringVariables;
@@ -207,8 +202,8 @@ public:
 	static void IncrementUpdateCallBack( Visualization* v , const char* prompt );
 	static void ExportTextureCallBack(Visualization* v, const char* prompt);
 
-	static void GradientModulationCallBack(Visualization* v, const char* prompt);
-	static void InterpolationWeightCallBack(Visualization* v, const char* prompt);
+	static void GradientModulationCallBack( Visualization* v , const char* prompt );
+	static void InterpolationWeightCallBack( Visualization* v , const char* prompt );
 
 	static int Init();
 	static void InitializeVisualization();
@@ -223,11 +218,11 @@ public:
 	static void UpdateMaskTexture();
 
 
-	static void Display(void){ visualization.Display(); }
-	static void MouseFunc(int button, int state, int x, int y);
-	static void MotionFunc(int x, int y);
-	static void Reshape(int w, int h){ visualization.Reshape(w, h); }
-	static void KeyboardFunc(unsigned char key, int x, int y){ visualization.KeyboardFunc(key, x, y); }
+	static void Display( void ){ visualization.Display(); }
+	static void MouseFunc( int button , int state , int x , int y );
+	static void MotionFunc( int x , int y );
+	static void Reshape( int w , int h ){ visualization.Reshape(w,h); }
+	static void KeyboardFunc(unsigned char key, int x, int y){ visualization.KeyboardFunc( key , x , y ); }
 	static void Idle( void );
 };
 
@@ -264,10 +259,6 @@ template<class Real> std::vector<Real>													TextureFilter<Real>::uniformC
 template<class Real> Image<Point3D<float>>												TextureFilter<Real>::filteredTexture;
 template<class Real> std::vector< Point3D< Real > >										TextureFilter<Real>::stiffness_x0;
 template<class Real> std::vector< Point3D< Real > >										TextureFilter<Real>::mass_x0;
-#ifdef MISHA_CODE
-#else // !MISHA_CODE
-template<class Real> std::vector< Point3D< Real > >										TextureFilter<Real>::exactSolution;
-#endif // MISHA_CODE
 
 template<class Real> std::vector<MultigridLevelCoefficients<Real>>						TextureFilter<Real>::multigridFilteringCoefficients;
 template<class Real> std::vector< MultigridLevelVariables< Point3D< Real > > >			TextureFilter<Real>::multigridFilteringVariables;
@@ -442,6 +433,7 @@ void TextureFilter< Real >::Idle( void )
 			visualization.UpdateTextureBuffer( filteredTexture );
 		}
 		if( updateCount>0 ) updateCount--;
+		glutPostRedisplay();
 	}
 	
 	if( strlen( visualization.promptString ) ) glutPostRedisplay();	
@@ -459,20 +451,12 @@ void TextureFilter< Real >::MouseFunc( int button , int state , int x , int y )
 		ComputeExactSolution( DetailVerbose.set );
 		if( visualization.textureType==COLOR_TEXTURE )
 		{
-#ifdef MISHA_CODE
 			UpdateFilteredColorTexture( multigridFilteringVariables[0].x );
-#else // !MISHA_CODE
-			UpdateFilteredColorTexture( exactSolution );
-#endif // MISHA_CODE
 			visualization.UpdateColorTextureBuffer();
 		}
 		else
 		{
-#ifdef MISHA_CODE
 			UpdateFilteredTexture( multigridFilteringVariables[0].x );
-#else // !MISHA_CODE
-			UpdateFilteredTexture( exactSolution );
-#endif // MISHA_CODE
 			visualization.UpdateTextureBuffer( filteredTexture );
 		}
 	}
@@ -601,10 +585,10 @@ void TextureFilter<Real>::ExportTextureCallBack( Visualization* v , const char* 
 	delete[] ext;
 }
 
-template<class Real>
-void  TextureFilter<Real>::GradientModulationCallBack( Visualization* v , const char* prompt )
+template< class Real >
+void  TextureFilter< Real >::GradientModulationCallBack( Visualization* v , const char* prompt )
 {
-	gradientModulation = atof(prompt);
+	gradientModulation = atof( prompt );
 #pragma omp parallel for
 	for( int i=0 ; i<multigridFilteringVariables[0].rhs.size() ; i++ ) multigridFilteringVariables[0].rhs[i] = mass_x0[i] * interpolationWeight + stiffness_x0[i] * gradientModulation;
 
@@ -613,28 +597,20 @@ void  TextureFilter<Real>::GradientModulationCallBack( Visualization* v , const 
 		ComputeExactSolution();
 		if( visualization.textureType==COLOR_TEXTURE )
 		{
-#ifdef MISHA_CODE
 			UpdateFilteredColorTexture( multigridFilteringVariables[0].x );
-#else // !MISHA_CODE
-			UpdateFilteredColorTexture( exactSolution );
-#endif // MISHA_CODE
 			visualization.UpdateColorTextureBuffer();
 		}
 		else
 		{
-#ifdef MISHA_CODE
 			UpdateFilteredTexture( multigridFilteringVariables[0].x );
-#else // !MISHA_CODE
-			UpdateFilteredTexture( exactSolution );
-#endif // MISHA_CODE
 			visualization.UpdateTextureBuffer( filteredTexture );
 		}
 	}
 	sprintf( gradientModulationStr , "Gradient modulation: %e\n" , gradientModulation );
 }
 
-template<class Real>
-void  TextureFilter<Real>::InterpolationWeightCallBack( Visualization* v , const char* prompt )
+template< class Real >
+void  TextureFilter< Real >::InterpolationWeightCallBack( Visualization* v , const char* prompt )
 {
 	interpolationWeight = atof(prompt);
 	if( UseDirectSolver.set ) filteringMatrix = mass*interpolationWeight + stiffness;
@@ -657,20 +633,12 @@ void  TextureFilter<Real>::InterpolationWeightCallBack( Visualization* v , const
 		ComputeExactSolution();
 		if( visualization.textureType==COLOR_TEXTURE )
 		{
-#ifdef MISHA_CODE
 			UpdateFilteredColorTexture( multigridFilteringVariables[0].x );
-#else // !MISHA_CODE
-			UpdateFilteredColorTexture( exactSolution );
-#endif // MISHA_CODE
 			visualization.UpdateColorTextureBuffer();
 		}
 		else
 		{
-#ifdef MISHA_CODE
 			UpdateFilteredTexture( multigridFilteringVariables[0].x );
-#else // !MISHA_CODE
-			UpdateFilteredTexture( exactSolution );
-#endif // MISHA_CODE
 			visualization.UpdateTextureBuffer( filteredTexture );
 		}
 	}
@@ -682,11 +650,7 @@ template<class Real>
 void TextureFilter<Real>::ComputeExactSolution( bool verbose )
 {
 	clock_t t_begin = clock();
-#ifdef MISHA_CODE
 	solve( directSolver , multigridFilteringVariables[0].x , multigridFilteringVariables[0].rhs );
-#else // !MISHA_CODE
-	solve( directSolver , exactSolution , multigridFilteringVariables[0].rhs );
-#endif // MISHA_CODE
 	if( verbose ) printf( "Solving time =  %.4f\n" , double(clock() - t_begin) / CLOCKS_PER_SEC );
 }
 
@@ -803,11 +767,6 @@ int TextureFilter<Real>::InitializeSystem( const int width , const int height )
 	}
 	if( Verbose.set ) printf( "\tInitialized hierarchy: %.2f(s)\n" , double(clock() - t_begin) / CLOCKS_PER_SEC);
 
-#ifdef MISHA_CODE
-#else // !MISHA_CODE
-	exactSolution.resize( textureNodes.size() );
-#endif // MISHA_CODE
-
 	BoundaryProlongationData boundaryProlongation;
 	if (!InitializeBoundaryProlongationData(hierarchy.gridAtlases[0], boundaryProlongation)){
 		printf("ERROR : Failed boundary prolongation! \n");
@@ -908,13 +867,8 @@ int TextureFilter<Real>::InitializeSystem( const int width , const int height )
 	for (int i = 0; i < filteredTexture.size(); i++) filteredTexture[i] = Point3D<float>(0.5f, 0.5f, 0.5f);
 
 
-#ifdef MISHA_CODE
 	if( UseDirectSolver.set ) ComputeExactSolution( Verbose.set );
 	UpdateFilteredTexture( multigridFilteringVariables[0].x );
-#else // !MISHA_CODE
-	if( UseDirectSolver.set ){ ComputeExactSolution( Verbose.set ) ; UpdateFilteredTexture( exactSolution ); }
-	else UpdateFilteredTexture( multigridFilteringVariables[0].x );
-#endif // MISHA_CODE
 	return 1;
 }
 
@@ -1151,7 +1105,6 @@ int _main(int argc, char* argv[])
 		glutMouseFunc(TextureFilter<Real>::MouseFunc);
 		glutMotionFunc(TextureFilter<Real>::MotionFunc);
 		glutKeyboardFunc(TextureFilter<Real>::KeyboardFunc);
-//		if( !UseDirectSolver.set ) glutIdleFunc( TextureFilter<Real>::Idle );
 		glutIdleFunc( TextureFilter< Real >::Idle );
 		if (CameraConfig.set) TextureFilter<Real>::visualization.ReadSceneConfigurationCallBack(&TextureFilter<Real>::visualization, CameraConfig.value);
 		TextureFilter<Real>::InitializeVisualization();

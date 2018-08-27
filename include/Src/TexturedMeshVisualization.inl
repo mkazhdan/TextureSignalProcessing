@@ -647,12 +647,9 @@ void TexturedMeshVisualization::display() {
 }
 
 
-void TexturedMeshVisualization::keyboardFunc(unsigned char key, int x, int y)
-{
+void TexturedMeshVisualization::keyboardFunc( unsigned char key , int x , int y ){}
 
-}
-
-void TexturedMeshVisualization::mouseFunc(int button, int state, int x, int y)
+void TexturedMeshVisualization::mouseFunc( int button , int state , int x , int y )
 {
 	if (!showMesh) {
 		newX = x; newY = y;
