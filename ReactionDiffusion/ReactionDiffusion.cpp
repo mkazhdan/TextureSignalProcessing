@@ -437,7 +437,6 @@ void GrayScottReactionDiffusion< Real >::Idle( void )
 		sprintf( stepsString , "Steps: %d" , steps );
 	}
 	UpdateOutputBuffer( multigridVariables[whichConcentration][0].x );
-
 }
 
 template< class Real >

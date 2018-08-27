@@ -420,6 +420,7 @@ void Geodesics<Real>::Idle( void )
 			UpdateOutputBuffer( multigridGeodesicDistanceVariables[0].x );
 		}
 	}
+	if( strlen( visualization.promptString ) ) glutPostRedisplay();	
 }
 
 template<class Real>

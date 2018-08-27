@@ -229,7 +229,6 @@ public:
 	static void Reshape(int w, int h){ visualization.Reshape(w, h); }
 	static void KeyboardFunc(unsigned char key, int x, int y){ visualization.KeyboardFunc(key, x, y); }
 	static void Idle( void );
-
 };
 
 template< class Real > char TextureFilter< Real >::gradientModulationStr[1024];
@@ -358,6 +357,9 @@ void TextureFilter< Real >::UpdateFilteredTexture( const std::vector< Point3D< R
 template< class Real >
 void TextureFilter< Real >::Idle( void )
 {
+	if( strlen( visualization.promptString ) ) visualization.showSlideBar = false;
+	else                                       visualization.showSlideBar = true;
+
 	auto RescaleFunction = []( double x )
 	{
 		//return x*(2.0 *x + 1);
@@ -442,6 +444,7 @@ void TextureFilter< Real >::Idle( void )
 		if( updateCount>0 ) updateCount--;
 	}
 	
+	if( strlen( visualization.promptString ) ) glutPostRedisplay();	
 }
 
 template< class Real >
