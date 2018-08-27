@@ -261,10 +261,10 @@ Of these, <I>David</I> and <I>Julius</I> include normal maps (using the <U>.norm
 <font size="+1"><b>TextureFiltering</b></font>
 </summary>
 To run this executable you must specify the input mesh as well as the texture itself:
-<blockquote><code>% TextureFiltering --in TSP.Data\David\david.ply TSP.Data\David\david.normap</code></blockquote>
+<blockquote><code>% Bin/*/TextureFiltering --in ../TSP.Data/David/david.ply ../TSP.Data/David/david.normap</code></blockquote>
 This opens a viewer allowing the user to prescribe both global gradient modulation weights (through the slider) and local modulation weights (through a paint-brush interface, by depressing the [SHIFT] key and dragging with the left mouse button to sharpen and the right mouse button to smooth).<BR>
 You can also bypass the viewer and output a globally sharpened/smoothed texture to a file:
-<blockquote><code>% TextureFiltering --in TSP.Data\Julius\julius.ply TSP.Data\Julius\julius.normap --out julius.smooth.normap --modulation 0 --interpolation 100</code></blockquote>
+<blockquote><code>% Bin/*/TextureFiltering --in ../TSP.Data/Julius/julius.ply ../TSP.Data/Julius/julius.normap --out julius.smooth.normap --modulation 0 --interpolation 100</code></blockquote>
 Here a modulation weight less than 1 indicates that gradients should be dampened (resulting in smoothing) and a small interpolation weight reduces the interpolation penalty, exaggerating the smoothing.
 </details>
 </dl>
@@ -275,13 +275,13 @@ Here a modulation weight less than 1 indicates that gradients should be dampened
 <font size="+1"><b>LineIntegralConvolution</b></font>
 </summary>
 To run this executable you must specify the input mesh:
-<blockquote><code>% LineIntegralConvolution --in TSP.Data\Fertility\fertility.ply</code></blockquote>
+<blockquote><code>% Bin/*/LineIntegralConvolution --in ../TSP.Data/Fertility/fertility.ply</code></blockquote>
 This opens a viewer visualizing a vector-field by performing anisotropic diffusion to simulate line-integral-convolution. (To start the iterative solver, press the [SPACE] key.) By default, the vector-field used is defined by the (maximal) principal curvature directions.<BR>
 You can also explicitly prescribe the vector-field:
-<blockquote><code>% LineIntegralConvolution --in TSP.Data\Fertility\fertility.ply --vf TSP.Data\Fertility\harmonic-001.vf --intrinsicVF</code></blockquote>
+<blockquote><code>% Bin/*/LineIntegralConvolution --in ../TSP.Data/Fertility/fertility.ply --vf ../TSP.Data/Fertility/harmonic-001.vf --intrinsicVF</code></blockquote>
 (The <b>--intrinsicVF</b> flag is required because the vector-field in the file is represented using two intrinsic coordinates per triangle instead of three extrinsic ones.)<BR>
 You can also bypass the viewer and output the line-integral-convolution texture to a file:
-<blockquote><code>% LineIntegralConvolution --in TSP.Data\Hand\hand.ply --minimal --out hand.minimal.jpg</code></blockquote>
+<blockquote><code>% Bin/*/LineIntegralConvolution --in ../TSP.Data/Hand/hand.ply --minimal --out hand.minimal.jpg</code></blockquote>
 Here a visualization of the minimal principal curvature directions is written out as a texture image.
 </details>
 </dl>
@@ -292,7 +292,7 @@ Here a visualization of the minimal principal curvature directions is written ou
 <font size="+1"><b>Geodesics</b></font>
 </summary>
 To run this executable you must specify the input mesh:
-<blockquote><code>% ReactionDiffusion --in TSP.Data\Bunny\bunny.ply</code></blockquote>
+<blockquote><code>% Bin/*/Geodesics --in ../TSP.Data/Bunny/bunny.ply</code></blockquote>
 This opens a viewer allowing the user to prescribe the source of the geodesic by holding the [SHIFT] button and clicking on the source location with either mouse button.
 </details>
 </dl>
@@ -304,10 +304,10 @@ This opens a viewer allowing the user to prescribe the source of the geodesic by
 <font size="+1"><b>ReactionDiffusion</b></font>
 </summary>
 To run this executable you must specify the input mesh:
-<blockquote><code>% ReactionDiffusion --in TSP.Data\Camel\camel.ply</code></blockquote>
+<blockquote><code>% Bin/*/ReactionDiffusion --in ../TSP.Data/Camel/camel.ply</code></blockquote>
 This opens a viewer visualizing the "stripes" reaction-diffusion process. (To start the process, press the [SPACE] key.)<BR>
 You can also bypass the viewer and output the reaction-diffusion texture to a file:
-<blockquote><code>% ReactionDiffusion --in TSP.Data\David\david.ply --out david.dots.jpg --dots --outSteps 2000</code></blockquote>
+<blockquote><code>% Bin/*/ReactionDiffusion --in ../TSP.Data/David/david.ply --out david.dots.jpg --dots --outSteps 2000</code></blockquote>
 Here a "dots" pattern is written out to an image. (Empirically, we have found that this reaction-diffusion process takes more steps to converge, hence the larger number of steps.)
 </details>
 </dl>
