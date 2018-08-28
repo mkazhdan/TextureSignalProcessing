@@ -70,6 +70,7 @@ cmdLineReadable Verbose("verbose");
 cmdLineReadable DetailVerbose("detail");
 cmdLineReadable UseDirectSolver("useDirectSolver");
 cmdLineReadable IntrinsicVectorField( "intrinsicVF" );
+cmdLineReadable NoHelp( "noHelp" );
 cmdLineReadable* params[] =
 {
 	&Input , &Output , &MinimalCurvature , &VectorField , &IntrinsicVectorField , &Width,&Height , &LICInterpolationWeight , &SharpeningInterpolationWeight , &SharpeningGradientModulation , &CameraConfig, &Levels,&UseDirectSolver,&Threads,&DisplayMode,&MultigridBlockHeight,&MultigridBlockWidth,&MultigridPaddedHeight,&MultigridPaddedWidth,&Verbose,
@@ -77,6 +78,7 @@ cmdLineReadable* params[] =
 	&Single ,
 	&MatrixQuadrature ,
 	&OutputVCycles ,
+	&NoHelp ,
 	NULL
 };
 
@@ -111,12 +113,12 @@ void ShowUsage(const char* ex)
 	printf( "\t[--%s <multigrid block height>=%d]\n"  , MultigridBlockHeight.name  , MultigridBlockHeight.value  );
 	printf( "\t[--%s <multigrid padded width>=%d]\n"  , MultigridPaddedWidth.name  , MultigridPaddedWidth.value  );
 	printf( "\t[--%s <multigrid padded height>=%d]\n" , MultigridPaddedHeight.name , MultigridPaddedHeight.value );
-
-
+	printf( "\t[--%s]\n" , NoHelp.name );
 }
 
 template<class Real>
-class LineConvolution {
+class LineConvolution
+{
 public:
 	static Real sharpeningGradientModulation;
 	static Real sharpeningInterpolationWeight;
@@ -412,11 +414,9 @@ void LineConvolution<Real>::MouseFunc(int button, int state, int x, int y) {
 	visualization.newX = x; visualization.newY = y;
 	visualization.rotating = visualization.scaling = visualization.panning = false;
 
-	if (button == GLUT_LEFT_BUTTON) {
-		if (glutGetModifiers() & GLUT_ACTIVE_CTRL) visualization.panning = true;
-		else                                        visualization.rotating = true;
-	}
-	else if (button == GLUT_RIGHT_BUTTON) visualization.scaling = true;
+	if( ( button==GLUT_LEFT_BUTTON || button==GLUT_RIGHT_BUTTON ) && glutGetModifiers() & GLUT_ACTIVE_CTRL) visualization.panning = true;
+	else if( button==GLUT_LEFT_BUTTON  ) visualization.rotating = true;
+	else if( button==GLUT_RIGHT_BUTTON ) visualization.scaling  = true;
 }
 
 template<class Real>
@@ -444,13 +444,9 @@ void LineConvolution<Real>::MotionFunc(int x, int y) {
 		float pForward = rel_y * visualization.zoom;
 		float rRight = -rel_y, rUp = -rel_x;
 
-#ifdef GLM_FORCE_RADIANS
-		if      ( visualization.rotating ) visualization.camera.rotateUp( visualization.center , -rUp ) , visualization.camera.rotateRight( visualization.center , rRight );
-#else // !GLM_FORCE_RADIANS
 		if      ( visualization.rotating ) visualization.camera.rotateUp( visualization.center , rUp ) , visualization.camera.rotateRight( visualization.center , rRight );
-#endif // GLM_FORCE_RADIANS
 		else if( visualization.scaling   ) visualization.camera.moveForward( pForward);
-		else if( visualization.panning   ) visualization.camera.moveRight( pRight ), visualization.camera.moveUp( pUp );
+		else if( visualization.panning   ) visualization.camera.moveRight( -pRight ), visualization.camera.moveUp( -pUp );
 	}
 	glutPostRedisplay();
 }
@@ -1008,6 +1004,16 @@ int main(int argc, char* argv[])
 	cmdLineParse(argc - 1, argv + 1, params);
 	if( !Input.set ) { ShowUsage(argv[0]); return EXIT_FAILURE; }
 	omp_set_num_threads( Threads.value );
+	if( !NoHelp.set )
+	{
+		printf( "+-----------------------------------------------+\n" );
+		printf( "| Interface Controls:                           |\n" );
+		printf( "|    [Left Mouse]:                 rotate       |\n" );
+		printf( "|    [Right Mouse]:                zoom         |\n" );
+		printf( "|    [Left/Right Mouse] + [CTRL]:  pan          |\n" );
+		printf( "|    [SPACE]:                      start solver |\n" );
+		printf( "+-----------------------------------------------+\n" );
+	}
 	if( Single.set ) _main< float  >( argc , argv );
 	else             _main< double >( argc , argv );
 	return 0;

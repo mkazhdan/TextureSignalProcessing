@@ -64,6 +64,7 @@ cmdLineReadable RandomJitter("jitter");
 cmdLineParameter< char* > CameraConfig("camera");
 cmdLineReadable UseDirectSolver("useDirectSolver");
 cmdLineReadable Verbose("verbose");
+cmdLineReadable NoHelp(" noHelp" );
 cmdLineReadable DetailVerbose("detail");
 cmdLineReadable Double( "double" );
 cmdLineReadable* params[] =
@@ -73,6 +74,7 @@ cmdLineReadable* params[] =
 	&Double ,
 	&MatrixQuadrature ,
 	&OutputVCycles ,
+	&NoHelp ,
 	NULL
 };
 
@@ -103,6 +105,7 @@ void ShowUsage( const char* ex )
 	printf( "\t[--%s <multigrid block height>=%d]\n"   , MultigridBlockHeight.name   , MultigridBlockHeight.value   );
 	printf( "\t[--%s <multigrid padded width>=%d]\n"   , MultigridPaddedWidth.name   , MultigridPaddedWidth.value   );
 	printf( "\t[--%s <multigrid padded height>=%d]\n"  , MultigridPaddedHeight.name  , MultigridPaddedHeight.value  );
+	printf( "\t[--%s]\n" , NoHelp.name );
 }
 
 enum
@@ -490,12 +493,9 @@ void TextureFilter< Real >::MouseFunc( int button , int state , int x , int y )
 			visualization.newX = x; visualization.newY = y;
 
 			visualization.rotating = visualization.scaling = visualization.panning = false;
-			if( button==GLUT_LEFT_BUTTON )
-			{
-				if( glutGetModifiers() & GLUT_ACTIVE_CTRL ) visualization.panning = true;
-				else                                        visualization.rotating = true;
-			}
-			else if( button==GLUT_RIGHT_BUTTON ) visualization.scaling = true;
+			if( ( button==GLUT_LEFT_BUTTON || button==GLUT_RIGHT_BUTTON ) && glutGetModifiers() & GLUT_ACTIVE_CTRL ) visualization.panning = true;
+			else if( button==GLUT_LEFT_BUTTON  ) visualization.rotating = true;
+			else if( button==GLUT_RIGHT_BUTTON ) visualization.scaling  = true;
 		}
 	}
 
@@ -533,7 +533,7 @@ void TextureFilter<Real>::MotionFunc(int x, int y) {
 			if      ( visualization.rotating ) visualization.camera.rotateUp( visualization.center , rUp ) , visualization.camera.rotateRight( visualization.center , rRight );
 #endif // GLM_FORCE_RADIANS
 			else if( visualization.scaling   ) visualization.camera.moveForward( pForward);
-			else if( visualization.panning   ) visualization.camera.moveRight( pRight ), visualization.camera.moveUp( pUp );
+			else if( visualization.panning   ) visualization.camera.moveRight( -pRight ), visualization.camera.moveUp( -pUp );
 		}
 		else {
 			visualization.oldX = visualization.newX, visualization.oldY = visualization.newY, visualization.newX = x, visualization.newY = y;
@@ -1126,6 +1126,19 @@ int main(int argc, char* argv[])
 	cmdLineParse( argc-1 , argv+1 , params );
 	if( !Input.set ) { ShowUsage( argv[0] ) ; return EXIT_FAILURE; }
 	omp_set_num_threads( Threads.value );
+	if( !NoHelp.set )
+	{
+		printf( "+----------------------------------------------------------------------+\n" );
+		printf( "| Interface Controls:                                                  |\n" );
+		printf( "|    [Left Mouse]:                rotate                               |\n" );
+		printf( "|    [Right Mouse]:               zoom                                 |\n" );
+		printf( "|    [Left/Right Mouse] + [CTRL]: pan                                  |\n" );
+		printf( "|    [Left Mouse] + [SHIFT]:      amplify gradients                    |\n" );
+		printf( "|    [Right Mouse] + [SHIFT]:     dampen gradients                     |\n" );
+		printf( "|    'g':                         prescribe global gradient modulation |\n" );
+		printf( "|    'y':                         prescribe interpolation weight       |\n" );
+		printf( "+----------------------------------------------------------------------+\n" );
+	}
 	if( Double.set ) _main< double >( argc , argv );
 	else             _main< float  >( argc , argv );
 	return 0;

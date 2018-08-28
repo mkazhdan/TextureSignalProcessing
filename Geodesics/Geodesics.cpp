@@ -56,6 +56,7 @@ cmdLineParameter< int   > MultigridPaddedWidth ( "mPadW"   ,   2 );
 
 cmdLineReadable RandomJitter( "jitter" );
 cmdLineReadable Verbose( "verbose" );
+cmdLineReadable NoHelp( "noHelp" );
 cmdLineReadable DetailVerbose( "detail" );
 cmdLineReadable UseDirectSolver( "useDirectSolver" );
 cmdLineReadable Double( "double" );
@@ -69,6 +70,7 @@ cmdLineReadable* params[] =
 	&Double ,
 	&MatrixQuadrature , &VectorFieldQuadrature ,
 	&PreciseIntegration ,
+	&NoHelp ,
 	NULL
 };
 
@@ -97,6 +99,7 @@ void ShowUsage( const char* ex )
 	printf( "\t[--%s <multigrid block height>=%d]\n"  , MultigridBlockHeight.name  , MultigridBlockHeight.value  );
 	printf( "\t[--%s <multigrid padded width>=%d]\n"  , MultigridPaddedWidth.name  , MultigridPaddedWidth.value  );
 	printf( "\t[--%s <multigrid padded height>=%d]\n" , MultigridPaddedHeight.name , MultigridPaddedHeight.value );
+	printf( "\t[--%s]\n" , NoHelp.name );
 }
 
 template< class Real >
@@ -480,17 +483,15 @@ void Geodesics<Real>::MouseFunc( int button , int state , int x , int y )
 	else
 	{
 		mouseSelectionActive = false;
-		if( button==GLUT_LEFT_BUTTON )
-		{
-			if( glutGetModifiers() & GLUT_ACTIVE_CTRL ) visualization.panning = true;
-			else                                        visualization.rotating = true;
-		}
-		else if( button==GLUT_RIGHT_BUTTON ) visualization.scaling = true;
+		if( ( button==GLUT_LEFT_BUTTON || button==GLUT_RIGHT_BUTTON ) && glutGetModifiers() & GLUT_ACTIVE_CTRL ) visualization.panning = true;
+		else if( button==GLUT_LEFT_BUTTON  ) visualization.rotating = true;
+		else if( button==GLUT_RIGHT_BUTTON ) visualization.scaling  = true;
 	}
 }
 
 template<class Real>
-void Geodesics<Real>::MotionFunc(int x, int y) {
+void Geodesics<Real>::MotionFunc( int x , int y )
+{
 	if (mouseSelectionActive) {
 		mouseX = x;
 		mouseY = y;
@@ -509,7 +510,8 @@ void Geodesics<Real>::MotionFunc(int x, int y) {
 			}
 
 		}
-		else {
+		else
+		{
 			visualization.oldX = visualization.newX, visualization.oldY = visualization.newY, visualization.newX = x, visualization.newY = y;
 			int screenSize = std::min< int >(visualization.screenWidth, visualization.screenHeight);
 			float rel_x = (visualization.newX - visualization.oldX) / (float)screenSize * 2;
@@ -519,13 +521,9 @@ void Geodesics<Real>::MotionFunc(int x, int y) {
 			float pForward = rel_y * visualization.zoom;
 			float rRight = -rel_y, rUp = -rel_x;
 
-#ifdef GLM_FORCE_RADIANS
-			if      ( visualization.rotating ) visualization.camera.rotateUp( visualization.center , -rUp ) , visualization.camera.rotateRight( visualization.center , rRight );
-#else // !GLM_FORCE_RADIANS
-			if      ( visualization.rotating ) visualization.camera.rotateUp( visualization.center , rUp ) , visualization.camera.rotateRight( visualization.center , rRight );
-#endif // GLM_FORCE_RADIANS
-			else if( visualization.scaling   ) visualization.camera.moveForward( pForward);
-			else if( visualization.panning   ) visualization.camera.moveRight( pRight ), visualization.camera.moveUp( pUp );
+			if     ( visualization.rotating ) visualization.camera.rotateUp( visualization.center , rUp ) , visualization.camera.rotateRight( visualization.center , rRight );
+			else if( visualization.scaling  ) visualization.camera.moveForward( pForward );
+			else if( visualization.panning  ) visualization.camera.moveRight( -pRight ) , visualization.camera.moveUp( -pUp );
 		}
 		glutPostRedisplay();
 	}
@@ -1006,6 +1004,16 @@ int main( int argc , char* argv[] )
 	cmdLineParse(argc - 1, argv + 1, params);
 	if( !Input.set ){ ShowUsage( argv[0] ) ; return EXIT_FAILURE; }
 	omp_set_num_threads( Threads.value );
+	if( !NoHelp.set )
+	{
+		printf( "+---------------------------------------------+\n" );
+		printf( "| Interface Controls:                         |\n" );
+		printf( "|    [Left Mouse]:                 rotate     |\n" );
+		printf( "|    [Right Mouse]:                zoom       |\n" );
+		printf( "|    [Left/Right Mouse] + [CTRL]:  pan        |\n" );
+		printf( "|    [Left/Right Mouse] + [SHIFT]: set source |\n" );
+		printf( "+---------------------------------------------+\n" );
+	}
 	if( Double.set ) _main< double >( argc , argv );
 	else             _main< float  >( argc , argv );
 	return 0;

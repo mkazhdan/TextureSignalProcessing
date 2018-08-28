@@ -67,6 +67,7 @@ cmdLineParameter< int   > MultigridPaddedWidth ( "mPadW"   ,   2 );
 
 cmdLineReadable RandomJitter( "jitter" );
 cmdLineReadable Verbose( "verbose" );
+cmdLineReadable NoHelp( "noHelp" );
 cmdLineReadable DetailVerbose( "detail" );
 cmdLineReadable UseDirectSolver( "useDirectSolver" );
 cmdLineReadable Double( "double" );
@@ -81,6 +82,7 @@ cmdLineReadable* params[] =
 	&Double ,
 	&MatrixQuadrature , &RHSQuadrature ,
 	&ApproximateIntegration , &Dots ,
+	&NoHelp ,
 	NULL
 };
 
@@ -116,6 +118,7 @@ void ShowUsage( const char* ex )
 	printf( "\t[--%s <multigrid block height>=%d]\n"  , MultigridBlockHeight.name  , MultigridBlockHeight.value  );
 	printf( "\t[--%s <multigrid padded width>=%d]\n"  , MultigridPaddedWidth.name  , MultigridPaddedWidth.value  );
 	printf( "\t[--%s <multigrid padded height>=%d]\n" , MultigridPaddedHeight.name , MultigridPaddedHeight.value );
+	printf( "\t[--%s]\n" , NoHelp.name );
 }
 
 template< class Real >
@@ -480,12 +483,9 @@ void GrayScottReactionDiffusion< Real >::MouseFunc( int button , int state , int
 	else
 	{
 		mouseSelectionActive = false;
-		if( button==GLUT_LEFT_BUTTON )
-		{
-			if( glutGetModifiers() & GLUT_ACTIVE_CTRL ) visualization.panning = true;
-			else                                        visualization.rotating = true;
-		}
-		else if( button==GLUT_RIGHT_BUTTON ) visualization.scaling = true;
+		if( ( button==GLUT_LEFT_BUTTON || button==GLUT_RIGHT_BUTTON ) && glutGetModifiers() & GLUT_ACTIVE_CTRL ) visualization.panning = true;
+		else if( button==GLUT_LEFT_BUTTON  ) visualization.rotating = true;
+		else if( button==GLUT_RIGHT_BUTTON ) visualization.scaling  = true;
 	}
 }
 
@@ -932,6 +932,17 @@ int main( int argc , char* argv[] )
 	}
 	if( Dots.set && !FeedKillRates.set ) FeedKillRates.values[0] = DotRates[0] , FeedKillRates.values[1] = DotRates[1];
 	omp_set_num_threads( Threads.value );
+	if( !NoHelp.set )
+	{
+		printf( "+------------------------------------------------+\n" );
+		printf( "| Interface Controls:                            |\n" );
+		printf( "|    [Left Mouse]:                 rotate        |\n" );
+		printf( "|    [Right Mouse]:                zoom          |\n" );
+		printf( "|    [Left/Right Mouse] + [CTRL]:  pan           |\n" );
+		printf( "|    [Left/Right Mouse] + [SHIFT]: set seed      |\n" );
+		printf( "|    [SPACE]:                      start process |\n" );
+		printf( "+------------------------------------------------+\n" );
+	}
 	if( Double.set ) _main< double >( argc , argv );
 	else             _main< float  >( argc , argv );
 	return 0;
