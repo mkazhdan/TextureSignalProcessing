@@ -148,7 +148,7 @@ public:
 	static std::vector<MultigridLevelVariables<Real>> multigridGeodesicDistanceVariables;
 
 #if defined( USE_CHOLMOD )
-	typedef  std::vector< CholmodCholeskySolver< Real , 1 > , 1 > BoundarySolverType;
+	typedef  std::vector< CholmodCholeskySolver< Real , 1 > > BoundarySolverType;
 	typedef  CholmodCholeskySolver< Real , 1 >  CoarseSolverType;
 	typedef  CholmodCholeskySolver< Real , 1 > DirectSolverType;
 #elif defined( USE_EIGEN_SIMPLICIAL )

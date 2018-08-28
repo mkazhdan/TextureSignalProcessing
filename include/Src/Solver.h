@@ -49,7 +49,7 @@ public:
 #pragma omp parallel for
 		for( int c=0 ; c<Channels ; c++ ) solver[c]._init(M);
 
-		const int numVariables = M.Rows();
+		size_t numVariables = M.Rows();
 		for( int c=0 ; c<Channels ; c++ ) out[c].resize( numVariables ) , in[c].resize( numVariables );
 	}
 
@@ -71,15 +71,15 @@ void solve( CholmodCholeskySolver< Real , Channels >& chol , std::vector< DataTy
 		chol.solver[c].solve( &chol.in[c][0] , &chol.out[c][0] );
 	}
 #pragma omp parallel for
-	for( int n=0 ; n<numVariables ; n++ ) for( int c=0 ; c<Channels ; d++ ) x0[n][c] = chol.out[c][n];
+	for( int n=0 ; n<numVariables ; n++ ) for( int c=0 ; c<Channels ; c++ ) x0[n][c] = chol.out[c][n];
 }
 template< class Real >
 void solve( CholmodCholeskySolver< Real , 1 >& chol , std::vector< Real >& x0 , const std::vector< Real >& rhs )
 {
-	int numVariables = x0.size();
+	size_t numVariables = x0.size();
 #pragma omp parallel for
 	for( int n=0 ; n<numVariables ; n++ ) chol.in[0][n] = rhs[n];
-	chol.solver[c].solve( &chol.in[0][0] , &chol.out[0][0] );
+	chol.solver[0].solve( &chol.in[0][0] , &chol.out[0][0] );
 #pragma omp parallel for
 	for( int n=0 ; n<numVariables ; n++ ) x0[n] = chol.out[0][n];
 }
@@ -169,9 +169,64 @@ void solve( CholmodCholeskySolver< Real , 1 >& chol , std::vector< Real >& x0 , 
 #endif // CHOLMOD_CHANNELS_IN_PARALLEL
 #endif // USE_CHOLMOD
 
+#if defined( USE_EIGEN_SIMPLICIAL ) || defined( USE_EIGEN_PARDISO )
 #include <Eigen/Sparse>
 #include <Eigen/Dense>
+#endif // USE_EIGEN_SIMPLICIAL || USE_EIGEN_PARDISO
 
+#ifdef USE_EIGEN_SIMPLICIAL
+#if 1
+#include <Misha/LinearSolvers.h>
+template< class Real , unsigned int Channels >
+class EigenCholeskySolver
+{
+public:
+//	typedef EigenSolverCholeskyLLt< Real , ConstPointer( MatrixEntry< Real , int > ) > Solver;
+	typedef EigenSolverCholeskyLDLt< Real , ConstPointer( MatrixEntry< Real , int > ) > Solver;
+	Solver* solver;
+	std::vector< Real > x0_vectors[Channels] , rhs_vectors[Channels] , solution_vectors[Channels];
+
+	EigenCholeskySolver( void ) : solver(NULL){ }
+	~EigenCholeskySolver( void ){ if( solver ) delete solver; }
+	void init( const SparseMatrix< Real , int >& M )
+	{
+		if( solver ) delete solver;
+		solver = new Solver( M );
+
+		const int numVariables = (int)M.Rows();
+		for( int c=0 ; c<Channels ; c++ )
+		{
+			x0_vectors[c].resize( numVariables );
+			rhs_vectors[c].resize( numVariables );
+			solution_vectors[c].resize( numVariables );
+		}
+	}
+	void update( const SparseMatrix< Real , int >& M ){ solver->update( M ); }
+};
+
+template< class Real , unsigned int Channels , class DataType >
+void solve( EigenCholeskySolver< Real , Channels >& chol , std::vector< DataType >& x0 , const std::vector< DataType >& rhs )
+{
+	int numVariables = (int)x0.size();
+#pragma omp parallel for
+	for( int n=0 ; n<numVariables ; n++ ) for( int c=0 ; c<Channels ; c++ ) chol.rhs_vectors[c][n] = rhs[n][c];
+	for( int c=0 ; c<Channels ; c++ ) chol.solver->solve( ( ConstPointer( Real ) )GetPointer( chol.rhs_vectors[c] ) , GetPointer( chol.solution_vectors[c] ) );
+#pragma omp parallel for
+	for( int n=0 ; n<numVariables ; n++ ) for( int c=0 ; c<Channels ; c++ ) x0[n][c] = chol.solution_vectors[c][n];
+}
+
+template< class Real >
+void solve( EigenCholeskySolver< Real , 1 >& chol , std::vector< Real >& x0 , const std::vector< Real >& rhs )
+{
+	int numVariables = (int)x0.size();
+#pragma omp parallel for
+	for( int n=0 ; n<numVariables ; n++ ) chol.rhs_vectors[0][n] = rhs[n];
+	chol.solver->solve( ( ConstPointer( Real ) )GetPointer( chol.rhs_vectors[0] ) , GetPointer( chol.solution_vectors[0] ) );
+#pragma omp parallel for
+	for( int n=0 ; n<numVariables ; n++ ) x0[n] = chol.solution_vectors[0][n];
+}
+
+#else
 template< class Real , unsigned int Channels >
 class EigenCholeskySolver
 {
@@ -237,6 +292,9 @@ void solve( EigenCholeskySolver< Real , 1 >& chol , std::vector< Real >& x0 , co
 #pragma omp parallel for
 	for( int n=0 ; n<numVariables ; n++ ) x0[n] = chol.solution_vectors[0][n];
 }
+#endif
+#endif // USE_EIGEN_SIMPLICIAL
+
 
 #ifdef USE_EIGEN_PARDISO
 #pragma comment( lib , "mkl_intel_lp64.lib" )

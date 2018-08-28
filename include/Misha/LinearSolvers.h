@@ -34,29 +34,13 @@ DAMAGE.
 
 
 #ifdef USE_CHOLMOD
-#pragma message( "[WARNING] Need to explicitly exclude VCOMP.lib" )
-#endif // USE_CHOLMOD
-
-#ifdef USE_CHOLMOD
 #include <Cholmod/cholmod.h>
-#pragma comment( lib , "mkl_core.lib" )
-#pragma comment( lib , "mkl_intel_lp64.lib" )
-#pragma comment( lib , "mkl_intel_thread.lib" )
-#pragma comment( lib , "libiomp5md.lib" )
-#pragma comment( lib , "libcholmodfull64.lib" )
-#undef DLONG
-#ifdef DLONG
-typedef long long SOLVER_LONG;
-#define CHOLMOD( name ) cholmod_l_ ## name
-#else // !DLONG
-typedef       int SOLVER_LONG;
-#define CHOLMOD( name ) cholmod_ ## name
-#endif // DLONG
+#pragma comment( lib , "CHOLMOD_FULL.lib" )
 #elif defined(EIGEN_USE_MKL_ALL)
 #pragma comment( lib , "mkl_core.lib" )
 #pragma comment( lib , "mkl_intel_lp64.lib" )
 #pragma comment( lib , "mkl_intel_thread.lib" )
-#pragma comment( lib , "mkl_blas95_lp64.lib" )
+#pragma comment( lib , "mkl_blas95_lp64.lib
 #pragma comment( lib , "libiomp5md.lib" )
 #endif // USE_CHOLMOD
 
@@ -661,7 +645,7 @@ class CholmodSolver
 {
 public:
 	const static bool LOWER_TRIANGULAR = true;
-	int dim;
+	size_t dim;
 	cholmod_factor* cholmod_L;
 	cholmod_dense*  cholmod_b;
 	cholmod_sparse* cholmod_M;
@@ -690,7 +674,7 @@ template< int channels > template< class Real, class MatrixRowIterator > Cholmod
 template< int channels > template< class Real, class MatrixRowIterator >
 void CholmodSolver< channels >::_init(const SparseMatrixInterface< Real, MatrixRowIterator >& M)
 {
-	if (!cholmod_C_set) CHOLMOD(start)(&cholmod_C);
+	if (!cholmod_C_set) cholmod_start(&cholmod_C);
 	cholmod_C_set = true;
 
 	dim = M.Rows();
@@ -699,18 +683,18 @@ void CholmodSolver< channels >::_init(const SparseMatrixInterface< Real, MatrixR
 	if (LOWER_TRIANGULAR)
 	{
 		maxEntries = (int)((M.Entries() - M.Rows()) / 2 + M.Rows());
-		cholmod_M = CHOLMOD(allocate_sparse)(dim, dim, maxEntries, 0, 1, -1, CHOLMOD_REAL, &cholmod_C);
+		cholmod_M = cholmod_allocate_sparse(dim, dim, maxEntries, 0, 1, -1, CHOLMOD_REAL, &cholmod_C);
 	}
 	else
 	{
 		maxEntries = (int)M.Entries();
-		cholmod_M = CHOLMOD(allocate_sparse)(dim, dim, maxEntries, 0, 1, 0, CHOLMOD_REAL, &cholmod_C);
+		cholmod_M = cholmod_allocate_sparse(dim, dim, maxEntries, 0, 1, 0, CHOLMOD_REAL, &cholmod_C);
 	}
-	cholmod_M->i = malloc(sizeof(SOLVER_LONG) * maxEntries);
+	cholmod_M->i = malloc(sizeof(int) * maxEntries);
 	cholmod_M->x = malloc(sizeof(double) * maxEntries);
 
-	SOLVER_LONG *_p = (SOLVER_LONG*)cholmod_M->p;
-	SOLVER_LONG *_i = (SOLVER_LONG*)cholmod_M->i;
+	int *_p = (int*)cholmod_M->p;
+	int *_i = (int*)cholmod_M->i;
 
 	int off = 0;
 	dim = 0;
@@ -724,10 +708,10 @@ void CholmodSolver< channels >::_init(const SparseMatrixInterface< Real, MatrixR
 
 	clock_t begin;
 	if (0) begin = clock();
-	cholmod_L = CHOLMOD(analyze)(cholmod_M, &cholmod_C);
+	cholmod_L = cholmod_analyze(cholmod_M, &cholmod_C);
 	if (0) printf("Cholmod analyze time = %.4f \n", double(clock() - begin) / CLOCKS_PER_SEC);
 
-	cholmod_b = CHOLMOD(allocate_dense)(dim, channels, dim, cholmod_M->xtype, &cholmod_C);
+	cholmod_b = cholmod_allocate_dense(dim, channels, dim, cholmod_M->xtype, &cholmod_C);
 }
 template< int channels > template< class Real, class MatrixRowIterator >
 bool CholmodSolver< channels >::_update(const SparseMatrixInterface< Real, MatrixRowIterator >& M)
@@ -735,7 +719,7 @@ bool CholmodSolver< channels >::_update(const SparseMatrixInterface< Real, Matri
 	double *_x = (double*)cholmod_M->x;
 	int off = 0;
 
-	SOLVER_LONG *_p = (SOLVER_LONG*)cholmod_M->p;
+	int *_p = (int*)cholmod_M->p;
 #pragma omp parallel for
 	for (int i = 0; i<M.Rows(); i++)
 	{
@@ -747,7 +731,7 @@ bool CholmodSolver< channels >::_update(const SparseMatrixInterface< Real, Matri
 
 	clock_t begin;
 	if (0) begin = clock();
-	CHOLMOD(factorize)(cholmod_M, cholmod_L, &cholmod_C);
+	cholmod_factorize(cholmod_M, cholmod_L, &cholmod_C);
 	if (0) printf("Cholmod factorize time = %.4f \n", double(clock() - begin) / CLOCKS_PER_SEC);
 
 	if (cholmod_C.status == CHOLMOD_NOT_POSDEF)
@@ -771,16 +755,16 @@ bool CholmodSolver< channels >::_update(const SparseMatrixInterface< Real, Matri
 template< int channels >
 CholmodSolver< channels >::~CholmodSolver(void)
 {
-	if (cholmod_L) CHOLMOD(free_factor)(&cholmod_L, &cholmod_C), cholmod_L = NULL;
-	if (cholmod_b) CHOLMOD(free_dense)(&cholmod_b, &cholmod_C), cholmod_b = NULL;
-	if (cholmod_M) CHOLMOD(free_sparse)(&cholmod_M, &cholmod_C), cholmod_M = NULL;
+	if (cholmod_L) cholmod_free_factor(&cholmod_L, &cholmod_C), cholmod_L = NULL;
+	if (cholmod_b) cholmod_free_dense(&cholmod_b, &cholmod_C), cholmod_b = NULL;
+	if (cholmod_M) cholmod_free_sparse(&cholmod_M, &cholmod_C), cholmod_M = NULL;
 }
 
 template< int channels >
 template< class Real >
 void CholmodSolver< channels >::solve(ConstPointer(Real) b, Pointer(Real) x)
 {
-	int numEntries = dim*channels;
+	size_t numEntries = dim*channels;
 	double* _b = (double*)cholmod_b->x;
 
 #pragma omp parallel for
@@ -788,21 +772,21 @@ void CholmodSolver< channels >::solve(ConstPointer(Real) b, Pointer(Real) x)
 
 	clock_t begin;
 	if (0) begin = clock();
-	cholmod_dense* cholmod_x = CHOLMOD(solve)(CHOLMOD_A, cholmod_L, cholmod_b, &cholmod_C);
+	cholmod_dense* cholmod_x = cholmod_solve(CHOLMOD_A, cholmod_L, cholmod_b, &cholmod_C);
 	if (0) printf("Cholmod solve time = %.4f \n", double(clock() - begin) / CLOCKS_PER_SEC);
 	double* _x = (double*)cholmod_x->x;
 
 #pragma omp parallel for
 	for (int i = 0; i<numEntries; i++) x[i] = (Real)_x[i];
 
-	CHOLMOD(free_dense)(&cholmod_x, &cholmod_C);
+	cholmod_free_dense(&cholmod_x, &cholmod_C);
 }
 
 template< int channels >
 int CholmodSolver< channels >::nonZeros(void) const
 {
 	long long nz = 0;
-	if (cholmod_L->xtype != CHOLMOD_PATTERN && !(cholmod_L->is_super)) for (int i = 0; i<cholmod_L->n; i++) nz += ((SOLVER_LONG*)cholmod_L->nz)[i];
+	if (cholmod_L->xtype != CHOLMOD_PATTERN && !(cholmod_L->is_super)) for (int i = 0; i<cholmod_L->n; i++) nz += ((int*)cholmod_L->nz)[i];
 	bool examine_super = false;
 	if (cholmod_L->xtype != CHOLMOD_PATTERN) examine_super = true;
 	else                                      examine_super = (((int*)cholmod_L->s)[0] != (-1));
