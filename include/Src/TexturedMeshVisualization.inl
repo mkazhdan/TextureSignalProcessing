@@ -265,7 +265,7 @@ void TexturedMeshVisualization::UpdateTextureBuffer() {
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, (GLvoid*)&colors[0]);
 	glBindTexture(GL_TEXTURE_2D, 0);
 
-	delete colors;
+	delete[] colors;
 }
 
 

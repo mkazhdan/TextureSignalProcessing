@@ -42,13 +42,17 @@
 #include "PlyFile.h"
 
 template< class Real >
+#ifdef __APPLE__ 
+class PlyVertex : public Point3D< Real > , VectorSpace< Real , PlyVertex< Real > >
+#else // !__APPLE__ 
 class PlyVertex : public VectorSpace< Real , PlyVertex< Real > >
+#endif // __APPLE__ 
 {
 public:
 	//////////////////////////
 	// Vector space methods //
-	void Add	(const PlyVertex& p)	{	point+=p.point;	}
-	void Scale	(float s)				{	point*=s;		}
+	void Add	(const PlyVertex& p)	{	point += p.point;	}
+	void Scale	(float s)				{	point *= s;		}
 	//////////////////////////
 
 	const static int ReadComponents=3;
@@ -56,6 +60,11 @@ public:
 	static PlyProperty ReadProperties[];
 	static PlyProperty WriteProperties[];
 
+#ifdef __APPLE__ 
+	Point3D< Real >& point;
+	PlyVertex( void )                     : point( (*this) ) { point.coords[0]=point.coords[1]=point.coords[2]=0; }
+	PlyVertex( const Point3D< Real >& p ) : point( (*this) ) { point=p; }
+#else // !__APPLE__ 
 	Point3D< Real > point;
 
 	operator Point3D< Real >& ()					{ return point; }
@@ -63,6 +72,7 @@ public:
 	template< class Real2 > operator Point3D< Real2 > ( ) const { return Point3D< Real2 >( point ); }
 	PlyVertex( void )								{ point.coords[0]=point.coords[1]=point.coords[2]=0; }
 	PlyVertex( const Point3D< Real >& p )			{ point=p; }
+#endif // __APPLE__ 
 
 	template<class Real2>
 	PlyVertex xForm( const XForm4x4<Real2>& xForm ) const
@@ -75,30 +85,54 @@ public:
 template<>
 PlyProperty PlyVertex< float >::ReadProperties[]=
 {
+#ifdef __APPLE__ 
+	{"x", PLY_FLOAT, PLY_FLOAT, int(offsetof(PlyVertex,coords[0])), 0, 0, 0, 0},
+	{"y", PLY_FLOAT, PLY_FLOAT, int(offsetof(PlyVertex,coords[1])), 0, 0, 0, 0},
+	{"z", PLY_FLOAT, PLY_FLOAT, int(offsetof(PlyVertex,coords[2])), 0, 0, 0, 0}
+#else // !__APPLE__ 
 	{"x", PLY_FLOAT, PLY_FLOAT, int(offsetof(PlyVertex,point.coords[0])), 0, 0, 0, 0},
 	{"y", PLY_FLOAT, PLY_FLOAT, int(offsetof(PlyVertex,point.coords[1])), 0, 0, 0, 0},
 	{"z", PLY_FLOAT, PLY_FLOAT, int(offsetof(PlyVertex,point.coords[2])), 0, 0, 0, 0}
+#endif // __APPLE__ 
 };
 template<>
 PlyProperty PlyVertex< float >::WriteProperties[]=
 {
+#ifdef __APPLE__ 
+	{"x", PLY_FLOAT, PLY_FLOAT, int(offsetof(PlyVertex,coords[0])), 0, 0, 0, 0},
+	{"y", PLY_FLOAT, PLY_FLOAT, int(offsetof(PlyVertex,coords[1])), 0, 0, 0, 0},
+	{"z", PLY_FLOAT, PLY_FLOAT, int(offsetof(PlyVertex,coords[2])), 0, 0, 0, 0}
+#else // !__APPLE__ 
 	{"x", PLY_FLOAT, PLY_FLOAT, int(offsetof(PlyVertex,point.coords[0])), 0, 0, 0, 0},
 	{"y", PLY_FLOAT, PLY_FLOAT, int(offsetof(PlyVertex,point.coords[1])), 0, 0, 0, 0},
 	{"z", PLY_FLOAT, PLY_FLOAT, int(offsetof(PlyVertex,point.coords[2])), 0, 0, 0, 0}
+#endif // __APPLE__ 
 };
 template<>
 PlyProperty PlyVertex< double >::ReadProperties[]=
 {
+#ifdef __APPLE__ 
+	{"x", PLY_DOUBLE, PLY_DOUBLE, int(offsetof(PlyVertex,coords[0])), 0, 0, 0, 0},
+	{"y", PLY_DOUBLE, PLY_DOUBLE, int(offsetof(PlyVertex,coords[1])), 0, 0, 0, 0},
+	{"z", PLY_DOUBLE, PLY_DOUBLE, int(offsetof(PlyVertex,coords[2])), 0, 0, 0, 0}
+#else // !__APPLE__ 
 	{"x", PLY_DOUBLE, PLY_DOUBLE, int(offsetof(PlyVertex,point.coords[0])), 0, 0, 0, 0},
 	{"y", PLY_DOUBLE, PLY_DOUBLE, int(offsetof(PlyVertex,point.coords[1])), 0, 0, 0, 0},
 	{"z", PLY_DOUBLE, PLY_DOUBLE, int(offsetof(PlyVertex,point.coords[2])), 0, 0, 0, 0}
+#endif // __APPLE__ 
 };
 template<>
 PlyProperty PlyVertex< double >::WriteProperties[]=
 {
+#ifdef __APPLE__ 
+	{"x", PLY_DOUBLE, PLY_DOUBLE, int(offsetof(PlyVertex,coords[0])), 0, 0, 0, 0},
+	{"y", PLY_DOUBLE, PLY_DOUBLE, int(offsetof(PlyVertex,coords[1])), 0, 0, 0, 0},
+	{"z", PLY_DOUBLE, PLY_DOUBLE, int(offsetof(PlyVertex,coords[2])), 0, 0, 0, 0}
+#else // !__APPLE__ 
 	{"x", PLY_DOUBLE, PLY_DOUBLE, int(offsetof(PlyVertex,point.coords[0])), 0, 0, 0, 0},
 	{"y", PLY_DOUBLE, PLY_DOUBLE, int(offsetof(PlyVertex,point.coords[1])), 0, 0, 0, 0},
 	{"z", PLY_DOUBLE, PLY_DOUBLE, int(offsetof(PlyVertex,point.coords[2])), 0, 0, 0, 0}
+#endif // __APPLE__ 
 };
 template< class Real >
 class PlyVertex2D : public VectorSpace< Real , PlyVertex2D< Real > >

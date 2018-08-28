@@ -326,7 +326,7 @@ int GrayScottReactionDiffusion< Real >::SetRightHandSide( bool verbose )
 
 	for( int ab=0 ; ab<2 ; ab++ ) MultiplyBySystemMatrix_NoReciprocals( deepMassCoefficients , boundaryDeepMassMatrix , boundaryBoundaryMassMatrix , hierarchy.gridAtlases[0].boundaryGlobalIndex , hierarchy.gridAtlases[0].rasterLines , multigridVariables[ab][0].x , multigridVariables[ab][0].rhs );
 	auto ABFunction = [&]( Point2D< Real > ab , SquareMatrix< Real , 2 > )
-	{ 
+	{
 		return Point2D< Real >
 			(
 				(Real)( speed * ( - ab[0] * ab[1] * ab[1] + feed * ( 1 - ab[0] ) ) ) ,
@@ -335,10 +335,7 @@ int GrayScottReactionDiffusion< Real >::SetRightHandSide( bool verbose )
 	};
 	memset( &ab_rhs[0] , 0 , ab_rhs.size() * sizeof( Point2D< Real > ) );
 	memset( &fineBoundaryRHS[0] , 0 , fineBoundaryRHS.size() * sizeof( Point2D< Real > ) );
-	if( !Integrate< Real >( interiorCellLines , bilinearElementScalarSamples , quadraticElementScalarSamples , ab_x , fineBoundaryValues , ABFunction , ab_rhs , fineBoundaryRHS ) )
-	{
-		fprintf( stderr , "[ERROR] Unable to integrate concentrations!\n" );
-	}
+	if( !Integrate< Real >( interiorCellLines , bilinearElementScalarSamples , quadraticElementScalarSamples , ab_x , fineBoundaryValues , ABFunction , ab_rhs , fineBoundaryRHS ) ) fprintf( stderr , "[ERROR] Unable to integrate concentrations!\n" );
 	fineBoundaryCoarseBoundaryRestriction.Multiply( &fineBoundaryRHS[0] , &coarseBoundaryRHS[0] );
 	for( int ab=0 ; ab<2 ; ab++ )
 	{
@@ -375,23 +372,26 @@ int GrayScottReactionDiffusion< Real >::UpdateExactSolution( bool verbose )
 template< class Real >
 int GrayScottReactionDiffusion< Real >::UpdateApproximateSolution( bool verbose , bool detailVerbose )
 {
-	// (1) Compute the right-hand-sides
+	double rhsTime , vCycleTime;
+	// Compute the right-hand-sides
 	{
 		clock_t begin = clock();
 		SetRightHandSide( verbose );
-		if( verbose ) printf( "Integrated constraints %.3f(s)\n" , double(clock() - begin) / CLOCKS_PER_SEC );
+		rhsTime = double(clock() - begin) / CLOCKS_PER_SEC;
 	}
 
-	// (2) Solve the linear systems
+	// Solve the linear systems
 	{
 		clock_t begin = clock();
 		for( int ab=0 ; ab<2 ; ab++ )
 		{
 			VCycle( multigridVariables[ab] , multigridCoefficients[ab] , multigridIndices , boundarySolvers[ab] , coarseSolvers[ab] , detailVerbose , detailVerbose );
+#pragma omp parallel for
 			for( int i=0 ; i<multigridVariables[ab][0].x.size() ; i++ ) multigridVariables[ab][0].x[i] = std::max< Real >( multigridVariables[ab][0].x[i] , 0 );
 		}
-		if( verbose ) printf( "Performed v-cycle: %.3f(s)\n" , double(clock() - begin) / CLOCKS_PER_SEC );
+		vCycleTime = double(clock() - begin) / CLOCKS_PER_SEC;
 	}
+	if( verbose ) printf( "Integrated constraints / performed v-cycle: %.3f / %.3f(s)\n" , rhsTime , vCycleTime );
 
 	return 1;
 }
@@ -432,6 +432,7 @@ void GrayScottReactionDiffusion< Real >::Idle( void )
 	{
 		if( UseDirectSolver.set ){ if( !UpdateExactSolution()       ) fprintf( stderr , "[WARNING] Exact update failed!\n" ); }
 		else                     { if( !UpdateApproximateSolution() ) fprintf( stderr , "[WARNING] Approximate update failed!\n" ); }
+
 		if( updateCount>0 ) updateCount--;
 		steps++;
 		sprintf( stepsString , "Steps: %d" , steps );
