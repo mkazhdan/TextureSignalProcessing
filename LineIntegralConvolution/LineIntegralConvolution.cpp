@@ -44,7 +44,7 @@ cmdLineParameter< char* > Input( "in" );
 cmdLineParameter< char* > Output( "out" );
 cmdLineParameter< int   > OutputVCycles( "outVCycles" , 10 );
 cmdLineReadable MinimalCurvature( "minimal" );
-cmdLineReadable Single( "single" );
+cmdLineReadable Double( "double" );
 cmdLineParameter< char* > VectorField( "vf" );
 cmdLineParameter< int   > Width( "width" , 2048 );
 cmdLineParameter< int   > Height( "height" , 2048 );
@@ -75,7 +75,7 @@ cmdLineReadable* params[] =
 {
 	&Input , &Output , &MinimalCurvature , &VectorField , &IntrinsicVectorField , &Width,&Height , &LICInterpolationWeight , &SharpeningInterpolationWeight , &SharpeningGradientModulation , &CameraConfig, &Levels,&UseDirectSolver,&Threads,&DisplayMode,&MultigridBlockHeight,&MultigridBlockWidth,&MultigridPaddedHeight,&MultigridPaddedWidth,&Verbose,
 	&DetailVerbose , &RandomJitter ,
-	&Single ,
+	&Double ,
 	&MatrixQuadrature ,
 	&OutputVCycles ,
 	&NoHelp ,
@@ -1014,7 +1014,7 @@ int main(int argc, char* argv[])
 		printf( "|    [SPACE]:                      start solver |\n" );
 		printf( "+-----------------------------------------------+\n" );
 	}
-	if( Single.set ) _main< float  >( argc , argv );
-	else             _main< double >( argc , argv );
+	if( Double.set ) _main< double >( argc , argv );
+	else             _main< float  >( argc , argv );
 	return 0;
 }
