@@ -2,9 +2,7 @@
 <center>
 <a href="#LINKS">links</a>
 <a href="#EXECUTABLES">executables</a>
-<!--
 <a href="#USAGE">usage</a>
--->
 <a href="#COMPILATION">compilation</a>
 <a href="#CHANGES">changes</a>
 <!--
@@ -205,7 +203,7 @@ The default value for this parameter is 1024.
 <details>
 <summary>
 <font size="+1"><b>ReactionDiffusion</b></font>:
-Performs simulation of reaction-diffusion based on the <A HREF="https://groups.csail.mit.edu/mac/projects/amorphous/GrayScott/">Gray-Scott model</A>.
+Performs simulation of reaction-diffusion based on the <A HREF="http://www.karlsims.com/rd.html">Gray-Scott model</A>.
 If no output texture is specified, the executable will launch an interactive viewer that supports iteratively stepping through the reaction-diffusion process.<BR>
 Hit [SPACE] to start the reaction-diffusion process or hit "+" to advance one step at a time.
 </summary>
