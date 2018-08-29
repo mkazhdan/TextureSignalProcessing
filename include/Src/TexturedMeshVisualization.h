@@ -48,10 +48,10 @@ DAMAGE.
 
 enum
 {
-	ONE_REGION_DISPLAY,
-	TWO_REGION_DISPLAY,
-	THREE_REGION_DISPLAY,
-	FOUR_REGION_DISPLAY,
+	ONE_REGION_DISPLAY   = 1 ,
+	TWO_REGION_DISPLAY   = 2 ,
+	THREE_REGION_DISPLAY = 3 ,
+	FOUR_REGION_DISPLAY  = 4 ,
 };
 
 class TexturedMeshVisualization : public Visualization
@@ -60,7 +60,7 @@ public:
 	TexturedMeshVisualization( void );
 
 	//For visualization of normal maps
-	void PhongShading(GLuint & textureBufferId);
+	void PhongShading( GLuint & textureBufferId );
 	GLSLProgram * normalProgram;
 	vec3 light_ambient;
 	vec3 light_diffuse;
@@ -73,7 +73,6 @@ public:
 	GLuint offscreen_depth_texture = 0;
 	GLuint offscreen_color_texture = 0;
 	GLuint offscreen_framebuffer_handle = 0;
-	int offscreen_frame_width, offscreen_frame_height;
 	void SetupOffScreenBuffer();
 	void RenderOffScreenBuffer(Image<Point3D<float>> & image);
 
@@ -82,9 +81,6 @@ public:
 	bool useNearestSampling;
 
 	int displayMode;
-	int _screenWidth;
-	int _screenHeight;
-	void UpdateMainFrameSize();
 
 	Camera camera;
 	vec3 center;
@@ -126,7 +122,9 @@ public:
 	GLuint vbo;
 	GLuint ebo;
 
+	void setViewport( int whichRegion=-1 );
 	void keyboardFunc(unsigned char key, int x, int y);
+	void reshape( int w , int h );
 	void display(void);
 	void mouseFunc(int button, int state, int x, int y);
 	void motionFunc(int x, int y);
@@ -154,7 +152,6 @@ public:
 	Point2D<float> selectImagePos(int x, int y);
 	Point< float, 2 > screenToImage(int x, int y);
 	bool select(int x, int  y, Point3D< float >& out);
-
 
 	void SetLightingData();
 	void SetTextureCamera();

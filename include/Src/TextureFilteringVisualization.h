@@ -27,13 +27,15 @@ DAMAGE.
 */
 #pragma once
 #include <Src/TexturedMeshVisualization.h>
-enum {
+enum
+{
 	COLOR_TEXTURE,
 	NORMAL_TEXTURE,
 	TEXTURE_TYPE_COUNT
 };
 
-class TextureFilteringVisualization : public TexturedMeshVisualization{
+class TextureFilteringVisualization : public TexturedMeshVisualization
+{
 public:
 	TextureFilteringVisualization();
 	int textureType;
@@ -52,6 +54,7 @@ public:
 	void UpdateTextureBuffer(const Image<Point3D<float>> & image);
 	void UpdateColorTextureBuffer();
 	void UpdateMaskTextureBuffer();
+	int slideBarWidth( void );
 
 	void display(void);
 	void LoadGeometryData();

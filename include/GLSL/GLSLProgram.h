@@ -107,7 +107,6 @@ public:
 
 	const char * getTypeString(GLenum type);
 	void setup();
-
 };
 
 #include <fstream>

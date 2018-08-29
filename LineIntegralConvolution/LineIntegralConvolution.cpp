@@ -972,7 +972,6 @@ int _main(int argc, char* argv[])
 		LineConvolution< Real >::visualization.displayMode = DisplayMode.value;
 		if     ( DisplayMode.value==ONE_REGION_DISPLAY ) LineConvolution<Real>::visualization.screenWidth =  800 , LineConvolution<Real>::visualization.screenHeight = 800;
 		else if( DisplayMode.value==TWO_REGION_DISPLAY ) LineConvolution<Real>::visualization.screenWidth = 1440 , LineConvolution<Real>::visualization.screenHeight = 720;
-		LineConvolution< Real >::visualization.UpdateMainFrameSize();
 		glutInitWindowSize( LineConvolution< Real >::visualization.screenWidth , LineConvolution< Real >::visualization.screenHeight );
 		glutInit( &argc , argv );
 		char windowName[1024];

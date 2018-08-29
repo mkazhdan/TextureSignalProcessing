@@ -475,14 +475,14 @@ void TextureFilter< Real >::MouseFunc( int button , int state , int x , int y )
 		visualization.diskX = x;
 		visualization.diskY = y;
 
-		if     ( button==GLUT_LEFT_BUTTON  ) positiveModulation = true;
-		else if( button==GLUT_RIGHT_BUTTON ) positiveModulation = false;
+		if     ( button==GLUT_RIGHT_BUTTON ) positiveModulation = true;
+		else if( button==GLUT_LEFT_BUTTON  ) positiveModulation = false;
 	}
-	else if( visualization.showSlideBar && x>10 && x<visualization._screenWidth-10 && y>18 && y<32 ) // Slide bar update
+	else if( visualization.showSlideBar && x>10 && x<visualization.slideBarWidth()-10 && y>18 && y<32 ) // Slide bar update
 	{
 		visualization.isSlideBarActive = true;
 		gradientModulationUpdated = false;
-		double slideBarCursorPosition = double(x - 20) / double(visualization._screenWidth - 40);
+		double slideBarCursorPosition = double(x - 20) / double(visualization.slideBarWidth() - 40);
 		slideBarCursorPosition = std::min<double>(std::max<double>(slideBarCursorPosition, 0), 1.0);
 		visualization.slideBarCursorPosition = slideBarCursorPosition;
 	}
@@ -503,7 +503,8 @@ void TextureFilter< Real >::MouseFunc( int button , int state , int x , int y )
 }
 
 template<class Real>
-void TextureFilter<Real>::MotionFunc(int x, int y) {
+void TextureFilter<Real>::MotionFunc( int x , int y )
+{
 
 	if (visualization.isBrushActive) {
 		gradientModulationUpdated = false;
@@ -512,7 +513,7 @@ void TextureFilter<Real>::MotionFunc(int x, int y) {
 	}
 	else if (visualization.showSlideBar && visualization.isSlideBarActive) {
 		gradientModulationUpdated = false;
-		double slideBarCursorPosition = double(x - 20) / double(visualization._screenWidth - 40);
+		double slideBarCursorPosition = double(x - 20) / double(visualization.slideBarWidth() - 40);
 		slideBarCursorPosition = std::min<double>(std::max<double>(slideBarCursorPosition, 0), 1.0);
 		visualization.slideBarCursorPosition = slideBarCursorPosition;
 	}
@@ -1093,7 +1094,6 @@ int _main(int argc, char* argv[])
 		else if( DisplayMode.value==TWO_REGION_DISPLAY   ) TextureFilter< Real >::visualization.screenWidth = 1600 , TextureFilter< Real >::visualization.screenHeight = 800;
 		else if( DisplayMode.value==THREE_REGION_DISPLAY ) TextureFilter< Real >::visualization.screenWidth = 1200 , TextureFilter< Real >::visualization.screenHeight = 800;
 		else if( DisplayMode.value==FOUR_REGION_DISPLAY  ) TextureFilter< Real >::visualization.screenWidth = 1500 , TextureFilter< Real >::visualization.screenHeight = 600;
-		TextureFilter<Real>::visualization.UpdateMainFrameSize();
 		glutInitWindowSize(TextureFilter<Real>::visualization.screenWidth, TextureFilter<Real>::visualization.screenHeight);
 		glutInit(&argc, argv);
 		char windowName[1024];
@@ -1133,8 +1133,8 @@ int main(int argc, char* argv[])
 		printf( "|    [Left Mouse]:                rotate                               |\n" );
 		printf( "|    [Right Mouse]:               zoom                                 |\n" );
 		printf( "|    [Left/Right Mouse] + [CTRL]: pan                                  |\n" );
-		printf( "|    [Left Mouse] + [SHIFT]:      amplify gradients                    |\n" );
-		printf( "|    [Right Mouse] + [SHIFT]:     dampen gradients                     |\n" );
+		printf( "|    [Left Mouse] + [SHIFT]:      dampen gradients                     |\n" );
+		printf( "|    [Right Mouse] + [SHIFT]:     amplify gradients                    |\n" );
 		printf( "|    'g':                         prescribe global gradient modulation |\n" );
 		printf( "|    'y':                         prescribe interpolation weight       |\n" );
 		printf( "+----------------------------------------------------------------------+\n" );

@@ -977,7 +977,6 @@ int _main(int argc, char* argv[])
 	if     ( DisplayMode.value==ONE_REGION_DISPLAY ) Geodesics<Real>::visualization.screenWidth =  800 , Geodesics<Real>::visualization.screenHeight = 800;
 	else if( DisplayMode.value==TWO_REGION_DISPLAY ) Geodesics<Real>::visualization.screenWidth = 1440 , Geodesics<Real>::visualization.screenHeight = 720;
 
-	Geodesics< Real >::visualization.UpdateMainFrameSize();
 	glutInitWindowSize( Geodesics< Real >::visualization.screenWidth , Geodesics< Real >::visualization.screenHeight );
 
 	glutInit(&argc, argv);

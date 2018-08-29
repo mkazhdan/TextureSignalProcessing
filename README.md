@@ -43,7 +43,7 @@ This software supports gradient-domain signal processing within a texture atlas.
 <font size="+1"><b>TextureFiltering</b></font>:
 Supports the (localized) smoothing and sharpening of a texture by solving a screened Poisson equation which gives the signal whose values match the input and whose gradients match the modulated gradients of the input. If no output texture is specified, the executable will launch an interactive viewer that supports local "painting" of gradient modulation values and prescription of a global interpolation weight.<BR>
 In the interactive viewer the modulation can be set globally by dragging the slider on the top left.<BR>
-The modulation can be set locally by holding the [SHIFT] key down and either dragging with the left mouse button (to sharpen) or the right mouse button (to smooth).
+The modulation can be set locally by holding the [SHIFT] key down and either dragging with the left mouse button (to smooth) or the right mouse button (to sharpen).
 </summary>
 <dt><b>--in</b> &lt;<i>input mesh and texture names</i>&gt;</dt>
 <dd> These two strings specify the the names of the mesh and the texture image.<br>
@@ -260,7 +260,7 @@ Of these, <I>David</I> and <I>Julius</I> include normal maps (using the <U>.norm
 </summary>
 To run this executable you must specify the input mesh as well as the texture itself:
 <blockquote><code>% Bin/*/TextureFiltering --in ../TSP.Data/David/david.ply ../TSP.Data/David/david.normap</code></blockquote>
-This opens a viewer allowing the user to prescribe both global gradient modulation weights (through the slider) and local modulation weights (through a paint-brush interface, by depressing the [SHIFT] key and dragging with the left mouse button to sharpen and the right mouse button to smooth).<BR>
+This opens a viewer allowing the user to prescribe both global gradient modulation weights (through the slider) and local modulation weights (through a paint-brush interface, by depressing the [SHIFT] key and dragging with the left mouse button to smooth and the right mouse button to sharpen).<BR>
 You can also bypass the viewer and output a globally sharpened/smoothed texture to a file:
 <blockquote><code>% Bin/*/TextureFiltering --in ../TSP.Data/Julius/julius.ply ../TSP.Data/Julius/julius.normap --out julius.smooth.normap --modulation 0 --interpolation 100</code></blockquote>
 Here a modulation weight less than 1 indicates that gradients should be dampened (resulting in smoothing) and a small interpolation weight reduces the interpolation penalty, exaggerating the smoothing.

@@ -119,6 +119,7 @@ public:
 	virtual void keyboardFunc( unsigned char key , int x , int y ){;}
 	virtual void specialFunc( int key, int x, int y ){;}
 	virtual void display( void ){;}
+	virtual void reshape( int w , int h ){;}
 	virtual void mouseFunc( int button , int state , int x , int y ){;}
 	virtual void motionFunc( int x , int y ){;}
 	virtual void passiveMotionFunc( int x , int y ){;}
@@ -176,6 +177,7 @@ void VisualizationViewer::MouseFunc( int button , int state , int x , int y ){ v
 void VisualizationViewer::MotionFunc( int x , int y ){ visualization->MotionFunc( x , y ); }
 void Visualization::Reshape( int w , int h )
 {
+	reshape( w , h );
 	screenWidth = w , screenHeight = h;
 	glViewport( 0 , 0 , screenWidth , screenHeight );
 }

@@ -41,90 +41,76 @@ void TextureFilteringVisualization::LoadGeometryData() {
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, faceBuffer);
 }
+int TextureFilteringVisualization::slideBarWidth( void )
+{
+	GLint oldViewport[4] ,  viewport[4];
+	glGetIntegerv( GL_VIEWPORT , oldViewport );
+	setViewport( 0 );
+	glGetIntegerv( GL_VIEWPORT , viewport );
+	glViewport( oldViewport[0] , oldViewport[1] , oldViewport[2] , oldViewport[3] );
+	return viewport[2];
+}
+void TextureFilteringVisualization::DrawSlideBar( void )
+{
+	glDisable( GL_LIGHTING );
+	glDisable( GL_DEPTH_TEST );
 
-void TextureFilteringVisualization::DrawSlideBar() {
-
-	glDisable(GL_LIGHTING);
-	glDisable(GL_DEPTH_TEST);
-
-	if (displayMode == ONE_REGION_DISPLAY) {
-		_screenWidth = screenWidth;
-		_screenHeight = screenHeight;
-	}
-	else if (displayMode == TWO_REGION_DISPLAY) {
-		_screenWidth = screenWidth / 2;
-		_screenHeight = screenHeight;
-	}
-	else if (displayMode == THREE_REGION_DISPLAY) {
-		_screenWidth = screenWidth * 2 / 3;
-		_screenHeight = screenHeight;
-	}
-	else if (displayMode == FOUR_REGION_DISPLAY) {
-		_screenWidth = screenWidth * 2 / 5;
-		_screenHeight = screenHeight;
-	}
-
-
-	glViewport(0, 0, _screenWidth, _screenHeight);
+	GLint viewport[4];
+	glGetIntegerv( GL_VIEWPORT , viewport );
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	glOrtho(0, _screenWidth, 0, _screenHeight, -1, 1);
+	glOrtho( 0 , viewport[2] , 0 , viewport[3] , -1 ,  1 );
 
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 
 	glBegin(GL_QUADS);
-	glColor3f( 0.0f , 0.0f , 1.0f ) ; glVertex2f( 20 , _screenHeight - 20 );
-	glColor3f( 0.8f , 0.8f , 0.8f ) ; glVertex2f(_screenWidth / 2 , _screenHeight - 20 );
-	glColor3f( 0.8f , 0.8f , 0.8f ) ; glVertex2f(_screenWidth / 2 , _screenHeight - 30 );
-	glColor3f( 0.0f , 0.0f , 1.0f ) ; glVertex2f( 20 , _screenHeight - 30 );
+	glColor3f( 0.0f , 0.0f , 1.0f ) ; glVertex2f( 20 , viewport[3] - 20 );
+	glColor3f( 0.8f , 0.8f , 0.8f ) ; glVertex2f( viewport[2] / 2 , viewport[3] - 20 );
+	glColor3f( 0.8f , 0.8f , 0.8f ) ; glVertex2f( viewport[2] / 2 , viewport[3] - 30 );
+	glColor3f( 0.0f , 0.0f , 1.0f ) ; glVertex2f( 20 , viewport[3] - 30 );
 	glEnd();
 
 	glBegin(GL_QUADS);
-	glColor3f( 0.8f , 0.8f , 0.8f ) ; glVertex2f( _screenWidth / 2  , _screenHeight - 20 );
-	glColor3f( 1.0f , 0.0f , 0.0f ) ; glVertex2f( _screenWidth - 20 , _screenHeight - 20 );
-	glColor3f( 1.0f , 0.0f , 0.0f ) ; glVertex2f( _screenWidth - 20 , _screenHeight - 30 );
-	glColor3f( 0.8f , 0.8f , 0.8f ) ; glVertex2f( _screenWidth / 2  , _screenHeight - 30 );
+	glColor3f( 0.8f , 0.8f , 0.8f ) ; glVertex2f( viewport[2] / 2  , viewport[3] - 20 );
+	glColor3f( 1.0f , 0.0f , 0.0f ) ; glVertex2f( viewport[2] - 20 , viewport[3] - 20 );
+	glColor3f( 1.0f , 0.0f , 0.0f ) ; glVertex2f( viewport[2] - 20 , viewport[3] - 30 );
+	glColor3f( 0.8f , 0.8f , 0.8f ) ; glVertex2f( viewport[2] / 2  , viewport[3] - 30 );
 	glEnd();
 
-	float normalizedCursorPosition = 20 * (1.0 - slideBarCursorPosition) + (_screenWidth - 20) * slideBarCursorPosition;
+	float normalizedCursorPosition = 20 * (1.0 - slideBarCursorPosition) + ( viewport[2] - 20) * slideBarCursorPosition;
 
 	glBegin(GL_QUADS);
 	glColor3f(0.0, 0.0, 0.0);
-	glVertex2f(normalizedCursorPosition - 12, _screenHeight - 18);
-	glVertex2f(normalizedCursorPosition + 12, _screenHeight - 18);
-	glVertex2f(normalizedCursorPosition + 12, _screenHeight - 32);
-	glVertex2f(normalizedCursorPosition - 12, _screenHeight - 32);
+	glVertex2f(normalizedCursorPosition - 12, viewport[3] - 18);
+	glVertex2f(normalizedCursorPosition + 12, viewport[3] - 18);
+	glVertex2f(normalizedCursorPosition + 12, viewport[3] - 32);
+	glVertex2f(normalizedCursorPosition - 12, viewport[3] - 32);
 	glEnd();
 
 	glBegin(GL_QUADS);
 	glColor3f(0.5, 0.5, 0.5);
-	glVertex2f(normalizedCursorPosition - 10, _screenHeight - 20);
-	glVertex2f(normalizedCursorPosition + 10, _screenHeight - 20);
-	glVertex2f(normalizedCursorPosition + 10, _screenHeight - 30);
-	glVertex2f(normalizedCursorPosition - 10, _screenHeight - 30);
+	glVertex2f(normalizedCursorPosition - 10, viewport[3] - 20);
+	glVertex2f(normalizedCursorPosition + 10, viewport[3] - 20);
+	glVertex2f(normalizedCursorPosition + 10, viewport[3] - 30);
+	glVertex2f(normalizedCursorPosition - 10, viewport[3] - 30);
 	glEnd();
-
-	glViewport( 0 , 0 , screenWidth , screenHeight );
 }
-
 
 void TextureFilteringVisualization::display( void )
 {
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
-
-	if (displayMode == ONE_REGION_DISPLAY) {
-
+	if( displayMode == ONE_REGION_DISPLAY )
+	{
 		glEnable(GL_TEXTURE_2D);
 		glEnable(GL_DEPTH_TEST);
 
-		glViewport(0, 0, screenWidth, screenHeight);
+		setViewport(0);
 		DrawRegion(showMesh, textureBuffer, textureType == NORMAL_TEXTURE);
 
 		glDisable(GL_TEXTURE_2D);
 		glBindTexture(GL_TEXTURE_2D, 0);
-
 	}
 	else if (displayMode == TWO_REGION_DISPLAY) {
 		SetGeometryCamera();
@@ -133,12 +119,12 @@ void TextureFilteringVisualization::display( void )
 		glEnable(GL_TEXTURE_2D);
 		glEnable(GL_DEPTH_TEST);
 
-		glViewport(0, 0, screenWidth / 2, screenHeight);
+		setViewport(0);
 		glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_DECAL);
 		glBindTexture(GL_TEXTURE_2D, textureBuffer);
 		glDrawElements(GL_TRIANGLES, (GLsizei)(triangles.size() * 3), GL_UNSIGNED_INT, NULL);
 
-		glViewport(screenWidth / 2, 0, screenWidth / 2, screenHeight);
+		setViewport(1);
 		SetLightingData();
 		glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 		glBindTexture(GL_TEXTURE_2D, maskTextureBuffer);
@@ -146,55 +132,50 @@ void TextureFilteringVisualization::display( void )
 		glDisable(GL_LIGHTING);
 		glDisable(GL_TEXTURE_2D);
 		glBindTexture(GL_TEXTURE_2D, 0);
-
-		glViewport(0, 0, screenWidth, screenHeight);
 	}
 	else if (displayMode == THREE_REGION_DISPLAY) {
 
 		glEnable(GL_TEXTURE_2D);
 		glEnable(GL_DEPTH_TEST);
 
-		glViewport(0, 0, 2 * screenWidth / 3, screenHeight);
+		setViewport(0);
 		DrawRegion(showMesh, textureBuffer, textureType == NORMAL_TEXTURE);
 
-		glViewport(2 * screenWidth / 3, 0, screenWidth / 3, screenHeight / 2);
+		setViewport(1);
 		DrawRegion(false, textureBuffer, textureType == NORMAL_TEXTURE);
 		//DrawRegion(showMesh, inputTextureBuffer, textureType == NORMAL_TEXTURE);
 
-		glViewport(2 * screenWidth / 3, screenHeight / 2, screenWidth / 3, screenHeight / 2);
+		setViewport(2);
 		DrawRegion(showMesh, maskTextureBuffer, false, true);
 		//DrawRegion(false, textureBuffer, textureType == NORMAL_TEXTURE);
 
 		glDisable(GL_TEXTURE_2D);
 		glBindTexture(GL_TEXTURE_2D, 0);
-
-		glViewport(0, 0, screenWidth, screenHeight);
 	}
 
-	else if (displayMode == FOUR_REGION_DISPLAY) {
+	else if( displayMode==FOUR_REGION_DISPLAY )
+	{
+		glEnable( GL_TEXTURE_2D );
+		glEnable( GL_DEPTH_TEST );
 
-		glEnable(GL_TEXTURE_2D);
-		glEnable(GL_DEPTH_TEST);
+		setViewport(0);
+		DrawRegion( true , textureBuffer , textureType==NORMAL_TEXTURE );
 
-		glViewport(0, 0, 2 * screenWidth / 5, screenHeight);
-		DrawRegion(true, textureBuffer, textureType == NORMAL_TEXTURE);
+		setViewport(1);
+		DrawRegion( false , maskTextureBuffer );
 
-		glViewport(2 * screenWidth / 5, 0, screenWidth / 5, screenHeight / 2);
-		DrawRegion(false, maskTextureBuffer);
+		setViewport(2);
+		DrawRegion( true , maskTextureBuffer , false , true );
 
-		glViewport(2 * screenWidth / 5, screenHeight / 2, screenWidth / 5, screenHeight / 2);
-		DrawRegion(true, maskTextureBuffer, false, true);
+		setViewport(3);
+		DrawRegion( false , textureBuffer , textureType==NORMAL_TEXTURE );
 
-		glViewport(3 * screenWidth / 5, 0, 2 * screenWidth / 5, screenHeight);
-		DrawRegion(false, textureBuffer, textureType == NORMAL_TEXTURE);
-
-		glDisable(GL_TEXTURE_2D);
-		glBindTexture(GL_TEXTURE_2D, 0);
-
-		glViewport(0, 0, screenWidth, screenHeight);
+		glDisable( GL_TEXTURE_2D );
+		glBindTexture( GL_TEXTURE_2D, 0 );
 	}
 
-	if (showDisk && isBrushActive) {
+	if( showDisk && isBrushActive )
+	{
 		glDisable(GL_DEPTH_TEST);
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
@@ -208,10 +189,15 @@ void TextureFilteringVisualization::display( void )
 		glTranslatef(diskX, screenHeight - diskY, 0);
 		gluDisk(quad, 18, 22, 40, 3);
 		gluDeleteQuadric(quad);
-		glEnable(GL_DEPTH_TEST);
+		glEnable( GL_DEPTH_TEST );
 	}
 
-	if( showSlideBar ) DrawSlideBar();
+	if( showSlideBar )
+	{
+		setViewport(0);
+		DrawSlideBar();
+	}
+	setViewport();
 }
 
 void TextureFilteringVisualization::UpdateColorTextureBuffer() {

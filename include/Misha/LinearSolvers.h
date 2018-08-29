@@ -40,7 +40,7 @@ DAMAGE.
 #pragma comment( lib , "mkl_core.lib" )
 #pragma comment( lib , "mkl_intel_lp64.lib" )
 #pragma comment( lib , "mkl_intel_thread.lib" )
-#pragma comment( lib , "mkl_blas95_lp64.lib
+#pragma comment( lib , "mkl_blas95_lp64.lib" )
 #pragma comment( lib , "libiomp5md.lib" )
 #endif // USE_CHOLMOD
 

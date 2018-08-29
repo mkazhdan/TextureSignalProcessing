@@ -880,8 +880,6 @@ int _main( int argc , char* argv[] )
 		GrayScottReactionDiffusion< Real >::visualization.displayMode = DisplayMode.value;
 		if     ( DisplayMode.value==ONE_REGION_DISPLAY ) GrayScottReactionDiffusion< Real >::visualization.screenWidth =  800 , GrayScottReactionDiffusion< Real >::visualization.screenHeight = 800;
 		else if( DisplayMode.value==TWO_REGION_DISPLAY ) GrayScottReactionDiffusion< Real >::visualization.screenWidth = 1440 , GrayScottReactionDiffusion< Real >::visualization.screenHeight = 720;
-
-		GrayScottReactionDiffusion< Real >::visualization.UpdateMainFrameSize();
 		glutInitWindowSize( GrayScottReactionDiffusion< Real >::visualization.screenWidth , GrayScottReactionDiffusion< Real >::visualization.screenHeight );
 
 		glutInit(&argc, argv);
