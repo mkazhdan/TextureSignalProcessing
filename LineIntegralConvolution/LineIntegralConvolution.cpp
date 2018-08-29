@@ -1003,7 +1003,7 @@ int main(int argc, char* argv[])
 	cmdLineParse(argc - 1, argv + 1, params);
 	if( !Input.set ) { ShowUsage(argv[0]); return EXIT_FAILURE; }
 	omp_set_num_threads( Threads.value );
-	if( !NoHelp.set )
+	if( !NoHelp.set && !Output.set )
 	{
 		printf( "+-----------------------------------------------+\n" );
 		printf( "| Interface Controls:                           |\n" );

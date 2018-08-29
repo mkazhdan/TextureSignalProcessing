@@ -930,7 +930,7 @@ int main( int argc , char* argv[] )
 	}
 	if( Dots.set && !FeedKillRates.set ) FeedKillRates.values[0] = DotRates[0] , FeedKillRates.values[1] = DotRates[1];
 	omp_set_num_threads( Threads.value );
-	if( !NoHelp.set )
+	if( !NoHelp.set && !Output.set )
 	{
 		printf( "+------------------------------------------------+\n" );
 		printf( "| Interface Controls:                            |\n" );
