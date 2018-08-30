@@ -92,51 +92,16 @@ void TexturedMeshVisualization::RenderOffScreenBuffer( Image< Point3D< float > >
 }
 
 
-//void TexturedMeshVisualization::WriteSceneConfigurationCallBack(Visualization* v, const char* prompt) {
-//	const TexturedMeshVisualization* av = (TexturedMeshVisualization*)v;
-//	FILE * file;
-//	file = fopen(prompt, "wb");
-//	fwrite(&av->screenWidth, sizeof(int), 1, file);
-//	fwrite(&av->screenHeight, sizeof(int), 1, file);
-//	fwrite(&av->camera.position, sizeof(Point3D<double>), 1, file);
-//	fwrite(&av->camera.forward, sizeof(Point3D<double>), 1, file);
-//	fwrite(&av->camera.right, sizeof(Point3D<double>), 1, file);
-//	fwrite(&av->camera.up, sizeof(Point3D<double>), 1, file);
-//	fwrite(&av->zoom, sizeof(float), 1, file);
-//	fclose(file);
-//}
-//
-//void TexturedMeshVisualization::ReadSceneConfigurationCallBack(Visualization* v, const char* prompt) {
-//	TexturedMeshVisualization* av = (TexturedMeshVisualization*)v;
-//	FILE * file;
-//	file = fopen(prompt, "rb");
-//	if (!file) {
-//		printf("Camera Configuration File Not Valid \n");
-//	}
-//	else {
-//		fread(&av->screenWidth, sizeof(int), 1, file);
-//		fread(&av->screenHeight, sizeof(int), 1, file);
-//		fread(&av->camera.position, sizeof(Point3D<double>), 1, file);
-//		fread(&av->camera.forward, sizeof(Point3D<double>), 1, file);
-//		fread(&av->camera.right, sizeof(Point3D<double>), 1, file);
-//		fread(&av->camera.up, sizeof(Point3D<double>), 1, file);
-//		fread(&av->zoom, sizeof(float), 1, file);
-//		//av->offscreen_frame_height = av->screenHeight;
-//		//av->offscreen_frame_width = av->screenWidth;
-//		fclose(file);
-//	}
-//}
-
 void TexturedMeshVisualization::WriteSceneConfigurationCallBack(Visualization* v, const char* prompt) {
 	const TexturedMeshVisualization* av = (TexturedMeshVisualization*)v;
 	FILE * file;
 	file = fopen(prompt, "wb");
 	fwrite(&av->screenWidth, sizeof(int), 1, file);
 	fwrite(&av->screenHeight, sizeof(int), 1, file);
-	fwrite(&av->camera.position, sizeof(glm::vec3), 1, file);
-	fwrite(&av->camera.direction, sizeof(glm::vec3), 1, file);
-	fwrite(&av->camera.right, sizeof(glm::vec3), 1, file);
-	fwrite(&av->camera.up, sizeof(glm::vec3), 1, file);
+	fwrite(&av->camera.position, sizeof(Point3D<double>), 1, file);
+	fwrite(&av->camera.forward, sizeof(Point3D<double>), 1, file);
+	fwrite(&av->camera.right, sizeof(Point3D<double>), 1, file);
+	fwrite(&av->camera.up, sizeof(Point3D<double>), 1, file);
 	fwrite(&av->zoom, sizeof(float), 1, file);
 	fclose(file);
 }
@@ -144,18 +109,19 @@ void TexturedMeshVisualization::WriteSceneConfigurationCallBack(Visualization* v
 void TexturedMeshVisualization::ReadSceneConfigurationCallBack(Visualization* v, const char* prompt) {
 	TexturedMeshVisualization* av = (TexturedMeshVisualization*)v;
 	FILE * file;
-	file = fopen( prompt , "rb" );
-	if( !file ) fprintf( stderr , "[WARNING] Camera Configuration File Not Valid\n" );
-	else
-	{
-		fread( &av->screenWidth      , sizeof(int)       , 1 , file );
-		fread( &av->screenHeight     , sizeof(int)       , 1 , file );
-		fread( &av->camera.position  , sizeof(glm::vec3) , 1 , file );
-		fread( &av->camera.direction , sizeof(glm::vec3) , 1 , file );
-		fread( &av->camera.right     , sizeof(glm::vec3) , 1 , file) ;
-		fread( &av->camera.up        , sizeof(glm::vec3) , 1 , file );
-		fread( &av->zoom             , sizeof(float)     , 1 , file );
-		fclose( file );
+	file = fopen(prompt, "rb");
+	if (!file) {
+		printf("Camera Configuration File Not Valid \n");
+	}
+	else {
+		fread(&av->screenWidth, sizeof(int), 1, file);
+		fread(&av->screenHeight, sizeof(int), 1, file);
+		fread(&av->camera.position, sizeof(Point3D<double>), 1, file);
+		fread(&av->camera.forward, sizeof(Point3D<double>), 1, file);
+		fread(&av->camera.right, sizeof(Point3D<double>), 1, file);
+		fread(&av->camera.up, sizeof(Point3D<double>), 1, file);
+		fread(&av->zoom, sizeof(float), 1, file);
+		fclose(file);
 	}
 }
 
@@ -249,15 +215,15 @@ void TexturedMeshVisualization::UpdateTextureBuffer() {
 
 void TexturedMeshVisualization::SetLightingData( void )
 {
-	glLightModeli(GL_LIGHT_MODEL_LOCAL_VIEWER, GL_FALSE);
-	glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE);
-	glLightfv(GL_LIGHT0, GL_AMBIENT, lightAmbient);
-	glLightfv(GL_LIGHT0, GL_DIFFUSE, lightDiffuse);
-	glLightfv(GL_LIGHT0, GL_SPECULAR, lightSpecular);
+	glLightModeli( GL_LIGHT_MODEL_LOCAL_VIEWER , GL_FALSE );
+	glLightModeli( GL_LIGHT_MODEL_TWO_SIDE , GL_TRUE );
+	glLightfv( GL_LIGHT0 , GL_AMBIENT , lightAmbient );
+	glLightfv( GL_LIGHT0 , GL_DIFFUSE , lightDiffuse );
+	glLightfv( GL_LIGHT0 , GL_SPECULAR , lightSpecular );
 
-	lightPosition[0] = -camera.direction[0];
-	lightPosition[1] = -camera.direction[1];
-	lightPosition[2] = -camera.direction[2];
+	lightPosition[0] = -camera.forward[0];
+	lightPosition[1] = -camera.forward[1];
+	lightPosition[2] = -camera.forward[2];
 	lightPosition[3] = 0.f;
 
 	glLightfv(GL_LIGHT0, GL_POSITION, lightPosition);
@@ -272,18 +238,15 @@ void TexturedMeshVisualization::SetLightingData( void )
 
 void TexturedMeshVisualization::SetGeometryCamera( void )
 {
-	camera.updateTransformations();
-
 	glMatrixMode( GL_PROJECTION );
 	glLoadIdentity();
 	GLint viewport[4];
 	glGetIntegerv( GL_VIEWPORT , viewport );
-	gluPerspective( camera.heightAngle , (float)viewport[2]/(float)viewport[3] , camera.nearest_plane , camera.farthest_plane );
+	gluPerspective( FOV , (float)viewport[2]/(float)viewport[3] , NEARZ , FARZ );
 	//Draw Camera
 	glMatrixMode( GL_MODELVIEW );
 	glLoadIdentity();
-	glMultMatrixf( &camera.world_to_camera[0][0] );
-	//gluLookAt(camera.position[0], camera.position[1], camera.position[2], camera.position[0] + camera.direction[0], camera.position[1] + camera.direction[1], camera.position[2] + camera.direction[2], camera.up[0], camera.up[1], camera.up[2]);
+	gluLookAt( camera.position[0] , camera.position[1] , camera.position[2] , camera.position[0] + camera.forward[0] , camera.position[1] + camera.forward[1] , camera.position[2] + camera.forward[2] , camera.up[0] , camera.up[1] , camera.up[2] );
 }
 
 void TexturedMeshVisualization::SetTextureCamera( void )
@@ -312,9 +275,15 @@ void TexturedMeshVisualization::PhongShading( GLuint & textureBufferId )
 	glm::mat4 p;
 	for( int i=0 ; i<4 ; i++ ) for( int j=0 ; j<4 ; j++ ) p[i][j] = projection[4*i+j];
 	current_program->setUniform( "eye_projection" , p );
-	current_program->setUniform( "world_to_eye" , camera.world_to_camera );
+	GLdouble modelview[16];
+	glGetDoublev( GL_MODELVIEW_MATRIX , modelview );
+	glm::mat4 m;
+	for( int i=0 ; i<4 ; i++ ) for( int j=0 ; j<4 ; j++ ) m[i][j] = modelview[4*i+j];
+	current_program->setUniform( "world_to_eye" , m );
+	glm::vec3 f;
+	for( int i=0 ; i<3 ; i++ ) f[i] = camera.forward[i];
+	current_program->setUniform( "light_direction" , f );
 
-	current_program->setUniform("light_direction", camera.direction);
 	current_program->setUniform("light_diffuse", light_diffuse);
 	current_program->setUniform("light_specular", light_specular);
 	current_program->setUniform("light_ambient", light_ambient);
@@ -743,9 +712,9 @@ void TexturedMeshVisualization::motionFunc(int x, int y)
 		//else if (scaling) camera.translate(camera.forward *pForward);
 		//else if (panning) camera.translate(camera.right * pRight + camera.up * pUp);
 		
-		if     ( rotating ) camera.rotateUp( center , rUp ) , camera.rotateRight( center , rRight );
-		else if( scaling  ) camera.moveForward( pForward );
-		else if( panning  ) camera.moveRight( pRight ) , camera.moveUp( pUp );
+		if     ( rotating ) camera.rotateUp( -rUp ) , camera.rotateRight( -rRight );
+		else if( scaling  ) camera.translate( camera.forward*pForward );
+		else if( panning  ) camera.translate( -( camera.right*pRight + camera.up*pUp ) );
 
 		glutPostRedisplay();
 	}
@@ -768,35 +737,8 @@ TexturedMeshVisualization::TexturedMeshVisualization( void )
 
 	//camera.position = Point3D<float>(0.f, 0.f, -5.f);
 	radius = 1.f;
-	center = vec3(0.f, 0.f, 0.f);
 
-
-#ifdef GLM_FORCE_RADIANS
-	camera.heightAngle = 30;
-	camera.aspectRatio = 1.0;
-	//camera.aspectRatio = static_cast<float>(screenWidth) / static_cast<float>(screenHeight);
-	camera.position  = vec3( 0 , 0 ,  1.25 );
-	camera.direction = vec3( 0 , 0 , -1 );
-	camera.up        = vec3( 0 , 1 ,  0 );
-	camera.right = glm::cross( camera.direction , camera.up );
-	camera.position  = -camera.position;
-	camera.direction = -camera.direction;
-	camera.up = -camera.up;
-	camera.right = -camera.right;
-
-	camera.nearest_plane = radius*0.001f;
-	camera.farthest_plane = radius*10.f;
-#else // !GLM_FORCE_RADIANS
-	camera.heightAngle = 30;
-	camera.aspectRatio = 1.0;
-	//camera.aspectRatio = static_cast<float>(screenWidth) / static_cast<float>(screenHeight);
-	camera.position = vec3( 0.f , 0.f , 3.f );
-	camera.direction = vec3( 0.f , 0.f , -1.f );
-	camera.up = vec3( 0.f , 1.f , 0.f );
-	camera.right = glm::cross( camera.direction , camera.up );
-	camera.nearest_plane = radius*0.001f;
-	camera.farthest_plane = radius*10.f;
-#endif // GLM_FORCE_RADIANS
+	camera = Camera( Point3D< float >( 0.f , 0.f , 2.f ) , Point3D< float >( 0.f , 0.f , -1.f ) , Point3D< float >( 0.f , 1.f , 0.f ) );
 
 	callBacks.push_back(KeyboardCallBack(this, 'C', "read camera", "File Name", ReadSceneConfigurationCallBack));
 	callBacks.push_back(KeyboardCallBack(this, 'c', "save camera", "File Name", WriteSceneConfigurationCallBack));

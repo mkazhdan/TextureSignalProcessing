@@ -153,7 +153,6 @@ int SolveCG(SPDOperator& L, int iters, int dim, const T* b, T* x, TDotT dot, CGS
 	{
 		L(d, q);
 		double dDotQ = 0;
-#pragma message( "[WARNING] Why do I have to comment this out?" )
 #pragma omp parallel for reduction( + : dDotQ )
 		for (int i = 0; i<dim; i++) dDotQ += dot(d[i], q[i]);
 		Real alpha = Real(delta_new / dDotQ);

@@ -444,9 +444,9 @@ void LineConvolution<Real>::MotionFunc(int x, int y) {
 		float pForward = rel_y * visualization.zoom;
 		float rRight = -rel_y, rUp = -rel_x;
 
-		if      ( visualization.rotating ) visualization.camera.rotateUp( visualization.center , rUp ) , visualization.camera.rotateRight( visualization.center , rRight );
-		else if( visualization.scaling   ) visualization.camera.moveForward( pForward);
-		else if( visualization.panning   ) visualization.camera.moveRight( -pRight ), visualization.camera.moveUp( -pUp );
+		if     ( visualization.rotating ) visualization.camera.rotateUp( -rUp ) , visualization.camera.rotateRight( -rRight );
+		else if( visualization.scaling  ) visualization.camera.translate( visualization.camera.forward*pForward);
+		else if( visualization.panning  ) visualization.camera.translate( -( visualization.camera.right*pRight + visualization.camera.up*pUp ) );
 	}
 	glutPostRedisplay();
 }
