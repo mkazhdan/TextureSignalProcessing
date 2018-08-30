@@ -298,7 +298,6 @@ namespace FEM
 		Real area( int tIdx ) const;
 		Real squareEdgeLength( int heIdx ) const;
 
-
 		// Get the associated index, given the triangle and the index of the element within the triangle
 		template< unsigned int BasisType > size_t dimension( void ) const;
 		template< unsigned int BasisType > unsigned int index( unsigned int t , unsigned int idx ) const;
@@ -329,6 +328,8 @@ namespace FEM
 
 		bool edgeFlip( int e , Real eps=0 );
 		bool isVoronoiEdge( unsigned int e , Real eps=0 ) const;
+
+		std::vector< SamplePoint< Real > > randomSamples( unsigned int count ) const;
 	};
 
 	template< class Real , unsigned int BasisType >

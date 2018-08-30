@@ -816,6 +816,46 @@ bool FEM::RiemannianMesh< Real >::isVoronoiEdge( unsigned int e , Real eps ) con
 }
 
 template< class Real >
+std::vector< FEM::SamplePoint< Real > > FEM::RiemannianMesh< Real >::randomSamples( unsigned int count ) const
+{
+	std::vector< FEM::SamplePoint< Real > > samples( count );
+	Real* cumAreas = new Real[ tCount() ];
+	cumAreas[0] = area(0);
+	for( int i=1 ; i<tCount() ; i++ ) cumAreas[i] = cumAreas[i-1] + area(i);
+
+#pragma omp parallel for
+	for( int i=0 ; i<(int)count ; i++ )
+	{
+		Real r1 = Random< Real >() , r2 = Random< Real >() , r3 = Random< Real >();
+		
+		// Choose a random triangle
+		{
+			Real r = r1 * cumAreas[ tCount()-1 ];
+			Real *a , *b;
+			a = cumAreas - 1;
+			b = cumAreas + tCount() - 1;
+
+			int d;
+			while( (d=(int)(b-a))>1 )
+			{
+				Real *i = a + d/2;
+				if( r<*i ) b=i;
+				else       a=i;
+			}
+			samples[i].tIdx = (int)( b - cumAreas );
+		}
+		// Choose a random point in the triangle
+		{
+			if( r2+r3>1 ) r2 = 1-r2 , r3 = 1-r3;
+			samples[i].p = Point2D< Real >( (Real)r2 , (Real) r3 );
+		}
+	}
+	delete[] cumAreas;
+
+	return samples;
+}
+
+template< class Real >
 FEM::CoordinateXForm< Real > FEM::RiemannianMesh< Real >::getVertexCoordinateXForm( ConstPointer( CoordinateXForm< Real > ) xForms , int t , int v ) const
 {
 	const int VertexToEdgeMap[] = { 1 , 2 , 0 };

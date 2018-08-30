@@ -125,6 +125,7 @@ template< class Real >
 class GrayScottReactionDiffusion
 {
 public:
+	static std::vector< FEM::SamplePoint< double > > randomSamples;
 	static TexturedMesh mesh;
 	static int textureWidth;
 	static int textureHeight;
@@ -132,7 +133,6 @@ public:
 	static double kill;
 	static double feed;
 	static double speed;
-	static double samplesFraction;
 	static int levels;
 	static int steps;
 	static char stepsString[];
@@ -238,6 +238,7 @@ public:
 	static void Idle( void );
 };
 
+template< class Real > std::vector< FEM::SamplePoint< double > >					GrayScottReactionDiffusion< Real >::randomSamples;
 template< class Real > TexturedMesh													GrayScottReactionDiffusion< Real >::mesh;
 template< class Real > int															GrayScottReactionDiffusion< Real >::textureWidth;
 template< class Real > int															GrayScottReactionDiffusion< Real >::textureHeight;
@@ -258,7 +259,6 @@ template< class Real > double														GrayScottReactionDiffusion< Real >::d
 template< class Real > double														GrayScottReactionDiffusion< Real >::speed;
 template< class Real > double														GrayScottReactionDiffusion< Real >::kill;
 template< class Real > double														GrayScottReactionDiffusion< Real >::feed;
-template< class Real > double														GrayScottReactionDiffusion< Real >::samplesFraction;
 
 
 template< class Real > std::vector< TextureNodeInfo >								GrayScottReactionDiffusion< Real >::textureNodes;
@@ -474,7 +474,7 @@ void GrayScottReactionDiffusion< Real >::MouseFunc( int button , int state , int
 			int j = floor( (1.0-ip[1])*float( nodeIndex.height() ) - 0.5f );
 			if( i>=0 && i<nodeIndex.width() && j>=0 && j<nodeIndex.height() ) mouseSelectionActive = true , selectedTexel = nodeIndex(i,j);
 		}
-		if( selectedTexel!=-1 && selectedTexel!=seedTexel )
+		if( selectedTexel!=seedTexel )
 		{
 			seedTexel = selectedTexel;
 			InitializeConcentrations();
@@ -549,8 +549,19 @@ int GrayScottReactionDiffusion< Real >::InitializeConcentrations( void )
 	if( seedTexel!=-1 ) multigridVariables[1][0].x[seedTexel] = 1;
 	else
 	{
-		const int SAMPLES = (int)( multigridVariables[1][0].x.size() * samplesFraction );
-		for( int i=0 ; i<SAMPLES ; i++ ) multigridVariables[1][0].x[ ( multigridVariables[1][0].x.size() * i ) / SAMPLES ] = 1;
+		for( int i=0 ; i<randomSamples.size() ; i++ )
+		{
+			int tIdx = randomSamples[i].tIdx;
+			Point2D< Real > p = randomSamples[i].p;
+			Point2D< Real > t =
+				mesh.textureCoordinates[ tIdx*3 + 0 ] * (Real)( 1. - p[0] - p[1] ) +
+				mesh.textureCoordinates[ tIdx*3 + 1 ] * (Real)(      p[0]        ) +
+				mesh.textureCoordinates[ tIdx*3 + 2 ] * (Real)(             p[1] );
+			t[0] *= nodeIndex.width() , t[1] *= nodeIndex.height();
+			int idx = nodeIndex( (int)floor( t[0] +0.5 ) , (int)floor( t[1] +0.5 ) );
+			if( idx>=0 && idx<multigridVariables[1][0].x.size() ) multigridVariables[1][0].x[idx] = 1;
+			else fprintf( stderr , "[WARNING] Bad random texel: %f %f: %d\n" , t[0] , t[1] , idx );
+		}
 	}
 	return 1;
 }
@@ -778,7 +789,6 @@ int GrayScottReactionDiffusion< Real >::Init( void )
 	feed = FeedKillRates.values[0];
 	kill = FeedKillRates.values[1];
 	speed = Speed.value;
-	samplesFraction = SamplesFraction.value;
 	diffusionRates[0] = 1.0;
 	diffusionRates[1] = 0.5;
 	for( int ab=0 ; ab<2 ; ab++ ) diffusionRates[ab] *= DiffusionScale.value / 10.;
@@ -817,7 +827,6 @@ int GrayScottReactionDiffusion< Real >::Init( void )
 
 	clock_t t = clock();
 	if( !InitializeSystem( textureWidth , textureHeight , AreaScale.value ) ){ fprintf( stderr , "[ERROR] Failed to initialize system\n") ; return 0; }
-	if( !InitializeConcentrations() ){ fprintf( stderr , "[ERROR] Failed to initialize concentrations\n") ; return 0; }
 
 	if( Verbose.set )
 	{
@@ -829,6 +838,7 @@ int GrayScottReactionDiffusion< Real >::Init( void )
 	//Assign position to exterior nodes using barycentric-exponential map
 	{
 		FEM::RiemannianMesh< double > rMesh( GetPointer( mesh.triangles ) , mesh.triangles.size() );
+
 		rMesh.setMetricFromEmbedding( GetPointer( mesh.vertices ) );
 		rMesh.makeUnitArea();
 		Pointer( FEM::CoordinateXForm< double > ) xForms = rMesh.getCoordinateXForms();
@@ -845,6 +855,8 @@ int GrayScottReactionDiffusion< Real >::Init( void )
 			textureNodes[i].tId = _p.tIdx;
 			textureNodes[i].barycentricCoords = _p.p;
 		}
+		const int SAMPLES = (int)( multigridVariables[1][0].x.size() * SamplesFraction.value );
+		randomSamples = rMesh.randomSamples( SAMPLES );
 	}
 
 	textureNodePositions.resize( textureNodes.size() );
@@ -858,6 +870,8 @@ int GrayScottReactionDiffusion< Real >::Init( void )
 			mesh.vertices[ mesh.triangles[tId][2] ] * barycentricCoords[1];
 		textureNodePositions[i] = surfacePosition;
 	}
+
+	if( !InitializeConcentrations() ){ fprintf( stderr , "[ERROR] Failed to initialize concentrations\n") ; return 0; }
 
 	outputBuffer = new unsigned char[ textureHeight*textureWidth];
 	memset( outputBuffer , 204 , textureHeight * textureWidth * sizeof(unsigned char) );
