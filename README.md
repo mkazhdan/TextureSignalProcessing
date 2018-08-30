@@ -88,7 +88,7 @@ The default value for this parameter is 1.
 <details>
 <summary>
 <font size="+1"><b>LineIntegralConvolution</b></font>:
-Supports the <a href="https://en.wikipedia.org/wiki/Line_integral_convolution">line-integral-convolution</A> visualization of a vector-field by defining a new metric on the surface that stretches distances along the vector-field values, diffusing a random color texture with respect to the new anisotropic metric, and then sharpening the resulting signal.
+Supports the <a href="https://en.wikipedia.org/wiki/Line_integral_convolution">line-integral-convolution</A> visualization of a vector-field through <A HREF="https://dl.acm.org/citation.cfm?id=614456">anisotropic diffusion</A> by defining a new metric on the surface that stretches distances along the vector-field values, diffusing a random color texture with respect to the new anisotropic metric, and then sharpening the resulting signal.
 If no output texture is specified, the executable will launch an interactive viewer that supports iteratively stepping through the diffusion.<BR>
 Hit [SPACE] to start the iterative solver or hit "+" to advance one iteration at a time.
 </summary>
