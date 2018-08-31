@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2015, Michael Kazhdan
+Copyright (c) 2015, Michael Kazhdan and Fabian Prada
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -25,16 +25,42 @@ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING 
 ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
 DAMAGE.
 */
+
 #ifndef FEM_INCLUDED
 #define FEM_INCLUDED
 
+#define NEW_FEM
+#define NEW_FEM_CODE
+
+#undef INCLUDE_EXTRA_FEM
+
 #include <string.h>
+#include <algorithm>
 #include "SparseMatrix.h"
 #include "Geometry.h"
 #include "Array.h"
-#include <algorithm>
+
+
+/************ Notes ****************
+-.The evaluation w.r.t. to some bases can be metric dependent:
+-- BASIS_1_CONFORMING requires the metric to define a rotation.
+-- BASIS_2_WHITNEY requires the metric to transform the integral into a value.
+. Using the DYNAMIC_MESH flag, we do not copy over the triangles, so edge-flips are performed on the input array.
+. Althought we are calling this "FEM", the definition of the stiffness matrix is done using "DEC". (Probably should call it "DDG".)
+. Assumes the mesh is oriented
+. The values of the vector fields live in the cotangent space. (That is given a vector field v and a tangent vector w, the inner-product is simple < v , w > not g(v,w).)
+. Throughout, "tensor" refers to the inner-product on the tangent space.
+. There is some probably (parallelization) resulting in inconsistent runs (and undefined error values).
+. Add an explicit method for computing the mass-matrix inverse.
+. Modify the code to copy the triangles (?). This would enable computing edge-flips.
+. Note that the method will fail if we try computing the 2-form Laplacian where the 1-form basis is BASIS_1_TRIANGLE_CONSTANT because we haven't defined the diagonal correctly.
+. Make the Point2DWrapper its own class and allow it to have coefficients that are themselves vectors.
+. Merge GetMassMatrix and GetLumpedMassMatrix
+. Check that flow/exponentiation uses tangent vectors where appropriate (and overload the coordinate transform function to support processing of tangent vectors)
+ ***********************************/
+
 namespace FEM
-{
+{	
 	//////////////
 	// Elements //
 	//////////////
@@ -69,6 +95,7 @@ namespace FEM
 		BASIS_2_VERTEX_CONSTANT ,		// 2-form represented as piecewise (around vertex) constant density fields (1 value per vertex)
 		BASIS_COUNT
 	};
+
 	static const char* BasisNames[] = { "scalar whitney" , "vector conforming" , "vector whitney" , "vector triangle constant" , "density whitney" , "density vertex constant" };
 	template< unsigned int Type > struct BasisInfo
 	{
@@ -79,6 +106,19 @@ namespace FEM
 		static const unsigned int Coefficients;
 		static const bool Singular;
 	};
+#include "FEM.BasisInfo.h"
+	template< class Real , unsigned int Type > struct BasisInfoSystem
+	{
+		typedef ::SquareMatrix<          Real , BasisInfo< Type >::Coefficients >     Matrix;
+		typedef ::SquareMatrix< unsigned char , BasisInfo< Type >::Coefficients > MaskMatrix;
+		typedef ::Point       <          Real , BasisInfo< Type >::Coefficients >      Point;
+	};
+	template< class Real , unsigned int InType , unsigned int OutType > struct BasisInfoSystem2
+	{
+		typedef ::Matrix< unsigned char , BasisInfo< InType >::Coefficients , BasisInfo< OutType >::Coefficients > MaskMatrix;
+		typedef ::Matrix<          Real , BasisInfo< InType >::Coefficients , BasisInfo< OutType >::Coefficients >     Matrix;
+	};
+
 	static void TestBasisType( unsigned int BasisType , const char* header , bool forceFailure )
 	{
 		if( BasisType>=BASIS_COUNT ) fprintf( stderr , "[ERROR] %s: Unrecognized basis type: 0 <= %d < %d\n" , header , BasisType , BASIS_COUNT ) , exit( 0 );
@@ -170,7 +210,19 @@ namespace FEM
 		template< unsigned int BasisType , class V > static CotangentVector< V > EvaluateCovectorField      ( const SquareMatrix< Real , 2 >& tensor , ConstPointer( V ) coefficients , const Point2D< Real >& position );
 		template< unsigned int BasisType , class V > static V                    EvaluateDensityField       ( const SquareMatrix< Real , 2 >& tensor , ConstPointer( V ) coefficients , const Point2D< Real >& position );
 
-		// Compute the (possible lumped/weighted) mass matrix
+		// Compute the (possibly lumped/weighted) mass matrix
+#ifdef NEW_FEM_CODE
+		template< unsigned int BasisType > static typename BasisInfoSystem< Real , BasisType >::Matrix        GetMassMatrix( const SquareMatrix< Real , 2 >& tensor );
+		template< unsigned int BasisType > static typename BasisInfoSystem< Real , BasisType >::Matrix        GetMassMatrix( const SquareMatrix< Real , 2 >& tensor , const SquareMatrix< Real , 2 >& newTensor );
+		template< unsigned int BasisType > static typename BasisInfoSystem< Real , BasisType >::Point GetDiagonalMassMatrix( const SquareMatrix< Real , 2 >& tensor );
+
+		// Compute the differential operator
+		template< unsigned int InBasisType , unsigned int OutBasisType > static typename BasisInfoSystem2< Real , InBasisType , OutBasisType >::Matrix GetDMatrix( const SquareMatrix< Real , 2 >& tensor );
+
+		// Compute the masks that indicate which entries could be non-zero
+		template< unsigned int BasisType > static typename BasisInfoSystem< Real , BasisType >::MaskMatrix GetMassMask( bool useTensor );
+		template< unsigned int InBasisType , unsigned int OutBasisType > static typename BasisInfoSystem2< Real , InBasisType , OutBasisType >::MaskMatrix GetDMask( bool& redundant );
+#else // !NEW_FEM_CODE
 		template< unsigned int BasisType > static SquareMatrix< Real , BasisInfo< BasisType >::Coefficients >  GetMassMatrix( const SquareMatrix< Real , 2 >& tensor );
 		template< unsigned int BasisType > static SquareMatrix< Real , BasisInfo< BasisType >::Coefficients >  GetMassMatrix( const SquareMatrix< Real , 2 >& tensor , const SquareMatrix< Real , 2 >& newTensor );
 		template< unsigned int BasisType > static Point< Real , BasisInfo< BasisType >::Coefficients > GetDiagonalMassMatrix( const SquareMatrix< Real , 2 >& tensor );
@@ -181,17 +233,27 @@ namespace FEM
 		// Compute the masks that indicate which entries could be non-zero
 		template< unsigned int BasisType > static SquareMatrix< unsigned char , BasisInfo< BasisType >::Coefficients > GetMassMask( bool useTensor );
 		template< unsigned int InBasisType , unsigned int OutBasisType > static Matrix< unsigned char , BasisInfo< InBasisType >::Coefficients , BasisInfo< OutBasisType >::Coefficients > GetDMask( bool& redundant );
+#endif // NEW_FEM_CODE
 
 		// Compute the integrals
 		template< unsigned int BasisType > static Real Integrate( const SquareMatrix< Real , 2 >& tensor , ConstPointer( Real ) linear );
+#ifdef NEW_FEM_CODE
+		template< unsigned int BasisType > static typename BasisInfoSystem< Real , BasisType >::Point IntegrationDual( const SquareMatrix< Real , 2 >& tensor , ConstPointer( Real ) linear );
+		template< unsigned int BasisType > static typename BasisInfoSystem< Real , BasisType >::Point IntegrationDual( const SquareMatrix< Real , 2 >& tensor , ConstPointer( CotangentVector< Real > ) linear );
+		template< unsigned int BasisType > static typename BasisInfoSystem< Real , BasisType >::Point IntegrationDual( const SquareMatrix< Real , 2 >& tensor , Point2D< Real > p , Point2D< Real > q );
+#else // !NEW_FEM_CODE
 		template< unsigned int BasisType > static Point< Real , BasisInfo< BasisType >::Coefficients > IntegrationDual( const SquareMatrix< Real , 2 >& tensor , ConstPointer( Real ) linear );
 		template< unsigned int BasisType > static Point< Real , BasisInfo< BasisType >::Coefficients > IntegrationDual( const SquareMatrix< Real , 2 >& tensor , ConstPointer( CotangentVector< Real > ) linear );
 		template< unsigned int BasisType > static Point< Real , BasisInfo< BasisType >::Coefficients > IntegrationDual( const SquareMatrix< Real , 2 >& tensor , Point2D< Real > p , Point2D< Real > q );
+#endif // NEW_FEM_CODE
 
 		static Point2D< Real > Center( const SquareMatrix< Real , 2 >& tensor , int centerType );
 		static Point3D< Real > CenterAreas( const SquareMatrix< Real , 2 >& tensor , int centerType );
 
 		static Point3D< Real > SubTriangleAreas( const SquareMatrix< Real , 2 >& tensor , Point2D< Real > center );
+
+		// Reflect a point across the specified edge
+		static Point2D< Real > EdgeReflect( const SquareMatrix< Real , 2 >& tensor , int e , Point2D< Real > p );
 	};
 
 	// Position on a mesh
@@ -212,7 +274,7 @@ namespace FEM
 		TangentVector< Real > v;
 		HermiteSamplePoint( void ){ ; }
 		HermiteSamplePoint( int tIdx , const Point2D< Real >& p , const TangentVector< Real > v=TangentVector< Real >() ){ this->tIdx = tIdx , this->p = p , this->v = v; }
-		HermiteSamplePoint( const SamplePoint< Real >& p , const Point2D< Real > v=TangentVector< Real >() ){ tIdx = p.tIdx , this->p = p.p , this->v = v; }
+		HermiteSamplePoint( const SamplePoint< Real >& p , const TangentVector< Real > v=TangentVector< Real >() ){ tIdx = p.tIdx , this->p = p.p , this->v = v; }
 	};
 	// Transformations taking points/directions in one coordinate frame to points/directions in the other
 	template< class Real >
@@ -255,16 +317,16 @@ namespace FEM
 	{
 		EdgeMap( ConstPointer( TriangleIndex ) triangles , size_t tCount );
 		~EdgeMap( void ){ FreePointer( _e2he ) ; FreePointer( _he2e ); }
-		unsigned int size( void ) const { return _eCount; }
+		size_t size( void ) const { return _eCount; }
 		// Given an edge index, this returns a pointer to the two half-edges adjacent on that edge. (The first is positively aligned with the edge.)
-		const int* operator[]( unsigned int eIdx ) const { return _e2he + eIdx*2; }
+		const int* operator[]( int eIdx ) const { return _e2he + eIdx*2; }
 		// Given a half-edge, this returns the index of the associated edge and indicates whether or not the alignment is consistent
-		int edge( unsigned int he , bool& aligned ) const { if( _he2e[he]<0 ){ aligned = false ; return -_he2e[he]-1; } else { aligned = true ; return _he2e[he]-1; } }
-		int edge( unsigned int he ) const { return std::max< int >( _he2e[he] , -_he2e[he] )-1; }
-		bool isAligned( unsigned int he ) const { return _he2e[he]>0; }
-		int opposite( unsigned int he ) const { int e = edge(he) ; return he==_e2he[ 2*e+0 ] ? _e2he[ 2*e+1 ] : _e2he[ 2*e+0 ]; }
+		int edge( int he , bool& aligned ) const { if( _he2e[he]<0 ){ aligned = false ; return -_he2e[he]-1; } else { aligned = true ; return _he2e[he]-1; } }
+		int edge( int he ) const { return std::max< int >( _he2e[he] , -_he2e[he] )-1; }
+		bool isAligned( int he ) const { return _he2e[he]>0; }
+		int opposite( int he ) const { int e = edge(he) ; return he==_e2he[ 2*e+0 ] ? _e2he[ 2*e+1 ] : _e2he[ 2*e+0 ]; }
 	protected:
-		unsigned int _eCount;
+		size_t _eCount;
 		Pointer( int ) _e2he;
 		Pointer( int ) _he2e;
 		template< typename Real > friend struct RiemannianMesh;
@@ -284,8 +346,13 @@ namespace FEM
 		size_t tCount( void ) const { return _tCount; }
 		size_t vCount( void ) const { return _vCount; }
 		size_t eCount( void ) const { return _edgeMap.size(); }
+
+		void edgeVertices( int e , int& v1 , int& v2 ) const;
+		bool oppositeEdgeVertices( int e , int& v1 , int& v2 ) const;
+
+		SquareMatrix< Real , 2 >& g( size_t t ){ return _g[t]; }
 		const SquareMatrix< Real , 2 >& g( size_t t ) const { return _g[t]; }
-		int opposite( unsigned int he ) const { return _edgeMap.opposite( he ); }
+		int opposite( int he ) const { return _edgeMap.opposite( he ); }
 		RiemannianMesh( Pointer( TriangleIndex ) t , size_t tC );
 		~RiemannianMesh( void );
 
@@ -300,8 +367,8 @@ namespace FEM
 
 		// Get the associated index, given the triangle and the index of the element within the triangle
 		template< unsigned int BasisType > size_t dimension( void ) const;
-		template< unsigned int BasisType > unsigned int index( unsigned int t , unsigned int idx ) const;
-		template< unsigned int BasisType > unsigned int index( unsigned int t , unsigned int idx , bool& isAligned ) const;
+		template< unsigned int BasisType > int index( int t , int idx ) const;
+		template< unsigned int BasisType > int index( int t , int idx , bool& isAligned ) const;
 
 		template< unsigned int BasisType , class V >                  V   evaluateScalarField        ( ConstPointer( V ) coefficients , const SamplePoint< Real >& p ) const;
 		template< unsigned int BasisType , class V > CotangentVector< V > evaluateScalarFieldGradient( ConstPointer( V ) coefficients , const SamplePoint< Real >& p ) const;
@@ -311,27 +378,29 @@ namespace FEM
 		// Geometric Operators //
 		/////////////////////////
 		template< unsigned int BasisType > SparseMatrix< Real , int > massMatrix( bool lump=false , ConstPointer( SquareMatrix< Real , 2 > ) newTensors = NullPointer< SquareMatrix< Real , 2 > >() ) const;
+		template< unsigned int InBasisType , unsigned int OutBasisType > SparseMatrix< Real , int > dMatrix( void ) const;
+		template< unsigned int BasisType , unsigned int PreBasisType , unsigned int PostBasisType > SparseMatrix< Real , int > stiffnessMatrix( ConstPointer( SquareMatrix< Real , 2 > ) newTensors = NullPointer< SquareMatrix< Real , 2 > >() ) const;
+		template< unsigned int BasisType > SparseMatrix< Real , int > stiffnessMatrix( void ) const;
 
 		// Integrate the piecewise linear function over the mesh
 		Real getIntegral( ConstPointer( Real ) coefficients ) const;
+		Real getDotProduct( ConstPointer( Real ) c1 , ConstPointer( Real ) c2 , bool lump ) const;
 
-		CoordinateXForm< Real >  exp( ConstPointer( CoordinateXForm< Real > ) xForms , HermiteSamplePoint< Real >& p , Real eps=(Real)0 ) const;
-		CoordinateXForm< Real > flow( ConstPointer( CoordinateXForm< Real > ) xForms , const TangentVectorField< Real >& vf , Real flowTime , SamplePoint< Real >& p ,                                  Real minStepSize , Real eps=(Real)0 , std::vector< SamplePoint< Real > >* path=NULL ) const;
-		Real                    flow( ConstPointer( CoordinateXForm< Real > ) xForms , const TangentVectorField< Real >& vf , Real flowTime , SamplePoint< Real >& p , CoordinateXForm< Real >& xForm , Real minStepSize , Real eps=(Real)0 ) const;
+		CoordinateXForm< Real >  exp( ConstPointer( CoordinateXForm< Real > ) xForms , HermiteSamplePoint< Real >& p , Real eps=(Real)0 , bool noWarning=false ) const;
+		CoordinateXForm< Real > flow( ConstPointer( CoordinateXForm< Real > ) xForms , const TangentVectorField< Real >& vf , Real flowTime , SamplePoint< Real >& p , Real minStepSize , Real eps=(Real)0 , std::vector< SamplePoint< Real > >* path=NULL , bool noWarning=false ) const;
 
 		Pointer( CoordinateXForm< Real > ) getCoordinateXForms( void ) const;
 		void                               setCoordinateXForms( Pointer( CoordinateXForm< Real > ) xForms ) const;
 		CoordinateXForm< Real > getVertexCoordinateXForm( ConstPointer( CoordinateXForm< Real > ) xForms , int t , int v ) const;
-		CoordinateXForm< Real > xForm( unsigned int he ) const;
-		std::vector< unsigned int > getVertexCorners( int t , int v ) const;
+		CoordinateXForm< Real > xForm( int he ) const;
+		std::vector< int > getVertexCorners( int t , int v ) const;
 		Real getVertexConeAngle( int t , int v ) const;
 
 		bool edgeFlip( int e , Real eps=0 );
-		bool isVoronoiEdge( unsigned int e , Real eps=0 ) const;
+		bool isVoronoiEdge( int e , Real eps=0 ) const;
 
 		std::vector< SamplePoint< Real > > randomSamples( unsigned int count ) const;
 	};
-
 	template< class Real , unsigned int BasisType >
 	struct TangentVectorFieldWrapper : public TangentVectorField< Real >
 	{
@@ -355,47 +424,10 @@ template<> const unsigned int FEM::ElementInfo< FEM::ELEMENT_VERTEX   >::Element
 template<> const unsigned int FEM::ElementInfo< FEM::ELEMENT_EDGE     >::ElementsPerTriangle = 3;
 template<> const unsigned int FEM::ElementInfo< FEM::ELEMENT_TRIANGLE >::ElementsPerTriangle = 1;
 
-template<> const unsigned int FEM::BasisInfo< FEM::BASIS_0_WHITNEY           >::CoefficientsPerElement = 1;
-template<> const unsigned int FEM::BasisInfo< FEM::BASIS_1_CONFORMING        >::CoefficientsPerElement = 2;
-template<> const unsigned int FEM::BasisInfo< FEM::BASIS_1_WHITNEY           >::CoefficientsPerElement = 1;
-template<> const unsigned int FEM::BasisInfo< FEM::BASIS_1_TRIANGLE_CONSTANT >::CoefficientsPerElement = 2;
-template<> const unsigned int FEM::BasisInfo< FEM::BASIS_2_WHITNEY           >::CoefficientsPerElement = 1;
-template<> const unsigned int FEM::BasisInfo< FEM::BASIS_2_VERTEX_CONSTANT   >::CoefficientsPerElement = 1;
-
-template<> const unsigned int FEM::BasisInfo< FEM::BASIS_0_WHITNEY           >::Coefficients = 3;
-template<> const unsigned int FEM::BasisInfo< FEM::BASIS_1_CONFORMING        >::Coefficients = 6;
-template<> const unsigned int FEM::BasisInfo< FEM::BASIS_1_WHITNEY           >::Coefficients = 3;
-template<> const unsigned int FEM::BasisInfo< FEM::BASIS_1_TRIANGLE_CONSTANT >::Coefficients = 2;
-template<> const unsigned int FEM::BasisInfo< FEM::BASIS_2_WHITNEY           >::Coefficients = 1;
-template<> const unsigned int FEM::BasisInfo< FEM::BASIS_2_VERTEX_CONSTANT   >::Coefficients = 3;
-
-template<> const unsigned int FEM::BasisInfo< FEM::BASIS_0_WHITNEY           >::Dimension = 0;
-template<> const unsigned int FEM::BasisInfo< FEM::BASIS_1_CONFORMING        >::Dimension = 1;
-template<> const unsigned int FEM::BasisInfo< FEM::BASIS_1_WHITNEY           >::Dimension = 1;
-template<> const unsigned int FEM::BasisInfo< FEM::BASIS_1_TRIANGLE_CONSTANT >::Dimension = 1;
-template<> const unsigned int FEM::BasisInfo< FEM::BASIS_2_WHITNEY           >::Dimension = 2;
-template<> const unsigned int FEM::BasisInfo< FEM::BASIS_2_VERTEX_CONSTANT   >::Dimension = 2;
-
-template<> const bool FEM::BasisInfo< FEM::BASIS_0_WHITNEY           >::Lumpable = true;
-template<> const bool FEM::BasisInfo< FEM::BASIS_1_CONFORMING        >::Lumpable = false;
-template<> const bool FEM::BasisInfo< FEM::BASIS_1_WHITNEY           >::Lumpable = true;
-template<> const bool FEM::BasisInfo< FEM::BASIS_1_TRIANGLE_CONSTANT >::Lumpable = false;
-template<> const bool FEM::BasisInfo< FEM::BASIS_2_WHITNEY           >::Lumpable = true;
-template<> const bool FEM::BasisInfo< FEM::BASIS_2_VERTEX_CONSTANT   >::Lumpable = true;
-
-template<> const unsigned int FEM::BasisInfo< FEM::BASIS_0_WHITNEY           >::ElementType = FEM::ELEMENT_VERTEX;
-template<> const unsigned int FEM::BasisInfo< FEM::BASIS_1_CONFORMING        >::ElementType = FEM::ELEMENT_VERTEX;
-template<> const unsigned int FEM::BasisInfo< FEM::BASIS_1_WHITNEY           >::ElementType = FEM::ELEMENT_EDGE;
-template<> const unsigned int FEM::BasisInfo< FEM::BASIS_1_TRIANGLE_CONSTANT >::ElementType = FEM::ELEMENT_TRIANGLE;
-template<> const unsigned int FEM::BasisInfo< FEM::BASIS_2_WHITNEY           >::ElementType = FEM::ELEMENT_TRIANGLE;
-template<> const unsigned int FEM::BasisInfo< FEM::BASIS_2_VERTEX_CONSTANT   >::ElementType = FEM::ELEMENT_VERTEX;
-
-template<> const bool FEM::BasisInfo< FEM::BASIS_0_WHITNEY           >::Singular = false;
-template<> const bool FEM::BasisInfo< FEM::BASIS_1_CONFORMING        >::Singular = true;
-template<> const bool FEM::BasisInfo< FEM::BASIS_1_WHITNEY           >::Singular = false;
-template<> const bool FEM::BasisInfo< FEM::BASIS_1_TRIANGLE_CONSTANT >::Singular = false;
-template<> const bool FEM::BasisInfo< FEM::BASIS_2_WHITNEY           >::Singular = false;
-template<> const bool FEM::BasisInfo< FEM::BASIS_2_VERTEX_CONSTANT   >::Singular = false;
-
 #include "FEM.inl"
+
+#ifdef INCLUDE_EXTRA_FEM
+#include "FEM_Extra.h"
+#endif // INCLUDE_EXTRA_FEM
+
 #endif // FEM_INCLUDED

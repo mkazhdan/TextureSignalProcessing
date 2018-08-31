@@ -307,7 +307,8 @@ int InitializeBoundaryEdges(const TexturedMesh & mesh, std::vector<int> & bounda
 	return 1;
 }
 
-void SmoothSignal(const Eigen::SparseMatrix<double> & massMatrix, const Eigen::SimplicialLDLT< Eigen::SparseMatrix< double > > & solver, std::vector<Point3D<double>> & signal, bool normalize = false){
+void SmoothSignal( const Eigen::SparseMatrix< double > & massMatrix , const Eigen::SimplicialLDLT< Eigen::SparseMatrix< double > >& solver , std::vector< Point3D< double > >& signal , bool normalize = false )
+{
 	int vCount = (int)signal.size();
 
 	for (int c = 0; c < 3; c++){

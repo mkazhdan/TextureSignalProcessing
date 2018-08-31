@@ -32,6 +32,7 @@ DAMAGE.
 #include <vector>
 
 #ifdef _WIN64
+#include <io.h>
 #define ASSERT( x ) { if( !( x ) ) __debugbreak(); }
 #else // !_WIN64
 #ifdef _WIN32
@@ -77,12 +78,15 @@ template< class C >      Array< C > GetPointer(       C& c ) { return      Array
 template< class C > ConstArray< C > GetPointer( const C& c ) { return ConstArray< C >::FromPointer( &c , 1 ); }
 template< class C >      Array< C > GetPointer(       std::vector< C >& v ){ return      Array< C >::FromPointer( &v[0] , v.size() ); }
 template< class C > ConstArray< C > GetPointer( const std::vector< C >& v ){ return ConstArray< C >::FromPointer( &v[0] , v.size() ); }
+template< class C >      Array< C > GetPointer(       C* c , size_t sz ){ return      Array< C >::FromPointer( c , sz ); }
+template< class C > ConstArray< C > GetPointer( const C* c , size_t sz ){ return ConstArray< C >::FromPointer( c , sz ); }
 //template< class C >      Array< C > GetPointer(      Array< C >& a ) { return a; }
 //template< class C > ConstArray< C > GetPointer( ConstArray< C >& a ) { return a; }
 
 template< class C >       C* GetAddress(       Array< C >&  a ){ return a.pointer(); }
 template< class C > const C* GetAddress( const Array< C >&  a ){ return a.pointer(); }
 template< class C > const C* GetAddress(  ConstArray< C >&  a ){ return a.pointer(); }
+
 
 #else // !ARRAY_DEBUG
 #define      Pointer( ... )       __VA_ARGS__*
@@ -103,6 +107,8 @@ template< class C >       C* GetPointer(       C& c ){ return &c; }
 template< class C > const C* GetPointer( const C& c ){ return &c; }
 template< class C >       C* GetPointer(       std::vector< C >& v ){ return &v[0]; }
 template< class C > const C* GetPointer( const std::vector< C >& v ){ return &v[0]; }
+template< class C >       C* GetPointer(       C* c , size_t sz ){ return c; }
+template< class C > const C* GetPointer( const C* c , size_t sz ){ return c; }
 
 template< class C >       C* GetAddress(       C* c ) { return c; }
 template< class C > const C* GetAddress( const C* c ) { return c; }

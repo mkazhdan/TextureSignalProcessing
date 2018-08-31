@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2015, Michael Kazhdan
+Copyright (c) 2015, Michael Kazhdan and Fabian Prada
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -80,10 +80,10 @@ SquareMatrix< Real , 2 > FEM::TensorRoot( const SquareMatrix< Real , 2 >& tensor
 	// Code borrowed from: https://en.wikipedia.org/wiki/Square_root_of_a_2_by_2_matrix
 	SquareMatrix< Real , 2 > root = tensor;
 	Real det = tensor.determinant();
-	if( det<0 ) fprintf( stderr , "[ERROR] Negative determinant: %g\n" , det ) , exit( 0 );
+	if( det<0 ) fprintf( stderr , "[ERROR] FEM::TensorRoot: Negative determinant: %g\n" , det ) , exit( 0 );
 	Real s = (Real)sqrt( det );
 	Real disc = (Real)( tensor.trace() + 2. * s );
-	if( disc<0 ) fprintf( stderr , "[ERROR] Negative discriminant: %g\n" , disc ) , exit( 0 );
+	if( disc<0 ) fprintf( stderr , "[ERROR] FEM::TensorRoot: Negative discriminant: %g\n" , disc ) , exit( 0 );
 	root(0,0) += s , root(1,1) += s;
 	return root / (Real)sqrt( disc );
 }
@@ -170,7 +170,7 @@ inline Point2D< Real > FEM::RightTriangle< Real >::Center( const SquareMatrix< R
 			return c;
 		}
 	default:
-		fprintf( stderr , "[ERROR] Unrecognized dual type: %d\n" , centerType ) , exit( 0 );
+		fprintf( stderr , "[ERROR] FEM::RightTriangle::Center: Unrecognized center type: %d\n" , centerType ) , exit( 0 );
 	}
 }
 template< class Real >
@@ -190,6 +190,13 @@ template< class Real >
 inline Point3D< Real > FEM::RightTriangle< Real >::CenterAreas( const SquareMatrix< Real , 2 >& tensor , int centerType ){ return SubTriangleAreas( tensor , Center( tensor , centerType ) ); }
 
 template< class Real >
+inline Point2D< Real > FEM::RightTriangle< Real >::EdgeReflect( const SquareMatrix< Real , 2 >& tensor , int e , Point2D< Real > p )
+{
+	Point2D< Real > c = Corners[(e+1)%3] , v = p - c ,  perp = Rotate90( tensor , EdgeDirections[e] );
+	return c + v - ( 2 * Point2D< Real >::Dot( perp , tensor * v ) / Point2D< Real >::Dot( perp , tensor * perp ) ) * perp;
+}
+
+template< class Real >
 template< unsigned int BasisType , class V >
 inline V FEM::RightTriangle< Real >::EvaluateScalarField( ConstPointer( V ) c , const Point2D< Real >& p )
 {
@@ -206,7 +213,7 @@ FEM::CotangentVector< V > FEM::RightTriangle< Real >::EvaluateScalarFieldGradien
 	switch( BasisType )
 	{
 		case BASIS_0_WHITNEY: return CotangentVector< V >( c[0]*CornerGradients[0][0] + c[1]*CornerGradients[1][0] + c[2]*CornerGradients[2][0] , c[0]*CornerGradients[0][1] + c[1]*CornerGradients[1][1] + c[2]*CornerGradients[2][1] );
-		default: fprintf( stderr , "[ERROR] FEM::RightTriangle::EvaluateScalarField: unrecognized basis type: %d\n" , BasisType ) , exit( 0 );
+		default: fprintf( stderr , "[ERROR] FEM::RightTriangle::EvaluateScalarFieldGradient: unrecognized basis type: %d\n" , BasisType ) , exit( 0 );
 	}
 }
 template< class Real >
@@ -238,12 +245,16 @@ inline V FEM::RightTriangle< Real >::EvaluateDensityField( const SquareMatrix< R
 	switch( BasisType )
 	{
 		case BASIS_2_WHITNEY: return c[0] / Area( tensor );
-		default: fprintf( stderr , "[ERROR] FEM::RightTriangle::EvaluateVectorField: unrecognized basis type: %d\n" , BasisType ) , exit( 0 );
+		default: fprintf( stderr , "[ERROR] FEM::RightTriangle::EvaluateDensityField: unrecognized basis type: %d\n" , BasisType ) , exit( 0 );
 	}
 }
 template< class Real >
 template< unsigned int InBasisType , unsigned int OutBasisType >
+#ifdef NEW_FEM_CODE
+typename FEM::BasisInfoSystem2< Real , InBasisType , OutBasisType >::MaskMatrix FEM::RightTriangle< Real >::GetDMask( bool& redundant )
+#else // !NEW_FEM_CODE
 Matrix< unsigned char , FEM::BasisInfo< InBasisType >::Coefficients , FEM::BasisInfo< OutBasisType >::Coefficients > FEM::RightTriangle< Real >::GetDMask( bool& redundant )
+#endif // NEW_FEM_CODE
 {
 	auto Fail = [&] ( void ){ fprintf( stderr , "[ERROR] FEM::RightTriangle::GetDMask: %s -> %s\n" , BasisNames[ InBasisType ] , BasisNames[ OutBasisType ] ) , exit( 0 ); };
 
@@ -277,7 +288,11 @@ Matrix< unsigned char , FEM::BasisInfo< InBasisType >::Coefficients , FEM::Basis
 }
 template< class Real >
 template< unsigned int InBasisType , unsigned int OutBasisType >
+#ifdef NEW_FEM_CODE
+typename FEM::BasisInfoSystem2< Real , InBasisType , OutBasisType >::Matrix FEM::RightTriangle< Real >::GetDMatrix( const SquareMatrix< Real , 2 >& tensor )
+#else // !NEW_FEM_CODE
 Matrix< Real , FEM::BasisInfo< InBasisType >::Coefficients , FEM::BasisInfo< OutBasisType >::Coefficients > FEM::RightTriangle< Real >::GetDMatrix( const SquareMatrix< Real , 2 >& tensor )
+#endif // NEW_FEM_CODE
 {
 	auto Fail = [&] ( void ){ fprintf( stderr , "[ERROR] FEM::RightTriangle::GetDMatrix: %s -> %s\n" , BasisNames[ InBasisType ] , BasisNames[ OutBasisType ] ) , exit( 0 ); };
 
@@ -317,7 +332,11 @@ Matrix< Real , FEM::BasisInfo< InBasisType >::Coefficients , FEM::BasisInfo< Out
 }
 template< class Real >
 template< unsigned int BasisType >
+#ifdef NEW_FEM_CODE
+typename FEM::BasisInfoSystem< Real , BasisType >::Matrix FEM::RightTriangle< Real >::GetMassMatrix( const SquareMatrix< Real , 2 >& tensor )
+#else // !NEW_FEM_CODE
 SquareMatrix< Real , FEM::BasisInfo< BasisType >::Coefficients > FEM::RightTriangle< Real >::GetMassMatrix( const SquareMatrix< Real , 2 >& tensor )
+#endif // NEW_FEM_CODE
 {
 	SquareMatrix< Real , BasisInfo< BasisType >::Coefficients > mass;
 
@@ -327,15 +346,15 @@ SquareMatrix< Real , FEM::BasisInfo< BasisType >::Coefficients > FEM::RightTrian
 		{
 			{
 				mass(0,0) = mass(1,1) = mass(2,2) = (Real)1./6;
-				mass(1,0) = mass(0,1) = mass(1,2) = mass(2,1) = mass(0,2) = mass(2,0) = (Real)1./12;		
-				mass *= Area( tensor , Corners );
+				mass(1,0) = mass(0,1) = mass(1,2) = mass(2,1) = mass(0,2) = mass(2,0) = (Real)1./12;	
+				mass *= (Real)( sqrt( tensor.determinant() ) / 2. );
 			}
 			break;
 		}
 		case BASIS_1_CONFORMING:
 		{
 			{
-				SquareMatrix< Real , 2 > iTensor = tensor.inverse() * Area( tensor , Corners );
+				SquareMatrix< Real , 2 > iTensor = tensor.inverse() * (Real)( sqrt( tensor.determinant() ) / 2. );
 				for( int i=0 ; i<3 ; i++ ) for( int j=0 ; j<3 ; j++ ) mass( 2*i , 2*j ) = mass( 2*i+1 , 2*j+1 ) = Point2D< Real >::Dot( CornerGradients[i] , iTensor * CornerGradients[j] );
 			}
 			break;
@@ -357,14 +376,14 @@ SquareMatrix< Real , FEM::BasisInfo< BasisType >::Coefficients > FEM::RightTrian
 		{
 			SquareMatrix< Real , 2 > iTensor = tensor.inverse();
 			for( int i=0 ; i<2 ; i++ ) for( int j=0 ; j<2 ; j++ ) mass(i,j) = iTensor(i,j);
-			mass *= Area( tensor , Corners );
+			mass *= (Real)( sqrt( tensor.determinant() ) / 2. );
 			break;
 		}
 		case BASIS_2_WHITNEY:
-			{	
-				mass(0,0) = (Real)( 1./Area( tensor , Corners ) );
-			}
-			break;
+		{
+			mass(0,0) = (Real)( 1./(Real)( sqrt( tensor.determinant() ) / 2. ) );
+		}
+		break;
 		default: TestBasisType( BasisType , "FEM::RightTriangle::GetMassMatrix" , true );
 	}
 
@@ -372,7 +391,91 @@ SquareMatrix< Real , FEM::BasisInfo< BasisType >::Coefficients > FEM::RightTrian
 }
 template< class Real >
 template< unsigned int BasisType >
+#ifdef NEW_FEM_CODE
+typename FEM::BasisInfoSystem< Real , BasisType >::Matrix FEM::RightTriangle< Real >::GetMassMatrix( const SquareMatrix< Real , 2 >& tensor , const SquareMatrix< Real , 2 >& newTensor )
+#else // !NEW_FEM_CODE
+SquareMatrix< Real , FEM::BasisInfo< BasisType >::Coefficients > FEM::RightTriangle< Real >::GetMassMatrix( const SquareMatrix< Real , 2 >& tensor , const SquareMatrix< Real , 2 >& newTensor )
+#endif // NEW_FEM_CODE
+{
+	SquareMatrix< Real , BasisInfo< BasisType >::Coefficients > mass;
+	SquareMatrix< Real , 2 > tensor_i = tensor.inverse() , newCotensor = tensor_i.transpose() * newTensor * tensor_i;
+
+	switch( BasisType )
+	{
+		case BASIS_1_CONFORMING:
+		{
+			CotangentVector< Real > grads[] = { CornerGradients[0] , Rotate90( tensor , CornerGradients[0] ) , CornerGradients[1] , Rotate90( tensor , CornerGradients[1] ) , CornerGradients[2] , Rotate90( tensor , CornerGradients[2] ) };
+			for( int i=0 ; i<6 ; i++ ) for( int j=0 ; j<6 ; j++ ) mass(i,j) = Point2D< Real >::Dot( grads[i]  , newCotensor * grads[j] );
+			mass *= (Real)( sqrt( tensor.determinant() ) / 2. );
+			break;
+		}
+		case BASIS_1_TRIANGLE_CONSTANT:
+		{
+			for( int i=0 ; i<2 ; i++ ) for( int j=0 ; j<2 ; j++ ) mass(i,j) = newCotensor(i,j);
+			mass *= (Real)( sqrt( tensor.determinant() ) / 2. );
+			break;
+		}
+		case BASIS_1_WHITNEY:
+		{
+			SquareMatrix< Real , 3 > M = GetMassMatrix< BASIS_0_WHITNEY >( tensor ) , S;
+			for( int i=0 ; i<3 ; i++ ) for( int j=0 ; j<3 ; j++ ) S(i,j) = Point2D< Real >::Dot( CornerGradients[i] , newCotensor * CornerGradients[j] );
+		
+			const int I[][2] = { {1,2} , {2,0} , {0,1} };
+			for( int i=0 ; i<3;  i++ ) for( int j=0 ; j<3 ; j++ )
+				mass(i,j) = M( I[i][0] , I[j][0] ) * S( I[i][1] , I[j][1] ) + M( I[i][1] , I[j][1] ) * S( I[i][0] , I[j][0] ) - M( I[i][0] , I[j][1] ) * S( I[i][1] , I[j][0] ) - M( I[i][1] , I[j][0] ) * S( I[i][0] , I[j][1] );
+			break;
+		}
+		default: TestBasisType( BasisType , "FEM::RightTriangle::GetCovectorMassMatrix" , true );
+	}
+
+	return mass;
+}
+template< class Real >
+template< unsigned int BasisType >
+#ifdef NEW_FEM_CODE
+typename FEM::BasisInfoSystem< Real , BasisType >::Point FEM::RightTriangle< Real >::GetDiagonalMassMatrix( const SquareMatrix< Real , 2 >& tensor )
+#else // !NEW_FEM_CODE
+Point< Real , FEM::BasisInfo< BasisType >::Coefficients > FEM::RightTriangle< Real >::GetDiagonalMassMatrix( const SquareMatrix< Real , 2 >& tensor )
+#endif // NEW_FEM_CODE
+{
+	Point< Real , BasisInfo< BasisType >::Coefficients > mass;
+
+	switch( BasisType )
+	{
+		case BASIS_0_WHITNEY:
+			mass[0] = mass[1] = mass[2] = (Real)( sqrt( tensor.determinant() ) / 6. );
+			break;
+		case BASIS_1_CONFORMING:
+		{
+			Point3D< Real > areas = CenterAreas( tensor , CENTER_CIRCUMCENTRIC )*2;
+			mass[0] = mass[1] = areas[0] / SquareLength( tensor , EdgeDirections[0] );
+			mass[2] = mass[3] = areas[1] / SquareLength( tensor , EdgeDirections[1] );
+			mass[4] = mass[5] = areas[2] / SquareLength( tensor , EdgeDirections[2] );
+			break;
+		}
+		case BASIS_1_WHITNEY:
+		{
+			Point3D< Real > areas = CenterAreas( tensor , CENTER_CIRCUMCENTRIC )*2;
+			mass[0] = areas[0] / SquareLength( tensor , EdgeDirections[0] );
+			mass[1] = areas[1] / SquareLength( tensor , EdgeDirections[1] );
+			mass[2] = areas[2] / SquareLength( tensor , EdgeDirections[2] );
+			break;
+		}
+		case BASIS_2_WHITNEY:
+			mass[0] = (Real)( 1./( sqrt( tensor.determinant() ) / 2. ) );
+			break;
+		default: TestBasisType( BasisType , "FEM::RightTriangle::GetDiagonalMassMatrix" , true );
+	}
+
+	return mass;
+}
+template< class Real >
+template< unsigned int BasisType >
+#ifdef NEW_FEM_CODE
+typename FEM::BasisInfoSystem< Real , BasisType >::MaskMatrix FEM::RightTriangle< Real >::GetMassMask( bool useTensor )
+#else // !NEW_FEM_CODE
 SquareMatrix< unsigned char , FEM::BasisInfo< BasisType >::Coefficients > FEM::RightTriangle< Real >::GetMassMask( bool useTensor )
+#endif // NEW_FEM_CODE
 {
 	SquareMatrix< unsigned char , BasisInfo< BasisType >::Coefficients > M;
 	M *= 0;
@@ -401,88 +504,6 @@ SquareMatrix< unsigned char , FEM::BasisInfo< BasisType >::Coefficients > FEM::R
 }
 template< class Real >
 template< unsigned int BasisType >
-Point< Real , FEM::BasisInfo< BasisType >::Coefficients > FEM::RightTriangle< Real >::GetDiagonalMassMatrix( const SquareMatrix< Real , 2 >& tensor )
-{
-	Point< Real , BasisInfo< BasisType >::Coefficients > mass;
-
-	switch( BasisType )
-	{
-		case BASIS_0_WHITNEY:
-			mass[0] = mass[1] = mass[2] = Area( tensor , Corners ) / (Real)3.;
-			break;
-		case BASIS_1_CONFORMING:
-		{
-			Point3D< Real > areas = CenterAreas( tensor , CENTER_CIRCUMCENTRIC )*2;
-			mass[0] = mass[1] = areas[0] / SquareLength( tensor , EdgeDirections[0] );
-			mass[2] = mass[3] = areas[1] / SquareLength( tensor , EdgeDirections[1] );
-			mass[4] = mass[5] = areas[2] / SquareLength( tensor , EdgeDirections[2] );
-			break;
-		}
-		case BASIS_1_WHITNEY:
-		{
-			Point3D< Real > areas = CenterAreas( tensor , CENTER_CIRCUMCENTRIC )*2;
-			mass[0] = areas[0] / SquareLength( tensor , EdgeDirections[0] );
-			mass[1] = areas[1] / SquareLength( tensor , EdgeDirections[1] );
-			mass[2] = areas[2] / SquareLength( tensor , EdgeDirections[2] );
-			break;
-		}
-		case BASIS_2_WHITNEY:
-			mass[0] = (Real)( 1./Area( tensor , RightTriangle< Real >::Corners ) );
-			break;
-		default: TestBasisType( BasisType , "FEM::RightTriangle::GetDiagonalMassMatrix" , true );
-	}
-
-	return mass;
-}
-template< class Real >
-template< unsigned int BasisType >
-SquareMatrix< Real , FEM::BasisInfo< BasisType >::Coefficients > FEM::RightTriangle< Real >::GetMassMatrix( const SquareMatrix< Real , 2 >& tensor , const SquareMatrix< Real , 2 >& newTensor )
-{
-	SquareMatrix< Real , BasisInfo< BasisType >::Coefficients > mass;
-	SquareMatrix< Real , 2 > tensor_i = tensor.inverse() , cotensor = tensor_i.transpose() * newTensor * tensor_i;
-
-	switch( BasisType )
-	{
-		case BASIS_0_WHITNEY:
-		{
-			mass(0,0) = mass(1,1) = mass(2,2) = (Real)1./6;
-			mass(1,0) = mass(0,1) = mass(1,2) = mass(2,1) = mass(0,2) = mass(2,0) = (Real)1./12;		
-			mass *= Area( tensor , Corners );
-			break;
-		}
-		case BASIS_1_CONFORMING:
-		{
-			CotangentVector< Real > grads[] = { CornerGradients[0] , Rotate90( tensor , CornerGradients[0] ) , CornerGradients[1] , Rotate90( tensor , CornerGradients[1] ) , CornerGradients[2] , Rotate90( tensor , CornerGradients[2] ) };
-			for( int i=0 ; i<6 ; i++ ) for( int j=0 ; j<6 ; j++ ) mass(i,j) = Point2D< Real >::Dot( grads[i]  , cotensor * grads[j] );
-			mass *= Area( tensor , Corners );
-			break;
-		}
-		case BASIS_1_TRIANGLE_CONSTANT:
-		{
-			for( int i=0 ; i<2 ; i++ ) for( int j=0 ; j<2 ; j++ ) mass(i,j) = cotensor(i,j);
-			mass *= Area( tensor , Corners );
-			break;
-		}
-		case BASIS_1_WHITNEY:
-		{
-			SquareMatrix< Real , 3 > M = GetMassMatrix< BASIS_0_WHITNEY >( tensor ) , S;
-			for( int i=0 ; i<3 ; i++ ) for( int j=0 ; j<3 ; j++ ) S(i,j) = Point2D< Real >::Dot( CornerGradients[i] , cotensor * CornerGradients[j] );
-		
-			const int I[][2] = { {1,2} , {2,0} , {0,1} };
-			for( int i=0 ; i<3;  i++ ) for( int j=0 ; j<3 ; j++ )
-				mass(i,j) = M( I[i][0] , I[j][0] ) * S( I[i][1] , I[j][1] ) + M( I[i][1] , I[j][1] ) * S( I[i][0] , I[j][0] ) - M( I[i][0] , I[j][1] ) * S( I[i][1] , I[j][0] ) - M( I[i][1] , I[j][0] ) * S( I[i][0] , I[j][1] );
-			break;
-		}
-		case BASIS_2_WHITNEY:
-			mass(0,0) = (Real)( cotensor.determinant() / Area( tensor , Corners ) );
-			break;
-		default: TestBasisType( BasisType , "FEM::RightTriangle::GetMassMatrix" , true );
-	}
-
-	return mass;
-}
-template< class Real >
-template< unsigned int BasisType >
 Real FEM::RightTriangle< Real >::Integrate( const SquareMatrix< Real , 2 >& tensor , ConstPointer( Real ) linear )
 {
 	Real integral = 0;
@@ -500,7 +521,11 @@ Real FEM::RightTriangle< Real >::Integrate( const SquareMatrix< Real , 2 >& tens
 }
 template< class Real >
 template< unsigned int BasisType >
+#ifdef NEW_FEM_CODE
+typename FEM::BasisInfoSystem< Real , BasisType >::Point FEM::RightTriangle< Real >::IntegrationDual( const SquareMatrix< Real , 2 >& tensor , ConstPointer( Real ) linear )
+#else // !NEW_FEM_CODE
 Point< Real , FEM::BasisInfo< BasisType >::Coefficients > FEM::RightTriangle< Real >::IntegrationDual( const SquareMatrix< Real , 2 >& tensor , ConstPointer( Real ) linear )
+#endif // NEW_FEM_CODE
 {
 	Point< Real , BasisInfo< BasisType >::Coefficients > integralDual;
 	switch( BasisType )
@@ -517,7 +542,11 @@ Point< Real , FEM::BasisInfo< BasisType >::Coefficients > FEM::RightTriangle< Re
 }
 template< class Real >
 template< unsigned int BasisType >
+#ifdef NEW_FEM_CODE
+typename FEM::BasisInfoSystem< Real , BasisType >::Point FEM::RightTriangle< Real >::IntegrationDual( const SquareMatrix< Real , 2 >& tensor , ConstPointer( CotangentVector< Real > ) linear )
+#else // !NEW_FEM_CODE
 Point< Real , FEM::BasisInfo< BasisType >::Coefficients > FEM::RightTriangle< Real >::IntegrationDual( const SquareMatrix< Real , 2 >& tensor , ConstPointer( CotangentVector< Real > ) linear )
+#endif // NEW_FEM_CODE
 {
 	Point< Real , BasisInfo< BasisType >::Coefficients > integralD;
 	switch( BasisType )
@@ -577,7 +606,11 @@ Point< Real , FEM::BasisInfo< BasisType >::Coefficients > FEM::RightTriangle< Re
 }
 template< class Real >
 template< unsigned int BasisType >
+#ifdef NEW_FEM_CODE
+typename FEM::BasisInfoSystem< Real , BasisType >::Point FEM::RightTriangle< Real >::IntegrationDual( const SquareMatrix< Real , 2 >& tensor , Point2D< Real > p , Point2D< Real > q )
+#else // !NEW_FEM_CODE
 Point< Real , FEM::BasisInfo< BasisType >::Coefficients > FEM::RightTriangle< Real >::IntegrationDual( const SquareMatrix< Real , 2 >& tensor , Point2D< Real > p , Point2D< Real > q )
+#endif // NEW_FEM_CODE
 {
 	Point< Real , BasisInfo< BasisType >::Coefficients > integralDual , coefficients;
 	switch( BasisType )
@@ -625,11 +658,11 @@ FEM::TangentVector< Real > FEM::TangentVectorFieldWrapper< Real , BasisType >::o
 	Real c[BasisInfo< BasisType >::Coefficients];
 	for( int i=0 ; i<BasisInfo< BasisType >::Coefficients ; i++ )
 	{
-		unsigned int idx =_mesh->index< BasisType >( p.tIdx , i , isAligned );
+		int idx =_mesh->template index< BasisType >( p.tIdx , i , isAligned );
 		c[i] = isAligned ? _coefficients[ idx ] : -_coefficients[ idx ] ;
 	}
-	if( _gInverse ) return _gInverse[ p.tIdx ]          * RightTriangle< Real >::EvaluateCovectorField< BasisType >( _mesh->g(p.tIdx) , ( ConstPointer( Real ) )GetPointer( &c[0] , BasisInfo< BasisType >::Coefficients ) , p.p );
-	else            return _mesh->g( p.tIdx ).inverse() * RightTriangle< Real >::EvaluateCovectorField< BasisType >( _mesh->g(p.tIdx) , ( ConstPointer( Real ) )GetPointer( &c[0] , BasisInfo< BasisType >::Coefficients ) , p.p );
+	if( _gInverse ) return _gInverse[ p.tIdx ]          * RightTriangle< Real >::template EvaluateCovectorField< BasisType >( _mesh->g(p.tIdx) , ( ConstPointer( Real ) )GetPointer( &c[0] , BasisInfo< BasisType >::Coefficients ) , p.p );
+	else            return _mesh->g( p.tIdx ).inverse() * RightTriangle< Real >::template EvaluateCovectorField< BasisType >( _mesh->g(p.tIdx) , ( ConstPointer( Real ) )GetPointer( &c[0] , BasisInfo< BasisType >::Coefficients ) , p.p );
 }
 
 /////////////////////////
@@ -641,7 +674,7 @@ FEM::RiemannianMesh< Real >::RiemannianMesh( Pointer( TriangleIndex ) t , size_t
 	_g = AllocPointer< SquareMatrix< Real , 2 > >( _tCount );
 	for( int t=0 ; t<_tCount ; t++ ) _g[t] = SquareMatrix< Real , 2 >::Identity();
 	_vCount = 0;
-	for( unsigned int i=0 ; i<_tCount ; i++ ) for( int j=0 ; j<3 ; j++ ) _vCount = std::max< size_t >( _vCount , _triangles[i][j]+1 );
+	for( size_t i=0 ; i<_tCount ; i++ ) for( int j=0 ; j<3 ; j++ ) _vCount = std::max< size_t >( _vCount , _triangles[i][j]+1 );
 }
 template< class Real >
 FEM::RiemannianMesh< Real >::~RiemannianMesh( void ){ FreePointer( _g ); }
@@ -663,14 +696,14 @@ size_t FEM::RiemannianMesh< Real >::dimension( void ) const
 }
 template< class Real >
 template< unsigned int BasisType >
-unsigned int FEM::RiemannianMesh< Real >::index( unsigned int t , unsigned int idx ) const
+int FEM::RiemannianMesh< Real >::index( int t , int idx ) const
 {
 	bool isAligned;
 	return index< BasisType >( t , idx , isAligned );
 }
 template< class Real >
 template< unsigned int BasisType >
-unsigned int FEM::RiemannianMesh< Real >::index( unsigned int t , unsigned int idx , bool& isAligned ) const
+int FEM::RiemannianMesh< Real >::index( int t , int idx , bool& isAligned ) const
 {
 	isAligned = true;
 	int i , e = idx / BasisInfo< BasisType >::CoefficientsPerElement , c = idx % BasisInfo< BasisType >::CoefficientsPerElement;
@@ -679,7 +712,7 @@ unsigned int FEM::RiemannianMesh< Real >::index( unsigned int t , unsigned int i
 		case ELEMENT_VERTEX:   i = _triangles[t][e]                   ; break;
 		case ELEMENT_EDGE:     i = _edgeMap.edge( t*3+e , isAligned ) ; break;
 		case ELEMENT_TRIANGLE: i = t                                  ; break;
-		default: fprintf( stderr , "[ERROR] FEM::RightTriangle::EvaluateScalarField: unrecognized basis type: %d\n" , BasisType ) , exit( 0 );
+		default: fprintf( stderr , "[ERROR] FEM::RiemannianMesh::index: unrecognized element type: %d\n" , BasisInfo< BasisType >::ElementType ) , exit( 0 );
 	}
 	return i * BasisInfo< BasisType >::CoefficientsPerElement + c;
 }
@@ -692,18 +725,18 @@ Pointer( FEM::CoordinateXForm< Real > ) FEM::RiemannianMesh< Real >::getCoordina
 	return xForms;
 }
 template< class Real >
-FEM::CoordinateXForm< Real > FEM::RiemannianMesh< Real >::xForm( unsigned int he ) const
+FEM::CoordinateXForm< Real > FEM::RiemannianMesh< Real >::xForm( int he ) const
 {
 	CoordinateXForm< Real > xForm;
 	int ohe = _edgeMap.opposite(he);
-	if( ohe==-1 ) fprintf( stderr , "[ERROR] Boundary edge (FEM::RiemannianMesh::edgeXForm)\n" ) , exit( 0 );
+	if( ohe==-1 ) fprintf( stderr , "[ERROR] FEM::RiemannianMesh::xForm: Boundary edge\n" ) , exit( 0 );
 
 	// The two triangles on this edge
-	int tIdx[] = { (int)he/3 , (int)ohe/3 };
+	int tIdx[] = { he/3 , ohe/3 };
 
 	// The end-points of the edge
-	int  _v = (int) he%3 ,  v[] = { (int)( he+1)%3 , (int)( he+2)%3 };
-	int _ov = (int)ohe%3 , ov[] = { (int)(ohe+1)%3 , (int)(ohe+2)%3 };
+	int  _v =  he%3 ,  v[] = { ( he+1)%3 , ( he+2)%3 };
+	int _ov = ohe%3 , ov[] = { (ohe+1)%3 , (ohe+2)%3 };
 
 	// The direction of the edge
 	TangentVector< Real > edgeDir = RightTriangle< Real >::EdgeDirections[_v] , oEdgeDir = -RightTriangle< Real >::EdgeDirections[_ov];
@@ -724,12 +757,37 @@ FEM::CoordinateXForm< Real > FEM::RiemannianMesh< Real >::xForm( unsigned int he
 	xForm.constant = RightTriangle< Real >::EdgeMidpoints[_ov] - xForm.linear * ( RightTriangle< Real >::EdgeMidpoints[_v] );
 	return xForm;
 }
-
 template< class Real >
 void FEM::RiemannianMesh< Real >::setCoordinateXForms( Pointer( CoordinateXForm< Real > ) xForms ) const
 {
 #pragma omp parallel for
-	for( int he=0 ; he<_tCount*3 ; he++ ) if( _edgeMap.opposite(he)!=-1 ) xForms[he] = xForm( he );
+	for( int e=0 ; e<_edgeMap.size() ; e++ )
+	{
+		const int* he = _edgeMap[e];
+		if( he[1]!=-1 )
+		{
+			xForms[ he[0] ] = xForm( he[0] );
+			xForms[ he[1] ] = xForms[ he[0] ].inverse();
+		}
+		else xForms[ he[0] ] = CoordinateXForm< Real >();
+	}
+}
+template< class Real >
+void FEM::RiemannianMesh< Real >::edgeVertices( int edge , int& v1 , int& v2 ) const
+{
+	int he = _edgeMap[edge][0];
+	int  t =  he / 3 ,  v =  he % 3;
+	v1 = _triangles[t][(v+1)%3] , v2 = _triangles[t][(v+2)%3];
+}
+template< class Real >
+bool FEM::RiemannianMesh< Real >::oppositeEdgeVertices( int edge , int& v1 , int& v2 ) const
+{
+	int he = _edgeMap[edge][0] , ohe = _edgeMap[edge][1];
+	int  t =  he / 3 ,  v =  he % 3;
+	int ot = ohe / 3 , ov = ohe % 3;
+	if( ohe==-1 ) return false;
+	v1 = _triangles[t][v] , v2 = _triangles[ot][ov];
+	return true;
 }
 template< class Real >
 bool FEM::RiemannianMesh< Real >::edgeFlip( int edge , Real eps )
@@ -741,7 +799,7 @@ bool FEM::RiemannianMesh< Real >::edgeFlip( int edge , Real eps )
 	// First test that the edge is not on the boundary
 	if( ohe==-1 ) return false;
 
-	// Get the coordinates of the old and new edges and test if we can flip
+	// Get the coordinates of the old and new edges and test that if we can flip
 	Point2D< Real > newEdge[] = { RightTriangle< Real >::Corners[v] , xForm( ohe )( RightTriangle< Real >::Corners[ ov ] ) };
 	Point2D< Real > oldEdge[] = { RightTriangle< Real >::Corners[(v+1)%3] , RightTriangle< Real >::Corners[(v+2)%3] };
 	{
@@ -805,7 +863,7 @@ bool FEM::RiemannianMesh< Real >::edgeFlip( int edge , Real eps )
 }
 
 template< class Real >
-bool FEM::RiemannianMesh< Real >::isVoronoiEdge( unsigned int e , Real eps ) const
+bool FEM::RiemannianMesh< Real >::isVoronoiEdge( int e , Real eps ) const
 {
 	int he = _edgeMap[e][0] , ohe = _edgeMap[e][1];
 	int  t =  he / 3 ,  v =  he % 3;
@@ -827,7 +885,7 @@ std::vector< FEM::SamplePoint< Real > > FEM::RiemannianMesh< Real >::randomSampl
 	for( int i=0 ; i<(int)count ; i++ )
 	{
 		Real r1 = Random< Real >() , r2 = Random< Real >() , r3 = Random< Real >();
-		
+
 		// Choose a random triangle
 		{
 			Real r = r1 * cumAreas[ tCount()-1 ];
@@ -876,17 +934,17 @@ FEM::CoordinateXForm< Real > FEM::RiemannianMesh< Real >::getVertexCoordinateXFo
 }
 
 template< class Real >
-std::vector< unsigned int > FEM::RiemannianMesh< Real >::getVertexCorners( int t , int v ) const
+std::vector< int > FEM::RiemannianMesh< Real >::getVertexCorners( int t , int v ) const
 {
 	// Circulate CCW
 	const int VertexToEdgeMap[] = { 1 , 2 , 0 };
 	const int EdgeToVertexMap[] = { 1 , 2 , 0 };
 	// Assume that the mesh is oriented
-	std::vector< unsigned int > neighbors;
+	std::vector< int > neighbors;
 	int currentT = t , currentV = v;
 	do
 	{
-		unsigned int he = currentT*3 + VertexToEdgeMap[ currentV ] , ohe = _edgeMap.opposite( he );
+		int he = currentT*3 + VertexToEdgeMap[ currentV ] , ohe = _edgeMap.opposite( he );
 		neighbors.push_back( currentT*3 + currentV );
 		if( ohe==-1 ) fprintf( stderr , "[ERROR] Boundary vertex\n" ) , exit( 0 );
 		currentT = ohe / 3;
@@ -916,7 +974,7 @@ Real FEM::RiemannianMesh< Real >::getVertexConeAngle( int t , int v ) const
 }
 
 template< class Real >
-FEM::CoordinateXForm< Real > FEM::RiemannianMesh< Real >::exp( ConstPointer( CoordinateXForm< Real > ) xForms , HermiteSamplePoint< Real >& p , Real eps ) const
+FEM::CoordinateXForm< Real > FEM::RiemannianMesh< Real >::exp( ConstPointer( CoordinateXForm< Real > ) xForms , HermiteSamplePoint< Real >& p , Real eps , bool noWarning ) const
 {
 	HermiteSamplePoint< Real > startP = p;
 	CoordinateXForm< Real > xForm = CoordinateXForm< Real >::Identity();
@@ -933,7 +991,7 @@ FEM::CoordinateXForm< Real > FEM::RiemannianMesh< Real >::exp( ConstPointer( Coo
 		else if( p.p[0]+p.p[1]>=1 && p.v[0]+p.v[1]>0 ) idx = 0;
 		if( idx!=-1 )
 		{
-			unsigned int he = p.tIdx * 3 + idx , ohe = _edgeMap.opposite( he );
+			int he = p.tIdx * 3 + idx , ohe = _edgeMap.opposite( he );
 			const CoordinateXForm< Real >& edge = xForms[he];
 			p.tIdx = ohe/3;
 			p.p = edge( p.p ) ; p.v = edge.linear * p.v;
@@ -944,6 +1002,9 @@ FEM::CoordinateXForm< Real > FEM::RiemannianMesh< Real >::exp( ConstPointer( Coo
 #endif
 	while( count<MAX_ITERS )
 	{
+//#pragma message( "[WARNING] Misha made a fix here" )
+//		if( !( Point2D< Real >::SquareNorm(p.v)<1e-24 ) ) break;
+
 		// Intersect the ray p + s*v with each of the three edges
 		// Bottom edge:   p[1] + s * v[1] = 0                         => s = -p[1]/v[1]
 		// Left edge:     p[0] + s * v[0] = 0                         => s = -p[0]/v[0]
@@ -958,12 +1019,12 @@ FEM::CoordinateXForm< Real > FEM::RiemannianMesh< Real >::exp( ConstPointer( Coo
 		}
 		if( idx==-1 )
 		{
-			/*fprintf( stderr , "[ERROR] FEM::Mesh::exp:\n" );
-			fprintf( stderr , "        Ray does not intersect triangle[%d]: p=(%f %f) v=(%g %g) [%g/%g]\n" , count , p.p[0] , p.p[1] , p.v[0] , p.v[1] , Point2D< Real >::SquareNorm(p.v) , eps*eps );
-			fprintf( stderr , "                             Started at[%d]: p=(%f %f) v=(%g %g)\n" , 0 , startP.p[0] , startP.p[1] , startP.v[0] , startP.v[1] );*/
+//			fprintf( stderr , "[ERROR] FEM::Mesh::exp:\n" );
+//			fprintf( stderr , "        Ray does not intersect triangle[%d]: p=(%f %f) v=(%g %g) [%g/%g]\n" , count , p.p[0] , p.p[1] , p.v[0] , p.v[1] , Point2D< Real >::SquareNorm(p.v) , eps*eps );
+//			fprintf( stderr , "                             Started at[%d]: p=(%f %f) v=(%g %g)\n" , 0 , startP.p[0] , startP.p[1] , startP.v[0] , startP.v[1] );
 			p = startP;
 			return xForm;
-			//exit( 0 );
+//			exit( 0 );
 		}
 		if( maxS>1 ) // The end-point is within the triangle
 		{
@@ -981,12 +1042,12 @@ FEM::CoordinateXForm< Real > FEM::RiemannianMesh< Real >::exp( ConstPointer( Coo
 		}
 		count++;
 	}
-	fprintf( stderr , "[WARNING] Failed to converge exp after %d iterations\n" , MAX_ITERS );
+	if( !noWarning ) fprintf( stderr , "[WARNING] Failed to converge exp after %d iterations\n" , MAX_ITERS );
 	return xForm;
 }
 
 template< class Real >
-FEM::CoordinateXForm< Real > FEM::RiemannianMesh< Real >::flow( ConstPointer( CoordinateXForm< Real > ) xForms , const TangentVectorField< Real >& vf , Real flowTime , SamplePoint< Real >& p , Real minStepSize , Real eps , std::vector< SamplePoint< Real > >* path ) const
+FEM::CoordinateXForm< Real > FEM::RiemannianMesh< Real >::flow( ConstPointer( CoordinateXForm< Real > ) xForms , const TangentVectorField< Real >& vf , Real flowTime , SamplePoint< Real >& p , Real minStepSize , Real eps , std::vector< SamplePoint< Real > >* path , bool noWarning ) const
 {
 	CoordinateXForm< Real > xForm = CoordinateXForm< Real >::Identity();
 	int MAX_ITERS = 1000000;
@@ -994,7 +1055,7 @@ FEM::CoordinateXForm< Real > FEM::RiemannianMesh< Real >::flow( ConstPointer( Co
 	int inEdge = -1;
 	Real direction = (flowTime<0) ? (Real)-1. : (Real)1.;
 	Real stepSizeLeft = minStepSize;
-	Point2D< Real > v = vf( p ) * direction;
+	TangentVector< Real > v = vf( p ) * direction;
 	Real vLength = (Real)sqrt( Point2D< Real >::Dot( v , _g[p.tIdx]*v ) );
 	flowTime *= direction;
 	if( path ) path->push_back( p );
@@ -1033,7 +1094,7 @@ FEM::CoordinateXForm< Real > FEM::RiemannianMesh< Real >::flow( ConstPointer( Co
 #else
 		if( idx==-1 ) return xForm;
 #endif
-		Point2D< Real > gv = _g[p.tIdx] * v;
+		CotangentVector< Real > gv = _g[p.tIdx] * v;
 		Real stepSize = vLength * s;
 		bool updateVector = false;
 		if( minStepSize>0 && stepSize>stepSizeLeft )
@@ -1068,7 +1129,7 @@ FEM::CoordinateXForm< Real > FEM::RiemannianMesh< Real >::flow( ConstPointer( Co
 			else // The end-point is outside the triangle
 			{
 				// Advance along the flow until you hit the edge	
-				unsigned int he = p.tIdx*3 + idx , ohe = _edgeMap.opposite( he );
+				int he = p.tIdx*3 + idx , ohe = _edgeMap.opposite( he );
 				const CoordinateXForm< Real >& edge = xForms[he];
 				// Switch into the next triangle
 				p.tIdx = ohe/3;
@@ -1088,85 +1149,9 @@ FEM::CoordinateXForm< Real > FEM::RiemannianMesh< Real >::flow( ConstPointer( Co
 		}
 		count++;
 	}
-	fprintf( stderr , "[WARNING] Failed to converge flow after %d iterations\n" , MAX_ITERS );
+	if( !noWarning ) fprintf( stderr , "[WARNING] Failed to converge flow after %d iterations\n" , MAX_ITERS );
 	return xForm;
 #undef NEW_CODE
-}
-template< class Real >
-Real FEM::RiemannianMesh< Real >::flow( ConstPointer( CoordinateXForm< Real > ) xForms , const TangentVectorField< Real >& vf , Real flowTime , SamplePoint< Real >& p , FEM::CoordinateXForm< Real >& xForm , Real minFlowTime , Real eps ) const
-{
-	Real distance = (Real)0;
-#define DEBUG_FLOW 0
-	xForm = CoordinateXForm< Real >::Identity();
-#if DEBUG_FLOW
-	const int MAX_ITERS = 10;
-#else // !DEBUG_FLOW
-	const int MAX_ITERS = 1000000;
-#endif // DEBUG_FLOW
-	int count = 0;
-	int inEdge = -1;
-	Point2D< Real > v = (*vf)( p );
-	Real direction = (flowTime<0) ? (Real)-1. : (Real)1.;
-	flowTime *= direction;
-	while( count<MAX_ITERS )
-	{
-		v *= direction;
-		if( !Point2D< Real >::SquareNorm( v ) ) return distance;
-		// Intersect the ray p + s*v with each of the three edges
-		// Bottom edge:   p[1] + s * v[1] = 0                         => s = -p[1]/v[1]
-		// Left edge:     p[0] + s * v[0] = 0                         => s = -p[0]/v[0]
-		// Diagonal edge: p[1] + s * v[1] = 1 - ( p[0] + s * v[0] )   => s = ( 1 - p[0]  - p[1] ) / ( v[1] + v[0] )
-		Real maxD = 0;
-		int idx = -1;
-		{
-			Real s[] = { -p.p[1] / v[1]  , -p.p[0] / v[0] , ( Real(1.) - p.p[0]  - p.p[1] ) / ( v[1] + v[0] ) };
-			if( inEdge!=2 && s[0]>0 ){ Real foo = p.p[0] + v[0] * s[0] ; if( foo>=-eps && foo<=1+eps ) if( s[0]>maxD ) idx = 2 , maxD = s[0]; }
-			if( inEdge!=1 && s[1]>0 ){ Real foo = p.p[1] + v[1] * s[1] ; if( foo>=-eps && foo<=1+eps ) if( s[1]>maxD ) idx = 1 , maxD = s[1]; }
-			if( inEdge!=0 && s[2]>0 ){ Real foo = p.p[0] + v[0] * s[2] ; if( foo>=-eps && foo<=1+eps ) if( s[2]>maxD ) idx = 0 , maxD = s[2]; }
-		}
-#if 0
-		if( idx==-1 )
-		{
-			fprintf( stderr , "[ERROR] Ray does not intersect triangle[%d]: (%f %f) (%g %g) [%g/%g]\n" , count , p.p[0] , p.p[1] , v[0] , v[1] , Point2D< Real >::SquareNorm(v) , eps*eps );
-			Real s[] = { -p.p[1] / v[1]  , -p.p[0] / v[0] , ( Real(1.) - p.p[0]  - p.p[1] ) / ( v[1] + v[0] ) };
-			if( inEdge!=2 ) { Real foo = p.p[0] + v[0] * s[0] ; printf( "\t0]%g -> %f\n" , s[0] , foo ); }
-			if( inEdge!=1 ) { Real foo = p.p[1] + v[1] * s[1] ; printf( "\t1]%g -> %f\n" , s[1] , foo ); }
-			if( inEdge!=0 ) { Real foo = p.p[0] + v[0] * s[2] ; printf( "\t2]%g -> %f\n" , s[2] , foo ); }
-			exit( 0 );
-		}
-#else
-		Real vLength = (Real)sqrt( Point2D< Real >::Dot( v , _g[p.tIdx] * v ) );
-		if( idx==-1 ) return distance;
-#endif
-#if DEBUG_FLOW
-		printf( "maxD[%d] %g\n" , count , maxD );
-#endif // DEBUG_FLOW
-		if( maxD>flowTime ) // The end-point is within the triangle
-		{
-			distance += vLength * flowTime;
-			p.p += v*flowTime;
-			return distance;
-		}
-		else // The end-point is outside the triangle
-		{
-			unsigned int he = p.tIdx*3 + idx , ohe = _edgeMap.opposite( he );
-			const CoordinateXForm< Real >& edge = xForms[he];
-
-			// If the the vectors on the two sides of the edge are oppositely oriented, terminate the flow
-			if( Point2D< Real >::Dot( edge.linear * v , _g[ohe/3] * vf[ohe/3] )*direction < 0 ) return distance;
-			distance += vLength * maxD;
-			p.p += v*maxD , p.tIdx = ohe/3 , flowTime -= maxD;
-			p.p = edge( p.p );
-			v = vf[ p.tIdx ];
-			inEdge = ohe%3;
-
-			xForm = edge * xForm;
-		}
-		count++;
-	}
-	fprintf( stderr , "[WARNING] Failed to converge flow after %d iterations\n" , MAX_ITERS );
-	return distance;
-#undef DEBUG_FLOW
 }
 
 /////////////////////////
@@ -1201,7 +1186,7 @@ template< class Real >
 template< class Vertex >
 void FEM::RiemannianMesh< Real >::setMetricFromEmbedding( ConstPointer( Vertex ) vertices )
 {
-	bool vanishingTensor = false;
+
 #pragma omp parallel for
 	for( int i=0 ; i<_tCount ; i++ )
 	{
@@ -1211,21 +1196,8 @@ void FEM::RiemannianMesh< Real >::setMetricFromEmbedding( ConstPointer( Vertex )
 
 		if( !_g[i].determinant() )
 		{
-			vanishingTensor = true;
 			fprintf( stderr , "[WARNING] Vanishing metric tensor determinant\n" );
 			printf( "%g %g %g\t%g %g %g\n" , e[0][0] , e[0][1] , e[0][2] , e[1][0] , e[1][1] , e[1][2] );
-		}
-	}
-	if (vanishingTensor){
-		fprintf(stderr, "[WARNING] Adding regularization to metric tensor\n");
-		Real average_squared_edge_length = Real(0);
-		for (int i = 0; i < _tCount; i++) for (int j = 0; j < 3; j++) average_squared_edge_length += Point3D< Real >::SquareNorm(vertices[_triangles[i][(j + 1) % 3]] - vertices[_triangles[i][j]]);
-		average_squared_edge_length /= Real(3 * _tCount);
-		printf("Average Squared Edge Length %g \n", average_squared_edge_length);
-		for (int i = 0; i < _tCount; i++)
-		{
-			_g[i](0, 0) += average_squared_edge_length * 0.001;
-			_g[i](1, 1) += average_squared_edge_length * 0.001;
 		}
 	}
 }
@@ -1276,7 +1248,7 @@ V FEM::RiemannianMesh< Real >::evaluateScalarField( ConstPointer( V ) coefficien
 			int ii = index< BasisType >( p.tIdx , i , isAligned );
 			_coefficients[i] = isAligned ? coefficients[ii] : -coefficients[ii];
 		}
-		v = RightTriangle< Real >::EvaluateScalarField< BasisType >( ( ConstPointer( V ) )GetPointer( _coefficients , BasisInfo< BasisType >::Coefficients ) , p.p );
+		v = RightTriangle< Real >::template EvaluateScalarField< BasisType >( ( ConstPointer( V ) )GetPointer( _coefficients , BasisInfo< BasisType >::Coefficients ) , p.p );
 	}
 	else TestBasisType( BasisType , "FEM::RiemannianMesh::evaluateScalarField" , false );
 	return v;
@@ -1296,7 +1268,7 @@ FEM::CotangentVector< V > FEM::RiemannianMesh< Real >::evaluateScalarFieldGradie
 			int ii = index< BasisType >( p.tIdx , i , isAligned );
 			_coefficients[i] = isAligned ? coefficients[ii] : -coefficients[ii];
 		}
-		v = RightTriangle< Real >::EvaluateScalarFieldGradient< BasisType >( GetPointer( _coefficients , BasisInfo< BasisType >::Coefficients ) , p.p );
+		v = RightTriangle< Real >::template EvaluateScalarFieldGradient< BasisType >( GetPointer( _coefficients , BasisInfo< BasisType >::Coefficients ) , p.p );
 	}
 	else TestBasisType( BasisType , "FEM::RiemannianMesh::evaluateScalarFieldGradient" , false );
 	return v;
@@ -1316,7 +1288,7 @@ FEM::CotangentVector< V > FEM::RiemannianMesh< Real >::evaluateCovectorField( Co
 			int ii = index< BasisType >( p.tIdx , i , isAligned );
 			_coefficients[i] = isAligned ? coefficients[ii] : -coefficients[ii];
 		}
-		v = RightTriangle< Real >::EvaluateCovectorField< BasisType >( GetPointer( _coefficients , BasisInfo< BasisType >::Coefficients ) , p.p );
+		v = RightTriangle< Real >::template EvaluateCovectorField< BasisType >( GetPointer( _coefficients , BasisInfo< BasisType >::Coefficients ) , p.p );
 	}
 	else TestBasisType( BasisType , "FEM::RiemannianMesh::evaluateScalarField" , false );
 	return v;
@@ -1344,7 +1316,11 @@ SparseMatrix< Real , int > FEM::RiemannianMesh< Real >::massMatrix( bool lump , 
 		for( int i=0 ; i<M.rows ; i++ ) M[i][0].Value = (Real)( 1. / M[i][0].Value );
 		return M;
 	}
-	SquareMatrix< unsigned char , BasisInfo< BasisType >::Coefficients > mask = RightTriangle< Real >::GetMassMask< BasisType >( newTensors!=NullPointer< SquareMatrix< Real , 2 > >() );
+#ifdef NEW_FEM_CODE
+	auto mask = RightTriangle< Real >::template GetMassMask< BasisType >( newTensors!=( ConstPointer( SquareMatrix< Real , 2 > ) )NullPointer< SquareMatrix< Real , 2 > >() );
+#else // !NEW_FEM_CODE
+	SquareMatrix< unsigned char , BasisInfo< BasisType >::Coefficients > mask = RightTriangle< Real >::template GetMassMask< BasisType >( newTensors!=NullPointer< SquareMatrix< Real , 2 > >() );
+#endif // NEW_FEM_CODE
 	Point< int , BasisInfo< BasisType >::Coefficients > nonZeroCount;
 	for( int i=0 ; i<BasisInfo< BasisType >::Coefficients ; i++ ) for( int j=0 ; j<BasisInfo< BasisType >::Coefficients ; j++ ) if( mask(i,j) ) nonZeroCount[i]++;
 
@@ -1367,7 +1343,7 @@ SparseMatrix< Real , int > FEM::RiemannianMesh< Real >::massMatrix( bool lump , 
 	{
 		if( lump )
 		{
-			auto m = RightTriangle< Real >::GetDiagonalMassMatrix< BasisType >( _g[t] );
+			auto m = RightTriangle< Real >::template GetDiagonalMassMatrix< BasisType >( _g[t] );
 			for( int i=0 ; i<BasisInfo< BasisType >::Coefficients ; i++ )
 			{
 				int ii = index< BasisType >( t , i );
@@ -1376,7 +1352,7 @@ SparseMatrix< Real , int > FEM::RiemannianMesh< Real >::massMatrix( bool lump , 
 		}
 		else
 		{
-			auto m = newTensors ? RightTriangle< Real >::GetMassMatrix< BasisType >( _g[t] , newTensors[t] ) : RightTriangle< Real >::GetMassMatrix< BasisType >( _g[t] );
+			auto m = newTensors ? RightTriangle< Real >::template GetMassMatrix< BasisType >( _g[t] , newTensors[t] ) : RightTriangle< Real >::template GetMassMatrix< BasisType >( _g[t] );
 			for( int i=0 ; i<BasisInfo< BasisType >::Coefficients ; i++ ) 
 			{
 				bool iAligned;
@@ -1410,22 +1386,222 @@ SparseMatrix< Real , int > FEM::RiemannianMesh< Real >::massMatrix( bool lump , 
 }
 
 template< class Real >
+template< unsigned int InBasisType , unsigned int OutBasisType >
+SparseMatrix< Real , int > FEM::RiemannianMesh< Real >::dMatrix( void ) const
+{
+	TestBasisType(  InBasisType , "FEM::RiemannianMesh::dMatrix" , false );
+	TestBasisType( OutBasisType , "FEM::RiemannianMesh::dMatrix" , false );
+
+	auto Fail = [&] ( void ){ fprintf( stderr , "[ERROR] FEM::RiemannianMesh::dMatrix: %s -> %s\n" , BasisNames[ InBasisType ] , BasisNames[ OutBasisType ] ) , exit( 0 ); };
+
+	bool redundant;
+	Matrix< unsigned char , BasisInfo< InBasisType >::Coefficients , BasisInfo< OutBasisType >::Coefficients > mask = RightTriangle< Real >::template GetDMask< InBasisType , OutBasisType >( redundant );
+	Point< int , BasisInfo< OutBasisType >::Coefficients > nonZeroCount;
+	for( int i=0 ; i<BasisInfo< InBasisType >::Coefficients ; i++ ) for( int j=0 ; j<BasisInfo< OutBasisType >::Coefficients ; j++ ) if( mask(i,j) ) nonZeroCount[j]++;
+
+	SparseMatrix< Real , int > D;
+	D.resize( dimension< OutBasisType >() );
+	Pointer( std::atomic< int > ) rowSizes = NewPointer< std::atomic< int > >( D.rows ); // need to support atomic increment and set, which is not supported with OpenMP
+#pragma omp parallel for
+	for( int i=0 ; i<D.rows ; i++ ) rowSizes[i] = 0;
+
+	// First, set the row sizes
+#pragma omp parallel for
+	for( int t=0 ; t<_tCount ; t++ ) for( int j=0 ; j<BasisInfo< OutBasisType >::Coefficients ; j++ ) rowSizes[ index< OutBasisType >( t , j ) ] += nonZeroCount[j];
+#pragma omp parallel for
+	for( int i=0 ; i<D.rows ; i++ ) D.SetRowSize( i , rowSizes[i] ) , rowSizes[i] = 0;
+
+	// Next, set the entries
+#pragma omp parallel for
+	for( int t=0 ; t<_tCount ; t++ )
+	{
+#ifdef NEW_FEM_CODE
+		auto d = RightTriangle< Real >::template GetDMatrix< InBasisType , OutBasisType >( _g[t] );
+#else // !NEW_FEM_CODE
+		Matrix< Real , BasisInfo< InBasisType >::Coefficients , BasisInfo< OutBasisType >::Coefficients > d = RightTriangle< Real >::template GetDMatrix< InBasisType , OutBasisType >( _g[t] );
+#endif // NEW_FEM_CODE
+		for( int j=0 ; j<BasisInfo< OutBasisType >::Coefficients ; j++ ) 
+		{
+			bool jAligned ; int jj = index< OutBasisType >( t , j , jAligned );
+			for( int i=0 ; i<BasisInfo< InBasisType >::Coefficients ; i++ ) if( mask(i,j) )
+			{
+				bool iAligned ; int ii = index< InBasisType >( t , i , iAligned );
+				D[ jj ][ rowSizes[jj]++ ] = MatrixEntry< Real , int >( ii , iAligned==jAligned ? d(i,j) : -d(i,j) );
+			}
+		}
+	}
+	DeletePointer( rowSizes );
+
+	// Collapse the duplicate entries
+#pragma omp parallel for
+	for( int i=0 ; i<D.rows ; i++ )
+	{
+		std::sort( D[i] , D[i] + D.rowSizes[i] , []( MatrixEntry< Real , int > e1 , MatrixEntry< Real , int > e2 ){ return e1.N<e2.N; } );
+		int idx = 0;
+		if( D.rowSizes[i] )
+		{
+			for( int j=1 ; j<D.rowSizes[i] ; j++ )
+				if( D[i][j].N==D[i][idx].N ) D[i][idx].Value += D[i][j].Value;
+				else D[i][++idx] = D[i][j];
+			D.ResetRowSize( i , idx+1 );
+		}
+	}
+
+	if( redundant )
+	{
+		std::vector< int > valence;
+		if( BasisInfo< OutBasisType >::ElementType==ELEMENT_VERTEX )
+		{
+			valence.resize( _vCount , 0 );
+#pragma omp parallel for
+			for( int t=0 ; t<_tCount ; t++ ) for( int v=0 ; v<3 ; v++ )
+#pragma omp atomic
+				valence[ _triangles[t][v] ]++;
+		}
+		else if( BasisInfo< OutBasisType >::ElementType==ELEMENT_EDGE )
+		{
+			valence.resize( _edgeMap.size() , 0 );
+#pragma omp parallel for
+			for( int t=0 ; t<_tCount ; t++ ) for( int e=0 ; e<3 ; e++ )
+#pragma omp atomic
+				valence[ _edgeMap.edge( t*3+e ) ]++;
+		}
+		else TestElementType( BasisInfo< OutBasisType >::ElementType , "FEM::RiemannianMesh::dMatrix" , true );
+#pragma omp parallel for
+		for( int i=0 ; i<D.rows ; i++ )
+		{
+			Real scale = (Real)( 1. / valence[i/BasisInfo< OutBasisType >::CoefficientsPerElement] );
+			for( int j=0 ; j<D.rowSizes[i] ; j++ ) D[i][j].Value *= scale;
+		}
+	}
+	return D;
+}
+template< class Real >
+template< unsigned int BasisType , unsigned int PreBasisType , unsigned int PostBasisType >
+SparseMatrix< Real , int > FEM::RiemannianMesh< Real >::stiffnessMatrix( ConstPointer( SquareMatrix< Real , 2 > ) newTensors ) const
+{
+	auto MassMatrixInverse = [] ( const SparseMatrix< Real , int >& M )
+	{
+		SparseMatrix< Real , int > M_inverse;
+		M_inverse.resize( M.rows );
+#pragma omp parallel for
+		for( int i=0 ; i<M.rows ; i++ )
+		{
+			M_inverse.SetRowSize( i , 1 );
+			Real sum = 0;
+			for( int j=0 ; j<M.rowSizes[i] ; j++ ) sum += M[i][j].Value;
+			M_inverse[i][0] = MatrixEntry< Real , int >( i , (Real)(1./sum) );
+		}
+		return M_inverse;
+	};
+
+	SparseMatrix< Real , int > S;
+	TestBasisType( BasisType , "FEM::RiemannianMesh::stiffnessMatrix" , false );
+	switch( BasisInfo< BasisType >::Dimension )
+	{
+		case 0:
+		{	
+			TestBasisType( PostBasisType , "FEM::RiemannianMesh::stiffnessMatrix" , false );
+			if( BasisInfo< PostBasisType >::Dimension!=BasisInfo< BasisType >::Dimension+1 ) fprintf( stderr , "[ERROR] FEM::RiemannianMesh::stiffnessMatrix: Incompatible basis type: %s -> %s\n" , BasisNames[BasisType] , BasisNames[PostBasisType] ) , exit( 0 );
+			SparseMatrix< Real , int > M2 = massMatrix< PostBasisType >( BasisInfo< BasisType >::Lumpable , newTensors );
+			SparseMatrix< Real , int > D1 = dMatrix< BasisType , PostBasisType >( );
+			S = D1.transpose() * M2 * D1;
+			break;
+		}
+		case 1:
+		{
+			TestBasisType(  PreBasisType , "FEM::RiemannianMesh::stiffnessMatrix" , false );
+			TestBasisType( PostBasisType , "FEM::RiemannianMesh::stiffnessMatrix" , false );
+			if( BasisInfo< PreBasisType >::Dimension!=BasisInfo< BasisType >::Dimension-1 ) fprintf( stderr , "[ERROR] FEM::RiemannianMesh::stiffnessMatrix: Incompatible basis type: %s -> %s\n" , BasisNames[PreBasisType] , BasisNames[BasisType] ) , exit( 0 );
+			if( BasisInfo< PostBasisType >::Dimension!=BasisInfo< BasisType >::Dimension+1 ) fprintf( stderr , "[ERROR] FEM::RiemannianMesh::stiffnessMatrix: Incompatible basis type: %s -> %s\n" , BasisNames[BasisType] , BasisNames[PostBasisType] ) , exit( 0 );
+			SparseMatrix< Real , int > M0 = massMatrix<  PreBasisType >( true , newTensors );
+			SparseMatrix< Real , int > M1 = massMatrix<     BasisType >( BasisInfo< BasisType >::Lumpable , newTensors );
+			SparseMatrix< Real , int > M2 = massMatrix< PostBasisType >( BasisInfo< BasisType >::Lumpable , newTensors );
+			SparseMatrix< Real , int > D0 = dMatrix< PreBasisType ,     BasisType >( );
+			SparseMatrix< Real , int > D1 = dMatrix<    BasisType , PostBasisType >( );
+			S = M1 * D0 * MassMatrixInverse( M0 ) * D0.transpose() * M1 + D1.transpose() * M2 * D1;
+			break;
+		}
+		case 2:
+		{
+			TestBasisType(  PreBasisType , "FEM::RiemannianMesh::stiffnessMatrix" , false );
+			if( BasisInfo< PreBasisType >::Dimension!=BasisInfo< BasisType >::Dimension-1 ) fprintf( stderr , "[ERROR] FEM::RiemannianMesh::stiffnessMatrix: Incompatible basis type: %s -> %s\n" , BasisNames[PreBasisType] , BasisNames[BasisType] ) , exit( 0 );
+			SparseMatrix< Real , int > M0 = massMatrix< PreBasisType >( true , newTensors );
+			SparseMatrix< Real , int > M1 = massMatrix<    BasisType >( BasisInfo< BasisType >::Lumpable , newTensors );
+			SparseMatrix< Real , int > D0 = dMatrix< PreBasisType , BasisType >( );
+			S = M1 * D0 * MassMatrixInverse( M0 ) * D0.transpose() * M1;
+			break;
+		}
+		default: TestBasisType( BasisType , "FEM::RiemannianMesh::stiffnessMatrix" , true );
+	}
+#pragma omp parallel for
+	for( int i=0 ; i<S.rows ; i++ )
+	{
+		std::sort( S[i] , S[i] + S.rowSizes[i] , []( MatrixEntry< Real , int > e1 , MatrixEntry< Real , int > e2 ){ return e1.N<e2.N; } );
+		int idx=0;
+		for( int j=1 ; j<S.rowSizes[i] ; j++ )
+			if( S[i][j].N==S[i][idx].N ) S[i][idx].Value += S[i][j].Value;
+			else idx++ , S[i][idx] = S[i][j];
+		S.ResetRowSize( i , idx+1 );
+		for( int j=0 ; j<S.rowSizes[i] ; j++ ) if( S[i][j].N==i ) std::swap( S[i][j] , S[i][0] );
+	}
+	return S;
+}
+template< class Real >
+template< unsigned int BasisType >
+SparseMatrix< Real , int > FEM::RiemannianMesh< Real >::stiffnessMatrix( void ) const
+{
+	TestBasisType( BasisType , "FEM::RiemannianMesh::stiffnessMatrix" , false );
+	SparseMatrix< Real , int > S;
+	switch( BasisInfo< BasisType >::Dimension )
+	{
+	case 0: S = stiffnessMatrix< BasisType , BasisType       , BASIS_1_WHITNEY >( ) ; break;
+	case 1:
+		if( BasisType==BASIS_1_WHITNEY ) S = stiffnessMatrix< BasisType , BASIS_0_WHITNEY , BASIS_2_WHITNEY >( );
+		else                             S = stiffnessMatrix< BasisType , BASIS_0_WHITNEY , BASIS_2_VERTEX_CONSTANT >( );
+		break;
+	case 2: S = stiffnessMatrix< BasisType , BASIS_1_WHITNEY , BasisType       >( ) ; break;
+	default: TestBasisType( BasisType , "FEM::RiemannianMesh::stiffnessMatrix" , true );
+	}
+	return S;
+}
+
+template< class Real >
 inline Real FEM::RiemannianMesh< Real >::getIntegral( ConstPointer( Real ) coefficients ) const
 {
 	Real integral = (Real)0;
-#pragma omp parallel for
+#pragma omp parallel for reduction( + : integral )
 	for( int i=0 ; i<_tCount ; i++ )
 	{
-		SquareMatrix< Real , 3 > mass = FEM::RightTriangle< Real >::GetMassMatrix< FEM::BASIS_0_WHITNEY >( _g[i] );
+		SquareMatrix< Real , 3 > mass = FEM::RightTriangle< Real >::template GetMassMatrix< FEM::BASIS_0_WHITNEY >( _g[i] );
 		for( int j=0 ; j<3 ; j++ )
 		{
 			Real sum = (Real)0;
 			for( int k=0 ; k<3 ; k++ ) sum += mass(j,k);
-#pragma omp atomic
 			integral += coefficients[ _triangles[i][j] ] * sum;
 		}
 	}
 	return integral;
+}
+template< class Real >
+inline Real FEM::RiemannianMesh< Real >::getDotProduct( ConstPointer( Real ) coefficients1 , ConstPointer( Real ) coefficients2 , bool lump ) const
+{
+	Real dotProduct = (Real)0;
+#pragma omp parallel for reduction( + : dotProduct )
+	for( int i=0 ; i<_tCount ; i++ )
+	{
+		if( lump )
+		{
+			Point< Real , 3 > mass = RightTriangle< Real >::GetDiagonalMassMatrix( _g[i] );
+			for( int j=0 ; j<3 ; j++ ) dotProduct += mass[j] * coefficients1[ triangles[i][j] ] * coefficients2[ triangles[i][j] ];
+		}
+		else
+		{
+			SquareMatrix< Real , 3 > mass = RightTriangle< Real >::GetMassMatrix( _g[i] );
+			for( int j=0 ; j<3 ; j++ ) for( int k=0 ; k<3 ; k++ ) dotProduct += mass(j,k) * coefficients1[ triangles[i][j] ] * coefficients2[ triangles[i][k] ];
+		}
+	}
+	return dotProduct;
 }
 
 FEM::EdgeMap::EdgeMap( ConstPointer( TriangleIndex ) triangles , size_t tCount )
@@ -1435,7 +1611,7 @@ FEM::EdgeMap::EdgeMap( ConstPointer( TriangleIndex ) triangles , size_t tCount )
 	for( int t=0 ; t<tCount ; t++ ) for( int v=0 ; v<3 ; v++ )
 	{
 		long long key = EdgeKey( triangles[t][(v+1)%3] , triangles[t][(v+2)%3] );
-		if( edgeMap.find(key)==edgeMap.end() ) edgeMap[key] = _eCount++;
+		if( edgeMap.find(key)==edgeMap.end() ) edgeMap[key] = (int)_eCount++;
 	}
 	_he2e = AllocPointer< int >( tCount*3 );
 	_e2he = AllocPointer< int >( 2*_eCount );
@@ -1449,3 +1625,4 @@ FEM::EdgeMap::EdgeMap( ConstPointer( TriangleIndex ) triangles , size_t tCount )
 		else                    _e2he[eIdx*2+1] = heIdx , _he2e[heIdx] = -(eIdx+1);
 	}
 }
+

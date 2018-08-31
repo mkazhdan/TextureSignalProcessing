@@ -26,6 +26,8 @@ ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF S
 DAMAGE.
 */
 
+#define HARMONIC_NORMAL_SMOOTH
+
 #include <Misha/CmdLineParser.h> 
 #include <Src/Basis.h>
 #include <Misha/FEM.h>
@@ -51,6 +53,10 @@ cmdLineParameter< float > LICInterpolationWeight( "licInterpolation" , 1e4 );
 cmdLineParameter< float > SharpeningInterpolationWeight( "sharpInterpolation" , 1e4 );
 cmdLineParameter< float > SharpeningGradientModulation( "sharpModulation" , 100 );
 cmdLineParameter< float > AnisotropyExponent( "aExp" , 0.f );
+#ifdef HARMONIC_NORMAL_SMOOTH
+cmdLineParameter< int   > NormalSmoothingIterations( "nIters" , 2 );
+cmdLineParameter< float > NormalSmoothingInterpolation( "nInterpolation" , 1e3f );
+#endif // HARMONIC_NORMAL_SMOOTH
 cmdLineParameter< int   > Levels( "levels" , 4 );
 cmdLineParameter< int   > MatrixQuadrature( "mQuadrature" , 6 );
 
@@ -80,6 +86,9 @@ cmdLineReadable* params[] =
 	&MatrixQuadrature ,
 	&OutputVCycles ,
 	&NoHelp , &AnisotropyExponent ,
+#ifdef HARMONIC_NORMAL_SMOOTH
+	&NormalSmoothingIterations , &NormalSmoothingInterpolation ,
+#endif // HARMONIC_NORMAL_SMOOTH
 	NULL
 };
 
@@ -115,6 +124,8 @@ void ShowUsage(const char* ex)
 	printf( "\t[--%s <multigrid block height>=%d]\n"  , MultigridBlockHeight.name  , MultigridBlockHeight.value  );
 	printf( "\t[--%s <multigrid padded width>=%d]\n"  , MultigridPaddedWidth.name  , MultigridPaddedWidth.value  );
 	printf( "\t[--%s <multigrid padded height>=%d]\n" , MultigridPaddedHeight.name , MultigridPaddedHeight.value );
+	printf( "\t[--%s <normal smoothing iterations>=%d]\n" , NormalSmoothingIterations.name , NormalSmoothingIterations.value );
+	printf( "\t[--%s <normal smoothing interpolation>=%f]\n" , NormalSmoothingInterpolation.name , NormalSmoothingInterpolation.value );
 	printf( "\t[--%s <anisotropy exponent>=%f]\n" , AnisotropyExponent.name , AnisotropyExponent.value );
 	printf( "\t[--%s]\n" , NoHelp.name );
 }
@@ -660,13 +671,76 @@ int LineConvolution<Real>::InitializeSystem( const FEM::RiemannianMesh< double >
 			// Compute the principal curvatures
 			std::vector< PrincipalCurvature< double > > principalCurvatures;
 			UpdateNormals( mesh );
-			Eigen::SparseMatrix< double > meshMassMatrix;
-			Eigen::SparseMatrix< double > meshStiffnessMatrix;
-			InitializeMeshMatrices( mesh , meshMassMatrix , meshStiffnessMatrix );
-			Eigen::SimplicialLDLT< Eigen::SparseMatrix< double > > meshSolver( meshMassMatrix + meshStiffnessMatrix*1e-4 );
-			SmoothSignal( meshMassMatrix , meshSolver , mesh.normals , true );
+#ifdef HARMONIC_NORMAL_SMOOTH
+			// Smooth the normals
+			{
+				clock_t t = clock();
 
+				SparseMatrix< double , int > M , _M = rMesh.massMatrix< FEM::BASIS_0_WHITNEY >() , _S = rMesh.stiffnessMatrix< FEM::BASIS_0_WHITNEY >();
+				M.resize( 2*mesh.vertices.size() );
+#pragma omp parallel for
+				for( int i=0 ; i<mesh.vertices.size() ; i++ ) for( int ii=0 ; ii<2 ; ii++ )
+				{
+					M.SetRowSize( 2*i+ii , 2*_M.rowSizes[i] );
+					for( int j=0 ; j<_M.rowSizes[i] ; j++ ) for( int jj=0 ; jj<2 ; jj++ ) M[2*i+ii][2*j+jj].N = _M[i][j].N*2+jj;
+				}
+				std::vector< Point3D< double > > tangents( mesh.vertices.size()*2 );
+				std::vector< double > b( mesh.vertices.size()*2 ) , o( mesh.vertices.size()*2 );
+
+				typedef EigenSolverCholeskyLDLt< double , typename SparseMatrix< double , int >::RowIterator > Solver;
+				Solver solver( M , true );
+
+				for( int iter=0 ; iter<NormalSmoothingIterations.value ; iter++ )
+				{
+
+					// Set the tangent directions
+#pragma omp parallel for
+					for( int i=0 ; i<mesh.vertices.size() ; i++ )
+					{
+						Point3D< double > v( 1 , 0 , 0 );
+						if( fabs( Point3D< double >::Dot( v , mesh.normals[i] ) )>0.99 ) v = Point3D< double >( 0 , 1 , 0 );
+						tangents[2*i+0] = Point3D< double >::CrossProduct( mesh.normals[i] , v               ) ; tangents[2*i+0] /= Length( tangents[2*i+0] );
+						tangents[2*i+1] = Point3D< double >::CrossProduct( mesh.normals[i] , tangents[2*i+0] ) ; tangents[2*i+1] /= Length( tangents[2*i+1] );
+					}
+
+					// Solve for the tangent offsets minimizing the dirichlet energy:
+					// E( o1 , o2 ) = || \sum o[i] * T[i] ||^2 + e * || \nabla( \sum n[i] + o[i] * T[i] ) ||^2
+					//              = o^t * T^t * M * T * o + e * [ o^t * T^t * S * T * o + 2 * o^t * T^t * S * n + n^t * S * n ]
+					// \nabla E = 0:
+					// 0 = T^t * ( M + e * S ) * T * o + e * T^t * S * n
+					{
+#pragma omp parallel for 
+						for( int i=0 ; i<mesh.vertices.size() ; i++ ) for( int ii=0 ; ii<2 ; ii++ ) 
+						{
+							b[2*i+ii] = 0;
+							for( int j=0 ; j<_M.rowSizes[i] ; j++ )
+							{
+								for( int jj=0 ; jj<2 ; jj++ ) M[2*i+ii][2*j+jj].Value = ( _M[i][j].Value*NormalSmoothingInterpolation.value + _S[i][j].Value ) * Point3D< Real >::Dot( tangents[2*i+ii] , tangents[ 2*_M[i][j].N+jj ] );
+								b[2*i+ii] -= _S[i][j].Value * Point3D< Real >::Dot( mesh.normals[ _S[i][j].N ] , tangents[2*i+ii] );
+							}
+						}
+					}
+					{
+						solver.update( M );
+						solver.solve( GetPointer( b ) , GetPointer( o ) );
+#pragma omp parallel for
+						for( int i=0 ; i<mesh.vertices.size() ; i++ ) mesh.normals[i] += tangents[2*i+0] * o[2*i+0] + tangents[2*i+1] * o[2*i+1] , mesh.normals[i] /= Length( mesh.normals[i] );
+					}
+				}		
+				if( Verbose.set ) printf( "\tSmoothed normals: %.2f(s)\n" , double(clock() - t_begin) / CLOCKS_PER_SEC );
+			}
+#else // !HARMONIC_NORMAL_SMOOTH
+			{
+				clock_t t = clock();
+				Eigen::SparseMatrix< double > meshMassMatrix , meshStiffnessMatrix;
+				InitializeMeshMatrices( mesh , meshMassMatrix , meshStiffnessMatrix );
+				Eigen::SimplicialLDLT< Eigen::SparseMatrix< double > > meshSolver( meshMassMatrix + meshStiffnessMatrix*1e-4 );
+				SmoothSignal( meshMassMatrix , meshSolver , mesh.normals , true );
+				if( Verbose.set ) printf( "\tSmoothed normals: %.2f(s)\n" , double(clock() - t_begin) / CLOCKS_PER_SEC );
+			}
+#endif // HARMONIC_NORMAL_SMOOTH
 			InitializePrincipalCurvatureDirection( mesh , mesh.normals , principalCurvatures );
+			UpdateNormals( mesh );
 
 			// Set the vector-field to the principal curvature direction times the umbilicity
 			vectorField.resize( principalCurvatures.size() );
@@ -985,6 +1059,7 @@ int LineConvolution<Real>::Init( void )
 	FEM::RiemannianMesh< double > rMesh( GetPointer( mesh.triangles ) , mesh.triangles.size() );
 	rMesh.setMetricFromEmbedding( GetPointer( mesh.vertices ) );
 	rMesh.makeUnitArea();
+
 	if( !InitializeSystem( rMesh , textureWidth , textureHeight ) ){ printf("Unable to initialize system\n") ; return 0; }
 	if( Verbose.set )
 	{

@@ -63,9 +63,9 @@ cmdLineParameter< int   > MultigridPaddedWidth("mPadW", 2);
 cmdLineReadable RandomJitter("jitter");
 cmdLineParameter< char* > CameraConfig("camera");
 cmdLineReadable UseDirectSolver("useDirectSolver");
-cmdLineReadable Verbose("verbose");
-cmdLineReadable NoHelp(" noHelp" );
-cmdLineReadable DetailVerbose("detail");
+cmdLineReadable Verbose( "verbose" );
+cmdLineReadable NoHelp( "noHelp" );
+cmdLineReadable DetailVerbose( "detail" );
 cmdLineReadable Double( "double" );
 cmdLineReadable* params[] =
 {
