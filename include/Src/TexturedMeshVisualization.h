@@ -41,7 +41,6 @@ DAMAGE.
 #define M_PI		3.14159265358979323846
 #endif // M_PI
 
-
 enum
 {
 	ONE_REGION_DISPLAY   = 1 ,
@@ -53,7 +52,7 @@ enum
 class TexturedMeshVisualization : public Visualization
 {
 public:
-	TexturedMeshVisualization( void );
+	TexturedMeshVisualization( bool hasVectorField=false );
 
 	//For visualization of normal maps
 	void PhongShading( GLuint & textureBufferId );
@@ -74,6 +73,7 @@ public:
 	std::vector< Point3D< float > > boundaryEdgeVertices;
 	bool showBoundaryEdges;
 	bool useNearestSampling;
+	bool showVectorField;
 
 	int displayMode;
 
@@ -91,6 +91,7 @@ public:
 	std::vector< TriangleIndex > triangles;
 	std::vector< Point2D< float > > textureCoordinates;
 	Image< Point3D< float > > textureImage;
+	std::vector< Point2D< float > > vectorField;
 
 	GLfloat lightAmbient[4] , lightDiffuse[4] , lightSpecular[4] , lightPosition[4] , shapeDiffuse[4] , shapeAmbient[4] , shapeSpecular[4] , shapeSpecularShininess;
 	bool showEdges;
@@ -101,9 +102,6 @@ public:
 	double polygonOffsetFactor = 1.0;
 	double polygonOffsetUnits = 1.0;
 	double lineWidth = 1.0;
-
-	//double nearPlane;
-	//double farPlane;
 
 	GLuint vertexBuffer = 0;
 	GLuint normalBuffer = 0;
@@ -149,8 +147,9 @@ public:
 
 	static void ReadSceneConfigurationCallBack( Visualization* v , const char* prompt );
 	static void ScreenshotCallBack( Visualization* v , const char* prompt );
+	static void ToggleVectorFieldCallBack( Visualization* v , const char* );
 
-	Point2D<float> selectImagePos(int x, int y);
+	Point2D< float > selectImagePos(int x, int y);
 	Point< float, 2 > screenToImage(int x, int y);
 	bool select(int x, int  y, Point3D< float >& out);
 

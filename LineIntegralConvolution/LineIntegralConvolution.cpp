@@ -220,10 +220,10 @@ public:
 	//Isotropic Linear Operators
 	static std::vector< double > deepMassCoefficients;
 	static std::vector< double > deepStiffnessCoefficients;
-	static SparseMatrix< double , int> boundaryBoundaryMassMatrix;
-	static SparseMatrix< double , int> boundaryBoundaryStiffnessMatrix;
-	static SparseMatrix< double , int> boundaryDeepMassMatrix;
-	static SparseMatrix< double , int> boundaryDeepStiffnessMatrix;
+	static SparseMatrix< double , int > boundaryBoundaryMassMatrix;
+	static SparseMatrix< double , int > boundaryBoundaryStiffnessMatrix;
+	static SparseMatrix< double , int > boundaryDeepMassMatrix;
+	static SparseMatrix< double , int > boundaryDeepStiffnessMatrix;
 
 	static unsigned char * outputBuffer;
 
@@ -265,7 +265,7 @@ template<class Real> TexturedMesh												LineConvolution<Real>::mesh;
 template<class Real> int														LineConvolution<Real>::textureWidth;
 template<class Real> int														LineConvolution<Real>::textureHeight;
 
-template<class Real> TexturedMeshVisualization									LineConvolution<Real>::visualization;
+template<class Real> TexturedMeshVisualization									LineConvolution<Real>::visualization( true );
 
 template<class Real> std::vector<AtlasChart>									LineConvolution<Real>::atlasCharts;
 template<class Real> std::vector<std::vector<SquareMatrix<double, 2>>>			LineConvolution<Real>::parameterMetric;
@@ -676,21 +676,6 @@ int LineConvolution<Real>::InitializeSystem( const int width , const int height 
 #pragma omp parallel for
 			for( int t=0 ; t<principalCurvatures.size() ; t++ ) vectorField[t] = principalCurvatures[t].dirs[ MinimalCurvature.set ? 0 : 1 ] * ( principalCurvatures[t].values[1] - principalCurvatures[t].values[0] );
 		}
-		if( OutVectorField.set )
-		{
-			if( IntrinsicVectorField.set ) WriteVector( vectorField , OutVectorField.value );
-			else
-			{
-				std::vector< Point3D< double > > _vectorField( vectorField.size() );
-#pragma omp parallel for
-				for( int i=0 ; i<mesh.triangles.size() ; i++ )
-				{
-					Point3D< double > v[] = { mesh.vertices[ mesh.triangles[i][0] ] , mesh.vertices[ mesh.triangles[i][1] ] , mesh.vertices[ mesh.triangles[i][2] ] };
-					_vectorField[i] = (v[1]-v[0]) * vectorField[i][0] + (v[2]-v[0]) * vectorField[i][1];
-				}
-				WriteVector( _vectorField , OutVectorField.value );
-			}
-		}
 		// Normalize the vector-field to have unit-norm
 		{
 			std::vector< SquareMatrix< double , 2 > > embeddingMetric;
@@ -707,6 +692,25 @@ int LineConvolution<Real>::InitializeSystem( const int width , const int height 
 				for( int t=0 ; t<embeddingMetric.size() ; t++ ) vectorField[t] /= norm;
 			}
 		}
+
+		if( OutVectorField.set )
+		{
+			if( IntrinsicVectorField.set ) WriteVector( vectorField , OutVectorField.value );
+			else
+			{
+				std::vector< Point3D< double > > _vectorField( vectorField.size() );
+#pragma omp parallel for
+				for( int i=0 ; i<mesh.triangles.size() ; i++ )
+				{
+					Point3D< double > v[] = { mesh.vertices[ mesh.triangles[i][0] ] , mesh.vertices[ mesh.triangles[i][1] ] , mesh.vertices[ mesh.triangles[i][2] ] };
+					_vectorField[i] = (v[1]-v[0]) * vectorField[i][0] + (v[2]-v[0]) * vectorField[i][1];
+				}
+				WriteVector( _vectorField , OutVectorField.value );
+			}
+		}
+		visualization.vectorField.resize( vectorField.size() );
+		for( int i=0 ; i<vectorField.size() ; i++ ) visualization.vectorField[i] = Point2D< float >( vectorField[i] );
+
 		auto LengthToAnisotropy = [&]( double len )
 		{
 			// g <- g + gOrtho * anisotropy 
@@ -945,7 +949,7 @@ int LineConvolution<Real>::Init( void )
 		printf("Unable to read mesh data\n");
 		return 0;
 	}
-	if (1) for (int i = 0; i < mesh.textureCoordinates.size(); i++)mesh.textureCoordinates[i][1] = 1.0 - mesh.textureCoordinates[i][1];
+	if( true ) for( int i=0 ; i<mesh.textureCoordinates.size() ; i++ ) mesh.textureCoordinates[i][1] = 1.0 - mesh.textureCoordinates[i][1];
 
 	if( RandomJitter.set )
 	{
@@ -963,6 +967,14 @@ int LineConvolution<Real>::Init( void )
 		textureWidth += (padding.left + padding.right);
 		textureHeight += (padding.bottom + padding.top);
 	}
+
+	// Define centroid and scale for visualization
+	Point3D< double > centroid;
+	for( int i=0 ; i<mesh.vertices.size() ; i++ ) centroid += mesh.vertices[i];
+	centroid /= (double)mesh.vertices.size();
+	double radius = 0;
+	for( int i=0 ; i<mesh.vertices.size() ; i++ ) radius = std::max< double >( radius , Point3D< double >::Length( mesh.vertices[i]-centroid ) );
+	for( int i=0 ; i<mesh.vertices.size() ; i++ ) mesh.vertices[i] = ( mesh.vertices[i]-centroid ) / radius;
 
 	clock_t t = clock();
 	if( !InitializeSystem( textureWidth , textureHeight ) ){ printf("Unable to initialize system\n") ; return 0; }

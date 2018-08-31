@@ -124,7 +124,11 @@ void TexturedMeshVisualization::ReadSceneConfigurationCallBack(Visualization* v,
 		fclose(file);
 	}
 }
-
+void TexturedMeshVisualization::ToggleVectorFieldCallBack( Visualization* v , const char* )
+{
+	TexturedMeshVisualization* tmv = (TexturedMeshVisualization*)v;
+	tmv->showVectorField = !tmv->showVectorField;
+}
 void TexturedMeshVisualization::ScreenshotCallBack(Visualization* v, const char* prompt) {
 	Image< Point3D< float > > image;
 	TexturedMeshVisualization* av = (TexturedMeshVisualization*)v;
@@ -317,7 +321,8 @@ void TexturedMeshVisualization::DrawGeometry( GLuint& textureBufferId , bool pho
 {
 	SetGeometryCamera();
 
-	glEnable( GL_TEXTURE_2D );
+	if( showVectorField ) glDisable( GL_TEXTURE_2D );
+	else                  glEnable ( GL_TEXTURE_2D );
 
 	if( phongShading ) PhongShading( textureBufferId );
 	else
@@ -357,6 +362,30 @@ void TexturedMeshVisualization::DrawGeometry( GLuint& textureBufferId , bool pho
 
 	glDisable(GL_TEXTURE_2D);
 
+	if( showVectorField )
+	{
+		static const float LengthScale = 1.f/40.f;
+		static const float WidthScale = LengthScale / 5.f;
+		glDisable( GL_LIGHTING );
+		glBegin( GL_TRIANGLES );
+		for( int i=0 ; i<triangles.size() ; i++ )
+		{
+			Point3D< float > t;
+			Point3D< float > v[] = { vertices[ triangles[i][0] ] , vertices[ triangles[i][1] ] , vertices[ triangles[i][2] ] };
+			Point3D< float > n = Point3D< float >::CrossProduct( v[1]-v[0] , v[2]-v[0] );
+			Point3D< float > center = ( v[0] + v[1] + v[2] ) / 3.f;
+			Point3D< float > v1 = ( v[1]-v[0] ) * vectorField[i][0] + ( v[2]-v[0] ) * vectorField[i][1]; 
+			Point3D< float > v2 = Point3D< float >::CrossProduct( v1 , n );
+			v2 /= (float)Length(v2);
+
+			glColor3f( 0 , 0 , 0 );
+			t = center - v2*WidthScale ; glVertex3f( t[0] , t[1] , t[2] );
+			t = center + v2*WidthScale ; glVertex3f( t[0] , t[1] , t[2] );
+			glColor3f( 1 , 1 , 1 );
+			t = center + v1*LengthScale ; glVertex3f( t[0] , t[1] , t[2] );
+		}
+		glEnd();
+	}
 
 	if (showBoundaryEdges)
 	{
@@ -720,8 +749,9 @@ void TexturedMeshVisualization::motionFunc(int x, int y)
 	}
 }
 
-TexturedMeshVisualization::TexturedMeshVisualization( void )
+TexturedMeshVisualization::TexturedMeshVisualization( bool hasVectorField )
 {
+	showVectorField = false;
 	useNearestSampling = false;
 	showEdges = false;
 	showBoundaryEdges = false;
@@ -747,6 +777,7 @@ TexturedMeshVisualization::TexturedMeshVisualization( void )
 	callBacks.push_back(KeyboardCallBack(this, 'K', "screenshot", "File Name", ScreenshotCallBack));
 	callBacks.push_back(KeyboardCallBack(this, 'E', "show boundary", ShowBoundaryEdgesCallBack));
 	callBacks.push_back(KeyboardCallBack(this, 'N', "use nearest", NearestSamplingCallBack));
+	if( hasVectorField ) callBacks.push_back( KeyboardCallBack( this , 'V', "toggle vector field ", ToggleVectorFieldCallBack ) );
 
 
 	lightDiffuse[0] = lightDiffuse[1] = lightDiffuse[2] = 1.0f, lightDiffuse[3] = 1.f;
