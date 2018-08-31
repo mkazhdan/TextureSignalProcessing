@@ -682,17 +682,6 @@ int LineConvolution<Real>::InitializeSystem( const int width , const int height 
 			std::vector< SquareMatrix< double , 2 > > embeddingMetric;
 
 			InitializeEmbeddingMetric( mesh , true , embeddingMetric );
-			// Make the vector-field a unit vector-field
-			if( false )
-			{
-#pragma omp parallel for
-				for( int t=0 ; t<vectorField.size() ; t++ )
-				{
-					double len2 = Point2D< double >::Dot( vectorField[t] , embeddingMetric[t]*vectorField[t] );
-					if( len2>0 ) vectorField[t] /= (Real)sqrt( len2 );
-					else         vectorField[t] *= 0;
-				}
-			}
 			// Normalize the scale of the vector-field
 			{
 				double norm = 0 , area = 0;
