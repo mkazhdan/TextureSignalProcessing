@@ -49,7 +49,7 @@ cmdLineParameter< int   > Height( "height" , 2048 );
 cmdLineParameter< float > LICInterpolationWeight( "licInterpolation" , 1e4 );
 cmdLineParameter< float > SharpeningInterpolationWeight( "sharpInterpolation" , 1e4 );
 cmdLineParameter< float > SharpeningGradientModulation( "sharpModulation" , 100 );
-cmdLineParameter< float > AnisoExponent( "aExp" , 4.f );
+cmdLineParameter< float > AnisoExponent( "aExp" , 0.f );
 cmdLineParameter< int   > Levels( "levels" , 4 );
 cmdLineParameter< int   > MatrixQuadrature( "mQuadrature" , 6 );
 
@@ -70,7 +70,7 @@ cmdLineReadable DetailVerbose("detail");
 cmdLineReadable UseDirectSolver("useDirectSolver");
 cmdLineReadable IntrinsicVectorField( "intrinsicVF" );
 cmdLineReadable NoHelp( "noHelp" );
-cmdLineReadable NoUnit( "noUnit" );
+
 cmdLineReadable* params[] =
 {
 	&Input , &Output , &MinimalCurvature , &VectorField , &IntrinsicVectorField , &Width,&Height , &LICInterpolationWeight , &SharpeningInterpolationWeight , &SharpeningGradientModulation , &CameraConfig, &Levels,&UseDirectSolver,&Threads,&DisplayMode,&MultigridBlockHeight,&MultigridBlockWidth,&MultigridPaddedHeight,&MultigridPaddedWidth,&Verbose,
@@ -78,7 +78,7 @@ cmdLineReadable* params[] =
 	&Double ,
 	&MatrixQuadrature ,
 	&OutputVCycles ,
-	&NoHelp , &NoUnit , &AnisoExponent ,
+	&NoHelp , &AnisoExponent ,
 	NULL
 };
 
@@ -114,7 +114,6 @@ void ShowUsage(const char* ex)
 	printf( "\t[--%s <multigrid padded width>=%d]\n"  , MultigridPaddedWidth.name  , MultigridPaddedWidth.value  );
 	printf( "\t[--%s <multigrid padded height>=%d]\n" , MultigridPaddedHeight.name , MultigridPaddedHeight.value );
 	printf( "\t[--%s <anisotropy exponent>=%f]\n" , AnisoExponent.name , AnisoExponent.value );
-	printf( "\t[--%s]\n" , NoUnit.name );
 	printf( "\t[--%s]\n" , NoHelp.name );
 }
 
@@ -677,7 +676,7 @@ int LineConvolution<Real>::InitializeSystem( const int width , const int height 
 
 			InitializeEmbeddingMetric( mesh , true , embeddingMetric );
 			// Make the vector-field a unit vector-field
-			if( !NoUnit.set )
+			if( false )
 			{
 #pragma omp parallel for
 				for( int t=0 ; t<vectorField.size() ; t++ )
