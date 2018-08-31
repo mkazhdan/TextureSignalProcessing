@@ -368,17 +368,18 @@ void TexturedMeshVisualization::DrawGeometry( GLuint& textureBufferId , bool pho
 		static const float WidthScale = LengthScale / 5.f;
 		glDisable( GL_LIGHTING );
 		glBegin( GL_TRIANGLES );
-		for( int i=0 ; i<triangles.size() ; i++ )
+		for( int i=0 ; i<vectorField.size() ; i++ )
 		{
 			Point3D< float > t;
-			Point3D< float > v[] = { vertices[ triangles[i][0] ] , vertices[ triangles[i][1] ] , vertices[ triangles[i][2] ] };
+			int tIdx = vectorField[i].tIdx;
+			Point3D< float > v[] = { vertices[ triangles[tIdx][0] ] , vertices[ triangles[tIdx][1] ] , vertices[ triangles[tIdx][2] ] };
 			Point3D< float > n = Point3D< float >::CrossProduct( v[1]-v[0] , v[2]-v[0] );
-			Point3D< float > center = ( v[0] + v[1] + v[2] ) / 3.f;
-			Point3D< float > v1 = ( v[1]-v[0] ) * vectorField[i][0] + ( v[2]-v[0] ) * vectorField[i][1]; 
+			Point3D< float > center = v[0] + (v[1]-v[0])*vectorField[i].p[0] + (v[2]-v[0])*vectorField[i].p[1];
+			Point3D< float > v1 = (v[1]-v[0])*vectorField[i].v[0] + (v[2]-v[0])*vectorField[i].v[1];
 			Point3D< float > v2 = Point3D< float >::CrossProduct( v1 , n );
 			v2 /= (float)Length(v2);
 
-			glColor3f( 0 , 0 , 0 );
+			glColor3f( 0.35f , 0.35f , 0.35f );
 			t = center - v2*WidthScale ; glVertex3f( t[0] , t[1] , t[2] );
 			t = center + v2*WidthScale ; glVertex3f( t[0] , t[1] , t[2] );
 			glColor3f( 1 , 1 , 1 );

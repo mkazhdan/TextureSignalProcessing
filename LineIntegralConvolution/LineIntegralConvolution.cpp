@@ -247,7 +247,7 @@ public:
 	static void InitializeVisualization( const int width , const int height );
 	static void ComputeExactSolution( bool verbose= false );
 	static int UpdateSolution( bool verbose=false , bool detailVerbose=false );
-	static int InitializeSystem( const int width , const int height );
+	static int InitializeSystem( const FEM::RiemannianMesh< double >& rMesh , const int width , const int height );
 
 	static void Display(void) { visualization.Display(); }
 	static void MouseFunc(int button, int state, int x, int y);
@@ -303,51 +303,48 @@ template<class Real> typename LineConvolution<Real>::CoarseSolverType			LineConv
 //Geodesic Distance
 template<class Real> std::vector<MultigridLevelCoefficients<Real>>				LineConvolution<Real>::multigridModulationCoefficients;
 template<class Real> std::vector< MultigridLevelVariables< Point3D< Real > > >	LineConvolution<Real>::multigridModulationVariables;
-template<class Real> typename LineConvolution<Real>::CoarseSolverType						LineConvolution<Real>::coarseModulationSolver;
+template<class Real> typename LineConvolution<Real>::CoarseSolverType			LineConvolution<Real>::coarseModulationSolver;
 
-template<class Real> typename LineConvolution<Real>::DirectSolverType						LineConvolution<Real>::fineLineConvolutionSolver;
-template<class Real> typename LineConvolution<Real>::DirectSolverType						LineConvolution<Real>::fineModulationSolver;
+template<class Real> typename LineConvolution<Real>::DirectSolverType			LineConvolution<Real>::fineLineConvolutionSolver;
+template<class Real> typename LineConvolution<Real>::DirectSolverType			LineConvolution<Real>::fineModulationSolver;
 
-template<class Real>  typename LineConvolution<Real>::BoundarySolverType					LineConvolution<Real>::boundaryLineConvolutionSolver;
-template<class Real>  typename LineConvolution<Real>::BoundarySolverType					LineConvolution<Real>::boundaryModulationSolver;
+template<class Real>  typename LineConvolution<Real>::BoundarySolverType		LineConvolution<Real>::boundaryLineConvolutionSolver;
+template<class Real>  typename LineConvolution<Real>::BoundarySolverType		LineConvolution<Real>::boundaryModulationSolver;
 
-template<class Real> std::vector< Point3D< Real > >		LineConvolution<Real>::randSignal;
+template<class Real> std::vector< Point3D< Real > >								LineConvolution<Real>::randSignal;
 
-template<class Real> std::vector< Point3D< Real > >		LineConvolution<Real>::mass_x0;
-template<class Real> std::vector< Point3D< Real > >		LineConvolution<Real>::stiffness_x0;
+template<class Real> std::vector< Point3D< Real > >								LineConvolution<Real>::mass_x0;
+template<class Real> std::vector< Point3D< Real > >								LineConvolution<Real>::stiffness_x0;
 
-template<class Real> static std::vector< Point3D< Real > > mass_x0;
-template<class Real> static std::vector< Point3D< Real > > stiffness_x0;
+template<class Real> int														LineConvolution<Real>::impulseTexel = -1;
+template<class Real> std::vector<Point3D<float>>								LineConvolution<Real>::textureNodePositions;
 
-template<class Real> int															LineConvolution<Real>::impulseTexel = -1;
-template<class Real> std::vector<Point3D<float>>									LineConvolution<Real>::textureNodePositions;
+template<class Real> double														LineConvolution<Real>::lineConvolutionRange;
+template<class Real> double														LineConvolution<Real>::modulationRange;
 
-template<class Real> double															LineConvolution<Real>::lineConvolutionRange;
-template<class Real> double															LineConvolution<Real>::modulationRange;
+template<class Real> SparseMatrix<Real, int>									LineConvolution<Real>::coarseBoundaryFineBoundaryProlongation;
+template<class Real> SparseMatrix<Real, int>									LineConvolution<Real>::fineBoundaryCoarseBoundaryRestriction;
 
-template<class Real> SparseMatrix<Real, int>										LineConvolution<Real>::coarseBoundaryFineBoundaryProlongation;
-template<class Real> SparseMatrix<Real, int>										LineConvolution<Real>::fineBoundaryCoarseBoundaryRestriction;
+template<class Real> std::vector<Real>											LineConvolution<Real>::coarseBoundaryValues;
+template<class Real> std::vector<Real>											LineConvolution<Real>::coarseBoundaryRHS;
+template<class Real> std::vector<Real>											LineConvolution<Real>::fineBoundaryValues;
+template<class Real> std::vector<Real>											LineConvolution<Real>::fineBoundaryRHS;
 
-template<class Real> std::vector<Real>												LineConvolution<Real>::coarseBoundaryValues;
-template<class Real> std::vector<Real>												LineConvolution<Real>::coarseBoundaryRHS;
-template<class Real> std::vector<Real>												LineConvolution<Real>::fineBoundaryValues;
-template<class Real> std::vector<Real>												LineConvolution<Real>::fineBoundaryRHS;
+template<class Real> std::vector<double>										LineConvolution<Real>::anisoDeepMassCoefficients;
+template<class Real> std::vector<double>										LineConvolution<Real>::anisoDeepStiffnessCoefficients;
+template<class Real> SparseMatrix<double, int>									LineConvolution<Real>::anisoBoundaryBoundaryMassMatrix;
+template<class Real> SparseMatrix<double, int>									LineConvolution<Real>::anisoBoundaryBoundaryStiffnessMatrix;
+template<class Real> SparseMatrix<double, int>									LineConvolution<Real>::anisoBoundaryDeepMassMatrix;
+template<class Real> SparseMatrix<double, int>									LineConvolution<Real>::anisoBoundaryDeepStiffnessMatrix;
 
-template<class Real> std::vector<double>											LineConvolution<Real>::anisoDeepMassCoefficients;
-template<class Real> std::vector<double>											LineConvolution<Real>::anisoDeepStiffnessCoefficients;
-template<class Real> SparseMatrix<double, int>										LineConvolution<Real>::anisoBoundaryBoundaryMassMatrix;
-template<class Real> SparseMatrix<double, int>										LineConvolution<Real>::anisoBoundaryBoundaryStiffnessMatrix;
-template<class Real> SparseMatrix<double, int>										LineConvolution<Real>::anisoBoundaryDeepMassMatrix;
-template<class Real> SparseMatrix<double, int>										LineConvolution<Real>::anisoBoundaryDeepStiffnessMatrix;
+template<class Real> std::vector<double>										LineConvolution<Real>::deepMassCoefficients;
+template<class Real> std::vector<double>										LineConvolution<Real>::deepStiffnessCoefficients;
+template<class Real> SparseMatrix<double, int>									LineConvolution<Real>::boundaryBoundaryMassMatrix;
+template<class Real> SparseMatrix<double, int>									LineConvolution<Real>::boundaryBoundaryStiffnessMatrix;
+template<class Real> SparseMatrix<double, int>									LineConvolution<Real>::boundaryDeepMassMatrix;
+template<class Real> SparseMatrix<double, int>									LineConvolution<Real>::boundaryDeepStiffnessMatrix;
 
-template<class Real> std::vector<double>											LineConvolution<Real>::deepMassCoefficients;
-template<class Real> std::vector<double>											LineConvolution<Real>::deepStiffnessCoefficients;
-template<class Real> SparseMatrix<double, int>										LineConvolution<Real>::boundaryBoundaryMassMatrix;
-template<class Real> SparseMatrix<double, int>										LineConvolution<Real>::boundaryBoundaryStiffnessMatrix;
-template<class Real> SparseMatrix<double, int>										LineConvolution<Real>::boundaryDeepMassMatrix;
-template<class Real> SparseMatrix<double, int>										LineConvolution<Real>::boundaryDeepStiffnessMatrix;
-
-template< class Real > int															LineConvolution<Real>::updateCount = 0;
+template< class Real > int														LineConvolution<Real>::updateCount = 0;
 template< class Real >
 void LineConvolution<Real>::ComputeExactSolution( bool verbose )
 {
@@ -584,7 +581,7 @@ int LineConvolution< Real >::UpdateSolution( bool verbose , bool detailVerbose )
 
 
 template<class Real>
-int LineConvolution<Real>::InitializeSystem( const int width , const int height )
+int LineConvolution<Real>::InitializeSystem( const FEM::RiemannianMesh< double >& rMesh , const int width , const int height )
 {
 	clock_t t_begin;
 		
@@ -708,8 +705,16 @@ int LineConvolution<Real>::InitializeSystem( const int width , const int height 
 				WriteVector( _vectorField , OutVectorField.value );
 			}
 		}
-		visualization.vectorField.resize( vectorField.size() );
-		for( int i=0 ; i<vectorField.size() ; i++ ) visualization.vectorField[i] = Point2D< float >( vectorField[i] );
+		{
+			std::vector< FEM::SamplePoint< double > > randomSamples = rMesh.randomSamples( 5e5 );
+			visualization.vectorField.resize( randomSamples.size() );
+			for( int i=0 ; i<randomSamples.size() ; i++ )
+			{
+				visualization.vectorField[i].tIdx = randomSamples[i].tIdx;
+				visualization.vectorField[i].p = Point2D< float >( randomSamples[i].p );
+				visualization.vectorField[i].v = Point2D< float >( vectorField[ randomSamples[i].tIdx ] );
+			}
+		}
 
 		auto LengthToAnisotropy = [&]( double len )
 		{
@@ -977,7 +982,10 @@ int LineConvolution<Real>::Init( void )
 	for( int i=0 ; i<mesh.vertices.size() ; i++ ) mesh.vertices[i] = ( mesh.vertices[i]-centroid ) / radius;
 
 	clock_t t = clock();
-	if( !InitializeSystem( textureWidth , textureHeight ) ){ printf("Unable to initialize system\n") ; return 0; }
+	FEM::RiemannianMesh< double > rMesh( GetPointer( mesh.triangles ) , mesh.triangles.size() );
+	rMesh.setMetricFromEmbedding( GetPointer( mesh.vertices ) );
+	rMesh.makeUnitArea();
+	if( !InitializeSystem( rMesh , textureWidth , textureHeight ) ){ printf("Unable to initialize system\n") ; return 0; }
 	if( Verbose.set )
 	{
 		printf( "Resolution: %d / %d x %d\n" , (int)textureNodes.size() , textureWidth , textureHeight );
@@ -987,9 +995,6 @@ int LineConvolution<Real>::Init( void )
 
 	//Assign position to exterior nodes using barycentric-exponential map
 	{
-		FEM::RiemannianMesh< double > rMesh( GetPointer( mesh.triangles ) , mesh.triangles.size() );
-		rMesh.setMetricFromEmbedding( GetPointer( mesh.vertices ) );
-		rMesh.makeUnitArea();
 		Pointer( FEM::CoordinateXForm< double > ) xForms = rMesh.getCoordinateXForms();
 
 		for( int i=0 ; i<textureNodes.size() ; i++ ) if( textureNodes[i].tId!=-1 && !textureNodes[i].isInterior )
@@ -1004,6 +1009,7 @@ int LineConvolution<Real>::Init( void )
 			textureNodes[i].tId = _p.tIdx;
 			textureNodes[i].barycentricCoords = _p.p;
 		}
+		DeletePointer( xForms );		
 	}
 
 	textureNodePositions.resize(textureNodes.size());

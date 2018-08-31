@@ -91,7 +91,7 @@ public:
 	std::vector< TriangleIndex > triangles;
 	std::vector< Point2D< float > > textureCoordinates;
 	Image< Point3D< float > > textureImage;
-	std::vector< Point2D< float > > vectorField;
+	std::vector< FEM::HermiteSamplePoint< float > > vectorField;
 
 	GLfloat lightAmbient[4] , lightDiffuse[4] , lightSpecular[4] , lightPosition[4] , shapeDiffuse[4] , shapeAmbient[4] , shapeSpecular[4] , shapeSpecularShininess;
 	bool showEdges;
@@ -151,7 +151,7 @@ public:
 
 	Point2D< float > selectImagePos(int x, int y);
 	Point< float, 2 > screenToImage(int x, int y);
-	bool select(int x, int  y, Point3D< float >& out);
+	bool select( int x , int  y , Point3D< float >& out );
 
 	void SetLightingData( void );
 	void SetTextureCamera( void );
