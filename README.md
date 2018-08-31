@@ -97,7 +97,7 @@ Hit [SPACE] to start the iterative solver or hit "+" to advance one iteration at
 The input mesh is assumed to be in <a href="http://www.cc.gatech.edu/projects/large_models/ply.html">PLY</a> format, giving the set of vertices with the x-, y-, and z-coordinates of the positions encoded by the properties <i>x</i>, <i>y</i>, and <i>z</i> the set of polygons encoded by two lists. The first gives the indices of the vertices in the polygon (integers). The second gives the texture coordinates at each polygon corner (pairs of floats).<br>
 </dd>
 
-<dt>[<b>--vf</b> &lt;<i>vector-field file</i>&gt;]</dt>
+<dt>[<b>--inVF</b> &lt;<i>vector-field file</i>&gt;]</dt>
 <DD>This string specifies the file containing the vector-field for visualization. (If this parameter is not specified, the principal curvature direction is used.)<BR>
 This file is assumed to be in binary, with the first four bytes storing an integer representing the number of vectors (this should be equal to the number of triangles in the mesh) followed by the list of vectors.
 The latter are encoded using double-precision floating point values and should be <I>8</I>*<I>num_triangles</I>*<I>dim</I> bytes, with <I>num_triangles</I> the number of triangles/vectors and <I>dim</I> the dimension of vector-field. (The value of <I>dim</I> is equal to two if the <B>--intrinsicVF</B> is specified an three otherwise.)
@@ -276,7 +276,7 @@ To run this executable you must specify the input mesh:
 <blockquote><code>% Bin/*/LineIntegralConvolution --in ../TSP.Data/Fertility/fertility.ply</code></blockquote>
 This opens a viewer visualizing a vector-field by performing anisotropic diffusion to simulate line-integral-convolution. (To start the iterative solver, press the [SPACE] key.) By default, the vector-field used is defined by the (maximal) principal curvature directions.<BR>
 You can also explicitly prescribe the vector-field:
-<blockquote><code>% Bin/*/LineIntegralConvolution --in ../TSP.Data/Fertility/fertility.ply --vf ../TSP.Data/Fertility/harmonic-001.vf --intrinsicVF</code></blockquote>
+<blockquote><code>% Bin/*/LineIntegralConvolution --in ../TSP.Data/Fertility/fertility.ply --inVF ../TSP.Data/Fertility/harmonic-001.vf --intrinsicVF</code></blockquote>
 (The <b>--intrinsicVF</b> flag is required because the vector-field in the file is represented using two intrinsic coordinates per triangle instead of three extrinsic ones.)<BR>
 You can also bypass the viewer and output the line-integral-convolution texture to a file:
 <blockquote><code>% Bin/*/LineIntegralConvolution --in ../TSP.Data/Hand/hand.ply --minimal --out hand.minimal.jpg</code></blockquote>

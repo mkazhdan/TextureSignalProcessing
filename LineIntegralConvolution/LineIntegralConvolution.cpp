@@ -43,7 +43,8 @@ cmdLineParameter< char* > Output( "out" );
 cmdLineParameter< int   > OutputVCycles( "outVCycles" , 10 );
 cmdLineReadable MinimalCurvature( "minimal" );
 cmdLineReadable Double( "double" );
-cmdLineParameter< char* > VectorField( "vf" );
+cmdLineParameter< char* > InVectorField( "inVF" );
+cmdLineParameter< char* > OutVectorField( "outVF" );
 cmdLineParameter< int   > Width( "width" , 2048 );
 cmdLineParameter< int   > Height( "height" , 2048 );
 cmdLineParameter< float > LICInterpolationWeight( "licInterpolation" , 1e4 );
@@ -73,7 +74,7 @@ cmdLineReadable NoHelp( "noHelp" );
 
 cmdLineReadable* params[] =
 {
-	&Input , &Output , &MinimalCurvature , &VectorField , &IntrinsicVectorField , &Width,&Height , &LICInterpolationWeight , &SharpeningInterpolationWeight , &SharpeningGradientModulation , &CameraConfig, &Levels,&UseDirectSolver,&Threads,&DisplayMode,&MultigridBlockHeight,&MultigridBlockWidth,&MultigridPaddedHeight,&MultigridPaddedWidth,&Verbose,
+	&Input , &Output , &MinimalCurvature , &InVectorField , &OutVectorField , &IntrinsicVectorField , &Width,&Height , &LICInterpolationWeight , &SharpeningInterpolationWeight , &SharpeningGradientModulation , &CameraConfig, &Levels,&UseDirectSolver,&Threads,&DisplayMode,&MultigridBlockHeight,&MultigridBlockWidth,&MultigridPaddedHeight,&MultigridPaddedWidth,&Verbose,
 	&DetailVerbose , &RandomJitter ,
 	&Double ,
 	&MatrixQuadrature ,
@@ -88,7 +89,8 @@ void ShowUsage(const char* ex)
 	printf( "\t --%s <input mesh>\n" , Input.name );
 	printf( "\t[--%s <output texture>\n" , Output.name );
 	printf( "\t[--%s <output v-cycles>=%d]\n" , OutputVCycles.name , OutputVCycles.value );
-	printf( "\t[--%s <vector field file>\n" , VectorField.name );
+	printf( "\t[--%s <input vector field file>\n" , InVectorField.name );
+	printf( "\t[--%s <output vector field file>\n" , OutVectorField.name );
 	printf( "\t[--%s <LIC interpolation weight>=%f]\n" , LICInterpolationWeight.name , LICInterpolationWeight.value );
 	printf( "\t[--%s <sharpening interpolation weight>=%f]\n" , SharpeningInterpolationWeight.name , SharpeningInterpolationWeight.value   );
 	printf( "\t[--%s <sharpening gradient modulation>=%f]\n" , SharpeningGradientModulation.name , SharpeningGradientModulation.value );
@@ -245,7 +247,7 @@ public:
 	static void InitializeVisualization( const int width , const int height );
 	static void ComputeExactSolution( bool verbose= false );
 	static int UpdateSolution( bool verbose=false , bool detailVerbose=false );
-	static int InitializeSystem( const int width , const int height , double scale );
+	static int InitializeSystem( const int width , const int height );
 
 	static void Display(void) { visualization.Display(); }
 	static void MouseFunc(int button, int state, int x, int y);
@@ -582,7 +584,7 @@ int LineConvolution< Real >::UpdateSolution( bool verbose , bool detailVerbose )
 
 
 template<class Real>
-int LineConvolution<Real>::InitializeSystem( const int width , const int height , double scale )
+int LineConvolution<Real>::InitializeSystem( const int width , const int height )
 {
 	clock_t t_begin;
 		
@@ -610,14 +612,12 @@ int LineConvolution<Real>::InitializeSystem( const int width , const int height 
 	}
 
 	BoundaryProlongationData boundaryProlongation;
-	if (!InitializeBoundaryProlongationData(hierarchy.gridAtlases[0], boundaryProlongation)) {
-		printf("ERROR : Failed boundary prolongation! \n");
-		return 0;
-	}
+	if( !InitializeBoundaryProlongationData( hierarchy.gridAtlases[0] , boundaryProlongation ) ){ fprintf( stderr , "[ERROR] Failed boundary prolongation!\n" ) ; return 0; }
 
 	//////////////////////////////////// Initialize multigrid indices
-	multigridIndices.resize(levels);
-	for (int i = 0; i < levels; i++){
+	multigridIndices.resize( levels );
+	for( int i=0 ; i<levels ; i++ )
+	{
 		const GridAtlas & gridAtlas = hierarchy.gridAtlases[i];
 		multigridIndices[i].threadTasks = gridAtlas.threadTasks;
 		multigridIndices[i].boundaryGlobalIndex = gridAtlas.boundaryGlobalIndex;
@@ -625,9 +625,7 @@ int LineConvolution<Real>::InitializeSystem( const int width , const int height 
 		multigridIndices[i].rasterLines = gridAtlas.rasterLines;
 		multigridIndices[i].restrictionLines = gridAtlas.restrictionLines;
 		multigridIndices[i].prolongationLines = gridAtlas.prolongationLines;
-		if (i < levels - 1) {
-			multigridIndices[i].boundaryRestriction = hierarchy.boundaryRestriction[i];
-		}
+		if( i<levels-1 ) multigridIndices[i].boundaryRestriction = hierarchy.boundaryRestriction[i];
 	}
 
 	//////////////////////////////////// Initialize multigrid coefficients
@@ -635,26 +633,26 @@ int LineConvolution<Real>::InitializeSystem( const int width , const int height 
 	//////////////////////////////////// 	Line Convolution coefficients
 	{
 		std::vector< Point2D< double > > vectorField;
-		if( VectorField.set )
+		if( InVectorField.set )
 		{
 			if( IntrinsicVectorField.set )
 			{
-				if( !ReadVector( vectorField , VectorField.value ) ){ fprintf( stderr , "[ERROR] Unable to read vector field: %s\n" , VectorField.value ) ; return 0; }
+				if( !ReadVector( vectorField , InVectorField.value ) ){ fprintf( stderr , "[ERROR] Unable to read vector field: %s\n" , InVectorField.value ) ; return 0; }
 				if( vectorField.size()!=mesh.triangles.size() ){ fprintf( stderr , "[ERROR] Triangle and vector counts don't match: %d != %d\n" , (int)mesh.triangles.size() , (int)vectorField.size() ) ; return 0; }
 			}
 			else
 			{
 				std::vector< Point3D< double > > _vectorField;
-				if( !ReadVector( _vectorField , VectorField.value ) ){ fprintf( stderr , "[ERROR] Unable to read vector field: %s\n" , VectorField.value ) ; return 0; }
+				if( !ReadVector( _vectorField , InVectorField.value ) ){ fprintf( stderr , "[ERROR] Unable to read vector field: %s\n" , InVectorField.value ) ; return 0; }
 				if( _vectorField.size()!=mesh.triangles.size() ){ fprintf( stderr , "[ERROR] Triangle and vector counts don't match: %d != %d\n" , (int)mesh.triangles.size() , (int)_vectorField.size() ) ; return 0; }
 				vectorField.resize( _vectorField.size() );
 #pragma omp parallel for
 				for( int i=0 ; i<mesh.triangles.size() ; i++ )
 				{
 					Point3D< double > v[] = { mesh.vertices[ mesh.triangles[i][0] ] , mesh.vertices[ mesh.triangles[i][1] ] , mesh.vertices[ mesh.triangles[i][2] ] };
-					Point3D< double > d[] = { (v[1]-v[0])*scale , (v[2]-v[0])*scale };
+					Point3D< double > d[] = { v[1]-v[0] , v[2]-v[0] };
 					SquareMatrix< double , 2 > Dot;
-					for( int j=0 ; j<2 ; j++ ) for( int k=0 ; k<2 ; j++ ) Dot( j , k ) = Point3D< double >::Dot( d[j] , d[k] );
+					for( int j=0 ; j<2 ; j++ ) for( int k=0 ; k<2 ; k++ ) Dot(j,k) = Point3D< double >::Dot( d[j] , d[k] );
 					Point2D< double > dot( Point3D< double >::Dot( d[0] , _vectorField[i] ) , Point3D< double >::Dot( d[1] , _vectorField[i] ) );
 					vectorField[i] = Dot.inverse() * dot;
 				}
@@ -677,6 +675,21 @@ int LineConvolution<Real>::InitializeSystem( const int width , const int height 
 			vectorField.resize( principalCurvatures.size() );
 #pragma omp parallel for
 			for( int t=0 ; t<principalCurvatures.size() ; t++ ) vectorField[t] = principalCurvatures[t].dirs[ MinimalCurvature.set ? 0 : 1 ] * ( principalCurvatures[t].values[1] - principalCurvatures[t].values[0] );
+		}
+		if( OutVectorField.set )
+		{
+			if( IntrinsicVectorField.set ) WriteVector( vectorField , OutVectorField.value );
+			else
+			{
+				std::vector< Point3D< double > > _vectorField( vectorField.size() );
+#pragma omp parallel for
+				for( int i=0 ; i<mesh.triangles.size() ; i++ )
+				{
+					Point3D< double > v[] = { mesh.vertices[ mesh.triangles[i][0] ] , mesh.vertices[ mesh.triangles[i][1] ] , mesh.vertices[ mesh.triangles[i][2] ] };
+					_vectorField[i] = (v[1]-v[0]) * vectorField[i][0] + (v[2]-v[0]) * vectorField[i][1];
+				}
+				WriteVector( _vectorField , OutVectorField.value );
+			}
 		}
 		{
 			std::vector< SquareMatrix< double , 2 > > embeddingMetric;
@@ -956,16 +969,8 @@ int LineConvolution<Real>::Init( void )
 		textureHeight += (padding.bottom + padding.top);
 	}
 
-	//Define centroid and scale for visualization
-	Point3D< double > centroid(0.f, 0.f, 0.f);
-	for( int i=0 ; i<mesh.vertices.size() ;  i++ ) centroid += mesh.vertices[i];
-	centroid /= double(mesh.vertices.size());
-	double radius = 0.f;
-	for( int i=0 ; i< mesh.vertices.size() ; i++ ) radius = std::max<double>(radius, Point3D<double>::Length(mesh.vertices[i] - centroid));
-	for( int i=0 ; i< mesh.vertices.size() ; i++ ) mesh.vertices[i] = (mesh.vertices[i] - centroid) / radius;
-
 	clock_t t = clock();
-	if( !InitializeSystem( textureWidth , textureHeight , radius ) ){ printf("Unable to initialize system\n") ; return 0; }
+	if( !InitializeSystem( textureWidth , textureHeight ) ){ printf("Unable to initialize system\n") ; return 0; }
 	if( Verbose.set )
 	{
 		printf( "Resolution: %d / %d x %d\n" , (int)textureNodes.size() , textureWidth , textureHeight );
