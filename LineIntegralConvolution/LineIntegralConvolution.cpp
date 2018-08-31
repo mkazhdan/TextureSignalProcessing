@@ -38,8 +38,6 @@ DAMAGE.
 #include <Src/TexturedMeshVisualization.h>
 #include <Misha/Miscellany.h>
 
-#define INTEGRATION_SAMPLES 6
-
 cmdLineParameter< char* > Input( "in" );
 cmdLineParameter< char* > Output( "out" );
 cmdLineParameter< int   > OutputVCycles( "outVCycles" , 10 );
@@ -51,6 +49,7 @@ cmdLineParameter< int   > Height( "height" , 2048 );
 cmdLineParameter< float > LICInterpolationWeight( "licInterpolation" , 1e4 );
 cmdLineParameter< float > SharpeningInterpolationWeight( "sharpInterpolation" , 1e4 );
 cmdLineParameter< float > SharpeningGradientModulation( "sharpModulation" , 100 );
+cmdLineParameter< float > AnisoExponent( "aExp" , 4.f );
 cmdLineParameter< int   > Levels( "levels" , 4 );
 cmdLineParameter< int   > MatrixQuadrature( "mQuadrature" , 6 );
 
@@ -71,6 +70,7 @@ cmdLineReadable DetailVerbose("detail");
 cmdLineReadable UseDirectSolver("useDirectSolver");
 cmdLineReadable IntrinsicVectorField( "intrinsicVF" );
 cmdLineReadable NoHelp( "noHelp" );
+cmdLineReadable NoUnit( "noUnit" );
 cmdLineReadable* params[] =
 {
 	&Input , &Output , &MinimalCurvature , &VectorField , &IntrinsicVectorField , &Width,&Height , &LICInterpolationWeight , &SharpeningInterpolationWeight , &SharpeningGradientModulation , &CameraConfig, &Levels,&UseDirectSolver,&Threads,&DisplayMode,&MultigridBlockHeight,&MultigridBlockWidth,&MultigridPaddedHeight,&MultigridPaddedWidth,&Verbose,
@@ -78,7 +78,7 @@ cmdLineReadable* params[] =
 	&Double ,
 	&MatrixQuadrature ,
 	&OutputVCycles ,
-	&NoHelp ,
+	&NoHelp , &NoUnit , &AnisoExponent ,
 	NULL
 };
 
@@ -113,6 +113,8 @@ void ShowUsage(const char* ex)
 	printf( "\t[--%s <multigrid block height>=%d]\n"  , MultigridBlockHeight.name  , MultigridBlockHeight.value  );
 	printf( "\t[--%s <multigrid padded width>=%d]\n"  , MultigridPaddedWidth.name  , MultigridPaddedWidth.value  );
 	printf( "\t[--%s <multigrid padded height>=%d]\n" , MultigridPaddedHeight.name , MultigridPaddedHeight.value );
+	printf( "\t[--%s <anisotropy exponent>=%f]\n" , AnisoExponent.name , AnisoExponent.value );
+	printf( "\t[--%s]\n" , NoUnit.name );
 	printf( "\t[--%s]\n" , NoHelp.name );
 }
 
@@ -652,9 +654,63 @@ int LineConvolution<Real>::InitializeSystem( const int width , const int height 
 				}
 			}
 		}
-		if( !InitializeAnisotropicMetric( mesh , atlasCharts , parameterMetric , vectorField , MinimalCurvature.set ) )
+		else
 		{
-			printf("ERROR: Unable to initialize metric \n");
+			// Compute the principal curvatures
+			std::vector< PrincipalCurvature< double > > principalCurvatures;
+			UpdateNormals( mesh );
+			Eigen::SparseMatrix< double > meshMassMatrix;
+			Eigen::SparseMatrix< double > meshStiffnessMatrix;
+			InitializeMeshMatrices( mesh , meshMassMatrix , meshStiffnessMatrix );
+			Eigen::SimplicialLDLT< Eigen::SparseMatrix< double > > meshSolver( meshMassMatrix + meshStiffnessMatrix*1e-4 );
+			SmoothSignal( meshMassMatrix , meshSolver , mesh.normals , true );
+
+			InitializePrincipalCurvatureDirection( mesh , mesh.normals , principalCurvatures );
+
+			// Set the vector-field to the principal curvature direction times the umbilicity
+			vectorField.resize( principalCurvatures.size() );
+#pragma omp parallel for
+			for( int t=0 ; t<principalCurvatures.size() ; t++ ) vectorField[t] = principalCurvatures[t].dirs[ MinimalCurvature.set ? 0 : 1 ] * ( principalCurvatures[t].values[1] - principalCurvatures[t].values[0] );
+		}
+		{
+			std::vector< SquareMatrix< double , 2 > > embeddingMetric;
+
+			InitializeEmbeddingMetric( mesh , true , embeddingMetric );
+			// Make the vector-field a unit vector-field
+			if( !NoUnit.set )
+			{
+#pragma omp parallel for
+				for( int t=0 ; t<vectorField.size() ; t++ )
+				{
+					double len2 = Point2D< double >::Dot( vectorField[t] , embeddingMetric[t]*vectorField[t] );
+					if( len2>0 ) vectorField[t] /= (Real)sqrt( len2 );
+					else         vectorField[t] *= 0;
+				}
+			}
+			// Normalize the scale of the vector-field
+			{
+				double norm = 0 , area = 0;
+				for( int t=0 ; t<embeddingMetric.size() ; t++ )
+				{
+					double a = sqrt( embeddingMetric[t].determinant() ) / 2.;
+					norm += Point2D< double >::Dot( vectorField[t] , embeddingMetric[t]*vectorField[t] ) * a;
+					area += a;
+				}
+				norm = sqrt( norm / area );
+				for( int t=0 ; t<embeddingMetric.size() ; t++ ) vectorField[t] /= norm;
+			}
+		}
+		auto LengthToAnisotropy = [&]( double len )
+		{
+			// g <- g + gOrtho * anisotropy 
+			// 0 -> 0
+			// 1 -> 1e5
+			// infty -> infty
+			return pow( len , AnisoExponent.value ) * 1e5;
+		};
+		if( !InitializeAnisotropicMetric( mesh , atlasCharts , vectorField , LengthToAnisotropy , parameterMetric ) )
+		{
+			printf( "[ERROR] Unable to initialize metric \n");
 			return 0;
 		} 
 
@@ -667,26 +723,13 @@ int LineConvolution<Real>::InitializeSystem( const int width , const int height 
 			int ret = 0;
 			switch( MatrixQuadrature.value )
 			{
-			case 1:
-				ret = InitializeMassAndStiffness< 1>( anisoDeepMassCoefficients , anisoDeepStiffnessCoefficients , anisoBoundaryBoundaryMassMatrix , anisoBoundaryBoundaryStiffnessMatrix , anisoBoundaryDeepMassMatrix , anisoBoundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix );
-				break;
-			case 3:
-				ret = InitializeMassAndStiffness< 3>( anisoDeepMassCoefficients , anisoDeepStiffnessCoefficients , anisoBoundaryBoundaryMassMatrix , anisoBoundaryBoundaryStiffnessMatrix , anisoBoundaryDeepMassMatrix , anisoBoundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix );
-				break;
-			case 6:
-				ret = InitializeMassAndStiffness< 6>( anisoDeepMassCoefficients , anisoDeepStiffnessCoefficients , anisoBoundaryBoundaryMassMatrix , anisoBoundaryBoundaryStiffnessMatrix , anisoBoundaryDeepMassMatrix , anisoBoundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix );
-				break;
-			case 12:
-				ret = InitializeMassAndStiffness<12>( anisoDeepMassCoefficients , anisoDeepStiffnessCoefficients , anisoBoundaryBoundaryMassMatrix , anisoBoundaryBoundaryStiffnessMatrix , anisoBoundaryDeepMassMatrix , anisoBoundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix );
-				break;
-			case 24:
-				ret = InitializeMassAndStiffness<24>( anisoDeepMassCoefficients , anisoDeepStiffnessCoefficients , anisoBoundaryBoundaryMassMatrix , anisoBoundaryBoundaryStiffnessMatrix , anisoBoundaryDeepMassMatrix , anisoBoundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix );
-				break;
-			case 32:
-				ret = InitializeMassAndStiffness<32>( anisoDeepMassCoefficients , anisoDeepStiffnessCoefficients , anisoBoundaryBoundaryMassMatrix , anisoBoundaryBoundaryStiffnessMatrix , anisoBoundaryDeepMassMatrix , anisoBoundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix );
-				break;
-			default:
-				fprintf( stderr , "[ERROR] Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles\n" );
+			case  1: ret = InitializeMassAndStiffness< 1>( anisoDeepMassCoefficients , anisoDeepStiffnessCoefficients , anisoBoundaryBoundaryMassMatrix , anisoBoundaryBoundaryStiffnessMatrix , anisoBoundaryDeepMassMatrix , anisoBoundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
+			case  3: ret = InitializeMassAndStiffness< 3>( anisoDeepMassCoefficients , anisoDeepStiffnessCoefficients , anisoBoundaryBoundaryMassMatrix , anisoBoundaryBoundaryStiffnessMatrix , anisoBoundaryDeepMassMatrix , anisoBoundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
+			case  6: ret = InitializeMassAndStiffness< 6>( anisoDeepMassCoefficients , anisoDeepStiffnessCoefficients , anisoBoundaryBoundaryMassMatrix , anisoBoundaryBoundaryStiffnessMatrix , anisoBoundaryDeepMassMatrix , anisoBoundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
+			case 12: ret = InitializeMassAndStiffness<12>( anisoDeepMassCoefficients , anisoDeepStiffnessCoefficients , anisoBoundaryBoundaryMassMatrix , anisoBoundaryBoundaryStiffnessMatrix , anisoBoundaryDeepMassMatrix , anisoBoundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
+			case 24: ret = InitializeMassAndStiffness<24>( anisoDeepMassCoefficients , anisoDeepStiffnessCoefficients , anisoBoundaryBoundaryMassMatrix , anisoBoundaryBoundaryStiffnessMatrix , anisoBoundaryDeepMassMatrix , anisoBoundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
+			case 32: ret = InitializeMassAndStiffness<32>( anisoDeepMassCoefficients , anisoDeepStiffnessCoefficients , anisoBoundaryBoundaryMassMatrix , anisoBoundaryBoundaryStiffnessMatrix , anisoBoundaryDeepMassMatrix , anisoBoundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
+			default: fprintf( stderr , "[ERROR] Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles\n" );
 			}
 			if( !ret )
 			{
