@@ -592,7 +592,7 @@ int GrayScottReactionDiffusion< Real >::InitializeSystem( const int width , cons
 	std::vector< double > __texelToCellCoeffs;
 	SparseMatrix< double , int > __boundaryCellBasedStiffnessRHSMatrix[3];
 
-	if( !InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric ) ){ fprintf( stderr , "[ERROR] Unable to initialize metric\n") ; return 0; }
+	if( !InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric ) ){ fprintf( stderr , "[ERROR] Unable to initialize embedding metric\n" ) ; return 0; }
 
 	// Scale the metric so that the area is equal to the resolution
 	for( int i=0 ; i<parameterMetric.size() ; i++ ) for( int j=0 ; j<parameterMetric[i].size() ; j++ ) parameterMetric[i][j] *= areaScale * textureNodes.size() / 2;

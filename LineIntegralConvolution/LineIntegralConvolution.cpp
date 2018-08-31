@@ -50,7 +50,7 @@ cmdLineParameter< int   > Height( "height" , 2048 );
 cmdLineParameter< float > LICInterpolationWeight( "licInterpolation" , 1e4 );
 cmdLineParameter< float > SharpeningInterpolationWeight( "sharpInterpolation" , 1e4 );
 cmdLineParameter< float > SharpeningGradientModulation( "sharpModulation" , 100 );
-cmdLineParameter< float > AnisoExponent( "aExp" , 0.f );
+cmdLineParameter< float > AnisotropyExponent( "aExp" , 0.f );
 cmdLineParameter< int   > Levels( "levels" , 4 );
 cmdLineParameter< int   > MatrixQuadrature( "mQuadrature" , 6 );
 
@@ -79,7 +79,7 @@ cmdLineReadable* params[] =
 	&Double ,
 	&MatrixQuadrature ,
 	&OutputVCycles ,
-	&NoHelp , &AnisoExponent ,
+	&NoHelp , &AnisotropyExponent ,
 	NULL
 };
 
@@ -115,7 +115,7 @@ void ShowUsage(const char* ex)
 	printf( "\t[--%s <multigrid block height>=%d]\n"  , MultigridBlockHeight.name  , MultigridBlockHeight.value  );
 	printf( "\t[--%s <multigrid padded width>=%d]\n"  , MultigridPaddedWidth.name  , MultigridPaddedWidth.value  );
 	printf( "\t[--%s <multigrid padded height>=%d]\n" , MultigridPaddedHeight.name , MultigridPaddedHeight.value );
-	printf( "\t[--%s <anisotropy exponent>=%f]\n" , AnisoExponent.name , AnisoExponent.value );
+	printf( "\t[--%s <anisotropy exponent>=%f]\n" , AnisotropyExponent.name , AnisotropyExponent.value );
 	printf( "\t[--%s]\n" , NoHelp.name );
 }
 
@@ -691,11 +691,10 @@ int LineConvolution<Real>::InitializeSystem( const int width , const int height 
 				WriteVector( _vectorField , OutVectorField.value );
 			}
 		}
+		// Normalize the vector-field to have unit-norm
 		{
 			std::vector< SquareMatrix< double , 2 > > embeddingMetric;
-
 			InitializeEmbeddingMetric( mesh , true , embeddingMetric );
-			// Normalize the scale of the vector-field
 			{
 				double norm = 0 , area = 0;
 				for( int t=0 ; t<embeddingMetric.size() ; t++ )
@@ -714,13 +713,9 @@ int LineConvolution<Real>::InitializeSystem( const int width , const int height 
 			// 0 -> 0
 			// 1 -> 1e5
 			// infty -> infty
-			return pow( len , AnisoExponent.value ) * 1e5;
+			return pow( len , AnisotropyExponent.value ) * 1e5;
 		};
-		if( !InitializeAnisotropicMetric( mesh , atlasCharts , vectorField , LengthToAnisotropy , parameterMetric ) )
-		{
-			printf( "[ERROR] Unable to initialize metric \n");
-			return 0;
-		} 
+		if( !InitializeAnisotropicMetric( mesh , atlasCharts , vectorField , LengthToAnisotropy , parameterMetric ) ){ fprintf( stderr , "[ERROR] Unable to initialize metric\n" ) ; return 0; } 
 
 		std::vector<Point3D<double>> __inputSignal;
 		std::vector<double> __texelToCellCoeffs;
