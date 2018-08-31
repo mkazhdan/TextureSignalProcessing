@@ -114,6 +114,9 @@ public:
 	static int levels;
 	static int updateCount;
 	
+	static int steps;
+	static char stepsString[];
+
 	static Padding padding;
 	
 	static std::vector<Point3D<float>> textureNodePositions;
@@ -237,6 +240,9 @@ template<class Real> double														Geodesics<Real>::geodesicInterpolationW
 template<class Real> std::vector<TextureNodeInfo>								Geodesics<Real>::textureNodes;
 template<class Real> Image<int>													Geodesics<Real>::nodeIndex;
 template<class Real> std::vector< BilinearElementIndex >						Geodesics<Real>::bilinearElementIndices;
+
+template< class Real > int														Geodesics< Real >::steps;
+template< class Real > char														Geodesics< Real >::stepsString[1024];
 
 template<class Real> int														Geodesics<Real>::levels;
 template<class Real> HierarchicalSystem											Geodesics<Real>::hierarchy;
@@ -394,7 +400,8 @@ void Geodesics<Real>::Idle( void )
 				}
 			}
 		}
-		else {
+		else
+		{
 			Point2D<float> ip = visualization.selectImagePos(mouseX, mouseY);
 			//printf("Texture Coord %f %f \n", ip[0], ip[1]);
 			int i = floor(ip[0] * float(nodeIndex.width()) - 0.5f);
@@ -408,6 +415,7 @@ void Geodesics<Real>::Idle( void )
 		if( impulseTexel!=selectedTexel && selectedTexel!=-1 )
 		{
 			impulseTexel = selectedTexel;
+			steps = 0;
 			memset( &multigridSmoothImpulseVariables[0].rhs[0] , 0 , multigridSmoothImpulseVariables[0].rhs.size() * sizeof(Real) );
 			multigridSmoothImpulseVariables[0].rhs[impulseTexel] = 1.0;
 			memset( &multigridSmoothImpulseVariables[0].x[0] , 0 , multigridSmoothImpulseVariables[0].x.size() * sizeof(Real) );
@@ -417,13 +425,16 @@ void Geodesics<Real>::Idle( void )
 
 	if( impulseTexel!=-1 )
 	{
-		if( updateCount )
+		if( updateCount && !visualization.promptCallBack )
 		{
 			if( !UpdateSolution() ) fprintf( stderr , "Updated solution failed!\n" );
+			else if( updateCount>0 ) updateCount--;
+			steps++;
+			sprintf( stepsString , "Steps: %d" , steps );
 			UpdateOutputBuffer( multigridGeodesicDistanceVariables[0].x );
 		}
 	}
-	if( strlen( visualization.promptString ) ) glutPostRedisplay();	
+	if( !visualization.promptCallBack ) glutPostRedisplay();	
 }
 
 template<class Real>
@@ -460,8 +471,10 @@ void Geodesics<Real>::MouseFunc( int button , int state , int x , int y )
 				selectedTexel = nodeIndex(i, j);
 			}
 		}
-		if (selectedTexel != -1 && selectedTexel != impulseTexel) {
+		if( selectedTexel!=-1 && selectedTexel!=impulseTexel )
+		{
 			impulseTexel = selectedTexel;
+			steps = 0;
 			memset(&multigridSmoothImpulseVariables[0].rhs[0], 0, multigridSmoothImpulseVariables[0].rhs.size() * sizeof(Real));
 			multigridSmoothImpulseVariables[0].rhs[impulseTexel] = 1.0;
 			memset(&multigridSmoothImpulseVariables[0].x[0], 0, multigridSmoothImpulseVariables[0].x.size() * sizeof(Real));
@@ -856,6 +869,7 @@ void Geodesics<Real>::InitializeVisualization( const int width , const int heigh
 	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization,  's' , "export texture" , "Output Texture" , ExportTextureCallBack ) );
 	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , ' ' , "toggle update" , ToggleUpdateCallBack ) );
 	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , '+' , "increment update" , IncrementUpdateCallBack ) );
+	visualization.info.push_back( stepsString );
 
 	visualization.UpdateVertexBuffer();
 	visualization.UpdateFaceBuffer();
@@ -885,6 +899,7 @@ template< class Real > void Geodesics< Real >::IncrementUpdateCallBack( Visualiz
 template< class Real >
 int Geodesics<Real>::Init( void )
 {
+	sprintf( stepsString , "Steps: 0" );
 	levels = Levels.value;
 	diffusionInterpolationWeight = DiffusionInterpolationWeight.value;
 	textureWidth = Width.value;

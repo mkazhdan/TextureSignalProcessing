@@ -195,6 +195,9 @@ public:
 	static SparseMatrix<double, int> boundaryDeepMassMatrix;
 	static SparseMatrix<double, int> boundaryDeepStiffnessMatrix;
 
+	static int steps;
+	static char stepsString[];
+
 	static Padding padding;
 
 	//Visulization
@@ -246,6 +249,8 @@ template<class Real> double														TextureFilter<Real>::gradientModulation
 template<class Real> std::vector<TextureNodeInfo>								TextureFilter<Real>::textureNodes;
 template<class Real> std::vector< BilinearElementIndex >						TextureFilter<Real>::bilinearElementIndices;
 
+template< class Real > int														TextureFilter< Real >::steps;
+template< class Real > char														TextureFilter< Real >::stepsString[1024];
 template<class Real> int														TextureFilter<Real>::levels;
 template<class Real> HierarchicalSystem											TextureFilter<Real>::hierarchy;
 
@@ -351,8 +356,8 @@ void TextureFilter< Real >::UpdateFilteredTexture( const std::vector< Point3D< R
 template< class Real >
 void TextureFilter< Real >::Idle( void )
 {
-	if( strlen( visualization.promptString ) ) visualization.showSlideBar = false;
-	else                                       visualization.showSlideBar = true;
+	if( visualization.promptCallBack ) visualization.showSlideBar = false;
+	else                               visualization.showSlideBar = true;
 
 	auto RescaleFunction = []( double x )
 	{
@@ -393,6 +398,7 @@ void TextureFilter< Real >::Idle( void )
 				}
 				UpdateMaskTexture();
 			}
+			steps = 0;
 		}
 	}
 	else if( visualization.isSlideBarActive )
@@ -418,10 +424,11 @@ void TextureFilter< Real >::Idle( void )
 				}
 				UpdateMaskTexture();
 			}
+			steps = 0;
 		}
 	}
 
-	if( updateCount && !UseDirectSolver.set )
+	if( updateCount && !UseDirectSolver.set && !visualization.promptCallBack )
 	{
 		if( !UpdateSolution() ) fprintf( stderr , "[ERROR] Updated solution failed!\n" );
 
@@ -436,10 +443,12 @@ void TextureFilter< Real >::Idle( void )
 			visualization.UpdateTextureBuffer( filteredTexture );
 		}
 		if( updateCount>0 ) updateCount--;
+		steps++;
+		sprintf( stepsString , "Steps: %d" , steps );
 		glutPostRedisplay();
 	}
 	
-	if( strlen( visualization.promptString ) ) glutPostRedisplay();	
+	if( !visualization.promptCallBack ) glutPostRedisplay();	
 }
 
 template< class Real >
@@ -506,19 +515,23 @@ template<class Real>
 void TextureFilter<Real>::MotionFunc( int x , int y )
 {
 
-	if (visualization.isBrushActive) {
+	if( visualization.isBrushActive )
+	{
 		gradientModulationUpdated = false;
 		visualization.diskX = x;
 		visualization.diskY = y;
 	}
-	else if (visualization.showSlideBar && visualization.isSlideBarActive) {
+	else if( visualization.showSlideBar && visualization.isSlideBarActive )
+	{
 		gradientModulationUpdated = false;
 		double slideBarCursorPosition = double(x - 20) / double(visualization.slideBarWidth() - 40);
 		slideBarCursorPosition = std::min<double>(std::max<double>(slideBarCursorPosition, 0), 1.0);
 		visualization.slideBarCursorPosition = slideBarCursorPosition;
 	}
-	else {
-		if (visualization.showMesh) {
+	else
+	{
+		if( visualization.showMesh )
+		{
 			visualization.oldX = visualization.newX, visualization.oldY = visualization.newY, visualization.newX = x, visualization.newY = y;
 			int screenSize = std::min< int >(visualization.screenWidth, visualization.screenHeight);
 			float rel_x = (visualization.newX - visualization.oldX) / (float)screenSize * 2;
@@ -918,6 +931,7 @@ void TextureFilter<Real>::InitializeVisualization( void )
 	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , 'g' , "gradient modulation" , "Gradient Modulation" , GradientModulationCallBack ) );
 	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , ' ' , "toggle update" , ToggleUpdateCallBack ) );
 	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , '+' , "increment update" , IncrementUpdateCallBack ) );
+	visualization.info.push_back( stepsString );
 
 	visualization.info.push_back( gradientModulationStr );
 	visualization.info.push_back( interpolationStr );
@@ -952,6 +966,7 @@ void TextureFilter<Real>::InitializeVisualization( void )
 template< class Real >
 int TextureFilter< Real >::Init( void )
 {
+	sprintf( stepsString , "Steps: 0" );
 	levels = std::max<int>(Levels.value,1);
 	interpolationWeight = InterpolationWeight.value;
 	gradientModulation = GradientModulation.value;

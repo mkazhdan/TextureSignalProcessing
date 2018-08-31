@@ -129,7 +129,10 @@ public:
 	static int textureWidth;
 	static int textureHeight;
 	static int levels;
-	static std::vector<Point3D<float>> textureNodePositions;
+	static std::vector< Point3D< float > > textureNodePositions;
+
+	static int steps;
+	static char stepsString[];
 
 	static Padding padding;
 
@@ -282,6 +285,8 @@ template<class Real> std::vector<TextureNodeInfo>								LineConvolution<Real>::
 template<class Real> Image<int>													LineConvolution<Real>::nodeIndex;
 template<class Real> std::vector< BilinearElementIndex >						LineConvolution<Real>::bilinearElementIndices;
 
+template< class Real > int														LineConvolution< Real >::steps;
+template< class Real > char														LineConvolution< Real >::stepsString[1024];
 template<class Real> int														LineConvolution<Real>::levels;
 template<class Real> HierarchicalSystem											LineConvolution<Real>::hierarchy;
 
@@ -401,10 +406,12 @@ void LineConvolution<Real>::UpdateOutputBuffer( const std::vector< Point3D< Real
 template< class Real >
 void LineConvolution<Real>::Idle( void )
 {
-	if( updateCount )
+	if( updateCount && !visualization.promptCallBack )
 	{
 		if( !UpdateSolution() ) fprintf( stderr , "[ERROR] Updated solution failed!\n" );
 		else if( updateCount>0 ) updateCount--;
+		steps++;
+		sprintf( stepsString , "Steps: %d" , steps );
 	}
 	UpdateOutputBuffer( multigridModulationVariables[0].x );
 }
@@ -916,6 +923,7 @@ void LineConvolution< Real >::InitializeVisualization( const int width , const i
 	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , 's' , "export texture" , "Output Texture" , ExportTextureCallBack ) );
 	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , ' ' , "toggle update" , ToggleUpdateCallBack ) );
 	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , '+' , "increment update" , IncrementUpdateCallBack ) );
+	visualization.info.push_back( stepsString );
 
 	visualization.UpdateVertexBuffer();
 	visualization.UpdateFaceBuffer();
@@ -927,6 +935,7 @@ void LineConvolution< Real >::InitializeVisualization( const int width , const i
 template<class Real>
 int LineConvolution<Real>::Init( void )
 {
+	sprintf( stepsString , "Steps: 0" );
 	levels = Levels.value;
 	textureWidth = Width.value;
 	textureHeight = Height.value;

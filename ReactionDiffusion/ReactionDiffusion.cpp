@@ -431,7 +431,7 @@ void GrayScottReactionDiffusion< Real >::UpdateOutputBuffer( const std::vector< 
 template<class Real>
 void GrayScottReactionDiffusion< Real >::Idle( void )
 {
-	if( updateCount )
+	if( updateCount && !visualization.promptCallBack )
 	{
 		if( UseDirectSolver.set ){ if( !UpdateExactSolution()       ) fprintf( stderr , "[WARNING] Exact update failed!\n" ); }
 		else                     { if( !UpdateApproximateSolution() ) fprintf( stderr , "[WARNING] Approximate update failed!\n" ); }
@@ -764,7 +764,6 @@ void GrayScottReactionDiffusion< Real >::InitializeVisualization( const int widt
 		visualization.textureImage(ci,cj) = Point3D< float >( 0.8f , 0.8f , 0.8f );
 	}
 	visualization.UpdateTextureBuffer();
-
 
 	visualization.info.push_back( stepsString );
 }
