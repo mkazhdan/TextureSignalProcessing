@@ -281,13 +281,22 @@ void TexturedMeshVisualization::PhongShading( GLuint & textureBufferId )
 	current_program->setUniformMatrix< 4 >( "eye_projection" , projection );
 	current_program->setUniformMatrix< 4 >( "world_to_eye" , modelview );
 	current_program->setUniform< 3 >( "light_direction" , &camera.forward[0] );
+#ifdef MISHA_CODE
+	current_program->setUniform< 3 >( "light_diffuse"   , lightDiffuse  , false );
+	current_program->setUniform< 3 >( "light_specular"  , lightSpecular , false );
+	current_program->setUniform< 3 >( "light_ambient"   , lightAmbient  , false );
+	current_program->setUniform< 3 >( "shape_diffuse"   , shapeDiffuse  , false );
+	current_program->setUniform< 3 >( "shape_specular"  , shapeSpecular , false );
+	current_program->setUniform< 3 >( "shape_ambient"   , shapeAmbient  , false );
+	current_program->setUniform( "shape_specular_shininess" , shapeSpecularShininess );
+#else // !MISHA_CODE
 	current_program->setUniform< 3 >( "light_diffuse"   , light_diffuse  , false );
 	current_program->setUniform< 3 >( "light_specular"  , light_specular , false );
 	current_program->setUniform< 3 >( "light_ambient"   , light_ambient  , false );
+	current_program->setUniform( "specular_falloff" , specular_falloff );
+#endif // MISHA_CODE
 
-	current_program->setUniform("specular_falloff", specular_fallof);
-
-	current_program->setUniform("normal_texture", 0);
+	current_program->setUniform( "normal_texture" , 0 );
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, textureBufferId);
 
@@ -781,14 +790,18 @@ TexturedMeshVisualization::TexturedMeshVisualization( bool hasVectorField )
 	lightPosition[3] = 0.f;
 	shapeDiffuse[0] = shapeDiffuse[1] = shapeDiffuse[2] = 1.0, shapeDiffuse[3] = 1.0;
 	shapeAmbient[0] = shapeAmbient[1] = shapeAmbient[2] = 0.0, shapeAmbient[3] = 1.0;
-	shapeSpecular[0] = shapeSpecular[1] = shapeSpecular[2] = 1.0f, shapeSpecular[3] = 1.f;
+	shapeSpecular[0] = shapeSpecular[1] = shapeSpecular[2] = 1.0f , shapeSpecular[3] = 1.f;
 	shapeSpecularShininess = 128;
 
+
+#ifdef MISHA_CODE
+#else // !MISHA_CODE
 	light_direction[0] = 0.f , light_direction[1] = 0.f , light_direction[2] = 1.f;
 	light_ambient  [0] = 0.f , light_ambient  [1] = 0.f , light_ambient  [2] = 0.f;
 	light_diffuse  [0] = 1.f , light_diffuse  [1] = 1.f , light_diffuse  [2] = 1.f;
 	light_specular [0] = 0.f , light_specular [1] = 0.f , light_specular [2] = 0.f;
-	specular_fallof = 0.f;
+	specular_falloff = 0.f;
+#endif // MISHA_CODE
 }
 
 

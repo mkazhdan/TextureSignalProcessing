@@ -28,7 +28,7 @@ DAMAGE.
 #ifndef TEXTURED_MESH_VISUALIZATION_INCLUDED
 #define TEXTURED_MESH_VISUALIZATION_INCLUDED
 
-#define GLM_FORCE_RADIANS
+#define MISHA_CODE
 
 #include <GL/glew.h>
 #include <GL/glut.h> 
@@ -57,11 +57,14 @@ public:
 	//For visualization of normal maps
 	void PhongShading( GLuint & textureBufferId );
 	GLSLProgram * normalProgram;
+#ifdef MISHA_CODE
+#else // !MISHA_CODE
 	float light_ambient[3];
 	float light_diffuse[3];
 	float light_specular[3];
 	float light_direction[3];
-	float specular_fallof;
+	float specular_falloff;
+#endif // MISHA_CODE
 	GLuint vertexHandle = 0;
 
 	GLuint offscreen_depth_texture = 0;
