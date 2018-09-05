@@ -17,22 +17,22 @@ in vec2 v_texture;
 in vec3 v_eye_to_position;
 layout (location = 0) out vec4 FragColor;
 
-void main(){
-//	vec3 surface_normal = normalize(vec3(texture(normal_texture, v_texture))*2.f-vec3(1.f,1.f,1.f));
+void main()
+{
 	vec3 surface_normal = normalize(vec3(texture(normal_texture, v_texture)));
 	vec3 position_to_light = normalize(-light_direction);
 
 	// Ambient component
 	vec3 lighting_color = light_ambient * shape_ambient;
    
-	if( dot( position_to_light , surface_normal )>0.f )
+   float normal_dot_light = dot( position_to_light , surface_normal );
+	if( normal_dot_light>0.f )
 	{
 		// Diffuse component
-		float diffuse_attenuation = max( dot( surface_normal , position_to_light ) , 0.0 );
-		lighting_color += diffuse_attenuation * ( light_diffuse * shape_diffuse );
+		lighting_color += normal_dot_light * ( light_diffuse * shape_diffuse );
 
 		// Specular component
-		vec3 position_to_eye = normalize(-v_eye_to_position);
+		vec3 position_to_eye = normalize( -v_eye_to_position );
         vec3 specular_direction = 2.f*surface_normal*dot(position_to_light,surface_normal) - position_to_light;
         float specular_attenuation = pow( max( dot( specular_direction , position_to_eye ) , 0.0 ) , shape_specular_shininess );
 		lighting_color += specular_attenuation * ( light_specular * shape_specular );

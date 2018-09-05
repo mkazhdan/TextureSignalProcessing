@@ -971,8 +971,8 @@ int TextureFilter< Real >::Init( void )
 	interpolationWeight = InterpolationWeight.value;
 	gradientModulation = GradientModulation.value;
 
-	sprintf( gradientModulationStr , "Gradient modulation: %e\n" , gradientModulation );
-	sprintf( interpolationStr , "Interpolation: %e\n" , interpolationWeight );
+	sprintf( gradientModulationStr , "Gradient modulation: %.2e\n" , gradientModulation );
+	sprintf( interpolationStr , "Interpolation: %.2e\n" , interpolationWeight );
 
 	if( !ReadTexturedMesh( mesh , Input.values[0] , Input.values[1] , DetailVerbose.set ) )
 	{
