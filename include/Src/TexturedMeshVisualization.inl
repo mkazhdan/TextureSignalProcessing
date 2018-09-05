@@ -274,23 +274,17 @@ void TexturedMeshVisualization::PhongShading( GLuint & textureBufferId )
 	GLSLProgram * current_program = normalProgram;
 	glUseProgram(current_program->getHandle());
 
-	GLdouble projection[16];
+	GLdouble projection[16] , modelview[16];
 	glGetDoublev( GL_PROJECTION_MATRIX , projection );
-	glm::mat4 p;
-	for( int i=0 ; i<4 ; i++ ) for( int j=0 ; j<4 ; j++ ) p[i][j] = projection[4*i+j];
-	current_program->setUniform( "eye_projection" , p );
-	GLdouble modelview[16];
 	glGetDoublev( GL_MODELVIEW_MATRIX , modelview );
-	glm::mat4 m;
-	for( int i=0 ; i<4 ; i++ ) for( int j=0 ; j<4 ; j++ ) m[i][j] = modelview[4*i+j];
-	current_program->setUniform( "world_to_eye" , m );
-	glm::vec3 f;
-	for( int i=0 ; i<3 ; i++ ) f[i] = camera.forward[i];
-	current_program->setUniform( "light_direction" , f );
 
-	current_program->setUniform("light_diffuse", light_diffuse);
-	current_program->setUniform("light_specular", light_specular);
-	current_program->setUniform("light_ambient", light_ambient);
+	current_program->setUniformMatrix< 4 >( "eye_projection" , projection );
+	current_program->setUniformMatrix< 4 >( "world_to_eye" , modelview );
+	current_program->setUniform< 3 >( "light_direction" , &camera.forward[0] );
+	current_program->setUniform< 3 >( "light_diffuse"   , light_diffuse  , false );
+	current_program->setUniform< 3 >( "light_specular"  , light_specular , false );
+	current_program->setUniform< 3 >( "light_ambient"   , light_ambient  , false );
+
 	current_program->setUniform("specular_falloff", specular_fallof);
 
 	current_program->setUniform("normal_texture", 0);
@@ -790,10 +784,10 @@ TexturedMeshVisualization::TexturedMeshVisualization( bool hasVectorField )
 	shapeSpecular[0] = shapeSpecular[1] = shapeSpecular[2] = 1.0f, shapeSpecular[3] = 1.f;
 	shapeSpecularShininess = 128;
 
-	light_direction = vec3(0.f, 0.f, 1.f);
-	light_ambient = vec3(0.0f, 0.0f, 0.0f);
-	light_diffuse = vec3(1.0f, 1.0f, 1.0f);
-	light_specular = vec3(0.0f, 0.0f, 0.0f);
+	light_direction[0] = 0.f , light_direction[1] = 0.f , light_direction[2] = 1.f;
+	light_ambient  [0] = 0.f , light_ambient  [1] = 0.f , light_ambient  [2] = 0.f;
+	light_diffuse  [0] = 1.f , light_diffuse  [1] = 1.f , light_diffuse  [2] = 1.f;
+	light_specular [0] = 0.f , light_specular [1] = 0.f , light_specular [2] = 0.f;
 	specular_fallof = 0.f;
 }
 

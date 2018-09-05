@@ -3,22 +3,12 @@
 #ifndef GLSLPROGRAM_H
 #define GLSLPROGRAM_H
 
-#define MISHA_SHADER
-
 #include <GL/glew.h>
 
 #include <string>
 using std::string;
 #include <map>
 
-#include <glm/glm.hpp>
-using glm::vec2;
-using glm::vec3;
-using glm::ivec3;
-using glm::vec4;
-using glm::mat4;
-using glm::mat3;
-using glm::mat2;
 #include <stdexcept>
 
 #pragma warning( disable : 4290 )
@@ -42,16 +32,13 @@ namespace GLSLShader {
 
 class GLSLProgram
 {
+	template< unsigned int Dim > static void glUniformfv( GLint location  , GLsizei count , const GLfloat* value );
+	template< unsigned int Dim > static void glUniformMatrixfv( GLint location  , GLsizei count , GLboolean transpose , const GLfloat* value );
 public:
 	int  handle;
 	bool linked;
-#ifdef MISHA_SHADER
 	std::string vertex_shader_src;
 	std::string fragment_shader_src;
-#else // !MISHA_SHADER
-	char vertex_shader[200];
-	char fragment_shader[200];
-#endif // MISHA_SHADER
 	char program_name[200];
 	//std::map<string, int> uniformLocations;
 
@@ -65,11 +52,7 @@ public:
 
 	GLSLProgram();
 
-#ifdef MISHA_SHADER
 	GLSLProgram( const std::string& vs_src , const std::string& fs_src , const char * p_program_name);
-#else // !MISHA_SHADER
-	GLSLProgram(const char * p_vertex_shader, const char * p_fragment_shader, const char * p_program_name);
-#endif // MISHA_SHADER
 
 	~GLSLProgram();
 
@@ -89,13 +72,12 @@ public:
 	void   bindFragDataLocation(GLuint location, const char * name);
 
 	void   setUniform(const char *name, float x, float y, float z);
-	void   setUniform(const char *name, const vec2 & v);
-	void   setUniform(const char *name, const vec3 & v);
-	void   setUniform(const char *name, const ivec3 & v);
-	void   setUniform(const char *name, const vec4 & v);
-	void   setUniform(const char *name, const mat4 & m);
-	void   setUniform(const char *name, const mat3 & m);
-	void   setUniform(const char *name, const mat2 & m);
+
+	template< unsigned int > void setUniform( const char* name , const float*  v , bool showWarning=true );
+	template< unsigned int > void setUniform( const char* name , const double* v , bool showWarning=true );
+	template< unsigned int > void setUniformMatrix( const char* name , const float*  m , bool showWarning=true );
+	template< unsigned int > void setUniformMatrix( const char* name , const double* m , bool showWarning=true );
+
 	void   setUniform(const char *name, float val);
 	void   setUniform(const char *name, int val);
 	void   setUniform(const char *name, bool val);
@@ -108,6 +90,17 @@ public:
 	const char * getTypeString(GLenum type);
 	void setup();
 };
+template< unsigned int Dim > void GLSLProgram::glUniformfv( GLint location  , GLsizei count , const GLfloat* value ){ fprintf( stderr , "[ERROR] glUniform[%d]fv undefined\n" , Dim ) , exit( 0 ); }
+template<> void GLSLProgram::glUniformfv< 1 >( GLint location  , GLsizei count , const GLfloat* value ){ glUniform1fv( location , count , value ); }
+template<> void GLSLProgram::glUniformfv< 2 >( GLint location  , GLsizei count , const GLfloat* value ){ glUniform2fv( location , count , value ); }
+template<> void GLSLProgram::glUniformfv< 3 >( GLint location  , GLsizei count , const GLfloat* value ){ glUniform3fv( location , count , value ); }
+template<> void GLSLProgram::glUniformfv< 4 >( GLint location  , GLsizei count , const GLfloat* value ){ glUniform4fv( location , count , value ); }
+template< unsigned int Dim > void GLSLProgram::glUniformMatrixfv( GLint location  , GLsizei count , GLboolean transpose , const GLfloat* value ){ fprintf( stderr , "[ERROR] glUniformMatrix[%d]fv undefined\n" , Dim ) , exit( 0 ); }
+template<> void GLSLProgram::glUniformMatrixfv< 2 >( GLint location  , GLsizei count , GLboolean transpose , const GLfloat* value ){ glUniformMatrix2fv( location , count , transpose , value ); }
+template<> void GLSLProgram::glUniformMatrixfv< 3 >( GLint location  , GLsizei count , GLboolean transpose , const GLfloat* value ){ glUniformMatrix3fv( location , count , transpose , value ); }
+template<> void GLSLProgram::glUniformMatrixfv< 4 >( GLint location  , GLsizei count , GLboolean transpose , const GLfloat* value ){ glUniformMatrix4fv( location , count , transpose , value ); }
+
+
 
 #include <fstream>
 using std::ifstream;
@@ -124,34 +117,24 @@ namespace GLSLShaderInfo {
 
 	struct shader_file_extension extensions[] =
 	{
-		{ ".vs", GLSLShader::VERTEX },
-		{ ".vert", GLSLShader::VERTEX },
-		{ ".gs", GLSLShader::GEOMETRY },
-		{ ".geom", GLSLShader::GEOMETRY },
-		{ ".tcs", GLSLShader::TESS_CONTROL },
-		{ ".tes", GLSLShader::TESS_EVALUATION },
-		{ ".fs", GLSLShader::FRAGMENT },
-		{ ".frag", GLSLShader::FRAGMENT },
-		{ ".cs", GLSLShader::COMPUTE }
+		{ ".vs"   , GLSLShader::VERTEX },
+		{ ".vert" , GLSLShader::VERTEX },
+		{ ".gs"   , GLSLShader::GEOMETRY },
+		{ ".geom" , GLSLShader::GEOMETRY },
+		{ ".tcs"  , GLSLShader::TESS_CONTROL },
+		{ ".tes"  , GLSLShader::TESS_EVALUATION },
+		{ ".fs"   , GLSLShader::FRAGMENT },
+		{ ".frag" , GLSLShader::FRAGMENT },
+		{ ".cs"   , GLSLShader::COMPUTE }
 	};
 }
 
 GLSLProgram::GLSLProgram() : handle(0), linked(false) { }
-#ifdef MISHA_SHADER
 GLSLProgram::GLSLProgram( const std::string& vs_src , const std::string& fs_src , const char * p_program_name ) : vertex_shader_src( vs_src ) , fragment_shader_src( fs_src ) {
 	sprintf( program_name , "%s" , p_program_name );
 	handle = 0;
 	linked = false;
 }
-#else // !MISHA_SHADER
-GLSLProgram::GLSLProgram(const char * p_vertex_shader, const char * p_fragment_shader, const char * p_program_name){
-	sprintf(vertex_shader, "%s", p_vertex_shader);
-	sprintf(fragment_shader, "%s", p_fragment_shader);
-	sprintf(program_name, "%s", p_program_name);
-	handle = 0;
-	linked = false;
-}
-#endif // MISHA_SHADER
 
 GLSLProgram::~GLSLProgram() {
 	if (handle == 0) return;
@@ -365,75 +348,33 @@ void GLSLProgram::setUniform(const char *name, float x, float y, float z)
 	//}
 }
 
-void GLSLProgram::setUniform(const char *name, const vec3 & v)
+template< unsigned int Dim >
+void GLSLProgram::setUniform( const char* name , const float* v , bool showWarning )
 {
-	this->setUniform(name, v.x, v.y, v.z);
+	GLint loc = glGetUniformLocation( handle , name );
+	if( loc>=0 ) glUniformfv< Dim >( loc , 1 , v );
+	else if( showWarning ) fprintf( stderr , "[WARNING] Non-existant uniform: %s\n" , name );
 }
-
-void GLSLProgram::setUniform(const char *name, const ivec3 & v)
+template< unsigned int Dim >
+void GLSLProgram::setUniform( const char* name , const double* v , bool showWarning )
 {
-	GLint loc = glGetUniformLocation(handle, name);
-	if (loc >= 0){
-		glUniform3i(loc, v.x, v.y, v.z);
-	}
-	//else{
-	//	printf("Non Existent Uniform : %s \n", name);
-	//}
+	float _v[Dim];
+	for( int i=0 ; i<Dim ; i++ ) _v[i] = (float)v[i];
+	setUniform< Dim >( name , _v , showWarning );
 }
-
-void GLSLProgram::setUniform(const char *name, const vec4 & v)
+template< unsigned int Dim >
+void GLSLProgram::setUniformMatrix( const char* name , const float* m , bool showWarning )
 {
-	GLint loc = glGetUniformLocation(handle, name);
-	if (loc >= 0){
-		glUniform4f(loc, v.x, v.y, v.z, v.w);
-	}
-	//else{
-	//	printf("Non Existent Uniform : %s \n", name);
-	//}
-}
-
-void GLSLProgram::setUniform(const char *name, const vec2 & v)
+	GLint loc = glGetUniformLocation( handle , name );
+	if( loc>=0 ) glUniformMatrixfv< Dim >( loc , 1 , GL_FALSE , m );
+	else if( showWarning ) fprintf( stderr , "[WARNING] Non-existant uniform: %s\n" , name );
+};
+template< unsigned int Dim >
+void GLSLProgram::setUniformMatrix( const char* name , const double* m , bool showWarning )
 {
-	GLint loc = glGetUniformLocation(handle, name);
-	if (loc >= 0){
-		glUniform2f(loc, v.x, v.y);
-	}
-	//else{
-	//	printf("Non Existent Uniform : %s \n", name);
-	//}
-}
-
-void GLSLProgram::setUniform(const char *name, const mat4 & m)
-{
-	GLint loc = glGetUniformLocation(handle, name);
-	if (loc >= 0){
-		glUniformMatrix4fv(loc, 1, GL_FALSE, &m[0][0]);
-	}
-	//else{
-	//	printf("Non Existent Uniform : %s \n", name);
-	//}
-}
-
-void GLSLProgram::setUniform(const char *name, const mat3 & m)
-{
-	GLint loc = glGetUniformLocation(handle, name);
-	if (loc >= 0){
-		glUniformMatrix3fv(loc, 1, GL_FALSE, &m[0][0]);
-	}
-	//else{
-	//	printf("Non Existent Uniform : %s \n", name);
-	//}
-}
-
-void GLSLProgram::setUniform(const char *name, const mat2 & m)
-{
-	GLint loc = glGetUniformLocation(handle, name);
-	if (loc >= 0) {
-		glUniformMatrix2fv(loc, 1, GL_FALSE, &m[0][0]);
-	}
-	//else{
-	//	printf("Non Existent Uniform : %s \n", name);
-	//}
+	float _m[Dim*Dim];
+	for( int i=0 ; i<Dim*Dim ; i++ ) _m[i] = (float)m[i];
+	setUniformMatrix< Dim >( name , _m , showWarning );
 }
 
 void GLSLProgram::setUniform(const char *name, float val)
@@ -644,15 +585,8 @@ bool GLSLProgram::fileExists(const string & fileName)
 void GLSLProgram::setup(){
 	try {
 //		printf("Compiling and Linking Shaders \n");
-#ifdef MISHA_SHADER
 		compileShader( vertex_shader_src , GLSLShader::VERTEX );
 		compileShader( fragment_shader_src , GLSLShader::FRAGMENT );
-#else // !MISHA_SHADER
-		printf("Vertex Shader : %s \n", vertex_shader);
-		printf("Fragment Shader : %s \n", fragment_shader);
-		compileShader(vertex_shader);
-		compileShader(fragment_shader);
-#endif // MISHA_SHADER
 		link();
 		validate();
 

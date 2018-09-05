@@ -57,10 +57,10 @@ public:
 	//For visualization of normal maps
 	void PhongShading( GLuint & textureBufferId );
 	GLSLProgram * normalProgram;
-	vec3 light_ambient;
-	vec3 light_diffuse;
-	vec3 light_specular;
-	vec3 light_direction;
+	float light_ambient[3];
+	float light_diffuse[3];
+	float light_specular[3];
+	float light_direction[3];
 	float specular_fallof;
 	GLuint vertexHandle = 0;
 

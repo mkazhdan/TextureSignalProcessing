@@ -26,6 +26,8 @@ ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF S
 DAMAGE.
 */
 
+#define VF_METRIC
+
 #include <Misha/CmdLineParser.h> 
 #include <Misha/Miscellany.h>
 #include <Src/SimpleMesh.h>
@@ -52,7 +54,6 @@ cmdLineParameter< float > Speed( "speed" , 10.f );
 cmdLineParameterArray< float , 2 > FeedKillRates( "fk" , StripeRates );
 cmdLineParameter< float > DiffusionScale( "diff" , 1.f );
 cmdLineParameter< float > SamplesFraction( "samples" );
-cmdLineParameter< float > AreaScale( "areaScale" , 1.f );
 cmdLineParameter< int   > Levels( "levels" , 4 );
 cmdLineParameter< char* > CameraConfig( "camera" );
 cmdLineParameter< int   > Threads( "threads" , omp_get_num_procs() );
@@ -73,16 +74,25 @@ cmdLineReadable UseDirectSolver( "useDirectSolver" );
 cmdLineReadable Double( "double" );
 cmdLineReadable ApproximateIntegration( "approximateIntegration" );
 cmdLineReadable Dots( "dots" );
+#ifdef VF_METRIC
+cmdLineParameter< char* > VectorField( "inVF" );
+cmdLineParameter< float > AnisotropyScale( "aScl" , 1.f );
+cmdLineParameter< float > AnisotropyExponent( "aExp" , 0.f );
+cmdLineReadable IntrinsicVectorField( "intrinsicVF" );
+#endif // VF_METRIC
 
 cmdLineReadable* params[] =
 {
 	&Input , &Output , &OutputSteps , &Width , &Height , &Speed , &FeedKillRates , &DiffusionScale , &SamplesFraction , &CameraConfig , &Levels , &UseDirectSolver , &Threads , &DisplayMode , &MultigridBlockHeight , &MultigridBlockWidth , &MultigridPaddedHeight , &MultigridPaddedWidth ,
-	&Verbose , &DetailVerbose , &AreaScale ,
+	&Verbose , &DetailVerbose ,
 	&RandomJitter ,
 	&Double ,
 	&MatrixQuadrature , &RHSQuadrature ,
 	&ApproximateIntegration , &Dots ,
 	&NoHelp ,
+#ifdef VF_METRIC
+	&VectorField , &IntrinsicVectorField , &AnisotropyScale , &AnisotropyExponent , 
+#endif // VF_METRIC
 	NULL
 };
 
@@ -98,7 +108,6 @@ void ShowUsage( const char* ex )
 	printf( "\t[--%s <feed/kill rates>=%f %f]\n" , FeedKillRates.name , FeedKillRates.values[0] , FeedKillRates.values[1] );
 	printf( "\t[--%s <diffusion scale>=%f]\n" , DiffusionScale.name , DiffusionScale.value );
 	printf( "\t[--%s <samples fraction>=%f / %f]\n" , SamplesFraction.name , DefaultStripesSamplesFraction , DefaultDotsSamplesFraction );
-	printf( "\t[--%s <area scale factor>=%f]\n" , AreaScale.name , AreaScale.value );
 	printf( "\t[--%s <system matrix quadrature points per triangle>=%d]\n" , MatrixQuadrature.name , MatrixQuadrature.value );
 	printf( "\t[--%s <right-hand-side quadrature points per triangle>=%d]\n" , RHSQuadrature.name , RHSQuadrature.value );
 	printf( "\t[--%s]\n" , ApproximateIntegration.name );
@@ -118,6 +127,12 @@ void ShowUsage( const char* ex )
 	printf( "\t[--%s <multigrid block height>=%d]\n"  , MultigridBlockHeight.name  , MultigridBlockHeight.value  );
 	printf( "\t[--%s <multigrid padded width>=%d]\n"  , MultigridPaddedWidth.name  , MultigridPaddedWidth.value  );
 	printf( "\t[--%s <multigrid padded height>=%d]\n" , MultigridPaddedHeight.name , MultigridPaddedHeight.value );
+#ifdef VF_METRIC
+	printf( "\t[--%s <input vector field>]\n" , VectorField.name );
+	printf( "\t[--%s <anisotropy scale>=%f]\n" , AnisotropyScale.name , AnisotropyScale.value );
+	printf( "\t[--%s <anisotropy exponent>=%f]\n" , AnisotropyExponent.name , AnisotropyExponent.value );
+	printf( "\t[--%s]\n" , IntrinsicVectorField.name );
+#endif // VF_METRIC
 	printf( "\t[--%s]\n" , NoHelp.name );
 }
 
@@ -227,7 +242,7 @@ public:
 	static int SetRightHandSide( bool verbose=false );
 	static int UpdateExactSolution( bool verbose=false );
 	static int UpdateApproximateSolution( bool verbose=false , bool detailVerbose=false );
-	static int InitializeSystem( const int width , const int height , float areaScale );
+	static int InitializeSystem( const int width , const int height );
 	static int InitializeConcentrations( void );
 
 	static void Display( void ){ visualization.Display(); }
@@ -474,7 +489,7 @@ void GrayScottReactionDiffusion< Real >::MouseFunc( int button , int state , int
 			int j = floor( (1.0-ip[1])*float( nodeIndex.height() ) - 0.5f );
 			if( i>=0 && i<nodeIndex.width() && j>=0 && j<nodeIndex.height() ) mouseSelectionActive = true , selectedTexel = nodeIndex(i,j);
 		}
-		if( selectedTexel!=seedTexel )
+//		if( selectedTexel!=seedTexel )
 		{
 			seedTexel = selectedTexel;
 			InitializeConcentrations();
@@ -567,7 +582,7 @@ int GrayScottReactionDiffusion< Real >::InitializeConcentrations( void )
 }
 
 template< class Real >
-int GrayScottReactionDiffusion< Real >::InitializeSystem( const int width , const int height , float areaScale )
+int GrayScottReactionDiffusion< Real >::InitializeSystem( const int width , const int height )
 {
 	clock_t t_begin;
 
@@ -592,10 +607,71 @@ int GrayScottReactionDiffusion< Real >::InitializeSystem( const int width , cons
 	std::vector< double > __texelToCellCoeffs;
 	SparseMatrix< double , int > __boundaryCellBasedStiffnessRHSMatrix[3];
 
+#ifdef VF_METRIC
+	if( VectorField.set )
+	{
+		std::vector< Point2D< double > > vectorField;
+		// Read in the vector field
+		if( IntrinsicVectorField.set )
+		{
+			if( !ReadVector( vectorField , VectorField.value ) ){ fprintf( stderr , "[ERROR] Unable to read vector field: %s\n" , VectorField.value ) ; return 0; }
+			if( vectorField.size()!=mesh.triangles.size() ){ fprintf( stderr , "[ERROR] Triangle and vector counts don't match: %d != %d\n" , (int)mesh.triangles.size() , (int)vectorField.size() ) ; return 0; }
+		}
+		else
+		{
+			std::vector< Point3D< double > > _vectorField;
+			if( !ReadVector( _vectorField , VectorField.value ) ){ fprintf( stderr , "[ERROR] Unable to read vector field: %s\n" , VectorField.value ) ; return 0; }
+			if( _vectorField.size()!=mesh.triangles.size() ){ fprintf( stderr , "[ERROR] Triangle and vector counts don't match: %d != %d\n" , (int)mesh.triangles.size() , (int)_vectorField.size() ) ; return 0; }
+			vectorField.resize( _vectorField.size() );
+#pragma omp parallel for
+			for( int i=0 ; i<mesh.triangles.size() ; i++ )
+			{
+				Point3D< double > v[] = { mesh.vertices[ mesh.triangles[i][0] ] , mesh.vertices[ mesh.triangles[i][1] ] , mesh.vertices[ mesh.triangles[i][2] ] };
+				Point3D< double > d[] = { v[1]-v[0] , v[2]-v[0] };
+				SquareMatrix< double , 2 > Dot;
+				for( int j=0 ; j<2 ; j++ ) for( int k=0 ; k<2 ; k++ ) Dot(j,k) = Point3D< double >::Dot( d[j] , d[k] );
+				Point2D< double > dot( Point3D< double >::Dot( d[0] , _vectorField[i] ) , Point3D< double >::Dot( d[1] , _vectorField[i] ) );
+				vectorField[i] = Dot.inverse() * dot;
+			}
+		}
+		// Normalize the vector-field to have unit-norm
+		{
+			std::vector< SquareMatrix< double , 2 > > embeddingMetric;
+			InitializeEmbeddingMetric( mesh , true , embeddingMetric );
+			{
+				double norm = 0 , area = 0;
+				for( int t=0 ; t<embeddingMetric.size() ; t++ )
+				{
+					double a = sqrt( embeddingMetric[t].determinant() ) / 2.;
+					norm += Point2D< double >::Dot( vectorField[t] , embeddingMetric[t]*vectorField[t] ) * a;
+					area += a;
+				}
+				norm = sqrt( norm / area );
+				for( int t=0 ; t<embeddingMetric.size() ; t++ ) vectorField[t] /= norm;
+			}
+		}
+		// Initialize the metric from the vector field
+		auto LengthToAnisotropy = [&]( double len )
+		{
+			// g <- g + gOrtho * anisotropy 
+			// 0 -> 0
+			// 1 -> 1e5
+			// infty -> infty
+			return pow( len , AnisotropyExponent.value ) * AnisotropyScale.value;
+		};
+		if( !InitializeAnisotropicMetric( mesh , atlasCharts , vectorField , LengthToAnisotropy , parameterMetric ) ){ fprintf( stderr , "[ERROR] Unable to initialize vector field metric\n" ) ; return 0; } 
+	}
+	else
+	{
+		// Initialize the metric from the embedding
+		if( !InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric ) ){ fprintf( stderr , "[ERROR] Unable to initialize embedding metric\n" ) ; return 0; }
+	}
+#else // !VF_METRIC
 	if( !InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric ) ){ fprintf( stderr , "[ERROR] Unable to initialize embedding metric\n" ) ; return 0; }
+#endif // VF_METRIC
 
 	// Scale the metric so that the area is equal to the resolution
-	for( int i=0 ; i<parameterMetric.size() ; i++ ) for( int j=0 ; j<parameterMetric[i].size() ; j++ ) parameterMetric[i][j] *= areaScale * textureNodes.size() / 2;
+	for( int i=0 ; i<parameterMetric.size() ; i++ ) for( int j=0 ; j<parameterMetric[i].size() ; j++ ) parameterMetric[i][j] *= textureNodes.size() / 2;
 
 	t_begin = clock();
 	{
@@ -825,7 +901,7 @@ int GrayScottReactionDiffusion< Real >::Init( void )
 
 
 	clock_t t = clock();
-	if( !InitializeSystem( textureWidth , textureHeight , AreaScale.value ) ){ fprintf( stderr , "[ERROR] Failed to initialize system\n") ; return 0; }
+	if( !InitializeSystem( textureWidth , textureHeight ) ){ fprintf( stderr , "[ERROR] Failed to initialize system\n") ; return 0; }
 
 	if( Verbose.set )
 	{
