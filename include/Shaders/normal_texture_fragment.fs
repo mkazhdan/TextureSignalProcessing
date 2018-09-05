@@ -19,8 +19,9 @@ layout (location = 0) out vec4 FragColor;
 
 void main()
 {
-	vec3 surface_normal = normalize(vec3(texture(normal_texture, v_texture)));
-	vec3 position_to_light = normalize(-light_direction);
+	vec3 surface_normal = normalize( vec3( texture( normal_texture , v_texture ) ) );
+	vec3 position_to_light = normalize( -light_direction );
+	vec3 max_color = vec3( 1. , 1. , 1. );
 
 	// Ambient component
 	vec3 lighting_color = light_ambient * shape_ambient;
@@ -37,10 +38,7 @@ void main()
         float specular_attenuation = pow( max( dot( specular_direction , position_to_eye ) , 0.0 ) , shape_specular_shininess );
 		lighting_color += specular_attenuation * ( light_specular * shape_specular );
 	}
-	lighting_color.x = min( lighting_color.x , 1. );
-	lighting_color.y = min( lighting_color.y , 1. );
-	lighting_color.z = min( lighting_color.z , 1. );
 
-	FragColor = vec4(lighting_color,1.0);
+	FragColor = vec4( min( lighting_color , max_color ) , 1.0 );
 }
 )"
