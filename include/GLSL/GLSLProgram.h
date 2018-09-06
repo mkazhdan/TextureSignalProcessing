@@ -43,14 +43,14 @@ class GLSLProgram
 	GLSLProgram & operator=( const GLSLProgram &other ){ return *this; }
 
 public:
-	int  handle;
-	bool linked;
-	std::string vertex_shader_src;
-	std::string fragment_shader_src;
-
 	static bool fileExists( const std::string & fileName );
 	static std::string getExtension( const std::string & fileName );
 	static GLSLShader::GLSLShaderType getShaderType( const char* fileName ) throw( GLSLProgramException );
+
+	int handle;
+	bool linked;
+	std::string vertex_shader_src;
+	std::string fragment_shader_src;
 
 	GLSLProgram( void );
 	GLSLProgram( const char* vs_filename , const char* fs_filename ) throw( GLSLProgramException );
@@ -58,17 +58,17 @@ public:
 
 	~GLSLProgram( void );
 
-	void   compileShader( const std::string & source , GLSLShader::GLSLShaderType type ) throw( GLSLProgramException );
+	void compileShader( const std::string & source , GLSLShader::GLSLShaderType type ) throw( GLSLProgramException );
 
-	void   link( void )     throw( GLSLProgramException );
-	void   validate( void ) throw( GLSLProgramException );
-	void   use( void )      throw( GLSLProgramException );
+	void link( void )     throw( GLSLProgramException );
+	void validate( void ) throw( GLSLProgramException );
+	void use( void )      throw( GLSLProgramException );
 
-	int    getHandle( void );
-	bool   isLinked( void );
+	int getHandle( void );
+	bool isLinked( void );
 
-	void   bindAttribLocation( GLuint location , const char * name );
-	void   bindFragDataLocation( GLuint location , const char * name );
+	void bindAttribLocation( GLuint location , const char * name );
+	void bindFragDataLocation( GLuint location , const char * name );
 
 	void setUniform( const char *name , int    val , bool showWarning=true );
 	void setUniform( const char *name , float  val , bool showWarning=true );
@@ -79,9 +79,9 @@ public:
 	template< unsigned int > void setUniformMatrix( const char* name , const float*  m , bool showWarning=true );
 	template< unsigned int > void setUniformMatrix( const char* name , const double* m , bool showWarning=true );
 
-	void   printActiveUniforms( void );
-	void   printActiveUniformBlocks( void );
-	void   printActiveAttribs( void );
+	void printActiveUniforms( void );
+	void printActiveUniformBlocks( void );
+	void printActiveAttribs( void );
 
 	const char * getShaderTypeString( GLSLShader::GLSLShaderType type );
 	const char * getTypeString( GLenum type );
