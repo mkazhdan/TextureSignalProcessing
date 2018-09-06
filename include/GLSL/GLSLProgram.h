@@ -37,6 +37,11 @@ class GLSLProgram
 	template< unsigned int Dim > static void glUniformiv      ( GLint location , GLsizei count ,                       const GLint*   value );
 	template< unsigned int Dim > static void glUniformfv      ( GLint location , GLsizei count ,                       const GLfloat* value );
 	template< unsigned int Dim > static void glUniformMatrixfv( GLint location , GLsizei count , GLboolean transpose , const GLfloat* value );
+
+	// Make these private in order to make the object non-copyable
+	GLSLProgram( const GLSLProgram & other ) { }
+	GLSLProgram & operator=( const GLSLProgram &other ){ return *this; }
+
 public:
 	int  handle;
 	bool linked;
@@ -47,19 +52,13 @@ public:
 	static std::string getExtension( const std::string & fileName );
 	static GLSLShader::GLSLShaderType getShaderType( const char* fileName ) throw( GLSLProgramException );
 
-	// Make these private in order to make the object non-copyable
-	GLSLProgram( const GLSLProgram & other ) { }
-	GLSLProgram & operator=( const GLSLProgram &other ){ return *this; }
-
 	GLSLProgram( void );
 	GLSLProgram( const char* vs_filename , const char* fs_filename ) throw( GLSLProgramException );
 	GLSLProgram( const std::string& vs_src , const std::string& fs_src );
 
 	~GLSLProgram( void );
 
-	void   compileShader( const char *fileName )                                                                     throw( GLSLProgramException );
-	void   compileShader( const char * fileName      , GLSLShader::GLSLShaderType type )                             throw( GLSLProgramException );
-	void   compileShader( const std::string & source , GLSLShader::GLSLShaderType type , const char *fileName=NULL ) throw( GLSLProgramException );
+	void   compileShader( const std::string & source , GLSLShader::GLSLShaderType type ) throw( GLSLProgramException );
 
 	void   link( void )     throw( GLSLProgramException );
 	void   validate( void ) throw( GLSLProgramException );
@@ -84,6 +83,7 @@ public:
 	void   printActiveUniformBlocks( void );
 	void   printActiveAttribs( void );
 
+	const char * getShaderTypeString( GLSLShader::GLSLShaderType type );
 	const char * getTypeString( GLenum type );
 	void setup( void );
 };
@@ -110,7 +110,7 @@ namespace GLSLShaderInfo
 		GLSLShader::GLSLShaderType type;
 	};
 
-	struct shader_file_extension extensions[] =
+	shader_file_extension extensions[] =
 	{
 		{ ".vs"   , GLSLShader::VERTEX },
 		{ ".vert" , GLSLShader::VERTEX },
@@ -191,7 +191,7 @@ std::string GLSLProgram::getExtension( const std::string & filename )
 	return "";
 }
 
-void GLSLProgram::compileShader( const std::string & source , GLSLShader::GLSLShaderType type , const char * fileName ) throw( GLSLProgramException )
+void GLSLProgram::compileShader( const std::string & source , GLSLShader::GLSLShaderType type ) throw( GLSLProgramException )
 {
 	if( handle<=0 )
 	{
@@ -224,12 +224,7 @@ void GLSLProgram::compileShader( const std::string & source , GLSLShader::GLSLSh
 			logString = c_log;
 			delete[] c_log;
 		}
-		std::string msg;
-		if( fileName ) msg = std::string( fileName ) + ": shader compliation failed\n";
-		else           msg = "Shader compilation failed.\n";
-		msg += logString;
-
-		throw GLSLProgramException( msg );
+		throw GLSLProgramException( std::string( "Shader[ " ) + std::string( getShaderTypeString( type ) ) + std::string( " ] compilation failed.\n" ) + logString );
 	}
 	else glAttachShader( handle , shaderHandle );
 }
@@ -383,6 +378,21 @@ void GLSLProgram::setup( void )
 	}
 }
 
+const char * GLSLProgram::getShaderTypeString( GLSLShader::GLSLShaderType type )
+{
+	switch( type )
+	{
+	case GLSLShader::VERTEX:          return "vertex";
+	case GLSLShader::FRAGMENT:        return "fragment";
+	case GLSLShader::GEOMETRY:        return "geometry";
+	case GLSLShader::TESS_CONTROL:    return "tessellation control";
+	case GLSLShader::TESS_EVALUATION: return "tessellation evaluation";
+	case GLSLShader::COMPUTE:         return "compute";
+	default:                          return "?";
+	}
+}
+
+
 void GLSLProgram::printActiveUniforms( void )
 {
 	GLint numUniforms = 0;
@@ -462,7 +472,8 @@ void GLSLProgram::printActiveAttribs( void )
 	}
 }
 
-const char * GLSLProgram::getTypeString(GLenum type) {
+const char * GLSLProgram::getTypeString( GLenum type )
+{
 	// There are many more types than are covered here, but
 	// these are the most common in these examples.
 	switch( type )
