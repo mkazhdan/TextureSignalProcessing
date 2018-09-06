@@ -44,7 +44,7 @@ public:
 	std::string fragment_shader_src;
 
 	static bool fileExists( const std::string & fileName );
-	static std::string getExtension( const char * fileName );
+	static std::string getExtension( const std::string & fileName );
 	static GLSLShader::GLSLShaderType getShaderType( const char* fileName ) throw( GLSLProgramException );
 
 	// Make these private in order to make the object non-copyable
@@ -184,12 +184,10 @@ GLSLShader::GLSLShaderType GLSLProgram::getShaderType( const char* fileName ) th
 	throw GLSLProgramException( std::string( "Unrecognized extension: " ) + ext );
 }
 
-std::string GLSLProgram::getExtension( const char * name )
+std::string GLSLProgram::getExtension( const std::string & filename )
 {
-	std::string nameStr( name );
-	
-	size_t loc = nameStr.find_last_of('.');
-	if( loc!=std::string::npos ) return nameStr.substr( loc , std::string::npos );
+	size_t loc = filename.find_last_of( '.' );
+	if( loc!=std::string::npos ) return filename.substr( loc , std::string::npos );
 	return "";
 }
 
@@ -275,11 +273,9 @@ void GLSLProgram::use( void ) throw( GLSLProgramException )
 int GLSLProgram::getHandle( void ){ return handle; }
 bool GLSLProgram::isLinked( void ){ return linked; }
 
-void GLSLProgram::bindAttribLocation( GLuint location , const char * name ){ glBindAttribLocation(handle, location, name); }
+void GLSLProgram::bindAttribLocation( GLuint location , const char * name ){ glBindAttribLocation( handle , location , name ); }
 void GLSLProgram::bindFragDataLocation( GLuint location , const char * name ){ glBindFragDataLocation( handle , location , name ); }
-/////////////////////////////
-// GLSLProgram::setUniform //
-/////////////////////////////
+
 void GLSLProgram::setUniform( const char *name , int val , bool showWarning )
 {
 	GLint loc = glGetUniformLocation( handle , name );
@@ -334,8 +330,6 @@ void GLSLProgram::setUniformMatrix( const char* name , const double* m , bool sh
 	setUniformMatrix< Dim >( name , _m , showWarning );
 }
 
-
-
 void GLSLProgram::validate( void ) throw( GLSLProgramException )
 {
 	if( !isLinked() ) throw GLSLProgramException("Program is not linked");
@@ -369,7 +363,7 @@ bool GLSLProgram::fileExists( const std::string & fileName )
 	struct stat info;
 	int ret = -1;
 
-	ret = stat(fileName.c_str(), &info);
+	ret = stat( fileName.c_str() , &info );
 	return 0 == ret;
 }
 
