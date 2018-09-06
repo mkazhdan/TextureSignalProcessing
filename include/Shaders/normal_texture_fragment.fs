@@ -34,8 +34,8 @@ void main()
 
 		// Specular component
 		vec3 position_to_eye = normalize( -v_eye_to_position );
-        vec3 specular_direction = 2.f * surface_normal * normal_dot_light - position_to_light;
-        float specular_attenuation = pow( max( dot( specular_direction , position_to_eye ) , 0.0 ) , shape_specular_shininess );
+		vec3 specular_direction = 2.f * surface_normal * normal_dot_light - position_to_light;
+		float specular_attenuation = pow( max( dot( specular_direction , position_to_eye ) , 0.0 ) , shape_specular_shininess );
 		lighting_color += specular_attenuation * ( light_specular * shape_specular );
 	}
 

@@ -445,10 +445,9 @@ void TextureFilter< Real >::Idle( void )
 		if( updateCount>0 ) updateCount--;
 		steps++;
 		sprintf( stepsString , "Steps: %d" , steps );
-		glutPostRedisplay();
 	}
 	
-	if( !visualization.promptCallBack ) glutPostRedisplay();	
+	glutPostRedisplay();
 }
 
 template< class Real >
