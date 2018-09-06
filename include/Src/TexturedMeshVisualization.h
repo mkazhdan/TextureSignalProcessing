@@ -28,8 +28,6 @@ DAMAGE.
 #ifndef TEXTURED_MESH_VISUALIZATION_INCLUDED
 #define TEXTURED_MESH_VISUALIZATION_INCLUDED
 
-#define MISHA_CODE
-
 #include <GL/glew.h>
 #include <GL/glut.h> 
 #include <Misha/Visualization.h>
@@ -57,14 +55,6 @@ public:
 	//For visualization of normal maps
 	void PhongShading( GLuint & textureBufferId );
 	GLSLProgram * normalProgram;
-#ifdef MISHA_CODE
-#else // !MISHA_CODE
-	float light_ambient[3];
-	float light_diffuse[3];
-	float light_specular[3];
-	float light_direction[3];
-	float specular_falloff;
-#endif // MISHA_CODE
 	GLuint vertexHandle = 0;
 
 	GLuint offscreen_depth_texture = 0;
@@ -96,7 +86,8 @@ public:
 	Image< Point3D< float > > textureImage;
 	std::vector< FEM::HermiteSamplePoint< float > > vectorField;
 
-	GLfloat lightAmbient[4] , lightDiffuse[4] , lightSpecular[4] , lightPosition[4] , shapeDiffuse[4] , shapeAmbient[4] , shapeSpecular[4] , shapeSpecularShininess;
+	Point< float , 4 > lightAmbient , lightDiffuse , lightSpecular , lightPosition , shapeDiffuse , shapeAmbient , shapeSpecular;
+	float shapeSpecularShininess;
 	bool showEdges;
 	bool showMesh;
 	bool rotating, scaling, panning;

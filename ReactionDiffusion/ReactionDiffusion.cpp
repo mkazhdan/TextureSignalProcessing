@@ -21,7 +21,7 @@ SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
 INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
 TO, PROCUREMENT OF SUBSTITUTE  GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
 BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-CONTRACT, STRICT LIABILITY, OR TORT (INCLUDINDetailVerboseG NEGLIGENCE OR OTHERWISE) ARISING IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
 ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
 DAMAGE.
 */
@@ -466,7 +466,7 @@ void GrayScottReactionDiffusion< Real >::MouseFunc( int button , int state , int
 
 	if( state==GLUT_DOWN && glutGetModifiers() & GLUT_ACTIVE_SHIFT )
 	{
-		int selectedTexel = -1;
+		seedTexel = -1;
 		if( visualization.showMesh )
 		{
 			Point3D< float > selectedPoint;
@@ -478,7 +478,7 @@ void GrayScottReactionDiffusion< Real >::MouseFunc( int button , int state , int
 				for( int i=0 ; i<textureNodePositions.size() ; i++ )
 				{
 					float squaredDistance = Point3D< float >::SquareNorm( textureNodePositions[i] - selectedPoint );
-					if( squaredDistance<minDistance ) minDistance = squaredDistance , selectedTexel = i;
+					if( squaredDistance<minDistance ) minDistance = squaredDistance , seedTexel = i;
 				}
 			}
 		}
@@ -487,13 +487,9 @@ void GrayScottReactionDiffusion< Real >::MouseFunc( int button , int state , int
 			Point2D< float > ip = visualization.selectImagePos( x , y );
 			int i = floor( ip[0] * float( nodeIndex.width()) - 0.5f );
 			int j = floor( (1.0-ip[1])*float( nodeIndex.height() ) - 0.5f );
-			if( i>=0 && i<nodeIndex.width() && j>=0 && j<nodeIndex.height() ) mouseSelectionActive = true , selectedTexel = nodeIndex(i,j);
+			if( i>=0 && i<nodeIndex.width() && j>=0 && j<nodeIndex.height() ) mouseSelectionActive = true , seedTexel = nodeIndex(i,j);
 		}
-//		if( selectedTexel!=seedTexel )
-		{
-			seedTexel = selectedTexel;
-			InitializeConcentrations();
-		}
+		InitializeConcentrations();
 	}
 	else
 	{
@@ -939,11 +935,10 @@ int GrayScottReactionDiffusion< Real >::Init( void )
 	{
 		Point2D< double > barycentricCoords = textureNodes[i].barycentricCoords;
 		int tId = textureNodes[i].tId;
-		Point3D<float> surfacePosition =
+		textureNodePositions[i] =
 			mesh.vertices[ mesh.triangles[tId][0] ] * ( 1.0-barycentricCoords[0]-barycentricCoords[1] ) +
 			mesh.vertices[ mesh.triangles[tId][1] ] * barycentricCoords[0] +
 			mesh.vertices[ mesh.triangles[tId][2] ] * barycentricCoords[1];
-		textureNodePositions[i] = surfacePosition;
 	}
 
 	if( !InitializeConcentrations() ){ fprintf( stderr , "[ERROR] Failed to initialize concentrations\n") ; return 0; }

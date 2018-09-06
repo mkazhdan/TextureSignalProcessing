@@ -940,7 +940,7 @@ void TextureFilter<Real>::InitializeVisualization( void )
 	if( !strcasecmp( ext , "normap" ) )
 	{
 		visualization.textureType = NORMAL_TEXTURE;
-		visualization.normalProgram = new GLSLProgram( vertex_shader_src , fragment_shader_src , "normalTexture" );
+		visualization.normalProgram = new GLSLProgram( vertex_shader_src , fragment_shader_src );
 		visualization.normalProgram->setup();
 	}
 	else visualization.textureType = COLOR_TEXTURE;

@@ -221,23 +221,23 @@ void TexturedMeshVisualization::SetLightingData( void )
 {
 	glLightModeli( GL_LIGHT_MODEL_LOCAL_VIEWER , GL_FALSE );
 	glLightModeli( GL_LIGHT_MODEL_TWO_SIDE , GL_TRUE );
-	glLightfv( GL_LIGHT0 , GL_AMBIENT , lightAmbient );
-	glLightfv( GL_LIGHT0 , GL_DIFFUSE , lightDiffuse );
-	glLightfv( GL_LIGHT0 , GL_SPECULAR , lightSpecular );
+	glLightfv( GL_LIGHT0 , GL_AMBIENT  , &lightAmbient [0] );
+	glLightfv( GL_LIGHT0 , GL_DIFFUSE  , &lightDiffuse [0] );
+	glLightfv( GL_LIGHT0 , GL_SPECULAR , &lightSpecular[0] );
 
 	lightPosition[0] = -camera.forward[0];
 	lightPosition[1] = -camera.forward[1];
 	lightPosition[2] = -camera.forward[2];
 	lightPosition[3] = 0.f;
 
-	glLightfv(GL_LIGHT0, GL_POSITION, lightPosition);
-	glEnable(GL_LIGHTING);
-	glEnable(GL_LIGHT0);
+	glLightfv( GL_LIGHT0 , GL_POSITION , &lightPosition[0] );
+	glEnable( GL_LIGHTING );
+	glEnable( GL_LIGHT0 );
 
-	glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, shapeAmbient);
-	glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, shapeDiffuse);
-	glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, shapeSpecular);
-	glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, shapeSpecularShininess);
+	glMaterialfv( GL_FRONT_AND_BACK , GL_AMBIENT   , &shapeAmbient [0]       );
+	glMaterialfv( GL_FRONT_AND_BACK , GL_DIFFUSE   , &shapeDiffuse [0]       );
+	glMaterialfv( GL_FRONT_AND_BACK , GL_SPECULAR  , &shapeSpecular[0]       );
+	glMaterialf ( GL_FRONT_AND_BACK , GL_SHININESS ,  shapeSpecularShininess );
 }
 
 void TexturedMeshVisualization::SetGeometryCamera( void )
@@ -271,8 +271,9 @@ void TexturedMeshVisualization::SetTextureCamera( void )
 
 void TexturedMeshVisualization::PhongShading( GLuint & textureBufferId )
 {
+	static bool firstTime = true;
 	GLSLProgram * current_program = normalProgram;
-	glUseProgram(current_program->getHandle());
+	current_program->use();
 
 	GLdouble projection[16] , modelview[16];
 	glGetDoublev( GL_PROJECTION_MATRIX , projection );
@@ -280,25 +281,18 @@ void TexturedMeshVisualization::PhongShading( GLuint & textureBufferId )
 
 	current_program->setUniformMatrix< 4 >( "eye_projection" , projection );
 	current_program->setUniformMatrix< 4 >( "world_to_eye" , modelview );
-	current_program->setUniform< 3 >( "light_direction" , &camera.forward[0] );
-#ifdef MISHA_CODE
-	current_program->setUniform< 3 >( "light_diffuse"   , lightDiffuse  , false );
-	current_program->setUniform< 3 >( "light_specular"  , lightSpecular , false );
-	current_program->setUniform< 3 >( "light_ambient"   , lightAmbient  , false );
-	current_program->setUniform< 3 >( "shape_diffuse"   , shapeDiffuse  , false );
-	current_program->setUniform< 3 >( "shape_specular"  , shapeSpecular , false );
-	current_program->setUniform< 3 >( "shape_ambient"   , shapeAmbient  , false );
-	current_program->setUniform( "shape_specular_shininess" , shapeSpecularShininess );
-#else // !MISHA_CODE
-	current_program->setUniform< 3 >( "light_diffuse"   , light_diffuse  , false );
-	current_program->setUniform< 3 >( "light_specular"  , light_specular , false );
-	current_program->setUniform< 3 >( "light_ambient"   , light_ambient  , false );
-	current_program->setUniform( "specular_falloff" , specular_falloff );
-#endif // MISHA_CODE
+	current_program->setUniform< 3 >( "light_direction" , &camera.forward[0] , firstTime );
+	current_program->setUniform< 3 >( "light_diffuse"   , &lightDiffuse  [0] , firstTime );
+	current_program->setUniform< 3 >( "light_specular"  , &lightSpecular [0] , firstTime );
+	current_program->setUniform< 3 >( "light_ambient"   , &lightAmbient  [0] , firstTime );
+	current_program->setUniform< 3 >( "shape_diffuse"   , &shapeDiffuse  [0] , firstTime );
+	current_program->setUniform< 3 >( "shape_specular"  , &shapeSpecular [0] , firstTime );
+	current_program->setUniform< 3 >( "shape_ambient"   , &shapeAmbient  [0] , firstTime );
+	current_program->setUniform( "shape_specular_shininess" , shapeSpecularShininess , firstTime );
 
-	current_program->setUniform( "normal_texture" , 0 );
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, textureBufferId);
+	current_program->setUniform( "normal_texture" , 0 , firstTime );
+	glActiveTexture( GL_TEXTURE0 );
+	glBindTexture( GL_TEXTURE_2D , textureBufferId );
 
 	glTexEnvi( GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE , GL_DECAL );
 	glTexParameteri( GL_TEXTURE_2D , GL_TEXTURE_MAG_FILTER , useNearestSampling ? GL_NEAREST : GL_LINEAR );
@@ -306,18 +300,20 @@ void TexturedMeshVisualization::PhongShading( GLuint & textureBufferId )
 
 	//		glPolygonOffset( 30.f , 30.f );
 
-	glBindVertexArray(vertexHandle);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, faceBuffer);
+	glBindVertexArray( vertexHandle );
+	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER , faceBuffer );
 
-	glEnable(GL_POLYGON_OFFSET_FILL);
-	glPolygonOffset(polygonOffsetFactor, polygonOffsetUnits);
-	glDrawElements(GL_TRIANGLES, 3 * (int)triangles.size(), GL_UNSIGNED_INT, 0);
-	glDisable(GL_POLYGON_OFFSET_FILL);
+	glEnable( GL_POLYGON_OFFSET_FILL );
+	glPolygonOffset( polygonOffsetFactor , polygonOffsetUnits );
+	glDrawElements( GL_TRIANGLES , 3 * (int)triangles.size() , GL_UNSIGNED_INT , 0 );
+	glDisable( GL_POLYGON_OFFSET_FILL );
 
 	glBindVertexArray(0);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-	glBindTexture(GL_TEXTURE_2D, 0);
+	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER , 0 );
+	glBindTexture( GL_TEXTURE_2D , 0 );
 	glUseProgram(0);
+
+	firstTime = false;
 }
 
 void TexturedMeshVisualization::DrawGeometry( GLuint& textureBufferId , bool phongShading , bool modulateLight )
@@ -763,13 +759,9 @@ TexturedMeshVisualization::TexturedMeshVisualization( bool hasVectorField )
 	screenHeight = 800;
 	screenWidth = 800;
 
-	//nearPlane = 0.01f;
-	//farPlane = 100.f;
-
 	zoom = 1.f;
 	rotating = scaling = panning = false;
 
-	//camera.position = Point3D<float>(0.f, 0.f, -5.f);
 	radius = 1.f;
 
 	camera = Camera( Point3D< float >( 0.f , 0.f , 2.f ) , Point3D< float >( 0.f , 0.f , -1.f ) , Point3D< float >( 0.f , 1.f , 0.f ) );
@@ -784,24 +776,14 @@ TexturedMeshVisualization::TexturedMeshVisualization( bool hasVectorField )
 	if( hasVectorField ) callBacks.push_back( KeyboardCallBack( this , 'V', "toggle vector field ", ToggleVectorFieldCallBack ) );
 
 
-	lightDiffuse[0] = lightDiffuse[1] = lightDiffuse[2] = 1.0f, lightDiffuse[3] = 1.f;
-	lightAmbient[0] = lightAmbient[1] = lightAmbient[2] = 0.0f, lightAmbient[3] = 1.f;
-	lightSpecular[0] = lightSpecular[1] = lightSpecular[2] = 1.0f, lightSpecular[3] = 1.f;
+	lightDiffuse [0] = lightDiffuse [1] = lightDiffuse [2] = 1.f, lightDiffuse [3] = 1.f;
+	lightAmbient [0] = lightAmbient [1] = lightAmbient [2] = 0.f, lightAmbient [3] = 1.f;
+	lightSpecular[0] = lightSpecular[1] = lightSpecular[2] = 1.f, lightSpecular[3] = 1.f;
 	lightPosition[3] = 0.f;
-	shapeDiffuse[0] = shapeDiffuse[1] = shapeDiffuse[2] = 1.0, shapeDiffuse[3] = 1.0;
-	shapeAmbient[0] = shapeAmbient[1] = shapeAmbient[2] = 0.0, shapeAmbient[3] = 1.0;
-	shapeSpecular[0] = shapeSpecular[1] = shapeSpecular[2] = 1.0f , shapeSpecular[3] = 1.f;
-	shapeSpecularShininess = 128;
-
-
-#ifdef MISHA_CODE
-#else // !MISHA_CODE
-	light_direction[0] = 0.f , light_direction[1] = 0.f , light_direction[2] = 1.f;
-	light_ambient  [0] = 0.f , light_ambient  [1] = 0.f , light_ambient  [2] = 0.f;
-	light_diffuse  [0] = 1.f , light_diffuse  [1] = 1.f , light_diffuse  [2] = 1.f;
-	light_specular [0] = 0.f , light_specular [1] = 0.f , light_specular [2] = 0.f;
-	specular_falloff = 0.f;
-#endif // MISHA_CODE
+	shapeDiffuse [0] = shapeDiffuse [1] = shapeDiffuse [2] = 1.f , shapeDiffuse [3] = 1.f;
+	shapeAmbient [0] = shapeAmbient [1] = shapeAmbient [2] = 0.f , shapeAmbient [3] = 1.f;
+	shapeSpecular[0] = shapeSpecular[1] = shapeSpecular[2] = 1.f , shapeSpecular[3] = 1.f;
+	shapeSpecularShininess = 128.f;
 }
 
 

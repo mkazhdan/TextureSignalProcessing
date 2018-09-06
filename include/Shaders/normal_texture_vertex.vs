@@ -13,7 +13,7 @@ out vec3 v_eye_to_position;
 void main()
 {
     v_texture = vertex_texture;
-	v_eye_to_position = vec3( world_to_eye * vec4(vertex_position,1.0));
-    gl_Position = eye_projection * world_to_eye * vec4(vertex_position,1.0);
+	v_eye_to_position = vec3( world_to_eye * vec4( vertex_position , 1.0 ) );
+    gl_Position = eye_projection * world_to_eye * vec4( vertex_position , 1.0 );
 }
 )"
