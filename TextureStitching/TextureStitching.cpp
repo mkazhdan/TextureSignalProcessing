@@ -46,25 +46,25 @@ enum
 #include <Src/StitchingVisualization.h>
 
 cmdLineParameterArray< char * , 3 > In( "in" );
-cmdLineParameter< char* > Output("out");
-cmdLineParameter< int   > OutputVCycles("outVCycles", 6);
-cmdLineParameter< float > InterpolationWeight("interpolation", 1e2);
-cmdLineParameter< int   > Threads("threads", omp_get_num_procs());
-cmdLineParameter< int   > Levels("levels", 4);
-cmdLineParameter< int   > MatrixQuadrature("mQuadrature", 6);
+cmdLineParameter< char* > Output( "out" );
+cmdLineParameter< int   > OutputVCycles( "outVCycles" , 6 );
+cmdLineParameter< float > InterpolationWeight( "interpolation" , 1e2 );
+cmdLineParameter< int   > Threads( "threads", omp_get_num_procs() );
+cmdLineParameter< int   > Levels( "levels" , 4 );
+cmdLineParameter< int   > MatrixQuadrature( "mQuadrature" , 6 );
 
-cmdLineParameter< int   > MultigridBlockHeight("mBlockH", 16);
-cmdLineParameter< int   > MultigridBlockWidth("mBlockW", 128);
-cmdLineParameter< int   > MultigridPaddedHeight("mPadH", 0);
-cmdLineParameter< int   > MultigridPaddedWidth("mPadW", 2);
+cmdLineParameter< int   > MultigridBlockHeight ( "mBlockH" ,  16 );
+cmdLineParameter< int   > MultigridBlockWidth  ( "mBlockW" , 128 );
+cmdLineParameter< int   > MultigridPaddedHeight( "mPadH"   ,   0 );
+cmdLineParameter< int   > MultigridPaddedWidth ( "mPadW"   ,   2 );
 
-cmdLineReadable RandomJitter("jitter");
-cmdLineParameter< char* > CameraConfig("camera");
-cmdLineReadable UseDirectSolver("useDirectSolver");
-cmdLineReadable Verbose("verbose");
-cmdLineReadable NoHelp("noHelp");
-cmdLineReadable DetailVerbose("detail");
-cmdLineReadable Double("double");
+cmdLineReadable RandomJitter( "jitter" );
+cmdLineParameter< char* > CameraConfig( "camera" );
+cmdLineReadable UseDirectSolver( "useDirectSolver" );
+cmdLineReadable Verbose( "verbose" );
+cmdLineReadable NoHelp( "noHelp" );
+cmdLineReadable DetailVerbose( "detail" );
+cmdLineReadable Double( "double" );
 cmdLineReadable MultiInput( "multi" );
 cmdLineReadable* params[] =
 {
@@ -115,33 +115,33 @@ public:
 	static bool positiveModulation;
 
 	// Single input mode
-	static Image<int> inputMask;
-	static Image<Point3D<float>> inputComposition;
+	static Image< int > inputMask;
+	static Image< Point3D< float > > inputComposition;
 
 	// Multiple input mode
 	static int numTextures;
-	static std::vector<Image<float>> inputConfidence;
-	static std::vector<Image<Point3D<float>>> inputTextures;
-	static std::vector<std::vector<Point3D<Real>>> partialTexelValues;
-	static std::vector<std::vector<Point3D<Real>>> partialEdgeValues;
+	static std::vector< Image< float > > inputConfidence;
+	static std::vector< Image< Point3D< float > > > inputTextures;
+	static std::vector< std::vector< Point3D< Real > > > partialTexelValues;
+	static std::vector< std::vector< Point3D< Real > > > partialEdgeValues;
 
-	static Image<Point3D<float>> filteredTexture;
+	static Image< Point3D< float > > filteredTexture;
 	// UI
 	static char interpolationStr[1024];
 	static char referenceTextureStr[1024];
 
-	static std::vector<Point3D<float>>textureNodePositions;
-	static std::vector<Point3D<float>>textureEdgePositions;
+	static std::vector< Point3D< float > >textureNodePositions;
+	static std::vector< Point3D< float > >textureEdgePositions;
 
-	static std::vector<AtlasChart> atlasCharts;
+	static std::vector< AtlasChart > atlasCharts;
 
 	static std::vector< BilinearElementIndex > bilinearElementIndices;
 
-	static std::vector<TextureNodeInfo> textureNodes;
+	static std::vector< TextureNodeInfo > textureNodes;
 
-	static SparseMatrix<double, int> mass;
-	static SparseMatrix<double, int> stiffness;
-	static SparseMatrix< double, int > stitchingMatrix;
+	static SparseMatrix< double , int > mass;
+	static SparseMatrix< double , int > stiffness;
+	static SparseMatrix< double , int > stitchingMatrix;
 
 	static std::vector< Point3D< Real > > texelMass;
 	static std::vector< Point3D< Real > > texelDivergence;
@@ -151,17 +151,17 @@ public:
 	static std::vector< MultigridLevelIndices< Real > > multigridIndices;
 
 #if defined( USE_CHOLMOD )
-	typedef  std::vector< CholmodCholeskySolver< Real, 3 > > BoundarySolverType;
-	typedef  CholmodCholeskySolver< Real, 3 > CoarseSolverType;
-	typedef  CholmodCholeskySolver< Real, 3 > DirectSolverType;
+	typedef  std::vector< CholmodCholeskySolver< Real , 3 > > BoundarySolverType;
+	typedef  CholmodCholeskySolver< Real , 3 > CoarseSolverType;
+	typedef  CholmodCholeskySolver< Real , 3 > DirectSolverType;
 #elif defined( USE_EIGEN_SIMPLICIAL )
-	typedef  std::vector< EigenCholeskySolver< Real, 3 > > BoundarySolverType;
-	typedef  EigenCholeskySolver< Real, 3 > CoarseSolverType;
-	typedef  EigenCholeskySolver< Real, 3 > DirectSolverType;
+	typedef  std::vector< EigenCholeskySolver< Real , 3 > > BoundarySolverType;
+	typedef  EigenCholeskySolver< Real , 3 > CoarseSolverType;
+	typedef  EigenCholeskySolver< Real , 3 > DirectSolverType;
 #elif defined( USE_EIGEN_PARDISO )
-	typedef  std::vector< EigenPardisoSolver< Real, 3 > > BoundarySolverType;
-	typedef  EigenPardisoSolver< Real, 3 > CoarseSolverType;
-	typedef  EigenPardisoSolver< Real, 3 > DirectSolverType;
+	typedef  std::vector< EigenPardisoSolver< Real , 3 > > BoundarySolverType;
+	typedef  EigenPardisoSolver< Real , 3 > CoarseSolverType;
+	typedef  EigenPardisoSolver< Real , 3 > DirectSolverType;
 #else
 #error "[ERROR] No solver defined!"
 #endif
@@ -170,25 +170,25 @@ public:
 	static CoarseSolverType coarseSolver;
 	static DirectSolverType directSolver;
 
-	static std::unordered_map<unsigned long long, int> edgeIndex;
-	static std::vector<std::pair<int,int>> edgePairs;
+	static std::unordered_map< unsigned long long , int > edgeIndex;
+	static std::vector< std::pair< int , int > > edgePairs;
 
-	static SparseMatrix< Real, int > boundaryDivergenceMatrix;
+	static SparseMatrix< Real , int > boundaryDivergenceMatrix;
 
 	static std::vector< Real > deepDivergenceCoefficients;
-	static std::vector<DivegenceRasterLine> divergenceRasterLines;
+	static std::vector< DivegenceRasterLine > divergenceRasterLines;
 
-	static std::vector<bool> unobservedTexel;
-	static std::vector<Point3D<Real>> texelValues;
-	static std::vector<Point3D<Real>> edgeValues;
+	static std::vector< bool > unobservedTexel;
+	static std::vector< Point3D< Real > > texelValues;
+	static std::vector< Point3D< Real > > edgeValues;
 
 	// Linear Operators
-	static std::vector<double> deepMassCoefficients;
-	static std::vector<double> deepStiffnessCoefficients;
-	static SparseMatrix<double, int> boundaryBoundaryMassMatrix;
-	static SparseMatrix<double, int> boundaryBoundaryStiffnessMatrix;
-	static SparseMatrix<double, int> boundaryDeepMassMatrix;
-	static SparseMatrix<double, int> boundaryDeepStiffnessMatrix;
+	static std::vector< double > deepMassCoefficients;
+	static std::vector< double > deepStiffnessCoefficients;
+	static SparseMatrix< double , int > boundaryBoundaryMassMatrix;
+	static SparseMatrix< double , int > boundaryBoundaryStiffnessMatrix;
+	static SparseMatrix< double , int > boundaryDeepMassMatrix;
+	static SparseMatrix< double , int > boundaryDeepStiffnessMatrix;
 
 	// Stitching UI
 	static int textureIndex;
@@ -202,33 +202,32 @@ public:
 	static StitchingVisualization visualization;
 	static int updateCount;
 
-	static void ToggleForwardReferenceTextureCallBack(Visualization* v, const char* prompt);
-	static void ToggleBackwardReferenceTextureCallBack(Visualization* v, const char* prompt);
-	static void ToggleUpdateCallBack(Visualization* v, const char* prompt);
-	static void IncrementUpdateCallBack(Visualization* v, const char* prompt);
-	static void ExportTextureCallBack(Visualization* v, const char* prompt);
+	static void ToggleForwardReferenceTextureCallBack ( Visualization *v , const char *prompt );
+	static void ToggleBackwardReferenceTextureCallBack( Visualization *v , const char *prompt );
+	static void ToggleUpdateCallBack                  ( Visualization *v , const char *prompt );
+	static void IncrementUpdateCallBack               ( Visualization *v , const char *prompt );
+	static void ExportTextureCallBack                 ( Visualization *v , const char *prompt );
+	static void InterpolationWeightCallBack           ( Visualization *v , const char *prompt );
 
-	static void InterpolationWeightCallBack(Visualization* v, const char* prompt);
+	static void LoadImages( void );
+	static void ParseImages( void );
+	static void SolveSytem( void );
+	static int Init( void );
+	static void InitializeVisualization( void );
+	static int UpdateSolution( bool verbose=false , bool detailVerbose=false );
+	static void ComputeExactSolution( bool verbose=false );
+	static int InitializeSystem( const int width , const int height );
+	static int _InitializeSystem( std::vector< std::vector< SquareMatrix< double , 2 > > > &parameterMetric , BoundaryProlongationData &boundaryProlongation );
 
-	static void LoadImages();
-	static void ParseImages();
-	static void SolveSytem();
-	static int Init();
-	static void InitializeVisualization();
-	static int UpdateSolution(bool verbose = false, bool detailVerbose = false);
-	static void ComputeExactSolution(bool verbose = false);
-	static int InitializeSystem(const int width, const int height);
-	static int _InitializeSystem(std::vector<std::vector<SquareMatrix<double, 2>>>& parameterMetric, BoundaryProlongationData& boundaryProlongation);
+	static void UpdateFilteredColorTexture( const std::vector< Point3D< Real > > &solution );
+	static void UpdateFilteredTexture( const std::vector< Point3D< Real > > &solution );
 
-	static void UpdateFilteredColorTexture(const std::vector< Point3D< Real > >& solution);
-	static void UpdateFilteredTexture(const std::vector< Point3D< Real > >& solution);
-
-	static void Display(void) { visualization.Display(); }
-	static void MouseFunc(int button, int state, int x, int y);
-	static void MotionFunc(int x, int y);
-	static void Reshape(int w, int h) { visualization.Reshape(w, h); }
-	static void KeyboardFunc(unsigned char key, int x, int y) { visualization.KeyboardFunc(key, x, y); }
-	static void Idle(void);
+	static void Display( void ){ visualization.Display(); }
+	static void MouseFunc( int button , int state , int x , int y );
+	static void MotionFunc( int x , int y );
+	static void Reshape( int w , int h ) { visualization.Reshape(w,h); }
+	static void KeyboardFunc( unsigned char key , int x , int y ) { visualization.KeyboardFunc(key,x,y); }
+	static void Idle( void );
 };
 template< class Real > char Stitching< Real >::referenceTextureStr[1024];
 template< class Real > char Stitching< Real >::interpolationStr[1024];

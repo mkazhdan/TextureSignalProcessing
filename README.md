@@ -87,28 +87,28 @@ The default value for this parameter is 1.
 <details>
 <summary>
 <font size="+1"><b>TextureStitching</b></font>:
-Supports the stitching together of a multiple (possibly overlapping) textures by solving a screened Poisson equation with value constraints defined by the input texture.
+Supports the stitching together of multiple (possibly overlapping) textures by solving a screened Poisson equation with value constraints defined by the input texture.
 The interactive viewer runs in two modes:
 <OL>
 <LI> A user specifies a single composite texture and mask file indicating when texels in the composite come from the same source.
-In this case gradient constraints are obtained by copying gradients from the composite whenever the two texels defining an edge come from the same source and setting the gradient constraint to zero along edges coming from different sources.
+In this case gradient constraints are obtained by copying gradients from the composite whenever the two texels defining an edge come from the same source, and setting the gradient constraint to zero along edges coming from different sources.
 The viewer shows the stitched texture on the left and the composite texture on the right.
-<LI> A user specifies multiple partial texture files and corresponding confidences masks.
+<LI> A user specifies multiple partial texture files and corresponding confidence masks.
 In this case gradient constraints are obtained by blending gradients from the different inputs, weighted by confidence, and setting gradients to zero in regions where there are no textures with non-zero confidence.
-The viewer shows the stitched texture on the left and a partial texture on the right and the user can selectively replace blended value/gradient constraints with the values/gradients from the partial texture by holding the [SHIFT] key down and dragging over the region to be inpainted.
+The viewer shows the stitched texture on the left and a partial texture on the right. The user can selectively replace blended value/gradient constraints with the values/gradients from the partial texture by holding the [SHIFT] key down and dragging over the region to be in-painted.
 </OL>
 </summary>
 <dt><b>--in</b> &lt;<i>input mesh, composite texture, and mask</i>&gt;</dt>
 <dd> These three strings specify the the names of the mesh, the texture image, and the mask image.<br>
 The input mesh is assumed to be in <a href="http://www.cc.gatech.edu/projects/large_models/ply.html">PLY</a> format, giving the set of vertices with the x-, y-, and z-coordinates of the positions encoded by the properties <i>x</i>, <i>y</i>, and <i>z</i> the set of polygons encoded by two lists. The first gives the indices of the vertices in the polygon (integers). The second gives the texture coordinates at each polygon corner (pairs of floats).<br>
-The input texture and mask are assumed to be an image in <I>png</I>, <I>jpg</I>, or <I>jpeg</I> format. Black pixels in the mask file are assumed to denote regions where the texel value is unkown.
+The input texture and mask are assumed to be images in <I>png</I>, <I>jpg</I>, or <I>jpeg</I> format. Black pixels in the mask file should be used to denote regions where the texel value is unkown.
 </dd>
 
 <dt><b>--in</b> &lt;<i>input mesh, texture format specifier, and confidence format specifier</i>&gt;</dt>
-<dd> These three strings specify the the names of the mesh, the format for the texture images, and the format for the confidence images.<br>
+<dd> These three strings specify the the names of the mesh, the format string for the texture images, and the format string for the confidence images.<br>
 The input mesh is assumed to be in <a href="http://www.cc.gatech.edu/projects/large_models/ply.html">PLY</a> format, giving the set of vertices with the x-, y-, and z-coordinates of the positions encoded by the properties <i>x</i>, <i>y</i>, and <i>z</i> the set of polygons encoded by two lists. The first gives the indices of the vertices in the polygon (integers). The second gives the texture coordinates at each polygon corner (pairs of floats).<br>
 The input textures and confidence maps are assumed to be images in <I>png</I>, <I>jpg</I>, or <I>jpeg</I> format.<BR>
-For the texture and confidence names to be interpreted as format specifiers, you must specify the  <b>--multi</b> flag.
+For the texture and confidence names to be interpreted as format specifiers, the  <b>--multi</b> flag must be specified.
 </dd>
 
 <dt>[<b>--out</b> &lt;<i>output texture</i>&gt;]</dt>
@@ -340,7 +340,7 @@ If adjacent texels share the same mask color, they are assumed to come from the 
 Otherwise, the gradient is set to zero. Additionally, a mask color of black is reserved to indicate that the texel value is unknown.<BR>
 For example, running
 <blockquote><code>% Bin/*/TextureFiltering --in Rooster/rooster.ply ../TSP.Data/Rooster/texels.png ../TSP.Data/Rooster/mask.png</code></blockquote>
-opens a viewer showing the stitched texture on the left, and the composite texture on the right.
+opens a viewer showing the stitched texture on the left and the composite texture on the right.
 <LI>
 In addition to the input mesh, specify (multiple) partial textures and associated confidence maps.
 The code blends the gradients in regions of overlap, with weights determined by the mask.
@@ -348,11 +348,11 @@ Texel and confidence file names are specified using integer format specifiers, w
 Colors are transformed to scalar confidence values by computing the gray-scale value and normalizing to the range [0,1].<br>
 For example, running
 <blockquote><code>% Bin/*/TextureFiltering --in Rooster/rooster.ply ../TSP.Data/Rooster/texels-%02d.png ../TSP.Data/Rooster/mask-%02d.png --multi</code></blockquote>
-opens a viewer showing the stitched texture on the left, and the first partial textures on the right.<BR>
+opens a viewer showing the stitched texture on the left and the first partial textures on the right.<BR>
 Pressing the 't' key toggles forward through the partial textures and pressing 'T' toggles backwards.<BR>
 Holding [SHIFT] and clicking on the stitched model replaces the blended gradients under the paint-brush with the gradients from the currently visualized partial-texture.<BR>
 </OL>
-You can also bypass the viewer and output a stitched texture to a file:
+You can also bypass the viewer and output the stitched texture to a file:
 <blockquote><code>% Bin/*/TextureStitching --in Rooster/rooster.ply ../TSP.Data/Rooster/texels-%02d.png ../TSP.Data/Rooster/mask-%02d.png --multi --out stitched.png</code></blockquote>
 </details>
 </dl>
