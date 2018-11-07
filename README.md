@@ -24,9 +24,9 @@ This software supports gradient-domain signal processing within a texture atlas.
 <a href="https://www.cs.cmu.edu/~kmcrane/Projects/HeatMethod/">[Crane, Weischedel, and Wardetzky, 2013]</a>
 <br>
 <b>Executables: </b>
-<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version1.00/TSP.x64.zip">Win64</a><br>
+<a href="TSP.x64.zip">Win64</a><br>
 <b>Source Code:</b>
-<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version1.00/TSP.Source.zip">ZIP</a> <a href="https://github.com/mkazhdan/TextureSignalProcessing">GitHub</a><br>
+<a href="TSP.Source.zip">ZIP</a> <a href="https://github.com/mkazhdan/TextureSignalProcessing">GitHub</a><br>
 <B>Data:</B>
 <A HREF="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/TSP.Data.zip">ZIP</A><br>
 <b>Older Versions:</b>
