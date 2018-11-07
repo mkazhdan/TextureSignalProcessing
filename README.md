@@ -419,9 +419,9 @@ Here a "dots" pattern is written out to an image. (Empirically, we have found th
 <summary>
 <a name="CHANGES"><b>HISTORY OF CHANGES</b></a><br>
 </summary>
-<a href="http://www.cs.jhu.edu/~misha/Code/PoissonRecon/Version2.00/">Version 2</a>:
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version2.00/">Version 2</a>:
 <ul><li> Added support for reaction-diffusion based on the Gray-Scott model.</li></ul>
-<a href="http://www.cs.jhu.edu/~misha/Code/PoissonRecon/Version3.00/">Version 3</a>:
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version3.00/">Version 3</a>:
 <ul><li> Added support for texture stitching.</li></ul>
 </details>
 
