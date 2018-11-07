@@ -79,17 +79,19 @@ void ComputePadding( Padding& padding , const int& width , const int& height , s
 
 }
 
-template<class DataType>
-void PaddImage(Padding & padding, Image<DataType> & im){
+template< class DataType >
+void PadImage( Padding &padding , Image< DataType > &im )
+{
 	int newWidth = im.width() + padding.left + padding.right;
 	int newHeight = im.height() + padding.bottom + padding.top;
 
-	Image<Point3D<float>> newIm;
-	newIm.resize(newWidth, newHeight);
-	for (int i = 0; i < newWidth; i++) for (int j = 0; j < newHeight; j++) {
-		int ni = std::min<int>(std::max<int>(0, i - padding.left), im.width() - 1);
-		int nj = std::min<int>(std::max<int>(0, j - padding.bottom), im.height() - 1);
-		newIm(i, j) = im(ni, nj);
+	Image< DataType > newIm;
+	newIm.resize( newWidth , newHeight );
+	for( int i=0 ; i<newWidth ; i++ ) for( int j=0 ; j<newHeight ; j++ )
+	{
+		int ni = std::min< int >( std::max< int >( 0 , i-padding.left   ) , im.width()  - 1 );
+		int nj = std::min< int >( std::max< int >( 0 , j-padding.bottom ) , im.height() - 1 );
+		newIm(i,j) = im(ni,nj);
 	}
 	im = newIm;
 }
@@ -106,7 +108,7 @@ void UnpadImage( Padding & padding , Image<DataType> & im )
 }
 
 
-void PaddTextureCoordinates(Padding & padding, int width, int height, std::vector<Point2D<double>>  & textureCoordinates){
+void PadTextureCoordinates(Padding & padding, int width, int height, std::vector<Point2D<double>>  & textureCoordinates){
 	int newWidth = width + padding.left + padding.right;
 	int newHeight = height + padding.bottom + padding.top;
 

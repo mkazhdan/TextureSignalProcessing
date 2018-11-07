@@ -165,18 +165,9 @@ double SparseMatrix< T , IndexType >::ASymmetricSquareNorm(void) const
 		double t1=0 , t2=0;
 		int N = _entries[i][j].N;
 		if( N==i ) continue;
-#if 1
 		// [WARNING] multi-counting 
 		for( int k=0 ; k<rowSizes[i] ; k++ ) if( _entries[i][k].N==N ) t1 += _entries[i][k].Value;
 		for( int k=0 ; k<rowSizes[N] ; k++ ) if( _entries[N][k].N==i ) t2 += _entries[N][k].Value;
-#else
-		t1 = _entries[i][j].Value;
-		for( int k=0 ; k<rowSizes[N] ; k++ ) if( _entries[N][k].N==i )
-		{
-			t2 = _entries[N][k].Value;
-			break;
-		}
-#endif
 		l2 += (t1-t2)*(t1-t2);
 	}
 	return l2;

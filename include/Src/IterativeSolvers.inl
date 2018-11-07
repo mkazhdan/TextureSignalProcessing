@@ -25,10 +25,6 @@ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING 
 ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
 DAMAGE.
 */
-#define USE_SYNCHRONIZATION 1
-#define RELAX_BOUNDARY_FIRST 1
-#define USE_BLOCK_MULTIGRID 1
-#define USE_TWO_COLORING_BLOCK 1
 
 #include<Eigen/SparseLU>
 #include "SparseMatrixParser.h"
@@ -113,28 +109,6 @@ int Relaxation(const std::vector<Real> & deepCoefficients, const SparseMatrix< R
 
 			if (verbose) t_begin = clock();
 
-#if USE_SYNCHRONIZATION //Synchronized
-
-#if 0	//Thread based decomposition
-			int threads = omp_get_max_threads();
-			const int totalLines = segmentedLines.size();
-			//Update even blocks
-#pragma omp parallel for
-			for (int t = 0; t < threads; t++) {
-				const int tId = 2 * omp_get_thread_num();
-				const int firstLine = (tId*totalLines) / (2 * threads);
-				const int lastLine = ((tId + 1)*totalLines) / (2 * threads);
-				UpdateBlock(firstLine, lastLine, 3);
-			}
-			//Update odd blocks
-#pragma omp parallel for
-			for (int t = 0; t < threads; t++) {
-				const int tId = 2 * omp_get_thread_num() + 1;
-				const int firstLine = (tId*totalLines) / (2 * threads);
-				const int lastLine = ((tId + 1)*totalLines) / (2 * threads);
-				UpdateBlock(firstLine, lastLine, 3);
-			}
-#else //Block based decomposition
 			const int blockSize = 16;
 			const int totalLines = segmentedLines.size();
 			const int numBlocks = ((totalLines - 1) / blockSize) + 1;
@@ -152,42 +126,6 @@ int Relaxation(const std::vector<Real> & deepCoefficients, const SparseMatrix< R
 				const int lastLine = (totalLines * (b + 1)) / numBlocks;
 				UpdateBlock(firstLine, lastLine, 3);
 			}
-#endif
-
-#else //Not synchronized
-#if 1
-			int threads = omp_get_max_threads();
-			std::vector<int> lineRange(threads + 1);
-			int blockSize = segmentedLines.size() / threads;
-			for (int t = 0; t < threads; t++) lineRange[t] = t*blockSize;
-			lineRange[threads] = segmentedLines.size();
-#pragma omp parallel for
-			for (int t = 0; t < threads; t++) {
-				const int tId = omp_get_thread_num();
-				const int firstLine = lineRange[tId];
-				const int lastLine = lineRange[tId + 1];
-
-				//UpdateRow(firstLine);
-				//UpdateRow(firstLine + 1);
-				//UpdateRow(firstLine);
-				//for (int r = firstLine + 2; r < lastLine; r++) {
-				//	UpdateRow(r);
-				//	UpdateRow(r - 1);
-				//	UpdateRow(r - 2);
-				//}
-				//UpdateRow(lastLine - 1);
-				//UpdateRow(lastLine - 2);
-				//UpdateRow(lastLine - 1);
-
-				UpdateBlock(firstLine, lastLine, 3);
-			}
-#else
-			for (int k = 0; k < 3; k++) {
-				for (int r = 0; r < segmentedLines.size(); r++)if (r % 2 == 0) UpdateRow(r);
-				for (int r = 0; r < segmentedLines.size(); r++)if (r % 2 != 0) UpdateRow(r);
-			}
-#endif
-#endif
 			if (verbose) printf("\t GS Deep update =  %.4f \n", double(clock() - t_begin) / CLOCKS_PER_SEC);
 		}
 	}
@@ -239,7 +177,6 @@ int Relaxation(const std::vector<Real> & deepCoefficients, const SparseMatrix< R
 		if ((it + it_offset) % 2 == 1) {//Update Interior
 			
 			if (verbose) t_begin = clock();
-#if 1
 			auto UpdateRow = [&](const BlockDeepSegmentedLine & deepSegmentedLine){
 				for (int s = 0; s < deepSegmentedLine.blockDeepSegments.size(); s++) {
 					const BlockDeepSegment & deepSegment = deepSegmentedLine.blockDeepSegments[s];
@@ -278,107 +215,7 @@ int Relaxation(const std::vector<Real> & deepCoefficients, const SparseMatrix< R
 					}
 				}
 			};
-#else
 
-			int threads = omp_get_max_threads();
-			std::vector<std::vector<Data>> dataBlocks(threads, std::vector<Data>((BLOCK_HEIGHT + 2)*(BLOCK_WIDTH + 2)));
-
-			auto UpdateBlock = [&](int t, int b)
-			{
-				const std::vector<BlockGlobalSegmentedLine> & blockGlobalSegmentedLines = threadTasks[t].blockTasks[b].blockGlobalSegmentedLines;
-				const std::vector<BlockDeepSegmentedLine> & blockDeepSegmentedLines = threadTasks[t].blockTasks[b].blockDeepSegmentedLines;
-
-				std::vector<Data> & dataBlock = dataBlocks[omp_get_thread_num()];
-
-				//Read data
-				for (int j = 0; j < blockGlobalSegmentedLines.size(); j++) {
-					const BlockGlobalSegmentedLine & globalSegmentedLine = blockGlobalSegmentedLines[j];
-					for (int s = 0; s < globalSegmentedLine.blockGlobalSegments.size(); s++) {
-						const BlockGlobalSegment & globalSegment = globalSegmentedLine.blockGlobalSegments[s];
-						const int segmentStart = globalSegment.segmentStart;
-						const int globalStart = globalSegment.globalStart;
-						const int length = globalSegment.globalEnd - globalStart + 1;
-
-						Data* _out_x0 = &dataBlock[j*(BLOCK_WIDTH + 2) + segmentStart];
-						const Data* _in_x0 = (Data*)x0.data() + globalStart;
-
-						for (int i = 0; i < length; i++)_out_x0[i] = _in_x0[i];
-					}
-				}
-
-				//Proccess data
-				for (int j = 0; j < blockDeepSegmentedLines.size(); j++) {
-					for (int gsIter = 0; gsIter < 3; gsIter++) {
-						if (j - gsIter > 0) {
-							const BlockDeepSegmentedLine & deepSegmentedLine = blockDeepSegmentedLines[j - gsIter];
-							for (int s = 0; s < deepSegmentedLine.blockDeepSegments.size(); s++) {
-								const BlockDeepSegment & deepSegment = deepSegmentedLine.blockDeepSegments[s];
-								int blockRow = deepSegment.blockRow;
-								int segmentStart = deepSegment.segmentStart;
-								int length = deepSegment.globalEnd - deepSegment.globalStart + 1;
-								int deepStart = deepSegment.deepStart;
-								int globalStart = deepSegment.globalStart;
-
-								Data* _xCurrent = &dataBlock[blockRow*(BLOCK_WIDTH + 2) + segmentStart];
-								const Data* _xPrevious = &dataBlock[(blockRow - 1)*(BLOCK_WIDTH + 2) + segmentStart];
-								const Data* _xNext = &dataBlock[(blockRow + 1)*(BLOCK_WIDTH + 2) + segmentStart];
-								const Data* _rhs = (Data*)rhs.data() + globalStart;
-								const Real* _deepCoefficients = &deepCoefficients[10 * deepStart];
-
-								for (int i = 0; i < length; _deepCoefficients += 10, i++)
-								{
-									_xCurrent[i] =
-										_rhs[i] * _deepCoefficients[4] -
-										(
-											_xPrevious[i - 1] * _deepCoefficients[0] +
-											_xPrevious[i + 0] * _deepCoefficients[1] +
-											_xPrevious[i + 1] * _deepCoefficients[2] +
-											_xCurrent[i - 1] * _deepCoefficients[3] +
-											_xCurrent[i + 1] * _deepCoefficients[5] +
-											_xNext[i - 1] * _deepCoefficients[6] +
-											_xNext[i + 0] * _deepCoefficients[7] +
-											_xNext[i + 1] * _deepCoefficients[8]
-											);
-								}
-							}
-						}
-					}
-				}
-
-				//Save data
-				for (int j = 0; j < blockDeepSegmentedLines.size(); j++) {
-					const BlockDeepSegmentedLine & deepSegmentedLine = blockDeepSegmentedLines[j];
-					for (int s = 0; s < deepSegmentedLine.blockDeepSegments.size(); s++) {
-						const BlockDeepSegment & deepSegment = deepSegmentedLine.blockDeepSegments[s];
-						int blockRow = deepSegment.blockRow;
-						int segmentStart = deepSegment.segmentStart;
-						int globalStart = deepSegment.globalStart;
-						int length = deepSegment.globalEnd - deepSegment.globalStart + 1;
-
-						Data* _out_x0 = (Data*)x0.data() + globalStart;
-						const Data* _in_x0 = &dataBlock[blockRow*(BLOCK_WIDTH + 2) + segmentStart];
-
-						for (int i = 0; i < length; i++)_out_x0[i] = _in_x0[i];
-					}
-				}
-			};
-#endif
-			if (0){
-				printf("Thread tasks %d \n", (int)threadTasks.size());
-				for (int i = 0; i < threadTasks.size(); i++) {
-					printf("\t Num blocks %d \n", (int)threadTasks[i].blockTasks.size());
-					for (int j = 0; j < threadTasks[i].blockTasks.size(); j++) {
-						printf("\t \t Num deep lines %d. \n", (int)threadTasks[i].blockTasks[j].blockDeepSegmentedLines.size());
-					}
-				}
-			}				
-
-//#pragma omp parallel for
-//			for (int t = 0; t < threadTasks.size(); t++) {
-//				for (int b = 0; b < threadTasks[t].blockTasks.size(); b++) UpdateBlock(t, b);
-//			}
-
-#if USE_TWO_COLORING_BLOCK
 			//Update even blocks
 #pragma omp parallel for
 			for (int t = 0; t < (threadTasks.size() + 1) / 2; t++){
@@ -390,30 +227,6 @@ int Relaxation(const std::vector<Real> & deepCoefficients, const SparseMatrix< R
 			for (int t = 0; t < threadTasks.size() / 2; t++){
 				for (int b = 0; b < threadTasks[2 * t + 1].blockTasks.size(); b++) UpdateBlock(2 * t + 1, b ,3);
 			}
-#else
-
-			//Update even - even blocks
-#pragma omp parallel for
-			for (int t = 0; t < (threadTasks.size() + 1) / 2; t++) for (int b = 0; b < (threadTasks[2 * t].blockTasks.size() + 1) / 2; b++) {
-				UpdateBlock(2 * t, 2 * b, 3);
-			}
-			//Update even - odd blocks
-#pragma omp parallel for
-			for (int t = 0; t < (threadTasks.size() + 1) / 2; t++) for (int b = 0; b < threadTasks[2 * t].blockTasks.size() / 2; b++) {
-				UpdateBlock(2 * t, 2 * b + 1, 3);
-			}
-			//Update odd - even blocks
-#pragma omp parallel for
-			for (int t = 0; t < threadTasks.size() / 2; t++) for (int b = 0; b < (threadTasks[2 * t + 1].blockTasks.size() + 1) / 2; b++) {
-				UpdateBlock(2 * t + 1, 2 * b, 3);
-			}
-			//Update odd - odd
-#pragma omp parallel for
-			for (int t = 0; t < threadTasks.size() / 2; t++) for (int b = 0; b < threadTasks[2 * t + 1].blockTasks.size() / 2; b++) {
-				UpdateBlock(2 * t + 1, 2 * b + 1, 3);
-			}
-#endif
-
 			if (verbose) printf("\t GS Deep update =  %.4f \n", double(clock() - t_begin) / CLOCKS_PER_SEC);
 		}
 	}
@@ -535,7 +348,6 @@ int RelaxationAndResidual(const std::vector<Real> & deepCoefficients, const Spar
 				for (int j = (int)blockDeepSegmentedLines.size(); j < blockPaddedSegmentedLines.size(); j++)UpdateResidual(blockPaddedSegmentedLines[j]);
 			};
 
-#if USE_TWO_COLORING_BLOCK
 			//Update even blocks
 #pragma omp parallel for
 			for (int t = 0; t < (threadTasks.size() + 1) / 2; t++) {
@@ -546,28 +358,6 @@ int RelaxationAndResidual(const std::vector<Real> & deepCoefficients, const Spar
 			for (int t = 0; t < threadTasks.size() / 2; t++) {
 				for (int b = 0; b < threadTasks[2 * t + 1].blockTasks.size(); b++) UpdateBlock(2 * t + 1, b, 3);
 			}
-#else
-			//Update even - even blocks
-#pragma omp parallel for
-			for (int t = 0; t < (threadTasks.size() + 1) / 2; t++) for (int b = 0; b < (threadTasks[2 * t].blockTasks.size() + 1) / 2; b++) {
-				UpdateBlock(2 * t, 2 * b, 3);
-			}
-			//Update even - odd blocks
-#pragma omp parallel for
-			for (int t = 0; t < (threadTasks.size() + 1) / 2; t++) for (int b = 0; b < threadTasks[2 * t].blockTasks.size() / 2; b++) {
-				UpdateBlock(2 * t, 2 * b + 1, 3);
-			}
-			//Update odd - even blocks
-#pragma omp parallel for
-			for (int t = 0; t < threadTasks.size() / 2; t++) for (int b = 0; b < (threadTasks[2 * t + 1].blockTasks.size() + 1) / 2; b++) {
-				UpdateBlock(2 * t + 1, 2 * b, 3);
-			}
-			//Update odd - odd
-#pragma omp parallel for
-			for (int t = 0; t < threadTasks.size() / 2; t++) for (int b = 0; b < threadTasks[2 * t + 1].blockTasks.size()/ 2; b++) {
-				UpdateBlock(2 * t + 1, 2 * b + 1, 3);
-			}
-#endif
 
 			if (verbose) printf("\t GS Deep update =  %.4f \n", double(clock() - t_begin) / CLOCKS_PER_SEC);
 		}
@@ -715,33 +505,7 @@ int RelaxationAndResidual(const std::vector<Real> & deepCoefficients, const Spar
 				if (nextResidual)UpdateResidual(lastLine);
 			};
 
-#if USE_SYNCHRONIZATION   //Synchronized
 
-#if 0	//Thread based decomposition
-			int threads = omp_get_max_threads();
-			const int totalLines = segmentedLines.size();
-			//Update even blocks
-#pragma omp parallel for
-			for (int t = 0; t < threads; t++) {
-				const int tId = 2 * omp_get_thread_num();
-				const int firstLine = (tId*totalLines) / (2 * threads);
-				const int lastLine = ((tId + 1)*totalLines) / (2 * threads);
-				UpdateHeaderBlock(firstLine, lastLine, 3, firstLine == 0, false);
-				UpdateMiddleBlock(firstLine, lastLine, 3);
-				UpdateSuffixBlock(lastLine, lastLine == totalLines, false);
-			}
-			//Update odd blocks
-#pragma omp parallel for
-			for (int t = 0; t < threads; t++){
-				const int tId = 2 * omp_get_thread_num() + 1;
-				const int firstLine = (tId*totalLines) / (2 * threads);
-				const int lastLine = ((tId + 1)*totalLines) / (2 * threads);
-				UpdateHeaderBlock(firstLine, lastLine, 3, true, firstLine != 0);
-				UpdateMiddleBlock(firstLine, lastLine, 3);
-				UpdateSuffixBlock(lastLine, true, lastLine != totalLines);
-
-			}
-#else //Block based decomposition
 			const int blockSize = 16;
 			const int totalLines = segmentedLines.size();
 			const int numBlocks = ((totalLines - 1) / blockSize) + 1;
@@ -766,59 +530,6 @@ int RelaxationAndResidual(const std::vector<Real> & deepCoefficients, const Spar
 				UpdateMiddleBlock(firstLine, lastLine, 3);
 				UpdateSuffixBlock(lastLine, true, lastLine != totalLines);
 			}
-#endif
-#else //Not synchronized
-#if 1
-			int threads = omp_get_max_threads();
-			std::vector<int> lineRange(threads + 1);
-			const int totalLines = segmentedLines.size();
-			int blockSize = totalLines / threads;
-			for (int t = 0; t < threads; t++) lineRange[t] = t*blockSize;
-			lineRange[threads] = totalLines;
-
-#pragma omp parallel for
-			for (int t = 0; t < threads; t++) {
-				const int tId = omp_get_thread_num();
-				const int firstLine = lineRange[tId];
-				const int lastLine = lineRange[tId + 1];
-
-				//UpdateRow(firstLine);
-				//UpdateRow(firstLine + 1);
-				//UpdateRow(firstLine);
-				//UpdateRow(firstLine + 2);
-				//UpdateRow(firstLine + 1);
-				//UpdateRow(firstLine);
-				//UpdateRow(firstLine + 3);
-				//UpdateRow(firstLine + 2);
-				//UpdateRow(firstLine + 1);
-				//if (firstLine == 0) UpdateResidual(firstLine);
-				//for (int r = firstLine + 4; r < lastLine; r++) {
-				//	UpdateRow(r);
-				//	UpdateRow(r - 1);
-				//	UpdateRow(r - 2);
-				//	UpdateResidual(r - 3);
-				//}
-				//UpdateRow(lastLine - 1);
-				//UpdateRow(lastLine - 2);
-				//UpdateResidual(lastLine - 3);
-				//UpdateRow(lastLine - 1);
-				//UpdateResidual(lastLine - 2);
-				//UpdateResidual(lastLine - 1);
-				//if (lastLine != totalLines) UpdateResidual(lastLine);
-
-				UpdateHeaderBlock(firstLine, lastLine, 3, firstLine == 0, false);
-				UpdateMiddleBlock(firstLine, lastLine, 3);
-				UpdateSuffixBlock(lastLine, true, lastLine != totalLines);
-			}
-#else
-			for (int k = 0; k < 3; k++) {
-				for (int r = 0; r < segmentedLines.size(); r++)if (r % 2 == 0) UpdateRow(r);
-				for (int r = 0; r < segmentedLines.size(); r++)if (r % 2 != 0) UpdateRow(r);
-			}
-			for (int r = 0; r < segmentedLines.size(); r++)UpdateResidual(r);
-#endif
-
-#endif
 			if (verbose) printf("\t GS Deep update =  %.4f \n", double(clock() - t_begin) / (CLOCKS_PER_SEC));
 		}
 	}
@@ -848,10 +559,6 @@ int MultiplyBySystemMatrix(const std::vector<Real> & deepCoefficients, const Spa
 	std::vector<Data> outBoundaryValues;
 	outBoundaryValues.resize(numBoundaryVariables);
 
-	//ConstPointer(Data) _in = (ConstPointer(Data))GetPointer(in);
-	//Pointer(Data) _out = (Pointer(Data))GetPointer(out);
-	//Pointer(Data) _boundaryValues = (Pointer(Data))GetPointer(boundaryValues);
-	
 	if (verbose) t_begin = clock();
 	boundaryBoundaryMatrix.Multiply(&inBoundaryValues[0], &outBoundaryValues[0]);
 	boundaryDeepMatrix.Multiply(&in[0], &outBoundaryValues[0], MULTIPLY_ADD);
@@ -1331,44 +1038,12 @@ int VCycle(	std::vector<MultigridLevelVariables<DataType>> & variables,
 		if (verbose) printf("Level %d \n", i);
 		clock_t p_begin;
 
-#if RELAX_BOUNDARY_FIRST
 		if (verbose) p_begin = clock();
-#if USE_BLOCK_MULTIGRID
 		if (!RelaxationAndResidual(_coefficients.deepCoefficients, _coefficients.boundaryDeepMatrix, boundarySolvers[i], _indices.boundaryGlobalIndex, _indices.threadTasks, _variables.rhs, _variables.x, _variables.boundary_rhs, _variables.boundary_value, _variables.variable_boundary_value, _coefficients.boundaryBoundaryMatrix, _variables.residual, 2, detailVerbose)) {
 			printf("ERROR : Failed hybrid gauss seidel solver! \n");
 			return 0;
 		}
-#else
-		if (!RelaxationAndResidual(_coefficients.deepCoefficients, _coefficients.boundaryDeepMatrix, boundarySolvers[i], _indices.boundaryGlobalIndex, _indices.segmentedLines, _variables.rhs, _variables.x, _variables.boundary_rhs, _variables.boundary_value, _variables.variable_boundary_value, _coefficients.boundaryBoundaryMatrix, _variables.residual, 2, detailVerbose)) {
-			printf("ERROR : Failed hybrid gauss seidel solver! \n");
-			return 0;
-		}
-#endif
 		if (verbose) printf("Relaxation  + Residual %.4f  \n", double(clock() - p_begin) / CLOCKS_PER_SEC);
-#else
-
-		if (verbose) p_begin = clock();
-#if USE_BLOCK_MULTIGRID
-		if (!Relaxation(_coefficients.deepCoefficients, _coefficients.boundaryDeepMatrix, boundarySolvers[i], _indices.boundaryGlobalIndex, _indices.threadTasks, _variables.rhs, _variables.x, _variables.boundary_rhs, _variables.boundary_value, _variables.variable_boundary_value, 2, false, detailVerbose)) {
-			printf("ERROR : Failed hybrid gauss seidel solver! \n");
-			return 0;
-		}
-#else
-		if (!Relaxation(_coefficients.deepCoefficients, _coefficients.boundaryDeepMatrix, boundarySolvers[i], _indices.boundaryGlobalIndex, _indices.segmentedLines, _variables.rhs, _variables.x, _variables.boundary_rhs, _variables.boundary_value, _variables.variable_boundary_value, 2, false, detailVerbose)) {
-			printf("ERROR : Failed hybrid gauss seidel solver! \n");
-			return 0;
-		}
-#endif
-		if (verbose) printf("Gauss Seidel %.4f  \n", double(clock() - p_begin) / CLOCKS_PER_SEC);
-
-		if (verbose) p_begin = clock();
-		if (!ComputeSystemResdiual(_coefficients.deepCoefficients, _coefficients.boundaryDeepMatrix, _coefficients.boundaryBoundaryMatrix, _indices.boundaryGlobalIndex, _indices.rasterLines, _variables.boundary_rhs, _variables.boundary_value, _variables.x, _variables.rhs, _variables.residual, detailVerbose)){
-			printf("ERROR : Failed compute residual! \n");
-			return 0;
-		}
-		if (verbose) printf("Residual %.4f  \n", double(clock() - p_begin) / CLOCKS_PER_SEC);
-#endif
-
 
 		if (verbose) p_begin = clock();
 		MultiplyByRestriction(_indices.boundaryRestriction, nextLevelIndices.boundaryGlobalIndex, nextLevelVariables.boundary_value, nextLevelIndices.restrictionLines, _variables.residual, nextLevelVariables.rhs, detailVerbose);
@@ -1387,17 +1062,10 @@ int VCycle(	std::vector<MultigridLevelVariables<DataType>> & variables,
 			MultigridLevelVariables<DataType> & _variables = variables[i];
 
 			if (verbose) p_begin = clock();
-#if USE_BLOCK_MULTIGRID
 			if (!Relaxation(_coefficients.deepCoefficients, _coefficients.boundaryDeepMatrix, boundarySolvers[i], _indices.boundaryGlobalIndex, _indices.threadTasks, _variables.rhs, _variables.x, _variables.boundary_rhs, _variables.boundary_value, _variables.variable_boundary_value, 2, true, detailVerbose)) {
 				printf("ERROR : Failed hybrid gauss seidel solver! \n");
 				return 0;
 			}
-#else
-			if (!Relaxation(_coefficients.deepCoefficients, _coefficients.boundaryDeepMatrix, boundarySolvers[i], _indices.boundaryGlobalIndex, _indices.segmentedLines, _variables.rhs, _variables.x, _variables.boundary_rhs, _variables.boundary_value, _variables.variable_boundary_value, 2, true, detailVerbose)) {
-				printf("ERROR : Failed hybrid gauss seidel solver! \n");
-				return 0;
-			}
-#endif
 			if (verbose) printf("Gauss Seidel %.4f  \n", double(clock() - p_begin) / CLOCKS_PER_SEC);
 		}
 		else if(i == levels - 1){

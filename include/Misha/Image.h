@@ -147,7 +147,7 @@ bool Image< Point3D< unsigned char > >::read( const char* fileName )
 	if( !pixels ){ fprintf( stderr, "[ERROR] Failed to read image: %s\n" , fileName ) ; return false; }
 	if( c!=3 ){ fprintf( stderr , "[ERROR] Only three channel images are suppored\n" ) ; return false; }
 	resize( w , h );
-	memcpy( _pixels , pixels , sizeof(unsigned char) * _width * _height );
+	memcpy( _pixels , pixels , sizeof(unsigned char) * _width * _height*3 );
 	delete[] pixels;
 	return true;
 }

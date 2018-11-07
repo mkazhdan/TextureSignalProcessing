@@ -882,7 +882,7 @@ int GrayScottReactionDiffusion< Real >::Init( void )
 	ComputePadding( padding , textureWidth , textureHeight , mesh.textureCoordinates , DetailVerbose.set );
 	if( padding.nonTrivial )
 	{
-		PaddTextureCoordinates( padding , textureWidth , textureHeight , mesh.textureCoordinates );
+		PadTextureCoordinates( padding , textureWidth , textureHeight , mesh.textureCoordinates );
 		textureWidth  += ( padding.left   + padding.right );
 		textureHeight += ( padding.bottom + padding.top   );
 	}

@@ -1,13 +1,11 @@
-<center><h2>Gradient Domain Texture Processing (Version 2.00)</h2></center>
+<center><h2>Gradient Domain Texture Processing (Version 3.00)</h2></center>
 <center>
 <a href="#LINKS">links</a>
 <a href="#EXECUTABLES">executables</a>
 <a href="#USAGE">usage</a>
 <a href="#COMPILATION">compilation</a>
 <a href="#CHANGES">changes</a>
-<!--
 <a href="#SUPPORT">support</a>
--->
 </center>
 <hr>
 This software supports gradient-domain signal processing within a texture atlas. Supported applications include:
@@ -32,10 +30,11 @@ This software supports gradient-domain signal processing within a texture atlas.
 <B>Data:</B>
 <A HREF="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/TSP.Data.zip">ZIP</A><br>
 <b>Older Versions:</b>
-<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version1.00/">V1</a>
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version2.00/">V2</a>, <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version1.00/">V1</a>
 </ul>
 <hr>
 <a name="EXECUTABLES"><b>EXECUTABLES</b></a><br>
+
 <ul>
 <dl>
 <details>
@@ -72,6 +71,66 @@ The default value for this parameter is 1.
 
 </dd><dt>[<b>--useDirectSolver</B>]</dt>
 <dd> If enabled, this flag specifies that a direct solver should be used (instead of the default multigrid solver).
+</dd>
+
+</dd><dt>[<b>--jitter</B>]</dt>
+<dd> If enabled, this flag specifies that the texture coordinates should be jittered slightly. (This is used to avoid singular situations when mesh vertices fall directly on edges in the texture grid. In such a situation, the executable will issue a warning <B>"Zero row at index ..."</B>.)
+</dd>
+
+</details>
+</dl>
+</ul>
+
+
+<ul>
+<dl>
+<details>
+<summary>
+<font size="+1"><b>TextureStitching</b></font>:
+Supports the stitching together of a multiple (possibly overlapping) textures by solving a screened Poisson equation with value constraints defined by the input texture.
+The interactive viewer runs in two modes:
+<OL>
+<LI> A user specifies a single composite texture and mask file indicating when texels in the composite come from the same source.
+In this case gradient constraints are obtained by copying gradients from the composite whenever the two texels defining an edge come from the same source and setting the gradient constraint to zero along edges coming from different sources.
+The viewer shows the stitched texture on the left and the composite texture on the right.
+<LI> A user specifies multiple partial texture files and corresponding confidences masks.
+In this case gradient constraints are obtained by blending gradients from the different inputs, weighted by confidence, and setting gradients to zero in regions where there are no textures with non-zero confidence.
+The viewer shows the stitched texture on the left and a partial texture on the right and the user can selectively replace blended value/gradient constraints with the values/gradients from the partial texture by holding the [SHIFT] key down and dragging over the region to be inpainted.
+</OL>
+</summary>
+<dt><b>--in</b> &lt;<i>input mesh, composite texture, and mask</i>&gt;</dt>
+<dd> These three strings specify the the names of the mesh, the texture image, and the mask image.<br>
+The input mesh is assumed to be in <a href="http://www.cc.gatech.edu/projects/large_models/ply.html">PLY</a> format, giving the set of vertices with the x-, y-, and z-coordinates of the positions encoded by the properties <i>x</i>, <i>y</i>, and <i>z</i> the set of polygons encoded by two lists. The first gives the indices of the vertices in the polygon (integers). The second gives the texture coordinates at each polygon corner (pairs of floats).<br>
+The input texture and mask are assumed to be an image in <I>png</I>, <I>jpg</I>, or <I>jpeg</I> format. Black pixels in the mask file are assumed to denote regions where the texel value is unkown.
+</dd>
+
+<dt><b>--in</b> &lt;<i>input mesh, texture format specifier, and confidence format specifier</i>&gt;</dt>
+<dd> These three strings specify the the names of the mesh, the format for the texture images, and the format for the confidence images.<br>
+The input mesh is assumed to be in <a href="http://www.cc.gatech.edu/projects/large_models/ply.html">PLY</a> format, giving the set of vertices with the x-, y-, and z-coordinates of the positions encoded by the properties <i>x</i>, <i>y</i>, and <i>z</i> the set of polygons encoded by two lists. The first gives the indices of the vertices in the polygon (integers). The second gives the texture coordinates at each polygon corner (pairs of floats).<br>
+The input textures and confidence maps are assumed to be images in <I>png</I>, <I>jpg</I>, or <I>jpeg</I> format.<BR>
+For the texture and confidence names to be interpreted as format specifiers, you must specify the  <b>--multi</b> flag.
+</dd>
+
+<dt>[<b>--out</b> &lt;<i>output texture</i>&gt;]</dt>
+<dd> This string is the name of the file to which the stitched texture will be written.</B>
+</dd>
+
+<dt>[<b>--outVCycles</b> &lt;<i>output v-cycles</i>&gt;]</dt>
+<dd> This integer specifies the number of v-cycles to use if the stitched texture is output to a file and a direct solver is not used.<BR>
+The default value for this parameter is 6.
+</dd>
+
+<dt>[<b>--interpolation</b> &lt;<i>interpolation weight</i>&gt;]</dt>
+<dd> This floating point values gives the interpolation weight.<BR>
+The default value for this parameter is 100.
+</dd>
+
+</dd><dt>[<b>--useDirectSolver</B>]</dt>
+<dd> If enabled, this flag specifies that a direct solver should be used (instead of the default multigrid solver).
+</dd>
+
+</dd><dt>[<b>--multi</B>]</dt>
+<dd> If enabled, this flag specifies that the second and third arguments to the <b>--in</b> parameter are to be interpreted as format specifiers for the textures confidence map files.
 </dd>
 
 </dd><dt>[<b>--jitter</B>]</dt>
@@ -250,9 +309,10 @@ The default value for this parameter is 512.
 <hr>
 <a name="USAGE"><b>USAGE EXAMPLES (WITH SAMPLE DATA)</b></a><br>
 For testing purposes, a number of <A HREF="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/TSP.Data.zip">textured mapped models</A> are provided (using the <U>.ply</U> extension).
-Of these, <I>David</I> and <I>Julius</I> include normal maps (using the <U>.normap</U> extension) and <I>Fertility</I> includes the eight harmonic vector-fields (using the <U>.vf</U> extension).
+Of these, <I>David</I> and <I>Julius</I> include normal maps (using the <U>.normap</U> extension), <I>Fertility</I> includes the eight harmonic vector-fields (using the <U>.vf</U> extension), and <I>Rooster</I> uses (partial) texture maps as well as a mask image and confidence maps.
 
 <ul>
+
 <dl>
 <details>
 <summary>
@@ -266,6 +326,37 @@ You can also bypass the viewer and output a globally sharpened/smoothed texture 
 Here a modulation weight less than 1 indicates that gradients should be dampened (resulting in smoothing) and a small interpolation weight reduces the interpolation penalty, exaggerating the smoothing.
 </details>
 </dl>
+
+<dl>
+<details>
+<summary>
+<font size="+1"><b>TextureStitching</b></font>
+</summary>
+This viewer can be run in one of two modes:
+<OL>
+<LI>
+In addition to the input mesh, specify a (single) composite texture and mask.
+If adjacent texels share the same mask color, they are assumed to come from the same source, and the gradient between them is preserved.
+Otherwise, the gradient is set to zero. Additionally, a mask color of black is reserved to indicate that the texel value is unknown.<BR>
+For example, running
+<blockquote><code>% Bin/*/TextureFiltering --in Rooster/rooster.ply ../TSP.Data/Rooster/texels.png ../TSP.Data/Rooster/mask.png</code></blockquote>
+opens a viewer showing the stitched texture on the left, and the composite texture on the right.
+<LI>
+In addition to the input mesh, specify (multiple) partial textures and associated confidence maps.
+The code blends the gradients in regions of overlap, with weights determined by the mask.
+Texel and confidence file names are specified using integer format specifiers, with zero-indexing.
+Colors are transformed to scalar confidence values by computing the gray-scale value and normalizing to the range [0,1].<br>
+For example, running
+<blockquote><code>% Bin/*/TextureFiltering --in Rooster/rooster.ply ../TSP.Data/Rooster/texels-%02d.png ../TSP.Data/Rooster/mask-%02d.png --multi</code></blockquote>
+opens a viewer showing the stitched texture on the left, and the first partial textures on the right.<BR>
+Pressing the 't' key toggles forward through the partial textures and pressing 'T' toggles backwards.<BR>
+Holding [SHIFT] and clicking on the stitched model replaces the blended gradients under the paint-brush with the gradients from the currently visualized partial-texture.<BR>
+</OL>
+You can also bypass the viewer and output a stitched texture to a file:
+<blockquote><code>% Bin/*/TextureStitching --in Rooster/rooster.ply ../TSP.Data/Rooster/texels-%02d.png ../TSP.Data/Rooster/mask-%02d.png --multi --out stitched.png</code></blockquote>
+</details>
+</dl>
+
 
 <dl>
 <details>
@@ -329,8 +420,9 @@ Here a "dots" pattern is written out to an image. (Empirically, we have found th
 <a name="CHANGES"><b>HISTORY OF CHANGES</b></a><br>
 </summary>
 <a href="http://www.cs.jhu.edu/~misha/Code/PoissonRecon/Version2.00/">Version 2</a>:
-<ol>
-<li> Added support for reaction-diffusion based on the Gray-Scott model.</li></ol>
+<ul><li> Added support for reaction-diffusion based on the Gray-Scott model.</li></ul>
+<a href="http://www.cs.jhu.edu/~misha/Code/PoissonRecon/Version3.00/">Version 3</a>:
+<ul><li> Added support for texture stitching.</li></ul>
 </details>
 
 

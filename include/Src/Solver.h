@@ -175,14 +175,12 @@ void solve( CholmodCholeskySolver< Real , 1 >& chol , std::vector< Real >& x0 , 
 #endif // USE_EIGEN_SIMPLICIAL || USE_EIGEN_PARDISO
 
 #ifdef USE_EIGEN_SIMPLICIAL
-#if 1
 #include <Misha/LinearSolvers.h>
 template< typename Real , unsigned int Channels >
 class EigenCholeskySolver
 {
 public:
 	typedef Eigen::Matrix< double , Eigen::Dynamic , 1 > EigenVector;
-//	typedef EigenSolverCholeskyLLt< Real , ConstPointer( MatrixEntry< Real , int > ) , double > EigenSolver;
 	typedef EigenSolverCholeskyLDLt< Real , ConstPointer( MatrixEntry< Real , int > ) , double > EigenSolver;
 	EigenSolver* solver;
 	EigenVector b[Channels] , x[Channels];
@@ -214,73 +212,6 @@ void solve( EigenCholeskySolver< Real , Channels >& chol , std::vector< DataType
 
 template< class Real >
 void solve( EigenCholeskySolver< Real , 1 >& chol , std::vector< Real >& x0 , const std::vector< Real >& rhs ){ chol.solver->solve( ( ConstPointer( Real ) )GetPointer( rhs ) , GetPointer( x0 ) ); }
-#else
-template< class Real , unsigned int Channels >
-class EigenCholeskySolver
-{
-public:
-	typedef Eigen::Matrix< Real , Eigen::Dynamic , 1 > EigenVector;
-	typedef typename Eigen::SimplicialLDLT< Eigen::SparseMatrix< Real > > Solver;
-	//typedef typename Eigen::SimplicialLLT< Eigen::SparseMatrix< Real > > Solver;
-	Solver* solver;
-	EigenVector x0_vectors[Channels] , rhs_vectors[Channels] , solution_vectors[Channels];
-
-	void init( const SparseMatrix< double , int >& _M )
-	{
-		Eigen::SparseMatrix< Real > M;
-		SparseMatrixParser( _M , M );
-
-		solver = new Solver();
-		solver->analyzePattern(M);
-
-		switch( solver->info() )
-		{
-		case Eigen::Success: break;
-		case Eigen::NumericalIssue: fprintf( stderr , "[FAILED] Numerical issue!\n" ) ; break;
-		case Eigen::NoConvergence:  fprintf( stderr , "[FAILED] No convergence!\n"  ) ; break;
-		case Eigen::InvalidInput:   fprintf( stderr , "[FAILED] Invalid input!\n"   ) ; break;
-		default:                    fprintf( stderr , "[FAILED] Undetermined cause!\n" );
-		}
-
-		const int numVariables = (int)M.rows();
-		for( int c=0 ; c<Channels ; c++ )
-		{
-			x0_vectors[c].resize( numVariables );
-			rhs_vectors[c].resize( numVariables );
-			solution_vectors[c].resize( numVariables );
-		}
-	}
-	void update( const SparseMatrix< double , int >& _M )
-	{
-		Eigen::SparseMatrix< Real > M;
-		SparseMatrixParser( _M , M );
-		solver->factorize(M);
-	}
-};
-
-template< class Real , unsigned int Channels , class DataType >
-void solve( EigenCholeskySolver< Real , Channels >& chol , std::vector< DataType >& x0 , const std::vector< DataType >& rhs )
-{
-	int numVariables = (int)x0.size();
-#pragma omp parallel for
-	for( int n=0 ; n<numVariables ; n++ ) for( int c=0 ; c<Channels ; c++ ) chol.x0_vectors[c][n] = x0[n][c] , chol.rhs_vectors[c][n] = rhs[n][c];
-#pragma omp parallel for
-	for( int c=0 ; c<Channels ; c++ ) chol.solution_vectors[c] = chol.solver->solve( chol.rhs_vectors[c] );
-#pragma omp parallel for
-	for( int n=0 ; n<numVariables ; n++ ) for( int c=0 ; c<Channels ; c++ ) x0[n][c] = chol.solution_vectors[c][n];
-}
-
-template< class Real >
-void solve( EigenCholeskySolver< Real , 1 >& chol , std::vector< Real >& x0 , const std::vector< Real >& rhs )
-{
-	int numVariables = (int)x0.size();
-#pragma omp parallel for
-	for( int n=0 ; n<numVariables ; n++ ) chol.x0_vectors[0][n] = x0[n] , chol.rhs_vectors[0][n] = rhs[n];
-	chol.solution_vectors[0] = chol.solver->solve( chol.rhs_vectors[0] );
-#pragma omp parallel for
-	for( int n=0 ; n<numVariables ; n++ ) x0[n] = chol.solution_vectors[0][n];
-}
-#endif
 #endif // USE_EIGEN_SIMPLICIAL
 
 

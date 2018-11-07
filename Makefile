@@ -1,4 +1,4 @@
-programs = Geodesics LineIntegralConvolution TextureFiltering ReactionDiffusion
+programs = Geodesics LineIntegralConvolution TextureFiltering TextureStitching ReactionDiffusion
 
 # Allow "make -j" to operate in parallel over the programs.
 all: $(programs)

@@ -333,3 +333,11 @@ void BilinearElementValuesAndGradients( Point2D< double > pos , double values[] 
 	values[3] = x1*y2 , gradients[3] = Point2D< double >(-y2, x1);
 }
 
+void ReducedVectorFieldBasis(Point2D< double > pos, Point2D< double > direction[])
+{
+	double x = pos[0], y = pos[1];
+	direction[0][0] = 1.0 - y, direction[0][1] =     0.0;
+	direction[1][0] =     0.0, direction[1][1] =  1.0 -x;
+	direction[2][0] =       y, direction[2][1] =     0.0;
+	direction[3][0] =     0.0, direction[3][1] =	   x;
+}
