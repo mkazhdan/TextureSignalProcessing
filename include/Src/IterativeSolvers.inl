@@ -546,7 +546,8 @@ int RelaxationAndResidual(const std::vector<Real> & deepCoefficients, const Spar
 }
 
 template< class Real , class Data >
-int MultiplyBySystemMatrix(const std::vector<Real> & deepCoefficients, const SparseMatrix< Real, int> & boundaryDeepMatrix, const SparseMatrix< Real, int> & boundaryBoundaryMatrix, const std::vector<int> & boundaryGlobalIndex, const std::vector<RasterLine> & rasterLines, const std::vector<Data> & in, std::vector<Data> & out, bool verbose = false) {
+int MultiplyBySystemMatrix( const SystemCoefficients< double > &systemCoefficients , const std::vector< int > &boundaryGlobalIndex , const std::vector< RasterLine > &rasterLines , const std::vector< Data > &in , std::vector< Data > &out , bool verbose=false )
+{
 
 	clock_t t_begin;
 
@@ -560,8 +561,8 @@ int MultiplyBySystemMatrix(const std::vector<Real> & deepCoefficients, const Spa
 	outBoundaryValues.resize(numBoundaryVariables);
 
 	if (verbose) t_begin = clock();
-	boundaryBoundaryMatrix.Multiply(&inBoundaryValues[0], &outBoundaryValues[0]);
-	boundaryDeepMatrix.Multiply(&in[0], &outBoundaryValues[0], MULTIPLY_ADD);
+	systemCoefficients.boundaryBoundaryMatrix.Multiply(&inBoundaryValues[0], &outBoundaryValues[0]);
+	systemCoefficients.boundaryDeepMatrix.Multiply(&in[0], &outBoundaryValues[0], MULTIPLY_ADD);
 	if (verbose) printf("\t Multiply boundary =  %.4f \n", double(clock() - t_begin) / (CLOCKS_PER_SEC));
 
 #pragma omp parallel for
@@ -576,7 +577,7 @@ int MultiplyBySystemMatrix(const std::vector<Real> & deepCoefficients, const Spa
 
 		int lineLength = (rasterLines[r].lineEndIndex - rasterLines[r].lineStartIndex + 1);
 		int lineDeepStart = rasterLines[r].coeffStartIndex;
-		const Real* _deepCoefficients = &deepCoefficients[10 * lineDeepStart];
+		const Real* _deepCoefficients = &systemCoefficients.deepCoefficients[10 * lineDeepStart];
 		for (int i = 0; i < lineLength; _deepCoefficients += 10, i++)
 		{
 			_out[i] =
@@ -613,14 +614,12 @@ int MultiplyBySystemMatrix(const std::vector<Real> & deepCoefficients, const Spa
 template< class Real , class Data >
 int MultiplyBySystemMatrix_NoReciprocals
 (
-	const std::vector< Real >& deepCoefficients ,
-	const SparseMatrix< Real , int >& boundaryDeepMatrix ,
-	const SparseMatrix< Real , int >& boundaryBoundaryMatrix ,
+	const SystemCoefficients< Real > &systemCoefficients ,
 	const std::vector< int >& boundaryGlobalIndex ,
 	const std::vector< RasterLine >& rasterLines ,
 	const std::vector< Data >& in ,
 	std::vector< Data > & out ,
-	bool verbose = false
+	bool verbose=false
 )
 {
 	clock_t t_begin;
@@ -634,9 +633,9 @@ int MultiplyBySystemMatrix_NoReciprocals
 
 	t_begin = clock();
 	//  Perform the boundary -> boundary multiplication
-	boundaryBoundaryMatrix.Multiply( &inBoundaryValues[0] , &outBoundaryValues[0] );
+	systemCoefficients.boundaryBoundaryMatrix.Multiply( &inBoundaryValues[0] , &outBoundaryValues[0] );
 	// Perform the interior -> boundary multiplication
-	boundaryDeepMatrix.Multiply( &in[0] , &outBoundaryValues[0] , MULTIPLY_ADD );
+	systemCoefficients.boundaryDeepMatrix.Multiply( &in[0] , &outBoundaryValues[0] , MULTIPLY_ADD );
 	if( verbose ) printf( "\tMultiply boundary = %.4f\n" , double(clock() - t_begin) / (CLOCKS_PER_SEC) );
 
 	// Write the boundary values back into the output array
@@ -654,7 +653,7 @@ int MultiplyBySystemMatrix_NoReciprocals
 
 		int lineLength = ( rasterLines[r].lineEndIndex - rasterLines[r].lineStartIndex + 1 );
 		int lineDeepStart = rasterLines[r].coeffStartIndex;
-		const Real* _deepCoefficients = &deepCoefficients[10*lineDeepStart];
+		const Real* _deepCoefficients = &systemCoefficients.deepCoefficients[10*lineDeepStart];
 		for( int i=0 ; i<lineLength ; _deepCoefficients+=10 , i++)
 		{
 			_out[i] =(Data)
@@ -1006,14 +1005,9 @@ int CellStiffnessToTexelStiffness
 	return 1;
 }
 
-template<class Real, class DataType, class BoundarySolver, class CoarseSolver>
-int VCycle(	std::vector<MultigridLevelVariables<DataType>> & variables,
-			const std::vector<MultigridLevelCoefficients<Real>> & coefficients, 
-			const std::vector<MultigridLevelIndices<Real>> & indices, 
-			std::vector<BoundarySolver> & boundarySolvers, CoarseSolver & coarseSolver,
-			bool verbose, bool detailVerbose){
-
-
+template< class Real , class DataType , class BoundarySolver , class CoarseSolver >
+int VCycle(	std::vector< MultigridLevelVariables< DataType > > &variables , const std::vector< SystemCoefficients< Real > > &coefficients , const std::vector< MultigridLevelIndices< Real > > &indices , VCycleSolvers< BoundarySolver , CoarseSolver > &vCycleSolvers , bool verbose , bool detailVerbose )
+{
 	clock_t p_begin;
 
 	int levels = (int)variables.size();
@@ -1026,9 +1020,9 @@ int VCycle(	std::vector<MultigridLevelVariables<DataType>> & variables,
 	if (verbose) printf("Zero arrays %.4f \n", double(clock() - p_begin) / CLOCKS_PER_SEC);
 
 	//Reduction phase
-	for (int i = 0; i < levels - 1; i++){
-
-		const MultigridLevelCoefficients<Real> & _coefficients = coefficients[i];
+	for( int i=0 ; i<levels-1 ; i++ )
+	{
+		const SystemCoefficients< Real > & _coefficients = coefficients[i];
 		const MultigridLevelIndices<Real> & _indices = indices[i];
 		MultigridLevelVariables<DataType> & _variables = variables[i];
 
@@ -1039,7 +1033,7 @@ int VCycle(	std::vector<MultigridLevelVariables<DataType>> & variables,
 		clock_t p_begin;
 
 		if (verbose) p_begin = clock();
-		if (!RelaxationAndResidual(_coefficients.deepCoefficients, _coefficients.boundaryDeepMatrix, boundarySolvers[i], _indices.boundaryGlobalIndex, _indices.threadTasks, _variables.rhs, _variables.x, _variables.boundary_rhs, _variables.boundary_value, _variables.variable_boundary_value, _coefficients.boundaryBoundaryMatrix, _variables.residual, 2, detailVerbose)) {
+		if( !RelaxationAndResidual( _coefficients.deepCoefficients , _coefficients.boundaryDeepMatrix , vCycleSolvers.boundary[i], _indices.boundaryGlobalIndex, _indices.threadTasks, _variables.rhs, _variables.x, _variables.boundary_rhs, _variables.boundary_value, _variables.variable_boundary_value, _coefficients.boundaryBoundaryMatrix, _variables.residual, 2, detailVerbose)) {
 			printf("ERROR : Failed hybrid gauss seidel solver! \n");
 			return 0;
 		}
@@ -1057,22 +1051,24 @@ int VCycle(	std::vector<MultigridLevelVariables<DataType>> & variables,
 		//if (i < levels - 1 && i > 0){
 			clock_t p_begin;
 
-			const MultigridLevelCoefficients<Real> & _coefficients = coefficients[i];
+			const SystemCoefficients< Real > & _coefficients = coefficients[i];
 			const MultigridLevelIndices<Real> & _indices = indices[i];
 			MultigridLevelVariables<DataType> & _variables = variables[i];
 
 			if (verbose) p_begin = clock();
-			if (!Relaxation(_coefficients.deepCoefficients, _coefficients.boundaryDeepMatrix, boundarySolvers[i], _indices.boundaryGlobalIndex, _indices.threadTasks, _variables.rhs, _variables.x, _variables.boundary_rhs, _variables.boundary_value, _variables.variable_boundary_value, 2, true, detailVerbose)) {
-				printf("ERROR : Failed hybrid gauss seidel solver! \n");
+			if( !Relaxation( _coefficients.deepCoefficients , _coefficients.boundaryDeepMatrix , vCycleSolvers.boundary[i] , _indices.boundaryGlobalIndex , _indices.threadTasks , _variables.rhs , _variables.x , _variables.boundary_rhs , _variables.boundary_value , _variables.variable_boundary_value , 2 , true , detailVerbose ) )
+			{
+				fprintf( stderr , "[ERROR] Failed hybrid gauss seidel solver!\n" );
 				return 0;
 			}
 			if (verbose) printf("Gauss Seidel %.4f  \n", double(clock() - p_begin) / CLOCKS_PER_SEC);
 		}
-		else if(i == levels - 1){
+		else if( i==levels-1 )
+		{
 			MultigridLevelVariables<DataType> & _variables = variables[i];
 			clock_t p_begin;
 			if (verbose) p_begin = clock();
-			solve(coarseSolver, _variables.x, _variables.rhs);
+			solve( vCycleSolvers.coarse , _variables.x , _variables.rhs );
 			if (verbose) printf("Direct solver %.4f  \n", double(clock() - p_begin) / CLOCKS_PER_SEC);
 		}
 

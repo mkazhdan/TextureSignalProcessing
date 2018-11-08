@@ -162,38 +162,33 @@ public:
 	static std::vector< Point3D< Real > > mass_x0;
 	static std::vector< Point3D< Real > > stiffness_x0;
 
-	static std::vector< MultigridLevelCoefficients< Real > > multigridFilteringCoefficients;
+	static std::vector< SystemCoefficients< Real > > multigridFilteringCoefficients;
 	static std::vector< MultigridLevelVariables< Point3D< Real > > > multigridFilteringVariables;
 	static std::vector< MultigridLevelIndices< Real > > multigridIndices;
 
 #if defined( USE_CHOLMOD )
-	typedef  std::vector< CholmodCholeskySolver< Real , 3 > > BoundarySolverType;
-	typedef  CholmodCholeskySolver< Real , 3 > CoarseSolverType;
-	typedef  CholmodCholeskySolver< Real , 3 > DirectSolverType;
+	typedef CholmodCholeskySolver< Real , 3 > BoundarySolverType;
+	typedef CholmodCholeskySolver< Real , 3 > CoarseSolverType;
+	typedef CholmodCholeskySolver< Real , 3 > DirectSolverType;
 #elif defined( USE_EIGEN_SIMPLICIAL )
-	typedef  std::vector< EigenCholeskySolver< Real , 3 > > BoundarySolverType;
-	typedef  EigenCholeskySolver< Real , 3 > CoarseSolverType;
-	typedef  EigenCholeskySolver< Real , 3 > DirectSolverType;
+	typedef EigenCholeskySolver< Real , 3 > BoundarySolverType;
+	typedef EigenCholeskySolver< Real , 3 > CoarseSolverType;
+	typedef EigenCholeskySolver< Real , 3 > DirectSolverType;
 #elif defined( USE_EIGEN_PARDISO )
-	typedef  std::vector< EigenPardisoSolver< Real , 3 > > BoundarySolverType;
-	typedef  EigenPardisoSolver< Real , 3 > CoarseSolverType;
-	typedef  EigenPardisoSolver< Real , 3 > DirectSolverType;
+	typedef EigenPardisoSolver< Real , 3 > BoundarySolverType;
+	typedef EigenPardisoSolver< Real , 3 > CoarseSolverType;
+	typedef EigenPardisoSolver< Real , 3 > DirectSolverType;
 #else
 #error "[ERROR] No solver defined!"
 #endif
 
-	static BoundarySolverType boundarySolver;
-	static CoarseSolverType coarseSolver;
+	static VCycleSolvers< BoundarySolverType , CoarseSolverType > vCycleSolvers;
 	static DirectSolverType directSolver;
 
 
 	//Linear Operators
-	static std::vector<double> deepMassCoefficients;
-	static std::vector<double> deepStiffnessCoefficients;
-	static SparseMatrix<double, int> boundaryBoundaryMassMatrix;
-	static SparseMatrix<double, int> boundaryBoundaryStiffnessMatrix;
-	static SparseMatrix<double, int> boundaryDeepMassMatrix;
-	static SparseMatrix<double, int> boundaryDeepStiffnessMatrix;
+	static SystemCoefficients< double > massCoefficients;
+	static SystemCoefficients< double > stiffnessCoefficients;
 
 	static int steps;
 	static char stepsString[];
@@ -268,13 +263,11 @@ template<class Real> Image<Point3D<float>>												TextureFilter<Real>::filte
 template<class Real> std::vector< Point3D< Real > >										TextureFilter<Real>::stiffness_x0;
 template<class Real> std::vector< Point3D< Real > >										TextureFilter<Real>::mass_x0;
 
-template<class Real> std::vector<MultigridLevelCoefficients<Real>>						TextureFilter<Real>::multigridFilteringCoefficients;
+template< class Real > std::vector< SystemCoefficients< Real > >						TextureFilter<Real>::multigridFilteringCoefficients;
 template<class Real> std::vector< MultigridLevelVariables< Point3D< Real > > >			TextureFilter<Real>::multigridFilteringVariables;
 template<class Real> std::vector<MultigridLevelIndices<Real>>							TextureFilter<Real>::multigridIndices;
 
-
-template<class Real> typename TextureFilter<Real>::BoundarySolverType					TextureFilter<Real>::boundarySolver;
-template<class Real> typename TextureFilter<Real>::CoarseSolverType						TextureFilter<Real>::coarseSolver;
+template< class Real > VCycleSolvers< typename TextureFilter< Real >::BoundarySolverType , typename TextureFilter< Real >::CoarseSolverType >		TextureFilter< Real >::vCycleSolvers;
 template<class Real> typename TextureFilter<Real>::DirectSolverType						TextureFilter<Real>::directSolver;
 
 template<class Real> std::vector<AtlasChart>											TextureFilter<Real>::atlasCharts;
@@ -291,12 +284,8 @@ template<class Real> std::vector<Real>													TextureFilter<Real>::uniformT
 template<class Real> Padding															TextureFilter<Real>::padding;
 
 
-template<class Real>  std::vector<double>												TextureFilter<Real>::deepMassCoefficients;
-template<class Real>  std::vector<double>												TextureFilter<Real>::deepStiffnessCoefficients;
-template<class Real>  SparseMatrix<double, int>											TextureFilter<Real>::boundaryBoundaryMassMatrix;
-template<class Real>  SparseMatrix<double, int>											TextureFilter<Real>::boundaryBoundaryStiffnessMatrix;
-template<class Real>  SparseMatrix<double, int>											TextureFilter<Real>::boundaryDeepMassMatrix;
-template<class Real>  SparseMatrix<double, int>											TextureFilter<Real>::boundaryDeepStiffnessMatrix;
+template< class Real > SystemCoefficients< double >										TextureFilter< Real >::massCoefficients;
+template< class Real > SystemCoefficients< double >										TextureFilter< Real >::stiffnessCoefficients;
 template< class Real > int																TextureFilter< Real >::updateCount = -1;
 
 template<class Real>
@@ -624,14 +613,8 @@ void  TextureFilter< Real >::InterpolationWeightCallBack( Visualization* v , con
 	interpolationWeight = atof(prompt);
 	if( UseDirectSolver.set ) filteringMatrix = mass*interpolationWeight + stiffness;
 	clock_t t_begin = clock();
-	if( !UpdateLinearSystem( interpolationWeight , 1.0 , hierarchy , multigridFilteringCoefficients ,
-		deepMassCoefficients , deepStiffnessCoefficients ,
-		boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix ,
-		boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix ,
-		coarseSolver , boundarySolver , directSolver ,
-		filteringMatrix , DetailVerbose.set , false , UseDirectSolver.set ) ) {
+	if( !UpdateLinearSystem( interpolationWeight , 1.0 , hierarchy , multigridFilteringCoefficients , massCoefficients , stiffnessCoefficients , vCycleSolvers , directSolver , filteringMatrix , DetailVerbose.set , false , UseDirectSolver.set ) )
 		fprintf( stderr , "[ERROR] Failed system update!\n" );
-	}
 	if( Verbose.set ) printf( "\tInitialized multigrid coefficients: %.2f(s)\n" , double(clock() - t_begin) / CLOCKS_PER_SEC);
 
 #pragma omp parallel for
@@ -679,7 +662,7 @@ int TextureFilter<Real>::UpdateSolution( bool verbose , bool detailVerbose )
 		gradientModulationUpdated = true;
 	}
 
-	VCycle( multigridFilteringVariables , multigridFilteringCoefficients , multigridIndices , boundarySolver , coarseSolver , verbose , detailVerbose );
+	VCycle( multigridFilteringVariables , multigridFilteringCoefficients , multigridIndices , vCycleSolvers , verbose , detailVerbose );
 
 	return 1;
 }
@@ -693,12 +676,12 @@ int TextureFilter< float >::_InitializeSystem( std::vector<std::vector<SquareMat
 		int ret = 0;
 		switch( MatrixQuadrature.value )
 		{
-		case  1: ret = InitializeMassAndStiffness< 1>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts,boundaryProlongation , true , inputSignal , texelToCellCoeffs , _boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		case  3: ret = InitializeMassAndStiffness< 3>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts,boundaryProlongation , true , inputSignal , texelToCellCoeffs , _boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		case  6: ret = InitializeMassAndStiffness< 6>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts,boundaryProlongation , true , inputSignal , texelToCellCoeffs , _boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		case 12: ret = InitializeMassAndStiffness<12>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts,boundaryProlongation , true , inputSignal , texelToCellCoeffs , _boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		case 24: ret = InitializeMassAndStiffness<24>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts,boundaryProlongation , true , inputSignal , texelToCellCoeffs , _boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		case 32: ret = InitializeMassAndStiffness<32>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts,boundaryProlongation , true , inputSignal , texelToCellCoeffs , _boundaryCellBasedStiffnessRHSMatrix ) ; break;
+		case  1: ret = InitializeMassAndStiffness< 1>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts,boundaryProlongation , true , inputSignal , texelToCellCoeffs , _boundaryCellBasedStiffnessRHSMatrix ) ; break;
+		case  3: ret = InitializeMassAndStiffness< 3>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts,boundaryProlongation , true , inputSignal , texelToCellCoeffs , _boundaryCellBasedStiffnessRHSMatrix ) ; break;
+		case  6: ret = InitializeMassAndStiffness< 6>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts,boundaryProlongation , true , inputSignal , texelToCellCoeffs , _boundaryCellBasedStiffnessRHSMatrix ) ; break;
+		case 12: ret = InitializeMassAndStiffness<12>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts,boundaryProlongation , true , inputSignal , texelToCellCoeffs , _boundaryCellBasedStiffnessRHSMatrix ) ; break;
+		case 24: ret = InitializeMassAndStiffness<24>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts,boundaryProlongation , true , inputSignal , texelToCellCoeffs , _boundaryCellBasedStiffnessRHSMatrix ) ; break;
+		case 32: ret = InitializeMassAndStiffness<32>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts,boundaryProlongation , true , inputSignal , texelToCellCoeffs , _boundaryCellBasedStiffnessRHSMatrix ) ; break;
 		default: fprintf( stderr , "[ERROR] Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles\n" );
 		}
 		if( !ret )
@@ -719,12 +702,12 @@ int TextureFilter< double >::_InitializeSystem( std::vector<std::vector<SquareMa
 		int ret = 0;
 		switch( MatrixQuadrature.value )
 		{
-		case  1: ret = InitializeMassAndStiffness< 1>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , true , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		case  3: ret = InitializeMassAndStiffness< 3>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , true , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		case  6: ret = InitializeMassAndStiffness< 6>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , true , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		case 12: ret = InitializeMassAndStiffness<12>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , true , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		case 24: ret = InitializeMassAndStiffness<24>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , true , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		case 32: ret = InitializeMassAndStiffness<32>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , true , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix ) ; break;
+		case  1: ret = InitializeMassAndStiffness< 1>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , true , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix ) ; break;
+		case  3: ret = InitializeMassAndStiffness< 3>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , true , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix ) ; break;
+		case  6: ret = InitializeMassAndStiffness< 6>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , true , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix ) ; break;
+		case 12: ret = InitializeMassAndStiffness<12>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , true , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix ) ; break;
+		case 24: ret = InitializeMassAndStiffness<24>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , true , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix ) ; break;
+		case 32: ret = InitializeMassAndStiffness<32>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , true , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix ) ; break;
 		default: fprintf( stderr , "[ERROR] Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles\n" );
 		}
 		if( !ret )
@@ -792,8 +775,8 @@ int TextureFilter<Real>::InitializeSystem( const int width , const int height )
 
 	if( UseDirectSolver.set )
 	{
-		FullMatrixConstruction(hierarchy.gridAtlases[0], deepMassCoefficients, boundaryBoundaryMassMatrix, boundaryDeepMassMatrix, mass);
-		FullMatrixConstruction(hierarchy.gridAtlases[0], deepStiffnessCoefficients, boundaryBoundaryStiffnessMatrix, boundaryDeepStiffnessMatrix, stiffness);
+		FullMatrixConstruction( hierarchy.gridAtlases[0] , massCoefficients , mass );
+		FullMatrixConstruction( hierarchy.gridAtlases[0] , stiffnessCoefficients , stiffness );
 		filteringMatrix  = mass*interpolationWeight + stiffness;
 	}
 
@@ -811,13 +794,9 @@ int TextureFilter<Real>::InitializeSystem( const int width , const int height )
 	}
 
 	t_begin = clock();
-	if (!UpdateLinearSystem( interpolationWeight , 1.0 , hierarchy , multigridFilteringCoefficients,
-		deepMassCoefficients, deepStiffnessCoefficients,
-		boundaryBoundaryMassMatrix, boundaryBoundaryStiffnessMatrix,
-		boundaryDeepMassMatrix, boundaryDeepStiffnessMatrix,
-		coarseSolver, boundarySolver, directSolver,
-		filteringMatrix, DetailVerbose.set, true, UseDirectSolver.set)) {
-		printf("ERROR : Failed system update! \n");
+	if( !UpdateLinearSystem( interpolationWeight , 1.0 , hierarchy , multigridFilteringCoefficients , massCoefficients , stiffnessCoefficients , vCycleSolvers , directSolver , filteringMatrix , DetailVerbose.set , true , UseDirectSolver.set ) )
+	{
+		fprintf( stderr , "[ERROR] Failed system update!\n" );
 		return 0;
 	}
 	if( Verbose.set ) printf( "\tInitialized multigrid coefficients: %.2f(s)\n" , double(clock() - t_begin) / CLOCKS_PER_SEC );
@@ -835,10 +814,10 @@ int TextureFilter<Real>::InitializeSystem( const int width , const int height )
 	}
 
 	mass_x0.resize(textureNodes.size());
-	MultiplyBySystemMatrix_NoReciprocals(deepMassCoefficients, boundaryDeepMassMatrix, boundaryBoundaryMassMatrix, hierarchy.gridAtlases[0].boundaryGlobalIndex, hierarchy.gridAtlases[0].rasterLines, _x0, mass_x0);
+	MultiplyBySystemMatrix_NoReciprocals( massCoefficients , hierarchy.gridAtlases[0].boundaryGlobalIndex , hierarchy.gridAtlases[0].rasterLines , _x0 , mass_x0 );
 
 	stiffness_x0.resize(textureNodes.size());
-	MultiplyBySystemMatrix_NoReciprocals(deepStiffnessCoefficients, boundaryDeepStiffnessMatrix, boundaryBoundaryStiffnessMatrix, hierarchy.gridAtlases[0].boundaryGlobalIndex, hierarchy.gridAtlases[0].rasterLines, _x0, stiffness_x0);
+	MultiplyBySystemMatrix_NoReciprocals( stiffnessCoefficients , hierarchy.gridAtlases[0].boundaryGlobalIndex , hierarchy.gridAtlases[0].rasterLines , _x0 , stiffness_x0 );
 
 #pragma omp parallel for
 	for (int i = 0; i <_x0.size(); i++){

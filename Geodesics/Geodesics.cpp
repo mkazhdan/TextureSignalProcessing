@@ -143,35 +143,31 @@ public:
 	static double geodesicDistanceRange;
 
 	//Impulse Smoothing
-	static std::vector<MultigridLevelCoefficients<Real>> multigridSmoothImpulseCoefficients;
+	static std::vector< SystemCoefficients< Real > > multigridSmoothImpulseCoefficients;
 	static std::vector<MultigridLevelVariables<Real>> multigridSmoothImpulseVariables;
 	
 	//Geodesic Distance
-	static std::vector<MultigridLevelCoefficients<Real>> multigridGeodesicDistanceCoefficients;
+	static std::vector< SystemCoefficients< Real > > multigridGeodesicDistanceCoefficients;
 	static std::vector<MultigridLevelVariables<Real>> multigridGeodesicDistanceVariables;
 
 #if defined( USE_CHOLMOD )
-	typedef  std::vector< CholmodCholeskySolver< Real , 1 > > BoundarySolverType;
-	typedef  CholmodCholeskySolver< Real , 1 >  CoarseSolverType;
-	typedef  CholmodCholeskySolver< Real , 1 > DirectSolverType;
+	typedef CholmodCholeskySolver< Real , 1 > BoundarySolverType;
+	typedef CholmodCholeskySolver< Real , 1 > CoarseSolverType;
+	typedef CholmodCholeskySolver< Real , 1 > DirectSolverType;
 #elif defined( USE_EIGEN_SIMPLICIAL )
-	typedef  std::vector< EigenCholeskySolver< Real , 1 > > BoundarySolverType;
-	typedef  EigenCholeskySolver< Real , 1 > CoarseSolverType;
-	typedef  EigenCholeskySolver< Real , 1 > DirectSolverType;
+	typedef EigenCholeskySolver< Real , 1 > BoundarySolverType;
+	typedef EigenCholeskySolver< Real , 1 > CoarseSolverType;
+	typedef EigenCholeskySolver< Real , 1 > DirectSolverType;
 #elif defined( USE_EIGEN_PARDISO )
-	typedef  std::vector< EigenPardisoSolver< Real , 1 > > BoundarySolverType;
-	typedef  EigenPardisoSolver< Real , 1 > CoarseSolverType;
-	typedef  EigenPardisoSolver< Real , 1 > DirectSolverType;
+	typedef EigenPardisoSolver< Real , 1 > BoundarySolverType;
+	typedef EigenPardisoSolver< Real , 1 > CoarseSolverType;
+	typedef EigenPardisoSolver< Real , 1 > DirectSolverType;
 #else
 #error "[ERROR] No solver defined!"
 #endif
 
-	static BoundarySolverType	boundarySmoothImpulseSolver;
-	static BoundarySolverType	boundaryGeodesicDistanceSolver;
-
-	static CoarseSolverType coarseSmoothImpulseSolver;
-	static CoarseSolverType coarseGeodesicDistanceSolver;
-
+	static VCycleSolvers< BoundarySolverType , CoarseSolverType > smoothImpulseSolvers;
+	static VCycleSolvers< BoundarySolverType , CoarseSolverType > geodesicDistanceSolvers;
 	static DirectSolverType fineSmoothImpulseSolver;
 	static DirectSolverType fineGeodesicDistanceSolver;
 
@@ -251,20 +247,17 @@ template<class Real> unsigned char *											Geodesics<Real>::outputBuffer;
 template<class Real> std::vector<MultigridLevelIndices<Real>>					Geodesics<Real>::multigridIndices;
 
 //Impulse Smoothing
-template<class Real> std::vector<MultigridLevelCoefficients<Real>>				Geodesics<Real>::multigridSmoothImpulseCoefficients;
+template< class Real > std::vector< SystemCoefficients< Real > >				Geodesics<Real>::multigridSmoothImpulseCoefficients;
 template<class Real> std::vector<MultigridLevelVariables<Real>>					Geodesics<Real>::multigridSmoothImpulseVariables;
-template<class Real> typename Geodesics<Real>::CoarseSolverType					Geodesics<Real>::coarseSmoothImpulseSolver;
+template< class Real > VCycleSolvers< typename Geodesics<Real>::BoundarySolverType , typename Geodesics<Real>::CoarseSolverType > Geodesics<Real>::smoothImpulseSolvers;
 
 //Geodesic Distance
-template<class Real> std::vector<MultigridLevelCoefficients<Real>>				Geodesics<Real>::multigridGeodesicDistanceCoefficients;
+template< class Real > std::vector< SystemCoefficients< Real > >				Geodesics<Real>::multigridGeodesicDistanceCoefficients;
 template<class Real> std::vector<MultigridLevelVariables<Real>>					Geodesics<Real>::multigridGeodesicDistanceVariables;
-template<class Real> typename Geodesics<Real>::CoarseSolverType					Geodesics<Real>::coarseGeodesicDistanceSolver;
+template< class Real > VCycleSolvers< typename Geodesics<Real>::BoundarySolverType , typename Geodesics<Real>::CoarseSolverType > Geodesics<Real>::geodesicDistanceSolvers;
 
 template<class Real> typename Geodesics<Real>::DirectSolverType					Geodesics<Real>::fineSmoothImpulseSolver;
 template<class Real> typename Geodesics<Real>::DirectSolverType					Geodesics<Real>::fineGeodesicDistanceSolver;
-
-template<class Real>  typename Geodesics<Real>::BoundarySolverType				Geodesics<Real>::boundarySmoothImpulseSolver;
-template<class Real>  typename Geodesics<Real>::BoundarySolverType				Geodesics<Real>::boundaryGeodesicDistanceSolver;
 
 //Samples
 template< class Real > std::vector< QuadraticElementGradientSample< Real > >		Geodesics<Real>::quadraticElementGradientSamples;
@@ -557,12 +550,12 @@ int Geodesics<Real>::UpdateSolution( bool verbose , bool detailVerbose )
 {
 	clock_t begin;
 
-	//(1)Update smoothed input solution
+	// (1) Update smoothed input solution
 	if( verbose ) begin = clock();
-	VCycle( multigridSmoothImpulseVariables , multigridSmoothImpulseCoefficients , multigridIndices , boundarySmoothImpulseSolver , coarseSmoothImpulseSolver , detailVerbose , detailVerbose );
+	VCycle( multigridSmoothImpulseVariables , multigridSmoothImpulseCoefficients , multigridIndices , smoothImpulseSolvers , detailVerbose , detailVerbose );
 	if( verbose ) printf( "Smoothing impulse %.4f\n" , double(clock() - begin) / CLOCKS_PER_SEC );
 
-	//(2) Integrate normalized vector field
+	// (2) Integrate normalized vector field
 	const std::vector<int> & boundaryGlobalIndex = hierarchy.gridAtlases[0].boundaryGlobalIndex;
 
 	if (verbose) begin = clock();
@@ -595,9 +588,9 @@ int Geodesics<Real>::UpdateSolution( bool verbose , bool detailVerbose )
 	if (verbose) printf("Fine to coarse %.4f \n", double(clock() - begin) / CLOCKS_PER_SEC);
 
 
-	//(3) Update geodesic distance solution	
+	// (3) Update geodesic distance solution	
 	if (verbose) begin = clock();
-	VCycle(multigridGeodesicDistanceVariables, multigridGeodesicDistanceCoefficients, multigridIndices, boundaryGeodesicDistanceSolver, coarseGeodesicDistanceSolver, detailVerbose, detailVerbose);
+	VCycle( multigridGeodesicDistanceVariables , multigridGeodesicDistanceCoefficients , multigridIndices, geodesicDistanceSolvers , detailVerbose , detailVerbose );
 	if (verbose) printf("Solving geodesic distance %.4f \n", double(clock() - begin) / CLOCKS_PER_SEC);
 
 	Real expectedMinDistance = multigridGeodesicDistanceVariables[0].x[impulseTexel];
@@ -626,12 +619,7 @@ int Geodesics<Real>::InitializeSystem( const int width , const int height )
 	//Initialize node index
 	nodeIndex.resize(width, height);
 	for (int i = 0; i < nodeIndex.size(); i++)nodeIndex[i] = -1;
-	for (int i = 0; i < textureNodes.size(); i++) {
-		if (nodeIndex(textureNodes[i].ci, textureNodes[i].cj) != -1) {
-			if(0)printf("WARNING: Multiple nodes mapped to pixel %d %d!\n", textureNodes[i].ci, textureNodes[i].cj);
-		}
-		nodeIndex(textureNodes[i].ci, textureNodes[i].cj) = i;
-	}
+	for (int i = 0; i < textureNodes.size(); i++) nodeIndex(textureNodes[i].ci, textureNodes[i].cj) = i;
 
 	BoundaryProlongationData boundaryProlongation;
 	if (!InitializeBoundaryProlongationData(hierarchy.gridAtlases[0], boundaryProlongation)) {
@@ -640,13 +628,8 @@ int Geodesics<Real>::InitializeSystem( const int width , const int height )
 	}
 
 
-	std::vector<double> deepMassCoefficients;
-	std::vector<double> deepStiffnessCoefficients;
-	SparseMatrix<double, int> boundaryBoundaryMassMatrix;
-	SparseMatrix<double, int> boundaryBoundaryStiffnessMatrix;
-	SparseMatrix<double, int> boundaryDeepMassMatrix;
-	SparseMatrix<double, int> boundaryDeepStiffnessMatrix;
-
+	SystemCoefficients< double > massCoefficients;
+	SystemCoefficients< double > stiffnessCoefficients;
 
 	std::vector<Point3D<double>> __inputSignal;
 	std::vector<double> __texelToCellCoeffs;
@@ -659,26 +642,13 @@ int Geodesics<Real>::InitializeSystem( const int width , const int height )
 		int ret = 0;
 		switch( MatrixQuadrature.value )
 		{
-		case 1:
-			ret = InitializeMassAndStiffness< 1>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix );
-			break;
-		case 3:
-			ret = InitializeMassAndStiffness< 3>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix );
-			break;
-		case 6:
-			ret = InitializeMassAndStiffness< 6>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix );
-			break;
-		case 12:
-			ret = InitializeMassAndStiffness<12>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix );
-			break;
-		case 24:
-			ret = InitializeMassAndStiffness<24>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix );
-			break;
-		case 32:
-			ret = InitializeMassAndStiffness<32>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix );
-			break;
-		default:
-			fprintf( stderr , "[ERROR] Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles\n" );
+		case  1: ret = InitializeMassAndStiffness< 1>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
+		case  3: ret = InitializeMassAndStiffness< 3>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
+		case  6: ret = InitializeMassAndStiffness< 6>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
+		case 12: ret = InitializeMassAndStiffness<12>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
+		case 24: ret = InitializeMassAndStiffness<24>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
+		case 32: ret = InitializeMassAndStiffness<32>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
+		default: fprintf( stderr , "[ERROR] Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles\n" );
 		}
 		if( !ret )
 		{
@@ -692,8 +662,8 @@ int Geodesics<Real>::InitializeSystem( const int width , const int height )
 	{
 		clock_t t_begin;
 		t_begin = clock();
-		FullMatrixConstruction(hierarchy.gridAtlases[0], deepMassCoefficients, boundaryBoundaryMassMatrix, boundaryDeepMassMatrix, mass);
-		FullMatrixConstruction(hierarchy.gridAtlases[0], deepStiffnessCoefficients, boundaryBoundaryStiffnessMatrix, boundaryDeepStiffnessMatrix, stiffness);
+		FullMatrixConstruction( hierarchy.gridAtlases[0] , massCoefficients , mass );
+		FullMatrixConstruction( hierarchy.gridAtlases[0] , stiffnessCoefficients , stiffness );
 		smoothImpulseMatrix = mass * diffusionInterpolationWeight + stiffness;
 		geodesicDistanceMatrix = mass * geodesicInterpolationWeight + stiffness;
 		printf( "\tAssembled matrices: %.2f(s) \n", double(clock() - t_begin) / CLOCKS_PER_SEC );
@@ -718,23 +688,15 @@ int Geodesics<Real>::InitializeSystem( const int width , const int height )
 //////////////////////////////////// Initialize multigrid coefficients
 
 	t_begin = clock();
-	if (!UpdateLinearSystem( diffusionInterpolationWeight , 1.0 , hierarchy , multigridSmoothImpulseCoefficients ,
-		deepMassCoefficients, deepStiffnessCoefficients,
-		boundaryBoundaryMassMatrix, boundaryBoundaryStiffnessMatrix,
-		boundaryDeepMassMatrix, boundaryDeepStiffnessMatrix,
-		coarseSmoothImpulseSolver, boundarySmoothImpulseSolver, fineSmoothImpulseSolver,
-		smoothImpulseMatrix, DetailVerbose.set, true, UseDirectSolver.set)){
-		printf("ERROR : Failed system update! \n");
+	if( !UpdateLinearSystem( diffusionInterpolationWeight , 1.0 , hierarchy , multigridSmoothImpulseCoefficients , massCoefficients , stiffnessCoefficients , smoothImpulseSolvers , fineSmoothImpulseSolver , smoothImpulseMatrix , DetailVerbose.set , true , UseDirectSolver.set ) )
+	{
+		fprintf( stderr , "[ERROR] Failed system update!\n" );
 		return 0;
 	}
 
-	if (!UpdateLinearSystem( geodesicInterpolationWeight , 1. , hierarchy , multigridGeodesicDistanceCoefficients ,
-		deepMassCoefficients, deepStiffnessCoefficients,
-		boundaryBoundaryMassMatrix, boundaryBoundaryStiffnessMatrix,
-		boundaryDeepMassMatrix, boundaryDeepStiffnessMatrix,
-		coarseGeodesicDistanceSolver, boundaryGeodesicDistanceSolver, fineGeodesicDistanceSolver,
-		geodesicDistanceMatrix, DetailVerbose.set, true, UseDirectSolver.set)) {
-		printf("ERROR : Failed system update! \n");
+	if( !UpdateLinearSystem( geodesicInterpolationWeight , 1. , hierarchy , multigridGeodesicDistanceCoefficients , massCoefficients , stiffnessCoefficients , geodesicDistanceSolvers , fineGeodesicDistanceSolver , geodesicDistanceMatrix , DetailVerbose.set , true , UseDirectSolver.set ) )
+	{
+		fprintf( stderr , "[ERROR] Failed system update!\n" );
 		return 0;
 	}
 	if( Verbose.set ) printf( "\tInitialized multigrid coefficients: %.2f(s)\n" , double(clock() - t_begin) / CLOCKS_PER_SEC);

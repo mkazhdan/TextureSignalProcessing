@@ -246,7 +246,8 @@ public:
 	int boundaryDilation;
 };
 
-class BlockDeepSegment {
+class BlockDeepSegment
+{
 public:
 	int currentStart;
 	int currentEnd;
@@ -255,27 +256,29 @@ public:
 	int deepStart;
 };
 
-class BlockDeepSegmentedLine {
+class BlockDeepSegmentedLine
+{
 public:
 	std::vector<BlockDeepSegment> blockDeepSegments;
 };
 
-class BlockTask {
+class BlockTask
+{
 public:
 	std::vector<BlockDeepSegmentedLine> blockPaddedSegmentedLines;
 	std::vector<BlockDeepSegmentedLine> blockDeepSegmentedLines;
 };
-class ThreadTask {
+class ThreadTask
+{
 public:
 	int taskDeepTexels;
 	std::vector<BlockTask> blockTasks;
 };
 
-bool threadTaskComparison(const ThreadTask & task1, const ThreadTask & task2) {
-	return task1.taskDeepTexels < task2.taskDeepTexels;
-}
+bool threadTaskComparison( const ThreadTask & task1 , const ThreadTask & task2 ){ return task1.taskDeepTexels < task2.taskDeepTexels; }
 
-class InteriorTexelToCellLine{
+class InteriorTexelToCellLine
+{
 public:
 	int texelStartIndex;
 	int texelEndIndex;
@@ -286,7 +289,8 @@ public:
 };
 
 
-class ProlongationLine{
+class ProlongationLine
+{
 public:
 	int startIndex;
 	int length;
@@ -296,7 +300,8 @@ public:
 	bool alignedStart;
 };
 
-class RestrictionLine{
+class RestrictionLine
+{
 public:
 	RestrictionLine() {
 		startIndex = length = centerLineIndex = prevLineIndex = nextLineIndex = -1;
@@ -309,17 +314,19 @@ public:
 	int outputStart;
 };
 
-class AuxiliarNode {
+class AuxiliarNode
+{
 public:
-	Point2D<double> position;
+	Point2D< double > position;
 	int index;
 };
 
 
 
-class GridChart {
+class GridChart
+{
 public:
-	Point2D<double> corner;
+	Point2D< double > corner;
 	int cornerCoords[2];
 	int centerOffset[2];
 	double cellSizeW;
@@ -369,7 +376,8 @@ public:
 };
 
 
-class GridNodeInfo {
+class GridNodeInfo
+{
 public:
 	int chartId;
 	int ci;
@@ -377,31 +385,30 @@ public:
 	int nodeType;
 };
 
-class TexelLineInfo {
+class TexelLineInfo
+{
 public:
-	TexelLineInfo() {
-		lineIndex = -1;
-		offset = -1;
-	}
+	TexelLineInfo() : lineIndex(-1) , offset(-1) {}
 	int lineIndex;
 	int offset;
 };
 
-class GridAtlas {
+class GridAtlas
+{
 public:
 
-	std::vector<ThreadTask> threadTasks;
-	std::vector<int> boundaryAndDeepIndex;
-	std::vector<int> boundaryGlobalIndex;
-	std::vector<int> deepGlobalIndex;
-	std::vector<GridNodeInfo> nodeInfo;
-	std::vector<GridChart> gridCharts;
-	std::vector<SegmentedRasterLine> segmentedLines;
-	std::vector<RasterLine> rasterLines;
-	std::vector<RasterLine> restrictionLines;
-	std::vector<DeepLine> deepLines;
-	std::vector<ProlongationLine> prolongationLines;
-	Eigen::SparseMatrix<double> coarseToFineNodeProlongation;
+	std::vector< ThreadTask > threadTasks;
+	std::vector< int > boundaryAndDeepIndex;
+	std::vector< int > boundaryGlobalIndex;
+	std::vector< int > deepGlobalIndex;
+	std::vector< GridNodeInfo > nodeInfo;
+	std::vector< GridChart > gridCharts;
+	std::vector< SegmentedRasterLine > segmentedLines;
+	std::vector< RasterLine > rasterLines;
+	std::vector< RasterLine > restrictionLines;
+	std::vector< DeepLine > deepLines;
+	std::vector< ProlongationLine > prolongationLines;
+	Eigen::SparseMatrix< double > coarseToFineNodeProlongation;
 	//int resolution;
 	int numTexels;
 	int numInteriorTexels;
@@ -415,14 +422,16 @@ public:
 	int numFineNodes;
 };
 
-struct BoundaryDeepIndex {
+struct BoundaryDeepIndex
+{
 	int boundaryIndex;
 	int deepGlobalIndex;
 	int deepIndex;
 	int offset;
 };
 
-struct BoundaryBoundaryIndex {
+struct BoundaryBoundaryIndex
+{
 	int coarsePrincipalBoundaryIndex;
 	int coarseSecondaryBoundaryIndex;
 	int fineDeepIndex;
@@ -430,26 +439,28 @@ struct BoundaryBoundaryIndex {
 	double weight;
 };
 
-class HierarchicalSystem {
+class HierarchicalSystem
+{
 public:
-	std::vector<SparseMatrix<double, int>> boundaryRestriction;
-	std::vector<SparseMatrix<double, int>> prolongation;
+	std::vector< SparseMatrix< double , int > > boundaryRestriction;
+	std::vector< SparseMatrix< double , int > > prolongation;
 
-	std::vector<GridAtlas> gridAtlases;
+	std::vector< GridAtlas> gridAtlases;
 
-	std::vector<SparseMatrix<double, int>> boundaryCoarseFineProlongation;
-	std::vector<SparseMatrix<double, int>> boundaryFineCoarseRestriction;
-	std::vector<std::vector<BoundaryDeepIndex>> boundaryDeepIndices;
-	std::vector<std::vector<BoundaryBoundaryIndex>> boundaryBoundaryIndices;
+	std::vector< SparseMatrix< double , int > > boundaryCoarseFineProlongation;
+	std::vector< SparseMatrix< double , int > > boundaryFineCoarseRestriction;
+	std::vector< std::vector< BoundaryDeepIndex > > boundaryDeepIndices;
+	std::vector< std::vector< BoundaryBoundaryIndex > > boundaryBoundaryIndices;
 };
 
 
-template<class Real>
-class MultigridLevelCoefficients{
+template< class Real >
+class SystemCoefficients
+{
 public:
-	std::vector<Real> deepCoefficients;
-	SparseMatrix<Real, int> boundaryDeepMatrix;
-	SparseMatrix<Real, int> boundaryBoundaryMatrix;
+	std::vector< Real > deepCoefficients;
+	SparseMatrix< Real , int > boundaryDeepMatrix;
+	SparseMatrix< Real , int > boundaryBoundaryMatrix;
 };
 
 template< class DataType >
@@ -476,6 +487,12 @@ public:
 	SparseMatrix<Real, int> boundaryRestriction;
 };
 
+template< class BoundarySolver , class CoarseSolver >
+struct VCycleSolvers
+{
+	std::vector< BoundarySolver > boundary;
+	CoarseSolver coarse;
+};
 
 #include "SparseMatrixParser.h"
 #include "Atlas.h"

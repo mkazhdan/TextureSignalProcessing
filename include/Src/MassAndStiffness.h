@@ -777,42 +777,39 @@ int InitializeMassAndStiffness
 template< unsigned int Samples , typename Real >
 int InitializeMassAndStiffness
 (
-	std::vector< Real >& deepMassCoefficients,
-	std::vector< Real > & deepStiffnessCoefficients,
-	SparseMatrix< Real, int >& boundaryBoundaryMassMatrix,
-	SparseMatrix< Real, int >& boundaryBoundaryStiffnessMatrix,
-	SparseMatrix< Real, int >& boundaryDeepMassMatrix,
-	SparseMatrix< Real, int >& boundaryDeepStiffnessMatrix,
-	const HierarchicalSystem& hierarchy,
-	const std::vector< std::vector< SquareMatrix< Real, 2 > > >& parameterMetric,
-	const std::vector< AtlasChart >& atlasCharts,
-	const BoundaryProlongationData& boundaryProlongation,
-	bool computeCellBasedStiffness,
-	const std::vector< Point3D< Real > >& inputSignal,
-	std::vector< Real >& texelToCellCoeffs,
-	SparseMatrix< Real, int > boundaryCellBasedStiffnessRHSMatrix[3],
-	bool computeDivergence,
-	std::unordered_map<unsigned long long, int> & edgeIndex,
-	SparseMatrix< Real, int > & boundaryDivergenceMatrix,
+	SystemCoefficients< double > &mass ,
+	SystemCoefficients< double > &stiffness ,
+	const HierarchicalSystem &hierarchy ,
+	const std::vector< std::vector< SquareMatrix< Real , 2 > > > &parameterMetric ,
+	const std::vector< AtlasChart > &atlasCharts ,
+	const BoundaryProlongationData &boundaryProlongation ,
+	bool computeCellBasedStiffness ,
+	const std::vector< Point3D< Real > > &inputSignal ,
+	std::vector< Real > &texelToCellCoeffs ,
+	SparseMatrix< Real , int > boundaryCellBasedStiffnessRHSMatrix[3] ,
+	bool computeDivergence ,
+	std::unordered_map< unsigned long long , int > & edgeIndex ,
+	SparseMatrix< Real , int > & boundaryDivergenceMatrix ,
 	std::vector< Real > & deepDivergenceCoefficients
 )
 {
 
 	//(2) Initialize mass and stiffness
-	deepMassCoefficients.resize(10 * hierarchy.gridAtlases[0].numDeepTexels, 0);
-	deepStiffnessCoefficients.resize(10 * hierarchy.gridAtlases[0].numDeepTexels, 0);
-	if (computeDivergence) {
-		deepDivergenceCoefficients.resize(20 * hierarchy.gridAtlases[0].numDeepTexels, 0);
-	}
+	mass.deepCoefficients.resize( 10*hierarchy.gridAtlases[0].numDeepTexels , 0 );
+	stiffness.deepCoefficients.resize( 10*hierarchy.gridAtlases[0].numDeepTexels , 0 );
+	if( computeDivergence ) deepDivergenceCoefficients.resize( 20*hierarchy.gridAtlases[0].numDeepTexels , 0 );
+
 	SparseMatrix< Real , int > fineBoundaryBoundaryMassMatrix;
 	SparseMatrix< Real , int > fineBoundaryBoundaryStiffnessMatrix;
 
 	std::vector< Eigen::Triplet< Real > > boundaryDivergenceTriplets;
 	std::vector< Eigen::Triplet< Real > > boundaryBoundaryDivergenceTriplets;
 	std::unordered_map<unsigned long long, int> fineBoundaryEdgeIndex;
-	if (computeDivergence){
-		if (!InitializeFineBoundaryEdgeIndexing(boundaryProlongation.fineBoundaryIndex, fineBoundaryEdgeIndex, hierarchy.gridAtlases[0].gridCharts)) {
-			printf("ERROR: Unable to initialize boundary edge indices \n");
+	if( computeDivergence )
+	{
+		if( !InitializeFineBoundaryEdgeIndexing( boundaryProlongation.fineBoundaryIndex , fineBoundaryEdgeIndex , hierarchy.gridAtlases[0].gridCharts ) )
+		{
+			fprintf( stderr , "[ERROR] Unable to initialize boundary edge indices\n" );
 			return 0;
 		}
 	}
@@ -821,33 +818,37 @@ int InitializeMassAndStiffness
 	std::vector< Point3D< Real > > fineBoundarySignal;
 
 
-	if (computeCellBasedStiffness){
-		const std::vector<int> & boundaryGlobalIndex = hierarchy.gridAtlases[0].boundaryGlobalIndex;
+	if( computeCellBasedStiffness )
+	{
+		const std::vector< int > & boundaryGlobalIndex = hierarchy.gridAtlases[0].boundaryGlobalIndex;
 		int numBoundaryTexels = (int)boundaryGlobalIndex.size();
 		int numFineBoundaryNodes = boundaryProlongation.numFineBoundarNodes;
 		std::vector< Point3D< Real > > coarseBoundarySignal;
-		coarseBoundarySignal.resize(numBoundaryTexels);
-		for (int i = 0; i < numBoundaryTexels; i++)  coarseBoundarySignal[i] = inputSignal[boundaryGlobalIndex[i]];
-		fineBoundarySignal.resize(numFineBoundaryNodes);
-		boundaryProlongation.coarseBoundaryFineBoundaryProlongation.Multiply(&coarseBoundarySignal[0], &fineBoundarySignal[0]);
+		coarseBoundarySignal.resize( numBoundaryTexels );
+		for( int i=0 ; i<numBoundaryTexels ; i++ ) coarseBoundarySignal[i] = inputSignal[ boundaryGlobalIndex[i] ];
+		fineBoundarySignal.resize( numFineBoundaryNodes );
+		boundaryProlongation.coarseBoundaryFineBoundaryProlongation.Multiply( &coarseBoundarySignal[0] , &fineBoundarySignal[0] );
 	}
 
-	if( !InitializeMassAndStiffness< Samples >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0] , boundaryProlongation.fineBoundaryIndex , boundaryProlongation.numFineBoundarNodes , deepMassCoefficients , deepStiffnessCoefficients , fineBoundaryBoundaryMassMatrix , fineBoundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , computeCellBasedStiffness , inputSignal , fineBoundarySignal , texelToCellCoeffs , fineBoundaryCellStiffnessRHSMatrix, computeDivergence, fineBoundaryEdgeIndex, edgeIndex, boundaryDivergenceTriplets, boundaryBoundaryDivergenceTriplets,deepDivergenceCoefficients) ){
+	if( !InitializeMassAndStiffness< Samples >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0] , boundaryProlongation.fineBoundaryIndex , boundaryProlongation.numFineBoundarNodes , mass.deepCoefficients , stiffness.deepCoefficients , fineBoundaryBoundaryMassMatrix , fineBoundaryBoundaryStiffnessMatrix , mass.boundaryDeepMatrix , stiffness.boundaryDeepMatrix , computeCellBasedStiffness , inputSignal , fineBoundarySignal , texelToCellCoeffs , fineBoundaryCellStiffnessRHSMatrix, computeDivergence, fineBoundaryEdgeIndex, edgeIndex, boundaryDivergenceTriplets, boundaryBoundaryDivergenceTriplets,deepDivergenceCoefficients) )
+	{
 		fprintf( stderr , "[ERROR] Unable to initialize fine mass and stiffness! \n");
 		return 0;
 	}
 
-	SparseMatrix< Real , int > temp = fineBoundaryBoundaryMassMatrix * boundaryProlongation.coarseBoundaryFineBoundaryProlongation;
-	boundaryBoundaryMassMatrix = boundaryProlongation.fineBoundaryCoarseBoundaryRestriction * temp;
-
-	temp = fineBoundaryBoundaryStiffnessMatrix * boundaryProlongation.coarseBoundaryFineBoundaryProlongation;
-	boundaryBoundaryStiffnessMatrix = boundaryProlongation.fineBoundaryCoarseBoundaryRestriction * temp;
-
-	if( 1 )
 	{
-		std::vector< Real > in( boundaryBoundaryMassMatrix.Rows() , 1.0 );
-		std::vector< Real > out( boundaryBoundaryMassMatrix.Rows() , 0.0 );
-		boundaryBoundaryMassMatrix.Multiply( GetPointer(in) , GetPointer(out) );
+		SparseMatrix< Real , int > temp = fineBoundaryBoundaryMassMatrix * boundaryProlongation.coarseBoundaryFineBoundaryProlongation;
+		mass.boundaryBoundaryMatrix = boundaryProlongation.fineBoundaryCoarseBoundaryRestriction * temp;
+	}
+	{
+		SparseMatrix< Real , int > temp = fineBoundaryBoundaryStiffnessMatrix * boundaryProlongation.coarseBoundaryFineBoundaryProlongation;
+		stiffness.boundaryBoundaryMatrix = boundaryProlongation.fineBoundaryCoarseBoundaryRestriction * temp;
+	}
+
+	{
+		std::vector< Real > in ( mass.boundaryBoundaryMatrix.Rows() , 1.0 );
+		std::vector< Real > out( mass.boundaryBoundaryMatrix.Rows() , 0.0 );
+		mass.boundaryBoundaryMatrix.Multiply( GetPointer(in) , GetPointer(out) );
 		for( int i=0 ; i<out.size() ; i++ ) if( out[i]==0.0 ) printf( "[WARNING] Zero row at index %d. Try running with jittering.\n" , i );
 	}
 
@@ -860,7 +861,7 @@ int InitializeMassAndStiffness
 		std::unordered_map<unsigned long long, int> boundaryCoarseEdgeIndex;
 		std::vector<int> boundaryCoarseEdgeToGlobalEdge;
 		
-		InitializeBoundaryEdgeIndexing(boundaryBoundaryMassMatrix, hierarchy.gridAtlases[0].boundaryGlobalIndex, edgeIndex, boundaryCoarseEdgeToGlobalEdge, boundaryCoarseEdgeIndex);
+		InitializeBoundaryEdgeIndexing( mass.boundaryBoundaryMatrix , hierarchy.gridAtlases[0].boundaryGlobalIndex , edgeIndex , boundaryCoarseEdgeToGlobalEdge , boundaryCoarseEdgeIndex );
 		
 		SparseMatrix<Real, int> boundarCoarseToFineBoundaryOneFormProlongation;
 		InitializeBoundaryCoarseToFineBoundaryOneFormProlongation(boundaryProlongation.coarseBoundaryFineBoundaryProlongation, boundaryCoarseEdgeIndex, fineBoundaryEdgeIndex, boundarCoarseToFineBoundaryOneFormProlongation);
@@ -882,37 +883,20 @@ int InitializeMassAndStiffness
 template< unsigned int Samples , typename Real >
 int InitializeMassAndStiffness
 (
-	std::vector< Real >& deepMassCoefficients,
-	std::vector< Real > & deepStiffnessCoefficients,
-	SparseMatrix< Real, int >& boundaryBoundaryMassMatrix,
-	SparseMatrix< Real, int >& boundaryBoundaryStiffnessMatrix,
-	SparseMatrix< Real, int >& boundaryDeepMassMatrix,
-	SparseMatrix< Real, int >& boundaryDeepStiffnessMatrix,
-	const HierarchicalSystem& hierarchy,
-	const std::vector< std::vector< SquareMatrix< Real, 2 > > >& parameterMetric,
-	const std::vector< AtlasChart >& atlasCharts,
-	const BoundaryProlongationData& boundaryProlongation,
-	bool computeCellBasedStiffness,
-	const std::vector< Point3D< Real > >& inputSignal,
-	std::vector< Real >& texelToCellCoeffs,
-	SparseMatrix< Real, int > boundaryCellBasedStiffnessRHSMatrix[3]
+	SystemCoefficients< double > &mass ,
+	SystemCoefficients< double > &stiffness ,
+	const HierarchicalSystem& hierarchy ,
+	const std::vector< std::vector< SquareMatrix< Real , 2 > > > &parameterMetric ,
+	const std::vector< AtlasChart > &atlasCharts ,
+	const BoundaryProlongationData &boundaryProlongation ,
+	bool computeCellBasedStiffness ,
+	const std::vector< Point3D< Real > > &inputSignal ,
+	std::vector< Real >& texelToCellCoeffs ,
+	SparseMatrix< Real , int > boundaryCellBasedStiffnessRHSMatrix[3]
 )
 {
 	std::unordered_map<unsigned long long, int> edgeIndex;
 	SparseMatrix< Real, int > boundaryDivergenceMatrix;
 	std::vector< Real > deepDivergenceCoefficients;
-	return InitializeMassAndStiffness< Samples , Real >(deepMassCoefficients, deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix,
-		hierarchy,
-		parameterMetric,
-		atlasCharts,
-		boundaryProlongation,
-		computeCellBasedStiffness,
-		inputSignal,
-		texelToCellCoeffs,
-		boundaryCellBasedStiffnessRHSMatrix,
-		false,
-		edgeIndex,
-		boundaryDivergenceMatrix,
-		deepDivergenceCoefficients
-		);
+	return InitializeMassAndStiffness< Samples , Real >( mass , stiffness , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , computeCellBasedStiffness , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , false , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients );
 }

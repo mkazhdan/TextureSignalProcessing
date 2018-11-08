@@ -68,14 +68,10 @@ int InitializeAtlasMesh( const TexturedMesh& inputMesh , AtlasMesh& outputMesh ,
 				double dimSize = c == 0 ? double(width) : double(height);
 				double scaled = outputMesh.vertices[i][c] * dimSize - 0.5;
 				double offset = scaled - double(round(scaled));
-				if (fabs(offset) < precision) {
-					if(0) printf("WARNING: Vertex lying over the grid. Automatic jittering applied. \n");
-					if (offset > 0) {
-						scaled = round(scaled) + precision*(1.0 + double(rand()) / double(RAND_MAX));
-					}
-					else {
-						scaled = round(scaled) - precision*(1.0 + double(rand()) / double(RAND_MAX));
-					}
+				if (fabs(offset) < precision)
+				{
+					if( offset>0 ) scaled = round(scaled) + precision*(1.0 + double(rand()) / double(RAND_MAX));
+					else           scaled = round(scaled) - precision*(1.0 + double(rand()) / double(RAND_MAX));
 					outputMesh.vertices[i][c] = (scaled + 0.5) / dimSize;
 				}
 			}

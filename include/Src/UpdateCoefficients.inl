@@ -158,7 +158,8 @@ int BoundaryBoundaryMatrixConstruction(const std::vector<int> & boundaryGlobalIn
 	return 1;
 }
 
-int FullMatrixConstruction(const GridAtlas & gridAtlas, const std::vector<double> & deepCoefficients, const SparseMatrix<double, int> & boundaryBoundaryMatrix, const SparseMatrix<double, int> & boundaryDeepMatrix, SparseMatrix<double, int> & fullMatrix) {
+int FullMatrixConstruction( const GridAtlas & gridAtlas , const SystemCoefficients< double > &systemCoefficients , SparseMatrix< double , int > &fullMatrix )
+{
 	int numTexels = gridAtlas.numTexels;
 	fullMatrix.resize(numTexels);
 	std::vector<int> deepGlobalIndex = gridAtlas.deepGlobalIndex;
@@ -201,7 +202,7 @@ int FullMatrixConstruction(const GridAtlas & gridAtlas, const std::vector<double
 		int previousLineStart = currentLine.prevLineIndex;
 		int currentLineStart = currentLine.lineStartIndex;
 		int nextLineStart = currentLine.nextLineIndex;
-		const double * coefficients = deepCoefficients.data() + deepOffset * 10;
+		const double * coefficients = systemCoefficients.deepCoefficients.data() + deepOffset * 10;
 		for (int i = 0; i < lineLength; i++) {
 			for (int k = 0; k < 9; k++) fullMatrix[currentLineStart][k].Value = coefficients[k];
 
@@ -216,12 +217,12 @@ int FullMatrixConstruction(const GridAtlas & gridAtlas, const std::vector<double
 	std::vector<int> boundaryGlobalIndex = gridAtlas.boundaryGlobalIndex;
 	for (int i = 0; i < boundaryGlobalIndex.size(); i++) {
 		int globalIndex = boundaryGlobalIndex[i];
-		for (int j = 0; j < boundaryDeepMatrix.RowSize(i); j++) {
-			boundaryTriplets.push_back(Eigen::Triplet<double>(globalIndex, boundaryDeepMatrix[i][j].N, boundaryDeepMatrix[i][j].Value));
-		}
-		for (int j = 0; j < boundaryBoundaryMatrix.RowSize(i); j++) {
-			int neighbourGlobalIndex = boundaryGlobalIndex[boundaryBoundaryMatrix[i][j].N];
-			boundaryTriplets.push_back(Eigen::Triplet<double>(globalIndex, neighbourGlobalIndex, boundaryBoundaryMatrix[i][j].Value));
+		for( int j=0 ; j<systemCoefficients.boundaryDeepMatrix.RowSize(i) ; j++ )
+			boundaryTriplets.push_back( Eigen::Triplet< double >( globalIndex , systemCoefficients.boundaryDeepMatrix[i][j].N , systemCoefficients.boundaryDeepMatrix[i][j].Value ) );
+		for( int j=0 ; j<systemCoefficients.boundaryBoundaryMatrix.RowSize(i) ; j++ )
+		{
+			int neighbourGlobalIndex = boundaryGlobalIndex[ systemCoefficients.boundaryBoundaryMatrix[i][j].N ];
+			boundaryTriplets.push_back( Eigen::Triplet< double >( globalIndex , neighbourGlobalIndex , systemCoefficients.boundaryBoundaryMatrix[i][j].Value ) );
 		}
 	}
 
@@ -299,33 +300,17 @@ int CompareMatrices(const SparseMatrix<Real, int> & M1, const SparseMatrix<Real,
 
 }
 
-int UpdateMultigridCoefficients(const HierarchicalSystem & hierarchy, std::vector<MultigridLevelCoefficients<double>> & multigridCoefficients, const std::vector<double> & inputDeepCoefficients, const SparseMatrix<double, int> & inputBoundaryBoundaryMatrix, const SparseMatrix<double, int> & inputBoundaryDeepMatrix, const SparseMatrix<double, int> & systemMatrix, SparseMatrix<double, int> & coarseSystemMatrix, bool useDeepReciprocals, bool verbose = false) {
-
+int UpdateMultigridCoefficients( const HierarchicalSystem &hierarchy , std::vector< SystemCoefficients< double > > &multigridCoefficients , const SystemCoefficients< double > &inputCoefficients , const SparseMatrix< double , int > &systemMatrix , SparseMatrix< double , int > &coarseSystemMatrix , bool useDeepReciprocals, bool verbose=false)
+{
 	int levels = (int)hierarchy.gridAtlases.size();
 
-	multigridCoefficients.resize(levels);
+	multigridCoefficients.resize( levels );
 
-	multigridCoefficients[0].deepCoefficients = inputDeepCoefficients;
-	multigridCoefficients[0].boundaryBoundaryMatrix = inputBoundaryBoundaryMatrix;
-	multigridCoefficients[0].boundaryDeepMatrix = inputBoundaryDeepMatrix;
+	multigridCoefficients[0].deepCoefficients = inputCoefficients.deepCoefficients;
+	multigridCoefficients[0].boundaryBoundaryMatrix = inputCoefficients.boundaryBoundaryMatrix;
+	multigridCoefficients[0].boundaryDeepMatrix = inputCoefficients.boundaryDeepMatrix;
 
-	if (0) {//For debugging
-		printf("Enable for debugging! \n");
-		SparseMatrix<double, int> fullMatrix;
-		FullMatrixConstruction(hierarchy.gridAtlases[0], multigridCoefficients[0].deepCoefficients, multigridCoefficients[0].boundaryBoundaryMatrix, multigridCoefficients[0].boundaryDeepMatrix, fullMatrix);
-
-		SparseMatrix<double, int> compressedSystemMatrix;
-		CompressSparseMatrix(systemMatrix, compressedSystemMatrix);
-		if (!CompareMatrices(fullMatrix, compressedSystemMatrix, hierarchy.gridAtlases[0].nodeInfo, hierarchy.gridAtlases[0].boundaryAndDeepIndex)) {
-			return 0;
-		}
-	}
-
-	SparseMatrix<double, int> currentSystemMatrix;
-	if (0) {//For debugging
-		printf("Enable for debugging! \n");
-		currentSystemMatrix = systemMatrix;
-	}
+	SparseMatrix< double , int > currentSystemMatrix;
 	clock_t t_begin;
 
 	for (int i = 1; i < levels; i++) {
@@ -336,56 +321,26 @@ int UpdateMultigridCoefficients(const HierarchicalSystem & hierarchy, std::vecto
 		int numDeepTexels = gridAtlas.numDeepTexels;
 		int numBoundaryTexels = gridAtlas.numBoundaryTexels;
 
-		//Deep restriction
-		const std::vector<double> & fineDeepCoefficients = multigridCoefficients[i - 1].deepCoefficients;
-		std::vector<double> & coarseDeepCoefficients = multigridCoefficients[i].deepCoefficients;
-		coarseDeepCoefficients.resize(numDeepTexels * 10, 0);
-		if (verbose) t_begin = clock();
-		DeepCoefficientRestriction(fineDeepCoefficients, coarseDeepCoefficients, gridAtlas.deepLines);
-		if (verbose) printf("Deep Deep Restriction %d  =  %.4f \n", i, double(clock() - t_begin) / CLOCKS_PER_SEC);
+		const SystemCoefficients< double > &fineCoefficients = multigridCoefficients[i-1];
+		SystemCoefficients< double > &coarseCoefficients = multigridCoefficients[i];
 
-		//Boundary Deep Matrix
-		SparseMatrix<double, int> & coarseBoundaryDeepMatrix = multigridCoefficients[i].boundaryDeepMatrix;
-		if (verbose) t_begin = clock();
-		BoundaryDeepMatrixConstruction(numBoundaryTexels, numTexels, coarseDeepCoefficients, hierarchy.boundaryDeepIndices[i], coarseBoundaryDeepMatrix);
-		if (verbose) printf("Boundary Deep Restriction %d  =  %.4f \n", i, double(clock() - t_begin) / CLOCKS_PER_SEC);
+		// Deep restriction
+		coarseCoefficients.deepCoefficients.resize( numDeepTexels * 10 , 0 );
+		if( verbose ) t_begin = clock();
+		DeepCoefficientRestriction( fineCoefficients.deepCoefficients , coarseCoefficients.deepCoefficients , gridAtlas.deepLines );
+		if( verbose ) printf( "Deep Deep Restriction %d  =  %.4f\n" , i , (double)( clock()-t_begin ) / CLOCKS_PER_SEC );
 
-		//Boundary Boundary Matrix
-		const SparseMatrix<double, int> & fineBoundaryBoundaryMatrix = multigridCoefficients[i - 1].boundaryBoundaryMatrix;
-		SparseMatrix<double, int> & coarseBoundaryBoundaryMatrix = multigridCoefficients[i].boundaryBoundaryMatrix;
-		if (verbose) t_begin = clock();
-		BoundaryBoundaryMatrixConstruction(gridAtlas.boundaryGlobalIndex, numBoundaryTexels, fineDeepCoefficients, fineBoundaryBoundaryMatrix, hierarchy.boundaryCoarseFineProlongation[i], hierarchy.boundaryFineCoarseRestriction[i - 1], hierarchy.boundaryBoundaryIndices[i], coarseBoundaryBoundaryMatrix);
-		if (verbose) printf("Boundary Boundary Restriction %d  =  %.4f \n", i, double(clock() - t_begin) / CLOCKS_PER_SEC);
+		// Boundary Deep Matrix
+		if( verbose ) t_begin = clock();
+		BoundaryDeepMatrixConstruction( numBoundaryTexels , numTexels , coarseCoefficients.deepCoefficients , hierarchy.boundaryDeepIndices[i] , coarseCoefficients.boundaryDeepMatrix );
+		if( verbose ) printf( "Boundary Deep Restriction %d  =  %.4f \n" , i , (double)( clock()-t_begin ) / CLOCKS_PER_SEC );
 
+		// Boundary Boundary Matrix
+		if( verbose ) t_begin = clock();
+		BoundaryBoundaryMatrixConstruction( gridAtlas.boundaryGlobalIndex , numBoundaryTexels , fineCoefficients.deepCoefficients , fineCoefficients.boundaryBoundaryMatrix , hierarchy.boundaryCoarseFineProlongation[i] , hierarchy.boundaryFineCoarseRestriction[i-1] , hierarchy.boundaryBoundaryIndices[i] , coarseCoefficients.boundaryBoundaryMatrix );
+		if( verbose ) printf( "Boundary Boundary Restriction %d  =  %.4f \n" , i , (double)( clock()-t_begin ) / CLOCKS_PER_SEC );
 
-		if (i == (levels - 1)) {
-			FullMatrixConstruction(gridAtlas, coarseDeepCoefficients, coarseBoundaryBoundaryMatrix, coarseBoundaryDeepMatrix, coarseSystemMatrix);
-		}
-
-		if (0) {//For debugging
-			printf("Enable for debugging! \n");
-			SparseMatrix<double, int> fullMatrix;
-			FullMatrixConstruction(gridAtlas, coarseDeepCoefficients, coarseBoundaryBoundaryMatrix, coarseBoundaryDeepMatrix, fullMatrix);
-			std::vector<double> ones(numTexels, 1.0);
-			std::vector<double> onesProduct(numTexels, 0);
-			fullMatrix.Multiply(&ones[0], &onesProduct[0]);
-			double cumMass = 0;
-			for (int k = 0; k < numTexels; k++) cumMass += onesProduct[k];
-			if (verbose) printf("Cum Mass Full Matrix %g \n", cumMass);
-
-			currentSystemMatrix = hierarchy.prolongation[i - 1].transpose() * currentSystemMatrix * hierarchy.prolongation[i - 1];
-			SparseMatrix<double, int> compressedSystemMatrix;
-			CompressSparseMatrix(currentSystemMatrix, compressedSystemMatrix);
-
-
-			compressedSystemMatrix.Multiply(&ones[0], &onesProduct[0]);
-			cumMass = 0;
-			for (int k = 0; k < numTexels; k++)cumMass += onesProduct[k];
-			if (verbose) printf("Cum Mass System Matrix %g \n", cumMass);
-			if (!CompareMatrices(fullMatrix, compressedSystemMatrix, hierarchy.gridAtlases[i].nodeInfo, hierarchy.gridAtlases[i].boundaryAndDeepIndex)) {
-				return 0;
-			}
-		}
+		if( i==(levels-1) )	FullMatrixConstruction( gridAtlas , coarseCoefficients , coarseSystemMatrix );
 	}
 
 	if (useDeepReciprocals) {
@@ -416,9 +371,9 @@ int UpdateMultigridCoefficients(const HierarchicalSystem & hierarchy, std::vecto
 }
 
 
-template<class CoarseSolverType, class BoundarySolverType>
-int UpdateMultigridSolvers(const HierarchicalSystem & hierarchy, const SparseMatrix<double, int> & coarseSystemMatrix, const std::vector<MultigridLevelCoefficients<double>> & multigridCoefficients, CoarseSolverType & coarseSolver, std::vector<BoundarySolverType> & boundarySolver, bool verbose = false, bool initSolvers = true) {
-
+template< class CoarseSolverType , class BoundarySolverType >
+int UpdateMultigridSolvers( const HierarchicalSystem & hierarchy , const SparseMatrix<double, int> & coarseSystemMatrix , const std::vector< SystemCoefficients< double > > &multigridCoefficients , VCycleSolvers< BoundarySolverType , CoarseSolverType > &vCycleSolvers , bool verbose=false , bool initSolvers=true )
+{
 	clock_t p_begin;
 	double cumInitTime = 0;
 	double initTime;
@@ -427,74 +382,77 @@ int UpdateMultigridSolvers(const HierarchicalSystem & hierarchy, const SparseMat
 	double updateTime;
 
 	p_begin = clock();
-	if(initSolvers)coarseSolver.init(coarseSystemMatrix);
+	if( initSolvers ) vCycleSolvers.coarse.init( coarseSystemMatrix );
 	initTime = double(clock() - p_begin) / CLOCKS_PER_SEC;
 	cumInitTime += initTime;
 
 	p_begin = clock();
-	coarseSolver.update(coarseSystemMatrix);
+	vCycleSolvers.coarse.update( coarseSystemMatrix );
 	updateTime = double(clock() - p_begin) / CLOCKS_PER_SEC;
 	cumUpdateTime += updateTime;
 
 	int levels = (int)hierarchy.gridAtlases.size();
-	boundarySolver.resize(levels - 1);
+	vCycleSolvers.boundary.resize( levels-1 );
 	for (int i = 0; i < levels - 1; i++) {
 		p_begin = clock();
-		if (initSolvers) boundarySolver[i].init(multigridCoefficients[i].boundaryBoundaryMatrix);
+		if( initSolvers ) vCycleSolvers.boundary[i].init( multigridCoefficients[i].boundaryBoundaryMatrix );
 		initTime = double(clock() - p_begin) / CLOCKS_PER_SEC;
 		cumInitTime += initTime;
 
 		p_begin = clock();
-		boundarySolver[i].update(multigridCoefficients[i].boundaryBoundaryMatrix);
+		vCycleSolvers.boundary[i].update( multigridCoefficients[i].boundaryBoundaryMatrix );
 		updateTime = double(clock() - p_begin) / CLOCKS_PER_SEC;
 		cumUpdateTime += updateTime;
 	}
 
-	if(verbose) printf("Hierarchy solvers init time %.4f \n", cumInitTime);
-	if(verbose) printf("Hierarchy solvers update time %.4f \n", cumUpdateTime);
+	if( verbose ) printf( "Hierarchy solvers init time %.4f\n" , cumInitTime );
+	if( verbose ) printf( "Hierarchy solvers update time %.4f\n" , cumUpdateTime );
 	return 1;
 }
 
 
-template <class CoarseSolverType, class BoundarySolverType>
-int UpdateMultigridCoefficientsAndSolvers(const HierarchicalSystem & hierarchy, std::vector<MultigridLevelCoefficients<double>> & multigridCoefficients, const std::vector<double> & deepCoefficients, const SparseMatrix<double, int> & boundaryBoundaryMatrix, const SparseMatrix<double, int> & boundaryDeepMatrix, CoarseSolverType & coarseSolver, std::vector<BoundarySolverType> & boundarySolver, const SparseMatrix<double, int> & fineSystemMatrix, bool detailVerbose = false, bool initSolvers = true) {
+template< class CoarseSolverType , class BoundarySolverType >
+int UpdateMultigridCoefficientsAndSolvers( const HierarchicalSystem &hierarchy , std::vector< SystemCoefficients< double > > &multigridCoefficients , const SystemCoefficients< double > & systemCoefficients , VCycleSolvers< BoundarySolverType , CoarseSolverType > &vCycleSolvers , const SparseMatrix< double , int > &fineSystemMatrix , bool detailVerbose=false , bool initSolvers=true )
+{
 	SparseMatrix<double, int> coarseSystemMatrix;
 	clock_t t_begin;
-	if (detailVerbose)t_begin = clock();
-	if (!UpdateMultigridCoefficients(hierarchy, multigridCoefficients, deepCoefficients, boundaryBoundaryMatrix, boundaryDeepMatrix, fineSystemMatrix, coarseSystemMatrix, true, detailVerbose)) {
-		printf("ERROR: Unable to update multigrid coefficients! \n");
+	if( detailVerbose ) t_begin = clock();
+	if( !UpdateMultigridCoefficients( hierarchy , multigridCoefficients , systemCoefficients , fineSystemMatrix , coarseSystemMatrix , true , detailVerbose ) )
+	{
+		fprintf( stderr , "[ERROR] Unable to update multigrid coefficients!\n" );
 		return 0;
 	}
-	if(detailVerbose)printf("Hierarchy coefficients update =  %.4f \n", double(clock() - t_begin) / CLOCKS_PER_SEC);
+	if( detailVerbose ) printf( "Hierarchy coefficients update =  %.4f \n" , (double)( clock()-t_begin ) / CLOCKS_PER_SEC );
 
 	t_begin = clock();
-	if (!UpdateMultigridSolvers(hierarchy, coarseSystemMatrix, multigridCoefficients, coarseSolver, boundarySolver, detailVerbose, initSolvers)) {
-		printf("ERROR: Unable to update multigrid solvers! \n");
+	if( !UpdateMultigridSolvers( hierarchy , coarseSystemMatrix , multigridCoefficients , vCycleSolvers , detailVerbose , initSolvers ) )
+	{
+		fprintf( stderr , "[ERROR] Unable to update multigrid solvers!\n" );
 		return 0;
 	}
-	if (detailVerbose)printf("Hierarchy solvers =  %.4f \n", double(clock() - t_begin) / CLOCKS_PER_SEC);
+	if( detailVerbose ) printf( "Hierarchy solvers =  %.4f \n" , (double)( clock()-t_begin ) / CLOCKS_PER_SEC );
 
 	return 1;
 }
 
 template< class Real , class CoarseSolverType , class BoundarySolverType , class DirectSolverType >
-typename std::enable_if< std::is_same< Real , float >::value , int >::type UpdateLinearSystem( double screenWeight , double stiffnessWeight , const HierarchicalSystem & hierarchy, std::vector<MultigridLevelCoefficients<Real>> & multigridCoefficients,
-	const std::vector<double> & deepMassCoefficients, const std::vector<double> & deepStiffnessCoefficients,
-	const SparseMatrix<double, int> & boundaryBoundaryMassMatrix,const SparseMatrix<double, int> & boundaryBoundaryStiffnessMatrix,
-	const SparseMatrix<double, int> & boundaryDeepMassMatrix, const SparseMatrix<double, int> & boundaryDeepStiffnessMatrix,
-	CoarseSolverType & coarseSolver, std::vector<BoundarySolverType> & boundarySolver, DirectSolverType & fineSolver,
-	const SparseMatrix<double, int> & fineSystemMatrix, bool detailVerbose = false, bool initSolvers = true, bool updateFineSolver = false){
-	std::vector<double> fineDeepCoefficients;
-	int numDeepCoefficients = (int)deepMassCoefficients.size();
-	fineDeepCoefficients.resize(numDeepCoefficients);
+typename std::enable_if< std::is_same< Real , float >::value , int >::type UpdateLinearSystem
+(
+	double screenWeight , double stiffnessWeight , const HierarchicalSystem &hierarchy , std::vector< SystemCoefficients< Real > > &multigridCoefficients ,
+	const SystemCoefficients< double > &mass , const SystemCoefficients< double > &stiffness ,
+	VCycleSolvers< BoundarySolverType , CoarseSolverType > &vCycleSolvers , DirectSolverType &fineSolver ,
+	const SparseMatrix< double , int > &fineSystemMatrix ,
+	bool detailVerbose=false , bool initSolvers=true , bool updateFineSolver=false )
+{
+	SystemCoefficients< double > fineCoefficients;
+	int numDeepCoefficients = (int)mass.deepCoefficients.size();
+	fineCoefficients.deepCoefficients.resize( numDeepCoefficients );
 
 #pragma omp parallel for
-	for (int i = 0; i < numDeepCoefficients; i++) fineDeepCoefficients[i] = deepMassCoefficients[i] * screenWeight + deepStiffnessCoefficients[i] * stiffnessWeight;
+	for( int i=0 ; i<numDeepCoefficients ; i++ ) fineCoefficients.deepCoefficients[i] = mass.deepCoefficients[i] * screenWeight + stiffness.deepCoefficients[i] * stiffnessWeight;
 
-
-	SparseMatrix< double , int > fineBoundaryBoundaryMatrix , fineBoundaryDeepMatrix;
-	const SparseMatrix< double , int >* in[][2] = { { &boundaryBoundaryMassMatrix , &boundaryBoundaryStiffnessMatrix } , { &boundaryDeepMassMatrix , &boundaryDeepStiffnessMatrix } };
-	SparseMatrix< double , int >* out[] = { &fineBoundaryBoundaryMatrix , &fineBoundaryDeepMatrix };
+	const SparseMatrix< double , int >* in[][2] = { { &mass.boundaryBoundaryMatrix , &stiffness.boundaryBoundaryMatrix } , { &mass.boundaryDeepMatrix , &stiffness.boundaryDeepMatrix } };
+	SparseMatrix< double , int >* out[] = { &fineCoefficients.boundaryBoundaryMatrix , &fineCoefficients.boundaryDeepMatrix };
 	for( int ii=0 ; ii<2 ; ii++ )
 	{
 		const SparseMatrix< double , int >& _in1 = *(in[ii][0]);
@@ -508,9 +466,10 @@ typename std::enable_if< std::is_same< Real , float >::value , int >::type Updat
 			for( int j=0 ; j<_out.rowSizes[i] ; j++ ) _out[i][j] = MatrixEntry< double , int >( _in1[i][j].N , _in1[i][j].Value * screenWeight + _in2[i][j].Value * stiffnessWeight );
 		}
 	}
-	std::vector<MultigridLevelCoefficients<double>> _multigridCoefficients;
-	if (!UpdateMultigridCoefficientsAndSolvers(hierarchy, _multigridCoefficients, fineDeepCoefficients, fineBoundaryBoundaryMatrix, fineBoundaryDeepMatrix, coarseSolver, boundarySolver, fineSystemMatrix, detailVerbose,initSolvers)) {
-		printf("ERROR: Unable to initialize multigrid coefficients and solver! \n");
+	std::vector< SystemCoefficients< double > > _multigridCoefficients;
+	if( !UpdateMultigridCoefficientsAndSolvers( hierarchy , _multigridCoefficients , fineCoefficients , vCycleSolvers , fineSystemMatrix , detailVerbose , initSolvers ) )
+	{
+		fprintf( stderr , "[ERROR] Unable to initialize multigrid coefficients and solver!\n" );
 		return 0;
 	}
 	int levels = (int)hierarchy.gridAtlases.size();
@@ -538,22 +497,24 @@ typename std::enable_if< std::is_same< Real , float >::value , int >::type Updat
 	return 1;
 }
 template< class Real , class CoarseSolverType , class BoundarySolverType , class DirectSolverType >
-typename std::enable_if< std::is_same< Real , double >::value , int >::type UpdateLinearSystem( double screenWeight , double stiffnessWeight , const HierarchicalSystem & hierarchy, std::vector<MultigridLevelCoefficients<Real>> & multigridCoefficients,
-	const std::vector<double> & deepMassCoefficients, const std::vector<double> & deepStiffnessCoefficients,
-	const SparseMatrix<double, int> & boundaryBoundaryMassMatrix,const SparseMatrix<double, int> & boundaryBoundaryStiffnessMatrix,
-	const SparseMatrix<double, int> & boundaryDeepMassMatrix, const SparseMatrix<double, int> & boundaryDeepStiffnessMatrix,
-	CoarseSolverType & coarseSolver, std::vector<BoundarySolverType> & boundarySolver, DirectSolverType & fineSolver,
-	const SparseMatrix<double, int> & fineSystemMatrix, bool detailVerbose = false, bool initSolvers = true, bool updateFineSolver = false){
-	std::vector<double> fineDeepCoefficients;
-	int numDeepCoefficients = (int)deepMassCoefficients.size();
-	fineDeepCoefficients.resize(numDeepCoefficients);
+typename std::enable_if< std::is_same< Real , double >::value , int >::type UpdateLinearSystem
+(
+	double screenWeight , double stiffnessWeight , const HierarchicalSystem &hierarchy , std::vector< SystemCoefficients< Real > > &multigridCoefficients ,
+	const SystemCoefficients< double > &mass , const SystemCoefficients< double > &stiffness ,
+	VCycleSolvers< BoundarySolverType , CoarseSolverType > &vCycleSolvers , DirectSolverType &fineSolver ,
+	const SparseMatrix< double , int > &fineSystemMatrix ,
+	bool detailVerbose=false , bool initSolvers=true , bool updateFineSolver=false )
+{
+	SystemCoefficients< double > fineCoefficients;
+	int numDeepCoefficients = (int)mass.deepCoefficients.size();
+	fineCoefficients.deepCoefficients.resize( numDeepCoefficients );
 
 #pragma omp parallel for
-	for (int i = 0; i < numDeepCoefficients; i++) fineDeepCoefficients[i] = deepMassCoefficients[i] * screenWeight + deepStiffnessCoefficients[i] * stiffnessWeight;
+	for( int i=0 ; i<numDeepCoefficients ; i++ ) fineCoefficients.deepCoefficients[i] = mass.deepCoefficients[i] * screenWeight + stiffness.deepCoefficients[i] * stiffnessWeight;
 
-	SparseMatrix< double , int > fineBoundaryBoundaryMatrix , fineBoundaryDeepMatrix;
-	const SparseMatrix< double , int >* in[][2] = { { &boundaryBoundaryMassMatrix , &boundaryBoundaryStiffnessMatrix } , { &boundaryDeepMassMatrix , &boundaryDeepStiffnessMatrix } };
-	SparseMatrix< double , int >* out[] = { &fineBoundaryBoundaryMatrix , &fineBoundaryDeepMatrix };
+	const SparseMatrix< double , int >* in[][2] = { { &mass.boundaryBoundaryMatrix , &stiffness.boundaryBoundaryMatrix } , { &mass.boundaryDeepMatrix , &stiffness.boundaryDeepMatrix } };
+	SparseMatrix< double , int >* out[] = { &fineCoefficients.boundaryBoundaryMatrix , &fineCoefficients.boundaryDeepMatrix };
+
 	for( int ii=0 ; ii<2 ; ii++ )
 	{
 		const SparseMatrix< double , int >& _in1 = *(in[ii][0]);
@@ -567,8 +528,9 @@ typename std::enable_if< std::is_same< Real , double >::value , int >::type Upda
 			for( int j=0 ; j<_out.rowSizes[i] ; j++ ) _out[i][j] = MatrixEntry< double , int >( _in1[i][j].N , _in1[i][j].Value * screenWeight + _in2[i][j].Value * stiffnessWeight );
 		}
 	}
-	if (!UpdateMultigridCoefficientsAndSolvers(hierarchy, multigridCoefficients, fineDeepCoefficients, fineBoundaryBoundaryMatrix, fineBoundaryDeepMatrix, coarseSolver, boundarySolver, fineSystemMatrix, detailVerbose, initSolvers)) {
-		printf("ERROR: Unable to initialize multigrid coefficients and solver! \n");
+	if ( !UpdateMultigridCoefficientsAndSolvers( hierarchy , multigridCoefficients , fineCoefficients , vCycleSolvers , fineSystemMatrix , detailVerbose , initSolvers ) )
+	{
+		fprintf( stderr , "[ERROR] Unable to initialize multigrid coefficients and solver! \n");
 		return 0;
 	}
 

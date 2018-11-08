@@ -174,27 +174,26 @@ public:
 	static std::vector< AtlasChart > atlasCharts;
 	static std::vector< std::vector< SquareMatrix< double , 2 > > > parameterMetric;
 
-	static std::vector< MultigridLevelCoefficients< Real > > multigridCoefficients[2];
+	static std::vector< SystemCoefficients< Real > > multigridCoefficients[2];
 	static std::vector< MultigridLevelVariables   < Real > > multigridVariables[2];
 
 #if defined( USE_CHOLMOD )
-	typedef  std::vector< CholmodCholeskySolver< Real , 1 > > BoundarySolverType;
-	typedef  CholmodCholeskySolver< Real , 1 >  CoarseSolverType;
-	typedef  CholmodCholeskySolver< Real , 1 > DirectSolverType;
+	typedef CholmodCholeskySolver< Real , 1 > BoundarySolverType;
+	typedef CholmodCholeskySolver< Real , 1 > CoarseSolverType;
+	typedef CholmodCholeskySolver< Real , 1 > DirectSolverType;
 #elif defined( USE_EIGEN_SIMPLICIAL )
-	typedef  std::vector< EigenCholeskySolver< Real , 1 > > BoundarySolverType;
-	typedef  EigenCholeskySolver< Real , 1 >  CoarseSolverType;
-	typedef  EigenCholeskySolver< Real , 1 > DirectSolverType;
+	typedef EigenCholeskySolver< Real , 1 > BoundarySolverType;
+	typedef EigenCholeskySolver< Real , 1 > CoarseSolverType;
+	typedef EigenCholeskySolver< Real , 1 > DirectSolverType;
 #elif defined( USE_EIGEN_PARDISO )
-	typedef  std::vector< EigenPardisoSolver< Real , 1 > > BoundarySolverType;
-	typedef  EigenPardisoSolver< Real , 1 > CoarseSolverType;
-	typedef  EigenPardisoSolver< Real , 1 > DirectSolverType;
+	typedef EigenPardisoSolver< Real , 1 > BoundarySolverType;
+	typedef EigenPardisoSolver< Real , 1 > CoarseSolverType;
+	typedef EigenPardisoSolver< Real , 1 > DirectSolverType;
 #else
 #error "[ERROR] No solver defined!"
 #endif
-
-	static BoundarySolverType boundarySolvers[2];
-	static CoarseSolverType coarseSolvers[2];
+	
+	static VCycleSolvers< BoundarySolverType , CoarseSolverType > vCycleSolvers[2];
 	static DirectSolverType fineSolvers[2];
 
 	static std::vector< MultigridLevelIndices< Real > > multigridIndices;
@@ -213,12 +212,8 @@ public:
 	static std::vector< std::pair< int , int > > interiorCellLineIndex;
 
 	//Linear Operators
-	static std::vector< double > deepMassCoefficients;
-	static std::vector< double > deepStiffnessCoefficients;
-	static SparseMatrix< double , int > boundaryBoundaryMassMatrix;
-	static SparseMatrix< double , int > boundaryBoundaryStiffnessMatrix;
-	static SparseMatrix< double , int > boundaryDeepMassMatrix;
-	static SparseMatrix< double , int > boundaryDeepStiffnessMatrix;
+	static SystemCoefficients< double > massCoefficients;
+	static SystemCoefficients< double > stiffnessCoefficients;
 
 	static unsigned char * outputBuffer;
 
@@ -288,12 +283,11 @@ template< class Real > HierarchicalSystem											GrayScottReactionDiffusion< 
 template< class Real > unsigned char *												GrayScottReactionDiffusion< Real >::outputBuffer;
 template< class Real > std::vector< MultigridLevelIndices< Real > >					GrayScottReactionDiffusion< Real >::multigridIndices;
 
-template< class Real > std::vector< MultigridLevelCoefficients< Real > >			GrayScottReactionDiffusion< Real >::multigridCoefficients[2];
+template< class Real > std::vector< SystemCoefficients< Real > >					GrayScottReactionDiffusion< Real >::multigridCoefficients[2];
 template< class Real > std::vector< MultigridLevelVariables< Real > >				GrayScottReactionDiffusion< Real >::multigridVariables[2];
-template< class Real > typename GrayScottReactionDiffusion< Real >::CoarseSolverType		GrayScottReactionDiffusion< Real >::coarseSolvers[2];
+template< class Real > VCycleSolvers< typename GrayScottReactionDiffusion< Real >::BoundarySolverType , typename GrayScottReactionDiffusion< Real >::CoarseSolverType >		GrayScottReactionDiffusion< Real >::vCycleSolvers[2];
 
 template< class Real > typename GrayScottReactionDiffusion< Real >::DirectSolverType		GrayScottReactionDiffusion< Real >::fineSolvers[2];
-template< class Real > typename GrayScottReactionDiffusion< Real >::BoundarySolverType		GrayScottReactionDiffusion< Real >::boundarySolvers[2];
 
 
 //Samples
@@ -313,12 +307,8 @@ template< class Real > std::vector< Point2D< Real > >								GrayScottReactionDi
 template< class Real > std::vector< Point2D< Real > >								GrayScottReactionDiffusion< Real >::fineBoundaryValues;
 template< class Real > std::vector< Point2D< Real > >								GrayScottReactionDiffusion< Real >::fineBoundaryRHS;
 
-template< class Real > std::vector< double >										GrayScottReactionDiffusion< Real >::deepMassCoefficients;
-template< class Real > std::vector< double >										GrayScottReactionDiffusion< Real >::deepStiffnessCoefficients;
-template< class Real > SparseMatrix< double , int >									GrayScottReactionDiffusion< Real >::boundaryBoundaryMassMatrix;
-template< class Real > SparseMatrix< double , int >									GrayScottReactionDiffusion< Real >::boundaryBoundaryStiffnessMatrix;
-template< class Real > SparseMatrix< double , int >									GrayScottReactionDiffusion< Real >::boundaryDeepMassMatrix;
-template< class Real > SparseMatrix< double , int >									GrayScottReactionDiffusion< Real >::boundaryDeepStiffnessMatrix;
+template< class Real > SystemCoefficients< double >									GrayScottReactionDiffusion< Real >::massCoefficients;
+template< class Real > SystemCoefficients< double >									GrayScottReactionDiffusion< Real >::stiffnessCoefficients;
 
 template< class Real > int															GrayScottReactionDiffusion< Real >::whichConcentration = 1;
 template< class Real > int															GrayScottReactionDiffusion< Real >::updateCount = 0;
@@ -342,7 +332,7 @@ int GrayScottReactionDiffusion< Real >::SetRightHandSide( bool verbose )
 	for( int i=0 ; i<boundaryGlobalIndex.size() ; i++ ) coarseBoundaryValues[i] = ab_x[ boundaryGlobalIndex[i] ];
 	coarseBoundaryFineBoundaryProlongation.Multiply( &coarseBoundaryValues[0] , &fineBoundaryValues[0] );
 
-	for( int ab=0 ; ab<2 ; ab++ ) MultiplyBySystemMatrix_NoReciprocals( deepMassCoefficients , boundaryDeepMassMatrix , boundaryBoundaryMassMatrix , hierarchy.gridAtlases[0].boundaryGlobalIndex , hierarchy.gridAtlases[0].rasterLines , multigridVariables[ab][0].x , multigridVariables[ab][0].rhs );
+	for( int ab=0 ; ab<2 ; ab++ ) MultiplyBySystemMatrix_NoReciprocals( massCoefficients , hierarchy.gridAtlases[0].boundaryGlobalIndex , hierarchy.gridAtlases[0].rasterLines , multigridVariables[ab][0].x , multigridVariables[ab][0].rhs );
 	auto ABFunction = [&]( Point2D< Real > ab , SquareMatrix< Real , 2 > )
 	{
 		return Point2D< Real >
@@ -403,7 +393,7 @@ int GrayScottReactionDiffusion< Real >::UpdateApproximateSolution( bool verbose 
 		clock_t begin = clock();
 		for( int ab=0 ; ab<2 ; ab++ )
 		{
-			VCycle( multigridVariables[ab] , multigridCoefficients[ab] , multigridIndices , boundarySolvers[ab] , coarseSolvers[ab] , detailVerbose , detailVerbose );
+			VCycle( multigridVariables[ab] , multigridCoefficients[ab] , multigridIndices , vCycleSolvers[ab] , detailVerbose , detailVerbose );
 #pragma omp parallel for
 			for( int i=0 ; i<multigridVariables[ab][0].x.size() ; i++ ) multigridVariables[ab][0].x[i] = std::max< Real >( multigridVariables[ab][0].x[i] , 0 );
 		}
@@ -674,12 +664,12 @@ int GrayScottReactionDiffusion< Real >::InitializeSystem( const int width , cons
 		int ret = 0;
 		switch( MatrixQuadrature.value )
 		{
-			case 1:  ret = InitializeMassAndStiffness< 1>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-			case 3:  ret = InitializeMassAndStiffness< 3>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-			case 6:  ret = InitializeMassAndStiffness< 6>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-			case 12: ret = InitializeMassAndStiffness<12>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-			case 24: ret = InitializeMassAndStiffness<24>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-			case 32: ret = InitializeMassAndStiffness<32>( deepMassCoefficients , deepStiffnessCoefficients , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
+			case 1:  ret = InitializeMassAndStiffness< 1>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
+			case 3:  ret = InitializeMassAndStiffness< 3>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
+			case 6:  ret = InitializeMassAndStiffness< 6>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
+			case 12: ret = InitializeMassAndStiffness<12>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
+			case 24: ret = InitializeMassAndStiffness<24>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
+			case 32: ret = InitializeMassAndStiffness<32>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
 			default: fprintf( stderr , "[ERROR] Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles\n" );
 		}
 		if( !ret ){ fprintf( stderr , "[ERROR] Failed intialization!\n" ) ; return 0; }
@@ -689,8 +679,8 @@ int GrayScottReactionDiffusion< Real >::InitializeSystem( const int width , cons
 	if( UseDirectSolver.set )
 	{
 		clock_t t_begin = clock();
-		FullMatrixConstruction( hierarchy.gridAtlases[0] , deepMassCoefficients , boundaryBoundaryMassMatrix , boundaryDeepMassMatrix , mass );
-		FullMatrixConstruction( hierarchy.gridAtlases[0] , deepStiffnessCoefficients , boundaryBoundaryStiffnessMatrix , boundaryDeepStiffnessMatrix , stiffness );
+		FullMatrixConstruction( hierarchy.gridAtlases[0] , massCoefficients , mass );
+		FullMatrixConstruction( hierarchy.gridAtlases[0] , stiffnessCoefficients , stiffness );
 		systemMatrices[0] = mass + stiffness * diffusionRates[0] * speed;
 		systemMatrices[1] = mass + stiffness * diffusionRates[1] * speed;
 		if( Verbose.set ) printf( "\tAssembled matrices: %.2f(s)\n" , double(clock() - t_begin) / CLOCKS_PER_SEC );
@@ -715,12 +705,7 @@ int GrayScottReactionDiffusion< Real >::InitializeSystem( const int width , cons
 
 	t_begin = clock();
 	for( int ab=0 ; ab<2 ; ab++ )
-		if( !UpdateLinearSystem( 1.0 , diffusionRates[ab] * speed , hierarchy , multigridCoefficients[ab] ,
-			deepMassCoefficients , deepStiffnessCoefficients ,
-			boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix ,
-			boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix ,
-			coarseSolvers[ab] , boundarySolvers[ab] , fineSolvers[ab] ,
-			systemMatrices[ab] , DetailVerbose.set , true , UseDirectSolver.set ) )
+		if( !UpdateLinearSystem( 1.0 , diffusionRates[ab] * speed , hierarchy , multigridCoefficients[ab] , massCoefficients , stiffnessCoefficients , vCycleSolvers[ab] , fineSolvers[ab] , systemMatrices[ab] , DetailVerbose.set , true , UseDirectSolver.set ) )
 		{ fprintf( stderr , "[ERROR] Failed system update!\n" ) ; return 0; }
 	if( Verbose.set ) printf( "\tInitialized multigrid coefficients: %.2f(s)\n" , double(clock() - t_begin) / CLOCKS_PER_SEC );
 
