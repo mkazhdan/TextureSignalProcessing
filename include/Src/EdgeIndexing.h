@@ -146,58 +146,76 @@ int InitializeFineBoundaryEdgeIndexing(const std::vector<int> & fineBoundaryNode
 	return 1;
 }
 
-int InitializeBoundaryCoarseToFineBoundaryOneFormProlongation(const SparseMatrix<double, int> & boundaryCoarseToFineNodeProlongation, std::unordered_map<unsigned long long, int> & boundaryCoarseEdgeIndex, std::unordered_map<unsigned long long, int> & boundaryFineEdgeIndex, SparseMatrix<double, int> & boundaryFineToBoundaryCoarseOneFormProlongation) {
+int InitializeBoundaryCoarseToFineBoundaryOneFormProlongation( const SparseMatrix< double , int > &boundaryCoarseToFineNodeProlongation , std::unordered_map< unsigned long long , int > &boundaryCoarseEdgeIndex , std::unordered_map< unsigned long long , int > &boundaryFineEdgeIndex , SparseMatrix< double , int > &boundaryFineToBoundaryCoarseOneFormProlongation )
+{
+	std::vector< Eigen::Triplet< double > > coarseToFineOneFormProlongation;
+	std::vector< std::vector< Eigen::Triplet< double > > > _coarseToFineOneFormProlongation( omp_get_max_threads() );
+	std::vector< std::pair< unsigned long long , int > > _boundaryFineEdgeIndex;
 
-	std::vector<Eigen::Triplet<double>> coarseToFineOneFormProlongation;
-	for (auto fineEdgeIter = boundaryFineEdgeIndex.begin();fineEdgeIter != boundaryFineEdgeIndex.end(); fineEdgeIter++) {
-		unsigned long long fineEdgeKey = (*fineEdgeIter).first;
-		int fineEdgeId = (*fineEdgeIter).second;
+	// Transform the unordered_map into a vector of pairs for parallelization
+	_boundaryFineEdgeIndex.reserve( boundaryFineEdgeIndex.size() );
+	for( auto iter=boundaryFineEdgeIndex.begin() ; iter!=boundaryFineEdgeIndex.end() ; iter++ ) _boundaryFineEdgeIndex.push_back( std::pair< unsigned long long , int >( iter->first , iter->second ) );
+
+#pragma omp parallel for
+	for( int i=0 ; i<_boundaryFineEdgeIndex.size() ; i++ )
+	{
+		int thread = omp_get_thread_num();
+		unsigned long long fineEdgeKey = _boundaryFineEdgeIndex[i].first;
+		int fineEdgeId = _boundaryFineEdgeIndex[i].second;
 
 		unsigned long fineEdgeCorners[2];
-		GetMeshEdgeIndices(fineEdgeKey, fineEdgeCorners[0], fineEdgeCorners[1]);
+		GetMeshEdgeIndices( fineEdgeKey , fineEdgeCorners[0] , fineEdgeCorners[1] );
 
-		for (int k = 0; k < boundaryCoarseToFineNodeProlongation.RowSize(fineEdgeCorners[0]); k++) {
+		for( int k=0 ; k<boundaryCoarseToFineNodeProlongation.RowSize( fineEdgeCorners[0] ) ; k++ )
+		{
+			int coarseIndex1 = boundaryCoarseToFineNodeProlongation[ fineEdgeCorners[0] ][k].N;
+			double coarseValue1 = boundaryCoarseToFineNodeProlongation[ fineEdgeCorners[0] ][k].Value;
 
-			int coarseIndex1 = boundaryCoarseToFineNodeProlongation[fineEdgeCorners[0]][k].N;
-			double coarseValue1 = boundaryCoarseToFineNodeProlongation[fineEdgeCorners[0]][k].Value;
+			for( int l=0 ; l<boundaryCoarseToFineNodeProlongation.RowSize( fineEdgeCorners[1] ) ; l++ )
+			{
+				int coarseIndex2 = boundaryCoarseToFineNodeProlongation[ fineEdgeCorners[1] ][l].N;
+				double coarseValue2 = boundaryCoarseToFineNodeProlongation[ fineEdgeCorners[1] ][l].Value;
 
-			for (int l = 0; l < boundaryCoarseToFineNodeProlongation.RowSize(fineEdgeCorners[1]); l++) {
-
-				int coarseIndex2 = boundaryCoarseToFineNodeProlongation[fineEdgeCorners[1]][l].N;
-				double coarseValue2 = boundaryCoarseToFineNodeProlongation[fineEdgeCorners[1]][l].Value;
-				
-				if (coarseIndex1 != coarseIndex2){
+				if( coarseIndex1!=coarseIndex2 )
+				{
 					bool foundEdge = false;
-					unsigned long long coarseEdgeKey = SetMeshEdgeKey(coarseIndex1, coarseIndex2);
-					auto coarseEdgePtr = boundaryCoarseEdgeIndex.find(coarseEdgeKey);
-					if (coarseEdgePtr != boundaryCoarseEdgeIndex.end()) {
+					unsigned long long coarseEdgeKey = SetMeshEdgeKey( coarseIndex1 , coarseIndex2 );
+					auto coarseEdgePtr = boundaryCoarseEdgeIndex.find( coarseEdgeKey );
+					if( coarseEdgePtr!=boundaryCoarseEdgeIndex.end() )
+					{
 						foundEdge = true;
 						int coarseEdgeId = coarseEdgePtr->second;
-						coarseToFineOneFormProlongation.push_back(Eigen::Triplet<double>(fineEdgeId, coarseEdgeId, coarseValue1 * coarseValue2));
+						_coarseToFineOneFormProlongation[thread].push_back( Eigen::Triplet< double >( fineEdgeId , coarseEdgeId , coarseValue1 * coarseValue2 ) );
 					}
-					else{
+					else
+					{
 						coarseEdgeKey = SetMeshEdgeKey(coarseIndex2, coarseIndex1);
 						coarseEdgePtr = boundaryCoarseEdgeIndex.find(coarseEdgeKey);
-						if (coarseEdgePtr != boundaryCoarseEdgeIndex.end()) {
+						if( coarseEdgePtr!=boundaryCoarseEdgeIndex.end() )
+						{
 							foundEdge = true;
 							int coarseEdgeId = coarseEdgePtr->second;
-							coarseToFineOneFormProlongation.push_back(Eigen::Triplet<double>(fineEdgeId, coarseEdgeId, -coarseValue1 *coarseValue2));
+							_coarseToFineOneFormProlongation[thread].push_back( Eigen::Triplet< double >( fineEdgeId , coarseEdgeId , -coarseValue1 *coarseValue2 ) );
 						}
 					}
-					if (!foundEdge){
-						printf("ERROR : Edge (%d,%d) not found.\n", coarseIndex1, coarseIndex2);
-						return 0;
-					}
+					if( !foundEdge ) fprintf( stderr , "[ERROR] Edge (%d,%d) not found\n" , coarseIndex1 , coarseIndex2 ) , exit( 0 );
 				}
 			}
 		}
 	}
-	
+
+	// Merge the prolongation entries
+	{
+		size_t count = 0;
+		for( int i=0 ; i<_coarseToFineOneFormProlongation.size() ; i++ ) count += _coarseToFineOneFormProlongation[i].size();
+		coarseToFineOneFormProlongation.reserve( count );
+		for( int i=0 ; i<_coarseToFineOneFormProlongation.size() ; i++ ) for( int j=0 ; j<_coarseToFineOneFormProlongation[i].size() ; j++ ) coarseToFineOneFormProlongation.push_back( _coarseToFineOneFormProlongation[i][j] );
+	}
+
 	int numCoarseOneForms = (int)boundaryCoarseEdgeIndex.size();
 	int numFineOneForms = (int)boundaryFineEdgeIndex.size();
 
-	boundaryFineToBoundaryCoarseOneFormProlongation = SetSparseMatrix(coarseToFineOneFormProlongation, numFineOneForms, numCoarseOneForms, false);
-
+	boundaryFineToBoundaryCoarseOneFormProlongation = SetSparseMatrix( coarseToFineOneFormProlongation , numFineOneForms , numCoarseOneForms , false );
 	return 1;
 }
 #endif // EDGE_INDEXING_INCLUDED

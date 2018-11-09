@@ -49,7 +49,7 @@ int InitializeChartMassAndStiffness
 	const std::vector< Point3D< Real > >& inputSignal ,
 	const std::vector< Point3D< Real > >& boundarySignal ,
 	std::vector< Real >& texelToCellCoeffs ,
-	std::vector< Eigen::Triplet< Real > > boundaryCellStiffnessTriplets[3],
+	std::vector< Eigen::Triplet< Point3D< Real > > > &boundaryCellStiffnessTriplets ,
 	bool computeDivergence,
 	std::unordered_map<unsigned long long, int> & fineBoundaryEdgeIndex,
 	std::unordered_map<unsigned long long, int> & coarseEdgeIndex,
@@ -212,7 +212,7 @@ int InitializeChartMassAndStiffness
 			auto TextureToCell = [&]( Point2D< Real > p ){ return Point2D< Real >( ( p[0] / gridChart.cellSizeW ) - i , ( p[1] / gridChart.cellSizeH ) - j ); };
 
 			int localInteriorIndex = gridChart.localInteriorCellIndex(i,j) , localBoundaryIndex = gridChart.localBoundaryCellIndex(i,j);
-			if( localInteriorIndex!=-1 && localBoundaryIndex!=-1 ){ printf( "[ERROR] Cell simultaneosly interior and boundary!\n" ) ; return 0; }
+			if( localInteriorIndex!=-1 && localBoundaryIndex!=-1 ){ fprintf( stderr , "[ERROR] Cell simultaneosly interior and boundary!\n" ) ; return 0; }
 
 			// If the cell is entirely within the triangle...
 			if( CellInTriangle( i , j , parametricVertices ) && localInteriorIndex!=-1 )
@@ -269,7 +269,7 @@ int InitializeChartMassAndStiffness
 						for( int s=0 ; s<Samples ; s++ )
 						{
 							fragment_samples[s] = polygon[0] + dm[0] * TriangleIntegrator<Samples>::Positions[s][0] + dm[1] * TriangleIntegrator<Samples>::Positions[s][1];
-							if( !InUnitSquare( fragment_samples[s] ) ){ printf( "[ERROR] Interior sample out of unit box! (%f %f)\n" , fragment_samples[s][0] , fragment_samples[s][1]) ; return 0; }
+							if( !InUnitSquare( fragment_samples[s] ) ){ fprintf( stderr , "[ERROR] Interior sample out of unit box! (%f %f)\n" , fragment_samples[s][0] , fragment_samples[s][1]) ; return 0; }
 						}
 
 						// Integrate scalar product and gradient field
@@ -379,7 +379,7 @@ int InitializeChartMassAndStiffness
 								for( int s=0 ; s<Samples ; s++ )
 								{
 									fragment_samples[s] = polygon.vertices[0] + dm[0] * TriangleIntegrator<Samples>::Positions[s][0] + dm[1] * TriangleIntegrator<Samples>::Positions[s][1];
-									if( !InUnitTriangle( fragment_samples[s] ) ){ printf( "[ERROR] Boundary sample out of unit right triangle! (%f %f)\n" , fragment_samples[s][0] , fragment_samples[s][1] ) ; return 0; }
+									if( !InUnitTriangle( fragment_samples[s] ) ){ fprintf( stderr , "[ERROR] Boundary sample out of unit right triangle! (%f %f)\n" , fragment_samples[s][0] , fragment_samples[s][1] ) ; return 0; }
 									else
 									{
 										fragment_samples[s][0] = std::max< Real >( fragment_samples[s][0] , 0 );
@@ -438,7 +438,7 @@ int InitializeChartMassAndStiffness
 							else
 							{
 								zeroAreaElementCount++;
-								printf( "[WARNING] Zero area polygon at cell %d %d \n", gridChart.cornerCoords[0] + i, gridChart.cornerCoords[1] + j);
+								fprintf( stderr , "[WARNING] Zero area polygon at cell %d %d \n", gridChart.cornerCoords[0] + i, gridChart.cornerCoords[1] + j);
 							}
 						}
 
@@ -446,7 +446,7 @@ int InitializeChartMassAndStiffness
 						for( int k=0 ; k<6 ; k++ ) for( int l=0 ; l<6 ; l++ ) integratedPolygonMass += polygonMass(k,l);
 						if( fabs( integratedPolygonMass - polygonArea )>PRECISION_ERROR )
 						{
-							printf( "[ERROR] out of precision! \n");
+							fprintf( stderr , "[ERROR] out of precision! \n");
 							//return 0;
 						}
 						//#pragma omp critical
@@ -465,7 +465,7 @@ int InitializeChartMassAndStiffness
 		}
 	}
 
-	if( zeroAreaElementCount ) printf( "[WARNING] Element with zero area = %d\n" , zeroAreaElementCount );
+	if( zeroAreaElementCount ) fprintf( stderr , "[WARNING] Element with zero area = %d\n" , zeroAreaElementCount );
 
 	int offset_i[4] = { 0, 1 , 1 ,0 };
 	int offset_j[4] = { 0, 0 , 1 ,1 };
@@ -589,9 +589,8 @@ int InitializeChartMassAndStiffness
 				if (computeCellBasedStiffness) {
 					//Add cell data
 					int _fineBoundaryIndex = fineBoundaryIndex[indicesInterior[k]];
-					for (int c = 0; c < 3; c++) {
-						boundaryCellStiffnessTriplets[c].push_back(Eigen::Triplet< Real >(_fineBoundaryIndex, globalCellIndex, prod[c][k]));
-					}
+					Point3D< Real > p( prod[0][k] , prod[1][k] , prod[2][k] );
+					boundaryCellStiffnessTriplets.push_back( Eigen::Triplet< Point3D< Real > >( _fineBoundaryIndex , globalCellIndex , p ) );
 				}
 				if (computeDivergence){
 					if (!coarseEdgeIndexInitialized) {
@@ -644,9 +643,8 @@ int InitializeChartMassAndStiffness
 				}
 
 				for (int k = 0; k < 6; k++) {
-					for (int c = 0; c < 3; c++) {
-						boundaryCellStiffnessTriplets[c].push_back(Eigen::Triplet< Real >(fineTriangleElementIndices[k], globalCellIndex, prod[c][k]));
-					}
+					Point3D< Real > p( prod[0][k] , prod[1][k] , prod[2][k] );
+					boundaryCellStiffnessTriplets.push_back( Eigen::Triplet< Point3D< Real > >( fineTriangleElementIndices[k] , globalCellIndex , p ) );
 				}
 			}
 			for (int k = 0; k < 6; k++)for (int l = 0; l < 6; l++) {
@@ -712,11 +710,18 @@ int InitializeMassAndStiffness
 	std::vector< Real >& deepDivergenceCoefficients
 )
 {
+	auto MergeTriplets = [] ( const std::vector< std::vector< Eigen::Triplet< Real > > > &inTriplets , std::vector< Eigen::Triplet< Real > > &outTriplets )
+	{
+		size_t count = 0;
+		for( int i=0 ; i<inTriplets.size() ; i++ ) count += inTriplets[i].size();
+		outTriplets.reserve( count );
+		for( int i=0 ; i<inTriplets.size() ; i++ ) for( int j=0 ; j<inTriplets[i].size() ; j++ ) outTriplets.push_back( inTriplets[i][j] );
+	};
 
 	const std::vector<GridChart> & gridCharts = gridAtlas.gridCharts;
 	const std::vector<int> & boundaryAndDeepIndex = gridAtlas.boundaryAndDeepIndex;
 
-	if(computeCellBasedStiffness) texelToCellCoeffs.resize(3 * 4 * gridAtlas.numDeepTexels);
+	if( computeCellBasedStiffness ) texelToCellCoeffs.resize( 3*4*gridAtlas.numDeepTexels );
 
 	clock_t m_begin;
 	m_begin = clock();
@@ -725,52 +730,58 @@ int InitializeMassAndStiffness
 	std::vector< Eigen::Triplet< Real > > boundaryBoundaryStiffnessTriplets;
 	std::vector< Eigen::Triplet< Real > > boundaryDeepMassTriplets;
 	std::vector< Eigen::Triplet< Real > > boundaryDeepStiffnessTriplets;
-	std::vector< Eigen::Triplet< Real > > boundaryCellStiffnessTriplets[3];
-	
-	
+
+	std::vector< std::vector< Eigen::Triplet< Real > > > _boundaryBoundaryMassTriplets              ( omp_get_max_threads() );
+	std::vector< std::vector< Eigen::Triplet< Real > > > _boundaryBoundaryStiffnessTriplets         ( omp_get_max_threads() );
+	std::vector< std::vector< Eigen::Triplet< Real > > > _boundaryDeepMassTriplets                  ( omp_get_max_threads() );
+	std::vector< std::vector< Eigen::Triplet< Real > > > _boundaryDeepStiffnessTriplets             ( omp_get_max_threads() );
+	std::vector< std::vector< Eigen::Triplet< Real > > > _boundaryDeepDivergenceTriplets            ( omp_get_max_threads() );
+	std::vector< std::vector< Eigen::Triplet< Real > > > _boundaryBoundaryDivergenceTriplets        ( omp_get_max_threads() );
+	std::vector< std::vector< Eigen::Triplet< Point3D< Real > > > > _boundaryCellStiffnessTriplets  ( omp_get_max_threads() );
+
 #pragma omp parallel for
-	for (int i = 0; i < gridCharts.size(); i++) {
-		std::vector< Eigen::Triplet< Real > > chartBoundaryBoundaryMassTriplets;
-		std::vector< Eigen::Triplet< Real > > chartBoundaryBoundaryStiffnessTriplets;
-		std::vector< Eigen::Triplet< Real > > chartBoundaryDeepMassTriplets;
-		std::vector< Eigen::Triplet< Real > > chartBoundaryDeepStiffnessTriplets;
-		std::vector< Eigen::Triplet< Real > > chartBoundaryCellStiffnessTriplets[3];
-		std::vector< Eigen::Triplet< Real > > chartBoundaryDeepDivergenceTriplets;
-		std::vector< Eigen::Triplet< Real > > chartBoundaryBoundaryDivergenceTriplets;
+	for( int i=0 ; i<gridCharts.size() ; i++ )
+	{
+		int thread = omp_get_thread_num();
 		InitializeChartMassAndStiffness< Samples >
 		(
-			parameterMetric[i] , atlasCharts[i] , gridCharts[i] , boundaryAndDeepIndex , fineBoundaryIndex , deepMassCoefficients , deepStiffnessCoefficients , chartBoundaryBoundaryMassTriplets , chartBoundaryBoundaryStiffnessTriplets ,
-			chartBoundaryDeepMassTriplets , chartBoundaryDeepStiffnessTriplets ,
-			computeCellBasedStiffness , inputSignal , boundarySignal , texelToCellCoeffs , chartBoundaryCellStiffnessTriplets,
-			computeDivergence, fineBoundaryEdgeIndex, coarseEdgeIndex , chartBoundaryDeepDivergenceTriplets, chartBoundaryBoundaryDivergenceTriplets, deepDivergenceCoefficients
+			parameterMetric[i] , atlasCharts[i] , gridCharts[i] , boundaryAndDeepIndex , fineBoundaryIndex , deepMassCoefficients , deepStiffnessCoefficients , 
+			_boundaryBoundaryMassTriplets[thread] , _boundaryBoundaryStiffnessTriplets[thread] ,
+			_boundaryDeepMassTriplets[thread] , _boundaryDeepStiffnessTriplets[thread] ,
+			computeCellBasedStiffness , inputSignal , boundarySignal , texelToCellCoeffs ,
+			_boundaryCellStiffnessTriplets[thread] ,
+			computeDivergence , fineBoundaryEdgeIndex , coarseEdgeIndex ,
+			_boundaryDeepDivergenceTriplets[thread] , _boundaryBoundaryDivergenceTriplets[thread] ,
+			deepDivergenceCoefficients
 		);
-#pragma omp critical
-		{
-			boundaryBoundaryMassTriplets.insert(boundaryBoundaryMassTriplets.end(), chartBoundaryBoundaryMassTriplets.begin(), chartBoundaryBoundaryMassTriplets.end());
-			boundaryBoundaryStiffnessTriplets.insert(boundaryBoundaryStiffnessTriplets.end(), chartBoundaryBoundaryStiffnessTriplets.begin(), chartBoundaryBoundaryStiffnessTriplets.end());
-			boundaryDeepMassTriplets.insert(boundaryDeepMassTriplets.end(), chartBoundaryDeepMassTriplets.begin(), chartBoundaryDeepMassTriplets.end());
-			boundaryDeepStiffnessTriplets.insert(boundaryDeepStiffnessTriplets.end(), chartBoundaryDeepStiffnessTriplets.begin(), chartBoundaryDeepStiffnessTriplets.end());
-			if (computeCellBasedStiffness) for (int c = 0; c < 3; c++) boundaryCellStiffnessTriplets[c].insert(boundaryCellStiffnessTriplets[c].end(), chartBoundaryCellStiffnessTriplets[c].begin(), chartBoundaryCellStiffnessTriplets[c].end());
-			if (computeDivergence) {
-				boundaryDeepDivergenceTriplets.insert(boundaryDeepDivergenceTriplets.end(), chartBoundaryDeepDivergenceTriplets.begin(), chartBoundaryDeepDivergenceTriplets.end());
-				boundaryBoundaryDivergenceTriplets.insert(boundaryBoundaryDivergenceTriplets.end(), chartBoundaryBoundaryDivergenceTriplets.begin(), chartBoundaryBoundaryDivergenceTriplets.end());
-			}
-		}
 	}
+	MergeTriplets( _boundaryBoundaryMassTriplets , boundaryBoundaryMassTriplets );
+	MergeTriplets( _boundaryBoundaryStiffnessTriplets , boundaryBoundaryStiffnessTriplets );
+	MergeTriplets( _boundaryDeepMassTriplets , boundaryDeepMassTriplets );
+	MergeTriplets( _boundaryDeepStiffnessTriplets , boundaryDeepStiffnessTriplets );
+	MergeTriplets( _boundaryDeepDivergenceTriplets , boundaryDeepDivergenceTriplets );
+	MergeTriplets( _boundaryBoundaryDivergenceTriplets , boundaryBoundaryDivergenceTriplets );
 
 	int numTexels = gridAtlas.numTexels;
 	int numBoundaryTexels = gridAtlas.numBoundaryTexels;
-	boundaryBoundaryMassMatrix = SetSparseMatrix( boundaryBoundaryMassTriplets , numFineBoundaryNodes , numFineBoundaryNodes , true );
+	boundaryBoundaryMassMatrix      = SetSparseMatrix( boundaryBoundaryMassTriplets , numFineBoundaryNodes , numFineBoundaryNodes , true );
 	boundaryBoundaryStiffnessMatrix = SetSparseMatrix( boundaryBoundaryStiffnessTriplets , numFineBoundaryNodes , numFineBoundaryNodes , true );
-	boundaryDeepMassMatrix = SetSparseMatrix( boundaryDeepMassTriplets , numBoundaryTexels , numTexels , false );
-	boundaryDeepStiffnessMatrix = SetSparseMatrix( boundaryDeepStiffnessTriplets , numBoundaryTexels , numTexels , false );
+	boundaryDeepMassMatrix          = SetSparseMatrix( boundaryDeepMassTriplets , numBoundaryTexels , numTexels , false );
+	boundaryDeepStiffnessMatrix     = SetSparseMatrix( boundaryDeepStiffnessTriplets , numBoundaryTexels , numTexels , false );
 
-	if (computeCellBasedStiffness){
-		for (int c = 0; c < 3; c++) {
-			boundaryCellBasedStiffnessRHSMatrix[c] = SetSparseMatrix( boundaryCellStiffnessTriplets[c] , numFineBoundaryNodes , gridAtlas.numCells , false );
+	if( computeCellBasedStiffness )
+	{
+		size_t count = 0;
+		for( int i=0 ; i<_boundaryCellStiffnessTriplets.size() ; i++ ) count += _boundaryCellStiffnessTriplets[i].size();
+		std::vector< Eigen::Triplet< Real > > boundaryCellStiffnessTriplets( count );
+
+		for( int c=0 ; c<3 ; c++ )
+		{
+			for( int i=0 , idx=0 ; i<_boundaryCellStiffnessTriplets.size() ; i++ ) for( int j=0 ; j<_boundaryCellStiffnessTriplets[i].size() ; j++ , idx++ )
+				boundaryCellStiffnessTriplets[idx] = Eigen::Triplet< Real >( _boundaryCellStiffnessTriplets[i][j].row() , _boundaryCellStiffnessTriplets[i][j].col() , _boundaryCellStiffnessTriplets[i][j].value()[c] );
+			boundaryCellBasedStiffnessRHSMatrix[c] = SetSparseMatrix( boundaryCellStiffnessTriplets , numFineBoundaryNodes , gridAtlas.numCells , false );
 		}
 	}
-
 	return 1;
 }
 
@@ -793,7 +804,6 @@ int InitializeMassAndStiffness
 	std::vector< Real > & deepDivergenceCoefficients
 )
 {
-
 	//(2) Initialize mass and stiffness
 	mass.deepCoefficients.resize( 10*hierarchy.gridAtlases[0].numDeepTexels , 0 );
 	stiffness.deepCoefficients.resize( 10*hierarchy.gridAtlases[0].numDeepTexels , 0 );
@@ -804,7 +814,8 @@ int InitializeMassAndStiffness
 
 	std::vector< Eigen::Triplet< Real > > boundaryDivergenceTriplets;
 	std::vector< Eigen::Triplet< Real > > boundaryBoundaryDivergenceTriplets;
-	std::unordered_map<unsigned long long, int> fineBoundaryEdgeIndex;
+	std::unordered_map< unsigned long long , int > fineBoundaryEdgeIndex;
+
 	if( computeDivergence )
 	{
 		if( !InitializeFineBoundaryEdgeIndexing( boundaryProlongation.fineBoundaryIndex , fineBoundaryEdgeIndex , hierarchy.gridAtlases[0].gridCharts ) )
@@ -816,7 +827,6 @@ int InitializeMassAndStiffness
 
 	SparseMatrix< Real , int > fineBoundaryCellStiffnessRHSMatrix[3];
 	std::vector< Point3D< Real > > fineBoundarySignal;
-
 
 	if( computeCellBasedStiffness )
 	{
@@ -849,34 +859,34 @@ int InitializeMassAndStiffness
 		std::vector< Real > in ( mass.boundaryBoundaryMatrix.Rows() , 1.0 );
 		std::vector< Real > out( mass.boundaryBoundaryMatrix.Rows() , 0.0 );
 		mass.boundaryBoundaryMatrix.Multiply( GetPointer(in) , GetPointer(out) );
-		for( int i=0 ; i<out.size() ; i++ ) if( out[i]==0.0 ) printf( "[WARNING] Zero row at index %d. Try running with jittering.\n" , i );
+		for( int i=0 ; i<out.size() ; i++ ) if( out[i]==0.0 ) fprintf( stderr , "[WARNING] Zero row at index %d. Try running with jittering.\n" , i );
 	}
 
 	if( computeCellBasedStiffness ) for( int c=0 ; c<3 ; c++ ) boundaryCellBasedStiffnessRHSMatrix[c] = boundaryProlongation.fineBoundaryCoarseBoundaryRestriction * fineBoundaryCellStiffnessRHSMatrix[c];
 	
-	
-	if (computeDivergence) {
-		SparseMatrix<Real,int> fineBoundaryBoundaryDivergenceMatrix = SetSparseMatrix(boundaryBoundaryDivergenceTriplets, boundaryProlongation.numFineBoundarNodes, (int)fineBoundaryEdgeIndex.size(), false);
+	if( computeDivergence )
+	{
+		SparseMatrix< Real , int > fineBoundaryBoundaryDivergenceMatrix = SetSparseMatrix( boundaryBoundaryDivergenceTriplets , boundaryProlongation.numFineBoundarNodes , (int)fineBoundaryEdgeIndex.size() , false );
 
-		std::unordered_map<unsigned long long, int> boundaryCoarseEdgeIndex;
-		std::vector<int> boundaryCoarseEdgeToGlobalEdge;
+		std::unordered_map< unsigned long long , int > boundaryCoarseEdgeIndex;
+		std::vector< int > boundaryCoarseEdgeToGlobalEdge;
 		
 		InitializeBoundaryEdgeIndexing( mass.boundaryBoundaryMatrix , hierarchy.gridAtlases[0].boundaryGlobalIndex , edgeIndex , boundaryCoarseEdgeToGlobalEdge , boundaryCoarseEdgeIndex );
+	
+		SparseMatrix< Real , int > boundarCoarseToFineBoundaryOneFormProlongation;
+		InitializeBoundaryCoarseToFineBoundaryOneFormProlongation( boundaryProlongation.coarseBoundaryFineBoundaryProlongation , boundaryCoarseEdgeIndex , fineBoundaryEdgeIndex , boundarCoarseToFineBoundaryOneFormProlongation );
+
 		
-		SparseMatrix<Real, int> boundarCoarseToFineBoundaryOneFormProlongation;
-		InitializeBoundaryCoarseToFineBoundaryOneFormProlongation(boundaryProlongation.coarseBoundaryFineBoundaryProlongation, boundaryCoarseEdgeIndex, fineBoundaryEdgeIndex, boundarCoarseToFineBoundaryOneFormProlongation);
-		
-		SparseMatrix<Real, int> temp = boundaryProlongation.fineBoundaryCoarseBoundaryRestriction * fineBoundaryBoundaryDivergenceMatrix;
-		SparseMatrix<Real, int> boundaryBoundaryDivergenceMatrix = temp *  boundarCoarseToFineBoundaryOneFormProlongation;
-		
-		const std::vector<int> & boundaryGlobalIndex = hierarchy.gridAtlases[0].boundaryGlobalIndex;
-		for (int i = 0; i < boundaryBoundaryDivergenceMatrix.Rows(); i++){
+		SparseMatrix< Real , int > temp = boundaryProlongation.fineBoundaryCoarseBoundaryRestriction * fineBoundaryBoundaryDivergenceMatrix;
+		SparseMatrix< Real , int > boundaryBoundaryDivergenceMatrix = temp *  boundarCoarseToFineBoundaryOneFormProlongation;
+		const std::vector< int > &boundaryGlobalIndex = hierarchy.gridAtlases[0].boundaryGlobalIndex;
+		for( int i=0 ; i<boundaryBoundaryDivergenceMatrix.Rows() ; i++ )
+		{
 			int nodeIndex = boundaryGlobalIndex[i];
-			for (int j = 0; j < boundaryBoundaryDivergenceMatrix.RowSize(i); j++) {
-				boundaryDivergenceTriplets.push_back(Eigen::Triplet<Real>(nodeIndex, boundaryCoarseEdgeToGlobalEdge[boundaryBoundaryDivergenceMatrix[i][j].N], boundaryBoundaryDivergenceMatrix[i][j].Value));
-			}
+			for( int j=0 ; j<boundaryBoundaryDivergenceMatrix.RowSize(i) ; j++ )
+				boundaryDivergenceTriplets.push_back( Eigen::Triplet< Real >( nodeIndex , boundaryCoarseEdgeToGlobalEdge[ boundaryBoundaryDivergenceMatrix[i][j].N ] , boundaryBoundaryDivergenceMatrix[i][j].Value ) );
 		}
-		boundaryDivergenceMatrix = SetSparseMatrix(boundaryDivergenceTriplets, hierarchy.gridAtlases[0].numTexels, (int)edgeIndex.size(), false);
+		boundaryDivergenceMatrix = SetSparseMatrix( boundaryDivergenceTriplets , hierarchy.gridAtlases[0].numTexels , (int)edgeIndex.size() , false );
 	}
 	return 1;
 }
