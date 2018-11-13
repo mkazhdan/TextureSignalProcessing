@@ -70,7 +70,16 @@ namespace Miscellany
 #endif // WIN32
 	}
 
-#if 0
+#if 1
+	struct Timer
+	{
+		Timer( void ){ _start = Time(); }
+		double elapsed( void ) const { return Time()-_start; };
+		void reset( void ){ _start = Time(); }
+	protected:
+		double _start;
+	};
+#else
 #include <cstdio>
 #include <ctime>
 #include <chrono>

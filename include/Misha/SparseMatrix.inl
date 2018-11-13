@@ -1007,7 +1007,7 @@ void CompressSparseMatrix(const  SparseMatrix< RealIn, int > & M, SparseMatrix< 
 		_M.SetRowSize(i, numEntries);
 		int offset = 0;
 		for (auto iter = rowValues.begin(); iter != rowValues.end(); iter++) {
-			_M[i][offset] = MatrixEntry< RealOut, int >(iter->first, iter->second);
+			_M[i][offset] = MatrixEntry< RealOut, int >( iter->first , (RealOut)iter->second );
 			offset++;
 		}
 	}

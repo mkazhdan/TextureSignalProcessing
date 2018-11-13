@@ -225,10 +225,10 @@ void TextureFilteringVisualization::UpdateMaskTextureBuffer() {
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-void TextureFilteringVisualization::UpdateTextureBuffer(const Image<Point3D<float>> & image) {
-	if (!glIsBuffer(textureBuffer)) {
-		glGenTextures(1, &textureBuffer);
-	}
+template< typename Real >
+void TextureFilteringVisualization::UpdateTextureBuffer( const Image< Point3D< Real > > &image )
+{
+	if( !glIsBuffer(textureBuffer) ) glGenTextures( 1 , &textureBuffer );
 	glBindTexture(GL_TEXTURE_2D, textureBuffer);
 
 	// set basic parameters
@@ -238,7 +238,6 @@ void TextureFilteringVisualization::UpdateTextureBuffer(const Image<Point3D<floa
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-	//glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, textureWidth, textureHeight, 0, GL_RGB, GL_FLOAT, (GLvoid*)&textureImage[0]);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, image.width(), image.height(), 0, GL_RGB, GL_FLOAT, (GLvoid*)&image[0]);
 
 	// Unbind the texture

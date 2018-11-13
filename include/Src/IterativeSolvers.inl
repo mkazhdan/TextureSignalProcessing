@@ -26,11 +26,12 @@ ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF S
 DAMAGE.
 */
 
-#include<Eigen/SparseLU>
+#include <Eigen/SparseLU>
+#include <Misha/Miscellany.h>
 #include "SparseMatrixParser.h"
 
 template<class Real, class Data, class Solver>
-int Relaxation(const std::vector<Real> & deepCoefficients, const SparseMatrix< Real, int> & boundaryDeepMatrix, Solver & boundarySolver, const std::vector<int> & boundaryGlobalIndex, const std::vector<SegmentedRasterLine> & segmentedLines, const std::vector<Data> & rhs, std::vector<Data> & x0, std::vector<Data> & boundaryRHS, std::vector<Data> & boundarySolution, std::vector<Data> & variableBoundaryRHS, const int numIterations = 2, bool boundaryFirst = true, bool verbose = false) {
+int Relaxation(const std::vector<Real> & deepCoefficients, const SparseMatrix< Real, int> & boundaryDeepMatrix, Solver & boundarySolver, const std::vector<int> & boundaryGlobalIndex, const std::vector<SegmentedRasterLine> & segmentedLines, const std::vector<Data> & rhs, std::vector<Data> & x0, std::vector<Data> & boundaryRHS, std::vector<Data> & boundarySolution, std::vector<Data> & variableBoundaryRHS, int numIterations = 2, bool boundaryFirst = true, bool verbose = false) {
 
 
 	int numBoundaryVariables = boundaryGlobalIndex.size();
@@ -40,13 +41,13 @@ int Relaxation(const std::vector<Real> & deepCoefficients, const SparseMatrix< R
 		boundaryRHS[i] = rhs[boundaryGlobalIndex[i]];
 	}
 
-	clock_t t_begin;
+	Miscellany::Timer timer;
 
 	int it_offset = boundaryFirst ? 0 : 1;
 	for (int it = 0; it < numIterations; it++){
 		if ((it + it_offset) % 2 == 0){//Update Boundary;
 
-			if (verbose) t_begin = clock();
+			if( verbose ) timer.reset();
 
 #pragma omp parallel for 
 			for (int i = 0; i < numBoundaryVariables; i++){
@@ -56,11 +57,11 @@ int Relaxation(const std::vector<Real> & deepCoefficients, const SparseMatrix< R
 
 			boundaryDeepMatrix.Multiply((Data*)&x0[0], (Data*)&variableBoundaryRHS[0], MULTIPLY_ADD | MULTIPLY_NEGATE);
 
-			if (verbose) printf("\t Boundary initialization =  %.4f \n", double(clock() - t_begin) / CLOCKS_PER_SEC);
+			if( verbose ) printf("\t Boundary initialization =  %.4f \n" , timer.elapsed() );
 
-			if (verbose) t_begin = clock();
+			if( verbose ) timer.reset();
 			solve(boundarySolver,boundarySolution, variableBoundaryRHS);
-			if (verbose)printf("\t Boundary update =  %.4f \n", double(clock() - t_begin) / CLOCKS_PER_SEC);
+			if( verbose ) printf("\t Boundary update =  %.4f \n" , timer.elapsed() );
 
 #pragma omp parallel for
 			for (int i = 0; i < numBoundaryVariables; i++) x0[boundaryGlobalIndex[i]] = boundarySolution[i];
@@ -103,30 +104,30 @@ int Relaxation(const std::vector<Real> & deepCoefficients, const SparseMatrix< R
 			};
 
 
-			auto UpdateBlock = [&](const int firstLine, const int lastLine, const int passes){
+			auto UpdateBlock = [&](int firstLine, int lastLine, int passes){
 				for (int r = firstLine; r < lastLine + passes - 1; r++) for (int p = 0; p < passes; p++) if (r - p >= firstLine && r - p < lastLine) UpdateRow(r - p);
 			};
 
-			if (verbose) t_begin = clock();
+			if( verbose ) timer.reset();
 
-			const int blockSize = 16;
-			const int totalLines = segmentedLines.size();
-			const int numBlocks = ((totalLines - 1) / blockSize) + 1;
+			int blockSize = 16;
+			int totalLines = segmentedLines.size();
+			int numBlocks = ((totalLines - 1) / blockSize) + 1;
 
 #pragma omp parallel for
 			for (int b = 0; b < numBlocks; b+=2){
-				const int firstLine = (totalLines * b)/ numBlocks;
-				const int lastLine = (totalLines * (b + 1)) / numBlocks;
+				int firstLine = (totalLines * b)/ numBlocks;
+				int lastLine = (totalLines * (b + 1)) / numBlocks;
 				UpdateBlock(firstLine, lastLine, 3);
 			}
 
 #pragma omp parallel for
 			for (int b = 1; b < numBlocks; b += 2){
-				const int firstLine = (totalLines * b) / numBlocks;
-				const int lastLine = (totalLines * (b + 1)) / numBlocks;
+				int firstLine = (totalLines * b) / numBlocks;
+				int lastLine = (totalLines * (b + 1)) / numBlocks;
 				UpdateBlock(firstLine, lastLine, 3);
 			}
-			if (verbose) printf("\t GS Deep update =  %.4f \n", double(clock() - t_begin) / CLOCKS_PER_SEC);
+			if( verbose ) printf( "\t GS Deep update =  %.4f\n" , timer.elapsed() );
 		}
 	}
 
@@ -137,7 +138,7 @@ int Relaxation(const std::vector<Real> & deepCoefficients, const SparseMatrix< R
 
 
 template<class Real, class Data, class Solver>
-int Relaxation(const std::vector<Real> & deepCoefficients, const SparseMatrix< Real, int> & boundaryDeepMatrix, Solver & boundarySolver, const std::vector<int> & boundaryGlobalIndex, const std::vector<ThreadTask> & threadTasks, const std::vector<Data> & rhs, std::vector<Data> & x0, std::vector<Data> & boundaryRHS, std::vector<Data> & boundarySolution, std::vector<Data> & variableBoundaryRHS, const int numIterations = 2, bool boundaryFirst = true, bool verbose = false) {
+int Relaxation(const std::vector<Real> & deepCoefficients, const SparseMatrix< Real, int> & boundaryDeepMatrix, Solver & boundarySolver, const std::vector<int> & boundaryGlobalIndex, const std::vector<ThreadTask> & threadTasks, const std::vector<Data> & rhs, std::vector<Data> & x0, std::vector<Data> & boundaryRHS, std::vector<Data> & boundarySolution, std::vector<Data> & variableBoundaryRHS, int numIterations = 2, bool boundaryFirst = true, bool verbose = false) {
 
 
 	int numBoundaryVariables = (int)boundaryGlobalIndex.size();
@@ -147,13 +148,13 @@ int Relaxation(const std::vector<Real> & deepCoefficients, const SparseMatrix< R
 		boundaryRHS[i] = rhs[boundaryGlobalIndex[i]];
 	}
 
-	clock_t t_begin;
+	Miscellany::Timer timer;
 
 	int it_offset = boundaryFirst ? 0 : 1;
 	for (int it = 0; it < numIterations; it++) {
 		if ((it + it_offset) % 2 == 0) {//Update Boundary;
 
-			if (verbose) t_begin = clock();
+			if( verbose ) timer.reset();
 
 #pragma omp parallel for 
 			for (int i = 0; i < numBoundaryVariables; i++) {
@@ -163,11 +164,11 @@ int Relaxation(const std::vector<Real> & deepCoefficients, const SparseMatrix< R
 
 			boundaryDeepMatrix.Multiply((Data*)&x0[0], (Data*)&variableBoundaryRHS[0], MULTIPLY_ADD | MULTIPLY_NEGATE);
 
-			if (verbose) printf("\t Boundary initialization =  %.4f \n", double(clock() - t_begin) / CLOCKS_PER_SEC);
+			if( verbose ) printf( "\t Boundary initialization =  %.4f \n" , timer.elapsed() );
 
-			if (verbose) t_begin = clock();
+			if( verbose ) timer.reset();
 			solve(boundarySolver, boundarySolution, variableBoundaryRHS);
-			if (verbose)printf("\t Boundary update =  %.4f \n", double(clock() - t_begin) / CLOCKS_PER_SEC);
+			if( verbose ) printf( "\t Boundary update =  %.4f\n" , timer.elapsed() );
 
 #pragma omp parallel for
 			for (int i = 0; i < numBoundaryVariables; i++) x0[boundaryGlobalIndex[i]] = boundarySolution[i];
@@ -176,7 +177,7 @@ int Relaxation(const std::vector<Real> & deepCoefficients, const SparseMatrix< R
 
 		if ((it + it_offset) % 2 == 1) {//Update Interior
 			
-			if (verbose) t_begin = clock();
+			if( verbose ) timer.reset();
 			auto UpdateRow = [&](const BlockDeepSegmentedLine & deepSegmentedLine){
 				for (int s = 0; s < deepSegmentedLine.blockDeepSegments.size(); s++) {
 					const BlockDeepSegment & deepSegment = deepSegmentedLine.blockDeepSegments[s];
@@ -227,7 +228,7 @@ int Relaxation(const std::vector<Real> & deepCoefficients, const SparseMatrix< R
 			for (int t = 0; t < threadTasks.size() / 2; t++){
 				for (int b = 0; b < threadTasks[2 * t + 1].blockTasks.size(); b++) UpdateBlock(2 * t + 1, b ,3);
 			}
-			if (verbose) printf("\t GS Deep update =  %.4f \n", double(clock() - t_begin) / CLOCKS_PER_SEC);
+			if( verbose ) printf( "\t GS Deep update =  %.4f\n" , timer.elapsed() );
 		}
 	}
 
@@ -236,7 +237,7 @@ int Relaxation(const std::vector<Real> & deepCoefficients, const SparseMatrix< R
 
 
 template<class Real, class Data, class Solver>
-int RelaxationAndResidual(const std::vector<Real> & deepCoefficients, const SparseMatrix< Real, int> & boundaryDeepMatrix, Solver & boundarySolver, const std::vector<int> & boundaryGlobalIndex, const std::vector<ThreadTask> & threadTasks, const std::vector<Data> & rhs, std::vector<Data> & x0, std::vector<Data> & boundaryRHS, std::vector<Data> & boundaryValue, std::vector<Data> & variableBoundaryRHS, const SparseMatrix< Real, int> & boundaryBoundaryMatrix, std::vector<Data> & residual, const int numIterations = 2, bool verbose = false) {
+int RelaxationAndResidual(const std::vector<Real> & deepCoefficients, const SparseMatrix< Real, int> & boundaryDeepMatrix, Solver & boundarySolver, const std::vector<int> & boundaryGlobalIndex, const std::vector<ThreadTask> & threadTasks, const std::vector<Data> & rhs, std::vector<Data> & x0, std::vector<Data> & boundaryRHS, std::vector<Data> & boundaryValue, std::vector<Data> & variableBoundaryRHS, const SparseMatrix< Real, int> & boundaryBoundaryMatrix, std::vector<Data> & residual, int numIterations = 2, bool verbose = false) {
 
 	int numBoundaryVariables = (int)boundaryGlobalIndex.size();
 
@@ -245,11 +246,11 @@ int RelaxationAndResidual(const std::vector<Real> & deepCoefficients, const Spar
 		boundaryRHS[i] = rhs[boundaryGlobalIndex[i]];
 	}
 
-	clock_t t_begin;
+	Miscellany::Timer timer;
 	for (int it = 0; it < numIterations; it++) {
 		if (it % 2 == 0) {//Update Boundary
 
-			if (verbose) t_begin = clock();
+			if( verbose ) timer.reset();
 
 #pragma omp parallel for
 			for (int i = 0; i < numBoundaryVariables; i++) {
@@ -258,13 +259,13 @@ int RelaxationAndResidual(const std::vector<Real> & deepCoefficients, const Spar
 			}
 
 			boundaryDeepMatrix.Multiply((Data*)&x0[0], (Data*)&variableBoundaryRHS[0], MULTIPLY_ADD | MULTIPLY_NEGATE);
-			if (verbose) printf("\t Boundary initialization =  %.4f \n", double(clock() - t_begin) / CLOCKS_PER_SEC);
+			if( verbose ) printf( "\t Boundary initialization =  %.4f\n" , timer.elapsed() );
 
 
-			if (verbose) t_begin = clock();
+			if( verbose ) timer.reset();
 			solve(boundarySolver, boundaryValue, variableBoundaryRHS);
 
-			if (verbose) printf("\t Boundary update =  %.4f \n", double(clock() - t_begin) / CLOCKS_PER_SEC);
+			if( verbose ) printf( "\t Boundary update =  %.4f\n" , timer.elapsed() );
 #pragma omp parallel for
 			for (int i = 0; i < numBoundaryVariables; i++) x0[boundaryGlobalIndex[i]] = boundaryValue[i];
 		}
@@ -272,7 +273,7 @@ int RelaxationAndResidual(const std::vector<Real> & deepCoefficients, const Spar
 		if (it % 2 == 1) {//Update Interior
 
 
-			if (verbose) t_begin = clock();
+			if( verbose ) timer.reset();
 
 
 			auto UpdateRow = [&](const BlockDeepSegmentedLine & deepSegmentedLine) {
@@ -359,16 +360,16 @@ int RelaxationAndResidual(const std::vector<Real> & deepCoefficients, const Spar
 				for (int b = 0; b < threadTasks[2 * t + 1].blockTasks.size(); b++) UpdateBlock(2 * t + 1, b, 3);
 			}
 
-			if (verbose) printf("\t GS Deep update =  %.4f \n", double(clock() - t_begin) / CLOCKS_PER_SEC);
+			if( verbose ) printf( "\t GS Deep update =  %.4f\n" , timer.elapsed() );
 		}
 	}
 
 	{//Compute boundary residual
-		if (verbose) t_begin = clock();
+		if( verbose ) timer.reset();
 		boundaryDeepMatrix.Multiply((Data*)&x0[0], (Data*)&boundaryRHS[0], MULTIPLY_ADD | MULTIPLY_NEGATE);
 		boundaryBoundaryMatrix.Multiply((Data*)&boundaryValue[0], (Data*)&boundaryRHS[0], MULTIPLY_ADD | MULTIPLY_NEGATE);
 		for (int i = 0; i < numBoundaryVariables; i++)residual[boundaryGlobalIndex[i]] = boundaryRHS[i];
-		if (verbose) printf("\t Boundary residual =  %.4f \n", double(clock() - t_begin) / (CLOCKS_PER_SEC));
+		if( verbose ) printf( "\t Boundary residual =  %.4f\n" , timer.elapsed() );
 	}
 
 	return 1;
@@ -376,7 +377,7 @@ int RelaxationAndResidual(const std::vector<Real> & deepCoefficients, const Spar
 
 
 template<class Real, class Data, class Solver>
-int RelaxationAndResidual(const std::vector<Real> & deepCoefficients, const SparseMatrix< Real, int> & boundaryDeepMatrix, Solver & boundarySolver, const std::vector<int> & boundaryGlobalIndex, const std::vector<SegmentedRasterLine> & segmentedLines, const std::vector<Data> & rhs, std::vector<Data> & x0, std::vector<Data> & boundaryRHS,std::vector<Data> & boundaryValue, std::vector<Data> & variableBoundaryRHS, const SparseMatrix< Real, int> & boundaryBoundaryMatrix, std::vector<Data> & residual, const int numIterations = 2, bool verbose = false) {
+int RelaxationAndResidual(const std::vector<Real> & deepCoefficients, const SparseMatrix< Real, int> & boundaryDeepMatrix, Solver & boundarySolver, const std::vector<int> & boundaryGlobalIndex, const std::vector<SegmentedRasterLine> & segmentedLines, const std::vector<Data> & rhs, std::vector<Data> & x0, std::vector<Data> & boundaryRHS,std::vector<Data> & boundaryValue, std::vector<Data> & variableBoundaryRHS, const SparseMatrix< Real, int> & boundaryBoundaryMatrix, std::vector<Data> & residual, int numIterations = 2, bool verbose = false) {
 
 	int numBoundaryVariables = boundaryGlobalIndex.size();
 
@@ -385,11 +386,11 @@ int RelaxationAndResidual(const std::vector<Real> & deepCoefficients, const Spar
 		boundaryRHS[i] = rhs[boundaryGlobalIndex[i]];
 	}
 
-	clock_t t_begin;
+	Miscellany::Timer timer;
 	for (int it = 0; it < numIterations; it++) {
 		if (it % 2 == 0) {//Update Boundary
 
-			if (verbose) t_begin = clock();
+			if( verbose ) timer.reset();
 
 #pragma omp parallel for
 			for (int i = 0; i < numBoundaryVariables; i++){
@@ -398,25 +399,24 @@ int RelaxationAndResidual(const std::vector<Real> & deepCoefficients, const Spar
 			}
 
 			boundaryDeepMatrix.Multiply((Data*)&x0[0], (Data*)&variableBoundaryRHS[0], MULTIPLY_ADD | MULTIPLY_NEGATE);
-			if (verbose) printf("\t Boundary initialization =  %.4f \n", double(clock() - t_begin) / CLOCKS_PER_SEC);
+			if( verbose ) printf( "\t Boundary initialization =  %.4f\n" , timer.elapsed() );
 
-
-			if (verbose) t_begin = clock();
+			if( verbose ) timer.reset();
 			solve(boundarySolver, boundaryValue, variableBoundaryRHS);
 
-			if (verbose) printf("\t Boundary update =  %.4f \n", double(clock() - t_begin) / CLOCKS_PER_SEC);
+			if( verbose ) printf( "\t Boundary update =  %.4f\n" , timer.elapsed() );
 #pragma omp parallel for
 			for (int i = 0; i < numBoundaryVariables; i++) x0[boundaryGlobalIndex[i]] = boundaryValue[i];
 		}
 
 		if (it % 2 == 1) {//Update Interior
 
-										//static const int GSIterations = 3;
+										//static int GSIterations = 3;
 										//for (int r = 0; r < rasterLines.size() + GSIterations; r++)
 										//	for (int j = 0; j < GSIterations; j++)
 										//		if (r - j >= 0 && r - j < rasterLines.size()) UpdateRow(r - j);
 
-			if (verbose) t_begin = clock();
+			if( verbose ) timer.reset();
 
 
 			auto UpdateResidual = [&](int k)
@@ -485,7 +485,7 @@ int RelaxationAndResidual(const std::vector<Real> & deepCoefficients, const Spar
 				}
 			};
 
-			auto UpdateHeaderBlock = [&](const int firstLine, const int lastLine, const int passes, const bool firstResidual,const bool prevResidual){
+			auto UpdateHeaderBlock = [&](int firstLine, int lastLine, int passes, const bool firstResidual,const bool prevResidual){
 				for (int r = firstLine; r < firstLine + passes + 1; r++){
 					for (int p = 0; p < passes; p++) if (r - p >= firstLine && r - p < lastLine) UpdateRow(r - p);
 				}
@@ -493,28 +493,28 @@ int RelaxationAndResidual(const std::vector<Real> & deepCoefficients, const Spar
 				if(prevResidual)UpdateResidual(firstLine - 1);
 			};
 
-			auto UpdateMiddleBlock = [&](const int firstLine, const int lastLine, const int passes) {
+			auto UpdateMiddleBlock = [&](int firstLine, int lastLine, int passes) {
 				for (int r = firstLine + passes + 1; r < lastLine + passes - 1; r++) {
 					for (int p = 0; p < passes; p++) if (r - p > firstLine && r - p < lastLine) UpdateRow(r - p);
 					if (r - passes> firstLine && r - passes < lastLine) UpdateResidual(r - passes);
 				}
 			};
 
-			auto UpdateSuffixBlock = [&](const int lastLine,const bool lastResidual, const bool nextResidual) {
+			auto UpdateSuffixBlock = [&](int lastLine,const bool lastResidual, const bool nextResidual) {
 				if (lastResidual)UpdateResidual(lastLine - 1);
 				if (nextResidual)UpdateResidual(lastLine);
 			};
 
 
-			const int blockSize = 16;
-			const int totalLines = segmentedLines.size();
-			const int numBlocks = ((totalLines - 1) / blockSize) + 1;
+			int blockSize = 16;
+			int totalLines = segmentedLines.size();
+			int numBlocks = ((totalLines - 1) / blockSize) + 1;
 
 			//Even blocks
 #pragma omp parallel for
 			for (int b = 0; b < numBlocks; b+=2){
-				const int firstLine = (totalLines * b)/ numBlocks;
-				const int lastLine = (totalLines * (b + 1)) / numBlocks;
+				int firstLine = (totalLines * b)/ numBlocks;
+				int lastLine = (totalLines * (b + 1)) / numBlocks;
 				UpdateHeaderBlock(firstLine, lastLine, 3, firstLine == 0, false);
 				UpdateMiddleBlock(firstLine, lastLine, 3);
 				UpdateSuffixBlock(lastLine, lastLine == totalLines, false);
@@ -523,33 +523,32 @@ int RelaxationAndResidual(const std::vector<Real> & deepCoefficients, const Spar
 			//Odd blocks
 #pragma omp parallel for
 			for (int b = 1; b < numBlocks; b += 2) {
-				const int firstLine = (totalLines * b) / numBlocks;
-				const int lastLine = (totalLines * (b + 1)) / numBlocks;
+				int firstLine = (totalLines * b) / numBlocks;
+				int lastLine = (totalLines * (b + 1)) / numBlocks;
 
 				UpdateHeaderBlock(firstLine, lastLine, 3, true, firstLine != 0);
 				UpdateMiddleBlock(firstLine, lastLine, 3);
 				UpdateSuffixBlock(lastLine, true, lastLine != totalLines);
 			}
-			if (verbose) printf("\t GS Deep update =  %.4f \n", double(clock() - t_begin) / (CLOCKS_PER_SEC));
+			if( verbose ) printf( "\t GS Deep update =  %.4f\n" , timer.elapsed() );
 		}
 	}
 
 	{//Compute boundary residual
-		if (verbose) t_begin = clock();
+		if( verbose ) timer.reset();
 		boundaryDeepMatrix.Multiply((Data*)&x0[0], (Data*)&boundaryRHS[0], MULTIPLY_ADD | MULTIPLY_NEGATE);
 		boundaryBoundaryMatrix.Multiply((Data*)&boundaryValue[0], (Data*)&boundaryRHS[0], MULTIPLY_ADD | MULTIPLY_NEGATE);
 		for (int i = 0; i < numBoundaryVariables; i++)residual[boundaryGlobalIndex[i]] = boundaryRHS[i];
-		if (verbose) printf("\t Boundary residual =  %.4f \n", double(clock() - t_begin) / (CLOCKS_PER_SEC));
+		if( verbose ) printf( "\t Boundary residual =  %.4f\n" , timer.elapsed() );
 	}
 
 	return 1;
 }
 
-template< class Real , class Data >
-int MultiplyBySystemMatrix( const SystemCoefficients< double > &systemCoefficients , const std::vector< int > &boundaryGlobalIndex , const std::vector< RasterLine > &rasterLines , const std::vector< Data > &in , std::vector< Data > &out , bool verbose=false )
+template< class Real , class Data , class DataReal=Real >
+int MultiplyBySystemMatrix( const SystemCoefficients< Real > &systemCoefficients , const std::vector< int > &boundaryGlobalIndex , const std::vector< RasterLine > &rasterLines , const std::vector< Data > &in , std::vector< Data > &out , bool verbose=false )
 {
-
-	clock_t t_begin;
+	Miscellany::Timer timer;
 
 	int numBoundaryVariables = boundaryGlobalIndex.size();
 
@@ -560,10 +559,10 @@ int MultiplyBySystemMatrix( const SystemCoefficients< double > &systemCoefficien
 	std::vector<Data> outBoundaryValues;
 	outBoundaryValues.resize(numBoundaryVariables);
 
-	if (verbose) t_begin = clock();
+	if( verbose ) timer.reset();
 	systemCoefficients.boundaryBoundaryMatrix.Multiply(&inBoundaryValues[0], &outBoundaryValues[0]);
 	systemCoefficients.boundaryDeepMatrix.Multiply(&in[0], &outBoundaryValues[0], MULTIPLY_ADD);
-	if (verbose) printf("\t Multiply boundary =  %.4f \n", double(clock() - t_begin) / (CLOCKS_PER_SEC));
+	if( verbose ) printf( "\t Multiply boundary =  %.4f\n" , timer.elapsed() );
 
 #pragma omp parallel for
 	for (int i = 0; i < numBoundaryVariables; i++) out[boundaryGlobalIndex[i]] = outBoundaryValues[i];
@@ -581,19 +580,21 @@ int MultiplyBySystemMatrix( const SystemCoefficients< double > &systemCoefficien
 		for (int i = 0; i < lineLength; _deepCoefficients += 10, i++)
 		{
 			_out[i] =
-				(_inPrevious[i - 1] * _deepCoefficients[0] +
-				_inPrevious[i] * _deepCoefficients[1] +
-				_inPrevious[i + 1] * _deepCoefficients[2] +
-				_inCurrent[i - 1] * _deepCoefficients[3] +
-				_inCurrent[i] +
-				_inCurrent[i + 1] * _deepCoefficients[5] +
-				_inNext[i - 1] * _deepCoefficients[6] +
-				_inNext[i] * _deepCoefficients[7] +
-				_inNext[i + 1] * _deepCoefficients[8])*_deepCoefficients[9];
+				(
+					_inPrevious[i-1] * (DataReal)_deepCoefficients[0] +
+					_inPrevious[i+0] * (DataReal)_deepCoefficients[1] +
+					_inPrevious[i+1] * (DataReal)_deepCoefficients[2] +
+					_inCurrent [i-1] * (DataReal)_deepCoefficients[3] +
+					_inCurrent [i+0] +
+					_inCurrent [i+1] * (DataReal)_deepCoefficients[5] +
+					_inNext    [i-1] * (DataReal)_deepCoefficients[6] +
+					_inNext    [i+0] * (DataReal)_deepCoefficients[7] +
+					_inNext    [i+1] * (DataReal)_deepCoefficients[8]
+				) * (DataReal)_deepCoefficients[9];
 		}
 	};
 
-	if (verbose) t_begin = clock();
+	if( verbose ) timer.reset();
 
 	int threads = omp_get_max_threads();
 	std::vector<int> lineRange(threads + 1);
@@ -602,16 +603,16 @@ int MultiplyBySystemMatrix( const SystemCoefficients< double > &systemCoefficien
 	lineRange[threads] = rasterLines.size();
 #pragma omp parallel for
 	for (int t = 0; t < threads; t++) {
-		const int tId = omp_get_thread_num();
-		const int firstLine = lineRange[tId];
-		const int lastLine = lineRange[tId + 1];
+		int tID = omp_get_thread_num();
+		int firstLine = lineRange[tID];
+		int lastLine = lineRange[tID + 1];
 		for (int r = firstLine; r < lastLine; r++) UpdateRow(r);
 	}
-	if (verbose) printf("\t Multiply deep %.4f \n", double(clock() - t_begin) / CLOCKS_PER_SEC);
+	if( verbose ) printf( "\t Multiply deep %.4f\n" , timer.elapsed() );
 	return 1;
 }
 
-template< class Real , class Data >
+template< class Real , class Data , class DataReal=Real >
 int MultiplyBySystemMatrix_NoReciprocals
 (
 	const SystemCoefficients< Real > &systemCoefficients ,
@@ -622,7 +623,7 @@ int MultiplyBySystemMatrix_NoReciprocals
 	bool verbose=false
 )
 {
-	clock_t t_begin;
+	Miscellany::Timer timer;
 
 	int numBoundaryVariables = (int)boundaryGlobalIndex.size();
 
@@ -631,12 +632,12 @@ int MultiplyBySystemMatrix_NoReciprocals
 	std::vector< Data >  inBoundaryValues( numBoundaryVariables );
 	for( int i=0 ; i<numBoundaryVariables ; i++ ) inBoundaryValues[i] = in[ boundaryGlobalIndex[i] ];
 
-	t_begin = clock();
+	timer.reset();
 	//  Perform the boundary -> boundary multiplication
-	systemCoefficients.boundaryBoundaryMatrix.Multiply( &inBoundaryValues[0] , &outBoundaryValues[0] );
+	systemCoefficients.boundaryBoundaryMatrix.Multiply< Data , DataReal >( &inBoundaryValues[0] , &outBoundaryValues[0] );
 	// Perform the interior -> boundary multiplication
-	systemCoefficients.boundaryDeepMatrix.Multiply( &in[0] , &outBoundaryValues[0] , MULTIPLY_ADD );
-	if( verbose ) printf( "\tMultiply boundary = %.4f\n" , double(clock() - t_begin) / (CLOCKS_PER_SEC) );
+	systemCoefficients.boundaryDeepMatrix.Multiply< Data , DataReal >( &in[0] , &outBoundaryValues[0] , MULTIPLY_ADD );
+	if( verbose ) printf( "\tMultiply boundary = %.4f\n" , timer.elapsed() );
 
 	// Write the boundary values back into the output array
 #pragma omp parallel for
@@ -656,23 +657,24 @@ int MultiplyBySystemMatrix_NoReciprocals
 		const Real* _deepCoefficients = &systemCoefficients.deepCoefficients[10*lineDeepStart];
 		for( int i=0 ; i<lineLength ; _deepCoefficients+=10 , i++)
 		{
-			_out[i] =(Data)
+			_out[i] =
 				(
-					_inPrevious[i-1] * _deepCoefficients[0] +
-					_inPrevious[i+0] * _deepCoefficients[1] +
-					_inPrevious[i+1] * _deepCoefficients[2] +
-					_inCurrent [i-1] * _deepCoefficients[3] +
-					_inCurrent [i+0] * _deepCoefficients[4] +
-					_inCurrent [i+1] * _deepCoefficients[5] +
-					_inNext    [i-1] * _deepCoefficients[6] +
-					_inNext    [i+0] * _deepCoefficients[7] +
-					_inNext    [i+1] * _deepCoefficients[8]
+					_inPrevious[i-1] * (DataReal)_deepCoefficients[0] +
+					_inPrevious[i+0] * (DataReal)_deepCoefficients[1] +
+					_inPrevious[i+1] * (DataReal)_deepCoefficients[2] +
+					_inCurrent [i-1] * (DataReal)_deepCoefficients[3] +
+					_inCurrent [i+0] * (DataReal)_deepCoefficients[4] +
+					_inCurrent [i+1] * (DataReal)_deepCoefficients[5] +
+					_inNext    [i-1] * (DataReal)_deepCoefficients[6] +
+					_inNext    [i+0] * (DataReal)_deepCoefficients[7] +
+					_inNext    [i+1] * (DataReal)_deepCoefficients[8]
 				);
 		}
 	};
 
 
-	t_begin = clock();
+
+	timer.reset();
 
 	int threads = omp_get_max_threads();
 	std::vector< int > lineRange( threads+1 );
@@ -682,28 +684,28 @@ int MultiplyBySystemMatrix_NoReciprocals
 #pragma omp parallel for
 	for( int t=0 ; t<threads ; t++ )
 	{
-		const int tId = omp_get_thread_num();
-		const int firstLine = lineRange[tId];
-		const int lastLine = lineRange[tId+1];
+		int tID = omp_get_thread_num();
+		int firstLine = lineRange[tID];
+		int lastLine = lineRange[tID+1];
 		for( int r=firstLine ; r<lastLine ; r++ ) UpdateRow(r);
 	}
-	if( verbose ) printf( "\tMultiply deep = %.4f \n" , double(clock() - t_begin) / CLOCKS_PER_SEC );
+	if( verbose ) printf( "\tMultiply deep = %.4f \n" , timer.elapsed() );
 	return 1;
 }
 
 
 template<class Real, class Data>
-int ComputeSystemResdiual(const std::vector<Real> & deepCoefficients, const SparseMatrix< Real, int> & boundaryDeepMatrix, const SparseMatrix< Real, int> & boundaryBoundaryMatrix, const std::vector<int> & boundaryGlobalIndex, const std::vector<RasterLine> & rasterLines, const std::vector<Data> & boundaryRHS, const std::vector<Data> & boundaryValues, const std::vector<Data> & in, const std::vector<Data> & rhs, std::vector<Data> & out, bool verbose = false) {
-
-	clock_t t_begin;
+int ComputeSystemResdiual(const std::vector<Real> & deepCoefficients, const SparseMatrix< Real, int> & boundaryDeepMatrix, const SparseMatrix< Real, int> & boundaryBoundaryMatrix, const std::vector<int> & boundaryGlobalIndex, const std::vector<RasterLine> & rasterLines, const std::vector<Data> & boundaryRHS, const std::vector<Data> & boundaryValues, const std::vector<Data> & in, const std::vector<Data> & rhs, std::vector<Data> & out, bool verbose = false)
+{
+	Miscellany::Timer timer;
 	//Boundary residual
 	{
 		int numBoundaryVariables = boundaryGlobalIndex.size();
-		if (verbose) t_begin = clock();
+		if( verbose ) timer.reset();
 		boundaryDeepMatrix.Multiply((Data*)&in[0], (Data*)&boundaryRHS[0], MULTIPLY_ADD | MULTIPLY_NEGATE);
 		boundaryBoundaryMatrix.Multiply((Data*)&boundaryValues[0], (Data*)&boundaryRHS[0], MULTIPLY_ADD | MULTIPLY_NEGATE);
 		for (int i = 0; i < numBoundaryVariables; i++)out[boundaryGlobalIndex[i]] = boundaryRHS[i];
-		if (verbose) printf("\t Residual Boundary =  %.4f \n", double(clock() - t_begin) / (CLOCKS_PER_SEC));
+		if( verbose ) printf( "\t Residual Boundary =  %.4f \n" , timer.elapsed() );
 	}
 
 	auto UpdateResidual = [&](int r)
@@ -734,43 +736,30 @@ int ComputeSystemResdiual(const std::vector<Real> & deepCoefficients, const Spar
 	};
 
 
-	if (verbose) t_begin = clock();
+	if( verbose ) timer.reset();
 
 	int threads = omp_get_max_threads();
 #pragma omp parallel for
 	for (int t = 0; t < threads; t++) {
-		const int tId = omp_get_thread_num();
-		const int firstLine = (rasterLines.size() *tId) / threads;
-		const int lastLine = (rasterLines.size() * (tId + 1)) / threads;
+		int tID = omp_get_thread_num();
+		int firstLine = (rasterLines.size() *tID) / threads;
+		int lastLine = (rasterLines.size() * (tID + 1)) / threads;
 		for (int r = firstLine; r < lastLine; r++) UpdateResidual(r);
 	}
-	if (verbose) printf("\t Residual Deep %.4f \n", double(clock() - t_begin) / CLOCKS_PER_SEC);
+	if( verbose ) printf( "\t Residual Deep %.4f\n" , timer.elapsed() );
 	return 1;
 }
 
 template<class Real, class Data>
-int MultiplyByRestriction(const SparseMatrix< Real, int> & __boundaryRestrictionMatrix, const std::vector<int> & boundaryGlobalIndex, std::vector<Data> & boundaryValue, const std::vector<RasterLine> & restrictionLines, const std::vector<Data> & in, std::vector<Data> & out, bool verbose = false) {
-
-	clock_t t_begin;
+int MultiplyByRestriction(const SparseMatrix< Real, int> & __boundaryRestrictionMatrix, const std::vector<int> & boundaryGlobalIndex, std::vector<Data> & boundaryValue, const std::vector<RasterLine> & restrictionLines, const std::vector<Data> & in, std::vector<Data> & out, bool verbose = false)
+{
+	Miscellany::Timer timer;
 
 	int numBoundaryVariables = (int)boundaryGlobalIndex.size();
 
-	//std::vector<Data> boundaryValues;
-	//boundaryValues.resize(numBoundaryVariables);
-
-	//ConstPointer(Data) _in = (ConstPointer(Data))GetPointer(in);
-	//Pointer(Data) _out = (Pointer(Data))GetPointer(out);
-	//Pointer(Data) _boundaryValues = (Pointer(Data))GetPointer(boundaryValues);
-
-	//if (verbose) t_begin = clock();
-	//__boundaryRestrictionMatrix.Multiply(_in, _boundaryValues);
-	//if (verbose) printf("\t Restriction boundary  %.4f \n", double(clock() - t_begin) / CLOCKS_PER_SEC);
-//#pragma omp parallel for
-	//for (int i = 0; i < numBoundaryVariables; i++) _out[boundaryGlobalIndex[i]] = _boundaryValues[i];
-
-	if (verbose) t_begin = clock();
+	if( verbose ) timer.reset();
 	__boundaryRestrictionMatrix.Multiply((Data*)&in[0], (Data*)&boundaryValue[0]);
-	if (verbose) printf("\t Restriction boundary  %.4f \n", double(clock() - t_begin) / CLOCKS_PER_SEC);
+	if( verbose ) printf( "\t Restriction boundary  %.4f \n" , timer.elapsed() );
 
 #pragma omp parallel for
 	for (int i = 0; i < numBoundaryVariables; i++) out[boundaryGlobalIndex[i]] = boundaryValue[i];
@@ -794,7 +783,7 @@ int MultiplyByRestriction(const SparseMatrix< Real, int> & __boundaryRestriction
 		}
 	};
 
-	if (verbose) t_begin = clock();
+	if( verbose ) timer.reset();
 	int threads = omp_get_max_threads();
 	std::vector<int> lineRange(threads + 1);
 	int blockSize = (int)restrictionLines.size() / threads;
@@ -802,22 +791,21 @@ int MultiplyByRestriction(const SparseMatrix< Real, int> & __boundaryRestriction
 	lineRange[threads] = (int)restrictionLines.size();
 #pragma omp parallel for
 	for (int t = 0; t < threads; t++) {
-		const int tId = omp_get_thread_num();
-		const int firstLine = lineRange[tId];
-		const int lastLine = lineRange[tId + 1];
+		int tID = omp_get_thread_num();
+		int firstLine = lineRange[tID];
+		int lastLine = lineRange[tID + 1];
 		for (int r = firstLine; r < lastLine; r++) UpdateRow(r);
 	}
 
-	if (verbose)printf("\t Restriction deep %.4f \n", double(clock() - t_begin) / CLOCKS_PER_SEC);
+	if( verbose ) printf( "\t Restriction deep %.4f \n" , timer.elapsed() );
 	return 1;
 }
 
 template<class Real, class Data>
-int MultiplyByProlongation(const std::vector<ProlongationLine> & prolongationLines, const std::vector<Data> & in, std::vector<Data> & out, bool verbose = false) {
+int MultiplyByProlongation(const std::vector<ProlongationLine> & prolongationLines, const std::vector<Data> & in, std::vector<Data> & out, bool verbose = false)
+{
+	Miscellany::Timer timer;
 
-	clock_t t_begin;
-
-	
 	auto UpdateRow = [&](int r)
 	{
 		Data* _out = out.data() + prolongationLines[r].startIndex;
@@ -843,7 +831,7 @@ int MultiplyByProlongation(const std::vector<ProlongationLine> & prolongationLin
 		}
 	};
 
-	if (verbose) t_begin = clock();
+	if( verbose ) timer.reset();
 	int threads = omp_get_max_threads();
 	std::vector<int> lineRange(threads + 1);
 	int blockSize = prolongationLines.size() / threads;
@@ -851,21 +839,20 @@ int MultiplyByProlongation(const std::vector<ProlongationLine> & prolongationLin
 	lineRange[threads] = prolongationLines.size();
 #pragma omp parallel for
 	for (int t = 0; t < threads; t++) {
-		const int tId = omp_get_thread_num();
-		const int firstLine = lineRange[tId];
-		const int lastLine = lineRange[tId + 1];
+		int tID = omp_get_thread_num();
+		int firstLine = lineRange[tID];
+		int lastLine = lineRange[tID + 1];
 		for (int r = firstLine; r < lastLine; r++) UpdateRow(r);
 	}
-	if (verbose) printf("\t Prolongation deep %.4f \n", double(clock() - t_begin) / CLOCKS_PER_SEC); 
+	if( verbose ) printf( "\t Prolongation deep %.4f\n" , timer.elapsed() ); 
 	return 1;
 }
 
 
 template<class Real, class Data>
-int AddProlongation(const std::vector<ProlongationLine> & prolongationLines, const std::vector<Data> & in, std::vector<Data> & out, bool verbose = false) {
-
-	clock_t t_begin;
-
+int AddProlongation(const std::vector<ProlongationLine> & prolongationLines, const std::vector<Data> & in, std::vector<Data> & out, bool verbose = false)
+{
+	Miscellany::Timer timer;
 
 	auto UpdateRow = [&](int r)
 	{
@@ -892,7 +879,7 @@ int AddProlongation(const std::vector<ProlongationLine> & prolongationLines, con
 		}
 	};
 
-	if (verbose) t_begin = clock();
+	if( verbose ) timer.reset();
 	int threads = omp_get_max_threads();
 	std::vector<int> lineRange(threads + 1);
 	int blockSize = (int)prolongationLines.size() / threads;
@@ -900,12 +887,12 @@ int AddProlongation(const std::vector<ProlongationLine> & prolongationLines, con
 	lineRange[threads] = (int)prolongationLines.size();
 #pragma omp parallel for
 	for (int t = 0; t < threads; t++) {
-		const int tId = omp_get_thread_num();
-		const int firstLine = lineRange[tId];
-		const int lastLine = lineRange[tId + 1];
+		int tID = omp_get_thread_num();
+		int firstLine = lineRange[tID];
+		int lastLine = lineRange[tID + 1];
 		for (int r = firstLine; r < lastLine; r++) UpdateRow(r);
 	}
-	if (verbose) printf("\t Prolongation deep %.4f \n", double(clock() - t_begin) / CLOCKS_PER_SEC);
+	if( verbose ) printf( "\t Prolongation deep %.4f \n" , timer.elapsed() );
 	return 1;
 }
 
@@ -923,13 +910,12 @@ int CellStiffnessToTexelStiffness
 )
 {
 	//Update Boundary Texels
-	clock_t t_begin; 
-	if( verbose ) t_begin = clock();
+	Miscellany::Timer timer;
 #pragma omp parallel for
 	for( int c=0 ; c<Channels ; c++ ) boundaryCellBasedStiffnessRHSMatrix[c].Multiply( &cellSharpenningMask[0] , &boundaryTexelValues[c][0] );
 #pragma omp parallel for
 	for( int i=0 ; i<boundaryGlobalIndex.size() ; i++ ) for( int c=0 ; c<Channels ; c++ ) texelModulatedStiffness[ boundaryGlobalIndex[i] ][c] = boundaryTexelValues[c][i];
-	if( verbose ) printf( "\tBoundary updated: %.3f(s) \n" , double(clock() - t_begin) / CLOCKS_PER_SEC );
+	if( verbose ) printf( "\tBoundary updated: %.3f(s) \n" , timer.elapsed() );
 	//Update Interior Texels
 
 	auto UpdateRow = [&](int r)
@@ -945,16 +931,16 @@ int CellStiffnessToTexelStiffness
 		}
 	};
 
-	if (verbose) t_begin = clock();
+	if( verbose ) timer.reset();
 	int threads = omp_get_max_threads();
 #pragma omp parallel for
 	for (int t = 0; t < threads; t++) {
-		const int tId = omp_get_thread_num();
-		const int firstLine = (int)(interiorTexelToCellLines.size() *tId) / threads;
-		const int lastLine = (int)(interiorTexelToCellLines.size() * (tId + 1)) / threads;
+		int tID = omp_get_thread_num();
+		int firstLine = (int)(interiorTexelToCellLines.size() *tID) / threads;
+		int lastLine = (int)(interiorTexelToCellLines.size() * (tID + 1)) / threads;
 		for (int r = firstLine; r < lastLine; r++) UpdateRow(r);
 	}
-	if (verbose) printf("\t Interior update %.4f \n", double(clock() - t_begin) / CLOCKS_PER_SEC);
+	if( verbose ) printf( "\t Interior update %.4f\n" , timer.elapsed() );
 	return 1;
 }
 template< class Real >
@@ -971,12 +957,11 @@ int CellStiffnessToTexelStiffness
 )
 {
 	//Update Boundary Texels
-	clock_t t_begin; 
-	if( verbose ) t_begin = clock();
+	Miscellany::Timer timer;
 	boundaryCellBasedStiffnessRHSMatrix.Multiply( &cellSharpenningMask[0] , &boundaryTexelValues[0] );
 #pragma omp parallel for
 	for( int i=0 ; i<boundaryGlobalIndex.size() ; i++ ) texelModulatedStiffness[ boundaryGlobalIndex[i] ] = boundaryTexelValues[i];
-	if( verbose ) printf( "\tBoundary updated: %.3f(s) \n" , double(clock() - t_begin) / CLOCKS_PER_SEC );
+	if( verbose ) printf( "\tBoundary updated: %.3f(s) \n" , timer.elapsed() );
 	//Update Interior Texels
 
 	auto UpdateRow = [&](int r)
@@ -992,32 +977,30 @@ int CellStiffnessToTexelStiffness
 		}
 	};
 
-	if (verbose) t_begin = clock();
+	if( verbose ) timer.reset();
 	int threads = omp_get_max_threads();
 #pragma omp parallel for
 	for (int t = 0; t < threads; t++) {
-		const int tId = omp_get_thread_num();
-		const int firstLine = (int)(interiorTexelToCellLines.size() *tId) / threads;
-		const int lastLine = (int)(interiorTexelToCellLines.size() * (tId + 1)) / threads;
+		int tID = omp_get_thread_num();
+		int firstLine = (int)(interiorTexelToCellLines.size() *tID) / threads;
+		int lastLine = (int)(interiorTexelToCellLines.size() * (tID + 1)) / threads;
 		for (int r = firstLine; r < lastLine; r++) UpdateRow(r);
 	}
-	if (verbose) printf("\t Interior update %.4f \n", double(clock() - t_begin) / CLOCKS_PER_SEC);
+	if( verbose ) printf( "\t Interior update %.4f\n" , timer.elapsed() );
 	return 1;
 }
 
-template< class Real , class DataType , class BoundarySolver , class CoarseSolver >
-int VCycle(	std::vector< MultigridLevelVariables< DataType > > &variables , const std::vector< SystemCoefficients< Real > > &coefficients , const std::vector< MultigridLevelIndices< Real > > &indices , VCycleSolvers< BoundarySolver , CoarseSolver > &vCycleSolvers , bool verbose , bool detailVerbose )
+template< class Real , class DataType , class DirectSolver >
+int VCycle(	std::vector< MultigridLevelVariables< DataType > > &variables , const std::vector< SystemCoefficients< Real > > &coefficients , const std::vector< MultigridLevelIndices< Real > > &indices , VCycleSolvers< DirectSolver > &vCycleSolvers , bool verbose , bool detailVerbose )
 {
-	clock_t p_begin;
-
 	int levels = (int)variables.size();
 
 	//Set x0[i = 1 : levels -1] = 0
-	if (verbose) p_begin = clock();
+	Miscellany::Timer timer;
 	for (int i = 1; i < levels; i++){
 		memset(&variables[i].x[0], 0, variables[i].x.size() * sizeof(DataType));
 	}
-	if (verbose) printf("Zero arrays %.4f \n", double(clock() - p_begin) / CLOCKS_PER_SEC);
+	if( verbose ) printf("Zero arrays %.4f \n" , timer.elapsed() );
 
 	//Reduction phase
 	for( int i=0 ; i<levels-1 ; i++ )
@@ -1029,58 +1012,58 @@ int VCycle(	std::vector< MultigridLevelVariables< DataType > > &variables , cons
 		const MultigridLevelIndices<Real> & nextLevelIndices = indices[i + 1];
 		MultigridLevelVariables<DataType> & nextLevelVariables = variables[i + 1];
 
-		if (verbose) printf("Level %d \n", i);
-		clock_t p_begin;
+		if( verbose ) printf( "Level %d\n" , i );
 
-		if (verbose) p_begin = clock();
+		Miscellany::Timer timer;
 		if( !RelaxationAndResidual( _coefficients.deepCoefficients , _coefficients.boundaryDeepMatrix , vCycleSolvers.boundary[i], _indices.boundaryGlobalIndex, _indices.threadTasks, _variables.rhs, _variables.x, _variables.boundary_rhs, _variables.boundary_value, _variables.variable_boundary_value, _coefficients.boundaryBoundaryMatrix, _variables.residual, 2, detailVerbose)) {
 			printf("ERROR : Failed hybrid gauss seidel solver! \n");
 			return 0;
 		}
-		if (verbose) printf("Relaxation  + Residual %.4f  \n", double(clock() - p_begin) / CLOCKS_PER_SEC);
+		if( verbose ) printf("Relaxation  + Residual %.4f\n" , timer.elapsed() );
 
-		if (verbose) p_begin = clock();
+		if( verbose ) timer.reset();
 		MultiplyByRestriction(_indices.boundaryRestriction, nextLevelIndices.boundaryGlobalIndex, nextLevelVariables.boundary_value, nextLevelIndices.restrictionLines, _variables.residual, nextLevelVariables.rhs, detailVerbose);
-		if (verbose) printf("Restriction %.4f  \n", double(clock() - p_begin) / CLOCKS_PER_SEC);
+		if( verbose ) printf( "Restriction %.4f\n" , timer.elapsed() );
 	}
 
 	//Prolongation phase
-	for (int i = levels - 1; i >= 0; i--) {
-		if (verbose) printf("Level %d \n", i);
-		if (i < levels - 1){
-		//if (i < levels - 1 && i > 0){
-			clock_t p_begin;
+	for( int i=levels-1 ; i>=0 ; i-- )
+	{
+		if( verbose ) printf( "Level %d\n" , i );
+		if( i<levels-1 )
+		{
+			Miscellany::Timer timer;
 
 			const SystemCoefficients< Real > & _coefficients = coefficients[i];
 			const MultigridLevelIndices<Real> & _indices = indices[i];
 			MultigridLevelVariables<DataType> & _variables = variables[i];
 
-			if (verbose) p_begin = clock();
+			if( verbose ) timer.reset();
 			if( !Relaxation( _coefficients.deepCoefficients , _coefficients.boundaryDeepMatrix , vCycleSolvers.boundary[i] , _indices.boundaryGlobalIndex , _indices.threadTasks , _variables.rhs , _variables.x , _variables.boundary_rhs , _variables.boundary_value , _variables.variable_boundary_value , 2 , true , detailVerbose ) )
 			{
 				fprintf( stderr , "[ERROR] Failed hybrid gauss seidel solver!\n" );
 				return 0;
 			}
-			if (verbose) printf("Gauss Seidel %.4f  \n", double(clock() - p_begin) / CLOCKS_PER_SEC);
+			if( verbose ) printf( "Gauss Seidel %.4f\n" , timer.elapsed() );
 		}
 		else if( i==levels-1 )
 		{
 			MultigridLevelVariables<DataType> & _variables = variables[i];
-			clock_t p_begin;
-			if (verbose) p_begin = clock();
+			Miscellany::Timer timer;
+			if( verbose ) timer.reset();
 			solve( vCycleSolvers.coarse , _variables.x , _variables.rhs );
-			if (verbose) printf("Direct solver %.4f  \n", double(clock() - p_begin) / CLOCKS_PER_SEC);
+			if( verbose ) printf( "Direct solver %.4f\n" , timer.elapsed() );
 		}
 
-		if (i > 0) {
+		if( i>0 )
+		{
 			MultigridLevelVariables<DataType> & _variables = variables[i];
 			const MultigridLevelIndices<Real> & previousLevelIndices = indices[i - 1];
 			MultigridLevelVariables<DataType> & previousLevelVariables = variables[i - 1];
 
-			clock_t p_begin;
-			if (verbose) p_begin = clock();
+			Miscellany::Timer timer;
 			AddProlongation<Real>(previousLevelIndices.prolongationLines, _variables.x, previousLevelVariables.x, detailVerbose);
-			if (verbose) printf("Prolongation %.4f \n", double(clock() - p_begin) / CLOCKS_PER_SEC);
+			if( verbose ) printf( "Prolongation %.4f\n" , timer.elapsed() );
 		}
 	}
 

@@ -28,6 +28,9 @@ DAMAGE.
 #ifndef HIERARCHICAL_SYSTEM_INCLUDED
 #define HIERARCHICAL_SYSTEM_INCLUDED
 
+#include <algorithm>
+#include <Misha/Image.h>
+#include <Misha/LinearSolvers.h>
 #include "IndexedPolygon.h"
 
 template< typename Real >
@@ -202,6 +205,28 @@ protected:
 	unsigned int _sampleNum;
 	SampleData* _samples;
 };
+template< typename _Real >
+struct ScalarElementSamples
+{
+	typedef _Real Real;
+	typedef BilinearElementScalarSample< Real > Bilinear;
+	typedef QuadraticElementScalarSample< Real > Quadratic;
+	std::vector< std::vector< Bilinear > > bilinear;
+	std::vector< Quadratic > quadratic;
+	void resize( size_t sz ){ bilinear.resize( sz ); }
+	void sort( void ){ for( int i=0 ; i<bilinear.size() ; i++ ) std::sort( bilinear[i].begin() , bilinear[i].end() , Bilinear::Compare ); }
+};
+template< typename _Real >
+struct GradientElementSamples
+{
+	typedef _Real Real;
+	typedef BilinearElementGradientSample< Real > Bilinear;
+	typedef QuadraticElementGradientSample< Real > Quadratic;
+	std::vector< std::vector< Bilinear > > bilinear;
+	std::vector< Quadratic > quadratic;
+	void resize( size_t sz ){ bilinear.resize( sz ); }
+	void sort( void ){ for( int i=0 ; i<bilinear.size() ; i++ ) std::sort( bilinear[i].begin() , bilinear[i].end() , Bilinear::Compare ); }
+};
 
 class RasterLine
 {
@@ -232,7 +257,7 @@ public:
 class MultigridBlockInfo
 {
 public:
-	MultigridBlockInfo(const int p_blockWidth = 128, const int p_blockHeight = 16, const int p_paddingWidth = 2, const int p_paddingHeight = 2, const int p_boundaryDilation = 0) {
+	MultigridBlockInfo( int p_blockWidth = 128, int p_blockHeight = 16, int p_paddingWidth = 2, int p_paddingHeight = 2, int p_boundaryDilation = 0) {
 		blockWidth = p_blockWidth;
 		blockHeight = p_blockHeight;
 		paddingWidth = p_paddingWidth;
@@ -314,23 +339,23 @@ public:
 	int outputStart;
 };
 
-class AuxiliarNode
+template< typename GeometryReal >
+class AuxiliaryNode
 {
 public:
-	Point2D< double > position;
+	Point2D< GeometryReal > position;
 	int index;
 };
 
-
-
+template< typename GeometryReal >
 class GridChart
 {
 public:
-	Point2D< double > corner;
+	Point2D< GeometryReal > corner;
 	int cornerCoords[2];
 	int centerOffset[2];
-	double cellSizeW;
-	double cellSizeH;
+	GeometryReal cellSizeW;
+	GeometryReal cellSizeH;
 	int width;
 	int height;
 	int globalTexelDeepOffset;
@@ -340,15 +365,15 @@ public:
 	int globalIndexCellOffset;
 	int globalIndexInteriorCellOffset;
 	int gridIndexOffset;
-	Image<int> cellType;
-	Image<int> nodeType;
-	Image<int> globalInteriorTexelIndex;
-	Image<int> globalTexelIndex;
-	Image<int> globalTexelDeepIndex;
-	Image<int> globalTexelBoundaryIndex;
+	Image< int > cellType;
+	Image< int > nodeType;
+	Image< int > globalInteriorTexelIndex;
+	Image< int > globalTexelIndex;
+	Image< int > globalTexelDeepIndex;
+	Image< int > globalTexelBoundaryIndex;
 
 
-	Image<int> localCellIndex;
+	Image< int > localCellIndex;
 	std::vector< BilinearElementIndex > bilinearElementIndices;
 
 	Image<int> localInteriorCellIndex;
@@ -358,28 +383,28 @@ public:
 
 	int numInteriorCells;
 
-	Image<int> localBoundaryCellIndex;
+	Image< int > localBoundaryCellIndex;
 	int numBoundaryCells;
 
-	std::vector<int> interiorCellIndexToLocalCellIndex;
-	std::vector<int> boundaryCellIndexToLocalCellIndex;
+	std::vector< int > interiorCellIndexToLocalCellIndex;
+	std::vector< int > boundaryCellIndexToLocalCellIndex;
 
-	std::vector<std::vector<AtlasIndexedPolygon>> boundaryPolygons;
-	std::vector<std::vector<BoundaryIndexedTriangle>> boundaryTriangles;
+	std::vector< std::vector< AtlasIndexedPolygon< GeometryReal > > > boundaryPolygons;
+	std::vector< std::vector< BoundaryIndexedTriangle< GeometryReal > > > boundaryTriangles;
 
 	int numBoundaryTriangles;
 
-	std::vector<AuxiliarNode> auxiliarNodes;
+	std::vector< AuxiliaryNode< GeometryReal > > auxiliaryNodes;
 
-	Image<int> triangleId;
-	Image<Point2D<double>> barycentricCoords;
+	Image< int > triangleID;
+	Image< Point2D< GeometryReal > > barycentricCoords;
 };
 
 
 class GridNodeInfo
 {
 public:
-	int chartId;
+	int chartID;
 	int ci;
 	int cj;
 	int nodeType;
@@ -393,6 +418,7 @@ public:
 	int offset;
 };
 
+template< typename GeometryReal , typename MatrixReal >
 class GridAtlas
 {
 public:
@@ -402,13 +428,13 @@ public:
 	std::vector< int > boundaryGlobalIndex;
 	std::vector< int > deepGlobalIndex;
 	std::vector< GridNodeInfo > nodeInfo;
-	std::vector< GridChart > gridCharts;
+	std::vector< GridChart< GeometryReal > > gridCharts;
 	std::vector< SegmentedRasterLine > segmentedLines;
 	std::vector< RasterLine > rasterLines;
 	std::vector< RasterLine > restrictionLines;
 	std::vector< DeepLine > deepLines;
 	std::vector< ProlongationLine > prolongationLines;
-	Eigen::SparseMatrix< double > coarseToFineNodeProlongation;
+	Eigen::SparseMatrix< MatrixReal > coarseToFineNodeProlongation;
 	//int resolution;
 	int numTexels;
 	int numInteriorTexels;
@@ -430,27 +456,28 @@ struct BoundaryDeepIndex
 	int offset;
 };
 
+template< typename Real >
 struct BoundaryBoundaryIndex
 {
 	int coarsePrincipalBoundaryIndex;
 	int coarseSecondaryBoundaryIndex;
 	int fineDeepIndex;
 	int offset;
-	double weight;
+	Real weight;
 };
 
+template< typename GeometryReal , typename MatrixReal >
 class HierarchicalSystem
 {
 public:
-	std::vector< SparseMatrix< double , int > > boundaryRestriction;
-	std::vector< SparseMatrix< double , int > > prolongation;
+	std::vector< GridAtlas< GeometryReal , MatrixReal > > gridAtlases;
 
-	std::vector< GridAtlas> gridAtlases;
-
-	std::vector< SparseMatrix< double , int > > boundaryCoarseFineProlongation;
-	std::vector< SparseMatrix< double , int > > boundaryFineCoarseRestriction;
+	std::vector< SparseMatrix< MatrixReal , int > > boundaryRestriction;
+	std::vector< SparseMatrix< MatrixReal , int > > prolongation;
+	std::vector< SparseMatrix< MatrixReal , int > > boundaryCoarseFineProlongation;
+	std::vector< SparseMatrix< MatrixReal , int > > boundaryFineCoarseRestriction;
+	std::vector< std::vector< BoundaryBoundaryIndex< MatrixReal > > > boundaryBoundaryIndices;
 	std::vector< std::vector< BoundaryDeepIndex > > boundaryDeepIndices;
-	std::vector< std::vector< BoundaryBoundaryIndex > > boundaryBoundaryIndices;
 };
 
 
@@ -487,11 +514,11 @@ public:
 	SparseMatrix<Real, int> boundaryRestriction;
 };
 
-template< class BoundarySolver , class CoarseSolver >
+template< class DirectSolver >
 struct VCycleSolvers
 {
-	std::vector< BoundarySolver > boundary;
-	CoarseSolver coarse;
+	std::vector< DirectSolver > boundary;
+	DirectSolver coarse;
 };
 
 #include "SparseMatrixParser.h"

@@ -92,36 +92,31 @@ void TexturedMeshVisualization::RenderOffScreenBuffer( Image< Point3D< float > >
 }
 
 
-void TexturedMeshVisualization::WriteSceneConfigurationCallBack(Visualization* v, const char* prompt) {
+void TexturedMeshVisualization::WriteSceneConfigurationCallBack( Visualization* v , const char* prompt )
+{
 	const TexturedMeshVisualization* av = (TexturedMeshVisualization*)v;
 	FILE * file;
-	file = fopen(prompt, "wb");
-	fwrite(&av->screenWidth, sizeof(int), 1, file);
-	fwrite(&av->screenHeight, sizeof(int), 1, file);
-	fwrite(&av->camera.position, sizeof(Point3D<double>), 1, file);
-	fwrite(&av->camera.forward, sizeof(Point3D<double>), 1, file);
-	fwrite(&av->camera.right, sizeof(Point3D<double>), 1, file);
-	fwrite(&av->camera.up, sizeof(Point3D<double>), 1, file);
-	fwrite(&av->zoom, sizeof(float), 1, file);
+	file = fopen( prompt , "wb" );
+	fwrite( &av->screenWidth  , sizeof( int ) , 1 , file );
+	fwrite( &av->screenHeight , sizeof( int ) , 1 , file );
+	av->camera.write( file );
+	fwrite( &av->zoom , sizeof(float) , 1 , file );
 	fclose(file);
 }
 
-void TexturedMeshVisualization::ReadSceneConfigurationCallBack(Visualization* v, const char* prompt) {
+void TexturedMeshVisualization::ReadSceneConfigurationCallBack( Visualization *v , const char* prompt )
+{
 	TexturedMeshVisualization* av = (TexturedMeshVisualization*)v;
 	FILE * file;
-	file = fopen(prompt, "rb");
-	if (!file) {
-		printf("Camera Configuration File Not Valid \n");
-	}
-	else {
-		fread(&av->screenWidth, sizeof(int), 1, file);
-		fread(&av->screenHeight, sizeof(int), 1, file);
-		fread(&av->camera.position, sizeof(Point3D<double>), 1, file);
-		fread(&av->camera.forward, sizeof(Point3D<double>), 1, file);
-		fread(&av->camera.right, sizeof(Point3D<double>), 1, file);
-		fread(&av->camera.up, sizeof(Point3D<double>), 1, file);
-		fread(&av->zoom, sizeof(float), 1, file);
-		fclose(file);
+	file = fopen( prompt , "rb" );
+	if( !file ) fprintf( stderr , "TexturedMeshVisualization::ReadSceneConfigurationCallBack: Camera Configuration File Not Valid: %s\n" , prompt );
+	else
+	{
+		fread( &av->screenWidth  , sizeof(int) , 1 , file );
+		fread( &av->screenHeight , sizeof(int) , 1 , file );
+		av->camera.read( file );
+		fread( &av->zoom , sizeof(float) , 1 , file );
+		fclose( file );
 	}
 }
 void TexturedMeshVisualization::ToggleVectorFieldCallBack( Visualization* v , const char* )
@@ -208,10 +203,11 @@ void TexturedMeshVisualization::UpdateTextureBuffer() {
 	int height = textureImage.height();
 	int width = textureImage.width();
 	unsigned char * colors = new unsigned char[height*width * 3];
-	for (int j = 0; j < height; j++) for (int i = 0; i < width; i++) for (int c = 0; c < 3; c++) colors[3 * (width*j + i) + c] = (unsigned char)(std::min<double>((double)(textureImage(i, j)[c])*255.0, 255.0));
-	glBindTexture(GL_TEXTURE_2D, textureBuffer);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, (GLvoid*)&colors[0]);
-	glBindTexture(GL_TEXTURE_2D, 0);
+	for( int j=0 ; j<height ; j++ ) for( int i=0 ; i<width ; i++ ) for( int c=0 ; c<3 ; c++ )
+		colors[ 3*(width*j + i)+c ] = (unsigned char)( std::min< float >( (float)textureImage(i,j)[c]*255.f , 255.f ) );
+	glBindTexture( GL_TEXTURE_2D , textureBuffer );
+	glTexImage2D( GL_TEXTURE_2D , 0 , GL_RGBA , width , height , 0 , GL_RGB , GL_UNSIGNED_BYTE , (GLvoid*)&colors[0] );
+	glBindTexture( GL_TEXTURE_2D , 0 );
 
 	delete[] colors;
 }
@@ -722,7 +718,7 @@ void TexturedMeshVisualization::motionFunc(int x, int y)
 		if (panning) xForm.offset[0] -= (newX - oldX) / imageToScreenScale(), xForm.offset[1] += (newY - oldY) / imageToScreenScale();
 		else
 		{
-			float dz = float(pow(1.1, double(newY - oldY) / 8));
+			float dz = (float)( pow( 1.1 , (float)(newY-oldY) / 8.f ) );
 			xForm.zoom *= dz;
 		}
 		glutPostRedisplay();
@@ -764,7 +760,7 @@ TexturedMeshVisualization::TexturedMeshVisualization( bool hasVectorField )
 
 	radius = 1.f;
 
-	camera = Camera( Point3D< float >( 0.f , 0.f , 2.f ) , Point3D< float >( 0.f , 0.f , -1.f ) , Point3D< float >( 0.f , 1.f , 0.f ) );
+	camera = Camera< float >( Point3D< float >( 0.f , 0.f , 2.f ) , Point3D< float >( 0.f , 0.f , -1.f ) , Point3D< float >( 0.f , 1.f , 0.f ) );
 
 	callBacks.push_back(KeyboardCallBack(this, 'C', "read camera", "File Name", ReadSceneConfigurationCallBack));
 	callBacks.push_back(KeyboardCallBack(this, 'c', "save camera", "File Name", WriteSceneConfigurationCallBack));

@@ -89,7 +89,9 @@ void StitchingVisualization::UpdateColorTextureBuffer() {
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-void StitchingVisualization::UpdateCompositeTextureBuffer(const Image<Point3D<float>> & composite) {
+template< typename Real >
+void StitchingVisualization::UpdateCompositeTextureBuffer( const Image< Point3D< Real > > &composite )
+{
 	if (!glIsBuffer(compositeTextureBuffer)) {
 		glGenTextures(1, &compositeTextureBuffer);
 	}
@@ -101,14 +103,16 @@ void StitchingVisualization::UpdateCompositeTextureBuffer(const Image<Point3D<fl
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 	unsigned char * imValues = new unsigned char[composite.size() * 3];
-	for (int j = 0; j < composite.size(); j++) for (int c = 0; c < 3; c++) imValues[3 * j + c] = (unsigned char)(composite[j][c] * 255.0);
+	for( int j=0 ; j<composite.size() ; j++ ) for( int c=0 ; c<3 ; c++ ) imValues[3 * j + c] = (unsigned char)(composite[j][c] * 255.0);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, composite.width(), composite.height(), 0, GL_RGB, GL_UNSIGNED_BYTE, (GLvoid*)&imValues[0]);
 	delete imValues;
 
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-void StitchingVisualization::UpdateReferenceTextureBuffers(const std::vector<Image<Point3D<float>>> & images) {
+template< typename Real >
+void StitchingVisualization::UpdateReferenceTextureBuffers( const std::vector< Image< Point3D< Real > > > &images )
+{
 	referenceTextureBuffers.resize(images.size());
 	for (int i = 0; i < referenceTextureBuffers.size(); i++) {
 		if (!glIsBuffer(referenceTextureBuffers[i])) {
@@ -130,7 +134,9 @@ void StitchingVisualization::UpdateReferenceTextureBuffers(const std::vector<Ima
 	}
 }
 
-void StitchingVisualization::UpdateTextureBuffer(const Image<Point3D<float>> & image) {
+template< typename Real >
+void StitchingVisualization::UpdateTextureBuffer( const Image< Point3D< Real > > &image )
+{
 	if (!glIsBuffer(textureBuffer)) {
 		glGenTextures(1, &textureBuffer);
 	}
@@ -143,7 +149,6 @@ void StitchingVisualization::UpdateTextureBuffer(const Image<Point3D<float>> & i
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-	//glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, textureWidth, textureHeight, 0, GL_RGB, GL_FLOAT, (GLvoid*)&textureImage[0]);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, image.width(), image.height(), 0, GL_RGB, GL_FLOAT, (GLvoid*)&image[0]);
 
 	// Unbind the texture

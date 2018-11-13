@@ -412,6 +412,7 @@ struct Point3D
 	}
 	Real coords[3];
 };
+template< class Real > Point3D< Real > operator * ( Real s , const Point3D< Real > &p ){ return p*s; }
 template< class Real > Point3D< Real > operator * ( const SquareMatrix< Real , 3 >& M , const Point3D< Real >& v )
 {
 	return Point3D< Real >( M.coords[0][0] * v[0] + M.coords[1][0] * v[1] + M.coords[2][0] * v[2] , M.coords[0][1] * v[0] + M.coords[1][1] * v[1] + M.coords[2][1] * v[2] , M.coords[0][2] * v[0] + M.coords[1][2] * v[1] + M.coords[2][2] * v[2] );
@@ -894,8 +895,8 @@ class EdgeIndex
 {
 public:
 	int v[2];
-	int& operator[] ( int idx ) { return v[idx]; }
-	const int& operator[] ( int idx ) const { return v[idx]; }
+	int& operator[] ( int idx )       { return v[idx]; }
+	int  operator[] ( int idx ) const { return v[idx]; }
 };
 
 class SeamEdge : public EdgeIndex
@@ -1047,8 +1048,8 @@ class MinimalAreaTriangulation
 {
 	double* bestTriangulation;
 	int* midPoint;
-	double GetArea( const int& i , const int& j , const std::vector<Point3D<Real> >& vertices );
-	void GetTriangulation( const int& i , const int& j , const std::vector<Point3D<Real> >& vertices,std::vector<TriangleIndex>& triangles , int& idx);
+	double GetArea( int i , int j , const std::vector<Point3D<Real> >& vertices );
+	void GetTriangulation( int i , int j , const std::vector<Point3D<Real> >& vertices,std::vector<TriangleIndex>& triangles , int& idx);
 public:
 	MinimalAreaTriangulation(void);
 	~MinimalAreaTriangulation(void);

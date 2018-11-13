@@ -30,7 +30,8 @@ DAMAGE.
 #define DIVERGENCE_INCLUDE
 #include "EdgeIndexing.h"
 
-class DivegenceRasterLine {
+class DivegenceRasterLine
+{
 public:
 	int prevEdgeRowStart;
 	int currEdgeRowStart;

@@ -28,11 +28,11 @@ DAMAGE.
 
 #include <Misha/CmdLineParser.h> 
 #include <Misha/Miscellany.h>
+#include <Misha/FEM.h>
+#include <Src/Hierarchy.h>
 #include <Src/SimpleMesh.h>
 #include <Src/Basis.h>
-#include <Misha/FEM.h>
 #include <Src/Solver.h>
-#include <Src/Hierarchy.h>
 #include <Src/MassAndStiffness.h>
 #include <Src/InteriorTexelToCellLines.inl>
 #include <Src/Padding.h>
@@ -115,22 +115,22 @@ enum
 	TEXTURE_COUNT
 };
 
-template<class Real>
+template< typename PreReal , typename Real>
 class TextureFilter
 {
 public:
-	static TexturedMesh mesh;
+	static TexturedMesh< PreReal > mesh;
 	static int textureWidth;
 	static int textureHeight;
-	static double interpolationWeight;
-	static double gradientModulation;
+	static Real interpolationWeight;
+	static Real gradientModulation;
 	static int levels;
 
-	static HierarchicalSystem hierarchy;
+	static HierarchicalSystem< PreReal , Real > hierarchy;
 	static bool gradientModulationUpdated;
 	static bool positiveModulation;
 
-	static Image<Point3D<float>> filteredTexture;
+	static Image< Point3D< Real > > filteredTexture;
 	//UI
 	static char gradientModulationStr[1024];
 	static char interpolationStr[1024];
@@ -139,19 +139,20 @@ public:
 	static std::vector<Real> cellModulationMask;
 	static std::vector<Real> uniformCellModulationMask;
 	static std::vector<Real> texelStiffness[3];
-	static std::vector<Point3D<float>> cellCenterPositions;
 
-	static std::vector<Point3D<float>>textureNodePositions;
+	static std::vector< Point3D< float > > cellCenterPositions;
+	static std::vector< Point3D< float> >textureNodePositions;
 
-	static std::vector<AtlasChart> atlasCharts;
+	static std::vector< AtlasChart< PreReal > > atlasCharts;
 
 	static std::vector< BilinearElementIndex > bilinearElementIndices;
 	
-	static std::vector<TextureNodeInfo> textureNodes;
+	static std::vector< TextureNodeInfo< PreReal > > textureNodes;
 
-	static SparseMatrix<double,int> mass;
-	static SparseMatrix<double,int> stiffness;
-	static SparseMatrix< double, int > filteringMatrix;
+	static SparseMatrix< Real , int > mass;
+	static SparseMatrix< Real , int > stiffness;
+	static SparseMatrix< Real , int > filteringMatrix;
+
 	//RHS computation
 	static std::vector<InteriorTexelToCellLine> interiorTexelToCellLines;
 	static std::vector< Point3D< Real > > interiorTexelToCellCoeffs;
@@ -167,28 +168,22 @@ public:
 	static std::vector< MultigridLevelIndices< Real > > multigridIndices;
 
 #if defined( USE_CHOLMOD )
-	typedef CholmodCholeskySolver< Real , 3 > BoundarySolverType;
-	typedef CholmodCholeskySolver< Real , 3 > CoarseSolverType;
-	typedef CholmodCholeskySolver< Real , 3 > DirectSolverType;
+	typedef CholmodCholeskySolver< Real , 3 > DirectSolver;
 #elif defined( USE_EIGEN_SIMPLICIAL )
-	typedef EigenCholeskySolver< Real , 3 > BoundarySolverType;
-	typedef EigenCholeskySolver< Real , 3 > CoarseSolverType;
-	typedef EigenCholeskySolver< Real , 3 > DirectSolverType;
+	typedef EigenCholeskySolver< Real , 3 > DirectSolver;
 #elif defined( USE_EIGEN_PARDISO )
-	typedef EigenPardisoSolver< Real , 3 > BoundarySolverType;
-	typedef EigenPardisoSolver< Real , 3 > CoarseSolverType;
-	typedef EigenPardisoSolver< Real , 3 > DirectSolverType;
+	typedef EigenPardisoSolver< Real , 3 > DirectSolver;
 #else
 #error "[ERROR] No solver defined!"
 #endif
 
-	static VCycleSolvers< BoundarySolverType , CoarseSolverType > vCycleSolvers;
-	static DirectSolverType directSolver;
+	static VCycleSolvers< DirectSolver > vCycleSolvers;
+	static DirectSolver directSolver;
 
 
 	//Linear Operators
-	static SystemCoefficients< double > massCoefficients;
-	static SystemCoefficients< double > stiffnessCoefficients;
+	static SystemCoefficients< Real > massCoefficients;
+	static SystemCoefficients< Real > stiffnessCoefficients;
 
 	static int steps;
 	static char stepsString[];
@@ -210,8 +205,8 @@ public:
 	static void InitializeVisualization();
 	static int UpdateSolution(bool verbose = false, bool detailVerbose = false);
 	static void ComputeExactSolution( bool verbose=false );
-	static int InitializeSystem(const int width, const int height);
-	static int _InitializeSystem( std::vector<std::vector<SquareMatrix<double, 2>>>& parameterMetric , BoundaryProlongationData& boundaryProlongation , std::vector<Point3D<double>>& inputSignal , std::vector<double>& texelToCellCoeffs );
+	static int InitializeSystem( int width , int height );
+	static int _InitializeSystem( std::vector<std::vector< SquareMatrix< PreReal , 2 > > > &parameterMetric , BoundaryProlongationData< Real > &boundaryProlongation , std::vector< Point3D< Real > > &inputSignal , std::vector< Real >& texelToCellCoeffs );
 
 	static void UpdateFilteredColorTexture( const std::vector< Point3D< Real > >& solution );
 	static void UpdateFilteredTexture( const std::vector< Point3D< Real > >& solution );
@@ -227,82 +222,84 @@ public:
 	static void Idle( void );
 };
 
-template< class Real > char TextureFilter< Real >::gradientModulationStr[1024];
-template< class Real > char TextureFilter< Real >::interpolationStr[1024];
+template< typename PreReal , typename Real > char																TextureFilter< PreReal , Real >::gradientModulationStr[1024];
+template< typename PreReal , typename Real > char																TextureFilter< PreReal , Real >::interpolationStr[1024];
 
-template<class Real> TexturedMesh												TextureFilter<Real>::mesh;
-template<class Real> int														TextureFilter<Real>::textureWidth;
-template<class Real> int														TextureFilter<Real>::textureHeight;
-template<class Real> TextureFilteringVisualization								TextureFilter<Real>::visualization;
-template<class Real> SparseMatrix<double,int>									TextureFilter<Real>::mass;
-template<class Real> SparseMatrix<double,int>									TextureFilter<Real>::stiffness;
-template<class Real> SparseMatrix<double, int>									TextureFilter<Real>::filteringMatrix;
+template< typename PreReal , typename Real > TexturedMesh< PreReal >											TextureFilter< PreReal , Real >::mesh;
+template< typename PreReal , typename Real > int																TextureFilter< PreReal , Real >::textureWidth;
+template< typename PreReal , typename Real > int																TextureFilter< PreReal , Real >::textureHeight;
+template< typename PreReal , typename Real > TextureFilteringVisualization										TextureFilter< PreReal , Real >::visualization;
+template< typename PreReal , typename Real > SparseMatrix< Real , int >											TextureFilter< PreReal , Real >::mass;
+template< typename PreReal , typename Real > SparseMatrix< Real , int >											TextureFilter< PreReal , Real >::stiffness;
+template< typename PreReal , typename Real > SparseMatrix< Real , int >											TextureFilter< PreReal , Real >::filteringMatrix;
 
-template<class Real> double														TextureFilter<Real>::interpolationWeight;
-template<class Real> double														TextureFilter<Real>::gradientModulation;
+template< typename PreReal , typename Real > Real																TextureFilter< PreReal , Real >::interpolationWeight;
+template< typename PreReal , typename Real > Real																TextureFilter< PreReal , Real >::gradientModulation;
 
-template<class Real> std::vector<TextureNodeInfo>								TextureFilter<Real>::textureNodes;
-template<class Real> std::vector< BilinearElementIndex >						TextureFilter<Real>::bilinearElementIndices;
+template< typename PreReal , typename Real > std::vector< TextureNodeInfo< PreReal > >							TextureFilter< PreReal , Real >::textureNodes;
+template< typename PreReal , typename Real > std::vector< BilinearElementIndex >								TextureFilter< PreReal , Real >::bilinearElementIndices;
 
-template< class Real > int														TextureFilter< Real >::steps;
-template< class Real > char														TextureFilter< Real >::stepsString[1024];
-template<class Real> int														TextureFilter<Real>::levels;
-template<class Real> HierarchicalSystem											TextureFilter<Real>::hierarchy;
+template< typename PreReal , typename Real > int																TextureFilter< PreReal , Real >::steps;
+template< typename PreReal , typename Real > char																TextureFilter< PreReal , Real >::stepsString[1024];
+template< typename PreReal , typename Real > int																TextureFilter< PreReal , Real >::levels;
+template< typename PreReal , typename Real > HierarchicalSystem< PreReal , Real >								TextureFilter< PreReal , Real >::hierarchy;
 
 
-template<class Real> bool TextureFilter<Real>::gradientModulationUpdated = true;
-template<class Real> bool TextureFilter<Real>::positiveModulation = true;
+template< typename PreReal , typename Real > bool																TextureFilter< PreReal , Real >::gradientModulationUpdated = true;
+template< typename PreReal , typename Real > bool																TextureFilter< PreReal , Real >::positiveModulation = true;
 
 //UI
-template<class Real> std::vector<Point3D<float>>										TextureFilter<Real>::cellCenterPositions;
-template<class Real> std::vector<Real>													TextureFilter<Real>::texelStiffness[3];
-template<class Real> std::vector<Real>													TextureFilter<Real>::cellModulationMask;
-template<class Real> std::vector<Real>													TextureFilter<Real>::uniformCellModulationMask;
+template< typename PreReal , typename Real > std::vector< Real >												TextureFilter< PreReal , Real >::texelStiffness[3];
+template< typename PreReal , typename Real > std::vector< Real >												TextureFilter< PreReal , Real >::cellModulationMask;
+template< typename PreReal , typename Real > std::vector< Real >												TextureFilter< PreReal , Real >::uniformCellModulationMask;
 
-template<class Real> Image<Point3D<float>>												TextureFilter<Real>::filteredTexture;
-template<class Real> std::vector< Point3D< Real > >										TextureFilter<Real>::stiffness_x0;
-template<class Real> std::vector< Point3D< Real > >										TextureFilter<Real>::mass_x0;
+template< typename PreReal , typename Real > Image< Point3D< Real > >											TextureFilter< PreReal , Real >::filteredTexture;
+template< typename PreReal , typename Real > std::vector< Point3D< Real > >										TextureFilter< PreReal , Real >::stiffness_x0;
+template< typename PreReal , typename Real > std::vector< Point3D< Real > >										TextureFilter< PreReal , Real >::mass_x0;
 
-template< class Real > std::vector< SystemCoefficients< Real > >						TextureFilter<Real>::multigridFilteringCoefficients;
-template<class Real> std::vector< MultigridLevelVariables< Point3D< Real > > >			TextureFilter<Real>::multigridFilteringVariables;
-template<class Real> std::vector<MultigridLevelIndices<Real>>							TextureFilter<Real>::multigridIndices;
+template< typename PreReal , typename Real > std::vector< SystemCoefficients< Real > >							TextureFilter< PreReal , Real >::multigridFilteringCoefficients;
+template< typename PreReal , typename Real > std::vector< MultigridLevelVariables< Point3D< Real > > >			TextureFilter< PreReal , Real >::multigridFilteringVariables;
+template< typename PreReal , typename Real > std::vector<MultigridLevelIndices<Real>>							TextureFilter< PreReal , Real >::multigridIndices;
 
-template< class Real > VCycleSolvers< typename TextureFilter< Real >::BoundarySolverType , typename TextureFilter< Real >::CoarseSolverType >		TextureFilter< Real >::vCycleSolvers;
-template<class Real> typename TextureFilter<Real>::DirectSolverType						TextureFilter<Real>::directSolver;
+template< typename PreReal , typename Real > VCycleSolvers< typename TextureFilter< PreReal , Real >::DirectSolver >		TextureFilter< PreReal , Real >::vCycleSolvers;
+template< typename PreReal , typename Real > typename TextureFilter< PreReal , Real >::DirectSolver				TextureFilter< PreReal , Real >::directSolver;
 
-template<class Real> std::vector<AtlasChart>											TextureFilter<Real>::atlasCharts;
+template< typename PreReal , typename Real > std::vector< AtlasChart< PreReal > >								TextureFilter< PreReal , Real >::atlasCharts;
 
-template<class Real> std::vector<InteriorTexelToCellLine>								TextureFilter<Real>::interiorTexelToCellLines;
-template<class Real> std::vector< Point3D< Real > >										TextureFilter<Real>::interiorTexelToCellCoeffs;
-template<class Real> SparseMatrix<Real, int>											TextureFilter<Real>::boundaryCellBasedStiffnessRHSMatrix[3];
-template<class Real> std::vector<Real>													TextureFilter<Real>::boundaryTexelStiffness[3];
-template<class Real> std::vector< Point3D< Real > >										TextureFilter<Real>::texelModulatedStiffness;
+template< typename PreReal , typename Real > std::vector<InteriorTexelToCellLine>								TextureFilter< PreReal , Real >::interiorTexelToCellLines;
+template< typename PreReal , typename Real > std::vector< Point3D< Real > >										TextureFilter< PreReal , Real >::interiorTexelToCellCoeffs;
+template< typename PreReal , typename Real > SparseMatrix<Real, int>											TextureFilter< PreReal , Real >::boundaryCellBasedStiffnessRHSMatrix[3];
+template< typename PreReal , typename Real > std::vector<Real>													TextureFilter< PreReal , Real >::boundaryTexelStiffness[3];
+template< typename PreReal , typename Real > std::vector< Point3D< Real > >										TextureFilter< PreReal , Real >::texelModulatedStiffness;
 
-template<class Real> std::vector<Point3D<float>>										TextureFilter<Real>::textureNodePositions;
-template<class Real> std::vector<Real>													TextureFilter<Real>::uniformTexelModulationMask;
+template< typename PreReal , typename Real > std::vector< Point3D< float > >									TextureFilter< PreReal , Real >::cellCenterPositions;
+template< typename PreReal , typename Real > std::vector< Point3D< float > >									TextureFilter< PreReal , Real >::textureNodePositions;
+template< typename PreReal , typename Real > std::vector< Real >												TextureFilter< PreReal , Real >::uniformTexelModulationMask;
 
-template<class Real> Padding															TextureFilter<Real>::padding;
+template< typename PreReal , typename Real > Padding															TextureFilter< PreReal , Real >::padding;
+
+template< typename PreReal , typename Real > SystemCoefficients< Real >											TextureFilter< PreReal , Real >::massCoefficients;
+template< typename PreReal , typename Real > SystemCoefficients< Real >											TextureFilter< PreReal , Real >::stiffnessCoefficients;
+template< typename PreReal , typename Real > int																TextureFilter< PreReal , Real >::updateCount = -1;
 
 
-template< class Real > SystemCoefficients< double >										TextureFilter< Real >::massCoefficients;
-template< class Real > SystemCoefficients< double >										TextureFilter< Real >::stiffnessCoefficients;
-template< class Real > int																TextureFilter< Real >::updateCount = -1;
-
-template<class Real>
-void TextureFilter<Real>::UpdateMaskTexture(){
-
+template< typename PreReal , typename Real >
+void TextureFilter< PreReal , Real >::UpdateMaskTexture( void )
+{
 #pragma omp parallel for
 	for (int i = 0; i < textureNodes.size(); i++){
-		float texelModulationValue = uniformTexelModulationMask[i];
+		Real texelModulationValue = uniformTexelModulationMask[i];
 		if (texelModulationValue != 0.5){
-			Point3D<float> newColor;
-			if (texelModulationValue > 0.5) {
+			Point3D< Real > newColor;
+			if( texelModulationValue>0.5 )
+			{
 				texelModulationValue = 2.0 * texelModulationValue - 1.0;
-				newColor = Point3D<float>(1.f, 0.f, 0.f) * texelModulationValue + Point3D<float>(0.8f, 0.8f, 0.8f) * (1.0 - texelModulationValue);
+				newColor = Point3D< Real >( (Real)1. , (Real)0. , (Real)0. ) * texelModulationValue + Point3D< Real >( (Real)0.8 , (Real)0.8 , (Real)0.8 ) * ( (Real)1.0 - texelModulationValue);
 			}
-			else {
+			else
+			{
 				texelModulationValue = 2.0 *texelModulationValue;
-				newColor = Point3D<float>(0.f, 0.f, 1.f) *(1.0 - texelModulationValue) + Point3D<float>(0.8f, 0.8f, 0.8f) * texelModulationValue;
+				newColor = Point3D< Real >( (Real)0. , (Real)0. , (Real)1. ) * ( (Real)1. - texelModulationValue ) + Point3D< Real >( (Real)0.8 , (Real)0.8 , (Real)0.8 ) * texelModulationValue;
 			}
 			int ci = textureNodes[i].ci;
 			int cj = textureNodes[i].cj;
@@ -316,46 +313,43 @@ void TextureFilter<Real>::UpdateMaskTexture(){
 	visualization.UpdateMaskTextureBuffer();
 }
 
-template<class Real>
-void TextureFilter< Real >::UpdateFilteredColorTexture( const std::vector< Point3D< Real > > & solution )
+template< typename PreReal , typename Real >
+void TextureFilter< PreReal , Real >::UpdateFilteredColorTexture( const std::vector< Point3D< Real > > & solution )
 {
 #pragma omp parallel for
 	for (int i = 0; i < textureNodes.size(); i++) {
 		int ci = textureNodes[i].ci;
 		int cj = textureNodes[i].cj;
 		int offset = 3 * (textureWidth*cj + ci);
-		for (int c = 0; c < 3; c++) {
-			double value = std::min<double>(1.0, std::max<double>(0, solution[i][c]));
+		for (int c = 0; c < 3; c++)
+		{
+			Real value = std::min< Real >( (Real)1. , std::max< Real >( 0 , solution[i][c] ) );
 			visualization.colorTextureBuffer[offset + c] = (unsigned char)(value*255.0);
 		}
 	}
 }
 
-template< class Real >
-void TextureFilter< Real >::UpdateFilteredTexture( const std::vector< Point3D< Real > >& solution )
+template< typename PreReal , typename Real >
+void TextureFilter< PreReal , Real >::UpdateFilteredTexture( const std::vector< Point3D< Real > >& solution )
 {
 #pragma omp parallel for
 	for( int i=0 ; i<textureNodes.size() ; i++ )
 	{
 		int ci = textureNodes[i].ci , cj = textureNodes[i].cj;
-		filteredTexture(ci,cj) = Point3D< float >( solution[i][0] , solution[i][1] , solution[i][2] );
+		filteredTexture(ci,cj) = Point3D< Real >( solution[i][0] , solution[i][1] , solution[i][2] );
 	}
 }
 
-template< class Real >
-void TextureFilter< Real >::Idle( void )
+template< typename PreReal , typename Real >
+void TextureFilter< PreReal , Real >::Idle( void )
 {
 	if( visualization.promptCallBack ) visualization.showSlideBar = false;
 	else                               visualization.showSlideBar = true;
 
-	auto RescaleFunction = []( double x )
-	{
-		//return x*(2.0 *x + 1);
-		return 2.0 *x;
-	};
+	auto RescaleFunction = []( float x ){ return x*2.f; };
 
-	float radius = 0.1;
-	float modulationVartiation = 0.2;
+	float radius = 0.1f;
+	float modulationVartiation = 0.2f;
 	if( visualization.isBrushActive )
 	{
 		Point3D< float > selectedPoint;
@@ -368,10 +362,10 @@ void TextureFilter< Real >::Idle( void )
 			modulationVartiation *= modulationSign;
 			for( int i=0 ; i<bilinearElementIndices.size() ; i++ )
 			{
-				float distanceRatio = Point3D< float >::Length(cellCenterPositions[i] - selectedPoint) / radius;
-				float factor = 1.0 - distanceRatio;
+				float distanceRatio = Point3D< float >::Length( cellCenterPositions[i]-selectedPoint) / radius;
+				float factor = 1.f - distanceRatio;
 				factor = factor < 0 ? 0 : factor*factor*(-2.0*factor + 3.0);
-				Real uniformModulationMaskValue = std::max< Real >( 0 , std::min< Real >( 1.0 , uniformCellModulationMask[i] + modulationVartiation * factor ) );
+				float uniformModulationMaskValue = std::max< float >( 0.f , std::min< float >( 1.f , uniformCellModulationMask[i] + modulationVartiation * factor ) );
 				uniformCellModulationMask[i] = uniformModulationMaskValue;
 				cellModulationMask[i] = RescaleFunction( uniformModulationMaskValue );
 			}
@@ -380,9 +374,9 @@ void TextureFilter< Real >::Idle( void )
 				for( int i=0 ; i<textureNodePositions.size() ; i++ )
 				{
 					float distanceRatio = Point3D< float >::Length( textureNodePositions[i] - selectedPoint ) / radius;
-					float factor = 1.0 - distanceRatio;
-					factor = factor < 0 ? 0 : factor*factor*(-2.0*factor + 3.0);
-					Real modulationMaskValue = std::max< Real >( 0 , std::min< Real >( 1.0 , uniformTexelModulationMask[i] + modulationVartiation * factor ) );
+					float factor = 1.f - distanceRatio;
+					factor = factor < 0 ? 0 : factor*factor*( -2.f * factor + 3.f );
+					float modulationMaskValue = std::max< float >( 0 , std::min< float >( 1.f , uniformTexelModulationMask[i] + modulationVartiation * factor ) );
 					uniformTexelModulationMask[i] = modulationMaskValue;
 				}
 				UpdateMaskTexture();
@@ -394,12 +388,12 @@ void TextureFilter< Real >::Idle( void )
 	{
 		if( visualization.slideBarCursorOldPosition!=visualization.slideBarCursorPosition )
 		{
-			Real diff = (Real)(visualization.slideBarCursorPosition - visualization.slideBarCursorOldPosition);
+			float diff = (float)( visualization.slideBarCursorPosition - visualization.slideBarCursorOldPosition );
 			visualization.slideBarCursorOldPosition = visualization.slideBarCursorPosition;
 
 			for( int i=0 ; i<bilinearElementIndices.size() ; i++ )
 			{
-				Real uniformModulationMaskValue = std::max< Real >( 0 , std::min< Real >( 1.0 , uniformCellModulationMask[i] + diff ) );
+				float uniformModulationMaskValue = std::max< float >( 0.f , std::min< float >( 1.f , uniformCellModulationMask[i] + diff ) );
 				uniformCellModulationMask[i] = uniformModulationMaskValue;
 				cellModulationMask[i] = RescaleFunction( uniformModulationMaskValue );
 			}
@@ -408,7 +402,7 @@ void TextureFilter< Real >::Idle( void )
 			{
 				for( int i=0 ; i<textureNodePositions.size() ; i++ )
 				{
-					Real modulationMaskValue = std::max< Real >( 0 , std::min< Real >( 1.0 , uniformTexelModulationMask[i] + diff ) );
+					float modulationMaskValue = std::max< float >( 0.f , std::min< float >( 1.f , uniformTexelModulationMask[i] + diff ) );
 					uniformTexelModulationMask[i] = modulationMaskValue;
 				}
 				UpdateMaskTexture();
@@ -439,8 +433,8 @@ void TextureFilter< Real >::Idle( void )
 	glutPostRedisplay();
 }
 
-template< class Real >
-void TextureFilter< Real >::MouseFunc( int button , int state , int x , int y )
+template< typename PreReal , typename Real >
+void TextureFilter< PreReal , Real >::MouseFunc( int button , int state , int x , int y )
 {
 	if( state==GLUT_UP && UseDirectSolver.set && ( visualization.isBrushActive || visualization.isSlideBarActive ) )
 	{
@@ -479,8 +473,8 @@ void TextureFilter< Real >::MouseFunc( int button , int state , int x , int y )
 	{
 		visualization.isSlideBarActive = true;
 		gradientModulationUpdated = false;
-		double slideBarCursorPosition = double(x - 20) / double(visualization.slideBarWidth() - 40);
-		slideBarCursorPosition = std::min<double>(std::max<double>(slideBarCursorPosition, 0), 1.0);
+		float slideBarCursorPosition = (float)( x-20.f ) / ( visualization.slideBarWidth()-40 );
+		slideBarCursorPosition = std::min< float >(std::max< float >( slideBarCursorPosition , 0.f ) , 1.f );
 		visualization.slideBarCursorPosition = slideBarCursorPosition;
 	}
 	else
@@ -499,8 +493,8 @@ void TextureFilter< Real >::MouseFunc( int button , int state , int x , int y )
 	glutPostRedisplay();
 }
 
-template<class Real>
-void TextureFilter<Real>::MotionFunc( int x , int y )
+template< typename PreReal , typename Real >
+void TextureFilter< PreReal , Real >::MotionFunc( int x , int y )
 {
 
 	if( visualization.isBrushActive )
@@ -512,8 +506,8 @@ void TextureFilter<Real>::MotionFunc( int x , int y )
 	else if( visualization.showSlideBar && visualization.isSlideBarActive )
 	{
 		gradientModulationUpdated = false;
-		double slideBarCursorPosition = double(x - 20) / double(visualization.slideBarWidth() - 40);
-		slideBarCursorPosition = std::min<double>(std::max<double>(slideBarCursorPosition, 0), 1.0);
+		float slideBarCursorPosition = (float)( x-20.f ) / ( visualization.slideBarWidth()-40 );
+		slideBarCursorPosition = std::min< float >(std::max< float >( slideBarCursorPosition , 0.f ) , 1.f );
 		visualization.slideBarCursorPosition = slideBarCursorPosition;
 	}
 	else
@@ -540,7 +534,7 @@ void TextureFilter<Real>::MotionFunc( int x , int y )
 			if (visualization.panning) visualization.xForm.offset[0] -= (visualization.newX - visualization.oldX) / visualization.imageToScreenScale(), visualization.xForm.offset[1] += (visualization.newY - visualization.oldY) / visualization.imageToScreenScale();
 			else
 			{
-				float dz = float(pow(1.1, double(visualization.newY - visualization.oldY) / 8));
+				float dz = (float)pow( 1.1f , (float)( visualization.newY-visualization.oldY ) / 8 );
 				visualization.xForm.zoom *= dz;
 			}
 		}
@@ -548,22 +542,25 @@ void TextureFilter<Real>::MotionFunc( int x , int y )
 	glutPostRedisplay();
 }
 
-template< class Real > void TextureFilter< Real >::ToggleUpdateCallBack( Visualization* v , const char* prompt )
+template< typename PreReal , typename Real >
+void TextureFilter< PreReal , Real >::ToggleUpdateCallBack( Visualization* v , const char* prompt )
 {
 	if( updateCount ) updateCount = 0;
 	else              updateCount = -1;
 }
-template< class Real > void TextureFilter< Real >::IncrementUpdateCallBack( Visualization* v , const char* prompt )
+
+template< typename PreReal , typename Real >
+void TextureFilter< PreReal , Real >::IncrementUpdateCallBack( Visualization* v , const char* prompt )
 {
 	if( updateCount<0 ) updateCount = 1;
 	else updateCount++;
 }
 
-template<class Real>
-void TextureFilter<Real>::ExportTextureCallBack( Visualization* v , const char* prompt )
+template< typename PreReal , typename Real >
+void TextureFilter< PreReal , Real >::ExportTextureCallBack( Visualization* v , const char* prompt )
 {
 	UpdateFilteredTexture( multigridFilteringVariables[0].x );
-	Image< Point3D< float > > outputTexture = filteredTexture;
+	Image< Point3D< Real > > outputTexture = filteredTexture;
 	if( padding.nonTrivial ) UnpadImage( padding , outputTexture );
 
 	char* ext = GetFileExtension( prompt );
@@ -574,8 +571,8 @@ void TextureFilter<Real>::ExportTextureCallBack( Visualization* v , const char* 
 		{
 			for( int i=0 ; i<outputTexture.size() ; i++ )
 			{
-				outputTexture[i] /= Point3D<float>::Length( outputTexture[i] );
-				outputTexture[i] = outputTexture[i] * 0.5f + Point3D< float >( 0.5f , 0.5f , 0.5f );
+				outputTexture[i] /= Point3D< Real >::Length( outputTexture[i] );
+				outputTexture[i] = outputTexture[i] * 0.5f + Point3D< Real >( (Real)0.5 , (Real)0.5 , (Real)0.5 );
 			}
 		}
 		outputTexture.write( prompt );
@@ -583,8 +580,8 @@ void TextureFilter<Real>::ExportTextureCallBack( Visualization* v , const char* 
 	delete[] ext;
 }
 
-template< class Real >
-void  TextureFilter< Real >::GradientModulationCallBack( Visualization* v , const char* prompt )
+template< typename PreReal , class Real >
+void  TextureFilter< PreReal , Real >::GradientModulationCallBack( Visualization* v , const char* prompt )
 {
 	gradientModulation = atof( prompt );
 #pragma omp parallel for
@@ -607,15 +604,15 @@ void  TextureFilter< Real >::GradientModulationCallBack( Visualization* v , cons
 	sprintf( gradientModulationStr , "Gradient modulation: %e\n" , gradientModulation );
 }
 
-template< class Real >
-void  TextureFilter< Real >::InterpolationWeightCallBack( Visualization* v , const char* prompt )
+template< typename PreReal , class Real >
+void  TextureFilter< PreReal , Real >::InterpolationWeightCallBack( Visualization* v , const char* prompt )
 {
 	interpolationWeight = atof(prompt);
 	if( UseDirectSolver.set ) filteringMatrix = mass*interpolationWeight + stiffness;
-	clock_t t_begin = clock();
-	if( !UpdateLinearSystem( interpolationWeight , 1.0 , hierarchy , multigridFilteringCoefficients , massCoefficients , stiffnessCoefficients , vCycleSolvers , directSolver , filteringMatrix , DetailVerbose.set , false , UseDirectSolver.set ) )
+	Miscellany::Timer timer;
+	if( !UpdateLinearSystem( interpolationWeight , (Real)1. , hierarchy , multigridFilteringCoefficients , massCoefficients , stiffnessCoefficients , vCycleSolvers , directSolver , filteringMatrix , DetailVerbose.set , false , UseDirectSolver.set ) )
 		fprintf( stderr , "[ERROR] Failed system update!\n" );
-	if( Verbose.set ) printf( "\tInitialized multigrid coefficients: %.2f(s)\n" , double(clock() - t_begin) / CLOCKS_PER_SEC);
+	if( Verbose.set ) printf( "\tInitialized multigrid coefficients: %.2f(s)\n" , timer.elapsed() );
 
 #pragma omp parallel for
 	for( int i=0 ; i<multigridFilteringVariables[0].rhs.size() ; i++ ) multigridFilteringVariables[0].rhs[i] = mass_x0[i]*interpolationWeight + stiffness_x0[i] * gradientModulation;
@@ -637,28 +634,27 @@ void  TextureFilter< Real >::InterpolationWeightCallBack( Visualization* v , con
 	sprintf( interpolationStr , "Interpolation weight: %e\n" , interpolationWeight );
 }
 
-
-template<class Real>
-void TextureFilter<Real>::ComputeExactSolution( bool verbose )
+template< typename PreReal , typename Real >
+void TextureFilter< PreReal , Real >::ComputeExactSolution( bool verbose )
 {
-	clock_t t_begin = clock();
+	Miscellany::Timer timer;
 	solve( directSolver , multigridFilteringVariables[0].x , multigridFilteringVariables[0].rhs );
-	if( verbose ) printf( "Solving time =  %.4f\n" , double(clock() - t_begin) / CLOCKS_PER_SEC );
+	if( verbose ) printf( "Solving time =  %.4f\n" , timer.elapsed() );
 }
 
-template<class Real>
-int TextureFilter<Real>::UpdateSolution( bool verbose , bool detailVerbose )
+template< typename PreReal , typename Real >
+int TextureFilter< PreReal , Real >::UpdateSolution( bool verbose , bool detailVerbose )
 {
 	if( !gradientModulationUpdated )
 	{
 		int numTexels = (int)multigridFilteringVariables[0].rhs.size();
-		clock_t p_begin = clock();
 
+		Miscellany::Timer timer;
 		CellStiffnessToTexelStiffness< Real , 3 >(cellModulationMask, interiorTexelToCellLines, interiorTexelToCellCoeffs, boundaryCellBasedStiffnessRHSMatrix, boundaryTexelStiffness, hierarchy.gridAtlases[0].boundaryGlobalIndex, texelModulatedStiffness);
 #pragma omp parallel for
 		for( int i=0 ; i<numTexels ; i++ ) multigridFilteringVariables[0].rhs[i] = mass_x0[i]*interpolationWeight + texelModulatedStiffness[i];
 
-		if( verbose ) printf("RHS update time %.4f  \n", double(clock() - p_begin) / CLOCKS_PER_SEC);	
+		if( verbose ) printf( "RHS update time %.4f\n" , timer.elapsed() );	
 		gradientModulationUpdated = true;
 	}
 
@@ -667,37 +663,10 @@ int TextureFilter<Real>::UpdateSolution( bool verbose , bool detailVerbose )
 	return 1;
 }
 
-template<>
-int TextureFilter< float >::_InitializeSystem( std::vector<std::vector<SquareMatrix<double, 2>>>& parameterMetric , BoundaryProlongationData& boundaryProlongation , std::vector<Point3D<double>>& inputSignal , std::vector<double>& texelToCellCoeffs )
+template< typename PreReal , typename Real >
+int TextureFilter< PreReal , Real >::_InitializeSystem( std::vector< std::vector< SquareMatrix< PreReal , 2 > > > &parameterMetric , BoundaryProlongationData< Real > &boundaryProlongation , std::vector< Point3D< Real > > &inputSignal , std::vector< Real > &texelToCellCoeffs )
 {
-	SparseMatrix<double, int> _boundaryCellBasedStiffnessRHSMatrix[3];
-	clock_t t_begin = clock();
-	{
-		int ret = 0;
-		switch( MatrixQuadrature.value )
-		{
-		case  1: ret = InitializeMassAndStiffness< 1>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts,boundaryProlongation , true , inputSignal , texelToCellCoeffs , _boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		case  3: ret = InitializeMassAndStiffness< 3>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts,boundaryProlongation , true , inputSignal , texelToCellCoeffs , _boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		case  6: ret = InitializeMassAndStiffness< 6>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts,boundaryProlongation , true , inputSignal , texelToCellCoeffs , _boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		case 12: ret = InitializeMassAndStiffness<12>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts,boundaryProlongation , true , inputSignal , texelToCellCoeffs , _boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		case 24: ret = InitializeMassAndStiffness<24>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts,boundaryProlongation , true , inputSignal , texelToCellCoeffs , _boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		case 32: ret = InitializeMassAndStiffness<32>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts,boundaryProlongation , true , inputSignal , texelToCellCoeffs , _boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		default: fprintf( stderr , "[ERROR] Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles\n" );
-		}
-		if( !ret )
-		{
-			fprintf( stderr , "[ERROR] Failed intialization!\n" );
-			return 0;
-		}
-	}
-	if( Verbose.set ) printf( "\tInitialized mass and stiffness: %.2f(s)\n" , double(clock() - t_begin) / CLOCKS_PER_SEC);
-	for( int c=0 ; c<3 ; c++ ) boundaryCellBasedStiffnessRHSMatrix[c] = _boundaryCellBasedStiffnessRHSMatrix[c];
-	return 1;
-}
-template<>
-int TextureFilter< double >::_InitializeSystem( std::vector<std::vector<SquareMatrix<double, 2>>>& parameterMetric , BoundaryProlongationData& boundaryProlongation , std::vector<Point3D<double>>& inputSignal , std::vector<double>& texelToCellCoeffs )
-{
-	clock_t t_begin = clock();
+	Miscellany::Timer timer;
 	{
 		int ret = 0;
 		switch( MatrixQuadrature.value )
@@ -716,45 +685,41 @@ int TextureFilter< double >::_InitializeSystem( std::vector<std::vector<SquareMa
 			return 0;
 		}
 	}
-	if( Verbose.set ) printf( "\tInitialized mass and stiffness: %.2f(s)\n" , double(clock() - t_begin) / CLOCKS_PER_SEC);
+	if( Verbose.set ) printf( "\tInitialized mass and stiffness: %.2f(s)\n" , timer.elapsed() );
 	return 1;
 }
-template<class Real>
-int TextureFilter<Real>::InitializeSystem( const int width , const int height )
-{
-	clock_t t_begin;
 
-	t_begin = clock();
+template< typename PreReal , typename Real >
+int TextureFilter< PreReal , Real >::InitializeSystem( int width , int height )
+{
+	Miscellany::Timer timer;
+
 	MultigridBlockInfo multigridBlockInfo(MultigridBlockWidth.value, MultigridBlockHeight.value,MultigridPaddedWidth.value,MultigridPaddedHeight.value, 0);
 	if( !InitializeHierarchy( mesh , width , height , levels , textureNodes , bilinearElementIndices , hierarchy , atlasCharts , multigridBlockInfo , true , DetailVerbose.set ) )
 	{
 		printf("ERROR : Failed intialization! \n");
 		return 0;
 	}
-	if( Verbose.set ) printf( "\tInitialized hierarchy: %.2f(s)\n" , double(clock() - t_begin) / CLOCKS_PER_SEC);
+	if( Verbose.set ) printf( "\tInitialized hierarchy: %.2f(s)\n" , timer.elapsed() );
 
-	BoundaryProlongationData boundaryProlongation;
-	if (!InitializeBoundaryProlongationData(hierarchy.gridAtlases[0], boundaryProlongation)){
-		printf("ERROR : Failed boundary prolongation! \n");
-		return 0;
-	}
+	BoundaryProlongationData< Real > boundaryProlongation;
+	if( !InitializeBoundaryProlongationData( hierarchy.gridAtlases[0] , boundaryProlongation ) ){ fprintf( stderr , "[ERROR] TextureFilter::InitializeSystem: Failed boundary prolongation!\n" ) ; return 0; }
 
 	std::vector< Point3D< Real > > _x0;
 	_x0.resize(textureNodes.size());
 	
-	for (int i = 0; i < textureNodes.size(); i++) {
-		Point3D<float> texelValue = mesh.texture(textureNodes[i].ci, textureNodes[i].cj);
+	for( int i=0 ; i<textureNodes.size() ; i++ )
+	{
+		Point3D< Real > texelValue = mesh.texture(textureNodes[i].ci, textureNodes[i].cj);
 		_x0[i] = Point3D< Real >( texelValue[0] , texelValue[1] , texelValue[2] );
 	}
 
-	std::vector<Point3D<double>> inputSignal(textureNodes.size());
-	for (int i = 0; i < textureNodes.size(); i++) inputSignal[i] = mesh.texture(textureNodes[i].ci, textureNodes[i].cj);
-	std::vector<double> texelToCellCoeffs;
+	std::vector< Point3D< Real > > inputSignal(textureNodes.size());
+	for( int i=0 ; i<textureNodes.size() ; i++ ) inputSignal[i] = mesh.texture( textureNodes[i].ci , textureNodes[i].cj );
+	std::vector< Real > texelToCellCoeffs;
 
-
-	t_begin = clock();
-
-	std::vector<std::vector<SquareMatrix<double, 2>>> parameterMetric;
+	timer.reset();
+	std::vector< std::vector< SquareMatrix< PreReal , 2 > > > parameterMetric;
 	if (!InitializeMetric(mesh, EMBEDDING_METRIC, atlasCharts, parameterMetric)) {
 		printf("ERROR: Unable to initialize metric \n");
 		return 0;
@@ -783,7 +748,7 @@ int TextureFilter<Real>::InitializeSystem( const int width , const int height )
 	multigridIndices.resize(levels);
 	for( int i=0 ; i<levels ; i++ )
 	{
-		const GridAtlas & gridAtlas = hierarchy.gridAtlases[i];
+		const GridAtlas< PreReal , Real > &gridAtlas = hierarchy.gridAtlases[i];
 		multigridIndices[i].threadTasks = gridAtlas.threadTasks;
 		multigridIndices[i].boundaryGlobalIndex = gridAtlas.boundaryGlobalIndex;
 		multigridIndices[i].segmentedLines = gridAtlas.segmentedLines;
@@ -793,13 +758,13 @@ int TextureFilter<Real>::InitializeSystem( const int width , const int height )
 		if( i<levels-1 ) multigridIndices[i].boundaryRestriction = hierarchy.boundaryRestriction[i];
 	}
 
-	t_begin = clock();
-	if( !UpdateLinearSystem( interpolationWeight , 1.0 , hierarchy , multigridFilteringCoefficients , massCoefficients , stiffnessCoefficients , vCycleSolvers , directSolver , filteringMatrix , DetailVerbose.set , true , UseDirectSolver.set ) )
+	timer.reset();
+	if( !UpdateLinearSystem( interpolationWeight , (Real)1. , hierarchy , multigridFilteringCoefficients , massCoefficients , stiffnessCoefficients , vCycleSolvers , directSolver , filteringMatrix , DetailVerbose.set , true , UseDirectSolver.set ) )
 	{
 		fprintf( stderr , "[ERROR] Failed system update!\n" );
 		return 0;
 	}
-	if( Verbose.set ) printf( "\tInitialized multigrid coefficients: %.2f(s)\n" , double(clock() - t_begin) / CLOCKS_PER_SEC );
+	if( Verbose.set ) printf( "\tInitialized multigrid coefficients: %.2f(s)\n" , timer.elapsed() );
 
 	multigridFilteringVariables.resize(levels);
 	for( int i=0 ; i<levels ; i++ )
@@ -826,7 +791,7 @@ int TextureFilter<Real>::InitializeSystem( const int width , const int height )
 	}
 
 	filteredTexture.resize(width, height);
-	for (int i = 0; i < filteredTexture.size(); i++) filteredTexture[i] = Point3D<float>(0.5f, 0.5f, 0.5f);
+	for (int i = 0; i < filteredTexture.size(); i++) filteredTexture[i] = Point3D< Real >( (Real)0.5 , (Real)0.5 , (Real)0.5 );
 
 
 	if( UseDirectSolver.set ) ComputeExactSolution( Verbose.set );
@@ -834,8 +799,8 @@ int TextureFilter<Real>::InitializeSystem( const int width , const int height )
 	return 1;
 }
 
-template<class Real>
-void TextureFilter<Real>::InitializeVisualization( void )
+template< typename PreReal , typename Real >
+void TextureFilter< PreReal , Real >::InitializeVisualization( void )
 {
 	visualization.textureWidth = textureWidth;
 	visualization.textureHeight = textureHeight;
@@ -849,9 +814,9 @@ void TextureFilter<Real>::InitializeVisualization( void )
 
 	visualization.triangles.resize(tCount);
 	visualization.vertices.resize(3 * tCount);
-	visualization.colors.resize(3 * tCount, Point3D<double>(0.75, 0.75, 0.75));
-	visualization.textureCoordinates.resize(3 * tCount);
-	visualization.normals.resize(3 * tCount);
+	visualization.colors.resize( 3*tCount , Point3D< float >( 0.75f , 0.75f , 0.75f ) );
+	visualization.textureCoordinates.resize( 3*tCount );
+	visualization.normals.resize( 3*tCount );
 
 
 	for (int i = 0; i < tCount; i++) for (int k = 0; k < 3; k++) visualization.triangles[i][k] = 3 * i + k;
@@ -865,15 +830,14 @@ void TextureFilter<Real>::InitializeVisualization( void )
 	}
 
 	std::vector<int> boundaryEdges;
-	if (!InitializeBoundaryEdges(mesh, boundaryEdges)) {
-		printf("Unable to initialize boundary edges! \n");
-	}
+	if( !mesh.initializeBoundaryEdges( boundaryEdges) ) fprintf( stderr , "[WARNING] Unable to initialize boundary edges!\n" );
 
 	for (int e = 0; e < boundaryEdges.size(); e++) {
 		int tIndex = boundaryEdges[e] / 3;
 		int kIndex = boundaryEdges[e] % 3;
-		for (int c = 0; c < 2; c++) {
-			Point3D<double> v = mesh.vertices[mesh.triangles[tIndex][(kIndex + c) % 3]];
+		for (int c = 0; c < 2; c++)
+		{
+			Point3D< PreReal > v = mesh.vertices[ mesh.triangles[tIndex][ (kIndex+c)%3 ] ];
 			visualization.boundaryEdgeVertices.push_back(v);
 		}
 	}
@@ -904,7 +868,7 @@ void TextureFilter<Real>::InitializeVisualization( void )
 
 	visualization.UpdateVertexBuffer();
 	visualization.UpdateFaceBuffer();
-	visualization.UpdateTextureBuffer(filteredTexture);
+	visualization.UpdateTextureBuffer( filteredTexture );
 
 	visualization.maskBufferValues = new unsigned char[textureHeight*textureWidth * 3];
 	memset(visualization.maskBufferValues, 128, textureHeight * textureWidth * 3 * sizeof(unsigned char));
@@ -919,8 +883,8 @@ void TextureFilter<Real>::InitializeVisualization( void )
 	visualization.UpdateMaskTextureBuffer();
 }
 
-template< class Real >
-int TextureFilter< Real >::Init( void )
+template< typename PreReal , typename Real >
+int TextureFilter< PreReal , Real >::Init( void )
 {
 	sprintf( stepsString , "Steps: 0" );
 	levels = std::max<int>(Levels.value,1);
@@ -930,7 +894,7 @@ int TextureFilter< Real >::Init( void )
 	sprintf( gradientModulationStr , "Gradient modulation: %.2e\n" , gradientModulation );
 	sprintf( interpolationStr , "Interpolation: %.2e\n" , interpolationWeight );
 
-	if( !ReadTexturedMesh( mesh , Input.values[0] , Input.values[1] , DetailVerbose.set ) )
+	if( !mesh.read( Input.values[0] , Input.values[1] , DetailVerbose.set ) )
 	{
 		printf( "Unable to read mesh data: %s %s\n" , Input.values[0] , Input.values[1] );
 		return 0;
@@ -940,22 +904,22 @@ int TextureFilter< Real >::Init( void )
 	textureHeight = mesh.texture.height();
 
 	//Define centroid and scale for visualization
-	Point3D<double> centroid(0.f, 0.f, 0.f);
-	for (int i = 0; i < mesh.vertices.size(); i++) centroid += mesh.vertices[i];
-	centroid /= double(mesh.vertices.size());
-	double radius = 0.f;
-	for (int i = 0; i < mesh.vertices.size(); i++) radius = std::max<double>(radius, Point3D<double>::Length(mesh.vertices[i] - centroid));
+	Point3D< PreReal > centroid;
+	for( int i=0 ; i<mesh.vertices.size() ; i++ ) centroid += mesh.vertices[i];
+	centroid /= (int)mesh.vertices.size();
+	PreReal radius = 0;
+	for( int i=0 ; i<mesh.vertices.size() ; i++ ) radius = std::max< PreReal >( radius , Point3D< PreReal >::Length( mesh.vertices[i] - centroid ) );
 	for (int i = 0; i < mesh.vertices.size(); i++) mesh.vertices[i] = (mesh.vertices[i] - centroid) / radius;
 
-	if (1) for (int i = 0; i < mesh.textureCoordinates.size(); i++)mesh.textureCoordinates[i][1] = 1.0 - mesh.textureCoordinates[i][1];
+	if( true ) for( int i=0 ; i<mesh.textureCoordinates.size() ; i++ ) mesh.textureCoordinates[i][1] = (PreReal)1. - mesh.textureCoordinates[i][1];
 
 	if( RandomJitter.set )
 	{
 		srand( time(NULL) );
-		std::vector<Point2D < double >>randomOffset(mesh.vertices.size());
-		double jitterScale = 1e-3 / double(std::max<int>(textureWidth, textureHeight));
-		for (int i = 0; i < randomOffset.size(); i++) randomOffset[i] = Point2D < double >(1.0 - 2.0 * double(rand()) / double(RAND_MAX), 1.0 - 2.0 *  double(rand()) / double(RAND_MAX))*jitterScale;
-		for (int i = 0; i < mesh.triangles.size(); i++) for (int k = 0; k < 3; k++)mesh.textureCoordinates[3 * i + k] += randomOffset[mesh.triangles[i][k]];
+		std::vector< Point2D< PreReal > >randomOffset( mesh.vertices.size() );
+		PreReal jitterScale = (PreReal)1e-3 / std::max< int >( textureWidth , textureHeight );
+		for( int i=0 ; i<randomOffset.size() ; i++ ) randomOffset[i] = Point2D< PreReal >( (PreReal)1. - Random< PreReal >()*2 , (PreReal)1. - Random< PreReal >()*2 )*jitterScale;
+		for( int i=0 ; i<mesh.triangles.size() ; i++ ) for( int k=0 ; k<3 ; k++ ) mesh.textureCoordinates[ 3*i+k ] += randomOffset[ mesh.triangles[i][k] ];
 	}
 
 	ComputePadding( padding , textureWidth , textureHeight , mesh.textureCoordinates , DetailVerbose.set );
@@ -967,7 +931,7 @@ int TextureFilter< Real >::Init( void )
 		textureHeight += (padding.bottom + padding.top);
 	}
 
-	clock_t t = clock();
+	Miscellany::Timer timer;
 	if( !InitializeSystem( textureWidth , textureHeight ) )
 	{
 		printf( "Unable to initialize system\n" );
@@ -976,42 +940,44 @@ int TextureFilter< Real >::Init( void )
 	if( Verbose.set )
 	{
 		printf( "Resolution: %d / %d x %d\n" , (int)textureNodes.size() , textureWidth , textureHeight );
-		printf( "Initialized system %.2f(s)\n" , double(clock()-t) / CLOCKS_PER_SEC );
+		printf( "Initialized system %.2f(s)\n" , timer.elapsed() );
 		printf( "Peak Memory (MB): %d\n" , Miscellany::MemoryInfo::PeakMemoryUsageMB() );
 	}
 
 	//Assign position to exterior nodes using barycentric-exponential map
 	{
-		FEM::RiemannianMesh< double > rMesh( GetPointer( mesh.triangles ) , mesh.triangles.size() );
+		FEM::RiemannianMesh< PreReal > rMesh( GetPointer( mesh.triangles ) , mesh.triangles.size() );
 		rMesh.setMetricFromEmbedding( GetPointer( mesh.vertices ) );
 		rMesh.makeUnitArea();
-		Pointer( FEM::CoordinateXForm< double > ) xForms = rMesh.getCoordinateXForms();
+		Pointer( FEM::CoordinateXForm< PreReal > ) xForms = rMesh.getCoordinateXForms();
 
-		for( int i=0 ; i<textureNodes.size() ; i++ ) if( textureNodes[i].tId!=-1 && !textureNodes[i].isInterior )
+		for( int i=0 ; i<textureNodes.size() ; i++ ) if( textureNodes[i].tID!=-1 && !textureNodes[i].isInterior )
 		{
-			FEM::HermiteSamplePoint< double > _p;
-			_p.tIdx = textureNodes[i].tId;
-			_p.p = Point2D< double >( 1./3 , 1./3 );
+			FEM::HermiteSamplePoint< PreReal > _p;
+			_p.tIdx = textureNodes[i].tID;
+			_p.p = Point2D< PreReal >( (PreReal)1./3 , (PreReal)1./3 );
 			_p.v = textureNodes[i].barycentricCoords - _p.p;
 
 			rMesh.exp(xForms, _p);
 			
-			textureNodes[i].tId = _p.tIdx;
+			textureNodes[i].tID = _p.tIdx;
 			textureNodes[i].barycentricCoords = _p.p;
 		}
 	}
 
 	textureNodePositions.resize(textureNodes.size());
-	for (int i = 0; i < textureNodePositions.size(); i++){
-		Point2D<double> barincetricCoords = textureNodes[i].barycentricCoords;
-		int tId = textureNodes[i].tId;
-		Point3D<float> surfacePosition = mesh.vertices[mesh.triangles[tId][0]] * (1.0 - barincetricCoords[0] - barincetricCoords[1]) +
-										 mesh.vertices[mesh.triangles[tId][1]] * barincetricCoords[0] +
-										 mesh.vertices[mesh.triangles[tId][2]] * barincetricCoords[1];
-		textureNodePositions[i] = surfacePosition;
+	for( int i=0 ; i<textureNodePositions.size() ; i++ )
+	{
+		Point2D< PreReal > barycentricCoords = textureNodes[i].barycentricCoords;
+		int tID = textureNodes[i].tID;
+		Point3D< PreReal > p =
+			mesh.vertices[mesh.triangles[tID][0]] * ( (PreReal)1. - barycentricCoords[0] - barycentricCoords[1] ) +
+			mesh.vertices[mesh.triangles[tID][1]] *                 barycentricCoords[0]                          +
+			mesh.vertices[mesh.triangles[tID][2]] *                                        barycentricCoords[1]   ;
+		textureNodePositions[i] = Point3D< float >( p );
 	}
 
-	uniformTexelModulationMask.resize(textureNodes.size(), 0.5);
+	uniformTexelModulationMask.resize( textureNodes.size() , 0.5 );
 
 	for (int c = 0; c < 3; c++) texelStiffness[c].resize(textureNodes.size());
 
@@ -1019,12 +985,14 @@ int TextureFilter< Real >::Init( void )
 	uniformCellModulationMask.resize( bilinearElementIndices.size() , 0.5 );
 
 	cellCenterPositions.resize( bilinearElementIndices.size() );
-	for (int i = 0; i < bilinearElementIndices.size(); i++){
-		cellCenterPositions[i] = (textureNodePositions[ bilinearElementIndices[i][0] ] +
-								  textureNodePositions[ bilinearElementIndices[i][1] ] +
-								  textureNodePositions[ bilinearElementIndices[i][2] ] +
-								  textureNodePositions[ bilinearElementIndices[i][3] ]) / 4.0;
-	}
+	for( int i=0 ; i<bilinearElementIndices.size() ; i++ )
+		cellCenterPositions[i] = Point3D< float >
+		(
+			textureNodePositions[ bilinearElementIndices[i][0] ] +
+			textureNodePositions[ bilinearElementIndices[i][1] ] +
+			textureNodePositions[ bilinearElementIndices[i][2] ] +
+			textureNodePositions[ bilinearElementIndices[i][3] ]
+		) / 4.f;
 
 	if( true )
 	{
@@ -1048,41 +1016,41 @@ int TextureFilter< Real >::Init( void )
 	return 1;
 }
 
-template<class Real>
+template< typename PreReal , typename Real >
 int _main(int argc, char* argv[])
 {
-	if( !TextureFilter< Real >::Init() ) return 0;
+	if( !TextureFilter< PreReal , Real >::Init() ) return 0;
 
 	if( !Output.set )
 	{
 		glutInitDisplayMode( GLUT_RGB | GLUT_DOUBLE );
-		TextureFilter<Real>::visualization.displayMode = DisplayMode.value;
-		if     ( DisplayMode.value==ONE_REGION_DISPLAY   ) TextureFilter< Real >::visualization.screenWidth =  800 , TextureFilter< Real >::visualization.screenHeight = 800;
-		else if( DisplayMode.value==TWO_REGION_DISPLAY   ) TextureFilter< Real >::visualization.screenWidth = 1600 , TextureFilter< Real >::visualization.screenHeight = 800;
-		else if( DisplayMode.value==THREE_REGION_DISPLAY ) TextureFilter< Real >::visualization.screenWidth = 1200 , TextureFilter< Real >::visualization.screenHeight = 800;
-		else if( DisplayMode.value==FOUR_REGION_DISPLAY  ) TextureFilter< Real >::visualization.screenWidth = 1500 , TextureFilter< Real >::visualization.screenHeight = 600;
-		glutInitWindowSize(TextureFilter<Real>::visualization.screenWidth, TextureFilter<Real>::visualization.screenHeight);
-		glutInit(&argc, argv);
+		TextureFilter< PreReal , Real >::visualization.displayMode = DisplayMode.value;
+		if     ( DisplayMode.value==ONE_REGION_DISPLAY   ) TextureFilter< PreReal , Real >::visualization.screenWidth =  800 , TextureFilter< PreReal , Real >::visualization.screenHeight = 800;
+		else if( DisplayMode.value==TWO_REGION_DISPLAY   ) TextureFilter< PreReal , Real >::visualization.screenWidth = 1600 , TextureFilter< PreReal , Real >::visualization.screenHeight = 800;
+		else if( DisplayMode.value==THREE_REGION_DISPLAY ) TextureFilter< PreReal , Real >::visualization.screenWidth = 1200 , TextureFilter< PreReal , Real >::visualization.screenHeight = 800;
+		else if( DisplayMode.value==FOUR_REGION_DISPLAY  ) TextureFilter< PreReal , Real >::visualization.screenWidth = 1500 , TextureFilter< PreReal , Real >::visualization.screenHeight = 600;
+		glutInitWindowSize( TextureFilter< PreReal , Real >::visualization.screenWidth , TextureFilter< PreReal , Real >::visualization.screenHeight );
+		glutInit( &argc , argv );
 		char windowName[1024];
-		sprintf(windowName, "Texture Filtering");
-		glutCreateWindow(windowName);
-		if (glewInit() != GLEW_OK) fprintf(stderr, "[ERROR] glewInit failed\n"), exit(0);
-		glutDisplayFunc(TextureFilter<Real>::Display);
-		glutReshapeFunc(TextureFilter<Real>::Reshape);
-		glutMouseFunc(TextureFilter<Real>::MouseFunc);
-		glutMotionFunc(TextureFilter<Real>::MotionFunc);
-		glutKeyboardFunc(TextureFilter<Real>::KeyboardFunc);
-		glutIdleFunc( TextureFilter< Real >::Idle );
-		if (CameraConfig.set) TextureFilter<Real>::visualization.ReadSceneConfigurationCallBack(&TextureFilter<Real>::visualization, CameraConfig.value);
-		TextureFilter<Real>::InitializeVisualization();
-		TextureFilter<Real>::visualization.showSlideBar = true;
+		sprintf( windowName , "Texture Filtering" );
+		glutCreateWindow( windowName );
+		if( glewInit()!=GLEW_OK) fprintf( stderr , "[ERROR] glewInit failed\n" ) , exit(0);
+		glutDisplayFunc ( TextureFilter< PreReal , Real >::Display );
+		glutReshapeFunc ( TextureFilter< PreReal , Real >::Reshape );
+		glutMouseFunc   ( TextureFilter< PreReal , Real >::MouseFunc );
+		glutMotionFunc  ( TextureFilter< PreReal , Real >::MotionFunc );
+		glutKeyboardFunc( TextureFilter< PreReal , Real >::KeyboardFunc) ;
+		glutIdleFunc    ( TextureFilter< PreReal , Real >::Idle );
+		if( CameraConfig.set ) TextureFilter< PreReal , Real >::visualization.ReadSceneConfigurationCallBack( &TextureFilter< PreReal , Real >::visualization , CameraConfig.value );
+		TextureFilter< PreReal , Real >::InitializeVisualization();
+		TextureFilter< PreReal , Real >::visualization.showSlideBar = true;
 		glutMainLoop(); 
 	}
 	else
 	{
-		if( UseDirectSolver.set ) TextureFilter< Real >::ComputeExactSolution( Verbose.set );
-		else for ( int i=0 ; i<OutputVCycles.value ; i++ ) TextureFilter< Real >::UpdateSolution();
-		TextureFilter< Real >::ExportTextureCallBack( &TextureFilter< Real >::visualization , Output.value );
+		if( UseDirectSolver.set ) TextureFilter< PreReal , Real >::ComputeExactSolution( Verbose.set );
+		else for ( int i=0 ; i<OutputVCycles.value ; i++ ) TextureFilter< PreReal , Real >::UpdateSolution();
+		TextureFilter< PreReal , Real >::ExportTextureCallBack( &TextureFilter< PreReal , Real >::visualization , Output.value );
 	}
 
 	return 0;
@@ -1106,7 +1074,7 @@ int main(int argc, char* argv[])
 		printf( "|    'y':                         prescribe interpolation weight       |\n" );
 		printf( "+----------------------------------------------------------------------+\n" );
 	}
-	if( Double.set ) _main< double >( argc , argv );
-	else             _main< float  >( argc , argv );
+	if( Double.set ) _main< double , double >( argc , argv );
+	else             _main< double , float  >( argc , argv );
 	return 0;
 }

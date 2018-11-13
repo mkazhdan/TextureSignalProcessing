@@ -29,25 +29,29 @@ DAMAGE.
 #include "MapLoop.h"
 
 
-void SetAtlasIndexedPolygonFromBoundaryTriangle(const BoundaryIndexedTriangle & triangle, AtlasIndexedPolygon & polygon) {
-	for (int k = 0; k < 3; k++) {
-		polygon.vertices.push_back(triangle.vertices[k]);
-		polygon.indices.push_back(triangle.indices[k]);
-		polygon.atlasVertexIndices.push_back(triangle.atlasVertexIndices[k]);
-		polygon.atlasEdgeIndices.push_back(triangle.atlasEdgeIndices[k]);
-		polygon.atlasVertexParentEdge.push_back(triangle.atlasVertexParentEdge[k]);
+template< typename GeometryReal >
+void SetAtlasIndexedPolygonFromBoundaryTriangle( const BoundaryIndexedTriangle< GeometryReal > &triangle , AtlasIndexedPolygon< GeometryReal > &polygon )
+{
+	for( int k=0 ; k<3 ; k++ )
+	{
+		polygon.vertices.push_back( triangle.vertices[k] );
+		polygon.indices.push_back( triangle.indices[k] );
+		polygon.atlasVertexIndices.push_back( triangle.atlasVertexIndices[k] );
+		polygon.atlasEdgeIndices.push_back( triangle.atlasEdgeIndices[k] );
+		polygon.atlasVertexParentEdge.push_back( triangle.atlasVertexParentEdge[k] );
 	}
 }
-void SetIndexedPolygonFromCell(const int i, const int j, const int width, const int height, IndexedIntersectionPolygon & polygon) {
-	//
+template< typename GeometryReal >
+void SetIndexedPolygonFromCell( int i , int j , int width , int height , IndexedIntersectionPolygon< GeometryReal > &polygon )
+{
 	polygon.vertices.resize(4);
 	polygon.indices.resize(4);
 	polygon.edgeIndices.resize(4);
 
-	polygon.vertices[0] = Point2D<double>((double(i) + 0.5) / double(width), (double(j) + 0.5) / double(height));
-	polygon.vertices[1] = Point2D<double>((double(i) + 1.5) / double(width), (double(j) + 0.5) / double(height));
-	polygon.vertices[2] = Point2D<double>((double(i) + 1.5) / double(width), (double(j) + 1.5) / double(height));
-	polygon.vertices[3] = Point2D<double>((double(i) + 0.5) / double(width), (double(j) + 1.5) / double(height));
+	polygon.vertices[0] = Point2D< GeometryReal >( (GeometryReal)( i+0.5 ) / width , (GeometryReal)( j+0.5 ) / height );
+	polygon.vertices[1] = Point2D< GeometryReal >( (GeometryReal)( i+1.5 ) / width , (GeometryReal)( j+0.5 ) / height );
+	polygon.vertices[2] = Point2D< GeometryReal >( (GeometryReal)( i+1.5 ) / width , (GeometryReal)( j+1.5 ) / height );
+	polygon.vertices[3] = Point2D< GeometryReal >( (GeometryReal)( i+0.5 ) / width , (GeometryReal)( j+1.5 ) / height );
 
 	polygon.indices[0] = SetIntersectionKey(4294967295, i + j*width);
 	polygon.indices[1] = SetIntersectionKey(4294967295, i + 1 + j*width);
@@ -60,38 +64,42 @@ void SetIndexedPolygonFromCell(const int i, const int j, const int width, const 
 	polygon.edgeIndices[3] = i + j* width;
 }
 
-
-int ComputeAtlasEdgeGridIntersection(Point2D<double> p[2], const GridChart & gridChart, int atlasEdgeIndex, std::vector<IntersectionInfo> & intersections) {
-	double fmin[2];
-	double fmax[2];
-	for (int c = 0; c < 2; c++) {
-		fmin[c] = std::min< double >(p[0][c], p[1][c]);
-		fmin[c] = std::max< double >(fmin[c], 0.f);
-		fmax[c] = std::max< double >(p[0][c], p[1][c]);
-		fmax[c] = std::min< double >(fmax[c], 1.f);
+template< typename GeometryReal >
+int ComputeAtlasEdgeGridIntersection( Point2D< GeometryReal > p[2] , const GridChart< GeometryReal > &gridChart , int atlasEdgeIndex , std::vector< IntersectionInfo< GeometryReal > > &intersections )
+{
+	GeometryReal fmin[2] , fmax[2];
+	for( int c=0 ; c<2 ; c++ )
+	{
+		fmin[c] = std::min< GeometryReal >( p[0][c] , p[1][c] );
+		fmin[c] = std::max< GeometryReal >( fmin[c] , 0.f );
+		fmax[c] = std::max< GeometryReal >( p[0][c] , p[1][c] );
+		fmax[c] = std::min< GeometryReal >( fmax[c] , 1.f );
 	}
 	int imin[2];
 	int imax[2];
 
-	imin[0] = static_cast<int>(floor(fmin[0] / gridChart.cellSizeW));
-	imin[1] = static_cast<int>(floor(fmin[1] / gridChart.cellSizeH));
-	imax[0] = static_cast<int>(floor(fmax[0] / gridChart.cellSizeW));
-	imax[1] = static_cast<int>(floor(fmax[1] / gridChart.cellSizeH));
+	imin[0] = static_cast< int >( floor( fmin[0] / gridChart.cellSizeW ) );
+	imin[1] = static_cast< int >( floor( fmin[1] / gridChart.cellSizeH ) );
+	imax[0] = static_cast< int >( floor( fmax[0] / gridChart.cellSizeW ) );
+	imax[1] = static_cast< int >( floor( fmax[1] / gridChart.cellSizeH ) );
 
-	for (int c = 0; c < 2; c++) {
-		for (int s = imin[c]; s <= imax[c]; s++) {
-			double cellSize = c == 0 ? gridChart.cellSizeW : gridChart.cellSizeH;
-			double oppCellSize = c == 0 ? gridChart.cellSizeH : gridChart.cellSizeW;
-			double level = double(s)*cellSize;
-			double alpha = (level - p[0][c]) / (p[1][c] - p[0][c]);
-			if (alpha > 0 && alpha < 1.0) {
-				Point2D<double> position = p[0] * (1.0 - alpha) + p[1] * alpha;
+	for (int c = 0; c < 2; c++)
+	{
+		for (int s = imin[c]; s <= imax[c]; s++)
+		{
+			GeometryReal cellSize = c == 0 ? gridChart.cellSizeW : gridChart.cellSizeH;
+			GeometryReal oppCellSize = c == 0 ? gridChart.cellSizeH : gridChart.cellSizeW;
+			GeometryReal level = (GeometryReal)s*cellSize;
+			GeometryReal alpha = ( level-p[0][c] ) / ( p[1][c]-p[0][c] );
+			if( alpha>0 && alpha<1 )
+			{
+				Point2D< GeometryReal > position = p[0] * (GeometryReal)( 1.-alpha ) + p[1] * alpha;
 				int oppDimIndex = (int)floor(position[1 - c] / oppCellSize);
 				int cellIntersectionIndices[2];
 				cellIntersectionIndices[c] = s;
 				cellIntersectionIndices[1 - c] = oppDimIndex;
 
-				IntersectionInfo info;
+				IntersectionInfo< GeometryReal > info;
 				info.intersectionKey = SetIntersectionKey(atlasEdgeIndex, gridChart.gridIndexOffset + c*gridChart.width*gridChart.height + cellIntersectionIndices[0] + cellIntersectionIndices[1] * gridChart.width);
 
 				info.time = alpha;
@@ -104,13 +112,16 @@ int ComputeAtlasEdgeGridIntersection(Point2D<double> p[2], const GridChart & gri
 	return 1;
 }
 
-
-
-int InitializeChartBoundaryEdgeGridIntersections(const AtlasChart & atlasChart, GridChart & gridChart, std::unordered_map<int, int> & boundaryVerticesIndices, int & lastBoundaryIndex, const int numInteriorNodes,
-	std::unordered_map<int, std::vector<IntersectionInfo>> & boundaryEdgeIntersections,
-	std::unordered_map<unsigned long long, BoundarySegmentInfo> & localBoundarySegmentsInfo,
-	std::unordered_map<unsigned long long, int> & localBoundaryNodeIndices,
-	std::unordered_map<unsigned long long, Point2D<double>> & localBoundaryNodePosition) {
+template< typename GeometryReal >
+int InitializeChartBoundaryEdgeGridIntersections
+(
+	const AtlasChart< GeometryReal > &atlasChart , GridChart< GeometryReal > &gridChart , std::unordered_map< int , int > &boundaryVerticesIndices , int &lastBoundaryIndex,  int numInteriorNodes,
+	std::unordered_map< int, std::vector< IntersectionInfo< GeometryReal > > > &boundaryEdgeIntersections ,
+	std::unordered_map< unsigned long long , BoundarySegmentInfo< GeometryReal > > &localBoundarySegmentsInfo ,
+	std::unordered_map< unsigned long long , int > & localBoundaryNodeIndices ,
+	std::unordered_map< unsigned long long , Point2D< GeometryReal > > &localBoundaryNodePosition
+)
+{
 
 	for (int b = 0; b < atlasChart.boundaryHalfEdges.size(); b++) {
 		int chartHalfEdgeIndex = atlasChart.boundaryHalfEdges[b];
@@ -119,17 +130,17 @@ int InitializeChartBoundaryEdgeGridIntersections(const AtlasChart & atlasChart, 
 
 		int halfEdgeIndex = atlasChart.meshTriangleIndices[tIndex] * 3 + kIndex;
 
-		std::vector<IntersectionInfo> edgeIntersectionsInfo;
-		Point2D<double> edge[2];
+		std::vector< IntersectionInfo< GeometryReal > > edgeIntersectionsInfo;
+		Point2D< GeometryReal > edge[2];
 		edge[0] = atlasChart.vertices[atlasChart.triangles[tIndex][kIndex]] - gridChart.corner;
 		edge[1] = atlasChart.vertices[atlasChart.triangles[tIndex][(kIndex + 1) % 3]] - gridChart.corner;
 
 		for (int v = 0; v < 2; v++) {
 			//unsigned long long vertexKey = SetIntersectionKey(atlasMesh.triangles[tIndex][(kIndex + v) % 3], -1);
 			unsigned long long vertexKey = SetIntersectionKey(atlasChart.triangles[tIndex][(kIndex + v) % 3], 4294967295);
-			IntersectionInfo cornerIntersection;
+			IntersectionInfo< GeometryReal > cornerIntersection;
 			cornerIntersection.intersectionKey = vertexKey;
-			cornerIntersection.time = double(v);
+			cornerIntersection.time = (GeometryReal)v;
 			cornerIntersection.position = edge[v];
 			edgeIntersectionsInfo.push_back(cornerIntersection);
 		}
@@ -140,7 +151,7 @@ int InitializeChartBoundaryEdgeGridIntersections(const AtlasChart & atlasChart, 
 		}
 
 		//Sort intersections
-		std::sort(edgeIntersectionsInfo.begin(), edgeIntersectionsInfo.end(), IntersectionComparison);
+		std::sort( edgeIntersectionsInfo.begin() , edgeIntersectionsInfo.end() , IntersectionComparison< GeometryReal > );
 
 		for (int i = 0; i < edgeIntersectionsInfo.size(); i++) {
 			if (localBoundaryNodeIndices.find(edgeIntersectionsInfo[i].intersectionKey) == localBoundaryNodeIndices.end()) {
@@ -155,18 +166,18 @@ int InitializeChartBoundaryEdgeGridIntersections(const AtlasChart & atlasChart, 
 					}
 					localBoundaryNodeIndices[edgeIntersectionsInfo[i].intersectionKey] = boundaryVerticesIndices[vertexIndex];
 
-					AuxiliarNode auxNode;
+					AuxiliaryNode< GeometryReal > auxNode;
 					auxNode.index = boundaryVerticesIndices[vertexIndex] + numInteriorNodes;
 					auxNode.position = edgeIntersectionsInfo[i].position;
-					gridChart.auxiliarNodes.push_back(auxNode);
+					gridChart.auxiliaryNodes.push_back(auxNode);
 
 				}
 				else {
 					localBoundaryNodeIndices[edgeIntersectionsInfo[i].intersectionKey] = lastBoundaryIndex;
-					AuxiliarNode auxNode;
+					AuxiliaryNode< GeometryReal > auxNode;
 					auxNode.index = lastBoundaryIndex + numInteriorNodes;
 					auxNode.position = edgeIntersectionsInfo[i].position;
-					gridChart.auxiliarNodes.push_back(auxNode);
+					gridChart.auxiliaryNodes.push_back(auxNode);
 
 					lastBoundaryIndex++;
 				}
@@ -177,7 +188,7 @@ int InitializeChartBoundaryEdgeGridIntersections(const AtlasChart & atlasChart, 
 		for (int i = 0; i < edgeIntersectionsInfo.size() - 1; i++) {
 			int segmentCornerIndices[2] = { localBoundaryNodeIndices[edgeIntersectionsInfo[i].intersectionKey], localBoundaryNodeIndices[edgeIntersectionsInfo[i + 1].intersectionKey] };
 			unsigned long long segmentKey = SetMeshEdgeKey(segmentCornerIndices[0], segmentCornerIndices[1]);
-			BoundarySegmentInfo segmentInfo;
+			BoundarySegmentInfo< GeometryReal > segmentInfo;
 			segmentInfo.startTime = edgeIntersectionsInfo[i].time;
 			segmentInfo.endTime = edgeIntersectionsInfo[i + 1].time;
 			segmentInfo.halfEdge = halfEdgeIndex;
@@ -193,7 +204,9 @@ int InitializeChartBoundaryEdgeGridIntersections(const AtlasChart & atlasChart, 
 	return 1;
 }
 
-void IndexedPolygonFromCell(const int i, const int j, const GridChart & gridChart, IndexedIntersectionPolygon & polygon) {
+template< typename GeometryReal >
+void IndexedPolygonFromCell( int i , int j , const GridChart< GeometryReal > &gridChart , IndexedIntersectionPolygon< GeometryReal > &polygon )
+{
 
 	int width = gridChart.width;
 	int height = gridChart.height;
@@ -203,15 +216,15 @@ void IndexedPolygonFromCell(const int i, const int j, const GridChart & gridChar
 	polygon.indices.resize(4);
 	polygon.edgeIndices.resize(4);
 
-	polygon.vertices[0] = Point2D<double>(double(i)*gridChart.cellSizeW, double(j)*gridChart.cellSizeH);
-	polygon.vertices[1] = Point2D<double>(double(i + 1)*gridChart.cellSizeW, double(j)*gridChart.cellSizeH);
-	polygon.vertices[2] = Point2D<double>(double(i + 1)*gridChart.cellSizeW, double(j + 1)*gridChart.cellSizeH);
-	polygon.vertices[3] = Point2D<double>(double(i)*gridChart.cellSizeW, double(j + 1)*gridChart.cellSizeH);
+	polygon.vertices[0] = Point2D< GeometryReal >( (GeometryReal)(i+0)*gridChart.cellSizeW , (GeometryReal)(j+0)*gridChart.cellSizeH );
+	polygon.vertices[1] = Point2D< GeometryReal >( (GeometryReal)(i+1)*gridChart.cellSizeW , (GeometryReal)(j+0)*gridChart.cellSizeH );
+	polygon.vertices[2] = Point2D< GeometryReal >( (GeometryReal)(i+1)*gridChart.cellSizeW , (GeometryReal)(j+1)*gridChart.cellSizeH );
+	polygon.vertices[3] = Point2D< GeometryReal >( (GeometryReal)(i+0)*gridChart.cellSizeW , (GeometryReal)(j+1)*gridChart.cellSizeH );
 
-	polygon.indices[0] = SetIntersectionKey(4294967295, gridIndexOffset + i + j*width);
-	polygon.indices[1] = SetIntersectionKey(4294967295, gridIndexOffset + i + 1 + j*width);
-	polygon.indices[2] = SetIntersectionKey(4294967295, gridIndexOffset + i + 1 + (j + 1)*width);
-	polygon.indices[3] = SetIntersectionKey(4294967295, gridIndexOffset + i + (j + 1)*width);
+	polygon.indices[0] = SetIntersectionKey( 4294967295 , gridIndexOffset + (i+0) + (j+0)*width );
+	polygon.indices[1] = SetIntersectionKey( 4294967295 , gridIndexOffset + (i+1) + (j+0)*width );
+	polygon.indices[2] = SetIntersectionKey( 4294967295 , gridIndexOffset + (i+1) + (j+1)*width );
+	polygon.indices[3] = SetIntersectionKey( 4294967295 , gridIndexOffset + (i+0) + (j+1)*width );
 
 	polygon.edgeIndices[0] = gridIndexOffset + width*height + i + j* width;
 	polygon.edgeIndices[1] = gridIndexOffset + i + 1 + j* width;
@@ -220,25 +233,37 @@ void IndexedPolygonFromCell(const int i, const int j, const GridChart & gridChar
 }
 
 
-int InitializeChartBoundaryPolygons(const std::vector<int> & atlasEdgeIndex, const std::vector<int> & oppositeHalfEdge, const AtlasChart & atlasChart, GridChart & gridChart,
-	const int numInteriorNodes, const int numBoundaryVertices, const int numBoundaryNodes,
-	std::unordered_map<int, std::vector<IntersectionInfo>> boundaryEdgeIntersections,
-	std::unordered_map<unsigned long long, BoundarySegmentInfo> & boundarySegmentsInfo,
-	std::unordered_map<unsigned long long, int> & boundaryNodeIndices,
-	std::unordered_map<unsigned long long, Point2D<double>> & boundaryNodePosition,
-	std::vector<int> & coveredOppositeBoundaryNode) {
+template< typename GeometryReal >
+int InitializeChartBoundaryPolygons
+(
+	const std::vector< int > &atlasEdgeIndex , const std::vector< int > &oppositeHalfEdge ,
+	const AtlasChart< GeometryReal > &atlasChart , GridChart< GeometryReal > &gridChart ,
+	int numInteriorNodes , int numBoundaryVertices , int numBoundaryNodes ,
+#if 1
+//#pragma message( "[WARNING] making a fix here" )
+	std::unordered_map< int , std::vector< IntersectionInfo< GeometryReal > > > &boundaryEdgeIntersections ,
+#else
+	std::unordered_map< int , std::vector< IntersectionInfo< GeometryReal > > > boundaryEdgeIntersections ,
+#endif
+	std::unordered_map< unsigned long long , BoundarySegmentInfo< GeometryReal > > &boundarySegmentsInfo ,
+	std::unordered_map< unsigned long long , int > &boundaryNodeIndices ,
+	std::unordered_map< unsigned long long , Point2D< GeometryReal > > & boundaryNodePosition ,
+	std::vector< int > &coveredOppositeBoundaryNode
+)
+{
 
 	std::unordered_map<int, std::vector<std::pair<unsigned long long, unsigned long long>>> cellSegments;
 
 	//(1) Generate cell segments
-	for (int t = 0; t < atlasChart.triangles.size(); t++) {
-		Point2D< double > tPos[3];
+	for (int t = 0; t < atlasChart.triangles.size(); t++)
+	{
+		Point2D< GeometryReal > tPos[3];
 		for (int i = 0; i < 3; i++) tPos[i] = atlasChart.vertices[atlasChart.triangles[t][i]] - gridChart.corner;
 		int minCorner[2];
 		int maxCorner[2];
-		GetTriangleIntegerBBox(tPos, 1.0 / gridChart.cellSizeW, 1.0 / gridChart.cellSizeH , minCorner, maxCorner);
+		GetTriangleIntegerBBox( tPos, (GeometryReal)1./gridChart.cellSizeW , (GeometryReal)1./gridChart.cellSizeH , minCorner , maxCorner );
 
-		IndexedIntersectionTriangle indexedTriangle;
+		IndexedIntersectionTriangle< GeometryReal > indexedTriangle;
 		for (int k = 0; k < 3; k++) {
 			indexedTriangle.vertices[k] = tPos[k];
 			indexedTriangle.indices[k] = SetIntersectionKey(atlasChart.triangles[t][k], 4294967295);
@@ -252,7 +277,7 @@ int InitializeChartBoundaryPolygons(const std::vector<int> & atlasEdgeIndex, con
 					printf("Error: Boundary cell invalid id! \n");
 					return 0;
 				}
-				IndexedIntersectionPolygon cellPolygon;
+				IndexedIntersectionPolygon< GeometryReal > cellPolygon;
 				IndexedPolygonFromCell(i, j, gridChart, cellPolygon);
 				if (ClipIndexedIntersectionPolygonToIndexedIntersectionTriangle(cellPolygon, indexedTriangle)) {
 					for (int s = 0; s < cellPolygon.indices.size(); s++){
@@ -313,14 +338,14 @@ int InitializeChartBoundaryPolygons(const std::vector<int> & atlasEdgeIndex, con
 		}
 
 		//Keep only the grid nodes and the boundary vertices
-		std::vector<std::vector<Point2D<double>>> loopPositions(loopKeys.size());
-		std::vector<std::vector<int>> loopIndices(loopKeys.size());
-		std::vector<std::vector<int>> loopAtlasVertexIndices(loopKeys.size());
+		std::vector< std::vector< Point2D< GeometryReal > > > loopPositions(loopKeys.size());
+		std::vector< std::vector< int> > loopIndices(loopKeys.size());
+		std::vector< std::vector< int> > loopAtlasVertexIndices(loopKeys.size());
 		for (int i = 0; i < loopKeys.size(); i++) {
-			std::vector<unsigned long long> reduceLoop;
-			std::vector<Point2D<double>> currentLoopPositions;
-			std::vector<int> currentLoopIndices;
-			std::vector<int> currentAtlasVertexIndices;
+			std::vector< unsigned long long > reduceLoop;
+			std::vector< Point2D< GeometryReal > > currentLoopPositions;
+			std::vector< int > currentLoopIndices;
+			std::vector< int > currentAtlasVertexIndices;
 			for (int j = 0; j < loopKeys[i].size(); j++) {
 				unsigned long long currentVertexKey = loopKeys[i][j];
 				unsigned long tElement, vElement;
@@ -334,10 +359,10 @@ int InitializeChartBoundaryPolygons(const std::vector<int> & atlasEdgeIndex, con
 						printf("Invalid texel! \n");
 						return 0;
 					}
-					reduceLoop.push_back(currentVertexKey);
-					currentLoopPositions.push_back(Point2D<double>(double(pi)*gridChart.cellSizeW, double(pj)*gridChart.cellSizeH));
-					currentLoopIndices.push_back(interiorTexelIndex);
-					currentAtlasVertexIndices.push_back(-1);
+					reduceLoop.push_back( currentVertexKey );
+					currentLoopPositions.push_back( Point2D< GeometryReal >( (GeometryReal)pi*gridChart.cellSizeW , (GeometryReal)pj*gridChart.cellSizeH ) );
+					currentLoopIndices.push_back( interiorTexelIndex );
+					currentAtlasVertexIndices.push_back( -1 );
 				}
 				else if (boundaryNodeIndices.find(currentVertexKey) != boundaryNodeIndices.end()) {
 					reduceLoop.push_back(currentVertexKey);
@@ -369,11 +394,11 @@ int InitializeChartBoundaryPolygons(const std::vector<int> & atlasEdgeIndex, con
 		std::vector<std::vector<int>> loopAtlasVertexParentEdges(loopKeys.size());
 		for (int i = 0; i < loopKeys.size(); i++) {
 
-			std::vector<std::vector<int>> indicesToInsert;
-			std::vector<std::vector<double>> timesToInsert;
-			std::vector<bool> isInsertionPos(loopKeys[i].size(), false);
-			std::vector<int> polygonAtlaEdgeIndex(loopKeys[i].size(), -1);
-			std::vector<int> polygonAtlaVertexParentEdges(loopKeys[i].size(), -1);
+			std::vector< std::vector< int > > indicesToInsert;
+			std::vector< std::vector< GeometryReal > > timesToInsert;
+			std::vector< bool > isInsertionPos( loopKeys[i].size() , false );
+			std::vector< int > polygonAtlaEdgeIndex( loopKeys[i].size() , -1 );
+			std::vector< int > polygonAtlaVertexParentEdges( loopKeys[i].size() , -1 );
 
 			for (int j = 0; j < loopKeys[i].size(); j++) {
 				unsigned long long currentVertexKey = loopKeys[i][j];
@@ -388,13 +413,14 @@ int InitializeChartBoundaryPolygons(const std::vector<int> & atlasEdgeIndex, con
 				if (boundaryNodeIndices.find(currentVertexKey) != boundaryNodeIndices.end() && boundaryNodeIndices.find(nextVertexKey) != boundaryNodeIndices.end()) {
 					unsigned long long segmentKey = SetMeshEdgeKey(boundaryNodeIndices[currentVertexKey], boundaryNodeIndices[nextVertexKey]);
 					if (boundarySegmentsInfo.find(segmentKey) != boundarySegmentsInfo.end()) {
-						BoundarySegmentInfo segmentInfo = boundarySegmentsInfo[segmentKey];
+						BoundarySegmentInfo< GeometryReal > segmentInfo = boundarySegmentsInfo[segmentKey];
 						polygonAtlaEdgeIndex[j] = atlasEdgeIndex[segmentInfo.halfEdge];
 
 						int oppHalfEdge = oppositeHalfEdge[segmentInfo.halfEdge];
-						if (oppHalfEdge != -1) {
-							double startTime = segmentInfo.startTime;
-							double endTime = segmentInfo.endTime;
+						if( oppHalfEdge!=-1 )
+						{
+							GeometryReal startTime = segmentInfo.startTime;
+							GeometryReal endTime = segmentInfo.endTime;
 
 
 							if (boundaryEdgeIntersections.find(oppHalfEdge) == boundaryEdgeIntersections.end()) {
@@ -403,21 +429,24 @@ int InitializeChartBoundaryPolygons(const std::vector<int> & atlasEdgeIndex, con
 								return 0;
 							}
 
-							std::vector<int> segmentIndicesToInsert;
-							std::vector<double> segmentTimesToInsert;
+							std::vector< int > segmentIndicesToInsert;
+							std::vector< GeometryReal > segmentTimesToInsert;
 
-							std::vector<IntersectionInfo> oppositeIntersection = boundaryEdgeIntersections[oppHalfEdge];
-							for (int oppIter = (int)oppositeIntersection.size() - 2; oppIter > 0; oppIter--) {
-								double reversedTime = 1.0 - oppositeIntersection[oppIter].time;
-								double normalizedTime = (reversedTime - startTime) / (endTime - startTime);
-								if (normalizedTime > 0 && normalizedTime < 1) {
+							std::vector< IntersectionInfo< GeometryReal > > oppositeIntersection = boundaryEdgeIntersections[oppHalfEdge];
+							for (int oppIter = (int)oppositeIntersection.size() - 2; oppIter > 0; oppIter--)
+							{
+								GeometryReal reversedTime = (GeometryReal)1. - oppositeIntersection[oppIter].time;
+								GeometryReal normalizedTime = ( reversedTime-startTime ) / ( endTime-startTime );
+								if (normalizedTime > 0 && normalizedTime < 1)
+								{
 									segmentIndicesToInsert.push_back(oppositeIntersection[oppIter].intersectionIndex);
 									segmentTimesToInsert.push_back(normalizedTime);
 								}
 							}
 
 
-							if (segmentIndicesToInsert.size() > 0) {
+							if (segmentIndicesToInsert.size() > 0)
+							{
 								isInsertionPos[j] = true;
 								indicesToInsert.push_back(segmentIndicesToInsert);
 								timesToInsert.push_back(segmentTimesToInsert);
@@ -428,11 +457,11 @@ int InitializeChartBoundaryPolygons(const std::vector<int> & atlasEdgeIndex, con
 			}
 			//Do insertions
 			int insertionCount = 0;
-			std::vector<Point2D<double>> expandedLoopPositions;
-			std::vector<int> expandedLoopIndices;
-			std::vector<int> expandedLoopAtlasVertexIndices;
-			std::vector<int> expandedLoopAtlasEdgeIndex;
-			std::vector<int> expandedVertexParentEdgeIndex;
+			std::vector< Point2D< GeometryReal > > expandedLoopPositions;
+			std::vector< int > expandedLoopIndices;
+			std::vector< int > expandedLoopAtlasVertexIndices;
+			std::vector< int > expandedLoopAtlasEdgeIndex;
+			std::vector< int > expandedVertexParentEdgeIndex;
 			for (int j = 0; j < loopKeys[i].size(); j++) {
 
 				//expandedLoopKeys.push_back(loopKeys[i][j]);
@@ -444,22 +473,26 @@ int InitializeChartBoundaryPolygons(const std::vector<int> & atlasEdgeIndex, con
 				expandedLoopAtlasEdgeIndex.push_back(currentSegmentAtlasEdgeIndex);
 				expandedVertexParentEdgeIndex.push_back(polygonAtlaVertexParentEdges[j]);
 
-				if (isInsertionPos[j]) {
-					std::vector<int> _indices = indicesToInsert[insertionCount];
-					std::vector<double> _times = timesToInsert[insertionCount];
-					Point2D<double> currentPos = loopPositions[i][j];
-					Point2D<double> nextPos = loopPositions[i][(j + 1) % loopKeys[i].size()];
+				if (isInsertionPos[j])
+				{
+					std::vector< int > _indices = indicesToInsert[insertionCount];
+					std::vector< GeometryReal > _times = timesToInsert[insertionCount];
+					Point2D< GeometryReal > currentPos = loopPositions[i][j];
+					Point2D< GeometryReal > nextPos = loopPositions[i][ (j+1)%loopKeys[i].size() ];
 
-					if (currentSegmentAtlasEdgeIndex == -1) {
+					if (currentSegmentAtlasEdgeIndex == -1)
+					{
 						printf("Invalid atlas edge index! \n");
 						return 0;
 					}
-					for (int k = 0; k < _indices.size(); k++) {
-						double alpha = _times[k];
-						Point2D<double> interpolatedPos = (1.0 - alpha)*currentPos + nextPos*alpha;
-						if(1){ //Add orthogonal perturbation to avoid colinearity. Delanauy triangulation library failed for colinear inputs on some systems.
-							Point2D<double> segmentDir = nextPos - currentPos;
-							interpolatedPos += Point2D<double>(-segmentDir[1],segmentDir[0]) * ((2.0 * double(rand())/double(RAND_MAX)) - 1.0) * 1e-10;
+					for (int k = 0; k < _indices.size(); k++)
+					{
+						GeometryReal alpha = _times[k];
+						Point2D< GeometryReal > interpolatedPos = (GeometryReal)( 1.-alpha )*currentPos + nextPos*alpha;
+						if( true ) // Add orthogonal perturbation to avoid colinearity. Delanauy triangulation library failed for colinear inputs on some systems.
+						{
+							Point2D< GeometryReal > segmentDir = nextPos - currentPos;
+							interpolatedPos += Point2D< GeometryReal >( -segmentDir[1] , segmentDir[0] ) * (GeometryReal)( ( Random< GeometryReal >()*2 - 1. ) * 1e-10 );
 						}
 						if (_indices[k] < numBoundaryVertices || _indices[k] > numBoundaryNodes) {
 							printf("Out of bounds index: %d not in %d %d \n", _indices[k], numBoundaryVertices, numBoundaryNodes);
@@ -467,10 +500,10 @@ int InitializeChartBoundaryPolygons(const std::vector<int> & atlasEdgeIndex, con
 						}
 						coveredOppositeBoundaryNode[_indices[k] - numBoundaryVertices] += 1;
 
-						AuxiliarNode auxNode;
+						AuxiliaryNode< GeometryReal > auxNode;
 						auxNode.index = _indices[k] + numInteriorNodes;
 						auxNode.position = interpolatedPos;
-						gridChart.auxiliarNodes.push_back(auxNode);
+						gridChart.auxiliaryNodes.push_back(auxNode);
 
 						expandedLoopPositions.push_back(interpolatedPos);
 						expandedLoopIndices.push_back(_indices[k] + numInteriorNodes);
@@ -492,8 +525,8 @@ int InitializeChartBoundaryPolygons(const std::vector<int> & atlasEdgeIndex, con
 			loopAtlasVertexParentEdges[i] = expandedVertexParentEdgeIndex;
 		}
 
-		for (int i = 0; i < loopPositions.size(); i++) {
-			AtlasIndexedPolygon poly;
+		for (int i = 0; i < loopPositions.size(); i++){
+			AtlasIndexedPolygon< GeometryReal > poly;
 			poly.vertices = loopPositions[i];
 			poly.indices = loopIndices[i];
 			poly.atlasVertexIndices = loopAtlasVertexIndices[i];
@@ -506,16 +539,22 @@ int InitializeChartBoundaryPolygons(const std::vector<int> & atlasEdgeIndex, con
 }
 
 
-
-int InitializeBoundaryPolygons(const std::vector<int> & atlasEdgeIndex, const std::vector<int> & oppositeHalfEdge, const std::vector<AtlasChart> & atlasCharts, std::vector<GridChart> & gridCharts, std::unordered_map<int, int> & boundaryVerticesIndices,
-	const int numInteriorNodes, const int numBoundaryVertices, int & numBoundaryNodes, const bool isClosedMesh) { //Fine System
+template< typename GeometryReal >
+int InitializeBoundaryPolygons
+(
+	const std::vector< int > &atlasEdgeIndex , const std::vector< int > &oppositeHalfEdge ,
+	const std::vector< AtlasChart< GeometryReal > > &atlasCharts , std::vector< GridChart< GeometryReal > > &gridCharts ,
+	std::unordered_map< int , int > &boundaryVerticesIndices ,
+	int numInteriorNodes , int numBoundaryVertices , int &numBoundaryNodes , const bool isClosedMesh
+)
+{ //Fine System
 
 	int lastBoundaryIndex = numBoundaryVertices;
-	std::unordered_map<int, std::vector<IntersectionInfo>> boundaryEdgeIntersections;
+	std::unordered_map< int , std::vector< IntersectionInfo< GeometryReal > > > boundaryEdgeIntersections;
 
-	std::vector<std::unordered_map<unsigned long long, BoundarySegmentInfo>> localBoundarySegmentsInfo(gridCharts.size());
-	std::vector<std::unordered_map<unsigned long long, int>> localBoundaryNodeIndices(gridCharts.size());
-	std::vector<std::unordered_map<unsigned long long, Point2D<double>>>  localBoundaryNodePosition(gridCharts.size());
+	std::vector< std::unordered_map< unsigned long long , BoundarySegmentInfo< GeometryReal > > > localBoundarySegmentsInfo( gridCharts.size() );
+	std::vector< std::unordered_map< unsigned long long , int > > localBoundaryNodeIndices( gridCharts.size() );
+	std::vector< std::unordered_map< unsigned long long , Point2D< GeometryReal > > > localBoundaryNodePosition( gridCharts.size() );
 
 	for (int i = 0; i < gridCharts.size(); i++) {
 		if (!InitializeChartBoundaryEdgeGridIntersections(atlasCharts[i], gridCharts[i], boundaryVerticesIndices, lastBoundaryIndex, numInteriorNodes,
@@ -549,17 +588,18 @@ int InitializeBoundaryPolygons(const std::vector<int> & atlasEdgeIndex, const st
 
 #include "ConstrainedTriangulation.h"
 
-int InitializeChartQuadraticElements(GridChart & gridChart, std::unordered_map<unsigned long long, int> & midPointIndex, int & lastMidPointIndex, const int & previouslyAddedNodes) {
-
-	const std::vector<std::vector<AtlasIndexedPolygon>> & boundaryPolygons = gridChart.boundaryPolygons;
-	std::vector<std::vector<BoundaryIndexedTriangle>> & boundaryTriangles = gridChart.boundaryTriangles;
+template< typename GeometryReal >
+int InitializeChartQuadraticElements( GridChart< GeometryReal > &gridChart , std::unordered_map< unsigned long long , int > &midPointIndex , int &lastMidPointIndex , int previouslyAddedNodes )
+{
+	const std::vector< std::vector< AtlasIndexedPolygon< GeometryReal > > > & boundaryPolygons = gridChart.boundaryPolygons;
+	std::vector< std::vector< BoundaryIndexedTriangle< GeometryReal > > > & boundaryTriangles = gridChart.boundaryTriangles;
 	boundaryTriangles.resize(gridChart.numBoundaryCells);
 	int numBoundaryTriangles = 0;
 	for (int i = 0; i < boundaryPolygons.size(); i++) {
 		for (int j = 0; j < boundaryPolygons[i].size(); j++) {
-			const AtlasIndexedPolygon & currentPolygon = boundaryPolygons[i][j];
+			const AtlasIndexedPolygon< GeometryReal > &currentPolygon = boundaryPolygons[i][j];
 			std::vector<TriangleIndex> delanauyTriangles;
-			TriangulatePolygon(currentPolygon.vertices, delanauyTriangles);
+			TriangulatePolygon( currentPolygon.vertices , delanauyTriangles );
 			if (delanauyTriangles.size() != currentPolygon.vertices.size() - 2) {
 				int localCellPos[2] = { -1,-1 };
 				for (int li = 0; li < gridChart.localBoundaryCellIndex.width(); li++)for (int lj = 0; lj < gridChart.localBoundaryCellIndex.height(); lj++) if (gridChart.localBoundaryCellIndex(li, lj) == i) localCellPos[0] = li, localCellPos[1] = lj;
@@ -572,7 +612,7 @@ int InitializeChartQuadraticElements(GridChart & gridChart, std::unordered_map<u
 			}
 
 			for (int k = 0; k < delanauyTriangles.size(); k++) {
-				BoundaryIndexedTriangle triangle;
+				BoundaryIndexedTriangle< GeometryReal > triangle;
 				for (int v = 0; v < 3; v++) {
 					int currentPolygonVertex = delanauyTriangles[k][v];
 					triangle.indices[v] = currentPolygon.indices[currentPolygonVertex];
@@ -596,7 +636,7 @@ int InitializeChartQuadraticElements(GridChart & gridChart, std::unordered_map<u
 				for (int v = 0; v < 3; v++) {
 					int mIndex = -1;
 
-					Point2D<double> edgeMidPoint = (triangle.vertices[(v + 1) % 3] + triangle.vertices[(v + 2) % 3]) / 2.0;
+					Point2D< GeometryReal > edgeMidPoint = ( triangle.vertices[ (v+1)%3 ] + triangle.vertices[ (v+2)%3 ] ) / 2;
 					int edgeCorners[2] = { (int)triangle.indices[(v + 1) % 3], (int)triangle.indices[(v + 2) % 3] };
 					if (edgeCorners[0] > edgeCorners[1]) std::swap(edgeCorners[0], edgeCorners[1]);
 					unsigned long long edgeKey = SetMeshEdgeKey(edgeCorners[0], edgeCorners[1]);
@@ -610,10 +650,10 @@ int InitializeChartQuadraticElements(GridChart & gridChart, std::unordered_map<u
 						midVexterIndex[v] = midPointIndex[edgeKey] + previouslyAddedNodes;
 					}
 
-					AuxiliarNode auxNode;
+					AuxiliaryNode< GeometryReal > auxNode;
 					auxNode.index = midVexterIndex[v];
 					auxNode.position = edgeMidPoint;
-					gridChart.auxiliarNodes.push_back(auxNode);
+					gridChart.auxiliaryNodes.push_back(auxNode);
 
 				}
 				triangle.id = numBoundaryTriangles;
@@ -629,76 +669,84 @@ int InitializeChartQuadraticElements(GridChart & gridChart, std::unordered_map<u
 	return 1;
 }
 
-int InitializeBoundaryQuadraticElements(std::vector<GridChart> & gridCharts, const int previouslyAddedNodes, int & numMidPoints) {
+template< typename GeometryReal >
+int InitializeBoundaryQuadraticElements( std::vector< GridChart< GeometryReal > > &gridCharts , int previouslyAddedNodes , int & numMidPoints )
+{
 	int lastMidPointIndex = 0;
-	std::unordered_map<unsigned long long, int> midPointIndex;
-	for (int i = 0; i < gridCharts.size(); i++) {
-		if (!InitializeChartQuadraticElements(gridCharts[i], midPointIndex, lastMidPointIndex, previouslyAddedNodes)) {
-			printf("Unable to initialize quadratic elements!\n");
-			return 0;
-		}
+	std::unordered_map< unsigned long long , int > midPointIndex;
+	for( int i=0 ; i<gridCharts.size() ; i++ )
+	{
+		if( !InitializeChartQuadraticElements( gridCharts[i] , midPointIndex , lastMidPointIndex , previouslyAddedNodes ) ){ fprintf( stderr , "[WARNING] InitializeBoundaryQuadraticElements: Unable to initialize quadratic elements!\n" ) ; return 0; }
 	}
 	numMidPoints = lastMidPointIndex;
 	return 1;
 }
 
-
-int InitializeBoundaryTriangulation(GridAtlas & gridAtlas, AtlasMesh & atlasMesh, std::vector<AtlasChart> & atlasCharts, std::vector<int> & oppositeHalfEdge, std::unordered_map<int, int> & boundaryVerticesIndices, const int & numBoundaryVertices, const bool & isClosedMesh, bool verbose = false) {
-	if (!InitializeBoundaryPolygons(atlasMesh.halfEdgeToEdgeIndex, oppositeHalfEdge, atlasCharts, gridAtlas.gridCharts, boundaryVerticesIndices, gridAtlas.numInteriorTexels, numBoundaryVertices, gridAtlas.numBoundaryNodes, isClosedMesh)) {
-		printf("ERROR: Unable to initialize boundary polygons! \n");
+template< typename GeometryReal , typename MatrixReal >
+int InitializeBoundaryTriangulation( GridAtlas< GeometryReal , MatrixReal > &gridAtlas , AtlasMesh< GeometryReal > &atlasMesh , std::vector< AtlasChart< GeometryReal > > &atlasCharts , std::vector< int > &oppositeHalfEdge , std::unordered_map< int , int > &boundaryVerticesIndices , int numBoundaryVertices , const bool &isClosedMesh , bool verbose=false )
+{
+	if( !InitializeBoundaryPolygons( atlasMesh.halfEdgeToEdgeIndex , oppositeHalfEdge , atlasCharts , gridAtlas.gridCharts , boundaryVerticesIndices , gridAtlas.numInteriorTexels , numBoundaryVertices , gridAtlas.numBoundaryNodes , isClosedMesh ) )
+	{
+		fprintf( stderr , "[ERROR] InitializeBoundaryTriangulation: Unable to initialize boundary polygons!\n" );
 		return 0;
 	}
 
-	if (!InitializeBoundaryQuadraticElements(gridAtlas.gridCharts, gridAtlas.numBoundaryNodes + gridAtlas.numInteriorTexels, gridAtlas.numMidPoints)) {
-		printf("ERROR: Unable to initialize boundary quadratic elements! \n");
+	if( !InitializeBoundaryQuadraticElements( gridAtlas.gridCharts , gridAtlas.numBoundaryNodes + gridAtlas.numInteriorTexels , gridAtlas.numMidPoints ) )
+	{
+		fprintf( stderr , "[ERROR] InitializeBoundaryTriangulation: Unable to initialize boundary quadratic elements!\n" );
 		return 0;
 	}
 
-	if (verbose) {
-		printf("\t Boundary vertices %d \n", numBoundaryVertices);
-		printf("\t Boundary nodes %d \n", gridAtlas.numBoundaryNodes);
-		printf("\t Boundary cells %d \n", gridAtlas.numBoundaryCells);
-		printf("\t Mid points %d \n", gridAtlas.numMidPoints);
+	if( verbose )
+	{
+		printf( "\t Boundary vertices %d \n" , numBoundaryVertices );
+		printf( "\t Boundary nodes %d \n" , gridAtlas.numBoundaryNodes );
+		printf( "\t Boundary cells %d \n" , gridAtlas.numBoundaryCells );
+		printf( "\t Mid points %d \n" , gridAtlas.numMidPoints );
 	}
 
 	gridAtlas.numFineNodes = gridAtlas.numInteriorTexels + gridAtlas.numBoundaryNodes + gridAtlas.numMidPoints;
 
-	if (verbose) printf("Num fine nodes %d =  Interior texels %d + Auxiliar boundary nodes %d \n", gridAtlas.numFineNodes, gridAtlas.numInteriorTexels, gridAtlas.numBoundaryNodes + gridAtlas.numMidPoints);
+	if( verbose ) printf( "Num fine nodes %d =  Interior texels %d + Auxiliar boundary nodes %d\n" , gridAtlas.numFineNodes , gridAtlas.numInteriorTexels , gridAtlas.numBoundaryNodes + gridAtlas.numMidPoints );
 
 	return 1;
 }
 
-class BoundaryProlongationData {
+template< typename MatrixReal >
+class BoundaryProlongationData
+{
 public:
-	std::vector<int> fineBoundaryIndex;
+	std::vector< int > fineBoundaryIndex;
 	int numFineBoundarNodes;
-	SparseMatrix<double, int> coarseBoundaryFineBoundaryProlongation;
-	SparseMatrix<double, int> fineBoundaryCoarseBoundaryRestriction;
+	SparseMatrix< MatrixReal , int > coarseBoundaryFineBoundaryProlongation;
+	SparseMatrix< MatrixReal , int > fineBoundaryCoarseBoundaryRestriction;
 };
 
-int InitializeCoarseBoundaryToFineBoundaryProlongation(const GridAtlas & gridAtlas, SparseMatrix<double, int> & coarseBoundaryFineBoundaryProlongation, std::vector<int> & fineBoundaryIndex, int & numFineBoundaryNodes, bool verbose = false) {
+template< typename GeometryReal , typename MatrixReal >
+int InitializeCoarseBoundaryToFineBoundaryProlongation( const GridAtlas< GeometryReal , MatrixReal > &gridAtlas , SparseMatrix< MatrixReal , int > &coarseBoundaryFineBoundaryProlongation , std::vector< int > &fineBoundaryIndex , int &numFineBoundaryNodes , bool verbose=false )
+{
 
-	std::vector<int> boundaryFineToFullFine;
-	std::vector<Eigen::Triplet<double>> prolongationTriplets;
-	const std::vector<int> & boundaryAndDeepIndex = gridAtlas.boundaryAndDeepIndex;
+	std::vector< int > boundaryFineToFullFine;
+	std::vector< Eigen::Triplet< MatrixReal > > prolongationTriplets;
+	const std::vector< int > & boundaryAndDeepIndex = gridAtlas.boundaryAndDeepIndex;
 
 
 	fineBoundaryIndex.resize(gridAtlas.numFineNodes, -1);
 	int lastFineBoundaryIndex = 0;
-	for (int i = 0; i < gridAtlas.gridCharts.size(); i++) {
-		const GridChart & gridChart = gridAtlas.gridCharts[i];
+	for (int i = 0; i < gridAtlas.gridCharts.size(); i++)
+	{
+		const GridChart< GeometryReal > &gridChart = gridAtlas.gridCharts[i];
 		for (int j = 0; j < gridChart.globalInteriorTexelIndex.size(); j++) {
 			if (gridChart.globalInteriorTexelIndex[j] != -1 && gridChart.globalTexelDeepIndex[j] == -1) { //Interior but not deep
 				int coarseGlobalIndex = gridChart.globalTexelIndex[j];
 
 				int coarseBondaryIndex = boundaryAndDeepIndex[coarseGlobalIndex] - 1;
 
-				if (coarseBondaryIndex >= 0) {
-					prolongationTriplets.push_back(Eigen::Triplet<double>(lastFineBoundaryIndex, coarseBondaryIndex, 1.0));
-				}
-				else {
-					printf("ERROR: Coarse node is not boundary! \n");
-					printf("Global index %d. Boundary index %d \n", coarseGlobalIndex, coarseBondaryIndex);
+				if( coarseBondaryIndex>=0 ) prolongationTriplets.push_back( Eigen::Triplet< MatrixReal >( lastFineBoundaryIndex , coarseBondaryIndex , (MatrixReal)1. ) );
+				else
+				{
+					fprintf( stderr , "[ERROR] Coarse node is not boundary!\n" );
+					fprintf( stderr , "\tGlobal index %d. Boundary index %d\n" , coarseGlobalIndex , coarseBondaryIndex );
 					return 0;
 				}
 				fineBoundaryIndex[gridChart.globalInteriorTexelIndex[j]] = lastFineBoundaryIndex;
@@ -716,72 +764,74 @@ int InitializeCoarseBoundaryToFineBoundaryProlongation(const GridAtlas & gridAtl
 	if (verbose)printf("Fine boundary elements %d \n", lastFineBoundaryIndex);
 	numFineBoundaryNodes = lastFineBoundaryIndex;
 
-	const std::vector<GridChart> & gridCharts = gridAtlas.gridCharts;
+	const std::vector< GridChart< GeometryReal > > &gridCharts = gridAtlas.gridCharts;
 	const std::vector<GridNodeInfo> & nodeInfo = gridAtlas.nodeInfo;
 
 	int numInteriorTexels = gridAtlas.numInteriorTexels;
 	int numFineNodes = gridAtlas.numFineNodes;
 	int numCoarseNodes = gridAtlas.numTexels;
 
-	const int numAuxiliarNodes = numFineNodes - numInteriorTexels;
-	std::vector<int> auxiliarNodesDegree(numAuxiliarNodes, 0);
+	int numAuxiliaryNodes = numFineNodes - numInteriorTexels;
+	std::vector<int> auxiliaryNodesDegree(numAuxiliaryNodes, 0);
 
-	for (int i = 0; i < gridCharts.size(); i++) {
-		const GridChart & gridChart = gridCharts[i];
-		for (int j = 0; j < gridChart.auxiliarNodes.size(); j++) {
-			int auxiliarId = gridChart.auxiliarNodes[j].index - numInteriorTexels;
-			auxiliarNodesDegree[auxiliarId]++;
+	for (int i = 0; i < gridCharts.size(); i++)
+	{
+		const GridChart< GeometryReal > &gridChart = gridCharts[i];
+		for (int j = 0; j < gridChart.auxiliaryNodes.size(); j++) {
+			int auxiliaryID = gridChart.auxiliaryNodes[j].index - numInteriorTexels;
+			auxiliaryNodesDegree[auxiliaryID]++;
 		}
 	}
 
-	double precision_error = 1e-10;
+	GeometryReal precision_error = (GeometryReal)1e-10;
 
-	std::vector<double> auxiliarNodesCumWeight(numAuxiliarNodes, 0);
+	std::vector< MatrixReal > auxiliaryNodesCumWeight( numAuxiliaryNodes , 0 );
 
-	for (int i = 0; i < gridCharts.size(); i++) {
-		const GridChart & gridChart = gridCharts[i];
-		for (int j = 0; j < gridChart.auxiliarNodes.size(); j++) {
-			int auxiliarId = gridChart.auxiliarNodes[j].index - numInteriorTexels;
-			int fineBoundaryId = fineBoundaryIndex[gridChart.auxiliarNodes[j].index];
-			int nodeDegree = auxiliarNodesDegree[auxiliarId];
-			Point2D<double>nodePosition = gridChart.auxiliarNodes[j].position;
+	for (int i = 0; i < gridCharts.size(); i++){
+		const GridChart< GeometryReal > &gridChart = gridCharts[i];
+		for (int j = 0; j < gridChart.auxiliaryNodes.size(); j++) {
+			int auxiliaryID = gridChart.auxiliaryNodes[j].index - numInteriorTexels;
+			int fineBoundaryID = fineBoundaryIndex[gridChart.auxiliaryNodes[j].index];
+			int nodeDegree = auxiliaryNodesDegree[auxiliaryID];
+			Point2D< GeometryReal >nodePosition = gridChart.auxiliaryNodes[j].position;
 			int corner[2] = { (int)floor(nodePosition[0] / gridChart.cellSizeW), (int)floor(nodePosition[1] / gridChart.cellSizeH) };
 			int cellId = gridChart.localCellIndex(corner[0], corner[1]);
 			if (cellId == -1) {
-				printf("ERROR : Invalid cell index!\n");
-				printf("Node position %f %f \n", nodePosition[0] / gridChart.cellSizeW, nodePosition[1] / gridChart.cellSizeH);
+				fprintf( stderr , "[ERROR] Invalid cell index!\n" );
+				fprintf( stderr , "\tNode position %f %f \n" , nodePosition[0] / gridChart.cellSizeW , nodePosition[1] / gridChart.cellSizeH );
 				return 0;
 			}
 			nodePosition[0] /= gridChart.cellSizeW;
 			nodePosition[1] /= gridChart.cellSizeH;
-			nodePosition[0] -= double(corner[0]);
-			nodePosition[1] -= double(corner[1]);
+			nodePosition[0] -= (GeometryReal)corner[0];
+			nodePosition[1] -= (GeometryReal)corner[1];
 			if (nodePosition[0] < 0 - precision_error || nodePosition[0] > 1 + precision_error || nodePosition[1] < 0 - precision_error || nodePosition[1] > 1 + precision_error) {
 				printf("Sample out of unit box! (%f %f)\n", nodePosition[0], nodePosition[1]);
 				return 0;
 			}
-			for (int k = 0; k < 4; k++) {
-				double texelWeight = BilinearElementValue(k, nodePosition) / double(nodeDegree);
+			for (int k = 0; k < 4; k++)
+			{
+				MatrixReal texelWeight = (MatrixReal)BilinearElementValue(k, nodePosition) / nodeDegree;
 				if (fabs(texelWeight) > 1e-11) {
-					auxiliarNodesCumWeight[auxiliarId] += texelWeight;
+					auxiliaryNodesCumWeight[auxiliaryID] += texelWeight;
 					int texelIndex = gridChart.bilinearElementIndices[cellId][k];
 					if (nodeInfo[texelIndex].nodeType == 2) {
-						printf("ERROR: Deep texel cannot be in the support of an auxiliar node. Weight %g (A)\n", texelWeight);
-						for (int _k = 0; _k < 4; _k++) printf("Neighbours weight %g \n", BilinearElementValue(_k, nodePosition) / double(nodeDegree));
+						fprintf( stderr , "[ERROR] InitializeCoarseBoundaryToFineBoundaryProlongation: Deep texel cannot be in the support of an auxiliar node. Weight %g (A)\n" , texelWeight );
+						for( int _k=0 ; _k<4 ; _k++ ) fprintf( stderr , "\tNeighbours weight %g\n" , BilinearElementValue( _k , nodePosition ) / nodeDegree );
 						return 0;
 					}
-					if (gridChart.auxiliarNodes[j].index < numInteriorTexels || gridChart.auxiliarNodes[j].index > numFineNodes || texelIndex < 0 || texelIndex> numCoarseNodes) {
+					if (gridChart.auxiliaryNodes[j].index < numInteriorTexels || gridChart.auxiliaryNodes[j].index > numFineNodes || texelIndex < 0 || texelIndex> numCoarseNodes) {
 						printf("Out of bound index! \n");
 						return 0;
 					}
 
-					int coarseBondaryId = boundaryAndDeepIndex[texelIndex] - 1;
+					int coarseBoundaryID = boundaryAndDeepIndex[texelIndex] - 1;
 
-					if (coarseBondaryId < 0) {
+					if (coarseBoundaryID < 0) {
 						printf("ERROR: Coarse node is not boundary! \n");
 						return 0;
 					}
-					prolongationTriplets.push_back(Eigen::Triplet<double>(fineBoundaryId, coarseBondaryId, texelWeight));
+					prolongationTriplets.push_back( Eigen::Triplet< MatrixReal >( fineBoundaryID , coarseBoundaryID , texelWeight ) );
 				}
 			}
 		}
@@ -792,10 +842,12 @@ int InitializeCoarseBoundaryToFineBoundaryProlongation(const GridAtlas & gridAtl
 	return 1;
 }
 
-
-int InitializeBoundaryProlongationData(const GridAtlas & gridAtlas, BoundaryProlongationData & boundaryProlongation) {
-	if (!InitializeCoarseBoundaryToFineBoundaryProlongation(gridAtlas, boundaryProlongation.coarseBoundaryFineBoundaryProlongation, boundaryProlongation.fineBoundaryIndex, boundaryProlongation.numFineBoundarNodes)) {
-		printf("ERROR: Unable to initialize coarse to fine boundary prolongation\n");
+template< typename GeometryReal , typename MatrixReal >
+int InitializeBoundaryProlongationData( const GridAtlas< GeometryReal , MatrixReal > &gridAtlas , BoundaryProlongationData< MatrixReal > &boundaryProlongation )
+{
+	if( !InitializeCoarseBoundaryToFineBoundaryProlongation( gridAtlas , boundaryProlongation.coarseBoundaryFineBoundaryProlongation , boundaryProlongation.fineBoundaryIndex , boundaryProlongation.numFineBoundarNodes ) )
+	{
+		fprintf( stderr, "[ERROR] InitializeBoundaryProlongationData: Unable to initialize coarse to fine boundary prolongation\n");
 		return 0;
 	}
 	boundaryProlongation.fineBoundaryCoarseBoundaryRestriction = boundaryProlongation.coarseBoundaryFineBoundaryProlongation.transpose();

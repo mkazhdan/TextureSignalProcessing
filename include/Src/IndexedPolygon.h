@@ -27,51 +27,60 @@ DAMAGE.
 */
 #pragma once
 
+#include "Basis.h"
+
+template< typename GeometryReal >
 struct BoundaryIndexedTriangle
 {
 	int id;
-	Point2D<double> vertices[3];
+	Point2D< GeometryReal > vertices[3];
 	int atlasVertexParentEdge[3];
 	int atlasVertexIndices[3];
 	int atlasEdgeIndices[3];
 	QuadraticElementIndex indices;
-	Point2D< double >& operator [] ( size_t idx ){ return vertices[idx]; }
-	const Point2D< double >& operator [] ( size_t idx ) const { return vertices[idx]; }
+	Point2D< GeometryReal >& operator [] ( size_t idx ){ return vertices[idx]; }
+	const Point2D< GeometryReal >& operator [] ( size_t idx ) const { return vertices[idx]; }
 };
 
+template< typename GeometryReal >
 struct AtlasIndexedPolygon
 {
-	std::vector < Point2D < double > > vertices;
+	std::vector < Point2D < GeometryReal > > vertices;
 	std::vector < int > indices;
 	std::vector < int > atlasVertexIndices;
 	std::vector < int > atlasVertexParentEdge;
 	std::vector < int > atlasEdgeIndices;
 	size_t size( void ) const { return vertices.size(); }
-	Point2D< double >& operator [] ( size_t idx ){ return vertices[idx]; }
-	const Point2D< double >& operator [] ( size_t idx ) const { return vertices[idx]; }
+	Point2D< GeometryReal >& operator [] ( size_t idx ){ return vertices[idx]; }
+	const Point2D< GeometryReal >& operator [] ( size_t idx ) const { return vertices[idx]; }
 };
 
-struct AtlasIndexedTriangle {
+template< typename GeometryReal >
+struct AtlasIndexedTriangle
+{
 	int id;
-	Point2D<double> vertices[3];
+	Point2D< GeometryReal > vertices[3];
 	int indices[3];
 	int atlasVertexParentEdge[3];
 	int atlasVertexIndices[3];
 	int atlasEdgeIndices[3];
 };
 
-struct IndexedIntersectionPolygon {
-	std::vector < Point2D < double >> vertices;
-	std::vector < unsigned long long > indices;
-	std::vector < int > edgeIndices;
+template< typename GeometryReal >
+struct IndexedIntersectionPolygon
+{
+	std::vector< Point2D < GeometryReal > > vertices;
+	std::vector< unsigned long long > indices;
+	std::vector< int > edgeIndices;
 };
 
-struct IndexedIntersectionTriangle {
-	Point2D < double > vertices[3];
+template< typename GeometryReal >
+struct IndexedIntersectionTriangle
+{
+	Point2D< GeometryReal > vertices[3];
 	unsigned long long indices[3];
 	int edgeIndices[3];
 };
-
 
 unsigned long long SetIntersectionKey(const unsigned long i0, const unsigned long i1) {
 	return ( ( (static_cast<unsigned long long>(i0) << 32) & 0xFFFFFFFF00000000) | (static_cast<unsigned long long>(i1) & 0x00000000FFFFFFFF));
@@ -82,21 +91,22 @@ void GetIntersectionKey(unsigned long long key, unsigned long & i0, unsigned lon
 	i0 = static_cast<unsigned long>((key >> 32) & 0x00000000FFFFFFFF);
 }
 
-struct IntersectionInfo {
+template< typename GeometryReal >
+struct IntersectionInfo
+{
 	unsigned long long intersectionKey;
 	int intersectionIndex;
-	Point2D<double> position;
-	double time;
+	Point2D< GeometryReal > position;
+	GeometryReal time;
 };
 
+template< typename GeometryReal >
+bool IntersectionComparison( const IntersectionInfo< GeometryReal > &i0 , const IntersectionInfo< GeometryReal > &i1 ){ return i0.time < i1.time; };
 
-bool IntersectionComparison(const IntersectionInfo & i0, const IntersectionInfo & i1) {
-	return i0.time < i1.time;
-};
-
-struct BoundarySegmentInfo {
-	double startTime;
-	double endTime;
+template< typename GeometryReal >
+struct BoundarySegmentInfo
+{
+	GeometryReal startTime;
+	GeometryReal endTime;
 	int halfEdge;
 };
-

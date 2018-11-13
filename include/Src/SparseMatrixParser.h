@@ -66,21 +66,19 @@ SparseMatrix< RealOut , int > SetSparseMatrix( const std::vector< Eigen::Triplet
 	}
 	return M;
 }
-class matrixRowEntrie {
+template< typename Real >
+class matrixRowEntry
+{
 public:
-	matrixRowEntrie(int p_index, double p_value) {
-		index = p_index;
-		value = p_value;
-	}
+	matrixRowEntry (int p_index , Real p_value ) : index(p_index) , value(p_value) {}
 	int index;
-	double value;
+	Real value;
 };
 
-struct matrixRowEntrieCompare {
-	bool operator() (const matrixRowEntrie& lhs, const matrixRowEntrie& rhs) const
-	{
-		return lhs.index <rhs.index;
-	}
+template< typename Real >
+struct matrixRowEntryCompare
+{
+	bool operator() (const matrixRowEntry< Real > &lhs , const matrixRowEntry< Real > &rhs ) const { return lhs.index <rhs.index; }
 };
 
 template< class RealIn, class RealOut>

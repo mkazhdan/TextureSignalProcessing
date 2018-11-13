@@ -27,75 +27,78 @@ DAMAGE.
 */
 #pragma once
 
-int InitializeAtlasCharts(AtlasMesh & atlasMesh, const std::vector<bool> & isBoundaryHalfEdge, const int width, const int height, std::vector<AtlasChart> & atlasCharts) {
-	atlasCharts.resize(atlasMesh.numCharts);
+template< typename GeometryReal >
+int InitializeAtlasCharts( AtlasMesh< GeometryReal > &atlasMesh , const std::vector< bool > &isBoundaryHalfEdge , int width , int height , std::vector< AtlasChart< GeometryReal > > &atlasCharts )
+{
+	atlasCharts.resize( atlasMesh.numCharts );
 
-	for (int i = 0; i < atlasMesh.numCharts; i++) {
-		atlasCharts[i].minCorner = Point2D<double>(1, 1);
-		atlasCharts[i].maxCorner = Point2D<double>(0, 0);
+	for( int i=0 ; i<atlasMesh.numCharts ; i++ )
+	{
+		atlasCharts[i].minCorner = Point2D< GeometryReal >(1,1);
+		atlasCharts[i].maxCorner = Point2D< GeometryReal >(0,0);
 	}
 
-	std::vector<int> lastVertexId(atlasMesh.numCharts, 0);
-	std::vector<int> chartVertexId(atlasMesh.vertices.size(), -1);
+	std::vector< int > lastVertexID( atlasMesh.numCharts , 0 );
+	std::vector< int > chartVertexID( atlasMesh.vertices.size() , -1 );
 
-	atlasMesh.triangleIndexInChart.resize(atlasMesh.triangles.size());
-	std::vector<int> lastTriangleId(atlasMesh.numCharts, 0);
+	atlasMesh.triangleIndexInChart.resize( atlasMesh.triangles.size() );
+	std::vector< int > lastTriangleID( atlasMesh.numCharts , 0 );
 
-	for (int t = 0; t < atlasMesh.triangles.size(); t++) {
-		int chartId = atlasMesh.triangleChartIndex[t];
-		//atlasCharts[chartId].atlasTriangleIndices.push_back(t);
+	for( int t=0 ; t<atlasMesh.triangles.size() ; t++ )
+	{
+		int chartID = atlasMesh.triangleChartIndex[t];
 
-		atlasMesh.triangleIndexInChart[t] = lastTriangleId[chartId];
-		lastTriangleId[chartId]++;
+		atlasMesh.triangleIndexInChart[t] = lastTriangleID[chartID];
+		lastTriangleID[chartID]++;
 
-		atlasCharts[chartId].meshTriangleIndices.push_back(t);
-		//atlasCharts[chartId].metric.push_back(atlasMesh.metric[t]);
-		int vertexId[3];
-		for (int k = 0; k < 3; k++) {
-			atlasCharts[chartId].atlasEdgeIndices.push_back(atlasMesh.halfEdgeToEdgeIndex[3 * t + k]);
-			int atlasVertexId = atlasMesh.triangles[t][k];
-			if (chartVertexId[atlasVertexId] == -1) {
-				chartVertexId[atlasVertexId] = lastVertexId[chartId];
-				lastVertexId[chartId]++;
-
-				Point2D<double> vertexPos = atlasMesh.vertices[atlasVertexId];
-				for (int c = 0; c < 2; c++) {
-					atlasCharts[chartId].minCorner[c] = std::min<double>(vertexPos[c], atlasCharts[chartId].minCorner[c]);
-					atlasCharts[chartId].maxCorner[c] = std::max<double>(vertexPos[c], atlasCharts[chartId].maxCorner[c]);
+		atlasCharts[chartID].meshTriangleIndices.push_back(t);
+		int vertexID[3];
+		for( int k=0 ; k<3 ; k++ )
+		{
+			atlasCharts[chartID].atlasEdgeIndices.push_back( atlasMesh.halfEdgeToEdgeIndex[ 3*t+k ] );
+			int atlasVertexID = atlasMesh.triangles[t][k];
+			if( chartVertexID[atlasVertexID]==-1 )
+			{
+				chartVertexID[atlasVertexID] = lastVertexID[chartID];
+				lastVertexID[chartID]++;
+				Point2D< GeometryReal > vertexPos = atlasMesh.vertices[atlasVertexID];
+				for( int c=0 ; c<2 ; c++ )
+				{
+					atlasCharts[chartID].minCorner[c] = std::min< GeometryReal >( vertexPos[c] , atlasCharts[chartID].minCorner[c] );
+					atlasCharts[chartID].maxCorner[c] = std::max< GeometryReal >( vertexPos[c] , atlasCharts[chartID].maxCorner[c] );
 				}
 
-				atlasCharts[chartId].vertices.push_back(vertexPos);
-				//atlasCharts[chartId].atlasVertexIndices.push_back(atlasVertexId);
-				atlasCharts[chartId].meshVertexIndices.push_back(atlasMesh.vertexMap[atlasVertexId]);
+				atlasCharts[chartID].vertices.push_back( vertexPos );
+				atlasCharts[chartID].meshVertexIndices.push_back( atlasMesh.vertexMap[atlasVertexID] );
 			}
-			vertexId[k] = chartVertexId[atlasVertexId];
+			vertexID[k] = chartVertexID[atlasVertexID];
 		}
-		atlasCharts[chartId].triangles.push_back(TriangleIndex(vertexId[0], vertexId[1], vertexId[2]));
+		atlasCharts[chartID].triangles.push_back( TriangleIndex( vertexID[0] , vertexID[1] , vertexID[2] ) );
 	}
 
-	for (int i = 0; i < atlasCharts.size(); i++) {
-		Point2D<double> midBBox = (atlasCharts[i].minCorner + atlasCharts[i].maxCorner) / 2.0;
-		midBBox[0] *= double(width);
-		midBBox[1] *= double(height);
-		midBBox -= Point2D<double>(0.5, 0.5);
-		midBBox = Point2D<double>(floor(midBBox[0]), floor(midBBox[1]));
-		atlasCharts[i].originCoords[0] = int(round(midBBox[0]));
-		atlasCharts[i].originCoords[1] = int(round(midBBox[1]));
+	for( int i=0 ; i<atlasCharts.size() ; i++ )
+	{
+		Point2D< GeometryReal > midBBox = ( atlasCharts[i].minCorner+atlasCharts[i].maxCorner ) / 2;
+		midBBox[0] *= (GeometryReal)width;
+		midBBox[1] *= (GeometryReal)height;
+		midBBox -= Point2D< GeometryReal >( (GeometryReal)0.5 , (GeometryReal)0.5 );
+		midBBox = Point2D< GeometryReal >( (GeometryReal)floor( midBBox[0] ) , (GeometryReal)floor( midBBox[1] ) );
+		atlasCharts[i].originCoords[0] = (int)round( midBBox[0] );
+		atlasCharts[i].originCoords[1] = (int)round( midBBox[1] );
 
-		midBBox += Point2D<double>(0.5, 0.5);
-		midBBox[0] /= double(width);
-		midBBox[1] /= double(height);
+		midBBox += Point2D< GeometryReal >( (GeometryReal)0.5 , (GeometryReal)0.5 );
+		midBBox[0] /= (GeometryReal)width;
+		midBBox[1] /= (GeometryReal)height;
 		atlasCharts[i].gridOrigin = midBBox;
 	}
-	for (int i = 0; i < atlasCharts.size(); i++) {
-		std::vector<int> & boundaryHalfEdges = atlasCharts[i].boundaryHalfEdges;
-		for (int t = 0; t < atlasCharts[i].meshTriangleIndices.size(); t++) {
+
+	for( int i=0 ; i<atlasCharts.size() ; i++ )
+	{
+		std::vector< int > &boundaryHalfEdges = atlasCharts[i].boundaryHalfEdges;
+		for( int t=0 ; t<atlasCharts[i].meshTriangleIndices.size() ; t++ )
+		{
 			int tIndex = atlasCharts[i].meshTriangleIndices[t];
-			for (int k = 0; k < 3; k++) {
-				if (isBoundaryHalfEdge[3 * tIndex + k]) {
-					boundaryHalfEdges.push_back(3 * t + k);
-				}
-			}
+			for( int k=0 ; k<3 ; k++ ) if( isBoundaryHalfEdge[ 3*tIndex+k ] ) boundaryHalfEdges.push_back( 3*t+k );
 		}
 	}
 
@@ -103,33 +106,21 @@ int InitializeAtlasCharts(AtlasMesh & atlasMesh, const std::vector<bool> & isBou
 }
 
 
+template< typename GeometryReal >
+int InitializeAtlasMesh( const TexturedMesh< GeometryReal > &mesh , int width , int height , AtlasMesh< GeometryReal > &atlasMesh , std::vector< AtlasChart< GeometryReal > > &atlasCharts , std::vector< int > &oppositeHalfEdge , std::unordered_map< int , int > &boundaryVerticesIndices , int &numBoundaryVertices , bool &isClosedMesh , bool verbose )
+{
+	if( !InitializeAtlasMesh( mesh , atlasMesh , width , height , verbose ) ){ fprintf( stderr , "[WARNING] InitializeAtlasMesh: Failed atlas mesh construction\n" ) ; return 0; }
 
-int InitializeAtlasMesh(const TexturedMesh & mesh, const int width, const int height, AtlasMesh & atlasMesh, std::vector<AtlasChart> & atlasCharts, std::vector<int> & oppositeHalfEdge, std::unordered_map<int, int> & boundaryVerticesIndices, int & numBoundaryVertices, bool & isClosedMesh , bool verbose ) {
-	if( !InitializeAtlasMesh( mesh , atlasMesh , width , height , verbose ) )
-	{
-		printf("Failed atlas mesh construction! \n");
-		return 0;
-	}
-
-	std::vector<int> boundaryHalfEdges;
-	std::vector<bool> isBoundaryHalfEdge;
-	if (!InitializeBoundaryHalfEdges(mesh, boundaryHalfEdges, oppositeHalfEdge, isBoundaryHalfEdge, isClosedMesh)) {
-		printf("Failed boundary halfedge construction! \n");
-		return 0;
-	}
+	std::vector< int > boundaryHalfEdges;
+	std::vector< bool > isBoundaryHalfEdge;
+	if( !InitializeBoundaryHalfEdges( mesh , boundaryHalfEdges , oppositeHalfEdge , isBoundaryHalfEdge , isClosedMesh ) ){ fprintf( stderr , "[WARNING] InitializeAtlasMesh: Failed boundary halfedge construction\n" ) ; return 0; }
 
 	int lastBoundaryIndex;
-	if (!InitiallizeBoundaryVertices(mesh, boundaryHalfEdges, boundaryVerticesIndices, lastBoundaryIndex)) {
-		printf("Failed intialize boundary vertices! \n");
-		return 0;
-	}
+	if( !InitiallizeBoundaryVertices( mesh , boundaryHalfEdges , boundaryVerticesIndices , lastBoundaryIndex ) ){ fprintf( stderr , "[WARNING] InitializeAtlasMesh: Failed intialize boundary vertices\n") ; return 0; }
 
 	numBoundaryVertices = lastBoundaryIndex;
 
-	if (!InitializeAtlasCharts(atlasMesh, isBoundaryHalfEdge, width, height, atlasCharts)) {
-		printf("Failed intialize atlas charts! \n");
-		return 0;
-	}
+	if( !InitializeAtlasCharts( atlasMesh , isBoundaryHalfEdge , width , height , atlasCharts ) ){ fprintf( stderr , "[WARNING] InitializeAtlasMesh: Failed intialize atlas charts\n" ) ; return 0; }
 
 	return 1;
 }

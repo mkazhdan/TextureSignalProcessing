@@ -48,17 +48,20 @@ public:
 	
 	//Single input
 	GLuint compositeTextureBuffer;
-	void UpdateCompositeTextureBuffer(const Image<Point3D<float>> & composite);
+	template< typename Real >
+	void UpdateCompositeTextureBuffer( const Image< Point3D< Real > > &composite );
 
 	//Multiple input
 	int referenceIndex;
 	std::vector<GLuint> referenceTextureBuffers;
-	void UpdateReferenceTextureBuffers(const std::vector<Image<Point3D<float>>> & images);
+	template< typename Real >
+	void UpdateReferenceTextureBuffers( const std::vector< Image< Point3D< Real > > > &images);
 
 	unsigned char * colorTextureBuffer;
 	int textureWidth;
 	int textureHeight;
-	void UpdateTextureBuffer(const Image<Point3D<float>> & image);
+	template< typename Real >
+	void UpdateTextureBuffer( const Image< Point3D< Real > > &image );
 	void UpdateColorTextureBuffer();
 
 	void display(void);

@@ -70,7 +70,7 @@ public:
 
 	int displayMode;
 
-	Camera camera;
+	Camera< float > camera;
 	const float FOV = 60.f;
 	const float NEARZ = 0.1f;
 	const float FARZ = 10.f;
@@ -93,9 +93,9 @@ public:
 	bool rotating, scaling, panning;
 
 	//Line drawing parameters
-	double polygonOffsetFactor = 1.0;
-	double polygonOffsetUnits = 1.0;
-	double lineWidth = 1.0;
+	float polygonOffsetFactor = 1.f;
+	float polygonOffsetUnits = 1.f;
+	float lineWidth = 1.f;
 
 	GLuint vertexBuffer = 0;
 	GLuint normalBuffer = 0;

@@ -628,7 +628,7 @@ double MinimalAreaTriangulation<Real>::GetArea(const std::vector<Point3D<Real> >
 	return GetArea(0,1,vertices);
 }
 template<class Real>
-void MinimalAreaTriangulation<Real>::GetTriangulation( const int& i , const int& j , const std::vector<Point3D<Real> >& vertices , std::vector<TriangleIndex>& triangles , int& idx )
+void MinimalAreaTriangulation<Real>::GetTriangulation( int i , int j , const std::vector<Point3D<Real> >& vertices , std::vector<TriangleIndex>& triangles , int& idx )
 {
 	TriangleIndex tIndex;
 	size_t eCount=vertices.size();
@@ -648,7 +648,7 @@ void MinimalAreaTriangulation<Real>::GetTriangulation( const int& i , const int&
 }
 
 template<class Real>
-double MinimalAreaTriangulation<Real>::GetArea(const int& i,const int& j,const std::vector<Point3D<Real> >& vertices)
+double MinimalAreaTriangulation<Real>::GetArea(int i,int j,const std::vector<Point3D<Real> >& vertices)
 {
 	double a=FLT_MAX,temp;
 	size_t eCount=vertices.size();
@@ -893,8 +893,8 @@ inline void PrintLoop( std::vector< std::pair< int , int > >& polyLoop , int sta
 struct VertexList : public std::pair< unsigned int , int* >
 {
 	VertexList( unsigned int sz=0 , int* list=NULL ) { first = sz , second = list; }
-	const int& operator[] ( int idx ) const { return second[idx]; }
-	int& operator[] ( int idx ) { return second[idx]; }
+	int  operator[] ( int idx ) const { return second[idx]; }
+	int& operator[] ( int idx )       { return second[idx]; }
 	int size( void ) const { return first; }
 	static unsigned int Size( const VertexList& l ){ return l.first; }
 };

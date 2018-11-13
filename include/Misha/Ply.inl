@@ -82,7 +82,7 @@ int PlyWrite
 	const std::vector< std::vector< int > >* polygons,
 	PlyProperty* vertexProperties , int vertexPropertyNum ,
 	int file_type ,
-	char** comments , const int& commentNum
+	char** comments , int commentNum
 	)
 {
 	int nr_vertices =            (int) vertices.size()    ;
@@ -328,7 +328,7 @@ int PlyWritePolygons( const char* fileName,
 					  const std::vector<Vertex>& vertices,const std::vector< std::vector<int> >& polygons,
 					  PlyProperty* vertexProperties , int vertexPropertyNum ,
 					  int file_type,
-					  char** comments,const int& commentNum)
+					  char** comments,int commentNum)
 {
 	int nr_vertices=int(vertices.size());
 	int nr_faces=int(polygons.size());
@@ -389,7 +389,7 @@ int PlyWritePolygons( const char* fileName ,
 					  PlyProperty*  vertexProperties , int  vertexPropertyNum ,
 					  PlyProperty* polygonProperties , int polygonPropertyNum ,
 					  int file_type,
-					  char** comments,const int& commentNum)
+					  char** comments,int commentNum)
 {
 	float version;
 	PlyFile *ply = ply_open_for_writing( fileName , 2 , elem_names , file_type , &version );
@@ -427,7 +427,7 @@ int PlyWritePolygonsAndColor( const char* fileName,
 					 const std::vector<Vertex>& vertices,const std::vector< std::vector<int> >& polygons,
 					 PlyProperty* vertexProperties,int vertexPropertyNum,
 					 int file_type,
-					 char** comments,const int& commentNum)
+					 char** comments,int commentNum)
 {
 	int nr_vertices=int(vertices.size());
 	int nr_faces=int(polygons.size());
@@ -847,7 +847,7 @@ int PlyWritePoints( const char* fileName,
 				   const std::vector<Vertex>& vertices,
 				   PlyProperty* vertexProperties,int vertexPropertyNum,
 				   int file_type,
-				   char** comments,const int& commentNum)
+				   char** comments,int commentNum)
 {
 	int nr_vertices=int(vertices.size());
 	float version;
@@ -910,7 +910,7 @@ int PlyWriteTriangles( const char* fileName ,
 					   const std::vector< Vertex >& vertices , const std::vector< TriangleIndex >& triangles ,
 					   PlyProperty* vertexProperties , int vertexPropertyNum ,
 					   int file_type ,
-					   char** comments , const int& commentNum)
+					   char** comments , int commentNum)
 {
 #if 0
 	std::vector< std::vector< int > > polygons;
@@ -967,7 +967,7 @@ const char* fileName ,
 const std::vector< Vertex >& vertices , const std::vector< std::pair< TriangleIndex , Point3D< float > > >& triangles ,
 PlyProperty* vertexProperties , int vertexPropertyNum ,
 int file_type ,
-char** comments , const int& commentNum
+char** comments , int commentNum
 )
 {
 	int nr_vertices=int( vertices.size() );

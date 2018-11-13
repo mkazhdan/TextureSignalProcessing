@@ -28,29 +28,16 @@ DAMAGE.
 #pragma once
 #include <Src/RightTriangleQuadrature.h>
 
-class TextureNodeInfo {
+template< typename GeometryReal >
+class TextureNodeInfo
+{
 public:
-	TextureNodeInfo() {
-		tId = -1;
-		barycentricCoords = Point2D<double>(0, 0);
-		ci = -1;
-		cj = -1;
-		chartId = -1;
-		isInterior = false;
-	}
-	TextureNodeInfo(int _tId, Point2D<double> _barycentricCoords, int _ci, int _cj, int _chartId, bool _isInterior) {
-		tId = _tId;
-		barycentricCoords = _barycentricCoords;
-		ci = _ci;
-		cj = _cj;
-		chartId = _chartId;
-		isInterior = _isInterior;
-	}
-	int tId;
-	Point2D<double> barycentricCoords;
-	int ci;
-	int cj;
-	int chartId;
+	TextureNodeInfo( void ) : tID(-1) , ci(-1) , cj(-1) , chartID(-1) , isInterior(false) {}
+	TextureNodeInfo( int _tID, Point2D< GeometryReal > _barycentricCoords , int _ci , int _cj , int _chartID , bool _isInterior ) : tID(_tID) , barycentricCoords(_barycentricCoords) , ci(_ci) , cj(_cj) , chartID(_chartID) , isInterior(_isInterior) {}
+	int tID;
+	Point2D< GeometryReal > barycentricCoords;
+	int ci , cj;
+	int chartID;
 	bool isInterior;
 };
 
@@ -66,7 +53,6 @@ public:
 	unsigned int  operator[]( unsigned int idx ) const { return v[idx]; }
 };
 
-
 class QuadraticElementIndex
 {
 protected:
@@ -78,70 +64,45 @@ public:
 	unsigned int  operator[]( unsigned int idx ) const { return v[idx]; }
 };
 
-
-double QuadraticElementValue(int elementIndex, Point2D<double> pos) {
-	switch (elementIndex) {
-	case 0:
-		return 2 * pos[0] * pos[0] + 4 * pos[0] * pos[1] + 2 * pos[1] * pos[1] - 3 * pos[0] - 3 * pos[1] + 1;
-		break;
-	case 1:
-		return 2 * pos[0] * pos[0] - 1 * pos[0];
-		break;
-	case 2:
-		return 2 * pos[1] * pos[1] - 1 * pos[1];
-		break;
-	case 3:
-		return 4 * pos[0] * pos[1];
-		break;
-	case 4:
-		return -4 * pos[0] * pos[1] - 4 * pos[1] * pos[1] + 4 * pos[1];
-		break;
-	case 5:
-		return -4 * pos[0] * pos[0] - 4 * pos[0] * pos[1] + 4 * pos[0];
-		break;
-	default:
-		printf("Element out of bounds! \n");
-		return 0;
-		break;
+template< typename GeometryReal >
+GeometryReal QuadraticElementValue( int elementIndex , Point2D< GeometryReal > pos )
+{
+	switch( elementIndex )
+	{
+	case 0:	return 2 * pos[0] * pos[0] + 4 * pos[0] * pos[1] + 2 * pos[1] * pos[1] - 3 * pos[0] - 3 * pos[1] + 1;
+	case 1: return 2 * pos[0] * pos[0] - 1 * pos[0];
+	case 2: return 2 * pos[1] * pos[1] - 1 * pos[1];
+	case 3: return 4 * pos[0] * pos[1];
+	case 4: return -4 * pos[0] * pos[1] - 4 * pos[1] * pos[1] + 4 * pos[1];
+	case 5: return -4 * pos[0] * pos[0] - 4 * pos[0] * pos[1] + 4 * pos[0];
+	default: fprintf( stderr , "[WARNING] QuadraticElementValue: Element out of bounds!\n" ) ; return 0;
 	}
 }
 
-Point2D<double> QuadraticElementGradient( int elementIndex , Point2D< double > pos )
+template< typename GeometryReal >
+Point2D< GeometryReal > QuadraticElementGradient( int elementIndex , Point2D< GeometryReal > pos )
 {
-	switch (elementIndex) {
-	case 0:
-		return  Point2D<double>(4 * pos[0] + 4 * pos[1] - 3.0, 4 * pos[0] + 4 * pos[1] - 3.0);
-		break;
-	case 1:
-		return Point2D<double>(4 * pos[0] - 1.0, 0.0);
-		break;
-	case 2:
-		return Point2D<double>(0, 4 * pos[1] - 1.0);
-		break;
-	case 3:
-		return Point2D<double>(4 * pos[1], 4 * pos[0]);
-		break;
-	case 4:
-		return  Point2D<double>(-4 * pos[1], -4 * pos[0] - 8 * pos[1] + 4.0);
-		break;
-	case 5:
-		return Point2D<double>(-8 * pos[0] - 4 * pos[1] + 4, -4 * pos[0]);
-		break;
-	default:
-		printf("Element out of bounds! \n");
-		return Point2D<double>(0, 0);
-		break;
+	switch( elementIndex )
+	{
+	case 0: return Point2D< GeometryReal >( 4 * pos[0] + 4 * pos[1] - 3 , 4 * pos[0] + 4 * pos[1] - 3 );
+	case 1: return Point2D< GeometryReal >( 4 * pos[0] - 1 , 0 );
+	case 2: return Point2D< GeometryReal >( 0 , 4 * pos[1] - 1 );
+	case 3: return Point2D< GeometryReal >( 4 * pos[1] , 4 * pos[0]);
+	case 4: return Point2D< GeometryReal >( -4 * pos[1] , -4 * pos[0] - 8 * pos[1] + 4 );
+	case 5: return Point2D< GeometryReal >( -8 * pos[0] - 4 * pos[1] + 4 , -4 * pos[0] );
+	default: fprintf( stderr , "[WARNING] QuadraticElementGradient: Element out of bounds!\n") ; return Point2D< GeometryReal >(0,0);
 	}
 }
-void QuadraticElementValuesAndGradients( Point2D< double > pos , double values[] , Point2D< double > gradients[] )
+template< typename GeometryReal >
+void QuadraticElementValuesAndGradients( Point2D< GeometryReal > pos , GeometryReal values[] , Point2D< GeometryReal > gradients[] )
 {
-	double xx = pos[0]*pos[0] , xy = pos[0]*pos[1] , yy = pos[1]*pos[1] , x=pos[0] , y=pos[1];
-	values[0] =  2*xx + 4*xy + 2*yy - 3*x - 3*y + 1 , gradients[0] = Point2D< double >(  4*x + 4*y - 3 ,  4*x + 4*y - 3 );
-	values[1] =  2*xx               - 1*x           , gradients[1] = Point2D< double >(  4*x       - 1 ,              0 );
-	values[2] =                2*yy       - 1*y     , gradients[2] = Point2D< double >(              0 ,  4*y       - 1 );
-	values[3] =         4*xy                        , gradients[3] = Point2D< double >(        4*y     ,  4*x           );
-	values[4] =        -4*xy - 4*yy       + 4*y     , gradients[4] = Point2D< double >(      - 4*y     , -4*x - 8*y + 4 );
-	values[5] = -4*xx - 4*xy        + 4*x           , gradients[5] = Point2D< double >( -8*x - 4*y + 4 , -4*x           );
+	GeometryReal xx = pos[0]*pos[0] , xy = pos[0]*pos[1] , yy = pos[1]*pos[1] , x=pos[0] , y=pos[1];
+	values[0] =  2*xx + 4*xy + 2*yy - 3*x - 3*y + 1 , gradients[0] = Point2D< GeometryReal >(  4*x + 4*y - 3 ,  4*x + 4*y - 3 );
+	values[1] =  2*xx               - 1*x           , gradients[1] = Point2D< GeometryReal >(  4*x       - 1 ,              0 );
+	values[2] =                2*yy       - 1*y     , gradients[2] = Point2D< GeometryReal >(              0 ,  4*y       - 1 );
+	values[3] =         4*xy                        , gradients[3] = Point2D< GeometryReal >(        4*y     ,  4*x           );
+	values[4] =        -4*xy - 4*yy       + 4*y     , gradients[4] = Point2D< GeometryReal >(      - 4*y     , -4*x - 8*y + 4 );
+	values[5] = -4*xx - 4*xy        + 4*x           , gradients[5] = Point2D< GeometryReal >( -8*x - 4*y + 4 , -4*x           );
 }
 
 template< class Real , typename T >
@@ -245,99 +206,72 @@ Point2D< T > QuadraticGradient( const T values[6] , Point2D< Real > pos )
 		Point2D< T >( values[5] * ( - 8 * x - 4 * y + 4 ) , values[5] * (         - 4 * x     ) ) ;
 }
 
-
-double LinearElementValue(int elementIndex, Point2D<double> pos) {
-	switch (elementIndex) {
-	case 0:
-		return 1.0 - pos[0] - pos[1];
-		break;
-	case 1:
-		return pos[0];
-		break;
-	case 2:
-		return pos[1];
-		break;
-	default:
-		printf("Element out of bounds! \n");
-		return 0;
-		break;
-	}
-}
-
-Point2D<double> LinearElementGradient(int elementIndex) {
-	switch (elementIndex) {
-	case 0:
-		return Point2D<double>(-1, -1);
-		break;
-	case 1:
-		return Point2D<double>(1, 0);
-		break;
-	case 2:
-		return Point2D<double>(0, 1);
-		break;
-	default:
-		printf("Element out of bounds! \n");
-		return Point2D<double>(0, 0);
-		break;
-	}
-}
-
-double BilinearElementValue(int elementIndex, Point2D<double> pos) {
-	switch (elementIndex) {
-	case 0:
-		return (1.0 - pos[0]) * (1.0 - pos[1]);
-		break;
-	case 1:
-		return pos[0] * (1.0 - pos[1]);
-		break;
-	case 2:
-		return pos[0] * pos[1];
-		break;
-	case 3:
-		return (1.0 - pos[0]) * pos[1];
-		break;
-	default:
-		printf("Element out of bounds! \n");
-		return 0;
-		break;
-	}
-}
-
-
-Point2D<double> BilinearElementGradient(int elementIndex, Point2D<double> pos) {
-	switch (elementIndex) {
-	case 0:
-		return Point2D<double>(pos[1] - 1.0, pos[0] - 1.0);
-		break;
-	case 1:
-		return Point2D<double>(1.0 - pos[1], -pos[0]);
-		break;
-	case 2:
-		return Point2D<double>(pos[1], pos[0]);
-		break;
-	case 3:
-		return  Point2D<double>(-pos[1], 1.0 - pos[0]);
-		break;
-	default:
-		printf("Element out of bounds! \n");
-		return Point2D<double>(0, 0);
-		break;
-	}
-}
-void BilinearElementValuesAndGradients( Point2D< double > pos , double values[] , Point2D< double > gradients[] )
+template< typename GeometryReal >
+GeometryReal LinearElementValue( int elementIndex , Point2D< GeometryReal > pos )
 {
-	double x1 = 1.-pos[0] , y1 = 1.-pos[1] , x2 = pos[0] , y2 = pos[1];
-	values[0] = x1*y1 , gradients[0] = Point2D< double >(-y1,-x1);
-	values[1] = x2*y1 , gradients[1] = Point2D< double >( y1,-x2);
-	values[2] = x2*y2 , gradients[2] = Point2D< double >( y2, x2);
-	values[3] = x1*y2 , gradients[3] = Point2D< double >(-y2, x1);
+	switch( elementIndex )
+	{
+	case 0: return (GeometryReal)1. - pos[0] - pos[1];
+	case 1: return pos[0];
+	case 2: return pos[1];
+	default: fprintf( stderr , "[WARNING] LinearElementValue: Element out of bounds!\n" ) ; return 0;
+	}
 }
 
-void ReducedVectorFieldBasis(Point2D< double > pos, Point2D< double > direction[])
+template< typename GeometryReal >
+Point2D< GeometryReal > LinearElementGradient( int elementIndex )
 {
-	double x = pos[0], y = pos[1];
-	direction[0][0] = 1.0 - y, direction[0][1] =     0.0;
-	direction[1][0] =     0.0, direction[1][1] =  1.0 -x;
-	direction[2][0] =       y, direction[2][1] =     0.0;
-	direction[3][0] =     0.0, direction[3][1] =	   x;
+	switch ( elementIndex )
+	{
+	case 0: return Point2D< GeometryReal >(-1,-1);
+	case 1: return Point2D< GeometryReal >( 1, 0);
+	case 2: return Point2D< GeometryReal >( 0, 1);
+	default: fprintf( stderr , "[WARNING] LinearElementGradient: Element out of bounds!\n") ; return Point2D< GeometryReal >(0,0);
+	}
+}
+
+template< typename GeometryReal >
+GeometryReal BilinearElementValue( int elementIndex , Point2D<GeometryReal> pos )
+{
+	switch( elementIndex )
+	{
+	case 0: return ( (GeometryReal)1.-pos[0]) * ( (GeometryReal)1.-pos[1]);
+	case 1: return pos[0] * ( (GeometryReal)1.-pos[1]);
+	case 2: return pos[0] * pos[1];
+	case 3: return ( (GeometryReal)1.-pos[0]) * pos[1];
+	default: fprintf( stderr , "[WARNING] BilinearElementValue: Element out of bounds!\n" ) ; return 0;
+	}
+}
+
+template< typename GeometryReal >
+Point2D< GeometryReal > BilinearElementGradient( int elementIndex , Point2D< GeometryReal > pos)
+{
+	switch( elementIndex )
+	{
+	case 0: return Point2D< GeometryReal >(pos[1]-(GeometryReal)1. , pos[0]-(GeometryReal)1. );
+	case 1: return Point2D< GeometryReal >( (GeometryReal)1.-pos[1] , -pos[0] );
+	case 2: return Point2D< GeometryReal >( pos[1] , pos[0] );
+	case 3: return Point2D< GeometryReal >( -pos[1] , (GeometryReal)1.-pos[0] );
+	default: fprintf( stderr , "[WARNING] BilinearElementGradient: Element out of bounds!\n" ) ; return Point2D< GeometryReal >(0,0);
+	}
+}
+
+template< typename GeometryReal >
+void BilinearElementValuesAndGradients( Point2D< GeometryReal > pos , GeometryReal values[] , Point2D< GeometryReal > gradients[] )
+{
+	GeometryReal x1 = (GeometryReal)1.-pos[0] , y1 = (GeometryReal)1.-pos[1] , x2 = pos[0] , y2 = pos[1];
+	values[0] = x1*y1 , gradients[0] = Point2D< GeometryReal >(-y1,-x1);
+	values[1] = x2*y1 , gradients[1] = Point2D< GeometryReal >( y1,-x2);
+	values[2] = x2*y2 , gradients[2] = Point2D< GeometryReal >( y2, x2);
+	values[3] = x1*y2 , gradients[3] = Point2D< GeometryReal >(-y2, x1);
+}
+
+template< typename GeometryReal >
+void ReducedVectorFieldBasis( Point2D< GeometryReal > pos , Point2D< GeometryReal > direction[] )
+{
+	GeometryReal x = pos[0], y = pos[1];
+	direction[0][0] = (GeometryReal)1.-y , direction[0][1] = (GeometryReal)0.  ;
+	direction[1][0] = (GeometryReal)0.   , direction[1][1] = (GeometryReal)1.-x;
+	direction[2][0] =                  y , direction[2][1] = (GeometryReal)0.  ;
+	direction[3][0] = (GeometryReal)0.   , direction[3][1] =	              x;
 }

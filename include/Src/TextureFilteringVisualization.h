@@ -37,10 +37,10 @@ enum
 class TextureFilteringVisualization : public TexturedMeshVisualization
 {
 public:
-	TextureFilteringVisualization();
+ 	TextureFilteringVisualization( void );
 	int textureType;
-	double slideBarCursorPosition = 0.5;
-	double slideBarCursorOldPosition = 0.5;
+	float slideBarCursorPosition = 0.5f;
+	float slideBarCursorOldPosition = 0.5f;
 	bool isBrushActive;
 	bool isSlideBarActive;
 	int diskX, diskY;
@@ -51,7 +51,8 @@ public:
 	unsigned char * colorTextureBuffer;
 	int textureWidth;
 	int textureHeight;
-	void UpdateTextureBuffer(const Image<Point3D<float>> & image);
+	template< typename Real >
+	void UpdateTextureBuffer( const Image< Point3D< Real > > &image);
 	void UpdateColorTextureBuffer();
 	void UpdateMaskTextureBuffer();
 	int slideBarWidth( void );

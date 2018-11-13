@@ -73,10 +73,10 @@ public:
 	double SquareASymmetricNorm( void ) const;
 	double SquareASymmetricNorm( int& idx1 , int& idx2 ) const;
 
-	template< class T2 > void Multiply      (           ConstPointer( T2 )  In , Pointer( T2 ) Out , int multiplyFlag=0 ) const;
-	template< class T2 > void MultiplyScaled( T scale , ConstPointer( T2 )  In , Pointer( T2 ) Out , int multiplyFlag=0 ) const;
-	template< class T2 > void Multiply      (                Pointer( T2 )  In , Pointer( T2 ) Out , int multiplyFlag=0 ) const { Multiply      (         ( ConstPointer(T2) )( In ) , Out , multiplyFlag ); }
-	template< class T2 > void MultiplyScaled( T scale ,      Pointer( T2 )  In , Pointer( T2 ) Out , int multiplyFlag=0 ) const { MultiplyScaled( scale , ( ConstPointer(T2) )( In ) , Out , multiplyFlag ); }
+	template< class T2 , class T2Real=T > void Multiply      (           ConstPointer( T2 )  In , Pointer( T2 ) Out , int multiplyFlag=0 ) const;
+	template< class T2 , class T2Real=T > void MultiplyScaled( T scale , ConstPointer( T2 )  In , Pointer( T2 ) Out , int multiplyFlag=0 ) const;
+	template< class T2 , class T2Real=T > void Multiply      (                Pointer( T2 )  In , Pointer( T2 ) Out , int multiplyFlag=0 ) const { Multiply      < T2 , T2Real >(         ( ConstPointer(T2) )( In ) , Out , multiplyFlag ); }
+	template< class T2 , class T2Real=T > void MultiplyScaled( T scale ,      Pointer( T2 )  In , Pointer( T2 ) Out , int multiplyFlag=0 ) const { MultiplyScaled< T2 , T2Real >( scale , ( ConstPointer(T2) )( In ) , Out , multiplyFlag ); }
 
 	template< class T2 > void SetDiagonal( Pointer( T2 ) diagonal ) const;
 	template< class T2 > void JacobiIteration( ConstPointer( T2 ) diagonal , ConstPointer( T2 ) b , Pointer( T2 ) x , Pointer( T2 ) Mx , T2 sor ) const;

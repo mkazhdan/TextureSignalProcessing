@@ -36,11 +36,11 @@ enum
 
 #include <Misha/CmdLineParser.h> 
 #include <Misha/Miscellany.h>
+#include <Misha/FEM.h>
+#include <Src/Hierarchy.h>
 #include <Src/SimpleMesh.h>
 #include <Src/Basis.h>
-#include <Misha/FEM.h>
 #include <Src/Solver.h>
-#include <Src/Hierarchy.h>
 #include <Src/MassAndStiffness.h>
 #include <Src/Padding.h>
 #include <Src/StitchingVisualization.h>
@@ -99,33 +99,33 @@ void ShowUsage(const char* ex)
 	printf( "\t[--%s]\n" , NoHelp.name );
 }
 
-template<class Real>
+template< typename PreReal , typename Real >
 class Stitching
 {
 public:
 	static int inputMode;
-	static TexturedMesh mesh;
+	static TexturedMesh< PreReal > mesh;
 	static int textureWidth;
 	static int textureHeight;
-	static double interpolationWeight;
+	static Real interpolationWeight;
 	static int levels;
 
-	static HierarchicalSystem hierarchy;
+	static HierarchicalSystem< PreReal , Real > hierarchy;
 	static bool rhsUpdated;
 	static bool positiveModulation;
 
 	// Single input mode
 	static Image< int > inputMask;
-	static Image< Point3D< float > > inputComposition;
+	static Image< Point3D< Real > > inputComposition;
 
 	// Multiple input mode
 	static int numTextures;
-	static std::vector< Image< float > > inputConfidence;
-	static std::vector< Image< Point3D< float > > > inputTextures;
+	static std::vector< Image< Real > > inputConfidence;
+	static std::vector< Image< Point3D< Real > > > inputTextures;
 	static std::vector< std::vector< Point3D< Real > > > partialTexelValues;
 	static std::vector< std::vector< Point3D< Real > > > partialEdgeValues;
 
-	static Image< Point3D< float > > filteredTexture;
+	static Image< Point3D< Real > > filteredTexture;
 	// UI
 	static char interpolationStr[1024];
 	static char referenceTextureStr[1024];
@@ -133,15 +133,15 @@ public:
 	static std::vector< Point3D< float > >textureNodePositions;
 	static std::vector< Point3D< float > >textureEdgePositions;
 
-	static std::vector< AtlasChart > atlasCharts;
+	static std::vector< AtlasChart< PreReal > > atlasCharts;
 
 	static std::vector< BilinearElementIndex > bilinearElementIndices;
 
-	static std::vector< TextureNodeInfo > textureNodes;
+	static std::vector< TextureNodeInfo< PreReal > > textureNodes;
 
-	static SparseMatrix< double , int > mass;
-	static SparseMatrix< double , int > stiffness;
-	static SparseMatrix< double , int > stitchingMatrix;
+	static SparseMatrix< Real , int > mass;
+	static SparseMatrix< Real , int > stiffness;
+	static SparseMatrix< Real , int > stitchingMatrix;
 
 	static std::vector< Point3D< Real > > texelMass;
 	static std::vector< Point3D< Real > > texelDivergence;
@@ -151,23 +151,17 @@ public:
 	static std::vector< MultigridLevelIndices< Real > > multigridIndices;
 
 #if defined( USE_CHOLMOD )
-	typedef CholmodCholeskySolver< Real , 3 > BoundarySolverType;
-	typedef CholmodCholeskySolver< Real , 3 > CoarseSolverType;
-	typedef CholmodCholeskySolver< Real , 3 > DirectSolverType;
+	typedef CholmodCholeskySolver< Real , 3 > DirectSolver;
 #elif defined( USE_EIGEN_SIMPLICIAL )
-	typedef EigenCholeskySolver< Real , 3 > BoundarySolverType;
-	typedef EigenCholeskySolver< Real , 3 > CoarseSolverType;
-	typedef EigenCholeskySolver< Real , 3 > DirectSolverType;
+	typedef EigenCholeskySolver< Real , 3 > DirectSolver;
 #elif defined( USE_EIGEN_PARDISO )
-	typedef EigenPardisoSolver< Real , 3 > BoundarySolverType;
-	typedef EigenPardisoSolver< Real , 3 > CoarseSolverType;
-	typedef EigenPardisoSolver< Real , 3 > DirectSolverType;
+	typedef EigenPardisoSolver< Real , 3 > DirectSolver;
 #else
 #error "[ERROR] No solver defined!"
 #endif
 
-	static VCycleSolvers< BoundarySolverType , CoarseSolverType > vCycleSolvers;
-	static DirectSolverType directSolver;
+	static VCycleSolvers< DirectSolver > vCycleSolvers;
+	static DirectSolver directSolver;
 
 	static std::unordered_map< unsigned long long , int > edgeIndex;
 	static std::vector< std::pair< int , int > > edgePairs;
@@ -182,8 +176,8 @@ public:
 	static std::vector< Point3D< Real > > edgeValues;
 
 	// Linear Operators
-	static SystemCoefficients< double > massCoefficients;
-	static SystemCoefficients< double > stiffnessCoefficients;
+	static SystemCoefficients< Real > massCoefficients;
+	static SystemCoefficients< Real > stiffnessCoefficients;
 
 	// Stitching UI
 	static int textureIndex;
@@ -206,13 +200,14 @@ public:
 
 	static void LoadImages( void );
 	static void ParseImages( void );
-	static void SolveSytem( void );
+	static void SetUpSystem( void );
+	static void SolveSystem( void );
 	static int Init( void );
 	static void InitializeVisualization( void );
 	static int UpdateSolution( bool verbose=false , bool detailVerbose=false );
 	static void ComputeExactSolution( bool verbose=false );
-	static int InitializeSystem( const int width , const int height );
-	static int _InitializeSystem( std::vector< std::vector< SquareMatrix< double , 2 > > > &parameterMetric , BoundaryProlongationData &boundaryProlongation );
+	static int InitializeSystem( int width , int height );
+	static int _InitializeSystem( std::vector< std::vector< SquareMatrix< PreReal , 2 > > > &parameterMetric , BoundaryProlongationData< Real > &boundaryProlongation );
 
 	static void UpdateFilteredColorTexture( const std::vector< Point3D< Real > > &solution );
 	static void UpdateFilteredTexture( const std::vector< Point3D< Real > > &solution );
@@ -224,80 +219,78 @@ public:
 	static void KeyboardFunc( unsigned char key , int x , int y ) { visualization.KeyboardFunc(key,x,y); }
 	static void Idle( void );
 };
-template< class Real > char															Stitching< Real >::referenceTextureStr[1024];
-template< class Real > char															Stitching< Real >::interpolationStr[1024];
+template< typename PreReal , typename Real > char															Stitching< PreReal , Real >::referenceTextureStr[1024];
+template< typename PreReal , typename Real > char															Stitching< PreReal , Real >::interpolationStr[1024];
 
-template< class Real > int															Stitching< Real >::inputMode;
-template< class Real > TexturedMesh													Stitching< Real >::mesh;
-template< class Real > int															Stitching< Real >::textureWidth;
-template< class Real > int															Stitching< Real >::textureHeight;
-template< class Real > StitchingVisualization										Stitching< Real >::visualization;
-template< class Real > SparseMatrix< double , int >									Stitching< Real >::mass;
-template< class Real > SparseMatrix< double , int >									Stitching< Real >::stiffness;
-template< class Real > SparseMatrix< double , int >									Stitching< Real >::stitchingMatrix;
+template< typename PreReal , typename Real > int															Stitching< PreReal , Real >::inputMode;
+template< typename PreReal , typename Real > TexturedMesh< PreReal >										Stitching< PreReal , Real >::mesh;
+template< typename PreReal , typename Real > int															Stitching< PreReal , Real >::textureWidth;
+template< typename PreReal , typename Real > int															Stitching< PreReal , Real >::textureHeight;
+template< typename PreReal , typename Real > StitchingVisualization											Stitching< PreReal , Real >::visualization;
+template< typename PreReal , typename Real > SparseMatrix< Real , int >										Stitching< PreReal , Real >::mass;
+template< typename PreReal , typename Real > SparseMatrix< Real , int >										Stitching< PreReal , Real >::stiffness;
+template< typename PreReal , typename Real > SparseMatrix< Real , int >										Stitching< PreReal , Real >::stitchingMatrix;
 
-template< class Real > double														Stitching< Real >::interpolationWeight;
+template< typename PreReal , typename Real > Real															Stitching< PreReal , Real >::interpolationWeight;
 
-template< class Real > std::vector< TextureNodeInfo >								Stitching< Real >::textureNodes;
-template< class Real > std::vector< BilinearElementIndex >							Stitching< Real >::bilinearElementIndices;
+template< typename PreReal , typename Real > std::vector< TextureNodeInfo< PreReal > >						Stitching< PreReal , Real >::textureNodes;
+template< typename PreReal , typename Real > std::vector< BilinearElementIndex >							Stitching< PreReal , Real >::bilinearElementIndices;
 
-template< class Real > int															Stitching< Real >::steps;
-template< class Real > char															Stitching< Real >::stepsString[1024];
-template< class Real > int															Stitching< Real >::levels;
-template< class Real > HierarchicalSystem											Stitching< Real >::hierarchy;
+template< typename PreReal , typename Real > int															Stitching< PreReal , Real >::steps;
+template< typename PreReal , typename Real > char															Stitching< PreReal , Real >::stepsString[1024];
+template< typename PreReal , typename Real > int															Stitching< PreReal , Real >::levels;
+template< typename PreReal , typename Real > HierarchicalSystem< PreReal , Real >							Stitching< PreReal , Real >::hierarchy;
+
+template< typename PreReal , typename Real > bool															Stitching< PreReal , Real >::rhsUpdated = true;
+template< typename PreReal , typename Real > bool															Stitching< PreReal , Real >::positiveModulation = true;
+
+template< typename PreReal , typename Real> Image< Point3D< Real > >										Stitching< PreReal , Real >::filteredTexture;
+
+template< typename PreReal , typename Real > Image< int >												    Stitching< PreReal , Real >::inputMask;
+template< typename PreReal , typename Real > Image< Point3D< Real > >										Stitching< PreReal , Real >::inputComposition;
+
+template< typename PreReal , typename Real > int															Stitching< PreReal , Real >::numTextures;
+template< typename PreReal , typename Real > std::vector< Image< Real > >									Stitching< PreReal , Real >::inputConfidence;
+template< typename PreReal , typename Real > std::vector< Image< Point3D< Real > > >						Stitching< PreReal , Real >::inputTextures;
+template< typename PreReal , typename Real > std::vector< Point3D< Real > >									Stitching< PreReal , Real >::texelMass;
+template< typename PreReal , typename Real > std::vector< Point3D< Real > >									Stitching< PreReal , Real >::texelDivergence;
+
+template< typename PreReal , typename Real > std::vector< SystemCoefficients< Real > >						Stitching< PreReal , Real >::multigridStitchingCoefficients;
+template< typename PreReal , typename Real > std::vector< MultigridLevelVariables< Point3D< Real > > >		Stitching< PreReal , Real >::multigridStitchingVariables;
+template< typename PreReal , typename Real > std::vector< MultigridLevelIndices< Real > >					Stitching< PreReal , Real >::multigridIndices;
+
+template< typename PreReal , typename Real > VCycleSolvers< typename Stitching< PreReal , Real >::DirectSolver >		Stitching< PreReal , Real >::vCycleSolvers;
+template< typename PreReal , typename Real > typename Stitching< PreReal , Real >::DirectSolver				Stitching< PreReal , Real >::directSolver;
+
+template< typename PreReal , typename Real > std::vector< AtlasChart< PreReal > >							Stitching< PreReal , Real >::atlasCharts;
+
+template< typename PreReal , typename Real > std::vector< Point3D< float > >								Stitching< PreReal , Real >::textureNodePositions;
+template< typename PreReal , typename Real > std::vector< Point3D< float > >								Stitching< PreReal , Real >::textureEdgePositions;
+
+template< typename PreReal , typename Real > Padding														Stitching< PreReal , Real >::padding;
+
+template< typename PreReal , typename Real > SystemCoefficients< Real >										Stitching< PreReal , Real >::massCoefficients;
+template< typename PreReal , typename Real > SystemCoefficients< Real >										Stitching< PreReal , Real >::stiffnessCoefficients;
+
+template< typename PreReal , typename Real > int															Stitching< PreReal , Real >::updateCount = -1;
+
+template< typename PreReal , typename Real >  std::unordered_map< unsigned long long , int >				Stitching< PreReal , Real >::edgeIndex;
+template< typename PreReal , typename Real >  std::vector< std::pair< int , int > >							Stitching< PreReal , Real >::edgePairs;
+
+template< typename PreReal , typename Real >  SparseMatrix< Real , int >									Stitching< PreReal , Real >::boundaryDivergenceMatrix;
+template< typename PreReal , typename Real >  std::vector< Real >											Stitching< PreReal , Real >::deepDivergenceCoefficients;
+template< typename PreReal , typename Real >  std::vector< DivegenceRasterLine >  							Stitching< PreReal , Real >::divergenceRasterLines;
+
+template< typename PreReal , typename Real >  std::vector< bool >											Stitching< PreReal , Real >::unobservedTexel;
+template< typename PreReal , typename Real >  std::vector< Point3D< Real > >								Stitching< PreReal , Real >::texelValues;
+template< typename PreReal , typename Real >  std::vector< Point3D< Real > >								Stitching< PreReal , Real >::edgeValues;
+template< typename PreReal , typename Real >  std::vector< std::vector< Point3D< Real > > >					Stitching< PreReal , Real >::partialTexelValues;
+template< typename PreReal , typename Real >  std::vector< std::vector< Point3D< Real > > >					Stitching< PreReal , Real >::partialEdgeValues;
+template< typename PreReal , typename Real > int															Stitching< PreReal , Real >::textureIndex = 0;
 
 
-template< class Real > bool															Stitching< Real >::rhsUpdated = true;
-template< class Real > bool															Stitching< Real >::positiveModulation = true;
-
-template< class Real> Image< Point3D< float > >										Stitching< Real >::filteredTexture;
-
-
-template< class Real > Image< int >												    Stitching< Real >::inputMask;
-template< class Real > Image< Point3D< float > >									Stitching< Real >::inputComposition;
-
-template< class Real > int															Stitching< Real >::numTextures;
-template< class Real > std::vector< Image< float > >								Stitching< Real >::inputConfidence;
-template< class Real > std::vector< Image< Point3D< float > > >						Stitching< Real >::inputTextures;
-template< class Real > std::vector< Point3D< Real > >								Stitching< Real >::texelMass;
-template< class Real > std::vector< Point3D< Real > >								Stitching< Real >::texelDivergence;
-
-template< class Real > std::vector< SystemCoefficients< Real > >					Stitching< Real >::multigridStitchingCoefficients;
-template< class Real > std::vector< MultigridLevelVariables< Point3D< Real > > >	Stitching< Real >::multigridStitchingVariables;
-template< class Real > std::vector< MultigridLevelIndices< Real > >					Stitching< Real >::multigridIndices;
-
-template< class Real > VCycleSolvers< typename Stitching< Real >::BoundarySolverType , typename Stitching< Real >::CoarseSolverType >			Stitching< Real >::vCycleSolvers;
-template< class Real > typename Stitching< Real >::DirectSolverType					Stitching< Real >::directSolver;
-
-template< class Real > std::vector< AtlasChart >									Stitching< Real >::atlasCharts;
-
-template< class Real > std::vector< Point3D< float > >								Stitching< Real >::textureNodePositions;
-template< class Real > std::vector< Point3D< float > >								Stitching< Real >::textureEdgePositions;
-
-template< class Real > Padding														Stitching< Real >::padding;
-
-
-template< class Real > SystemCoefficients< double >									Stitching< Real >::massCoefficients;
-template< class Real > SystemCoefficients< double >									Stitching< Real >::stiffnessCoefficients;
-
-template< class Real > int															Stitching< Real >::updateCount = -1;
-
-template< class Real >  std::unordered_map< unsigned long long , int >				Stitching< Real >::edgeIndex;
-template< class Real >  std::vector< std::pair< int , int > >						Stitching< Real >::edgePairs;
-
-template< class Real >  SparseMatrix< Real , int >									Stitching< Real >::boundaryDivergenceMatrix;
-template< class Real >  std::vector< Real >											Stitching< Real >::deepDivergenceCoefficients;
-template< class Real >  std::vector< DivegenceRasterLine >  						Stitching< Real >::divergenceRasterLines;
-
-template< class Real >  std::vector< bool >											Stitching< Real >::unobservedTexel;
-template< class Real >  std::vector< Point3D< Real > >								Stitching< Real >::texelValues;
-template< class Real >  std::vector< Point3D< Real > >								Stitching< Real >::edgeValues;
-template< class Real >  std::vector< std::vector< Point3D< Real > > >				Stitching< Real >::partialTexelValues;
-template< class Real >  std::vector< std::vector< Point3D< Real > > >				Stitching< Real >::partialEdgeValues;
-template< class Real > int															Stitching< Real >::textureIndex = 0;
-
-template< class Real >
-void Stitching< Real >::UpdateFilteredColorTexture( const std::vector< Point3D< Real > > &solution )
+template< typename PreReal , typename Real >
+void Stitching< PreReal , Real >::UpdateFilteredColorTexture( const std::vector< Point3D< Real > > &solution )
 {
 #pragma omp parallel for
 	for( int i=0 ; i<textureNodes.size() ; i++ )
@@ -307,25 +300,25 @@ void Stitching< Real >::UpdateFilteredColorTexture( const std::vector< Point3D< 
 		int offset = 3 * ( textureWidth*cj + ci );
 		for( int c=0 ; c<3 ; c++ )
 		{
-			double value = std::min< double >( 1.0 , std::max< double >( 0 , solution[i][c] ) );
+			Real value = std::min< Real >( (Real)1 , std::max< Real >( (Real)0. , solution[i][c] ) );
 			visualization.colorTextureBuffer[offset + c] = (unsigned char)(value*255.0);
 		}
 	}
 }
 
-template< class Real >
-void Stitching< Real >::UpdateFilteredTexture( const std::vector< Point3D< Real > > &solution )
+template< typename PreReal , typename Real >
+void Stitching< PreReal , Real >::UpdateFilteredTexture( const std::vector< Point3D< Real > > &solution )
 {
 #pragma omp parallel for
 	for( int i=0 ; i<textureNodes.size() ; i++ )
 	{
 		int ci = textureNodes[i].ci , cj = textureNodes[i].cj;
-		filteredTexture(ci,cj) = Point3D< float >( solution[i] );
+		filteredTexture(ci,cj) = solution[i];
 	}
 }
 
-template< class Real >
-void Stitching< Real >::Idle( void )
+template< typename PreReal , typename Real >
+void Stitching< PreReal , Real >::Idle( void )
 {
 	float radius = 0.03;
 	float radiusSquared = radius * radius;
@@ -360,8 +353,8 @@ void Stitching< Real >::Idle( void )
 	glutPostRedisplay();
 }
 
-template< class Real >
-void Stitching< Real >::MouseFunc( int button , int state , int x , int y )
+template< typename PreReal , typename Real >
+void Stitching< PreReal , Real >::MouseFunc( int button , int state , int x , int y )
 {
 	visualization.newX = x; visualization.newY = y;
 	visualization.rotating = visualization.scaling = visualization.panning = false;
@@ -392,8 +385,8 @@ void Stitching< Real >::MouseFunc( int button , int state , int x , int y )
 	glutPostRedisplay();
 }
 
-template< class Real >
-void Stitching< Real >::MotionFunc( int x , int y )
+template< typename PreReal , typename Real >
+void Stitching< PreReal , Real >::MotionFunc( int x , int y )
 {
 	if( visualization.isBrushActive )
 	{
@@ -433,14 +426,15 @@ void Stitching< Real >::MotionFunc( int x , int y )
 	glutPostRedisplay();
 }
 
-template< class Real > void Stitching< Real >::ToggleForwardReferenceTextureCallBack( Visualization *v , const char * ) 
+template< typename PreReal , typename Real > void Stitching< PreReal , Real >::ToggleForwardReferenceTextureCallBack( Visualization *v , const char* )
 {
 	textureIndex = ( textureIndex+1 ) % numTextures;
 	visualization.referenceIndex = textureIndex;
 	sprintf( referenceTextureStr , "Reference Texture: %02d of %02d \n" , textureIndex , numTextures );
 	glutPostRedisplay();
 }
-template< class Real > void Stitching< Real >::ToggleBackwardReferenceTextureCallBack( Visualization *v , const char* )
+
+template< typename PreReal , typename Real > void Stitching< PreReal , Real >::ToggleBackwardReferenceTextureCallBack( Visualization *v , const char* )
 {
 	textureIndex = ( textureIndex+numTextures-1 ) % numTextures;
 	visualization.referenceIndex = textureIndex;
@@ -448,35 +442,37 @@ template< class Real > void Stitching< Real >::ToggleBackwardReferenceTextureCal
 	glutPostRedisplay();
 }
 
-template< class Real > void Stitching< Real >::ToggleUpdateCallBack( Visualization *v , const char * )
+template< typename PreReal , typename Real > void Stitching< PreReal , Real >::ToggleUpdateCallBack( Visualization *v , const char * )
 {
 	if( updateCount ) updateCount = 0;
 	else              updateCount = -1;
 }
-template< class Real > void Stitching< Real >::IncrementUpdateCallBack( Visualization *v , const char * )
+
+template< typename PreReal , typename Real >
+void Stitching< PreReal , Real >::IncrementUpdateCallBack( Visualization *v , const char * )
 {
 	if( updateCount<0 ) updateCount = 1;
 	else                updateCount++;
 }
 
-template< class Real >
-void Stitching< Real >::ExportTextureCallBack( Visualization *v , const char *prompt )
+template< typename PreReal , typename Real >
+void Stitching< PreReal , Real >::ExportTextureCallBack( Visualization *v , const char *prompt )
 {
 	UpdateFilteredTexture( multigridStitchingVariables[0].x );
-	Image< Point3D< float > > outputTexture = filteredTexture;
+	Image< Point3D< Real > > outputTexture = filteredTexture;
 	if( padding.nonTrivial ) UnpadImage( padding , outputTexture );
 	outputTexture.write( prompt );
 }
 
-template< class Real >
-void  Stitching< Real >::InterpolationWeightCallBack( Visualization *v , const char *prompt )
+template< typename PreReal , typename Real >
+void  Stitching< PreReal , Real >::InterpolationWeightCallBack( Visualization *v , const char *prompt )
 {
 	interpolationWeight = atof(prompt);
 	if( UseDirectSolver.set ) stitchingMatrix = mass*interpolationWeight + stiffness;
-	clock_t t_begin = clock();
-	if( !UpdateLinearSystem( interpolationWeight , 1.0 , hierarchy , multigridStitchingCoefficients , massCoefficients , stiffnessCoefficients , vCycleSolvers , directSolver , stitchingMatrix , DetailVerbose.set , false , UseDirectSolver.set ) )
+	Miscellany::Timer timer;
+	if( !UpdateLinearSystem( interpolationWeight , (Real)1. , hierarchy , multigridStitchingCoefficients , massCoefficients , stiffnessCoefficients , vCycleSolvers , directSolver , stitchingMatrix , DetailVerbose.set , false , UseDirectSolver.set ) )
 		fprintf( stderr , "[ERROR] Failed system update!\n" ) , exit(0);
-	if( Verbose.set ) printf( "\tInitialized multigrid coefficients: %.2f(s)\n" , (double)( clock()-t_begin ) / CLOCKS_PER_SEC );
+	if( Verbose.set ) printf( "\tInitialized multigrid coefficients: %.2f(s)\n" , timer.elapsed() );
 
 #pragma omp parallel for
 	for( int i=0 ; i<multigridStitchingVariables[0].rhs.size() ; i++ ) multigridStitchingVariables[0].rhs[i] = texelMass[i] * interpolationWeight + texelDivergence[i];
@@ -490,21 +486,21 @@ void  Stitching< Real >::InterpolationWeightCallBack( Visualization *v , const c
 }
 
 
-template< class Real >
-void Stitching< Real >::ComputeExactSolution( bool verbose )
+template< typename PreReal , typename Real >
+void Stitching< PreReal , Real >::ComputeExactSolution( bool verbose )
 {
-	clock_t t_begin = clock();
+	Miscellany::Timer timer;
 	solve( directSolver , multigridStitchingVariables[0].x , multigridStitchingVariables[0].rhs );
-	if( verbose ) printf( "Solving time =  %.4f\n" , (double)( clock()-t_begin) / CLOCKS_PER_SEC );
+	if( verbose ) printf( "Solving time =  %.4f\n" , timer.elapsed() );
 }
 
-template< class Real >
-int Stitching< Real >::UpdateSolution( bool verbose , bool detailVerbose )
+template< typename PreReal , typename Real >
+int Stitching< PreReal , Real >::UpdateSolution( bool verbose , bool detailVerbose )
 {
 	if( !rhsUpdated )
 	{
 		int numTexels = (int)multigridStitchingVariables[0].rhs.size();
-		clock_t p_begin = clock();
+		Miscellany::Timer timer;
 
 		MultiplyBySystemMatrix_NoReciprocals( massCoefficients , hierarchy.gridAtlases[0].boundaryGlobalIndex , hierarchy.gridAtlases[0].rasterLines , texelValues , texelMass );
 		ComputeDivergence( edgeValues , texelDivergence , deepDivergenceCoefficients , boundaryDivergenceMatrix , divergenceRasterLines );
@@ -512,7 +508,7 @@ int Stitching< Real >::UpdateSolution( bool verbose , bool detailVerbose )
 #pragma omp parallel for
 		for( int i=0 ; i<textureNodes.size() ; i++ ) multigridStitchingVariables[0].rhs[i] = texelMass[i] * interpolationWeight + texelDivergence[i];
 
-		if( verbose ) printf( "RHS update time %.4f\n" , (double)( clock()-p_begin ) / CLOCKS_PER_SEC );
+		if( verbose ) printf( "RHS update time %.4f\n" , timer.elapsed() );
 		rhsUpdated = true;
 	}
 
@@ -521,27 +517,24 @@ int Stitching< Real >::UpdateSolution( bool verbose , bool detailVerbose )
 	return 1;
 }
 
-template<>
-int Stitching< float >::_InitializeSystem( std::vector< std::vector< SquareMatrix< double , 2 > > > &parameterMetric , BoundaryProlongationData &boundaryProlongation )
+template< typename PreReal , typename Real >
+int Stitching< PreReal , Real >::_InitializeSystem( std::vector< std::vector< SquareMatrix< PreReal , 2 > > > &parameterMetric , BoundaryProlongationData< Real > &boundaryProlongation )
 {
 	// Unused parameters
-	std::vector< Point3D< double > > inputSignal;
-	std::vector< double > texelToCellCoeffs;
-	SparseMatrix< double , int > boundaryCellBasedStiffnessRHSMatrix[3];
+	std::vector< Point3D< Real > > inputSignal;
+	std::vector< Real > texelToCellCoeffs;
+	SparseMatrix< Real , int > boundaryCellBasedStiffnessRHSMatrix[3];
 
-	SparseMatrix< double, int > _boundaryDivergenceMatrix;
-	std::vector< double >  _deepDivergenceCoefficients;
-	clock_t t_begin = clock();
 	{
 		int ret = 0;
 		switch( MatrixQuadrature.value )
 		{
-		case  1: ret = InitializeMassAndStiffness< 1>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , _boundaryDivergenceMatrix , _deepDivergenceCoefficients ) ; break;
-		case  3: ret = InitializeMassAndStiffness< 3>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , _boundaryDivergenceMatrix , _deepDivergenceCoefficients ) ; break;
-		case  6: ret = InitializeMassAndStiffness< 6>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , _boundaryDivergenceMatrix , _deepDivergenceCoefficients ) ; break;
-		case 12: ret = InitializeMassAndStiffness<12>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , _boundaryDivergenceMatrix , _deepDivergenceCoefficients ) ; break;
-		case 24: ret = InitializeMassAndStiffness<24>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , _boundaryDivergenceMatrix , _deepDivergenceCoefficients ) ; break;
-		case 32: ret = InitializeMassAndStiffness<32>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , _boundaryDivergenceMatrix , _deepDivergenceCoefficients ) ; break;
+		case  1: ret = InitializeMassAndStiffness< 1>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
+		case  3: ret = InitializeMassAndStiffness< 3>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
+		case  6: ret = InitializeMassAndStiffness< 6>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
+		case 12: ret = InitializeMassAndStiffness<12>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
+		case 24: ret = InitializeMassAndStiffness<24>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
+		case 32: ret = InitializeMassAndStiffness<32>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
 		default: fprintf( stderr , "[ERROR] Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles\n" );
 		}
 		if( !ret )
@@ -550,63 +543,32 @@ int Stitching< float >::_InitializeSystem( std::vector< std::vector< SquareMatri
 			return 0;
 		}
 	}
-
-	boundaryDivergenceMatrix = _boundaryDivergenceMatrix;
-	deepDivergenceCoefficients.resize( _deepDivergenceCoefficients.size() );
-	for( int i=0 ; i<_deepDivergenceCoefficients.size() ; i++ ) deepDivergenceCoefficients[i] = static_cast< float >( _deepDivergenceCoefficients[i] );
 	return 1;
 }
-template<>
-int Stitching< double >::_InitializeSystem( std::vector< std::vector< SquareMatrix< double , 2 > > > &parameterMetric , BoundaryProlongationData &boundaryProlongation )
-{
-	// Unused parameters
-	std::vector< Point3D< double > > inputSignal;
-	std::vector< double > texelToCellCoeffs;
-	SparseMatrix< double , int > boundaryCellBasedStiffnessRHSMatrix[3];
 
-	int ret = 0;
-	switch( MatrixQuadrature.value )
-	{
-	case  1: ret = InitializeMassAndStiffness< 1>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
-	case  3: ret = InitializeMassAndStiffness< 3>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
-	case  6: ret = InitializeMassAndStiffness< 6>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
-	case 12: ret = InitializeMassAndStiffness<12>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
-	case 24: ret = InitializeMassAndStiffness<24>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
-	case 32: ret = InitializeMassAndStiffness<32>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
-	default: fprintf( stderr, "[ERROR] Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles\n" );
-	}
-	if( !ret )
-	{
-		fprintf( stderr , "[ERROR] Failed intialization!\n" );
-		return 0;
-	}
-	return 1;
-}
-template< class Real >
-int Stitching< Real >::InitializeSystem( const int width , const int height )
+template< typename PreReal , typename Real >
+int Stitching< PreReal , Real >::InitializeSystem( int width , int height )
 {
-	clock_t t_begin;
-
-	if( Verbose.set ) t_begin = clock();
+	Miscellany::Timer timer;
 	MultigridBlockInfo multigridBlockInfo( MultigridBlockWidth.value , MultigridBlockHeight.value , MultigridPaddedWidth.value , MultigridPaddedHeight.value , 0 );
 	if( !InitializeHierarchy( mesh , width , height , levels , textureNodes , bilinearElementIndices , hierarchy , atlasCharts , multigridBlockInfo , true , DetailVerbose.set ) )
 	{
 		fprintf( stderr , "[ERROR] Failed intialization!\n" );
 		return 0;
 	}
-	if( Verbose.set ) printf( "\tInitialized hierarchy: %.2f(s)\n" , (double)( clock()-t_begin ) / CLOCKS_PER_SEC );
+	if( Verbose.set ) printf( "\tInitialized hierarchy: %.2f(s)\n" , timer.elapsed() );
 
-	BoundaryProlongationData boundaryProlongation;
+	BoundaryProlongationData< Real > boundaryProlongation;
 	if( !InitializeBoundaryProlongationData( hierarchy.gridAtlases[0] , boundaryProlongation ) )
 	{
 		fprintf( stderr , "[ERROR] Failed boundary prolongation!\n" );
 		return 0;
 	}
 
-	std::vector< Point3D< double > > inputSignal;
-	std::vector< double > texelToCellCoeffs;
+	std::vector< Point3D< Real > > inputSignal;
+	std::vector< Real > texelToCellCoeffs;
 
-	std::vector< std::vector< SquareMatrix< double , 2 > > > parameterMetric;
+	std::vector< std::vector< SquareMatrix< PreReal , 2 > > > parameterMetric;
 	if( !InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric ) )
 	{
 		fprintf( stderr , "[ERROR] Unable to initialize metric\n" );
@@ -619,9 +581,9 @@ int Stitching< Real >::InitializeSystem( const int width , const int height )
 		return 0;
 	}
 
-	if( Verbose.set ) t_begin = clock();
+	if( Verbose.set ) timer.reset();
 	if( !_InitializeSystem( parameterMetric , boundaryProlongation ) ) return 0;
-	if( Verbose.set ) printf( "\tInitialized system: %.2f(s)\n" , (double)( clock()-t_begin ) / CLOCKS_PER_SEC );
+	if( Verbose.set ) printf( "\tInitialized system: %.2f(s)\n" , timer.elapsed() );
 	
 	if( !InitializeDivergenceRasteLines( edgeIndex , hierarchy.gridAtlases[0].rasterLines , divergenceRasterLines ) )
 	{
@@ -653,7 +615,7 @@ int Stitching< Real >::InitializeSystem( const int width , const int height )
 	multigridIndices.resize(levels);
 	for( int i=0 ; i<levels ; i++ )
 	{
-		const GridAtlas & gridAtlas = hierarchy.gridAtlases[i];
+		const GridAtlas< PreReal , Real > &gridAtlas = hierarchy.gridAtlases[i];
 		multigridIndices[i].threadTasks = gridAtlas.threadTasks;
 		multigridIndices[i].boundaryGlobalIndex = gridAtlas.boundaryGlobalIndex;
 		multigridIndices[i].segmentedLines = gridAtlas.segmentedLines;
@@ -663,13 +625,13 @@ int Stitching< Real >::InitializeSystem( const int width , const int height )
 		if( i<levels-1 ) multigridIndices[i].boundaryRestriction = hierarchy.boundaryRestriction[i];
 	}
 
-	if( Verbose.set ) t_begin = clock();
-	if( !UpdateLinearSystem( interpolationWeight , 1.0 , hierarchy , multigridStitchingCoefficients , massCoefficients , stiffnessCoefficients , vCycleSolvers , directSolver , stitchingMatrix , DetailVerbose.set, true, UseDirectSolver.set ) )
+	if( Verbose.set ) timer.reset();
+	if( !UpdateLinearSystem( interpolationWeight , (Real)1. , hierarchy , multigridStitchingCoefficients , massCoefficients , stiffnessCoefficients , vCycleSolvers , directSolver , stitchingMatrix , DetailVerbose.set, true, UseDirectSolver.set ) )
 	{
 		fprintf( stderr , "[ERROR] Failed system update!\n" );
 		return 0;
 	}
-	if( Verbose.set ) printf( "\tInitialized multigrid coefficients: %.2f(s)\n" , (double)( clock()-t_begin ) / CLOCKS_PER_SEC );
+	if( Verbose.set ) printf( "\tInitialized multigrid coefficients: %.2f(s)\n" , timer.elapsed() );
 
 	multigridStitchingVariables.resize(levels);
 	for( int i=0 ; i<levels ; i++ )
@@ -685,9 +647,8 @@ int Stitching< Real >::InitializeSystem( const int width , const int height )
 
 	return 1;
 }
-
-template< class Real >
-void Stitching< Real >::SolveSytem( void )
+template< typename PreReal , typename Real >
+void Stitching< PreReal , Real >::SetUpSystem( void )
 {
 	texelMass.resize( textureNodes.size() );
 	MultiplyBySystemMatrix_NoReciprocals( massCoefficients , hierarchy.gridAtlases[0].boundaryGlobalIndex , hierarchy.gridAtlases[0].rasterLines , texelValues , texelMass );
@@ -702,18 +663,22 @@ void Stitching< Real >::SolveSytem( void )
 	}
 
 	filteredTexture.resize( textureWidth , textureHeight );
-	for( int i=0 ; i<filteredTexture.size() ; i++ ) filteredTexture[i] = Point3D< float >(0.5f, 0.5f, 0.5f);
-	
-	if( UseDirectSolver.set ) ComputeExactSolution(Verbose.set);
-	else for( int i=0 ; i<OutputVCycles.value ; i++ ) VCycle( multigridStitchingVariables , multigridStitchingCoefficients , multigridIndices , vCycleSolvers , false , false );
-	
+	for( int i=0 ; i<filteredTexture.size() ; i++ ) filteredTexture[i] = Point3D< Real >( (Real)0.5 , (Real)0.5 , (Real)0.5 );
+
 	UpdateFilteredTexture( multigridStitchingVariables[0].x );
 }
 
-template< class Real >
-void Stitching< Real >::LoadImages( void )
+template< typename PreReal , typename Real >
+void Stitching< PreReal , Real >::SolveSystem( void )
 {
+	if( UseDirectSolver.set ) ComputeExactSolution( Verbose.set );
+	else for( int i=0 ; i<OutputVCycles.value ; i++ ) VCycle( multigridStitchingVariables , multigridStitchingCoefficients , multigridIndices , vCycleSolvers , false , false );	
+	UpdateFilteredTexture( multigridStitchingVariables[0].x );
+}
 
+template< typename PreReal , typename Real >
+void Stitching< PreReal , Real >::LoadImages( void )
+{
 	if( inputMode==MULTIPLE_INPUT_MODE )
 	{
 		bool countingTextures = true;
@@ -747,10 +712,10 @@ void Stitching< Real >::LoadImages( void )
 		{
 			char confidenceName[256];
 			sprintf( confidenceName , In.values[2] , i );
-			Image< Point3D< float > > textureConfidence;
+			Image< Point3D< Real > > textureConfidence;
 			textureConfidence.read( confidenceName );
 			inputConfidence[i].resize( textureWidth , textureHeight );
-			for( int p=0 ; p<textureConfidence.size() ; p++ ) inputConfidence[i][p] = Point3D< float >::Dot( textureConfidence[p] , Point3D< float >( 1.f/3 , 1.f/3 , 1.f/3 ) );
+			for( int p=0 ; p<textureConfidence.size() ; p++ ) inputConfidence[i][p] = Point3D< Real >::Dot( textureConfidence[p] , Point3D< Real >( (Real)1./3 , (Real)1./3 , (Real)1./3 ) );
 		}
 	}
 	else
@@ -771,8 +736,8 @@ void Stitching< Real >::LoadImages( void )
 	}
 }
 
-template< class Real >
-void Stitching< Real >::ParseImages( void )
+template< typename PreReal , typename Real >
+void Stitching< PreReal , Real >::ParseImages( void )
 {
 
 	int width = textureWidth;
@@ -798,8 +763,8 @@ void Stitching< Real >::ParseImages( void )
 
 		for( int textureIter=0 ; textureIter<numTextures ; textureIter++ )
 		{
-			Image< Point3D< float > > textureValues = inputTextures[textureIter];
-			Image< float > textureConfidence = inputConfidence[textureIter];
+			Image< Point3D< Real > > textureValues = inputTextures[textureIter];
+			Image< Real > textureConfidence = inputConfidence[textureIter];
 
 			for( int i=0 ; i<textureNodes.size() ; i++ )
 			{
@@ -873,8 +838,8 @@ void Stitching< Real >::ParseImages( void )
 	for( int i=0 ; i<textureNodes.size() ; i++ ) multigridStitchingVariables[0].x[i] = texelValues[i];
 }
 
-template< class Real >
-void Stitching< Real >::InitializeVisualization( void )
+template< typename PreReal , typename Real >
+void Stitching< PreReal , Real >::InitializeVisualization( void )
 {
 	visualization.textureWidth = textureWidth;
 	visualization.textureHeight = textureHeight;
@@ -903,7 +868,7 @@ void Stitching< Real >::InitializeVisualization( void )
 	}
 
 	std::vector< int > boundaryEdges;
-	if( !InitializeBoundaryEdges( mesh , boundaryEdges ) ) printf( "[WARNING] Unable to initialize boundary edges!\n" );
+	if( !mesh.initializeBoundaryEdges( boundaryEdges ) ) printf( "[WARNING] Unable to initialize boundary edges!\n" );
 
 	for( int e=0 ; e<boundaryEdges.size() ; e++ )
 	{
@@ -912,7 +877,7 @@ void Stitching< Real >::InitializeVisualization( void )
 		for( int c=0 ; c<2 ; c++ )
 		{
 			Point3D< double > v = mesh.vertices[ mesh.triangles[tIndex][ (kIndex+c)%3 ] ];
-			visualization.boundaryEdgeVertices.push_back(v);
+			visualization.boundaryEdgeVertices.push_back( v );
 		}
 	}
 
@@ -940,8 +905,8 @@ void Stitching< Real >::InitializeVisualization( void )
 	if( inputMode==SINGLE_INPUT_MODE )   visualization.UpdateCompositeTextureBuffer( inputComposition );
 }
 
-template< class Real >
-int Stitching< Real >::Init( void )
+template< typename PreReal , typename Real >
+int Stitching< PreReal , Real >::Init( void )
 {
 	sprintf( stepsString , "Steps: 0" );
 	levels = std::max< int >( Levels.value , 1 );
@@ -949,18 +914,18 @@ int Stitching< Real >::Init( void )
 	sprintf( referenceTextureStr , "Reference Texture: %02d of %02d\n" , textureIndex,numTextures );
 	sprintf( interpolationStr , "Interpolation: %.2e\n" , interpolationWeight );
 
-	if( !ReadTexturedMesh( mesh, In.values[0] , NULL , DetailVerbose.set ) )
+	if( !mesh.read( In.values[0] , NULL , DetailVerbose.set ) )
 	{
 		fprintf( stderr , "[ERROR] Unable to read mesh data\n" );
 		return 0;
 	}
 
 	// Define centroid and scale for visualization
-	Point3D< double > centroid( 0 , 0 , 0 );
+	Point3D< PreReal > centroid;
 	for( int i=0 ; i<mesh.vertices.size() ; i++ ) centroid += mesh.vertices[i];
-	centroid /= (double)mesh.vertices.size();
-	double radius = 0;
-	for( int i=0 ; i<mesh.vertices.size() ; i++ ) radius = std::max< double >( radius , Point3D< double >::Length( mesh.vertices[i]-centroid ) );
+	centroid /= (int)mesh.vertices.size();
+	PreReal radius = 0;
+	for( int i=0 ; i<mesh.vertices.size() ; i++ ) radius = std::max< PreReal >( radius , Point3D< PreReal >::Length( mesh.vertices[i]-centroid ) );
 	for( int i=0 ; i<mesh.vertices.size() ; i++ ) mesh.vertices[i] = ( mesh.vertices[i]-centroid ) / radius;
 
 	for( int i=0 ; i<mesh.textureCoordinates.size() ; i++ ) mesh.textureCoordinates[i][1] = 1.0-mesh.textureCoordinates[i][1];
@@ -968,10 +933,10 @@ int Stitching< Real >::Init( void )
 	if( RandomJitter.set )
 	{
 		srand( time(NULL) );
-		std::vector< Point2D < double > > randomOffset( mesh.vertices.size() );
-		double jitterScale = 1e-3 / std::max< int >(textureWidth , textureHeight );
-		for( int i=0 ; i<randomOffset.size() ; i++ ) randomOffset[i] = Point2D< double >( 1.0 - 2.0*Random< double >() , 1.0 - 2.0*Random< double >() ) * jitterScale;
-		for( int i=0 ; i<mesh.triangles.size() ; i++ ) for( int k=0 ; k<3 ; k++ ) mesh.textureCoordinates[ 3*i+k] += randomOffset[ mesh.triangles[i][k] ];
+		std::vector< Point2D< PreReal > > randomOffset( mesh.vertices.size() );
+		PreReal jitterScale = (PreReal)1e-3 / std::max< int >( textureWidth , textureHeight );
+		for( int i=0 ; i<randomOffset.size() ; i++ ) randomOffset[i] = Point2D< PreReal >( (PreReal)1. - Random< PreReal >()*2 , (PreReal)1. - Random< PreReal >()*2 ) * jitterScale;
+		for( int i=0 ; i<mesh.triangles.size() ; i++ ) for( int k=0 ; k<3 ; k++ ) mesh.textureCoordinates[ 3*i+k ] += randomOffset[ mesh.triangles[i][k] ];
 	}
 
 
@@ -987,7 +952,7 @@ int Stitching< Real >::Init( void )
 		textureHeight += ( padding.bottom + padding.top );		
 	}
 
-	clock_t t = clock();
+	Miscellany::Timer timer;
 	if( !InitializeSystem( textureWidth , textureHeight ) )
 	{
 		fprintf( stderr , "[ERROR] Unable to initialize system\n" );
@@ -996,27 +961,27 @@ int Stitching< Real >::Init( void )
 	if( Verbose.set )
 	{
 		printf( "Resolution: %d / %d x %d\n" , (int)textureNodes.size() , textureWidth , textureHeight );
-		printf( "Initialized system %.2f(s)\n" , (double)( clock()-t ) / CLOCKS_PER_SEC );
+		printf( "Initialized system %.2f(s)\n" , timer.elapsed() );
 		printf( "Peak Memory (MB): %d\n" , Miscellany::MemoryInfo::PeakMemoryUsageMB() );
 	}
 
 	// Assign position to exterior nodes using barycentric-exponential map
 	{
-		FEM::RiemannianMesh< double > rMesh( GetPointer( mesh.triangles) , mesh.triangles.size() );
+		FEM::RiemannianMesh< PreReal > rMesh( GetPointer( mesh.triangles) , mesh.triangles.size() );
 		rMesh.setMetricFromEmbedding( GetPointer(mesh.vertices) );
 		rMesh.makeUnitArea();
-		Pointer( FEM::CoordinateXForm< double > ) xForms = rMesh.getCoordinateXForms();
+		Pointer( FEM::CoordinateXForm< PreReal > ) xForms = rMesh.getCoordinateXForms();
 
-		for( int i=0 ; i<textureNodes.size() ; i++ ) if( textureNodes[i].tId!=-1 && !textureNodes[i].isInterior )
+		for( int i=0 ; i<textureNodes.size() ; i++ ) if( textureNodes[i].tID!=-1 && !textureNodes[i].isInterior )
 		{
-			FEM::HermiteSamplePoint< double > _p;
-			_p.tIdx = textureNodes[i].tId;
-			_p.p = Point2D< double >( 1./3 , 1./3 );
+			FEM::HermiteSamplePoint< PreReal > _p;
+			_p.tIdx = textureNodes[i].tID;
+			_p.p = Point2D< PreReal >( (PreReal)1./3 , (PreReal)1./3 );
 			_p.v = textureNodes[i].barycentricCoords - _p.p;
 
 			rMesh.exp( xForms , _p );
 
-			textureNodes[i].tId = _p.tIdx;
+			textureNodes[i].tID = _p.tIdx;
 			textureNodes[i].barycentricCoords = _p.p;
 		}
 	}
@@ -1024,17 +989,17 @@ int Stitching< Real >::Init( void )
 	textureNodePositions.resize( textureNodes.size() );
 	for( int i=0 ; i<textureNodePositions.size() ; i++ )
 	{
-		Point2D< double > barincetricCoords = textureNodes[i].barycentricCoords;
-		int tId = textureNodes[i].tId;
-		Point3D< float > surfacePosition =
-			mesh.vertices[ mesh.triangles[tId][0] ] * ( 1.0-barincetricCoords[0]-barincetricCoords[1] ) +
-			mesh.vertices[ mesh.triangles[tId][1] ] *       barincetricCoords[0]                        +
-			mesh.vertices[ mesh.triangles[tId][2] ] *                            barincetricCoords[1]   ;
-		textureNodePositions[i] = surfacePosition;
+		Point2D< PreReal > barycentricCoords = textureNodes[i].barycentricCoords;
+		int tID = textureNodes[i].tID;
+		Point3D< PreReal > p =
+			mesh.vertices[ mesh.triangles[tID][0] ] * ( (PreReal)1.-barycentricCoords[0]-barycentricCoords[1] ) +
+			mesh.vertices[ mesh.triangles[tID][1] ] *               barycentricCoords[0]                        +
+			mesh.vertices[ mesh.triangles[tID][2] ] *                                    barycentricCoords[1]   ;
+		textureNodePositions[i] = Point3D< float >( p );
 	}
 
 	textureEdgePositions.resize( edgePairs.size() );
-	for( int i=0 ; i<edgePairs.size() ; i++ ) textureEdgePositions[i] = ( textureNodePositions[ edgePairs[i].first ] + textureNodePositions[ edgePairs[i].second ] ) / 2.0;
+	for( int i=0 ; i<edgePairs.size() ; i++ ) textureEdgePositions[i] = ( textureNodePositions[ edgePairs[i].first ] + textureNodePositions[ edgePairs[i].second ] ) / 2;
 
 	{
 		int multiChartTexelCount = 0;
@@ -1053,41 +1018,46 @@ int Stitching< Real >::Init( void )
 	return 1;
 }
 
-template< class Real >
-int _main( int argc , char* argv[] )
+template< typename PreReal , typename Real >
+int _main( int argc , char *argv[] )
 {
-	Stitching< Real >::inputMode = MultiInput.set ? MULTIPLE_INPUT_MODE : SINGLE_INPUT_MODE;
+	Stitching< PreReal , Real >::inputMode = MultiInput.set ? MULTIPLE_INPUT_MODE : SINGLE_INPUT_MODE;
+	Stitching< PreReal , Real >::updateCount = MultiInput.set ? -1 : 0;
 
-	Stitching< Real >::LoadImages();
-	if( !Stitching< Real >::Init() ) return 0;
-	Stitching< Real >::ParseImages();
-	Stitching< Real >::SolveSytem();
+	Stitching< PreReal , Real >::LoadImages();
+	if( !Stitching< PreReal , Real >::Init() ) return 0;
+	Stitching< PreReal , Real >::ParseImages();
+	Stitching< PreReal , Real >::SetUpSystem();
 
 	if( !Output.set )
 	{
-		glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE);
-		Stitching< Real >::visualization.visualizationMode = Stitching< Real >::inputMode;
-		Stitching< Real >::visualization.displayMode = TWO_REGION_DISPLAY;
-		Stitching< Real >::visualization.screenWidth = 1600;
-		Stitching< Real >::visualization.screenHeight = 800;
+		glutInitDisplayMode( GLUT_RGB | GLUT_DOUBLE );
+		Stitching< PreReal , Real >::visualization.visualizationMode = Stitching< PreReal , Real >::inputMode;
+		Stitching< PreReal , Real >::visualization.displayMode = TWO_REGION_DISPLAY;
+		Stitching< PreReal , Real >::visualization.screenWidth = 1600;
+		Stitching< PreReal , Real >::visualization.screenHeight = 800;
 
-		glutInitWindowSize( Stitching< Real >::visualization.screenWidth , Stitching< Real >::visualization.screenHeight );
+		glutInitWindowSize( Stitching< PreReal , Real >::visualization.screenWidth , Stitching< PreReal , Real >::visualization.screenHeight );
 		glutInit( &argc , argv );
 		char windowName[1024];
 		sprintf( windowName , "Stitching" );
 		glutCreateWindow( windowName );
 		if( glewInit()!=GLEW_OK ) fprintf( stderr , "[ERROR] glewInit failed\n" ) , exit(0);
-		glutDisplayFunc ( Stitching< Real >::Display );
-		glutReshapeFunc ( Stitching< Real >::Reshape );
-		glutMouseFunc   ( Stitching< Real >::MouseFunc );
-		glutMotionFunc  ( Stitching< Real >::MotionFunc );
-		glutKeyboardFunc( Stitching< Real >::KeyboardFunc );
-		glutIdleFunc    ( Stitching< Real >::Idle );
-		if( CameraConfig.set ) Stitching< Real >::visualization.ReadSceneConfigurationCallBack( &Stitching< Real >::visualization , CameraConfig.value );
-		Stitching< Real >::InitializeVisualization();
+		glutDisplayFunc ( Stitching< PreReal , Real >::Display );
+		glutReshapeFunc ( Stitching< PreReal , Real >::Reshape );
+		glutMouseFunc   ( Stitching< PreReal , Real >::MouseFunc );
+		glutMotionFunc  ( Stitching< PreReal , Real >::MotionFunc );
+		glutKeyboardFunc( Stitching< PreReal , Real >::KeyboardFunc );
+		glutIdleFunc    ( Stitching< PreReal , Real >::Idle );
+		if( CameraConfig.set ) Stitching< PreReal , Real >::visualization.ReadSceneConfigurationCallBack( &Stitching< PreReal , Real >::visualization , CameraConfig.value );
+		Stitching< PreReal , Real >::InitializeVisualization();
 		glutMainLoop();
 	}
-	else Stitching< Real >::ExportTextureCallBack( &Stitching< Real >::visualization , Output.value );
+	else
+	{
+		Stitching< PreReal , Real >::SolveSystem();
+		Stitching< PreReal , Real >::ExportTextureCallBack( &Stitching< PreReal , Real >::visualization , Output.value );
+	}
 
 	return 0;
 }
@@ -1114,10 +1084,11 @@ int main( int argc , char* argv[] )
 			printf( "|    't':                         toggle textures forward                    |\n" );
 			printf( "|    'T':                         toggle textures backward                   |\n" );
 		}
+		else printf( "|    [SPACE]:                     start solver                               |\n" );
 		printf( "|    'y':                         prescribe interpolation weight             |\n" );
 		printf( "+----------------------------------------------------------------------------+\n" );
 	}
-	if( Double.set ) _main< double >( argc , argv );
-	else             _main< float  >( argc , argv );
+	if( Double.set ) _main< double , double >( argc , argv );
+	else             _main< double , float  >( argc , argv );
 	return 0;
 }

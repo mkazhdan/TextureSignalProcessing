@@ -707,10 +707,7 @@ void CholmodSolver< channels >::_init(const SparseMatrixInterface< Real, MatrixR
 	}
 	_p[dim] = off;
 
-	clock_t begin;
-	if (0) begin = clock();
 	cholmod_L = cholmod_analyze(cholmod_M, &cholmod_C);
-	if (0) printf("Cholmod analyze time = %.4f \n", double(clock() - begin) / CLOCKS_PER_SEC);
 
 	cholmod_b = cholmod_allocate_dense(dim, channels, dim, cholmod_M->xtype, &cholmod_C);
 }
@@ -730,10 +727,7 @@ bool CholmodSolver< channels >::_update(const SparseMatrixInterface< Real, Matri
 
 	cholmod_C.print = 0;
 
-	clock_t begin;
-	if (0) begin = clock();
 	cholmod_factorize(cholmod_M, cholmod_L, &cholmod_C);
-	if (0) printf("Cholmod factorize time = %.4f \n", double(clock() - begin) / CLOCKS_PER_SEC);
 
 	if (cholmod_C.status == CHOLMOD_NOT_POSDEF)
 	{
@@ -771,10 +765,7 @@ void CholmodSolver< channels >::solve(ConstPointer(Real) b, Pointer(Real) x)
 #pragma omp parallel for
 	for (int i = 0; i<numEntries; i++) _b[i] = (double)b[i];
 
-	clock_t begin;
-	if (0) begin = clock();
 	cholmod_dense* cholmod_x = cholmod_solve(CHOLMOD_A, cholmod_L, cholmod_b, &cholmod_C);
-	if (0) printf("Cholmod solve time = %.4f \n", double(clock() - begin) / CLOCKS_PER_SEC);
 	double* _x = (double*)cholmod_x->x;
 
 #pragma omp parallel for

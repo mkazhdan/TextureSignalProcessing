@@ -645,8 +645,8 @@ struct PlyVFFace
 		vertices = NULL , nr_vertices = 0;
 		if( count ) vertices = (int*)malloc( sizeof(int)*count ) , nr_vertices = count;
 	}
-	int& operator[] ( int idx ){ return vertices[idx]; }
-	const int& operator[] ( int idx ) const { return vertices[idx]; }
+	int& operator[] ( int idx )       { return vertices[idx]; }
+	int  operator[] ( int idx ) const { return vertices[idx]; }
 	int size( void ) const { return nr_vertices; }
 
 	const static int ReadComponents=4;
@@ -724,8 +724,8 @@ struct PlyTexturedFace
 			uv_coordinates = (Real*)malloc( sizeof(Real)*2*count ) , nr_uv_coordinates = count*2;
 		}
 	}
-	int& operator[] ( int idx ){ return vertices[idx]; }
-	const int& operator[] ( int idx ) const { return vertices[idx]; }
+	int& operator[] ( int idx )       { return vertices[idx]; }
+	int  operator[] ( int idx ) const { return vertices[idx]; }
 #if 1
 	Point2D< Real >  texture( int idx ) const { return Point2D< Real >( uv_coordinates[2*idx] , uv_coordinates[2*idx+1] ); }
 	Point2D< Real >& texture( int idx )       { return *( (Point2D< Real >*)(uv_coordinates+2*idx) ); }
@@ -794,7 +794,7 @@ int PlyWrite
 	const std::vector< std::vector< int > >* polygons ,
 	PlyProperty* properties , int propertyNum,
 	int file_type ,
-	char** comments=NULL , const int& commentNum=0
+	char** comments=NULL , int commentNum=0
 	);
 
 template<class Vertex>
@@ -808,7 +808,7 @@ int PlyWritePoints( const char* fileName,
 				   const std::vector<Vertex>& vertices,
 				   PlyProperty* properties,int propertyNum,
 				   int file_type,
-				   char** comments=NULL,const int& commentNum=0);
+				   char** comments=NULL,int commentNum=0);
 
 template<class Vertex>
 int PlyReadPolygons( const char* fileName,
@@ -835,27 +835,27 @@ int PlyWritePolygons( const char* fileName,
 					 const std::vector<Vertex>& vertices,const std::vector<std::vector<int> >& polygons,
 					 PlyProperty* properties,int propertyNum,
 					 int file_type,
-					 char** comments=NULL,const int& commentNum=0);
+					 char** comments=NULL,int commentNum=0);
 template< class Vertex , class Polygon >
 int PlyWritePolygons( const char* fileName,
 					 const std::vector< Vertex >& vertices,const std::vector< Polygon >& polygons,
 					 PlyProperty*  vertexProperties , int  vertexPropertyNum ,
 					 PlyProperty* polygonProperties , int polygonPropertyNum ,
 					 int file_type,
-					 char** comments=NULL,const int& commentNum=0);
+					 char** comments=NULL,int commentNum=0);
 template< class Vertex >
 int PlyWriteTriangles( const char* fileName ,
 					   const std::vector<Vertex>& vertices , const std::vector< TriangleIndex >& triangles ,
 					   PlyProperty* properties , int propertyNum ,
 					   int file_type ,
-					   char** comments=NULL , const int& commentNum=0);
+					   char** comments=NULL , int commentNum=0);
 
 template< class Vertex >
 int PlyWriteColorTriangles( const char* fileName ,
 					   const std::vector< Vertex >& vertices , const std::vector< std::pair< TriangleIndex , Point3D< float > > >& triangles ,
 					   PlyProperty* properties , int propertyNum ,
 					   int file_type ,
-					   char** comments=NULL , const int& commentNum=0);
+					   char** comments=NULL , int commentNum=0);
 
 template< class Vertex > int  MReadTriangles( const char* fileName ,       std::vector< Vertex >& vertices ,       std::vector< TriangleIndex >& triangles );
 template< class Vertex > int MWriteTriangles( const char* fileName , const std::vector< Vertex >& vertices , const std::vector< TriangleIndex >& triangles );

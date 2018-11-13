@@ -30,11 +30,11 @@ DAMAGE.
 
 #include <Misha/CmdLineParser.h> 
 #include <Misha/Miscellany.h>
+#include <Misha/FEM.h>
+#include <Src/Hierarchy.h>
 #include <Src/SimpleMesh.h>
 #include <Src/Basis.h>
-#include <Misha/FEM.h>
 #include <Src/Solver.h>
-#include <Src/Hierarchy.h>
 #include <Src/QuadratureIntergration.inl>
 #include <Src/MassAndStiffness.h>
 #include <Src/Padding.h>
@@ -136,18 +136,18 @@ void ShowUsage( const char* ex )
 	printf( "\t[--%s]\n" , NoHelp.name );
 }
 
-template< class Real >
+template< typename PreReal , typename Real >
 class GrayScottReactionDiffusion
 {
 public:
-	static std::vector< FEM::SamplePoint< double > > randomSamples;
-	static TexturedMesh mesh;
+	static std::vector< FEM::SamplePoint< PreReal > > randomSamples;
+	static TexturedMesh< PreReal > mesh;
 	static int textureWidth;
 	static int textureHeight;
-	static double diffusionRates[2];
-	static double kill;
-	static double feed;
-	static double speed;
+	static Real diffusionRates[2];
+	static Real kill;
+	static Real feed;
+	static Real speed;
 	static int levels;
 	static int steps;
 	static char stepsString[];
@@ -157,44 +157,37 @@ public:
 
 	static std::vector< Point3D< float > > textureNodePositions;
 
-	static HierarchicalSystem hierarchy;
+	static HierarchicalSystem< PreReal , Real > hierarchy;
 
 	static std::vector< BilinearElementIndex > bilinearElementIndices;
 
-	static std::vector< TextureNodeInfo > textureNodes;
+	static std::vector< TextureNodeInfo< PreReal > > textureNodes;
 	static Image< int > nodeIndex;
 
-	static SparseMatrix< double , int > mass;
-	static SparseMatrix< double , int > stiffness;
-
-	static SparseMatrix< double , int > systemMatrices[2];
+	static SparseMatrix< Real , int > mass;
+	static SparseMatrix< Real , int > stiffness;
+	static SparseMatrix< Real , int > systemMatrices[2];
 
 	static int seedTexel;
 
-	static std::vector< AtlasChart > atlasCharts;
-	static std::vector< std::vector< SquareMatrix< double , 2 > > > parameterMetric;
+	static std::vector< AtlasChart< PreReal > > atlasCharts;
+	static std::vector< std::vector< SquareMatrix< PreReal , 2 > > > parameterMetric;
 
 	static std::vector< SystemCoefficients< Real > > multigridCoefficients[2];
 	static std::vector< MultigridLevelVariables   < Real > > multigridVariables[2];
 
 #if defined( USE_CHOLMOD )
-	typedef CholmodCholeskySolver< Real , 1 > BoundarySolverType;
-	typedef CholmodCholeskySolver< Real , 1 > CoarseSolverType;
-	typedef CholmodCholeskySolver< Real , 1 > DirectSolverType;
+	typedef CholmodCholeskySolver< Real , 1 > DirectSolver;
 #elif defined( USE_EIGEN_SIMPLICIAL )
-	typedef EigenCholeskySolver< Real , 1 > BoundarySolverType;
-	typedef EigenCholeskySolver< Real , 1 > CoarseSolverType;
-	typedef EigenCholeskySolver< Real , 1 > DirectSolverType;
+	typedef EigenCholeskySolver< Real , 1 > DirectSolver;
 #elif defined( USE_EIGEN_PARDISO )
-	typedef EigenPardisoSolver< Real , 1 > BoundarySolverType;
-	typedef EigenPardisoSolver< Real , 1 > CoarseSolverType;
-	typedef EigenPardisoSolver< Real , 1 > DirectSolverType;
+	typedef EigenPardisoSolver< Real , 1 > DirectSolver;
 #else
 #error "[ERROR] No solver defined!"
 #endif
-	
-	static VCycleSolvers< BoundarySolverType , CoarseSolverType > vCycleSolvers[2];
-	static DirectSolverType fineSolvers[2];
+
+	static VCycleSolvers< DirectSolver > vCycleSolvers[2];
+	static DirectSolver fineSolvers[2];
 
 	static std::vector< MultigridLevelIndices< Real > > multigridIndices;
 
@@ -206,14 +199,13 @@ public:
 	static std::vector< Point2D< Real > > fineBoundaryRHS;
 
 	//Samples
-	static std::vector< QuadraticElementScalarSample< Real > > quadraticElementScalarSamples;
-	static std::vector< std::vector< BilinearElementScalarSample< Real > > > bilinearElementScalarSamples;
+	static ScalarElementSamples< Real > scalarSamples;
 	static std::vector< InteriorCellLine > interiorCellLines;
 	static std::vector< std::pair< int , int > > interiorCellLineIndex;
 
 	//Linear Operators
-	static SystemCoefficients< double > massCoefficients;
-	static SystemCoefficients< double > stiffnessCoefficients;
+	static SystemCoefficients< Real > massCoefficients;
+	static SystemCoefficients< Real > stiffnessCoefficients;
 
 	static unsigned char * outputBuffer;
 
@@ -233,11 +225,11 @@ public:
 	static void IncrementUpdateCallBack( Visualization* v , const char* prompt );
 	static void ExportTextureCallBack( Visualization* v , const char* prompt );
 	static int Init( void );
-	static void InitializeVisualization( const int width , const int height );
+	static void InitializeVisualization( int width , int height );
 	static int SetRightHandSide( bool verbose=false );
 	static int UpdateExactSolution( bool verbose=false );
 	static int UpdateApproximateSolution( bool verbose=false , bool detailVerbose=false );
-	static int InitializeSystem( const int width , const int height );
+	static int InitializeSystem( int width , int height );
 	static int InitializeConcentrations( void );
 
 	static void Display( void ){ visualization.Display(); }
@@ -248,73 +240,72 @@ public:
 	static void Idle( void );
 };
 
-template< class Real > std::vector< FEM::SamplePoint< double > >					GrayScottReactionDiffusion< Real >::randomSamples;
-template< class Real > TexturedMesh													GrayScottReactionDiffusion< Real >::mesh;
-template< class Real > int															GrayScottReactionDiffusion< Real >::textureWidth;
-template< class Real > int															GrayScottReactionDiffusion< Real >::textureHeight;
-template< class Real > TexturedMeshVisualization									GrayScottReactionDiffusion< Real >::visualization;
-template< class Real > int															GrayScottReactionDiffusion< Real >::mouseX = -1;
-template< class Real > int															GrayScottReactionDiffusion< Real >::mouseY = -1;
-template< class Real > bool															GrayScottReactionDiffusion< Real >::mouseSelectionActive = false;
-template< class Real > Padding														GrayScottReactionDiffusion< Real >::padding;
+template< typename PreReal , typename Real > std::vector< FEM::SamplePoint< PreReal > >								GrayScottReactionDiffusion< PreReal , Real >::randomSamples;
+template< typename PreReal , typename Real > TexturedMesh< PreReal >												GrayScottReactionDiffusion< PreReal , Real >::mesh;
+template< typename PreReal , typename Real > int																	GrayScottReactionDiffusion< PreReal , Real >::textureWidth;
+template< typename PreReal , typename Real > int																	GrayScottReactionDiffusion< PreReal , Real >::textureHeight;
+template< typename PreReal , typename Real > TexturedMeshVisualization												GrayScottReactionDiffusion< PreReal , Real >::visualization;
+template< typename PreReal , typename Real > int																	GrayScottReactionDiffusion< PreReal , Real >::mouseX = -1;
+template< typename PreReal , typename Real > int																	GrayScottReactionDiffusion< PreReal , Real >::mouseY = -1;
+template< typename PreReal , typename Real > bool																	GrayScottReactionDiffusion< PreReal , Real >::mouseSelectionActive = false;
+template< typename PreReal , typename Real > Padding																GrayScottReactionDiffusion< PreReal , Real >::padding;
 
-template< class Real > std::vector< AtlasChart >									GrayScottReactionDiffusion< Real> ::atlasCharts;
-template< class Real > std::vector< std::vector< SquareMatrix< double , 2 > > >		GrayScottReactionDiffusion< Real >::parameterMetric;
-template< class Real > SparseMatrix< double , int >									GrayScottReactionDiffusion< Real >::mass;
-template< class Real > SparseMatrix< double , int >									GrayScottReactionDiffusion< Real >::stiffness;
+template< typename PreReal , typename Real > std::vector< AtlasChart< PreReal > >									GrayScottReactionDiffusion< PreReal , Real> ::atlasCharts;
+template< typename PreReal , typename Real > std::vector< std::vector< SquareMatrix< PreReal , 2 > > >				GrayScottReactionDiffusion< PreReal , Real >::parameterMetric;
 
-template< class Real > SparseMatrix< double , int >									GrayScottReactionDiffusion< Real >::systemMatrices[2];
+template< typename PreReal , typename Real > SparseMatrix< Real , int >												GrayScottReactionDiffusion< PreReal , Real >::mass;
+template< typename PreReal , typename Real > SparseMatrix< Real , int >												GrayScottReactionDiffusion< PreReal , Real >::stiffness;
+template< typename PreReal , typename Real > SparseMatrix< Real , int >												GrayScottReactionDiffusion< PreReal , Real >::systemMatrices[2];
 
-template< class Real > double														GrayScottReactionDiffusion< Real >::diffusionRates[2];
-template< class Real > double														GrayScottReactionDiffusion< Real >::speed;
-template< class Real > double														GrayScottReactionDiffusion< Real >::kill;
-template< class Real > double														GrayScottReactionDiffusion< Real >::feed;
+template< typename PreReal , typename Real > Real																	GrayScottReactionDiffusion< PreReal , Real >::diffusionRates[2];
+template< typename PreReal , typename Real > Real																	GrayScottReactionDiffusion< PreReal , Real >::speed;
+template< typename PreReal , typename Real > Real																	GrayScottReactionDiffusion< PreReal , Real >::kill;
+template< typename PreReal , typename Real > Real																	GrayScottReactionDiffusion< PreReal , Real >::feed;
 
+template< typename PreReal , typename Real > std::vector< TextureNodeInfo< PreReal > >								GrayScottReactionDiffusion< PreReal , Real >::textureNodes;
+template< typename PreReal , typename Real > Image< int >															GrayScottReactionDiffusion< PreReal , Real >::nodeIndex;
+template< typename PreReal , typename Real > std::vector< BilinearElementIndex >									GrayScottReactionDiffusion< PreReal , Real >::bilinearElementIndices;
 
-template< class Real > std::vector< TextureNodeInfo >								GrayScottReactionDiffusion< Real >::textureNodes;
-template< class Real > Image< int >													GrayScottReactionDiffusion< Real >::nodeIndex;
-template< class Real > std::vector< BilinearElementIndex >							GrayScottReactionDiffusion< Real >::bilinearElementIndices;
+template< typename PreReal , typename Real > int																	GrayScottReactionDiffusion< PreReal , Real >::steps;
+template< typename PreReal , typename Real > char																	GrayScottReactionDiffusion< PreReal , Real >::stepsString[1024];
+template< typename PreReal , typename Real > int																	GrayScottReactionDiffusion< PreReal , Real >::levels;
+template< typename PreReal , typename Real > HierarchicalSystem< PreReal , Real >									GrayScottReactionDiffusion< PreReal , Real >::hierarchy;
 
-template< class Real > int															GrayScottReactionDiffusion< Real >::steps;
-template< class Real > char															GrayScottReactionDiffusion< Real >::stepsString[1024];
-template< class Real > int															GrayScottReactionDiffusion< Real >::levels;
-template< class Real > HierarchicalSystem											GrayScottReactionDiffusion< Real >::hierarchy;
+template< typename PreReal , typename Real > unsigned char *														GrayScottReactionDiffusion< PreReal , Real >::outputBuffer;
+template< typename PreReal , typename Real > std::vector< MultigridLevelIndices< Real > >							GrayScottReactionDiffusion< PreReal , Real >::multigridIndices;
 
-template< class Real > unsigned char *												GrayScottReactionDiffusion< Real >::outputBuffer;
-template< class Real > std::vector< MultigridLevelIndices< Real > >					GrayScottReactionDiffusion< Real >::multigridIndices;
+template< typename PreReal , typename Real > std::vector< SystemCoefficients< Real > >								GrayScottReactionDiffusion< PreReal , Real >::multigridCoefficients[2];
+template< typename PreReal , typename Real > std::vector< MultigridLevelVariables< Real > >							GrayScottReactionDiffusion< PreReal , Real >::multigridVariables[2];
+template< typename PreReal , typename Real > VCycleSolvers< typename GrayScottReactionDiffusion< PreReal , Real >::DirectSolver >	GrayScottReactionDiffusion< PreReal , Real >::vCycleSolvers[2];
+template< typename PreReal , typename Real > typename GrayScottReactionDiffusion< PreReal , Real >::DirectSolver	GrayScottReactionDiffusion< PreReal , Real >::fineSolvers[2];
 
-template< class Real > std::vector< SystemCoefficients< Real > >					GrayScottReactionDiffusion< Real >::multigridCoefficients[2];
-template< class Real > std::vector< MultigridLevelVariables< Real > >				GrayScottReactionDiffusion< Real >::multigridVariables[2];
-template< class Real > VCycleSolvers< typename GrayScottReactionDiffusion< Real >::BoundarySolverType , typename GrayScottReactionDiffusion< Real >::CoarseSolverType >		GrayScottReactionDiffusion< Real >::vCycleSolvers[2];
-
-template< class Real > typename GrayScottReactionDiffusion< Real >::DirectSolverType		GrayScottReactionDiffusion< Real >::fineSolvers[2];
 
 
 //Samples
-template< class Real > std::vector< QuadraticElementScalarSample< Real > >			GrayScottReactionDiffusion< Real >::quadraticElementScalarSamples;
-template< class Real > std::vector< std::vector< BilinearElementScalarSample< Real > > >	GrayScottReactionDiffusion< Real >::bilinearElementScalarSamples;
-template< class Real > std::vector< InteriorCellLine >								GrayScottReactionDiffusion< Real >::interiorCellLines;
-template< class Real > std::vector< std::pair< int , int > >						GrayScottReactionDiffusion< Real >::interiorCellLineIndex;
+template< typename PreReal , typename Real > ScalarElementSamples< Real >											GrayScottReactionDiffusion< PreReal , Real >::scalarSamples;
+template< typename PreReal , typename Real > std::vector< InteriorCellLine >										GrayScottReactionDiffusion< PreReal , Real >::interiorCellLines;
+template< typename PreReal , typename Real > std::vector< std::pair< int , int > >									GrayScottReactionDiffusion< PreReal , Real >::interiorCellLineIndex;
 
-template< class Real > int															GrayScottReactionDiffusion< Real >::seedTexel = -1;
-template< class Real > std::vector< Point3D< float > >								GrayScottReactionDiffusion< Real >::textureNodePositions;
+template< typename PreReal , typename Real > int																	GrayScottReactionDiffusion< PreReal , Real >::seedTexel = -1;
+template< typename PreReal , typename Real > std::vector< Point3D< float > >										GrayScottReactionDiffusion< PreReal , Real >::textureNodePositions;
 
-template< class Real > SparseMatrix< Real , int >									GrayScottReactionDiffusion< Real >::coarseBoundaryFineBoundaryProlongation;
-template< class Real > SparseMatrix< Real , int >									GrayScottReactionDiffusion< Real >::fineBoundaryCoarseBoundaryRestriction;
+template< typename PreReal , typename Real > SparseMatrix< Real , int >												GrayScottReactionDiffusion< PreReal , Real >::coarseBoundaryFineBoundaryProlongation;
+template< typename PreReal , typename Real > SparseMatrix< Real , int >												GrayScottReactionDiffusion< PreReal , Real >::fineBoundaryCoarseBoundaryRestriction;
 
-template< class Real > std::vector< Point2D< Real > >								GrayScottReactionDiffusion< Real >::coarseBoundaryValues;
-template< class Real > std::vector< Point2D< Real > >								GrayScottReactionDiffusion< Real >::coarseBoundaryRHS;
-template< class Real > std::vector< Point2D< Real > >								GrayScottReactionDiffusion< Real >::fineBoundaryValues;
-template< class Real > std::vector< Point2D< Real > >								GrayScottReactionDiffusion< Real >::fineBoundaryRHS;
+template< typename PreReal , typename Real > std::vector< Point2D< Real > >											GrayScottReactionDiffusion< PreReal , Real >::coarseBoundaryValues;
+template< typename PreReal , typename Real > std::vector< Point2D< Real > >											GrayScottReactionDiffusion< PreReal , Real >::coarseBoundaryRHS;
+template< typename PreReal , typename Real > std::vector< Point2D< Real > >											GrayScottReactionDiffusion< PreReal , Real >::fineBoundaryValues;
+template< typename PreReal , typename Real > std::vector< Point2D< Real > >											GrayScottReactionDiffusion< PreReal , Real >::fineBoundaryRHS;
 
-template< class Real > SystemCoefficients< double >									GrayScottReactionDiffusion< Real >::massCoefficients;
-template< class Real > SystemCoefficients< double >									GrayScottReactionDiffusion< Real >::stiffnessCoefficients;
+template< typename PreReal , typename Real > SystemCoefficients< Real >												GrayScottReactionDiffusion< PreReal , Real >::massCoefficients;
+template< typename PreReal , typename Real > SystemCoefficients< Real >												GrayScottReactionDiffusion< PreReal , Real >::stiffnessCoefficients;
 
-template< class Real > int															GrayScottReactionDiffusion< Real >::whichConcentration = 1;
-template< class Real > int															GrayScottReactionDiffusion< Real >::updateCount = 0;
+template< typename PreReal , typename Real > int																	GrayScottReactionDiffusion< PreReal , Real >::whichConcentration = 1;
+template< typename PreReal , typename Real > int																	GrayScottReactionDiffusion< PreReal , Real >::updateCount = 0;
 
-template< class Real >
-int GrayScottReactionDiffusion< Real >::SetRightHandSide( bool verbose )
+
+template< typename PreReal , typename Real >
+int GrayScottReactionDiffusion< PreReal , Real >::SetRightHandSide( bool verbose )
 {
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
 	// ( D + d * diff1 * S ) a[t+d] = D( a[t] + d * ( - a[t] * b[t] * b[t] + feed * ( 1 - a[t] ) ) )    //
@@ -343,7 +334,7 @@ int GrayScottReactionDiffusion< Real >::SetRightHandSide( bool verbose )
 	};
 	memset( &ab_rhs[0] , 0 , ab_rhs.size() * sizeof( Point2D< Real > ) );
 	memset( &fineBoundaryRHS[0] , 0 , fineBoundaryRHS.size() * sizeof( Point2D< Real > ) );
-	if( !Integrate< Real >( interiorCellLines , bilinearElementScalarSamples , quadraticElementScalarSamples , ab_x , fineBoundaryValues , ABFunction , ab_rhs , fineBoundaryRHS ) ) fprintf( stderr , "[ERROR] Unable to integrate concentrations!\n" );
+	if( !Integrate< Real >( interiorCellLines , scalarSamples , ab_x , fineBoundaryValues , ABFunction , ab_rhs , fineBoundaryRHS ) ) fprintf( stderr , "[ERROR] Unable to integrate concentrations!\n" );
 	fineBoundaryCoarseBoundaryRestriction.Multiply( &fineBoundaryRHS[0] , &coarseBoundaryRHS[0] );
 	for( int ab=0 ; ab<2 ; ab++ )
 	{
@@ -355,57 +346,58 @@ int GrayScottReactionDiffusion< Real >::SetRightHandSide( bool verbose )
 	return 1;
 }
 
-template< class Real >
-int GrayScottReactionDiffusion< Real >::UpdateExactSolution( bool verbose )
+template< typename PreReal , typename Real >
+int GrayScottReactionDiffusion< PreReal , Real >::UpdateExactSolution( bool verbose )
 {
 	// (1) Compute the right-hand-sides
 	{
-		clock_t begin = clock();
+		Miscellany::Timer timer;
 		SetRightHandSide( verbose );
-		if( verbose ) printf( "Integrating normalized vector field %.4f\n" , double(clock() - begin) / CLOCKS_PER_SEC );
+		if( verbose ) printf( "Integrating normalized vector field %.4f\n" , timer.elapsed() );
 	}
 
 	// (2) Solve the linear systems
 	{
-		clock_t begin = clock();
+		Miscellany::Timer timer;
 		for( int ab=0 ; ab<2 ; ab++ )
 		{
 			solve( fineSolvers[ab] , multigridVariables[ab][0].x , multigridVariables[ab][0].rhs );
 			for( int i=0 ; i<multigridVariables[ab][0].x.size() ; i++ ) multigridVariables[ab][0].x[i] = std::max< Real >( multigridVariables[ab][0].x[i] , 0 );
 		}
-		if( verbose ) printf( "Performed direct solve %.4f\n" , double(clock() - begin) / CLOCKS_PER_SEC );
+		if( verbose ) printf( "Performed direct solve %.4f\n" , timer.elapsed() );
 	}
 	return 1;
 }
-template< class Real >
-int GrayScottReactionDiffusion< Real >::UpdateApproximateSolution( bool verbose , bool detailVerbose )
+
+template< typename PreReal , typename Real >
+int GrayScottReactionDiffusion< PreReal , Real >::UpdateApproximateSolution( bool verbose , bool detailVerbose )
 {
 	double rhsTime , vCycleTime;
 	// Compute the right-hand-sides
 	{
-		clock_t begin = clock();
+		Miscellany::Timer timer;
 		SetRightHandSide( verbose );
-		rhsTime = double(clock() - begin) / CLOCKS_PER_SEC;
+		rhsTime = timer.elapsed();
 	}
 
 	// Solve the linear systems
 	{
-		clock_t begin = clock();
+		Miscellany::Timer timer;
 		for( int ab=0 ; ab<2 ; ab++ )
 		{
 			VCycle( multigridVariables[ab] , multigridCoefficients[ab] , multigridIndices , vCycleSolvers[ab] , detailVerbose , detailVerbose );
 #pragma omp parallel for
 			for( int i=0 ; i<multigridVariables[ab][0].x.size() ; i++ ) multigridVariables[ab][0].x[i] = std::max< Real >( multigridVariables[ab][0].x[i] , 0 );
 		}
-		vCycleTime = double(clock() - begin) / CLOCKS_PER_SEC;
+		vCycleTime = timer.elapsed();
 	}
 	if( verbose ) printf( "Integrated constraints / performed v-cycle: %.3f / %.3f(s)\n" , rhsTime , vCycleTime );
 
 	return 1;
 }
 
-template< class Real >
-void GrayScottReactionDiffusion< Real >::SetOutputBuffer( const std::vector< Real > & solution )
+template< typename PreReal , typename Real >
+void GrayScottReactionDiffusion< PreReal , Real >::SetOutputBuffer( const std::vector< Real > & solution )
 {
 #pragma omp parallel for
 	for( int i=0 ; i<textureNodes.size() ; i++ )
@@ -422,8 +414,9 @@ void GrayScottReactionDiffusion< Real >::SetOutputBuffer( const std::vector< Rea
 		outputBuffer[offset] = color;
 	}
 }
-template< class Real >
-void GrayScottReactionDiffusion< Real >::UpdateOutputBuffer( const std::vector< Real > & solution )
+
+template< typename PreReal , typename Real >
+void GrayScottReactionDiffusion< PreReal , Real >::UpdateOutputBuffer( const std::vector< Real > & solution )
 {
 	SetOutputBuffer( solution );
 	glBindTexture( GL_TEXTURE_2D , visualization.textureBuffer );
@@ -433,8 +426,8 @@ void GrayScottReactionDiffusion< Real >::UpdateOutputBuffer( const std::vector< 
 	glutPostRedisplay();
 }
 
-template<class Real>
-void GrayScottReactionDiffusion< Real >::Idle( void )
+template< typename PreReal , typename Real >
+void GrayScottReactionDiffusion< PreReal , Real >::Idle( void )
 {
 	if( updateCount && !visualization.promptCallBack )
 	{
@@ -448,8 +441,8 @@ void GrayScottReactionDiffusion< Real >::Idle( void )
 	UpdateOutputBuffer( multigridVariables[whichConcentration][0].x );
 }
 
-template< class Real >
-void GrayScottReactionDiffusion< Real >::MouseFunc( int button , int state , int x , int y )
+template< typename PreReal , typename Real >
+void GrayScottReactionDiffusion< PreReal , Real >::MouseFunc( int button , int state , int x , int y )
 {
 	visualization.newX = x , visualization.newY = y;
 	visualization.rotating = visualization.scaling = visualization.panning = false;
@@ -467,7 +460,7 @@ void GrayScottReactionDiffusion< Real >::MouseFunc( int button , int state , int
 				float minDistance = FLT_MAX;
 				for( int i=0 ; i<textureNodePositions.size() ; i++ )
 				{
-					float squaredDistance = Point3D< float >::SquareNorm( textureNodePositions[i] - selectedPoint );
+					float squaredDistance = Point3D< float >::SquareNorm( textureNodePositions[i]-selectedPoint );
 					if( squaredDistance<minDistance ) minDistance = squaredDistance , seedTexel = i;
 				}
 			}
@@ -490,8 +483,8 @@ void GrayScottReactionDiffusion< Real >::MouseFunc( int button , int state , int
 	}
 }
 
-template< class Real >
-void GrayScottReactionDiffusion< Real >::MotionFunc( int x , int y )
+template< typename PreReal , typename Real >
+void GrayScottReactionDiffusion< PreReal , Real >::MotionFunc( int x , int y )
 {
 	if( mouseSelectionActive )
 	{
@@ -508,7 +501,7 @@ void GrayScottReactionDiffusion< Real >::MotionFunc( int x , int y )
 			if( visualization.panning ) visualization.xForm.offset[0] -= ( visualization.newX - visualization.oldX ) / visualization.imageToScreenScale() , visualization.xForm.offset[1] += ( visualization.newY - visualization.oldY ) / visualization.imageToScreenScale();
 			else
 			{
-				float dz = float( pow( 1.1 , double( visualization.newY - visualization.oldY ) / 8 ) );
+				float dz = (float)pow( 1.1 , (float)( visualization.newY - visualization.oldY ) / 8.f );
 				visualization.xForm.zoom *= dz;
 			}
 		}
@@ -531,18 +524,18 @@ void GrayScottReactionDiffusion< Real >::MotionFunc( int x , int y )
 	}
 }
 
-template< class Real >
-void GrayScottReactionDiffusion< Real >::ExportTextureCallBack( Visualization* v , const char* prompt )
+template< typename PreReal , typename Real >
+void GrayScottReactionDiffusion< PreReal , Real >::ExportTextureCallBack( Visualization* v , const char* prompt )
 {
-	Image< Point3D< float > > outputImage;
+	Image< Point3D< Real > > outputImage;
 	outputImage.resize( textureWidth , textureHeight );
-	for( int i=0 ; i<outputImage.size() ; i++ ) outputImage[i] = Point3D< float >( outputBuffer[i] , outputBuffer[i] , outputBuffer[i] ) / 255.f;
+	for( int i=0 ; i<outputImage.size() ; i++ ) outputImage[i] = Point3D< Real >( outputBuffer[i] , outputBuffer[i] , outputBuffer[i] ) / (Real)255.;
 	if( padding.nonTrivial ) UnpadImage( padding , outputImage );
 	outputImage.write( prompt );
 }
 
-template< class Real >
-int GrayScottReactionDiffusion< Real >::InitializeConcentrations( void )
+template< typename PreReal , typename Real >
+int GrayScottReactionDiffusion< PreReal , Real >::InitializeConcentrations( void )
 {
 	steps = 0;
 	for( int i=0 ; i<multigridVariables[0][0].x.size() ; i++ ) multigridVariables[0][0].x[i] = 1;
@@ -567,15 +560,14 @@ int GrayScottReactionDiffusion< Real >::InitializeConcentrations( void )
 	return 1;
 }
 
-template< class Real >
-int GrayScottReactionDiffusion< Real >::InitializeSystem( const int width , const int height )
+template< typename PreReal , typename Real >
+int GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width , int height )
 {
-	clock_t t_begin;
-
-	t_begin = clock();
+	Miscellany::Timer timer;
 	MultigridBlockInfo multigridBlockInfo( MultigridBlockWidth.value , MultigridBlockHeight.value , MultigridPaddedWidth.value , MultigridPaddedHeight.value , 0 );
+
 	if( !InitializeHierarchy( mesh , width , height , levels , textureNodes , bilinearElementIndices , hierarchy , atlasCharts , multigridBlockInfo , true , DetailVerbose.set ) ){ fprintf( stderr , "[ERROR] Failed intialization!\n" ) ; return 0; }
-	if( Verbose.set ) printf( "\tInitialized hierarchy: %.2f(s)\n" , double(clock() - t_begin) / CLOCKS_PER_SEC );
+	if( Verbose.set ) printf( "\tInitialized hierarchy: %.2f(s)\n" , timer.elapsed() );
 
 	//Initialize node index
 	nodeIndex.resize( width , height );
@@ -586,17 +578,17 @@ int GrayScottReactionDiffusion< Real >::InitializeSystem( const int width , cons
 		nodeIndex( textureNodes[i].ci , textureNodes[i].cj ) = i;
 	}
 
-	BoundaryProlongationData boundaryProlongation;
+	BoundaryProlongationData< Real > boundaryProlongation;
 	if( !InitializeBoundaryProlongationData( hierarchy.gridAtlases[0] , boundaryProlongation ) ) { fprintf( stderr , "[ERROR] Failed boundary prolongation!\n" ) ; return 0; }
 
-	std::vector< Point3D< double > > __inputSignal;
-	std::vector< double > __texelToCellCoeffs;
-	SparseMatrix< double , int > __boundaryCellBasedStiffnessRHSMatrix[3];
+	std::vector< Point3D< Real > > __inputSignal;
+	std::vector< Real > __texelToCellCoeffs;
+	SparseMatrix< Real , int > __boundaryCellBasedStiffnessRHSMatrix[3];
 
 #ifdef VF_METRIC
 	if( VectorField.set )
 	{
-		std::vector< Point2D< double > > vectorField;
+		std::vector< Point2D< PreReal > > vectorField;
 		// Read in the vector field
 		if( IntrinsicVectorField.set )
 		{
@@ -605,31 +597,31 @@ int GrayScottReactionDiffusion< Real >::InitializeSystem( const int width , cons
 		}
 		else
 		{
-			std::vector< Point3D< double > > _vectorField;
+			std::vector< Point3D< PreReal > > _vectorField;
 			if( !ReadVector( _vectorField , VectorField.value ) ){ fprintf( stderr , "[ERROR] Unable to read vector field: %s\n" , VectorField.value ) ; return 0; }
 			if( _vectorField.size()!=mesh.triangles.size() ){ fprintf( stderr , "[ERROR] Triangle and vector counts don't match: %d != %d\n" , (int)mesh.triangles.size() , (int)_vectorField.size() ) ; return 0; }
 			vectorField.resize( _vectorField.size() );
 #pragma omp parallel for
 			for( int i=0 ; i<mesh.triangles.size() ; i++ )
 			{
-				Point3D< double > v[] = { mesh.vertices[ mesh.triangles[i][0] ] , mesh.vertices[ mesh.triangles[i][1] ] , mesh.vertices[ mesh.triangles[i][2] ] };
-				Point3D< double > d[] = { v[1]-v[0] , v[2]-v[0] };
-				SquareMatrix< double , 2 > Dot;
-				for( int j=0 ; j<2 ; j++ ) for( int k=0 ; k<2 ; k++ ) Dot(j,k) = Point3D< double >::Dot( d[j] , d[k] );
-				Point2D< double > dot( Point3D< double >::Dot( d[0] , _vectorField[i] ) , Point3D< double >::Dot( d[1] , _vectorField[i] ) );
+				Point3D< PreReal > v[] = { mesh.vertices[ mesh.triangles[i][0] ] , mesh.vertices[ mesh.triangles[i][1] ] , mesh.vertices[ mesh.triangles[i][2] ] };
+				Point3D< PreReal > d[] = { v[1]-v[0] , v[2]-v[0] };
+				SquareMatrix< PreReal , 2 > Dot;
+				for( int j=0 ; j<2 ; j++ ) for( int k=0 ; k<2 ; k++ ) Dot(j,k) = Point3D< PreReal >::Dot( d[j] , d[k] );
+				Point2D< PreReal > dot( Point3D< PreReal >::Dot( d[0] , _vectorField[i] ) , Point3D< PreReal >::Dot( d[1] , _vectorField[i] ) );
 				vectorField[i] = Dot.inverse() * dot;
 			}
 		}
 		// Normalize the vector-field to have unit-norm
 		{
-			std::vector< SquareMatrix< double , 2 > > embeddingMetric;
+			std::vector< SquareMatrix< PreReal , 2 > > embeddingMetric;
 			InitializeEmbeddingMetric( mesh , true , embeddingMetric );
 			{
-				double norm = 0 , area = 0;
+				PreReal norm = 0 , area = 0;
 				for( int t=0 ; t<embeddingMetric.size() ; t++ )
 				{
-					double a = sqrt( embeddingMetric[t].determinant() ) / 2.;
-					norm += Point2D< double >::Dot( vectorField[t] , embeddingMetric[t]*vectorField[t] ) * a;
+					PreReal a = (PreReal)sqrt( embeddingMetric[t].determinant() ) / 2.;
+					norm += Point2D< PreReal >::Dot( vectorField[t] , embeddingMetric[t]*vectorField[t] ) * a;
 					area += a;
 				}
 				norm = sqrt( norm / area );
@@ -637,13 +629,13 @@ int GrayScottReactionDiffusion< Real >::InitializeSystem( const int width , cons
 			}
 		}
 		// Initialize the metric from the vector field
-		auto LengthToAnisotropy = [&]( double len )
+		auto LengthToAnisotropy = [&]( PreReal len )
 		{
 			// g <- g + gOrtho * anisotropy 
 			// 0 -> 0
 			// 1 -> 1e5
 			// infty -> infty
-			return pow( len , AnisotropyExponent.value ) * AnisotropyScale.value;
+			return (PreReal)( pow( len , AnisotropyExponent.value ) * AnisotropyScale.value );
 		};
 		if( !InitializeAnisotropicMetric( mesh , atlasCharts , vectorField , LengthToAnisotropy , parameterMetric ) ){ fprintf( stderr , "[ERROR] Unable to initialize vector field metric\n" ) ; return 0; } 
 	}
@@ -659,7 +651,7 @@ int GrayScottReactionDiffusion< Real >::InitializeSystem( const int width , cons
 	// Scale the metric so that the area is equal to the resolution
 	for( int i=0 ; i<parameterMetric.size() ; i++ ) for( int j=0 ; j<parameterMetric[i].size() ; j++ ) parameterMetric[i][j] *= textureNodes.size() / 2;
 
-	t_begin = clock();
+	timer.reset();
 	{
 		int ret = 0;
 		switch( MatrixQuadrature.value )
@@ -674,16 +666,17 @@ int GrayScottReactionDiffusion< Real >::InitializeSystem( const int width , cons
 		}
 		if( !ret ){ fprintf( stderr , "[ERROR] Failed intialization!\n" ) ; return 0; }
 	}
-	if( Verbose.set ) printf( "\tInitialized mass and stiffness: %.2f(s)\n" , double(clock() - t_begin) / CLOCKS_PER_SEC );
+
+	if( Verbose.set ) printf( "\tInitialized mass and stiffness: %.2f(s)\n" , timer.elapsed() );
 
 	if( UseDirectSolver.set )
 	{
-		clock_t t_begin = clock();
+		Miscellany::Timer timer;
 		FullMatrixConstruction( hierarchy.gridAtlases[0] , massCoefficients , mass );
 		FullMatrixConstruction( hierarchy.gridAtlases[0] , stiffnessCoefficients , stiffness );
 		systemMatrices[0] = mass + stiffness * diffusionRates[0] * speed;
 		systemMatrices[1] = mass + stiffness * diffusionRates[1] * speed;
-		if( Verbose.set ) printf( "\tAssembled matrices: %.2f(s)\n" , double(clock() - t_begin) / CLOCKS_PER_SEC );
+		if( Verbose.set ) printf( "\tAssembled matrices: %.2f(s)\n" , timer.elapsed() );
 	}
 
 	//////////////////////////////////// Initialize multigrid indices
@@ -691,7 +684,7 @@ int GrayScottReactionDiffusion< Real >::InitializeSystem( const int width , cons
 	multigridIndices.resize( levels );
 	for( int i=0 ; i<levels ; i++ )
 	{
-		const GridAtlas & gridAtlas = hierarchy.gridAtlases[i];
+		const GridAtlas< PreReal , Real > &gridAtlas = hierarchy.gridAtlases[i];
 		multigridIndices[i].threadTasks = gridAtlas.threadTasks;
 		multigridIndices[i].boundaryGlobalIndex = gridAtlas.boundaryGlobalIndex;
 		multigridIndices[i].segmentedLines = gridAtlas.segmentedLines;
@@ -703,11 +696,11 @@ int GrayScottReactionDiffusion< Real >::InitializeSystem( const int width , cons
 
 	//////////////////////////////////// Initialize multigrid coefficients
 
-	t_begin = clock();
+	timer.reset();
 	for( int ab=0 ; ab<2 ; ab++ )
-		if( !UpdateLinearSystem( 1.0 , diffusionRates[ab] * speed , hierarchy , multigridCoefficients[ab] , massCoefficients , stiffnessCoefficients , vCycleSolvers[ab] , fineSolvers[ab] , systemMatrices[ab] , DetailVerbose.set , true , UseDirectSolver.set ) )
+		if( !UpdateLinearSystem( (Real)1. , diffusionRates[ab] * speed , hierarchy , multigridCoefficients[ab] , massCoefficients , stiffnessCoefficients , vCycleSolvers[ab] , fineSolvers[ab] , systemMatrices[ab] , DetailVerbose.set , true , UseDirectSolver.set ) )
 		{ fprintf( stderr , "[ERROR] Failed system update!\n" ) ; return 0; }
-	if( Verbose.set ) printf( "\tInitialized multigrid coefficients: %.2f(s)\n" , double(clock() - t_begin) / CLOCKS_PER_SEC );
+	if( Verbose.set ) printf( "\tInitialized multigrid coefficients: %.2f(s)\n" , timer.elapsed() );
 
 	//////////////////////////////////// Initialize multigrid variables
 
@@ -737,30 +730,30 @@ int GrayScottReactionDiffusion< Real >::InitializeSystem( const int width , cons
 	std::vector< int > fineBoundaryIndex = boundaryProlongation.fineBoundaryIndex;
 	int numFineBoundarNodes = boundaryProlongation.numFineBoundarNodes;
 
-	bilinearElementScalarSamples.resize( interiorCellLines.size() );
+	scalarSamples.resize( interiorCellLines.size() );
 
-	t_begin = clock();
+	timer.reset();
 	{
 		int ret = 0;
 		switch( RHSQuadrature.value )
 		{
-		case  1: ret = InitializeIntegration<  1 , Real >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , bilinearElementScalarSamples , quadraticElementScalarSamples , ApproximateIntegration.set ) ; break;
-		case  3: ret = InitializeIntegration<  3 , Real >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , bilinearElementScalarSamples , quadraticElementScalarSamples , ApproximateIntegration.set ) ; break;
-		case  6: ret = InitializeIntegration<  6 , Real >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , bilinearElementScalarSamples , quadraticElementScalarSamples , ApproximateIntegration.set ) ; break;
-		case 12: ret = InitializeIntegration< 12 , Real >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , bilinearElementScalarSamples , quadraticElementScalarSamples , ApproximateIntegration.set ) ; break;
-		case 24: ret = InitializeIntegration< 24 , Real >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , bilinearElementScalarSamples , quadraticElementScalarSamples , ApproximateIntegration.set ) ; break;
-		case 32: ret = InitializeIntegration< 32 , Real >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , bilinearElementScalarSamples , quadraticElementScalarSamples , ApproximateIntegration.set ) ; break;
+		case  1: ret = InitializeIntegration<  1 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , scalarSamples , ApproximateIntegration.set ) ; break;
+		case  3: ret = InitializeIntegration<  3 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , scalarSamples , ApproximateIntegration.set ) ; break;
+		case  6: ret = InitializeIntegration<  6 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , scalarSamples , ApproximateIntegration.set ) ; break;
+		case 12: ret = InitializeIntegration< 12 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , scalarSamples , ApproximateIntegration.set ) ; break;
+		case 24: ret = InitializeIntegration< 24 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , scalarSamples , ApproximateIntegration.set ) ; break;
+		case 32: ret = InitializeIntegration< 32 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , scalarSamples , ApproximateIntegration.set ) ; break;
 		default: fprintf( stderr , "[ERROR] Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles\n" );
 		}
 		if( !ret ){ fprintf( stderr , "[ERROR] Unable to initialize vector field integration samples!\n" ) ; return 0; }
 	}
-	if( Verbose.set ) printf( "\tInitialized vector field integration: %.2f(s)\n" , double(clock() - t_begin) / CLOCKS_PER_SEC );
+	if( Verbose.set ) printf( "\tInitialized vector field integration: %.2f(s)\n" , timer.elapsed() );
 	coarseBoundaryValues.resize( hierarchy.gridAtlases[0].numTexels - hierarchy.gridAtlases[0].numDeepTexels );
 	coarseBoundaryRHS.resize   ( hierarchy.gridAtlases[0].numTexels - hierarchy.gridAtlases[0].numDeepTexels );
 	fineBoundaryValues.resize( numFineBoundarNodes );
 	fineBoundaryRHS.resize   ( numFineBoundarNodes );
 
-	for( int i=0 ; i<bilinearElementScalarSamples.size() ; i++ ) std::sort( bilinearElementScalarSamples[i].begin() , bilinearElementScalarSamples[i].end() , BilinearElementScalarSample< Real >::Compare );
+	scalarSamples.sort();
 
 	int numTexels = hierarchy.gridAtlases[0].numTexels;
 	int numFineNodes = hierarchy.gridAtlases[0].numFineNodes;
@@ -768,14 +761,14 @@ int GrayScottReactionDiffusion< Real >::InitializeSystem( const int width , cons
 	return 1;
 }
 
-template< class Real >
-void GrayScottReactionDiffusion< Real >::InitializeVisualization( const int width , const int height )
+template< typename PreReal , typename Real >
+void GrayScottReactionDiffusion< PreReal , Real >::InitializeVisualization( int width , int height )
 {
 	int tCount = (int)mesh.triangles.size();
 
 	visualization.triangles.resize( tCount );
 	visualization.vertices.resize( 3*tCount );
-	visualization.colors.resize( 3*tCount , Point3D< double >( 0.75 , 0.75 , 0.75 ) );
+	visualization.colors.resize( 3*tCount , Point3D< float >( 0.75f , 0.75f , 0.75f ) );
 	visualization.textureCoordinates.resize( 3*tCount );
 	visualization.normals.resize( 3*tCount );
 
@@ -790,7 +783,7 @@ void GrayScottReactionDiffusion< Real >::InitializeVisualization( const int widt
 	}
 
 	std::vector< int > boundaryEdges;
-	if( !InitializeBoundaryEdges( mesh , boundaryEdges ) ) fprintf( stderr , "[WARNING] Unable to initialize boundary edges!\n" );
+	if( !mesh.initializeBoundaryEdges( boundaryEdges ) ) fprintf( stderr , "[WARNING] Unable to initialize boundary edges!\n" );
 
 	for( int e=0 ; e<boundaryEdges.size() ; e++ )
 	{
@@ -798,7 +791,7 @@ void GrayScottReactionDiffusion< Real >::InitializeVisualization( const int widt
 		int kIndex = boundaryEdges[e] % 3;
 		for( int c=0 ; c<2 ; c++ )
 		{
-			Point3D< double > v = mesh.vertices[ mesh.triangles[tIndex][ (kIndex+c)%3 ] ];
+			Point3D< float > v = Point3D< float >( mesh.vertices[ mesh.triangles[tIndex][ (kIndex+c)%3 ] ] );
 			visualization.boundaryEdgeVertices.push_back(v);
 		}
 	}
@@ -824,21 +817,29 @@ void GrayScottReactionDiffusion< Real >::InitializeVisualization( const int widt
 
 	visualization.info.push_back( stepsString );
 }
-template< class Real > void GrayScottReactionDiffusion< Real >::SetConcentration1CallBack( Visualization* , const char* ){ whichConcentration = 0; }
-template< class Real > void GrayScottReactionDiffusion< Real >::SetConcentration2CallBack( Visualization* , const char* ){ whichConcentration = 1; }
-template< class Real > void GrayScottReactionDiffusion< Real >::ToggleUpdateCallBack( Visualization* , const char* )
+
+template< typename PreReal , typename Real >
+void GrayScottReactionDiffusion< PreReal , Real >::SetConcentration1CallBack( Visualization* , const char* ){ whichConcentration = 0; }
+
+template< typename PreReal , typename Real >
+void GrayScottReactionDiffusion< PreReal , Real >::SetConcentration2CallBack( Visualization* , const char* ){ whichConcentration = 1; }
+
+template< typename PreReal , typename Real >
+void GrayScottReactionDiffusion< PreReal , Real >::ToggleUpdateCallBack( Visualization* , const char* )
 {
 	if( updateCount ) updateCount = 0;
 	else              updateCount = -1;
 }
-template< class Real > void GrayScottReactionDiffusion< Real >::IncrementUpdateCallBack( Visualization* , const char* )
+
+template< typename PreReal , typename Real >
+void GrayScottReactionDiffusion< PreReal , Real >::IncrementUpdateCallBack( Visualization* , const char* )
 {
 	if( updateCount<0 ) updateCount = 1;
 	else updateCount++;
 }
 
-template< class Real >
-int GrayScottReactionDiffusion< Real >::Init( void )
+template< typename PreReal , typename Real >
+int GrayScottReactionDiffusion< PreReal , Real >::Init( void )
 {
 	sprintf( stepsString , "Steps: 0" );
 	levels = Levels.value;
@@ -850,17 +851,16 @@ int GrayScottReactionDiffusion< Real >::Init( void )
 	for( int ab=0 ; ab<2 ; ab++ ) diffusionRates[ab] *= DiffusionScale.value / 10.;
 	textureWidth = Width.value;
 	textureHeight = Height.value;
-
-	if( !ReadTexturedMesh( mesh , Input.value , NULL , DetailVerbose.set ) ){ fprintf( stderr , "[ERROR] Unable to read mesh data\n" ) ; return 0; }
+	if( !mesh.read( Input.value , NULL , DetailVerbose.set ) ){ fprintf( stderr , "[ERROR] GrayScottReactionDiffusion::Init: Unable to read mesh data\n" ) ; return 0; }
 
 	if( true ) for( int i=0 ; i<mesh.textureCoordinates.size() ; i++ ) mesh.textureCoordinates[i][1] = 1.0 - mesh.textureCoordinates[i][1];
 
 	if( RandomJitter.set )
 	{
 		srand( time( NULL ) );
-		std::vector< Point2D< double > > randomOffset( mesh.vertices.size() );
-		double jitterScale = 1e-3 / double( std::max< int >( textureWidth , textureHeight ) );
-		for( int i=0 ; i<randomOffset.size() ; i++ ) randomOffset[i] = Point2D< double >(1.0 - 2.0 * double( rand() ) / double(RAND_MAX) , 1.0 - 2.0 *  double( rand() ) / double(RAND_MAX) )*jitterScale;
+		std::vector< Point2D< PreReal > > randomOffset( mesh.vertices.size() );
+		PreReal jitterScale = (PreReal)1e-3 / std::max< int >( textureWidth , textureHeight );
+		for( int i=0 ; i<randomOffset.size() ; i++ ) randomOffset[i] = Point2D< PreReal >( (PreReal)1. - Random< PreReal >()*2 , (PreReal)1 - Random< PreReal >()*2 )*jitterScale;
 		for( int i=0 ; i<mesh.triangles.size() ; i++ ) for( int k=0 ; k<3 ; k++ ) mesh.textureCoordinates[3*i+k] += randomOffset[ mesh.triangles[i][k] ];
 	}
 
@@ -873,42 +873,42 @@ int GrayScottReactionDiffusion< Real >::Init( void )
 	}
 
 	// Define centroid and scale for visualization
-	Point3D< double > centroid;
+	Point3D< PreReal > centroid;
 	for( int i=0 ; i<mesh.vertices.size() ; i++ ) centroid += mesh.vertices[i];
-	centroid /= (double)mesh.vertices.size();
-	double radius = 0;
-	for( int i=0 ; i<mesh.vertices.size() ; i++ ) radius = std::max< double >( radius , Point3D< double >::Length( mesh.vertices[i]-centroid ) );
+	centroid /= (int)mesh.vertices.size();
+
+	PreReal radius = 0;
+	for( int i=0 ; i<mesh.vertices.size() ; i++ ) radius = std::max< PreReal >( radius , Point3D< PreReal >::Length( mesh.vertices[i]-centroid ) );
 	for( int i=0 ; i<mesh.vertices.size() ; i++ ) mesh.vertices[i] = ( mesh.vertices[i]-centroid ) / radius;
 
-
-	clock_t t = clock();
+	Miscellany::Timer timer;
 	if( !InitializeSystem( textureWidth , textureHeight ) ){ fprintf( stderr , "[ERROR] Failed to initialize system\n") ; return 0; }
 
 	if( Verbose.set )
 	{
 		printf( "Resolution: %d / %d x %d\n" , (int)textureNodes.size() , textureWidth , textureHeight );
-		printf( "Initialized system %.2f(s)\n" , double(clock()-t) / CLOCKS_PER_SEC );
+		printf( "Initialized system %.2f(s)\n" , timer.elapsed() );
 		printf( "Peak Memory (MB): %d\n" , Miscellany::MemoryInfo::PeakMemoryUsageMB() );
 	}
 
 	//Assign position to exterior nodes using barycentric-exponential map
 	{
-		FEM::RiemannianMesh< double > rMesh( GetPointer( mesh.triangles ) , mesh.triangles.size() );
+		FEM::RiemannianMesh< PreReal > rMesh( GetPointer( mesh.triangles ) , mesh.triangles.size() );
 
 		rMesh.setMetricFromEmbedding( GetPointer( mesh.vertices ) );
 		rMesh.makeUnitArea();
-		Pointer( FEM::CoordinateXForm< double > ) xForms = rMesh.getCoordinateXForms();
+		Pointer( FEM::CoordinateXForm< PreReal > ) xForms = rMesh.getCoordinateXForms();
 
-		for( int i=0 ; i<textureNodes.size() ; i++ ) if( textureNodes[i].tId!=-1 && !textureNodes[i].isInterior )
+		for( int i=0 ; i<textureNodes.size() ; i++ ) if( textureNodes[i].tID!=-1 && !textureNodes[i].isInterior )
 		{
-			FEM::HermiteSamplePoint< double > _p;
-			_p.tIdx = textureNodes[i].tId;
-			_p.p = Point2D< double >( 1./3 , 1./3 );
+			FEM::HermiteSamplePoint< PreReal > _p;
+			_p.tIdx = textureNodes[i].tID;
+			_p.p = Point2D< PreReal >( (PreReal)1./3 , (PreReal)1./3 );
 			_p.v = textureNodes[i].barycentricCoords - _p.p;
 
 			rMesh.exp(xForms, _p);
 
-			textureNodes[i].tId = _p.tIdx;
+			textureNodes[i].tID = _p.tIdx;
 			textureNodes[i].barycentricCoords = _p.p;
 		}
 		const int SAMPLES = (int)( multigridVariables[1][0].x.size() * SamplesFraction.value );
@@ -918,12 +918,14 @@ int GrayScottReactionDiffusion< Real >::Init( void )
 	textureNodePositions.resize( textureNodes.size() );
 	for( int i=0 ; i<textureNodePositions.size() ; i++ )
 	{
-		Point2D< double > barycentricCoords = textureNodes[i].barycentricCoords;
-		int tId = textureNodes[i].tId;
-		textureNodePositions[i] =
-			mesh.vertices[ mesh.triangles[tId][0] ] * ( 1.0-barycentricCoords[0]-barycentricCoords[1] ) +
-			mesh.vertices[ mesh.triangles[tId][1] ] * barycentricCoords[0] +
-			mesh.vertices[ mesh.triangles[tId][2] ] * barycentricCoords[1];
+		Point2D< PreReal > barycentricCoords = textureNodes[i].barycentricCoords;
+		int tID = textureNodes[i].tID;
+		Point3D< PreReal > p =
+			mesh.vertices[ mesh.triangles[tID][0] ] * ( (PreReal)1.-barycentricCoords[0]-barycentricCoords[1] ) +
+			mesh.vertices[ mesh.triangles[tID][1] ] *               barycentricCoords[0]                        +
+			mesh.vertices[ mesh.triangles[tID][2] ] *                                    barycentricCoords[1]   ;
+
+		textureNodePositions[i] = Point3D< float >( p );
 	}
 
 	if( !InitializeConcentrations() ){ fprintf( stderr , "[ERROR] Failed to initialize concentrations\n") ; return 0; }
@@ -934,54 +936,52 @@ int GrayScottReactionDiffusion< Real >::Init( void )
 	return 1;
 }
 
-template< class Real >
+template< typename PreReal , typename Real >
 int _main( int argc , char* argv[] )
 {
-	if( !GrayScottReactionDiffusion< Real >::Init() ) return 0;
-
+	if( !GrayScottReactionDiffusion< PreReal , Real >::Init() ) return 0;
 	if( !Output.set )
 	{
-		glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE);
-		GrayScottReactionDiffusion< Real >::visualization.displayMode = DisplayMode.value;
-		if     ( DisplayMode.value==ONE_REGION_DISPLAY ) GrayScottReactionDiffusion< Real >::visualization.screenWidth =  800 , GrayScottReactionDiffusion< Real >::visualization.screenHeight = 800;
-		else if( DisplayMode.value==TWO_REGION_DISPLAY ) GrayScottReactionDiffusion< Real >::visualization.screenWidth = 1440 , GrayScottReactionDiffusion< Real >::visualization.screenHeight = 720;
-		glutInitWindowSize( GrayScottReactionDiffusion< Real >::visualization.screenWidth , GrayScottReactionDiffusion< Real >::visualization.screenHeight );
+		glutInitDisplayMode( GLUT_RGB | GLUT_DOUBLE );
+		GrayScottReactionDiffusion< PreReal , Real >::visualization.displayMode = DisplayMode.value;
+		if     ( DisplayMode.value==ONE_REGION_DISPLAY ) GrayScottReactionDiffusion< PreReal , Real >::visualization.screenWidth =  800 , GrayScottReactionDiffusion< PreReal , Real >::visualization.screenHeight = 800;
+		else if( DisplayMode.value==TWO_REGION_DISPLAY ) GrayScottReactionDiffusion< PreReal , Real >::visualization.screenWidth = 1440 , GrayScottReactionDiffusion< PreReal , Real >::visualization.screenHeight = 720;
+		glutInitWindowSize( GrayScottReactionDiffusion< PreReal , Real >::visualization.screenWidth , GrayScottReactionDiffusion< PreReal , Real >::visualization.screenHeight );
 
-		glutInit(&argc, argv);
+		glutInit( &argc , argv );
 		char windowName[1024];
 		sprintf( windowName , "Gray-Scott Reaction Diffusion");
 		glutCreateWindow( windowName );
 		if( glewInit()!=GLEW_OK ) fprintf(stderr, "[ERROR] glewInit failed\n" ) , exit(0);
-		glutDisplayFunc ( GrayScottReactionDiffusion< Real >::Display );
-		glutReshapeFunc ( GrayScottReactionDiffusion< Real >::Reshape );
-		glutMouseFunc   ( GrayScottReactionDiffusion< Real >::MouseFunc );
-		glutMotionFunc  ( GrayScottReactionDiffusion< Real >::MotionFunc );
-		glutKeyboardFunc( GrayScottReactionDiffusion< Real >::KeyboardFunc );
-		glutIdleFunc    ( GrayScottReactionDiffusion< Real >::Idle );
-		if( CameraConfig.set ) GrayScottReactionDiffusion< Real >::visualization.ReadSceneConfigurationCallBack( &GrayScottReactionDiffusion< Real >::visualization , CameraConfig.value );
-		GrayScottReactionDiffusion< Real >::InitializeVisualization( GrayScottReactionDiffusion< Real >::textureWidth , GrayScottReactionDiffusion<Real>::textureHeight );
+		glutDisplayFunc ( GrayScottReactionDiffusion< PreReal , Real >::Display );
+		glutReshapeFunc ( GrayScottReactionDiffusion< PreReal , Real >::Reshape );
+		glutMouseFunc   ( GrayScottReactionDiffusion< PreReal , Real >::MouseFunc );
+		glutMotionFunc  ( GrayScottReactionDiffusion< PreReal , Real >::MotionFunc );
+		glutKeyboardFunc( GrayScottReactionDiffusion< PreReal , Real >::KeyboardFunc );
+		glutIdleFunc    ( GrayScottReactionDiffusion< PreReal , Real >::Idle );
+		if( CameraConfig.set ) GrayScottReactionDiffusion< PreReal , Real >::visualization.ReadSceneConfigurationCallBack( &GrayScottReactionDiffusion< PreReal , Real >::visualization , CameraConfig.value );
+		GrayScottReactionDiffusion< PreReal , Real >::InitializeVisualization( GrayScottReactionDiffusion< PreReal , Real >::textureWidth , GrayScottReactionDiffusion< PreReal , Real >::textureHeight );
 		glutMainLoop();
 	}
 	else
 	{
-		clock_t t = clock();
+		Miscellany::Timer timer;
 		for( int i=0 ; i<OutputSteps.value ; i++ )
 		{
 			if( Verbose.set ) printf( "%d / %d \r" , i+1 , OutputSteps.value );
-			if( UseDirectSolver.set ) GrayScottReactionDiffusion< Real >::UpdateExactSolution();
-			else                      GrayScottReactionDiffusion< Real >::UpdateApproximateSolution();
+			if( UseDirectSolver.set ) GrayScottReactionDiffusion< PreReal , Real >::UpdateExactSolution();
+			else                      GrayScottReactionDiffusion< PreReal , Real >::UpdateApproximateSolution();
 		}
 		if( Verbose.set )
 		{
 			printf( "\n" );
-			double total_time = double( clock()-t ) / CLOCKS_PER_SEC;
+			double total_time = timer.elapsed();
 			printf( "Reaction-diffusion total time / time per iteration: %.2f(s) / %.4f(s)\n" , total_time , total_time / OutputSteps.value );
 		}
-		GrayScottReactionDiffusion< Real >::SetOutputBuffer( GrayScottReactionDiffusion< Real >::multigridVariables[1][0].x );
-		GrayScottReactionDiffusion< Real >::ExportTextureCallBack( &GrayScottReactionDiffusion<Real>::visualization , Output.value );
+		GrayScottReactionDiffusion< PreReal , Real >::SetOutputBuffer( GrayScottReactionDiffusion< PreReal , Real >::multigridVariables[1][0].x );
+		GrayScottReactionDiffusion< PreReal , Real >::ExportTextureCallBack( &GrayScottReactionDiffusion< PreReal , Real >::visualization , Output.value );
 	}
 	return 0;
-
 }
 
 int main( int argc , char* argv[] )
@@ -1006,7 +1006,7 @@ int main( int argc , char* argv[] )
 		printf( "|    [SPACE]:                      start process |\n" );
 		printf( "+------------------------------------------------+\n" );
 	}
-	if( Double.set ) _main< double >( argc , argv );
-	else             _main< float  >( argc , argv );
+	if( Double.set ) _main< double , double >( argc , argv );
+	else             _main< double , float  >( argc , argv );
 	return 0;
 }

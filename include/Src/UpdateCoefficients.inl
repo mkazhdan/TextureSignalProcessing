@@ -32,84 +32,87 @@ int DeepCoefficientRestriction( const std::vector< Real >& fineDeepCoefficients 
 
 	int numCoarseDeepCoeffs = (int)coarseDeepCoefficients.size();
 
-	auto UpdateRow = [&](int r) {
+	auto UpdateRow = [&]( int r )
+	{
 		const Real * prevLineCoeff = fineDeepCoefficients.data() + deepLines[r].finePrevLineIndex * 10;
 		const Real * currentLineCoeff = fineDeepCoefficients.data() + deepLines[r].fineCurrentLineIndex * 10;
 		const Real * nextLineCoeff = fineDeepCoefficients.data() + deepLines[r].fineNextLineIndex * 10;
 		Real * coarseLineCoeff = coarseDeepCoefficients.data() + deepLines[r].coarseLineStartIndex * 10;
 
-		const int lineLength = deepLines[r].coarseLineEndIndex - deepLines[r].coarseLineStartIndex + 1;
+		int lineLength = deepLines[r].coarseLineEndIndex - deepLines[r].coarseLineStartIndex + 1;
 
-		auto UpdateNode = [&](int i) {
+		auto UpdateNode = [&]( int i )
+		{
 			const Real * prevCoeff = prevLineCoeff + 20 * i;
 			const Real * currentCoeff = currentLineCoeff + 20 * i;
 			const Real * nextCoeff = nextLineCoeff + 20 * i;
 			Real * coarseCoeff = coarseLineCoeff + 10 * i;
-			double cumValues[] =
+			Real cumValues[] =
 			{
 				0,0,0,
 				0,0,0,
 				0,0,0
 			};
 
+			static const Real HALF = (Real)0.5;
+			static const Real QUARTER = (Real)0.25;
 			//Procces middle cell node
-			for (int k = 0; k < 2; k++) for (int l = 0; l < 2; l++) {
+			for( int k=0 ; k<2 ; k++ ) for( int l=0 ; l<2 ; l++ )
+			{
 				const Real * nodeCoeff = (l == 0) ? prevCoeff + 10 * (2 * k - 1) : nextCoeff + 10 * (2 * k - 1);
-				cumValues[3 * l + k] += (nodeCoeff[0] + nodeCoeff[1] * 0.5 + nodeCoeff[3] * 0.5 + nodeCoeff[4] * 0.25) * 0.25;
-				cumValues[3 * l + k + 1] += (nodeCoeff[1] * 0.5 + nodeCoeff[2] + nodeCoeff[4] * 0.25 + nodeCoeff[5] * 0.5) * 0.25;
-				cumValues[3 * (l + 1) + k] += (nodeCoeff[3] * 0.5 + nodeCoeff[4] * 0.25 + nodeCoeff[6] + nodeCoeff[7] * 0.5) * 0.25;
-				cumValues[3 * (l + 1) + k + 1] += (nodeCoeff[4] * 0.25 + nodeCoeff[5] * 0.5 + nodeCoeff[7] * 0.5 + nodeCoeff[8]) * 0.25;
+				cumValues[3 * l + k] += (nodeCoeff[0] + nodeCoeff[1] * HALF + nodeCoeff[3] * HALF + nodeCoeff[4] * QUARTER ) * QUARTER;
+				cumValues[3 * l + k + 1] += (nodeCoeff[1] * HALF + nodeCoeff[2] + nodeCoeff[4] * QUARTER + nodeCoeff[5] * HALF) * QUARTER;
+				cumValues[3 * (l + 1) + k] += (nodeCoeff[3] * HALF + nodeCoeff[4] * QUARTER + nodeCoeff[6] + nodeCoeff[7] * HALF) * QUARTER;
+				cumValues[3 * (l + 1) + k + 1] += (nodeCoeff[4] * QUARTER + nodeCoeff[5] * HALF + nodeCoeff[7] * HALF + nodeCoeff[8]) * QUARTER;
 			}
 			//Procces vertical edge node
 			for (int l = 0; l < 2; l++) {
 				const Real * nodeCoeff = (l == 0) ? prevCoeff : nextCoeff;
-				cumValues[3 * l] += (nodeCoeff[0] * 0.5 + nodeCoeff[3] * 0.25)*0.5;
-				cumValues[3 * l + 1] += (nodeCoeff[0] * 0.5 + nodeCoeff[1] + nodeCoeff[2] * 0.5 + nodeCoeff[3] * 0.25 + nodeCoeff[4] * 0.5 + nodeCoeff[5] * 0.25)*0.5;
-				cumValues[3 * l + 2] += (nodeCoeff[2] * 0.5 + nodeCoeff[5] * 0.25)*0.5;
+				cumValues[3 * l] += (nodeCoeff[0] * HALF + nodeCoeff[3] * QUARTER) * HALF;
+				cumValues[3 * l + 1] += (nodeCoeff[0] * HALF + nodeCoeff[1] + nodeCoeff[2] * HALF + nodeCoeff[3] * QUARTER + nodeCoeff[4] * HALF + nodeCoeff[5] * QUARTER) * HALF;
+				cumValues[3 * l + 2] += (nodeCoeff[2] * HALF + nodeCoeff[5] * QUARTER) * HALF;
 
-				cumValues[3 * (l + 1)] += (nodeCoeff[3] * 0.25 + nodeCoeff[6] * 0.5) * 0.5;
-				cumValues[3 * (l + 1) + 1] += (nodeCoeff[3] * 0.25 + nodeCoeff[4] * 0.5 + nodeCoeff[5] * 0.25 + nodeCoeff[6] * 0.5 + nodeCoeff[7] + nodeCoeff[8] * 0.5)*0.5;
-				cumValues[3 * (l + 1) + 2] += (nodeCoeff[5] * 0.25 + nodeCoeff[8] * 0.5) * 0.5;
+				cumValues[3 * (l + 1)] += (nodeCoeff[3] * QUARTER + nodeCoeff[6] * HALF) * HALF;
+				cumValues[3 * (l + 1) + 1] += (nodeCoeff[3] * QUARTER + nodeCoeff[4] * HALF + nodeCoeff[5] * QUARTER + nodeCoeff[6] * HALF + nodeCoeff[7] + nodeCoeff[8] * HALF)*HALF;
+				cumValues[3 * (l + 1) + 2] += (nodeCoeff[5] * QUARTER + nodeCoeff[8] * HALF) * HALF;
 			}
 			//Procces horizontal edge node
 			for (int k = 0; k < 2; k++) {
 				const Real * nodeCoeff = (k == 0) ? currentCoeff - 10 : currentCoeff + 10;
-				cumValues[k] += (nodeCoeff[0] * 0.5 + nodeCoeff[1] * 0.25)*0.5;
-				cumValues[3 + k] += (nodeCoeff[0] * 0.5 + nodeCoeff[1] * 0.25 + nodeCoeff[3] + nodeCoeff[4] * 0.5 + nodeCoeff[6] * 0.5 + nodeCoeff[7] * 0.25)*0.5;
-				cumValues[6 + k] += (nodeCoeff[6] * 0.5 + nodeCoeff[7] * 0.25)*0.5;
+				cumValues[k] += (nodeCoeff[0] * HALF + nodeCoeff[1] * QUARTER)*HALF;
+				cumValues[3 + k] += (nodeCoeff[0] * HALF + nodeCoeff[1] * QUARTER + nodeCoeff[3] + nodeCoeff[4] * HALF + nodeCoeff[6] * HALF + nodeCoeff[7] * QUARTER)*HALF;
+				cumValues[6 + k] += (nodeCoeff[6] * HALF + nodeCoeff[7] * QUARTER)*HALF;
 
-				cumValues[k + 1] += (nodeCoeff[1] * 0.25 + nodeCoeff[2] * 0.5) * 0.5;
-				cumValues[3 + k + 1] += (nodeCoeff[1] * 0.25 + nodeCoeff[2] * 0.5 + nodeCoeff[4] * 0.5 + nodeCoeff[5] + nodeCoeff[7] * 0.25 + nodeCoeff[8] * 0.5)*0.5;
-				cumValues[6 + k + 1] += (nodeCoeff[7] * 0.25 + nodeCoeff[8] * 0.5) * 0.5;
+				cumValues[k + 1] += (nodeCoeff[1] * QUARTER + nodeCoeff[2] * HALF) * HALF;
+				cumValues[3 + k + 1] += (nodeCoeff[1] * QUARTER + nodeCoeff[2] * HALF + nodeCoeff[4] * HALF + nodeCoeff[5] + nodeCoeff[7] * QUARTER + nodeCoeff[8] * HALF)*HALF;
+				cumValues[6 + k + 1] += (nodeCoeff[7] * QUARTER + nodeCoeff[8] * HALF) * HALF;
 			}
 			//Procces center node
 			{
 				const Real * nodeCoeff = currentCoeff;
-				cumValues[0] += (nodeCoeff[0] * 0.25);
-				cumValues[1] += (nodeCoeff[0] * 0.25 + nodeCoeff[1] * 0.5 + nodeCoeff[2] * 0.25);
-				cumValues[2] += (nodeCoeff[2] * 0.25);
-				cumValues[3] += (nodeCoeff[0] * 0.25 + nodeCoeff[3] * 0.5 + nodeCoeff[6] * 0.25);
+				cumValues[0] += (nodeCoeff[0] * QUARTER);
+				cumValues[1] += (nodeCoeff[0] * QUARTER + nodeCoeff[1] * HALF + nodeCoeff[2] * QUARTER);
+				cumValues[2] += (nodeCoeff[2] * QUARTER);
+				cumValues[3] += (nodeCoeff[0] * QUARTER + nodeCoeff[3] * HALF + nodeCoeff[6] * QUARTER);
 
-				cumValues[4] += (nodeCoeff[0] * 0.25 + nodeCoeff[1] * 0.5 + nodeCoeff[2] * 0.25 + nodeCoeff[3] * 0.5 + nodeCoeff[4] + nodeCoeff[5] * 0.5 +
-					nodeCoeff[6] * 0.25 + nodeCoeff[7] * 0.5 + nodeCoeff[8] * 0.25);
+				cumValues[4] += (nodeCoeff[0] * QUARTER + nodeCoeff[1] * HALF + nodeCoeff[2] * QUARTER + nodeCoeff[3] * HALF + nodeCoeff[4] + nodeCoeff[5] * HALF +
+					nodeCoeff[6] * QUARTER + nodeCoeff[7] * HALF + nodeCoeff[8] * QUARTER);
 
-				cumValues[5] += (nodeCoeff[2] * 0.25 + nodeCoeff[5] * 0.5 + nodeCoeff[8] * 0.25);
-				cumValues[6] += (nodeCoeff[6] * 0.25);
-				cumValues[7] += (nodeCoeff[6] * 0.25 + nodeCoeff[7] * 0.5 + nodeCoeff[8] * 0.25);
-				cumValues[8] += nodeCoeff[8] * 0.25;
+				cumValues[5] += (nodeCoeff[2] * QUARTER + nodeCoeff[5] * HALF + nodeCoeff[8] * QUARTER);
+				cumValues[6] += (nodeCoeff[6] * QUARTER);
+				cumValues[7] += (nodeCoeff[6] * QUARTER + nodeCoeff[7] * HALF + nodeCoeff[8] * QUARTER);
+				cumValues[8] += nodeCoeff[8] * QUARTER;
 			}
-			for (int k = 0; k < 3; k++) for (int l = 0; l < 3; l++) {
-				coarseCoeff[3 * l + k] = cumValues[3 * l + k];
-			}
+			for( int k=0 ; k<3 ; k++ ) for( int l=0 ; l<3 ; l++ ) coarseCoeff[3*l+k] = cumValues[3*l+k];
 		};
 		for (int i = 0; i < lineLength;i++)UpdateNode(i);
 	};
 	int threads = omp_get_max_threads();
 #pragma omp parallel for
 	for (int t = 0; t < threads; t++) {
-		const int tId = omp_get_thread_num();
-		const int firstLine = ((int)deepLines.size() * tId) / threads;
-		const int lastLine = ((int)deepLines.size() * (tId + 1)) / threads;
+		int tID = omp_get_thread_num();
+		int firstLine = ((int)deepLines.size() * tID) / threads;
+		int lastLine = ((int)deepLines.size() * (tID + 1)) / threads;
 		for (int r = firstLine; r < lastLine; r++) UpdateRow(r);
 	}
 
@@ -118,51 +121,56 @@ int DeepCoefficientRestriction( const std::vector< Real >& fineDeepCoefficients 
 	return 1;
 }
 
-int BoundaryDeepMatrixConstruction(const int numBoundayTexels, const int numTexels, const std::vector<double> & deepCoefficients, const std::vector<BoundaryDeepIndex> & boundaryDeepIndices, SparseMatrix<double, int> & boundaryDeepMatrix) {
-	std::vector<Eigen::Triplet<double>> boundaryDeepTriplets;
-	for (int i = 0; i < boundaryDeepIndices.size(); i++) {
-		boundaryDeepTriplets.push_back(Eigen::Triplet<double>(boundaryDeepIndices[i].boundaryIndex, boundaryDeepIndices[i].deepGlobalIndex, deepCoefficients[10 * boundaryDeepIndices[i].deepIndex + boundaryDeepIndices[i].offset])); //NOTE: Deep coefficient is not multiplied by reciprocal yet.
+template< typename MatrixReal >
+int BoundaryDeepMatrixConstruction( int numBoundayTexels , int numTexels , const std::vector< MatrixReal > &deepCoefficients , const std::vector< BoundaryDeepIndex > &boundaryDeepIndices , SparseMatrix< MatrixReal , int > &boundaryDeepMatrix )
+{
+	std::vector< Eigen::Triplet< MatrixReal > > boundaryDeepTriplets;
+	for( int i=0 ; i<boundaryDeepIndices.size() ; i++ )
+	{
+		boundaryDeepTriplets.push_back( Eigen::Triplet< MatrixReal >( boundaryDeepIndices[i].boundaryIndex , boundaryDeepIndices[i].deepGlobalIndex , deepCoefficients[ 10*boundaryDeepIndices[i].deepIndex + boundaryDeepIndices[i].offset ] ) );
+		//NOTE: Deep coefficient is not multiplied by reciprocal yet.
 	}
 	boundaryDeepMatrix = SetSparseMatrix( boundaryDeepTriplets , numBoundayTexels , numTexels , false );
 
 	return 1;
 }
 
+template< typename MatrixReal >
+int BoundaryBoundaryMatrixConstruction( const std::vector< int > &boundaryGlobalIndex , int numBoundayTexels , const std::vector< MatrixReal > &fineDeepCoefficients , const SparseMatrix< MatrixReal , int > &fineBoundaryBoundaryMatrix , const SparseMatrix< MatrixReal , int > &boundaryCoarseFineProlongation , const SparseMatrix< MatrixReal , int > &boundaryFineCoarseRestriction , const std::vector< BoundaryBoundaryIndex< MatrixReal > > &boundaryBoundaryIndices , SparseMatrix< MatrixReal , int > &coarseBoundaryBoundaryMatrix , bool verbose=false )
+{
+	Miscellany::Timer timer;
 
-int BoundaryBoundaryMatrixConstruction(const std::vector<int> & boundaryGlobalIndex, const int numBoundayTexels, const std::vector<double> & fineDeepCoefficients, const SparseMatrix<double, int> & fineBoundaryBoundaryMatrix, const SparseMatrix<double, int> & boundaryCoarseFineProlongation, const SparseMatrix<double, int> & boundaryFineCoarseRestriction, const std::vector<BoundaryBoundaryIndex> & boundaryBoundaryIndices, SparseMatrix<double, int> & coarseBoundaryBoundaryMatrix, bool verbose = false) {
-
-	clock_t t_begin;
-
-	if (verbose)t_begin = clock();
-
-	SparseMatrix<double, int> partialRestriction = fineBoundaryBoundaryMatrix * boundaryCoarseFineProlongation;
+	SparseMatrix< MatrixReal , int > partialRestriction = fineBoundaryBoundaryMatrix * boundaryCoarseFineProlongation;
 	partialRestriction = boundaryFineCoarseRestriction *partialRestriction;
 
-	if (verbose) printf("\t Multiplication  =  %.4f \n", double(clock() - t_begin) / CLOCKS_PER_SEC);
+	if( verbose ) printf( "\t Multiplication  =  %.4f\n" , timer.elapsed() );
 
-	if (verbose) t_begin = clock();
-	std::vector<Eigen::Triplet<double>> boundaryBoundaryTriplets;
-	for (int i = 0; i < boundaryBoundaryIndices.size(); i++) {
-		boundaryBoundaryTriplets.push_back(Eigen::Triplet<double>(boundaryBoundaryIndices[i].coarsePrincipalBoundaryIndex, boundaryBoundaryIndices[i].coarseSecondaryBoundaryIndex, fineDeepCoefficients[boundaryBoundaryIndices[i].fineDeepIndex * 10 + boundaryBoundaryIndices[i].offset] * boundaryBoundaryIndices[i].weight)); //NOTE: Deep coefficient is not multiplied by reciprocal yet.
+	if( verbose ) timer.reset();
+	std::vector< Eigen::Triplet< MatrixReal > > boundaryBoundaryTriplets;
+	for( int i=0 ; i<boundaryBoundaryIndices.size() ; i++ )
+	{
+		boundaryBoundaryTriplets.push_back( Eigen::Triplet< MatrixReal >( boundaryBoundaryIndices[i].coarsePrincipalBoundaryIndex , boundaryBoundaryIndices[i].coarseSecondaryBoundaryIndex , fineDeepCoefficients[ boundaryBoundaryIndices[i].fineDeepIndex*10 + boundaryBoundaryIndices[i].offset ] * boundaryBoundaryIndices[i].weight ) );
+		//NOTE: Deep coefficient is not multiplied by reciprocal yet.
 	}
-	if (verbose) printf("\t Triplets  =  %.4f \n", double(clock() - t_begin) / CLOCKS_PER_SEC);
+	if( verbose ) printf( "\t Triplets  =  %.4f\n" , timer.elapsed() );
 
-	if (verbose) t_begin = clock();
+	if( verbose ) timer.reset();
 	coarseBoundaryBoundaryMatrix = SetSparseMatrix( boundaryBoundaryTriplets , numBoundayTexels , numBoundayTexels , false );
-	if (verbose) printf("\t Parsing =  %.4f \n", double(clock() - t_begin) / CLOCKS_PER_SEC);
+	if( verbose ) printf( "\t Parsing =  %.4f \n" , timer.elapsed() );
 
-	if (verbose) t_begin = clock();
+	if( verbose ) timer.reset();
 	coarseBoundaryBoundaryMatrix += partialRestriction;
-	if (verbose) printf("\t Adding =  %.4f \n", double(clock() - t_begin) / CLOCKS_PER_SEC);
+	if( verbose ) printf( "\t Adding =  %.4f\n" , timer.elapsed() );
 
 	return 1;
 }
 
-int FullMatrixConstruction( const GridAtlas & gridAtlas , const SystemCoefficients< double > &systemCoefficients , SparseMatrix< double , int > &fullMatrix )
+template< typename GeometryReal , typename MatrixReal >
+int FullMatrixConstruction( const GridAtlas< GeometryReal , MatrixReal > &gridAtlas , const SystemCoefficients< MatrixReal > &systemCoefficients , SparseMatrix< MatrixReal , int > &fullMatrix )
 {
 	int numTexels = gridAtlas.numTexels;
-	fullMatrix.resize(numTexels);
-	std::vector<int> deepGlobalIndex = gridAtlas.deepGlobalIndex;
+	fullMatrix.resize( numTexels );
+	std::vector< int > deepGlobalIndex = gridAtlas.deepGlobalIndex;
 
 	//Add deep triplets
 	//Initalization deep
@@ -202,7 +210,7 @@ int FullMatrixConstruction( const GridAtlas & gridAtlas , const SystemCoefficien
 		int previousLineStart = currentLine.prevLineIndex;
 		int currentLineStart = currentLine.lineStartIndex;
 		int nextLineStart = currentLine.nextLineIndex;
-		const double * coefficients = systemCoefficients.deepCoefficients.data() + deepOffset * 10;
+		const MatrixReal *coefficients = systemCoefficients.deepCoefficients.data() + deepOffset * 10;
 		for (int i = 0; i < lineLength; i++) {
 			for (int k = 0; k < 9; k++) fullMatrix[currentLineStart][k].Value = coefficients[k];
 
@@ -213,33 +221,34 @@ int FullMatrixConstruction( const GridAtlas & gridAtlas , const SystemCoefficien
 		}
 	}
 
-	std::vector<Eigen::Triplet<double>> boundaryTriplets;
+	std::vector< Eigen::Triplet< MatrixReal > > boundaryTriplets;
 	std::vector<int> boundaryGlobalIndex = gridAtlas.boundaryGlobalIndex;
 	for (int i = 0; i < boundaryGlobalIndex.size(); i++) {
 		int globalIndex = boundaryGlobalIndex[i];
 		for( int j=0 ; j<systemCoefficients.boundaryDeepMatrix.RowSize(i) ; j++ )
-			boundaryTriplets.push_back( Eigen::Triplet< double >( globalIndex , systemCoefficients.boundaryDeepMatrix[i][j].N , systemCoefficients.boundaryDeepMatrix[i][j].Value ) );
+			boundaryTriplets.push_back( Eigen::Triplet< MatrixReal >( globalIndex , systemCoefficients.boundaryDeepMatrix[i][j].N , systemCoefficients.boundaryDeepMatrix[i][j].Value ) );
 		for( int j=0 ; j<systemCoefficients.boundaryBoundaryMatrix.RowSize(i) ; j++ )
 		{
 			int neighbourGlobalIndex = boundaryGlobalIndex[ systemCoefficients.boundaryBoundaryMatrix[i][j].N ];
-			boundaryTriplets.push_back( Eigen::Triplet< double >( globalIndex , neighbourGlobalIndex , systemCoefficients.boundaryBoundaryMatrix[i][j].Value ) );
+			boundaryTriplets.push_back( Eigen::Triplet< MatrixReal >( globalIndex , neighbourGlobalIndex , systemCoefficients.boundaryBoundaryMatrix[i][j].Value ) );
 		}
 	}
 
-	SparseMatrix< double , int > boundaryMatrix = SetSparseMatrix( boundaryTriplets , numTexels , numTexels , false );
+	SparseMatrix< MatrixReal , int > boundaryMatrix = SetSparseMatrix( boundaryTriplets , numTexels , numTexels , false );
 
 	fullMatrix += boundaryMatrix;
 
-	SparseMatrix<double, int> _fullMatrix;
-	CompressSparseMatrix(fullMatrix, _fullMatrix);
+	SparseMatrix< MatrixReal , int > _fullMatrix;
+	CompressSparseMatrix( fullMatrix , _fullMatrix );
 	fullMatrix = _fullMatrix;
 	return 1;
 }
 
 
-template<class Real>
-int CompareMatrices(const SparseMatrix<Real, int> & M1, const SparseMatrix<Real, int> & M2, const std::vector<GridNodeInfo> & nodeInfo, const std::vector<int> & boundaryAndDeepIndex) {
-	double threshold = 1e-10;
+template< class Real >
+int CompareMatrices( const SparseMatrix< Real , int > &M1 , const SparseMatrix< Real , int > &M2 , const std::vector< GridNodeInfo > &nodeInfo , const std::vector< int > &boundaryAndDeepIndex )
+{
+	Real threshold = (Real)1e-10;
 
 	if (M1.Rows() != M2.Rows()) {
 		printf("ERROR: Different num rows! %d %d \n", (int)M1.Rows(), (int)M2.Rows());
@@ -248,19 +257,19 @@ int CompareMatrices(const SparseMatrix<Real, int> & M1, const SparseMatrix<Real,
 	for (int i = 0; i < M1.Rows(); i++) {
 		if (M1.RowSize(i) != M2.RowSize(i)) {
 			printf("ERROR: Different row sizes! %d : %d %d \n", i, (int)M1.RowSize(i), (int)M2.RowSize(i));
-			printf("Node Type %d.Chart Id %d.Pos(%d, %d) \n", nodeInfo[i].nodeType, nodeInfo[i].chartId, nodeInfo[i].ci, nodeInfo[i].cj);
+			printf("Node Type %d.Chart Id %d.Pos(%d, %d) \n", nodeInfo[i].nodeType, nodeInfo[i].chartID, nodeInfo[i].ci, nodeInfo[i].cj);
 			printf("Boundary and deep index %d \n", boundaryAndDeepIndex[i]);
 			printf("Matrix 1 \n");
 			for (int j1 = 0; j1 < M1.RowSize(i); j1++) {
 				printf("(%d,%g) \n", M1[i][j1].N, M1[i][j1].Value);
 				GridNodeInfo _nodeInfo = nodeInfo[M1[i][j1].N];
-				printf("Node Type %d. Chart Id %d. Pos (%d ,%d) \n", _nodeInfo.nodeType, _nodeInfo.chartId, _nodeInfo.ci, _nodeInfo.cj);
+				printf("Node Type %d. Chart Id %d. Pos (%d ,%d) \n", _nodeInfo.nodeType, _nodeInfo.chartID, _nodeInfo.ci, _nodeInfo.cj);
 			}
 			printf("Matrix 2 \n");
 			for (int j2 = 0; j2 < M2.RowSize(i); j2++) {
 				printf("(%d,%g) \n", M2[i][j2].N, M1[i][j2].Value);
 				GridNodeInfo _nodeInfo = nodeInfo[M2[i][j2].N];
-				printf("Node Type %d. Chart Id %d. Pos (%d ,%d) \n", _nodeInfo.nodeType, _nodeInfo.chartId, _nodeInfo.ci, _nodeInfo.cj);
+				printf("Node Type %d. Chart Id %d. Pos (%d ,%d) \n", _nodeInfo.nodeType, _nodeInfo.chartID, _nodeInfo.ci, _nodeInfo.cj);
 			}
 			return 0;
 		}
@@ -270,7 +279,7 @@ int CompareMatrices(const SparseMatrix<Real, int> & M1, const SparseMatrix<Real,
 			for (int j = 0; j < M1.RowSize(i); j++) {
 				printf("(%d %g) (%d %g) \n", M1[i][j].N, M1[i][j].Value, M2[i][j].N, M2[i][j].Value);
 				GridNodeInfo _nodeInfo = nodeInfo[M1[i][j].N];
-				printf("Neighbour Node type %d Chart Id %d Pos (%d ,%d) \n", _nodeInfo.nodeType, _nodeInfo.chartId, _nodeInfo.ci, _nodeInfo.cj);
+				printf("Neighbour Node type %d Chart Id %d Pos (%d ,%d) \n", _nodeInfo.nodeType, _nodeInfo.chartID, _nodeInfo.ci, _nodeInfo.cj);
 			}
 		}
 
@@ -287,9 +296,9 @@ int CompareMatrices(const SparseMatrix<Real, int> & M1, const SparseMatrix<Real,
 			if (fabs(M1[i][j].Value - M2[i][j].Value) > threshold) {
 				printf("ERROR: Numerical imprecision! %d %d : %g %g \n", i, M1[i][j].N, M1[i][j].Value, M2[i][j].Value);
 				GridNodeInfo _nodeInfo = nodeInfo[i];
-				printf("Current Node type %d Chart Id %d Pos (%d ,%d) \n", _nodeInfo.nodeType, _nodeInfo.chartId, _nodeInfo.ci, _nodeInfo.cj);
+				printf("Current Node type %d Chart Id %d Pos (%d ,%d) \n", _nodeInfo.nodeType, _nodeInfo.chartID, _nodeInfo.ci, _nodeInfo.cj);
 				_nodeInfo = nodeInfo[M1[i][j].N];
-				printf("Neighbour Node type %d Chart Id %d Pos (%d ,%d) \n", _nodeInfo.nodeType, _nodeInfo.chartId, _nodeInfo.ci, _nodeInfo.cj);
+				printf("Neighbour Node type %d Chart Id %d Pos (%d ,%d) \n", _nodeInfo.nodeType, _nodeInfo.chartID, _nodeInfo.ci, _nodeInfo.cj);
 				return 0;
 			}
 		}
@@ -300,7 +309,8 @@ int CompareMatrices(const SparseMatrix<Real, int> & M1, const SparseMatrix<Real,
 
 }
 
-int UpdateMultigridCoefficients( const HierarchicalSystem &hierarchy , std::vector< SystemCoefficients< double > > &multigridCoefficients , const SystemCoefficients< double > &inputCoefficients , const SparseMatrix< double , int > &systemMatrix , SparseMatrix< double , int > &coarseSystemMatrix , bool useDeepReciprocals, bool verbose=false)
+template< typename GeometryReal , typename MatrixReal >
+int UpdateMultigridCoefficients( const HierarchicalSystem< GeometryReal , MatrixReal > &hierarchy , std::vector< SystemCoefficients< MatrixReal > > &multigridCoefficients , const SystemCoefficients< MatrixReal > &inputCoefficients , const SparseMatrix< MatrixReal , int > &systemMatrix , SparseMatrix< MatrixReal , int > &coarseSystemMatrix , bool useDeepReciprocals, bool verbose=false)
 {
 	int levels = (int)hierarchy.gridAtlases.size();
 
@@ -310,49 +320,52 @@ int UpdateMultigridCoefficients( const HierarchicalSystem &hierarchy , std::vect
 	multigridCoefficients[0].boundaryBoundaryMatrix = inputCoefficients.boundaryBoundaryMatrix;
 	multigridCoefficients[0].boundaryDeepMatrix = inputCoefficients.boundaryDeepMatrix;
 
-	SparseMatrix< double , int > currentSystemMatrix;
-	clock_t t_begin;
+	SparseMatrix< MatrixReal , int > currentSystemMatrix;
+	Miscellany::Timer timer;
 
-	for (int i = 1; i < levels; i++) {
+	for (int i = 1; i < levels; i++)
+	{
 		if (verbose) printf("Level %d \n", i);
 
-		const GridAtlas & gridAtlas = hierarchy.gridAtlases[i];
+		const GridAtlas< GeometryReal , MatrixReal > &gridAtlas = hierarchy.gridAtlases[i];
 		int numTexels = gridAtlas.numTexels;
 		int numDeepTexels = gridAtlas.numDeepTexels;
 		int numBoundaryTexels = gridAtlas.numBoundaryTexels;
 
-		const SystemCoefficients< double > &fineCoefficients = multigridCoefficients[i-1];
-		SystemCoefficients< double > &coarseCoefficients = multigridCoefficients[i];
+		const SystemCoefficients< MatrixReal > &fineCoefficients = multigridCoefficients[i-1];
+		SystemCoefficients< MatrixReal > &coarseCoefficients = multigridCoefficients[i];
 
 		// Deep restriction
 		coarseCoefficients.deepCoefficients.resize( numDeepTexels * 10 , 0 );
-		if( verbose ) t_begin = clock();
+		if( verbose ) timer.reset();
 		DeepCoefficientRestriction( fineCoefficients.deepCoefficients , coarseCoefficients.deepCoefficients , gridAtlas.deepLines );
-		if( verbose ) printf( "Deep Deep Restriction %d  =  %.4f\n" , i , (double)( clock()-t_begin ) / CLOCKS_PER_SEC );
+		if( verbose ) printf( "Deep Deep Restriction %d  =  %.4f\n" , i , timer.elapsed() );
 
 		// Boundary Deep Matrix
-		if( verbose ) t_begin = clock();
+		if( verbose ) timer.reset();
 		BoundaryDeepMatrixConstruction( numBoundaryTexels , numTexels , coarseCoefficients.deepCoefficients , hierarchy.boundaryDeepIndices[i] , coarseCoefficients.boundaryDeepMatrix );
-		if( verbose ) printf( "Boundary Deep Restriction %d  =  %.4f \n" , i , (double)( clock()-t_begin ) / CLOCKS_PER_SEC );
+		if( verbose ) printf( "Boundary Deep Restriction %d  =  %.4f \n" , i , timer.elapsed() );
 
 		// Boundary Boundary Matrix
-		if( verbose ) t_begin = clock();
+		if( verbose ) timer.reset();
 		BoundaryBoundaryMatrixConstruction( gridAtlas.boundaryGlobalIndex , numBoundaryTexels , fineCoefficients.deepCoefficients , fineCoefficients.boundaryBoundaryMatrix , hierarchy.boundaryCoarseFineProlongation[i] , hierarchy.boundaryFineCoarseRestriction[i-1] , hierarchy.boundaryBoundaryIndices[i] , coarseCoefficients.boundaryBoundaryMatrix );
-		if( verbose ) printf( "Boundary Boundary Restriction %d  =  %.4f \n" , i , (double)( clock()-t_begin ) / CLOCKS_PER_SEC );
+		if( verbose ) printf( "Boundary Boundary Restriction %d  =  %.4f \n" , i , timer.elapsed() );
 
 		if( i==(levels-1) )	FullMatrixConstruction( gridAtlas , coarseCoefficients , coarseSystemMatrix );
 	}
 
-	if (useDeepReciprocals) {
-		if (verbose) t_begin = clock();
+	if( useDeepReciprocals )
+	{
+		if( verbose ) timer.reset();
 		//Set Deep coefficients to reciprocal
-		for (int i = 0; i < levels - 1; i++) {
-			std::vector<double> & deepCoefficients = multigridCoefficients[i].deepCoefficients;
+		for (int i = 0; i < levels - 1; i++)
+		{
+			std::vector< MatrixReal > &deepCoefficients = multigridCoefficients[i].deepCoefficients;
 			int numDeepTexels = hierarchy.gridAtlases[i].numDeepTexels;
 #pragma omp parallel for
 			for (int i = 0; i < numDeepTexels; i++) {
-				double centerValue = deepCoefficients[10 * i + 4];
-				double reciprocal = 1.0 / centerValue;
+				MatrixReal centerValue = deepCoefficients[10 * i + 4];
+				MatrixReal reciprocal = (MatrixReal)1. / centerValue;
 				deepCoefficients[10 * i] *= reciprocal;
 				deepCoefficients[10 * i + 1] *= reciprocal;
 				deepCoefficients[10 * i + 2] *= reciprocal;
@@ -365,43 +378,44 @@ int UpdateMultigridCoefficients( const HierarchicalSystem &hierarchy , std::vect
 				deepCoefficients[10 * i + 9] = centerValue;
 			}
 		}
-		if (verbose) printf("Deep coeff inversion =  %.4f \n", double(clock() - t_begin) / CLOCKS_PER_SEC);
+		if( verbose ) printf( "Deep coeff inversion =  %.4f\n" , timer.elapsed() );
 	}
 	return 1;
 }
 
 
-template< class CoarseSolverType , class BoundarySolverType >
-int UpdateMultigridSolvers( const HierarchicalSystem & hierarchy , const SparseMatrix<double, int> & coarseSystemMatrix , const std::vector< SystemCoefficients< double > > &multigridCoefficients , VCycleSolvers< BoundarySolverType , CoarseSolverType > &vCycleSolvers , bool verbose=false , bool initSolvers=true )
+template< class DirectSolver , typename GeometryReal , typename MatrixReal >
+int UpdateMultigridSolvers( const HierarchicalSystem< GeometryReal , MatrixReal > &hierarchy , const SparseMatrix< MatrixReal , int > &coarseSystemMatrix , const std::vector< SystemCoefficients< MatrixReal > > &multigridCoefficients , VCycleSolvers< DirectSolver > &vCycleSolvers , bool verbose=false , bool initSolvers=true )
 {
-	clock_t p_begin;
+	Miscellany::Timer timer;
 	double cumInitTime = 0;
 	double initTime;
 
 	double cumUpdateTime = 0;
 	double updateTime;
 
-	p_begin = clock();
+	timer.reset();
 	if( initSolvers ) vCycleSolvers.coarse.init( coarseSystemMatrix );
-	initTime = double(clock() - p_begin) / CLOCKS_PER_SEC;
+	initTime = timer.elapsed();
 	cumInitTime += initTime;
 
-	p_begin = clock();
+	timer.reset();
 	vCycleSolvers.coarse.update( coarseSystemMatrix );
-	updateTime = double(clock() - p_begin) / CLOCKS_PER_SEC;
+	updateTime = timer.elapsed();
 	cumUpdateTime += updateTime;
 
 	int levels = (int)hierarchy.gridAtlases.size();
 	vCycleSolvers.boundary.resize( levels-1 );
-	for (int i = 0; i < levels - 1; i++) {
-		p_begin = clock();
+	for( int i=0 ; i<levels-1 ; i++ )
+	{
+		timer.reset();
 		if( initSolvers ) vCycleSolvers.boundary[i].init( multigridCoefficients[i].boundaryBoundaryMatrix );
-		initTime = double(clock() - p_begin) / CLOCKS_PER_SEC;
+		initTime = timer.elapsed();
 		cumInitTime += initTime;
 
-		p_begin = clock();
+		timer.reset();
 		vCycleSolvers.boundary[i].update( multigridCoefficients[i].boundaryBoundaryMatrix );
-		updateTime = double(clock() - p_begin) / CLOCKS_PER_SEC;
+		updateTime = timer.elapsed();
 		cumUpdateTime += updateTime;
 	}
 
@@ -411,62 +425,114 @@ int UpdateMultigridSolvers( const HierarchicalSystem & hierarchy , const SparseM
 }
 
 
-template< class CoarseSolverType , class BoundarySolverType >
-int UpdateMultigridCoefficientsAndSolvers( const HierarchicalSystem &hierarchy , std::vector< SystemCoefficients< double > > &multigridCoefficients , const SystemCoefficients< double > & systemCoefficients , VCycleSolvers< BoundarySolverType , CoarseSolverType > &vCycleSolvers , const SparseMatrix< double , int > &fineSystemMatrix , bool detailVerbose=false , bool initSolvers=true )
+template< class DirectSolver , typename GeometryReal , typename MatrixReal >
+int UpdateMultigridCoefficientsAndSolvers( const HierarchicalSystem< GeometryReal , MatrixReal > &hierarchy , std::vector< SystemCoefficients< MatrixReal > > &multigridCoefficients , const SystemCoefficients< MatrixReal > & systemCoefficients , VCycleSolvers< DirectSolver > &vCycleSolvers , const SparseMatrix< MatrixReal , int > &fineSystemMatrix , bool detailVerbose=false , bool initSolvers=true )
 {
-	SparseMatrix<double, int> coarseSystemMatrix;
-	clock_t t_begin;
-	if( detailVerbose ) t_begin = clock();
+	SparseMatrix< MatrixReal , int > coarseSystemMatrix;
+	Miscellany::Timer timer;
 	if( !UpdateMultigridCoefficients( hierarchy , multigridCoefficients , systemCoefficients , fineSystemMatrix , coarseSystemMatrix , true , detailVerbose ) )
 	{
 		fprintf( stderr , "[ERROR] Unable to update multigrid coefficients!\n" );
 		return 0;
 	}
-	if( detailVerbose ) printf( "Hierarchy coefficients update =  %.4f \n" , (double)( clock()-t_begin ) / CLOCKS_PER_SEC );
+	if( detailVerbose ) printf( "Hierarchy coefficients update =  %.4f \n" , timer.elapsed() );
 
-	t_begin = clock();
+	timer.reset();
 	if( !UpdateMultigridSolvers( hierarchy , coarseSystemMatrix , multigridCoefficients , vCycleSolvers , detailVerbose , initSolvers ) )
 	{
 		fprintf( stderr , "[ERROR] Unable to update multigrid solvers!\n" );
 		return 0;
 	}
-	if( detailVerbose ) printf( "Hierarchy solvers =  %.4f \n" , (double)( clock()-t_begin ) / CLOCKS_PER_SEC );
+	if( detailVerbose ) printf( "Hierarchy solvers =  %.4f \n" , timer.elapsed() );
 
 	return 1;
 }
 
-template< class Real , class CoarseSolverType , class BoundarySolverType , class DirectSolverType >
-typename std::enable_if< std::is_same< Real , float >::value , int >::type UpdateLinearSystem
+#if 1
+template< typename GeometryReal , typename MatrixReal  , class DirectSolver >
+int UpdateLinearSystem
 (
-	double screenWeight , double stiffnessWeight , const HierarchicalSystem &hierarchy , std::vector< SystemCoefficients< Real > > &multigridCoefficients ,
-	const SystemCoefficients< double > &mass , const SystemCoefficients< double > &stiffness ,
-	VCycleSolvers< BoundarySolverType , CoarseSolverType > &vCycleSolvers , DirectSolverType &fineSolver ,
-	const SparseMatrix< double , int > &fineSystemMatrix ,
-	bool detailVerbose=false , bool initSolvers=true , bool updateFineSolver=false )
+	MatrixReal screenWeight , MatrixReal stiffnessWeight , const HierarchicalSystem< GeometryReal , MatrixReal > &hierarchy , std::vector< SystemCoefficients< MatrixReal > > &multigridCoefficients ,
+	const SystemCoefficients< MatrixReal > &mass , const SystemCoefficients< MatrixReal > &stiffness ,
+	VCycleSolvers< DirectSolver > &vCycleSolvers , DirectSolver &fineSolver ,
+	const SparseMatrix< MatrixReal , int > &fineSystemMatrix ,
+	bool detailVerbose=false , bool initSolvers=true , bool updateFineSolver=false
+)
 {
-	SystemCoefficients< double > fineCoefficients;
+	SystemCoefficients< MatrixReal > fineCoefficients;
 	int numDeepCoefficients = (int)mass.deepCoefficients.size();
 	fineCoefficients.deepCoefficients.resize( numDeepCoefficients );
 
 #pragma omp parallel for
 	for( int i=0 ; i<numDeepCoefficients ; i++ ) fineCoefficients.deepCoefficients[i] = mass.deepCoefficients[i] * screenWeight + stiffness.deepCoefficients[i] * stiffnessWeight;
 
-	const SparseMatrix< double , int >* in[][2] = { { &mass.boundaryBoundaryMatrix , &stiffness.boundaryBoundaryMatrix } , { &mass.boundaryDeepMatrix , &stiffness.boundaryDeepMatrix } };
-	SparseMatrix< double , int >* out[] = { &fineCoefficients.boundaryBoundaryMatrix , &fineCoefficients.boundaryDeepMatrix };
+	const SparseMatrix< MatrixReal , int >* in[][2] = { { &mass.boundaryBoundaryMatrix , &stiffness.boundaryBoundaryMatrix } , { &mass.boundaryDeepMatrix , &stiffness.boundaryDeepMatrix } };
+	SparseMatrix< MatrixReal , int >* out[] = { &fineCoefficients.boundaryBoundaryMatrix , &fineCoefficients.boundaryDeepMatrix };
 	for( int ii=0 ; ii<2 ; ii++ )
 	{
-		const SparseMatrix< double , int >& _in1 = *(in[ii][0]);
-		const SparseMatrix< double , int >& _in2 = *(in[ii][1]);
-		SparseMatrix< double , int >& _out = *(out[ii]);
+		const SparseMatrix< MatrixReal , int >& _in1 = *(in[ii][0]);
+		const SparseMatrix< MatrixReal , int >& _in2 = *(in[ii][1]);
+		SparseMatrix< MatrixReal , int >& _out = *(out[ii]);
 		_out.resize( _in1.rows );
 #pragma omp parallel for
 		for( int i=0 ; i<_out.rows ; i++ )
 		{
 			_out.SetRowSize( i , _in1.rowSizes[i] );
-			for( int j=0 ; j<_out.rowSizes[i] ; j++ ) _out[i][j] = MatrixEntry< double , int >( _in1[i][j].N , _in1[i][j].Value * screenWeight + _in2[i][j].Value * stiffnessWeight );
+			for( int j=0 ; j<_out.rowSizes[i] ; j++ ) _out[i][j] = MatrixEntry< MatrixReal , int >( _in1[i][j].N , _in1[i][j].Value * screenWeight + _in2[i][j].Value * stiffnessWeight );
 		}
 	}
-	std::vector< SystemCoefficients< double > > _multigridCoefficients;
+	if( !UpdateMultigridCoefficientsAndSolvers( hierarchy , multigridCoefficients , fineCoefficients , vCycleSolvers , fineSystemMatrix , detailVerbose , initSolvers ) )
+	{
+		fprintf( stderr , "[ERROR] UpdateLinearSystem: Unable to initialize multigrid coefficients and solver!\n" );
+		return 0;
+	}
+	if( updateFineSolver )
+	{
+		Miscellany::Timer timer;
+		if( initSolvers ) fineSolver.init(fineSystemMatrix);
+		if( detailVerbose ) printf( "Analyze =  %.4f\n" , timer.elapsed() );
+
+		if( detailVerbose ) timer.reset();
+		fineSolver.update(fineSystemMatrix);
+		if( detailVerbose ) printf( "Factorize =  %.4f\n" , timer.elapsed() );
+	}
+	return 1;
+}
+
+#else
+template< typename GeometryReal , typename MatrixReal  , class DirectSolver >
+typename std::enable_if< std::is_same< MatrixReal , float >::value , int >::type UpdateLinearSystem
+(
+	MatrixReal screenWeight , MatrixReal stiffnessWeight , const HierarchicalSystem< GeometryReal , MatrixReal > &hierarchy , std::vector< SystemCoefficients< MatrixReal > > &multigridCoefficients ,
+	const SystemCoefficients< MatrixReal > &mass , const SystemCoefficients< MatrixReal > &stiffness ,
+	VCycleSolvers< DirectSolver > &vCycleSolvers , DirectSolver &fineSolver ,
+	const SparseMatrix< MatrixReal , int > &fineSystemMatrix ,
+	bool detailVerbose=false , bool initSolvers=true , bool updateFineSolver=false
+)
+{
+	SystemCoefficients< MatrixReal > fineCoefficients;
+	int numDeepCoefficients = (int)mass.deepCoefficients.size();
+	fineCoefficients.deepCoefficients.resize( numDeepCoefficients );
+
+#pragma omp parallel for
+	for( int i=0 ; i<numDeepCoefficients ; i++ ) fineCoefficients.deepCoefficients[i] = mass.deepCoefficients[i] * screenWeight + stiffness.deepCoefficients[i] * stiffnessWeight;
+
+	const SparseMatrix< MatrixReal , int >* in[][2] = { { &mass.boundaryBoundaryMatrix , &stiffness.boundaryBoundaryMatrix } , { &mass.boundaryDeepMatrix , &stiffness.boundaryDeepMatrix } };
+	SparseMatrix< MatrixReal , int >* out[] = { &fineCoefficients.boundaryBoundaryMatrix , &fineCoefficients.boundaryDeepMatrix };
+	for( int ii=0 ; ii<2 ; ii++ )
+	{
+		const SparseMatrix< MatrixReal , int >& _in1 = *(in[ii][0]);
+		const SparseMatrix< MatrixReal , int >& _in2 = *(in[ii][1]);
+		SparseMatrix< MatrixReal , int >& _out = *(out[ii]);
+		_out.resize( _in1.rows );
+#pragma omp parallel for
+		for( int i=0 ; i<_out.rows ; i++ )
+		{
+			_out.SetRowSize( i , _in1.rowSizes[i] );
+			for( int j=0 ; j<_out.rowSizes[i] ; j++ ) _out[i][j] = MatrixEntry< MatrixReal , int >( _in1[i][j].N , _in1[i][j].Value * screenWeight + _in2[i][j].Value * stiffnessWeight );
+		}
+	}
+	std::vector< SystemCoefficients< MatrixReal > > _multigridCoefficients;
 	if( !UpdateMultigridCoefficientsAndSolvers( hierarchy , _multigridCoefficients , fineCoefficients , vCycleSolvers , fineSystemMatrix , detailVerbose , initSolvers ) )
 	{
 		fprintf( stderr , "[ERROR] Unable to initialize multigrid coefficients and solver!\n" );
@@ -477,55 +543,55 @@ typename std::enable_if< std::is_same< Real , float >::value , int >::type Updat
 	for (int l = 0; l < levels; l++) {
 		multigridCoefficients[l].boundaryDeepMatrix = _multigridCoefficients[l].boundaryDeepMatrix;
 		multigridCoefficients[l].boundaryBoundaryMatrix = _multigridCoefficients[l].boundaryBoundaryMatrix;
-		const std::vector<double> & _deepCoefficients = _multigridCoefficients[l].deepCoefficients;
+		const std::vector< MatrixReal > & _deepCoefficients = _multigridCoefficients[l].deepCoefficients;
 		multigridCoefficients[l].deepCoefficients.resize(_deepCoefficients.size());
-		for (int i = 0; i < (int)_deepCoefficients.size(); i++)multigridCoefficients[l].deepCoefficients[i] = (Real)_deepCoefficients[i];
+		for( int i=0 ; i<_deepCoefficients.size() ; i++ ) multigridCoefficients[l].deepCoefficients[i] = (MatrixReal)_deepCoefficients[i];
 	}
 
-	if (updateFineSolver){
-		clock_t t_begin;
+	if( updateFineSolver )
+	{
+		Miscellany::Timer timer;
+		if( initSolvers ) fineSolver.init(fineSystemMatrix);
+		if( detailVerbose ) printf( "Analyze =  %.4f\n" , timer.elapsed() );
 
-		if (detailVerbose) t_begin = clock();
-		if(initSolvers) fineSolver.init(fineSystemMatrix);
-		if(detailVerbose)printf("Analyze =  %.4f \n", double(clock() - t_begin) / CLOCKS_PER_SEC);
-
-		if (detailVerbose) t_begin = clock();
+		if( detailVerbose ) timer.reset();
 		fineSolver.update(fineSystemMatrix);
-		if(detailVerbose)printf("Factorize =  %.4f \n", double(clock() - t_begin) / CLOCKS_PER_SEC);
+		if( detailVerbose ) printf( "Factorize =  %.4f\n" , timer.elapsed() );
 	}
 
 	return 1;
 }
-template< class Real , class CoarseSolverType , class BoundarySolverType , class DirectSolverType >
-typename std::enable_if< std::is_same< Real , double >::value , int >::type UpdateLinearSystem
+template< typename GeometryReal , typename MatrixReal , class DirectSolver >
+typename std::enable_if< std::is_same< MatrixReal , double >::value , int >::type UpdateLinearSystem
 (
-	double screenWeight , double stiffnessWeight , const HierarchicalSystem &hierarchy , std::vector< SystemCoefficients< Real > > &multigridCoefficients ,
-	const SystemCoefficients< double > &mass , const SystemCoefficients< double > &stiffness ,
-	VCycleSolvers< BoundarySolverType , CoarseSolverType > &vCycleSolvers , DirectSolverType &fineSolver ,
-	const SparseMatrix< double , int > &fineSystemMatrix ,
-	bool detailVerbose=false , bool initSolvers=true , bool updateFineSolver=false )
+	MatrixReal screenWeight , MatrixReal stiffnessWeight , const HierarchicalSystem< GeometryReal , MatrixReal > &hierarchy , std::vector< SystemCoefficients< MatrixReal > > &multigridCoefficients ,
+	const SystemCoefficients< MatrixReal > &mass , const SystemCoefficients< MatrixReal > &stiffness ,
+	VCycleSolvers< DirectSolver > &vCycleSolvers , DirectSolver &fineSolver ,
+	const SparseMatrix< MatrixReal , int > &fineSystemMatrix ,
+	bool detailVerbose=false , bool initSolvers=true , bool updateFineSolver=false
+)
 {
-	SystemCoefficients< double > fineCoefficients;
+	SystemCoefficients< MatrixReal > fineCoefficients;
 	int numDeepCoefficients = (int)mass.deepCoefficients.size();
 	fineCoefficients.deepCoefficients.resize( numDeepCoefficients );
 
 #pragma omp parallel for
 	for( int i=0 ; i<numDeepCoefficients ; i++ ) fineCoefficients.deepCoefficients[i] = mass.deepCoefficients[i] * screenWeight + stiffness.deepCoefficients[i] * stiffnessWeight;
 
-	const SparseMatrix< double , int >* in[][2] = { { &mass.boundaryBoundaryMatrix , &stiffness.boundaryBoundaryMatrix } , { &mass.boundaryDeepMatrix , &stiffness.boundaryDeepMatrix } };
-	SparseMatrix< double , int >* out[] = { &fineCoefficients.boundaryBoundaryMatrix , &fineCoefficients.boundaryDeepMatrix };
+	const SparseMatrix< MatrixReal , int >* in[][2] = { { &mass.boundaryBoundaryMatrix , &stiffness.boundaryBoundaryMatrix } , { &mass.boundaryDeepMatrix , &stiffness.boundaryDeepMatrix } };
+	SparseMatrix< MatrixReal , int >* out[] = { &fineCoefficients.boundaryBoundaryMatrix , &fineCoefficients.boundaryDeepMatrix };
 
 	for( int ii=0 ; ii<2 ; ii++ )
 	{
-		const SparseMatrix< double , int >& _in1 = *(in[ii][0]);
-		const SparseMatrix< double , int >& _in2 = *(in[ii][1]);
-		SparseMatrix< double , int >& _out = *(out[ii]);
+		const SparseMatrix< MatrixReal , int >& _in1 = *(in[ii][0]);
+		const SparseMatrix< MatrixReal , int >& _in2 = *(in[ii][1]);
+		SparseMatrix< MatrixReal , int >& _out = *(out[ii]);
 		_out.resize( _in1.rows );
 #pragma omp parallel for
 		for( int i=0 ; i<_out.rows ; i++ )
 		{
 			_out.SetRowSize( i , _in1.rowSizes[i] );
-			for( int j=0 ; j<_out.rowSizes[i] ; j++ ) _out[i][j] = MatrixEntry< double , int >( _in1[i][j].N , _in1[i][j].Value * screenWeight + _in2[i][j].Value * stiffnessWeight );
+			for( int j=0 ; j<_out.rowSizes[i] ; j++ ) _out[i][j] = MatrixEntry< MatrixReal , int >( _in1[i][j].N , _in1[i][j].Value * screenWeight + _in2[i][j].Value * stiffnessWeight );
 		}
 	}
 	if ( !UpdateMultigridCoefficientsAndSolvers( hierarchy , multigridCoefficients , fineCoefficients , vCycleSolvers , fineSystemMatrix , detailVerbose , initSolvers ) )
@@ -534,17 +600,17 @@ typename std::enable_if< std::is_same< Real , double >::value , int >::type Upda
 		return 0;
 	}
 
-	if (updateFineSolver){
-		clock_t t_begin;
+	if( updateFineSolver )
+	{
+		Miscellany::Timer timer;
+		if( initSolvers ) fineSolver.init(fineSystemMatrix);
+		if( detailVerbose ) printf( "Analyze =  %.4f\n" , timer.elapsed() );
 
-		if (detailVerbose) t_begin = clock();
-		if(initSolvers) fineSolver.init(fineSystemMatrix);
-		if(detailVerbose)printf("Analyze =  %.4f \n", double(clock() - t_begin) / CLOCKS_PER_SEC);
-
-		if (detailVerbose) t_begin = clock();
+		if( detailVerbose ) timer.reset();
 		fineSolver.update(fineSystemMatrix);
-		if(detailVerbose)printf("Factorize =  %.4f \n", double(clock() - t_begin) / CLOCKS_PER_SEC);
+		if( detailVerbose ) printf( "Factorize =  %.4f\n" , timer.elapsed() );
 	}
 
 	return 1;
 }
+#endif

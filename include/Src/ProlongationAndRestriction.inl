@@ -27,14 +27,16 @@ DAMAGE.
 */
 #pragma once
 
-int InitializeProlongation(const int & numInteriorTexels, const int & numFineNodes, const int & numCoarseNodes, const std::vector<GridChart> & gridCharts, const std::vector<GridNodeInfo> & nodeInfo, Eigen::SparseMatrix<double> & prolongation) {
-
-	std::vector<Eigen::Triplet<double>> prolongationTriplets;
+template< typename GeometryReal , typename MatrixReal >
+int InitializeProlongation( int numInteriorTexels , int numFineNodes , int numCoarseNodes , const std::vector< GridChart< GeometryReal > > &gridCharts , const std::vector< GridNodeInfo > &nodeInfo , Eigen::SparseMatrix< MatrixReal > &prolongation )
+{
+	std::vector< Eigen::Triplet< MatrixReal > > prolongationTriplets;
 	std::unordered_set<int> coveredNodes;
 
 	std::vector<int> interiorTexelIndices(numCoarseNodes, -1);
-	for (int i = 0; i < gridCharts.size(); i++) {
-		const GridChart & gridChart = gridCharts[i];
+	for (int i = 0; i < gridCharts.size(); i++)
+	{
+		const GridChart< GeometryReal > &gridChart = gridCharts[i];
 		for (int j = 0; j < gridChart.globalTexelIndex.size(); j++) {
 			if (gridChart.globalTexelIndex[j] != -1 && gridChart.globalInteriorTexelIndex[j] != -1) {
 				interiorTexelIndices[gridChart.globalTexelIndex[j]] = gridChart.globalInteriorTexelIndex[j];
@@ -48,66 +50,69 @@ int InitializeProlongation(const int & numInteriorTexels, const int & numFineNod
 				printf("Out of bound index! \n");
 				return 0;
 			}
-			prolongationTriplets.push_back(Eigen::Triplet<double>(interiorTexelIndices[i], i, 1.0));
+			prolongationTriplets.push_back( Eigen::Triplet< MatrixReal >( interiorTexelIndices[i] , i , (MatrixReal)1. ) );
 			coveredNodes.insert(i);
 		}
 	}
 
-	const int numAuxiliarNodes = numFineNodes - numInteriorTexels;
-	std::vector<int> auxiliarNodesDegree(numAuxiliarNodes, 0);
+	int numAuxiliaryNodes = numFineNodes - numInteriorTexels;
+	std::vector<int> auxiliaryNodesDegree(numAuxiliaryNodes, 0);
 
-	for (int i = 0; i < gridCharts.size(); i++) {
-		const GridChart & gridChart = gridCharts[i];
-		for (int j = 0; j < gridChart.auxiliarNodes.size(); j++) {
-			int auxiliarId = gridChart.auxiliarNodes[j].index - numInteriorTexels;
-			auxiliarNodesDegree[auxiliarId]++;
+	for (int i = 0; i < gridCharts.size(); i++)
+	{
+		const GridChart< GeometryReal > &gridChart = gridCharts[i];
+		for (int j = 0; j < gridChart.auxiliaryNodes.size(); j++) {
+			int auxiliaryID = gridChart.auxiliaryNodes[j].index - numInteriorTexels;
+			auxiliaryNodesDegree[auxiliaryID]++;
 		}
 	}
 
-	double precision_error = 1e-10;
+	GeometryReal precision_error = (GeometryReal)1e-10;
 
-	std::vector<double> auxiliarNodesCumWeight(numAuxiliarNodes, 0);
+	std::vector<GeometryReal> auxiliaryNodesCumWeight(numAuxiliaryNodes, 0);
 
 	for (int i = 0; i < gridCharts.size(); i++) {
-		const GridChart & gridChart = gridCharts[i];
-		for (int j = 0; j < gridChart.auxiliarNodes.size(); j++) {
-			int auxiliarId = gridChart.auxiliarNodes[j].index - numInteriorTexels;
-			int nodeDegree = auxiliarNodesDegree[auxiliarId];
-			Point2D<double>nodePosition = gridChart.auxiliarNodes[j].position;
+		const GridChart< GeometryReal > &gridChart = gridCharts[i];
+		for (int j = 0; j < gridChart.auxiliaryNodes.size(); j++) {
+			int auxiliaryID = gridChart.auxiliaryNodes[j].index - numInteriorTexels;
+			int nodeDegree = auxiliaryNodesDegree[auxiliaryID];
+			Point2D< GeometryReal > nodePosition = gridChart.auxiliaryNodes[j].position;
 			int corner[2] = { (int)floor(nodePosition[0] / gridChart.cellSizeW), (int)floor(nodePosition[1] / gridChart.cellSizeH) };
 			int cellId = gridChart.localCellIndex(corner[0], corner[1]);
 
 			nodePosition[0] /= gridChart.cellSizeW;
 			nodePosition[1] /= gridChart.cellSizeH;
-			nodePosition[0] -= double(corner[0]);
-			nodePosition[1] -= double(corner[1]);
+			nodePosition[0] -= (GeometryReal)corner[0];
+			nodePosition[1] -= (GeometryReal)corner[1];
 			if (nodePosition[0] < 0 - precision_error || nodePosition[0] > 1 + precision_error || nodePosition[1] < 0 - precision_error || nodePosition[1] > 1 + precision_error) {
 				printf("Sample out of unit box! (%f %f)\n", nodePosition[0], nodePosition[1]);
 				return 0;
 			}
-			for (int k = 0; k < 4; k++) {
-				double texelWeight = BilinearElementValue(k, nodePosition) / double(nodeDegree);
-				if (fabs(texelWeight) > 1e-11) {
-					auxiliarNodesCumWeight[auxiliarId] += texelWeight;
+			for (int k = 0; k < 4; k++)
+			{
+				GeometryReal texelWeight = BilinearElementValue( k , nodePosition ) / nodeDegree;
+				if( fabs(texelWeight)>1e-11 )
+				{
+					auxiliaryNodesCumWeight[auxiliaryID] += texelWeight;
 					int texelIndex = gridChart.bilinearElementIndices[cellId][k];
 					if (nodeInfo[texelIndex].nodeType == 2) {
-						printf("ERROR: Deep texel cannot be in the support of an auxiliar node. Weight %g (B) \n", texelWeight);
-						for (int _k = 0; _k < 4; _k++) printf("Neighbours weight %g \n", BilinearElementValue(_k, nodePosition) / double(nodeDegree));
+						printf("ERROR: Deep texel cannot be in the support of an auxiliary node. Weight %g (B) \n", texelWeight);
+						for( int _k=0 ; _k<4 ; _k++ ) fprintf( stderr , "[ERROR] Neighbours weight %g\n" , BilinearElementValue( _k , nodePosition ) / nodeDegree );
 						return 0;
 					}
 					coveredNodes.insert(texelIndex);
-					if (gridChart.auxiliarNodes[j].index < numInteriorTexels || gridChart.auxiliarNodes[j].index > numFineNodes || texelIndex < 0 || texelIndex> numCoarseNodes) {
+					if (gridChart.auxiliaryNodes[j].index < numInteriorTexels || gridChart.auxiliaryNodes[j].index > numFineNodes || texelIndex < 0 || texelIndex> numCoarseNodes) {
 						printf("Out of bound index! \n");
 						return 0;
 					}
-					prolongationTriplets.push_back(Eigen::Triplet<double>(gridChart.auxiliarNodes[j].index, texelIndex, texelWeight));
+					prolongationTriplets.push_back( Eigen::Triplet< MatrixReal >( gridChart.auxiliaryNodes[j].index , texelIndex , (MatrixReal)texelWeight ) );
 				}
 			}
 		}
 	}
 
-	for (int i = 0; i < numAuxiliarNodes; i++) if (fabs(auxiliarNodesCumWeight[i] - 1.0) > precision_error) {
-		printf("Cum weight out of precision %g \n", auxiliarNodesCumWeight[i]);
+	for (int i = 0; i < numAuxiliaryNodes; i++) if (fabs(auxiliaryNodesCumWeight[i] - 1.0) > precision_error) {
+		printf("Cum weight out of precision %g \n", auxiliaryNodesCumWeight[i]);
 		return 0;
 	}
 
@@ -123,13 +128,16 @@ int InitializeProlongation(const int & numInteriorTexels, const int & numFineNod
 	return 1;
 }
 
-int InitializeAtlasHierachicalProlongation(GridAtlas & fineAtlas, const GridAtlas & coarseAtlas) {
+template< typename GeometryReal , typename MatrixReal >
+int InitializeAtlasHierachicalProlongation( GridAtlas< GeometryReal , MatrixReal > &fineAtlas , const GridAtlas< GeometryReal , MatrixReal > &coarseAtlas )
+{
 
 	std::vector<ProlongationLine> & prolongationLines = fineAtlas.prolongationLines;
 
-	for (int k = 0; k < fineAtlas.gridCharts.size(); k++) {
-		const GridChart & fineChart = fineAtlas.gridCharts[k];
-		const GridChart & coarseChart = coarseAtlas.gridCharts[k];
+	for (int k = 0; k < fineAtlas.gridCharts.size(); k++)
+	{
+		const GridChart< GeometryReal > &fineChart = fineAtlas.gridCharts[k];
+		const GridChart< GeometryReal > &coarseChart = coarseAtlas.gridCharts[k];
 		int width = fineChart.globalTexelIndex.width();
 		for (int j = 0; j < fineChart.globalTexelIndex.height(); j++) {
 			int offset = 0;
@@ -199,8 +207,9 @@ int InitializeAtlasHierachicalProlongation(GridAtlas & fineAtlas, const GridAtla
 		}
 	}
 
-	if (1) {
-		std::vector<Eigen::Triplet<double>> prolongationTriplets;
+	if (1)
+	{
+		std::vector< Eigen::Triplet< MatrixReal > > prolongationTriplets;
 
 		for (int r = 0; r < prolongationLines.size(); r++) {
 			int startIndex = prolongationLines[r].startIndex;
@@ -210,30 +219,33 @@ int InitializeAtlasHierachicalProlongation(GridAtlas & fineAtlas, const GridAtla
 			int nextLineStart = prolongationLines[r].nextLineIndex;
 			int offset = prolongationLines[r].alignedStart ? 0 : 1;
 			if (centerLineStart != -1) {
-				for (int i = 0; i < lineLenght; i++) {
-					prolongationTriplets.push_back(Eigen::Triplet<double>(startIndex + i, centerLineStart + (i + offset) / 2, 0.5));
-					prolongationTriplets.push_back(Eigen::Triplet<double>(startIndex + i, centerLineStart + (i + offset + 1) / 2, 0.5));
+				for (int i = 0; i < lineLenght; i++)
+				{
+					prolongationTriplets.push_back( Eigen::Triplet< MatrixReal >( startIndex+i , centerLineStart+ (i+offset+0) / 2 , (MatrixReal)0.5 ) );
+					prolongationTriplets.push_back( Eigen::Triplet< MatrixReal >( startIndex+i , centerLineStart+ (i+offset+1) / 2 , (MatrixReal)0.5 ) );
 				}
 			}
 			else {
-				for (int i = 0; i < lineLenght; i++) {
-					prolongationTriplets.push_back(Eigen::Triplet<double>(startIndex + i, previousLineStart + (i + offset) / 2, 0.25));
-					prolongationTriplets.push_back(Eigen::Triplet<double>(startIndex + i, previousLineStart + (i + offset + 1) / 2, 0.25));
-					prolongationTriplets.push_back(Eigen::Triplet<double>(startIndex + i, nextLineStart + (i + offset) / 2, 0.25));
-					prolongationTriplets.push_back(Eigen::Triplet<double>(startIndex + i, nextLineStart + (i + offset + 1) / 2, 0.25));
+				for (int i = 0; i < lineLenght; i++)
+				{
+					prolongationTriplets.push_back( Eigen::Triplet< MatrixReal >( startIndex+i , previousLineStart + (i+offset+0)/2 , (MatrixReal)0.25 ) );
+					prolongationTriplets.push_back( Eigen::Triplet< MatrixReal >( startIndex+i , previousLineStart + (i+offset+1)/2 , (MatrixReal)0.25 ) );
+					prolongationTriplets.push_back( Eigen::Triplet< MatrixReal >( startIndex+i ,     nextLineStart + (i+offset+0)/2 , (MatrixReal)0.25 ) );
+					prolongationTriplets.push_back( Eigen::Triplet< MatrixReal >( startIndex+i ,     nextLineStart + (i+offset+1)/2 , (MatrixReal)0.25 ) );
 				}
 			}
 		}
 
-		Eigen::SparseMatrix<double> prolongation;
+		Eigen::SparseMatrix< MatrixReal > prolongation;
 		prolongation.resize(fineAtlas.numTexels, coarseAtlas.numTexels);
 		prolongation.setFromTriplets(prolongationTriplets.begin(), prolongationTriplets.end());
-		Eigen::VectorXd ones = Eigen::VectorXd::Ones(coarseAtlas.numTexels);
-		Eigen::VectorXd prolongedOnes = prolongation*ones;
+		typedef Eigen::Matrix< MatrixReal , Eigen::Dynamic , 1 > EVector;
+		EVector ones = EVector::Ones( coarseAtlas.numTexels );
+		EVector prolongedOnes = prolongation*ones;
 		for (int i = 0; i < fineAtlas.numTexels; i++) {
 			if (fabs(prolongedOnes[i] - 1.0) > 1e-10) {
 				printf("ERROR: Prolongation does not add up to one! %d -> %g \n", i, prolongedOnes[i]);
-				printf("Node info : chart %d  pos (%d %d) \n", fineAtlas.nodeInfo[i].chartId, fineAtlas.nodeInfo[i].ci, fineAtlas.nodeInfo[i].cj);
+				printf("Node info : chart %d  pos (%d %d) \n", fineAtlas.nodeInfo[i].chartID, fineAtlas.nodeInfo[i].ci, fineAtlas.nodeInfo[i].cj);
 				return 0;
 			}
 		}
@@ -242,11 +254,13 @@ int InitializeAtlasHierachicalProlongation(GridAtlas & fineAtlas, const GridAtla
 	return 1;
 }
 
-int InitializeProlongationMatrix(const GridAtlas & fineAtlas, GridAtlas & coarseAtlas, SparseMatrix<double, int> & __prolongation) {
+template< typename GeometryReal , typename MatrixReal >
+int InitializeProlongationMatrix( const GridAtlas< GeometryReal , MatrixReal > &fineAtlas , GridAtlas< GeometryReal , MatrixReal > &coarseAtlas , SparseMatrix< MatrixReal , int > &__prolongation )
+{
 
 	const std::vector<ProlongationLine> & prolongationLines = fineAtlas.prolongationLines;
 
-	std::vector<Eigen::Triplet<double>> prolongationTriplets;
+	std::vector< Eigen::Triplet< MatrixReal > > prolongationTriplets;
 
 	for (int r = 0; r < prolongationLines.size(); r++) {
 		int startIndex = prolongationLines[r].startIndex;
@@ -256,17 +270,19 @@ int InitializeProlongationMatrix(const GridAtlas & fineAtlas, GridAtlas & coarse
 		int nextLineStart = prolongationLines[r].nextLineIndex;
 		int offset = prolongationLines[r].alignedStart ? 0 : 1;
 		if (centerLineStart != -1) {
-			for (int i = 0; i < lineLenght; i++) {
-				prolongationTriplets.push_back(Eigen::Triplet<double>(startIndex + i, centerLineStart + (i + offset) / 2, 0.5));
-				prolongationTriplets.push_back(Eigen::Triplet<double>(startIndex + i, centerLineStart + (i + offset + 1) / 2, 0.5));
+			for (int i = 0; i < lineLenght; i++)
+			{
+				prolongationTriplets.push_back( Eigen::Triplet< MatrixReal >( startIndex+i , centerLineStart + (i+offset+0) / 2 , (MatrixReal)0.5 ) );
+				prolongationTriplets.push_back( Eigen::Triplet< MatrixReal >( startIndex+i , centerLineStart + (i+offset+1) / 2 , (MatrixReal)0.5 ) );
 			}
 		}
 		else {
-			for (int i = 0; i < lineLenght; i++) {
-				prolongationTriplets.push_back(Eigen::Triplet<double>(startIndex + i, previousLineStart + (i + offset) / 2, 0.25));
-				prolongationTriplets.push_back(Eigen::Triplet<double>(startIndex + i, previousLineStart + (i + offset + 1) / 2, 0.25));
-				prolongationTriplets.push_back(Eigen::Triplet<double>(startIndex + i, nextLineStart + (i + offset) / 2, 0.25));
-				prolongationTriplets.push_back(Eigen::Triplet<double>(startIndex + i, nextLineStart + (i + offset + 1) / 2, 0.25));
+			for (int i = 0; i < lineLenght; i++)
+			{
+				prolongationTriplets.push_back( Eigen::Triplet< MatrixReal >( startIndex+i , previousLineStart + (i+offset+0) / 2 , (MatrixReal)0.25 ) );
+				prolongationTriplets.push_back( Eigen::Triplet< MatrixReal >( startIndex+i , previousLineStart + (i+offset+1) / 2 , (MatrixReal)0.25 ) );
+				prolongationTriplets.push_back( Eigen::Triplet< MatrixReal >( startIndex+i ,     nextLineStart + (i+offset+0) / 2 , (MatrixReal)0.25 ) );
+				prolongationTriplets.push_back( Eigen::Triplet< MatrixReal >( startIndex+i ,     nextLineStart + (i+offset+1) / 2 , (MatrixReal)0.25 ) );
 			}
 		}
 	}
@@ -275,12 +291,12 @@ int InitializeProlongationMatrix(const GridAtlas & fineAtlas, GridAtlas & coarse
 #pragma omp parallel for
 	for( int i=0 ; i<__prolongation.rows ; i++ )
 	{
-		double sum = 0;
+		MatrixReal sum = 0;
 		for( int j=0 ; j<__prolongation.rowSizes[i] ; j++ ) sum += __prolongation[i][j].Value;
 		if( fabs(sum-1.0)>1e-10 )
 		{
 			printf( "ERROR: Prolongation does not add up to one! %d -> %g \n" , i , sum );
-			printf( "Node info : chart %d  pos (%d %d) \n" , fineAtlas.nodeInfo[i].chartId , fineAtlas.nodeInfo[i].ci , fineAtlas.nodeInfo[i].cj );
+			printf( "Node info : chart %d  pos (%d %d) \n" , fineAtlas.nodeInfo[i].chartID , fineAtlas.nodeInfo[i].ci , fineAtlas.nodeInfo[i].cj );
 			exit(0);
 		}
 	}
@@ -288,9 +304,10 @@ int InitializeProlongationMatrix(const GridAtlas & fineAtlas, GridAtlas & coarse
 }
 
 //Coarse restriction
-int InitializeAtlasHierachicalRestriction(const GridAtlas & fineAtlas, GridAtlas & coarseAtlas, SparseMatrix<double, int> & boundaryRestriction) {
-
-	std::vector<Eigen::Triplet<double>> boundaryRestrictionTriplets;
+template< typename GeometryReal , typename MatrixReal  >
+int InitializeAtlasHierachicalRestriction(const GridAtlas< GeometryReal , MatrixReal > &fineAtlas , GridAtlas< GeometryReal , MatrixReal > &coarseAtlas , SparseMatrix< MatrixReal , int > &boundaryRestriction )
+{
+	std::vector< Eigen::Triplet< MatrixReal > > boundaryRestrictionTriplets;
 
 	const std::vector<GridNodeInfo> & coarseNodeInfo = coarseAtlas.nodeInfo;
 
@@ -300,8 +317,6 @@ int InitializeAtlasHierachicalRestriction(const GridAtlas & fineAtlas, GridAtlas
 	std::vector<RasterLine> & restrictionLines = coarseAtlas.restrictionLines;
 	std::vector<DeepLine> & deepLines = coarseAtlas.deepLines;
 	//Initialize restrictionLines
-
-	//std::vector<Eigen::Triplet<double>> fullRestrictionTriplets;
 
 	restrictionLines.resize(coarseRasterLines.size());
 	deepLines.resize(coarseRasterLines.size());
@@ -324,10 +339,10 @@ int InitializeAtlasHierachicalRestriction(const GridAtlas & fineAtlas, GridAtlas
 
 		int ci = startNodeInfo.ci;
 		int cj = startNodeInfo.cj;
-		int chartId = startNodeInfo.chartId;
+		int chartID = startNodeInfo.chartID;
 
-		const GridChart & fineChart = fineAtlas.gridCharts[chartId];
-		const GridChart & coarseChart = coarseAtlas.gridCharts[chartId];
+		const GridChart< GeometryReal > &fineChart = fineAtlas.gridCharts[chartID];
+		const GridChart< GeometryReal > &coarseChart = coarseAtlas.gridCharts[chartID];
 
 		int fi = (int)( fineChart.centerOffset[0] + 2.0 *(ci - coarseChart.centerOffset[0]) );
 		int fj = (int)( fineChart.centerOffset[1] + 2.0 *(cj - coarseChart.centerOffset[1]) );
@@ -398,12 +413,12 @@ int InitializeAtlasHierachicalRestriction(const GridAtlas & fineAtlas, GridAtlas
 
 	//Initialize boundary nodes prolongation
 
-	double expectedWeight = 0;
+	MatrixReal expectedWeight = 0;
 
-	for (int k = 0; k < fineAtlas.gridCharts.size(); k++) {
-
-		const GridChart & fineChart = fineAtlas.gridCharts[k];
-		const GridChart & coarseChart = coarseAtlas.gridCharts[k];
+	for (int k = 0; k < fineAtlas.gridCharts.size(); k++)
+	{
+		const GridChart< GeometryReal > &fineChart = fineAtlas.gridCharts[k];
+		const GridChart< GeometryReal > &coarseChart = coarseAtlas.gridCharts[k];
 
 		for (int fj = 0; fj < fineChart.height; fj++) for (int fi = 0; fi < fineChart.width; fi++) {
 			if (fineChart.globalTexelIndex(fi, fj) != -1) {
@@ -414,7 +429,7 @@ int InitializeAtlasHierachicalRestriction(const GridAtlas & fineAtlas, GridAtlas
 				int sign_fj = _fj < 0 ? -1 : (_fj > 0 ? 1 : 0);
 
 				int ci[2];
-				double ci_weights[2];
+				MatrixReal ci_weights[2];
 				if (_fi % 2 == 0) {
 					ci[0] = _fi / 2 + coarseChart.centerOffset[0];
 					ci[1] = -1;
@@ -429,7 +444,7 @@ int InitializeAtlasHierachicalRestriction(const GridAtlas & fineAtlas, GridAtlas
 				}
 
 				int cj[2];
-				double cj_weights[2];
+				MatrixReal cj_weights[2];
 				if (_fj % 2 == 0) {
 					cj[0] = _fj / 2 + coarseChart.centerOffset[1];
 					cj[1] = -1;
@@ -457,9 +472,8 @@ int InitializeAtlasHierachicalRestriction(const GridAtlas & fineAtlas, GridAtlas
 						}
 						else {
 							int coarseNodeBoundaryIndex = coarseBoundaryDeepIndexing[coarseNodeGlobalIndex] - 1;
-							if (coarseNodeBoundaryIndex >= 0) {
-								boundaryRestrictionTriplets.push_back(Eigen::Triplet<double>(coarseNodeBoundaryIndex, fineChart.globalTexelIndex(fi, fj), ci_weights[di] * cj_weights[dj]));
-							}
+							if (coarseNodeBoundaryIndex >= 0)
+								boundaryRestrictionTriplets.push_back( Eigen::Triplet< MatrixReal >( coarseNodeBoundaryIndex , fineChart.globalTexelIndex(fi,fj) , ci_weights[di] * cj_weights[dj] ) );
 						}
 					}
 				}

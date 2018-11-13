@@ -29,41 +29,42 @@ DAMAGE.
 #define CAMERA_INCLUDED
 #include <Misha/Geometry.h>
 
+template< typename Real >
 class Camera
 {
 	void _setRight( void )
 	{
-		right = Point3D< double >::CrossProduct( forward , up );
+		right = Point3D< Real >::CrossProduct( forward , up );
 		right /= Length( right );
 	}
-	void rotatePoint( Point3D< double > axis , double angle , Point3D< double > center )
+	void rotatePoint( Point3D< Real > axis , Real angle , Point3D< Real > center )
 	{
-		Point3D< double > p , r , f , u;
-		Point3D< double > v[3];
-		double c , s;
-		double d[3];
+		Point3D< Real > p , r , f , u;
+		Point3D< Real > v[3];
+		Real c , s;
+		Real d[3];
 
 		v[2] = axis/Length( axis );
 
-		v[0] = Point3D< double >::CrossProduct( v[2] , Point3D< double >( 1 , 0 , 0 ) );
-		if( Point3D< double >::SquareNorm( v[0] )<.001) v[0] = Point3D< double >::CrossProduct( v[2] , Point3D< double >( 0 , 1 , 0 ) );
+		v[0] = Point3D< Real >::CrossProduct( v[2] , Point3D< Real >( 1 , 0 , 0 ) );
+		if( Point3D< Real >::SquareNorm( v[0] )<.001 ) v[0] = Point3D< Real >::CrossProduct( v[2] , Point3D< Real >( 0 , 1 , 0 ) );
 		v[0] /= Length( v[0] );
-		v[1] = Point3D< double >::CrossProduct( v[2] , v[0] );
+		v[1] = Point3D< Real >::CrossProduct( v[2] , v[0] );
 		v[1] /= Length( v[1] );
 
 		c = cos(angle);
 		s = sin(angle);
 
 		p = position-center;
-		for( int j=0 ; j<3 ; j++ ) d[j] = Point3D< double >::Dot( p , v[j] );
+		for( int j=0 ; j<3 ; j++ ) d[j] = Point3D< Real >::Dot( p , v[j] );
 
 		position = v[2]*d[2] + v[0]*(d[0]*c+d[1]*s) + v[1]*(-d[0]*s+d[1]*c) + center;
 
 		for( int j=0 ; j<3 ; j++ )
 		{
-			r[j] = Point3D< double >::Dot(   right , v[j] );
-			f[j] = Point3D< double >::Dot( forward , v[j] );
-			u[j] = Point3D< double >::Dot(      up , v[j] );
+			r[j] = Point3D< Real >::Dot(   right , v[j] );
+			f[j] = Point3D< Real >::Dot( forward , v[j] );
+			u[j] = Point3D< Real >::Dot(      up , v[j] );
 		}
 
 		r = v[2]*r[2]+v[0]*(r[0]*c+r[1]*s)+v[1]*(-r[0]*s+r[1]*c);
@@ -78,16 +79,16 @@ class Camera
 	}
 
 public:
-	Point3D< double > position , forward , up , right;
+	Point3D< Real > position , forward , up , right;
 
 	Camera( void )
 	{
-		position = Point3D< double >( 0 , 0 , 0 );
-		forward  = Point3D< double >( 0 , 0 , 1 );
-		up       = Point3D< double >( 0 , 1 , 0 );
+		position = Point3D< Real >( 0 , 0 , 0 );
+		forward  = Point3D< Real >( 0 , 0 , 1 );
+		up       = Point3D< Real >( 0 , 1 , 0 );
 		_setRight();
 	}
-	Camera( Point3D< double > p , Point3D< double > f , Point3D< double > u )
+	Camera( Point3D< Real > p , Point3D< Real > f , Point3D< Real > u )
 	{
 		position = p , forward = f , up = u;
 		_setRight();
@@ -103,17 +104,32 @@ public:
 		);
 	}
 
-	void translate( Point3D< double > t ){ position += t; }
-	void rotateUp     ( double angle , Point3D< double > p=Point3D< double >() ){ rotatePoint( up      , angle , p ); }
-	void rotateRight  ( double angle , Point3D< double > p=Point3D< double >() ){ rotatePoint( right   , angle , p ); }
-	void rotateForward( double angle , Point3D< double > p=Point3D< double >() ){ rotatePoint( forward , angle , p ); }
+	void translate( Point3D< Real > t ){ position += t; }
+	void rotateUp     ( Real angle , Point3D< Real > p=Point3D< Real >() ){ rotatePoint( up      , angle , p ); }
+	void rotateRight  ( Real angle , Point3D< Real > p=Point3D< Real >() ){ rotatePoint( right   , angle , p ); }
+	void rotateForward( Real angle , Point3D< Real > p=Point3D< Real >() ){ rotatePoint( forward , angle , p ); }
 
-	Point2D< double > project( Point3D< double > p , bool orthographic )
+	Point2D< Real > project( Point3D< Real > p , bool orthographic )
 	{
 		p -= position;
-		double x = Point3D< double >::Dot( p , right ) , y = Point3D< double >::Dot( p , up ) , z = Point3D< double >::Dot( p , forward );
-		if( orthographic ) return Point2D< double >( x , y );
-		else               return Point2D< double >( x/z , y/1 );
+		Real x = Point3D< Real >::Dot( p , right ) , y = Point3D< Real >::Dot( p , up ) , z = Point3D< Real >::Dot( p , forward );
+		if( orthographic ) return Point2D< Real >( x , y );
+		else               return Point2D< Real >( x/z , y/1 );
+	}
+
+	void write( FILE *fp ) const
+	{
+		fwrite( &position , sizeof( Point3D< Real > ) , 1 , fp );
+		fwrite( &forward  , sizeof( Point3D< Real > ) , 1 , fp );
+		fwrite( &right    , sizeof( Point3D< Real > ) , 1 , fp );
+		fwrite( &up       , sizeof( Point3D< Real > ) , 1 , fp );
+	}
+	void read( FILE *fp )
+	{
+		fread( &position , sizeof( Point3D< Real > ) , 1 , fp );
+		fread( &forward  , sizeof( Point3D< Real > ) , 1 , fp );
+		fread( &right    , sizeof( Point3D< Real > ) , 1 , fp );
+		fread( &up       , sizeof( Point3D< Real > ) , 1 , fp );
 	}
 };
 #endif // CAMERA_INCLUDED

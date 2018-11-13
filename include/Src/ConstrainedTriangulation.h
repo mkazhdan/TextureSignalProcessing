@@ -38,7 +38,9 @@ DAMAGE.
 
 #include "triangle.c"
 
-void TriangulatePolygon(const std::vector<Point2D<double>> & vertices, std::vector<TriangleIndex> & outputTriangles){
+template< typename GeometryReal >
+void TriangulatePolygon( const std::vector< Point2D< GeometryReal > > &vertices , std::vector< TriangleIndex > &outputTriangles )
+{
 
 	struct triangulateio in, out;
 

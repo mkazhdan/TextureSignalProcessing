@@ -44,7 +44,8 @@ public:
 	CholmodSolver<1> solver[Channels];
 	std::vector< Real > out[Channels];
 	std::vector< Real > in[Channels];
-	void init( const SparseMatrix< double , int > & M )
+	template< typename _Real >
+	void init( const SparseMatrix< _Real , int > & M )
 	{
 #pragma omp parallel for
 		for( int c=0 ; c<Channels ; c++ ) solver[c]._init(M);
@@ -53,7 +54,8 @@ public:
 		for( int c=0 ; c<Channels ; c++ ) out[c].resize( numVariables ) , in[c].resize( numVariables );
 	}
 
-	void update( const SparseMatrix< double , int >& M )
+	template< typename _Real >
+	void update( const SparseMatrix< _Real , int >& M )
 	{
 #pragma omp parallel for
 		for( int c=0 ; c<Channels ; c++ ) solver[c]._update(M);
@@ -94,15 +96,17 @@ public:
 	CholmodSolver< Channels > solver;
 	std::vector< Real > out;
 	std::vector< Real > in;
-	void init( const SparseMatrix< double , int >& M )
+	template< typename _Real >
+	void init( const SparseMatrix< _Real , int >& M )
 	{
 		solver._init(M);
-		const int numVariables = M.Rows();
+		int numVariables = M.Rows();
 		out.resize( Channels*numVariables );
 		in.resize( Channels*numVariables );
 	}
 
-	void update( const SparseMatrix< double , int >& M ){ solver._update(M); }
+	template< typename _Real >
+	void update( const SparseMatrix< _Real , int >& M ){ solver._update(M); }
 };
 
 template< class Real , unsigned int Channels , class DataType >
@@ -132,14 +136,15 @@ public:
 	CholmodSolver< 1 > solver;
 	std::vector< Real > out[Channels];
 	std::vector< Real > in[Channels];
-	void init( const SparseMatrix< double , int >& M )
+	template< typename _Real >
+	void init( const SparseMatrix< _Real , int >& M )
 	{
 		solver._init(M);
-		const int numVariables = M.Rows();
+		int numVariables = M.Rows();
 		for( int c=0 ; c<Channels ; c++ ) out[c].resize( numVariables ) , in[c].resize( numVariables );
 	}
-
-	void update( const SparseMatrix< double , int >& M ){ solver._update(M); }
+	template< typename _Real >
+	void update( const SparseMatrix< _Real , int >& M ){ solver._update(M); }
 };
 
 template< class Real , unsigned int Channels , class DataType >
@@ -192,7 +197,7 @@ public:
 		if( solver ) delete solver;
 		solver = new EigenSolver( M , true );
 
-		const int numVariables = (int)M.Rows();
+		int numVariables = (int)M.Rows();
 		for( int c=0 ; c<Channels ; c++ ) b[c].resize( numVariables ) , x[c].resize( numVariables );
 	}
 	void update( const SparseMatrix< Real , int >& M ){ solver->update( M ); }
@@ -207,7 +212,7 @@ void solve( EigenCholeskySolver< Real , Channels >& chol , std::vector< DataType
 #pragma omp parallel for
 	for( int c=0 ; c<Channels ; c++ ) chol.solver->solve( chol.b[c] , chol.x[c] );
 #pragma omp parallel for
-	for( int n=0 ; n<numVariables ; n++ ) for( int c=0 ; c<Channels ; c++ ) x[n][c] = chol.x[c][n];
+	for( int n=0 ; n<numVariables ; n++ ) for( int c=0 ; c<Channels ; c++ ) x[n][c] = (Real)chol.x[c][n];
 }
 
 template< class Real >
@@ -233,7 +238,8 @@ public:
 	EigenVector rhs_vectors[Channels];
 	EigenVector solution_vectors[Channels];
 
-	void init( const SparseMatrix< double , int >& _M )
+	template< typename _Real >
+	void init( const SparseMatrix< _Real , int >& _M )
 	{
 		Eigen::SparseMatrix< Real > M;
 		SparseMatrixParser( _M , M );
@@ -249,7 +255,7 @@ public:
 		default:                    fprintf( stderr , "[FAILED] Undetermined cause!\n" );
 		}
 
-		const int numVariables = M.rows();
+		int numVariables = M.rows();
 		for( int c=0 ; c<Channels ; c++ )
 		{
 			x0_vectors[c].resize( numVariables );
@@ -257,7 +263,8 @@ public:
 			solution_vectors[c].resize( numVariables );
 		}
 	}
-	void update( const SparseMatrix< double , int >& _M )
+	template< typename _Real >
+	void update( const SparseMatrix< _Real , int >& _M )
 	{
 		Eigen::SparseMatrix< Real > M;
 		SparseMatrixParser( _M , M );
