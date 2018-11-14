@@ -26,7 +26,7 @@ ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF S
 DAMAGE.
 */
 
-#include <Misha/CmdLineParser.h> 
+#include <Misha/CmdLineParser.h>
 #include <Misha/Miscellany.h>
 #include <Misha/FEM.h>
 #include <Src/Hierarchy.h>
@@ -147,7 +147,7 @@ public:
 	static std::vector< BilinearElementIndex > bilinearElementIndices;
 
 	static std::vector< TextureNodeInfo< PreReal > > textureNodes;
-	static Image<int> nodeIndex;
+	static Image< int > nodeIndex;
 
 	static SparseMatrix< Real , int > anisotropicMass;
 	static SparseMatrix< Real , int > anisotropicStiffness;
@@ -228,11 +228,11 @@ public:
 	static void IncrementUpdateCallBack( Visualization* v , const char* prompt );
 	static void ExportTextureCallBack(Visualization* v, const char* prompt);
 
-	static int Init();
+	static void Init( void );
 	static void InitializeVisualization( int width , int height );
 	static void ComputeExactSolution( bool verbose= false );
-	static int UpdateSolution( bool verbose=false , bool detailVerbose=false );
-	static int InitializeSystem( const FEM::RiemannianMesh< PreReal >& rMesh , int width , int height );
+	static void UpdateSolution( bool verbose=false , bool detailVerbose=false );
+	static void InitializeSystem( const FEM::RiemannianMesh< PreReal >& rMesh , int width , int height );
 	static void Reset( void );
 
 	static void Display(void) { visualization.Display(); }
@@ -331,7 +331,7 @@ void LineConvolution< PreReal , Real >::ComputeExactSolution( bool verbose )
 	mass_x0.resize( textureNodes.size() );
 	MultiplyBySystemMatrix_NoReciprocals( massCoefficients , hierarchy.gridAtlases[0].boundaryGlobalIndex , hierarchy.gridAtlases[0].rasterLines , multigridLineConvolutionVariables[0].x , mass_x0 );
 
-	stiffness_x0.resize(textureNodes.size());
+	stiffness_x0.resize( textureNodes.size() );
 	MultiplyBySystemMatrix_NoReciprocals( stiffnessCoefficients , hierarchy.gridAtlases[0].boundaryGlobalIndex , hierarchy.gridAtlases[0].rasterLines , multigridLineConvolutionVariables[0].x , stiffness_x0 );
 
 #pragma omp parallel for
@@ -340,7 +340,7 @@ void LineConvolution< PreReal , Real >::ComputeExactSolution( bool verbose )
 	//(3) Modulation
 	if( verbose ) timer.reset();
 	solve( fineModulationSolver , multigridModulationVariables[0].x , multigridModulationVariables[0].rhs );
-	if (verbose ) printf( "Modulation %.4f \n" , timer.elapsed() );
+	if( verbose ) printf( "Modulation %.4f \n" , timer.elapsed() );
 }
 
 template< typename PreReal , typename  Real >
@@ -363,9 +363,9 @@ void LineConvolution< PreReal , Real >::UpdateOutputBuffer( const std::vector< P
 {
 	SetOutputBuffer( solution );
 
-	glBindTexture(GL_TEXTURE_2D, visualization.textureBuffer);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, textureWidth, textureHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, (GLvoid*)&outputBuffer[0]);
-	glBindTexture(GL_TEXTURE_2D, 0);
+	glBindTexture( GL_TEXTURE_2D , visualization.textureBuffer );
+	glTexImage2D( GL_TEXTURE_2D , 0 , GL_RGBA , textureWidth , textureHeight , 0 , GL_RGB , GL_UNSIGNED_BYTE , (GLvoid*)&outputBuffer[0] );
+	glBindTexture( GL_TEXTURE_2D , 0 );
 	glutPostRedisplay();
 }
 
@@ -374,8 +374,8 @@ void LineConvolution< PreReal , Real >::Idle( void )
 {
 	if( updateCount && !visualization.promptCallBack )
 	{
-		if( !UpdateSolution() ) fprintf( stderr , "[ERROR] Updated solution failed!\n" );
-		else if( updateCount>0 ) updateCount--;
+		UpdateSolution();
+		if( updateCount>0 ) updateCount--;
 		steps++;
 		sprintf( stepsString , "Steps: %d" , steps );
 	}
@@ -395,11 +395,12 @@ void LineConvolution< PreReal , Real >::MouseFunc(int button, int state, int x, 
 template< typename PreReal , typename Real >
 void LineConvolution< PreReal , Real >::MotionFunc(int x, int y) {
 
-	if (!visualization.showMesh) {
+	if( !visualization.showMesh )
+	{
 		visualization.oldX = visualization.newX, visualization.oldY = visualization.newY, visualization.newX = x, visualization.newY = y;
 
-		int imageSize = std::min< int >(visualization.screenWidth, visualization.screenHeight);
-		if (visualization.panning) visualization.xForm.offset[0] -= (visualization.newX - visualization.oldX) / visualization.imageToScreenScale(), visualization.xForm.offset[1] += (visualization.newY - visualization.oldY) / visualization.imageToScreenScale();
+		int imageSize = std::min< int >( visualization.screenWidth , visualization.screenHeight );
+		if( visualization.panning ) visualization.xForm.offset[0] -= ( visualization.newX-visualization.oldX ) / visualization.imageToScreenScale() , visualization.xForm.offset[1] += ( visualization.newY-visualization.oldY ) / visualization.imageToScreenScale();
 		else
 		{
 			float dz = (float)pow( 1.1 , (float)( visualization.newY-visualization.oldY ) / 8.f );
@@ -407,11 +408,12 @@ void LineConvolution< PreReal , Real >::MotionFunc(int x, int y) {
 		}
 
 	}
-	else {
-		visualization.oldX = visualization.newX, visualization.oldY = visualization.newY, visualization.newX = x, visualization.newY = y;
-		int screenSize = std::min< int >(visualization.screenWidth, visualization.screenHeight);
-		float rel_x = (visualization.newX - visualization.oldX) / (float)screenSize * 2;
-		float rel_y = (visualization.newY - visualization.oldY) / (float)screenSize * 2;
+	else
+	{
+		visualization.oldX = visualization.newX , visualization.oldY = visualization.newY , visualization.newX = x , visualization.newY = y;
+		int screenSize = std::min< int >( visualization.screenWidth , visualization.screenHeight );
+		float rel_x = (float)( visualization.newX - visualization.oldX ) / screenSize * 2;
+		float rel_y = (float)( visualization.newY - visualization.oldY ) / screenSize * 2;
 
 		float pRight = rel_x * visualization.zoom, pUp = -rel_y * visualization.zoom;
 		float pForward = rel_y * visualization.zoom;
@@ -433,23 +435,21 @@ void LineConvolution< PreReal , Real >::SharpeningInterpolationWeightCallBack( V
 
 	if( UseDirectSolver.set ) modulationMatrix = mass * sharpeningInterpolationWeight + stiffness;
 
-	if( !UpdateLinearSystem( sharpeningInterpolationWeight , (Real)1. , hierarchy , multigridModulationCoefficients , massCoefficients , stiffnessCoefficients , modulationSolvers , fineModulationSolver , modulationMatrix , DetailVerbose.set , false , UseDirectSolver.set ) )
-		fprintf( stderr , "[ERROR] Failed system update!\n" ) , exit(0);
+	UpdateLinearSystem( sharpeningInterpolationWeight , (Real)1. , hierarchy , multigridModulationCoefficients , massCoefficients , stiffnessCoefficients , modulationSolvers , fineModulationSolver , modulationMatrix , DetailVerbose.set , false , UseDirectSolver.set );
 	Reset();
 	if( UseDirectSolver.set ) UpdateOutputBuffer( multigridModulationVariables[0].x );
 }
 template< typename PreReal , typename Real >
 void LineConvolution< PreReal , Real >::LICInterpolationWeightCallBack( Visualization* v , const char* prompt )
 {
-	for( int i=0 ; i<multigridLineConvolutionVariables[0].x.size() ; i++) multigridLineConvolutionVariables[0].x[i] *= 0;
-	for( int i=0 ; i<multigridModulationVariables[0].x.size() ; i++) multigridModulationVariables[0].x[i] *= 0;
+	for( int i=0 ; i<multigridLineConvolutionVariables[0].x.size() ; i++ ) multigridLineConvolutionVariables[0].x[i] *= 0;
+	for( int i=0 ; i<multigridModulationVariables[0].x.size() ; i++ ) multigridModulationVariables[0].x[i] *= 0;
 
 	licInterpolationWeight = atof(prompt);
 
 	if( UseDirectSolver.set ) lineConvolutionMatrix = anisotropicMass * licInterpolationWeight + anisotropicStiffness;
 
-	if( !UpdateLinearSystem( licInterpolationWeight , (Real)1. , hierarchy , multigridLineConvolutionCoefficients , anisoMassCoefficients , anisoStiffnessCoefficients , lineConvolutionSolvers , fineLineConvolutionSolver , lineConvolutionMatrix , DetailVerbose.set , false , UseDirectSolver.set ) )
-		fprintf( stderr , "[ERROR] Failed system update!\n" ) , exit( 0 );
+	UpdateLinearSystem( licInterpolationWeight , (Real)1. , hierarchy , multigridLineConvolutionCoefficients , anisoMassCoefficients , anisoStiffnessCoefficients , lineConvolutionSolvers , fineLineConvolutionSolver , lineConvolutionMatrix , DetailVerbose.set , false , UseDirectSolver.set );
 
 	Reset();
 	if( UseDirectSolver.set ) UpdateOutputBuffer( multigridModulationVariables[0].x );
@@ -468,7 +468,7 @@ void LineConvolution< PreReal , Real >::SharpeningGradientModulationCallBack( Vi
 template< typename PreReal , typename Real >
 void LineConvolution< PreReal , Real >::ToggleUpdateCallBack( Visualization* v , const char* prompt )
 {
-	if( updateCount ) updateCount = 0;
+	if( updateCount ) updateCount =  0;
 	else              updateCount = -1;
 }
 
@@ -490,11 +490,11 @@ void LineConvolution< PreReal , Real >::ExportTextureCallBack( Visualization* v 
 }
 
 template< typename PreReal , typename Real >
-int LineConvolution< PreReal , Real >::UpdateSolution( bool verbose , bool detailVerbose )
+void LineConvolution< PreReal , Real >::UpdateSolution( bool verbose , bool detailVerbose )
 {
 	Miscellany::Timer timer;
 
-	//(1)Update smoothed input solution
+	// (1) Update smoothed input solution
 	MultiplyBySystemMatrix_NoReciprocals( anisoMassCoefficients , hierarchy.gridAtlases[0].boundaryGlobalIndex , hierarchy.gridAtlases[0].rasterLines , randSignal , multigridLineConvolutionVariables[0].rhs );
 #pragma omp parallel for
 	for( int i=0 ; i<textureNodes.size() ; i++ ) multigridLineConvolutionVariables[0].rhs[i] *= licInterpolationWeight;
@@ -502,7 +502,7 @@ int LineConvolution< PreReal , Real >::UpdateSolution( bool verbose , bool detai
 	VCycle( multigridLineConvolutionVariables , multigridLineConvolutionCoefficients , multigridIndices , lineConvolutionSolvers , detailVerbose , detailVerbose );
 	if( verbose ) printf( "Smoothing impulse %.4f\n" , timer.elapsed() );
 
-	//(2) Compute modulation RHS
+	// (2) Compute modulation RHS
 	mass_x0.resize(textureNodes.size());
 	MultiplyBySystemMatrix_NoReciprocals( massCoefficients , hierarchy.gridAtlases[0].boundaryGlobalIndex , hierarchy.gridAtlases[0].rasterLines , multigridLineConvolutionVariables[0].x , mass_x0 );
 
@@ -512,43 +512,32 @@ int LineConvolution< PreReal , Real >::UpdateSolution( bool verbose , bool detai
 #pragma omp parallel for
 	for( int i=0 ; i<textureNodes.size() ; i++ ) multigridModulationVariables[0].rhs[i] = mass_x0[i] * sharpeningInterpolationWeight + stiffness_x0[i] * sharpeningGradientModulation;
 
-	//(3) Update geodesic distance solution	
+	// (3) Update geodesic distance solution	
 	if( verbose ) timer.reset();
 	VCycle( multigridModulationVariables , multigridModulationCoefficients , multigridIndices , modulationSolvers , detailVerbose , detailVerbose );
 	if( verbose ) printf( "Solving geodesic distance %.4f\n" , timer.elapsed() );
-
-	return 1;
 }
 
-
 template< typename PreReal , typename Real >
-int LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianMesh< PreReal >& rMesh , int width , int height )
+void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianMesh< PreReal >& rMesh , int width , int height )
 {
 	Miscellany::Timer timer;
 	MultigridBlockInfo multigridBlockInfo(MultigridBlockWidth.value, MultigridBlockHeight.value, MultigridPaddedWidth.value, MultigridPaddedHeight.value, 0);
-	if( !InitializeHierarchy( mesh , width , height , levels , textureNodes , bilinearElementIndices , hierarchy , atlasCharts , multigridBlockInfo , true , DetailVerbose.set ) )
-	{
-		fprintf( stderr , "[ERROR] Failed intialization!\n" );
-		return 0;
-	}
+	InitializeHierarchy( mesh , width , height , levels , textureNodes , bilinearElementIndices , hierarchy , atlasCharts , multigridBlockInfo , true , DetailVerbose.set );
 	if( Verbose.set ) printf( "\tInitialized hierarchy: %.2f(s)\n" , timer.elapsed() );
 
 	//Initialize node index
 	nodeIndex.resize(width, height);
-	for (int i = 0; i < nodeIndex.size(); i++)nodeIndex[i] = -1;
-	for (int i = 0; i < textureNodes.size(); i++) {
-		if (textureNodes[i].ci < 0 || textureNodes[i].ci > textureWidth - 1 || textureNodes[i].cj < 0 || textureNodes[i].cj > textureHeight - 1) {
-			printf("Error: Invalid node! %d %d \n", textureNodes[i].ci, textureNodes[i].cj);
-			return 0;
-		}
-		if (nodeIndex(textureNodes[i].ci, textureNodes[i].cj) != -1) {
-			if (0)printf("[WARNING] Multiple nodes mapped to pixel %d %d!\n", textureNodes[i].ci, textureNodes[i].cj);
-		}
+	for( int i=0 ; i<nodeIndex.size() ; i++ ) nodeIndex[i] = -1;
+	for( int i=0 ; i<textureNodes.size() ; i++ )
+	{
+		if( textureNodes[i].ci<0 || textureNodes[i].ci>textureWidth-1 || textureNodes[i].cj<0 || textureNodes[i].cj>textureHeight-1 )
+			Miscellany::Throw( "Invalid node! %d %d\n" , textureNodes[i].ci , textureNodes[i].cj );
 		nodeIndex(textureNodes[i].ci, textureNodes[i].cj) = i;
 	}
 
 	BoundaryProlongationData< Real > boundaryProlongation;
-	if( !InitializeBoundaryProlongationData( hierarchy.gridAtlases[0] , boundaryProlongation ) ){ fprintf( stderr , "[ERROR] Failed boundary prolongation!\n" ) ; return 0; }
+	InitializeBoundaryProlongationData( hierarchy.gridAtlases[0] , boundaryProlongation );
 
 	//////////////////////////////////// Initialize multigrid indices
 	multigridIndices.resize( levels );
@@ -573,14 +562,14 @@ int LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianMe
 		{
 			if( IntrinsicVectorField.set )
 			{
-				if( !ReadVector( vectorField , InVectorField.value ) ){ fprintf( stderr , "[ERROR] Unable to read vector field: %s\n" , InVectorField.value ) ; return 0; }
-				if( vectorField.size()!=mesh.triangles.size() ){ fprintf( stderr , "[ERROR] Triangle and vector counts don't match: %d != %d\n" , (int)mesh.triangles.size() , (int)vectorField.size() ) ; return 0; }
+				ReadVector( vectorField , InVectorField.value );
+				if( vectorField.size()!=mesh.triangles.size() ) Miscellany::Throw( "Triangle and vector counts don't match: %d != %d\n" , (int)mesh.triangles.size() , (int)vectorField.size() );
 			}
 			else
 			{
 				std::vector< Point3D< PreReal > > _vectorField;
-				if( !ReadVector( _vectorField , InVectorField.value ) ){ fprintf( stderr , "[ERROR] Unable to read vector field: %s\n" , InVectorField.value ) ; return 0; }
-				if( _vectorField.size()!=mesh.triangles.size() ){ fprintf( stderr , "[ERROR] Triangle and vector counts don't match: %d != %d\n" , (int)mesh.triangles.size() , (int)_vectorField.size() ) ; return 0; }
+				ReadVector( _vectorField , InVectorField.value );
+				if( _vectorField.size()!=mesh.triangles.size() ) Miscellany::Throw( "Triangle and vector counts don't match: %d != %d\n" , (int)mesh.triangles.size() , (int)_vectorField.size() );
 				vectorField.resize( _vectorField.size() );
 #pragma omp parallel for
 				for( int i=0 ; i<mesh.triangles.size() ; i++ )
@@ -715,7 +704,7 @@ int LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianMe
 			// infty -> infty
 			return (PreReal)( pow( len , AnisotropyExponent.value ) * 1e5 );
 		};
-		if( !InitializeAnisotropicMetric( mesh , atlasCharts , vectorField , LengthToAnisotropy , parameterMetric ) ){ fprintf( stderr , "[ERROR] Unable to initialize metric\n" ) ; return 0; } 
+		InitializeAnisotropicMetric( mesh , atlasCharts , vectorField , LengthToAnisotropy , parameterMetric );
 
 		std::vector< Point3D< Real > > __inputSignal;
 		std::vector< Real > __texelToCellCoeffs;
@@ -723,21 +712,15 @@ int LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianMe
 
 		timer.reset();
 		{
-			int ret = 0;
 			switch( MatrixQuadrature.value )
 			{
-			case  1: ret = InitializeMassAndStiffness< 1>( anisoMassCoefficients , anisoStiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-			case  3: ret = InitializeMassAndStiffness< 3>( anisoMassCoefficients , anisoStiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-			case  6: ret = InitializeMassAndStiffness< 6>( anisoMassCoefficients , anisoStiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-			case 12: ret = InitializeMassAndStiffness<12>( anisoMassCoefficients , anisoStiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-			case 24: ret = InitializeMassAndStiffness<24>( anisoMassCoefficients , anisoStiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-			case 32: ret = InitializeMassAndStiffness<32>( anisoMassCoefficients , anisoStiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-			default: fprintf( stderr , "[ERROR] Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles\n" );
-			}
-			if( !ret )
-			{
-				fprintf( stderr , "[ERROR] Failed intialization!\n" );
-				return 0;
+			case  1: InitializeMassAndStiffness< 1>( anisoMassCoefficients , anisoStiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
+			case  3: InitializeMassAndStiffness< 3>( anisoMassCoefficients , anisoStiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
+			case  6: InitializeMassAndStiffness< 6>( anisoMassCoefficients , anisoStiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
+			case 12: InitializeMassAndStiffness<12>( anisoMassCoefficients , anisoStiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
+			case 24: InitializeMassAndStiffness<24>( anisoMassCoefficients , anisoStiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
+			case 32: InitializeMassAndStiffness<32>( anisoMassCoefficients , anisoStiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
+			default: Miscellany::Throw( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
 			}
 		}
 		if( Verbose.set ) printf( "\tInitialized mass and stiffness: %.2f(s)\n" , timer.elapsed() );
@@ -752,21 +735,14 @@ int LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianMe
 		}
 
 		timer.reset();
-		if( !UpdateLinearSystem( licInterpolationWeight , (Real)1. , hierarchy , multigridLineConvolutionCoefficients , anisoMassCoefficients , anisoStiffnessCoefficients , lineConvolutionSolvers , fineLineConvolutionSolver , lineConvolutionMatrix , DetailVerbose.set , true , UseDirectSolver.set ) )
-		{
-			fprintf( stderr , "[ERROR] InitializeSystem: Failed system update!\n" );
-			return 0;
-		}
+		UpdateLinearSystem( licInterpolationWeight , (Real)1. , hierarchy , multigridLineConvolutionCoefficients , anisoMassCoefficients , anisoStiffnessCoefficients , lineConvolutionSolvers , fineLineConvolutionSolver , lineConvolutionMatrix , DetailVerbose.set , true , UseDirectSolver.set );
 		if( Verbose.set ) printf( "\tInitialized multigrid coefficients: %.2f(s)\n" , timer.elapsed() );
 	}
 
 	//////////////////////////////////// 	Modulation coefficients
 	SparseMatrix< Real, int > modulationMatrix;
 	{
-		if (!InitializeMetric(mesh, EMBEDDING_METRIC, atlasCharts, parameterMetric)) {
-			printf("ERROR: Unable to initialize metric \n");
-			return 0;
-		}
+		InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric );
 
 		std::vector< Point3D< Real > > __inputSignal;
 		std::vector< Real > __texelToCellCoeffs;
@@ -774,21 +750,15 @@ int LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianMe
 
 		timer.reset();
 		{
-			int ret = 0;
 			switch( MatrixQuadrature.value )
 			{
-			case  1: ret = InitializeMassAndStiffness< 1>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-			case  3: ret = InitializeMassAndStiffness< 3>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-			case  6: ret = InitializeMassAndStiffness< 6>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-			case 12: ret = InitializeMassAndStiffness<12>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-			case 24: ret = InitializeMassAndStiffness<24>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-			case 32: ret = InitializeMassAndStiffness<32>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-			default: fprintf( stderr , "[ERROR] Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles\n" );
-			}
-			if( !ret )
-			{
-				fprintf( stderr , "[ERROR] Failed intialization!\n" );
-				return 0;
+			case  1: InitializeMassAndStiffness< 1>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
+			case  3: InitializeMassAndStiffness< 3>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
+			case  6: InitializeMassAndStiffness< 6>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
+			case 12: InitializeMassAndStiffness<12>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
+			case 24: InitializeMassAndStiffness<24>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
+			case 32: InitializeMassAndStiffness<32>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
+			default: Miscellany::Throw( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
 			}
 		}
 		if( Verbose.set ) printf( "\tInitialized mass and stiffness: %.2f(s)\n" , timer.elapsed() );
@@ -803,11 +773,7 @@ int LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianMe
 		}
 
 		timer.reset();
-		if( !UpdateLinearSystem( sharpeningInterpolationWeight , (Real)1. , hierarchy , multigridModulationCoefficients , massCoefficients , stiffnessCoefficients , modulationSolvers , fineModulationSolver , modulationMatrix , DetailVerbose.set , true , UseDirectSolver.set ) )
-		{
-			fprintf( stderr , "[ERROR] InitializeSystem: Failed system update!\n" );
-			return 0;
-		}
+		UpdateLinearSystem( sharpeningInterpolationWeight , (Real)1. , hierarchy , multigridModulationCoefficients , massCoefficients , stiffnessCoefficients , modulationSolvers , fineModulationSolver , modulationMatrix , DetailVerbose.set , true , UseDirectSolver.set );
 		if( Verbose.set ) printf( "\tInitialized multigrid coefficients: %.2f(s)\n" , timer.elapsed() );
 	}
 
@@ -839,14 +805,12 @@ int LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianMe
 
 	randSignal.resize( textureNodes.size() );
 
-	for ( int i=0 ; i<randSignal.size() ; i++ )
+	for( int i=0 ; i<randSignal.size() ; i++ )
 	{
 		Point3D< float > randomColor = HSV2RGB( Random< float >() , 1.f , 1.f );
 		randSignal[i] = Point3D< Real >( randomColor[0] , randomColor[1] , randomColor[2] );
 	}
 	Reset();
-
-	return 1;
 }
 
 template< typename PreReal , typename  Real >
@@ -886,7 +850,7 @@ void LineConvolution< PreReal , Real >::InitializeVisualization( int width , int
 
 
 	std::vector<int> boundaryEdges;
-	if( !mesh.initializeBoundaryEdges( boundaryEdges ) ) fprintf( stderr , "[WARNING] Unable to initialize boundary edges!\n" );
+	mesh.initializeBoundaryEdges( boundaryEdges );
 
 	for (int e = 0; e < boundaryEdges.size(); e++) {
 		int tIndex = boundaryEdges[e] / 3;
@@ -913,7 +877,7 @@ void LineConvolution< PreReal , Real >::InitializeVisualization( int width , int
 	UpdateOutputBuffer( multigridModulationVariables[0].x );
 }
 template< typename PreReal , typename Real >
-int LineConvolution< PreReal , Real >::Init( void )
+void LineConvolution< PreReal , Real >::Init( void )
 {
 	sprintf( stepsString , "Steps: 0" );
 	levels = Levels.value;
@@ -923,11 +887,7 @@ int LineConvolution< PreReal , Real >::Init( void )
 	sharpeningInterpolationWeight = SharpeningInterpolationWeight.value;
 	licInterpolationWeight = LICInterpolationWeight.value;
 
-	if( !mesh.read( Input.value , NULL , DetailVerbose.set ) )
-	{
-		printf("Unable to read mesh data\n");
-		return 0;
-	}
+	mesh.read( Input.value , NULL , DetailVerbose.set );
 	if( true ) for( int i=0 ; i<mesh.textureCoordinates.size() ; i++ ) mesh.textureCoordinates[i][1] = 1.0 - mesh.textureCoordinates[i][1];
 
 	if( RandomJitter.set )
@@ -960,7 +920,7 @@ int LineConvolution< PreReal , Real >::Init( void )
 	rMesh.setMetricFromEmbedding( GetPointer( mesh.vertices ) );
 	rMesh.makeUnitArea();
 
-	if( !InitializeSystem( rMesh , textureWidth , textureHeight ) ){ printf("Unable to initialize system\n") ; return 0; }
+	InitializeSystem( rMesh , textureWidth , textureHeight );
 	if( Verbose.set )
 	{
 		printf( "Resolution: %d / %d x %d\n" , (int)textureNodes.size() , textureWidth , textureHeight );
@@ -989,14 +949,12 @@ int LineConvolution< PreReal , Real >::Init( void )
 
 	outputBuffer = new unsigned char[ textureHeight*textureWidth*3 ];
 	memset( outputBuffer , 204 , textureHeight*textureWidth*3*sizeof( unsigned char ) );
-
-	return 1;
 }
 
 template< typename PreReal , typename Real>
-int _main( int argc , char* argv[] )
+void _main( int argc , char* argv[] )
 {
-	if( !LineConvolution< PreReal , Real >::Init() ) return 0;
+	LineConvolution< PreReal , Real >::Init();
 	if( !Output.set )
 	{
 		glutInitDisplayMode( GLUT_RGB | GLUT_DOUBLE );
@@ -1008,7 +966,7 @@ int _main( int argc , char* argv[] )
 		char windowName[1024];
 		sprintf( windowName , "Line Integral Convolution" );
 		glutCreateWindow( windowName );
-		if( glewInit()!=GLEW_OK ) fprintf( stderr , "[ERROR] glewInit failed\n" ) , exit(0);
+		if( glewInit()!=GLEW_OK ) Miscellany::Throw( "glewInit failed" );
 		glutDisplayFunc ( LineConvolution< PreReal , Real >::Display );
 		glutReshapeFunc ( LineConvolution< PreReal , Real >::Reshape );
 		glutMouseFunc   ( LineConvolution< PreReal , Real >::MouseFunc );
@@ -1026,7 +984,6 @@ int _main( int argc , char* argv[] )
 		LineConvolution< PreReal , Real >::SetOutputBuffer( LineConvolution< PreReal , Real >::multigridModulationVariables[0].x );
 		LineConvolution< PreReal , Real >::ExportTextureCallBack( &LineConvolution< PreReal , Real >::visualization , Output.value );
 	}
-	return 1;
 }
 
 int main( int argc , char *argv[] )
@@ -1044,7 +1001,15 @@ int main( int argc , char *argv[] )
 		printf( "|    [SPACE]:                      start solver |\n" );
 		printf( "+-----------------------------------------------+\n" );
 	}
-	if( Double.set ) _main< double , double >( argc , argv );
-	else             _main< double , float  >( argc , argv );
-	return 0;
+	try
+	{
+		if( Double.set ) _main< double , double >( argc , argv );
+		else             _main< double , float  >( argc , argv );
+	}
+	catch( Miscellany::Exception &e )
+	{
+		printf( "%s\n" , e.what() );
+		return EXIT_FAILURE;
+	}
+	return EXIT_SUCCESS;
 }

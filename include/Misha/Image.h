@@ -28,6 +28,7 @@ DAMAGE.
 #ifndef IMAGE_INCLUDED
 #define IMAGE_INCLUDED
 
+#include "Miscellany.h"
 #include "Geometry.h"
 #include "CmdLineParser.h"
 #include "ImageIO.h"
@@ -43,8 +44,8 @@ struct Image
 	Image(const Image& img);
 	~Image(void);
 	void resize(int w, int h);
-	bool read(const char* fileName);
-	bool write(const char* fileName) const;
+	void read(const char* fileName);
+	void write(const char* fileName) const;
 	int width(void) const { return _width; }
 	int height(void) const { return _height; }
 	int size(void) const { return _width * _height; }
@@ -102,7 +103,7 @@ template< class Data > void Image< Data >::resize(int w, int h)
 		if (_pixels) delete[] _pixels;
 		_pixels = NULL;
 		if (w*h) _pixels = new Data[w*h];
-		if (!_pixels) fprintf(stderr, "[ERROR] Failed to allocate pixels: %d x %d\n", w, h), exit(0);
+		if (!_pixels) Miscellany::ErrorOut( "Failed to allocate pixels: %d x %d" , w , h );
 	}
 	_width = w, _height = h;
 }
@@ -112,69 +113,60 @@ template< class Data > Image< Data >& Image< Data >::operator = (const Image& im
 	memcpy(_pixels, img._pixels, sizeof(Data) * img.size());
 	return *this;
 }
-template< class Data > bool Image< Data >::read(const char* fileName) { fprintf(stderr, "[ERROR] image read not supported\n"), exit(0); return false; }
-template< class Data > bool Image< Data >::write(const char* fileName) const { fprintf(stderr, "[ERROR] image write not supported\n"), exit(0); return false; }
+template< class Data > void Image< Data >::read( const char* fileName ) { Miscellany::ErrorOut( "Image read not supported" ); }
+template< class Data > void Image< Data >::write( const char* fileName ) const { Miscellany::ErrorOut( "Image write not supported" ); }
 
 template<>
-bool Image< Point3D< float > >::read( const char* fileName )
+void Image< Point3D< float > >::read( const char* fileName )
 {
 	unsigned int w , h , c;
 	unsigned char* pixels = ImageReader::Read( fileName , w , h , c );
-	if( !pixels ){ fprintf( stderr, "[ERROR] Failed to read image: %s\n" , fileName ) ; return false; }
-	if( c!=3 ){ fprintf( stderr , "[ERROR] Only three channel images are suppored\n" ) ; return false; }
-	resize( w , h );
+	if( !pixels ) Miscellany::Throw( "Failed to read image: %s\n" , fileName );
+	if( c!=3 ) Miscellany::Throw( "Only three channel images are supported: %d\n" , c );
+	resize(w,h);
 	for( int i=0 ; i<(int)w ; i++ ) for( int j=0 ; j<(int)h ; j++ ) for( int c=0 ; c<3 ; c++ ) (*this)(i,j)[c] = ( (float)pixels[ (j*w+i)*3+c ] ) / 255.f;
 	delete[] pixels;
-	return true;
 }
 template<>
-bool Image< Point3D< double > >::read( const char* fileName )
+void Image< Point3D< double > >::read( const char* fileName )
 {
 	unsigned int w , h , c;
 	unsigned char* pixels = ImageReader::Read( fileName , w , h , c );
-	if( !pixels ){ fprintf( stderr, "[ERROR] Failed to read image: %s\n" , fileName ) ; return false; }
-	if( c!=3 ){ fprintf( stderr , "[ERROR] Only three channel images are suppored\n" ) ; return false; }
+	if( !pixels ) Miscellany::Throw( "Failed to read image: %s\n" , fileName );
+	if( c!=3 ) Miscellany::Throw( "Only three channel images are supported: %d\n" , c );
 	resize( w , h );
 	for( int i=0 ; i<(int)w ; i++ ) for( int j=0 ; j<(int)h ; j++ ) for( int c=0 ; c<3 ; c++) (*this)(i,j)[c] = ( (double)pixels[ (j*w+i)*3+c ] ) / 255.;
 	delete[] pixels;
-	return true;
 }
 template<>
-bool Image< Point3D< unsigned char > >::read( const char* fileName )
+void Image< Point3D< unsigned char > >::read( const char* fileName )
 {
 	unsigned int w , h , c;
 	unsigned char* pixels = ImageReader::Read( fileName , w , h , c );
-	if( !pixels ){ fprintf( stderr, "[ERROR] Failed to read image: %s\n" , fileName ) ; return false; }
-	if( c!=3 ){ fprintf( stderr , "[ERROR] Only three channel images are suppored\n" ) ; return false; }
+	if( !pixels ) Miscellany::Throw( "Failed to read image: %s\n" , fileName );
+	if( c!=3 ) Miscellany::Throw( "Only three channel images are supported: %d\n" , c );
 	resize( w , h );
 	memcpy( _pixels , pixels , sizeof(unsigned char) * _width * _height*3 );
 	delete[] pixels;
-	return true;
 }
+
 template<>
-bool Image< Point3D< float > >::write( const char* fileName ) const
+void Image< Point3D< float > >::write( const char* fileName ) const
 {
-	bool ret = true;
 	unsigned char* pixels = new unsigned char[ _width*_height*3 ];
 	for( int i=0 ; i<_width ; i++ ) for( int j=0 ; j<_height ; j++ ) for( int c=0 ; c<3 ; c++ ) pixels[ 3*(j*_width+i)+c ] = (unsigned char)std::min< int >( 255 , std::max< int >( 0 , (int)( (*this)(i,j)[c] * 255.f + 0.5f ) ) );
-	ret = ImageWriter::Write( fileName , pixels , _width , _height , 3 );
+	ImageWriter::Write( fileName , pixels , _width , _height , 3 );
 	delete[] pixels;
-	return ret;
 }
 template<>
-bool Image< Point3D< double > >::write( const char* fileName ) const
+void Image< Point3D< double > >::write( const char* fileName ) const
 {
-	bool ret = true;
 	unsigned char* pixels = new unsigned char[ _width*_height*3 ];
 	for( int i=0 ; i<_width ; i++ ) for( int j=0 ; j<_height ; j++ ) for( int c=0 ; c<3 ; c++ ) pixels[ 3*(j*_width+i)+c ] = (unsigned char)std::min< int >( 255 , std::max< int >( 0 , (int)( (*this)(i,j)[c] * 255.0 + 0.5 ) ) );
-	ret = ImageWriter::Write( fileName , pixels , _width , _height , 3 );
+	ImageWriter::Write( fileName , pixels , _width , _height , 3 );
 	delete[] pixels;
-	return ret;
 }
 template<>
-bool Image< Point3D< unsigned char > >::write(const char* fileName) const
-{
-	return ImageWriter::Write( fileName , (const unsigned char*)_pixels , _width , _height , 3 );
-}
+void Image< Point3D< unsigned char > >::write( const char *fileName ) const { ImageWriter::Write( fileName , (const unsigned char*)_pixels , _width , _height , 3 ); }
 
 #endif //IMAGE_INCLUDED

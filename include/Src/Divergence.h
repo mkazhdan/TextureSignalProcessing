@@ -28,6 +28,8 @@ DAMAGE.
 
 #ifndef DIVERGENCE_INCLUDED
 #define DIVERGENCE_INCLUDE
+
+#include <Misha/Miscellany.h>
 #include "EdgeIndexing.h"
 
 class DivegenceRasterLine
@@ -41,8 +43,8 @@ public:
 	int texelEnd;
 };
 
-int InitializeDivergenceRasteLines(std::unordered_map<unsigned long long, int> & coarseEdgeIndex, const std::vector<RasterLine> & rasterLines, std::vector<DivegenceRasterLine> & divergenceRasterLines) {
-
+void InitializeDivergenceRasteLines( std::unordered_map< unsigned long long , int > &coarseEdgeIndex , const std::vector< RasterLine > &rasterLines , std::vector< DivegenceRasterLine > &divergenceRasterLines )
+{
 	divergenceRasterLines.resize(rasterLines.size());
 	for (int i = 0; i < rasterLines.size(); i++) {
 		const RasterLine & line = rasterLines[i];
@@ -51,34 +53,22 @@ int InitializeDivergenceRasteLines(std::unordered_map<unsigned long long, int> &
 		divLine.texelEnd = line.lineEndIndex;
 		divLine.deepCoefficientsStart = line.coeffStartIndex;
 		unsigned long long prevEdgeKey = SetMeshEdgeKey(line.prevLineIndex - 1, line.prevLineIndex);
-		if (coarseEdgeIndex.find(prevEdgeKey) == coarseEdgeIndex.end()) {
-			printf("ERROR: Edge not found!\n");
-			return 0;
-		}
+		if( coarseEdgeIndex.find(prevEdgeKey)==coarseEdgeIndex.end() ) Miscellany::Throw( "Edge not found" );
 		divLine.prevEdgeRowStart = coarseEdgeIndex[prevEdgeKey];
 
 		unsigned long long currEdgeKey = SetMeshEdgeKey(line.lineStartIndex - 1, line.lineStartIndex);
-		if (coarseEdgeIndex.find(currEdgeKey) == coarseEdgeIndex.end()) {
-			printf("ERROR: Edge not found!\n");
-			return 0;
-		}
+		if( coarseEdgeIndex.find(currEdgeKey)==coarseEdgeIndex.end() ) Miscellany::Throw( "Edge not found" );
 		divLine.currEdgeRowStart = coarseEdgeIndex[currEdgeKey];
 
 		unsigned long long nextEdgeKey = SetMeshEdgeKey(line.nextLineIndex - 1, line.nextLineIndex);
-		if (coarseEdgeIndex.find(nextEdgeKey) == coarseEdgeIndex.end()) {
-			printf("ERROR: Edge not found!\n");
-			return 0;
-		}
+		if( coarseEdgeIndex.find(nextEdgeKey)==coarseEdgeIndex.end() ) Miscellany::Throw( "Edge not found" );
 		divLine.nextEdgeRowStart = coarseEdgeIndex[nextEdgeKey];
 	}
-	return 1;
 }
 
-
-
-template<class Real, class Data>
-int ComputeDivergence(const std::vector<Data> & edgeValues, std::vector<Data> & texelDivergence, const std::vector<Real> & deepDivergenceCoefficients, const SparseMatrix<Real, int> & boundaryDivergenceMatrix, const std::vector<DivegenceRasterLine> & divergenceRasterLines) {
-
+template< class Real , class Data >
+void ComputeDivergence( const std::vector< Data > &edgeValues , std::vector< Data > &texelDivergence , const std::vector< Real > &deepDivergenceCoefficients , const SparseMatrix< Real , int > &boundaryDivergenceMatrix , const std::vector< DivegenceRasterLine > &divergenceRasterLines )
+{
 	//Update Boundary Texels 
 	boundaryDivergenceMatrix.Multiply(&edgeValues[0], &texelDivergence[0]);
 
@@ -128,7 +118,5 @@ int ComputeDivergence(const std::vector<Data> & edgeValues, std::vector<Data> & 
 
 #pragma omp parallel for
 	for (int r = 0; r < divergenceRasterLines.size(); r++) UpdateRow(r);
-
-	return 1;
 }
 #endif // DIVERGENCE_INCLUDE

@@ -30,10 +30,15 @@ DAMAGE.
 #include <Misha/Miscellany.h>
 #include "SparseMatrixParser.h"
 
-template<class Real, class Data, class Solver>
-int Relaxation(const std::vector<Real> & deepCoefficients, const SparseMatrix< Real, int> & boundaryDeepMatrix, Solver & boundarySolver, const std::vector<int> & boundaryGlobalIndex, const std::vector<SegmentedRasterLine> & segmentedLines, const std::vector<Data> & rhs, std::vector<Data> & x0, std::vector<Data> & boundaryRHS, std::vector<Data> & boundarySolution, std::vector<Data> & variableBoundaryRHS, int numIterations = 2, bool boundaryFirst = true, bool verbose = false) {
-
-
+template< class Real , class Data , class Solver >
+void Relaxation
+(
+	const std::vector< Real > &deepCoefficients , const SparseMatrix< Real , int > &boundaryDeepMatrix , Solver &boundarySolver , const std::vector< int > &boundaryGlobalIndex ,
+	const std::vector< SegmentedRasterLine > &segmentedLines ,
+	const std::vector< Data > &rhs , std::vector< Data > &x0 , std::vector< Data > &boundaryRHS , std::vector< Data > &boundarySolution , std::vector< Data > &variableBoundaryRHS ,
+	int numIterations=2 , bool boundaryFirst=true , bool verbose=false
+)
+{
 	int numBoundaryVariables = boundaryGlobalIndex.size();
 	
 #pragma omp parallel for
@@ -130,15 +135,20 @@ int Relaxation(const std::vector<Real> & deepCoefficients, const SparseMatrix< R
 			if( verbose ) printf( "\t GS Deep update =  %.4f\n" , timer.elapsed() );
 		}
 	}
-
-	return 1;
 }
 
 
 
 
-template<class Real, class Data, class Solver>
-int Relaxation(const std::vector<Real> & deepCoefficients, const SparseMatrix< Real, int> & boundaryDeepMatrix, Solver & boundarySolver, const std::vector<int> & boundaryGlobalIndex, const std::vector<ThreadTask> & threadTasks, const std::vector<Data> & rhs, std::vector<Data> & x0, std::vector<Data> & boundaryRHS, std::vector<Data> & boundarySolution, std::vector<Data> & variableBoundaryRHS, int numIterations = 2, bool boundaryFirst = true, bool verbose = false) {
+template< class Real , class Data , class Solver >
+void Relaxation
+(
+	const std::vector< Real > &deepCoefficients , const SparseMatrix< Real , int > &boundaryDeepMatrix , Solver &boundarySolver , const std::vector< int > &boundaryGlobalIndex ,
+	const std::vector< ThreadTask > &threadTasks ,
+	const std::vector< Data > &rhs , std::vector< Data > &x0 , std::vector< Data > &boundaryRHS , std::vector< Data > &boundarySolution , std::vector< Data > &variableBoundaryRHS ,
+	int numIterations=2 , bool boundaryFirst=true , bool verbose=false
+	)
+{
 
 
 	int numBoundaryVariables = (int)boundaryGlobalIndex.size();
@@ -231,14 +241,19 @@ int Relaxation(const std::vector<Real> & deepCoefficients, const SparseMatrix< R
 			if( verbose ) printf( "\t GS Deep update =  %.4f\n" , timer.elapsed() );
 		}
 	}
-
-	return 1;
 }
 
 
-template<class Real, class Data, class Solver>
-int RelaxationAndResidual(const std::vector<Real> & deepCoefficients, const SparseMatrix< Real, int> & boundaryDeepMatrix, Solver & boundarySolver, const std::vector<int> & boundaryGlobalIndex, const std::vector<ThreadTask> & threadTasks, const std::vector<Data> & rhs, std::vector<Data> & x0, std::vector<Data> & boundaryRHS, std::vector<Data> & boundaryValue, std::vector<Data> & variableBoundaryRHS, const SparseMatrix< Real, int> & boundaryBoundaryMatrix, std::vector<Data> & residual, int numIterations = 2, bool verbose = false) {
-
+template< class Real , class Data , class Solver >
+void RelaxationAndResidual
+(
+	const std::vector< Real > &deepCoefficients , const SparseMatrix< Real , int> &boundaryDeepMatrix , Solver &boundarySolver , const std::vector< int > &boundaryGlobalIndex ,
+	const std::vector< ThreadTask > &threadTasks ,
+	const std::vector< Data > &rhs , std::vector< Data > &x0 , std::vector< Data > &boundaryRHS , std::vector< Data > &boundaryValue , std::vector< Data > &variableBoundaryRHS ,
+	const SparseMatrix< Real , int > & boundaryBoundaryMatrix , std::vector< Data > & residual ,
+	int numIterations=2 , bool verbose=false
+)
+{
 	int numBoundaryVariables = (int)boundaryGlobalIndex.size();
 
 #pragma omp parallel for
@@ -371,14 +386,19 @@ int RelaxationAndResidual(const std::vector<Real> & deepCoefficients, const Spar
 		for (int i = 0; i < numBoundaryVariables; i++)residual[boundaryGlobalIndex[i]] = boundaryRHS[i];
 		if( verbose ) printf( "\t Boundary residual =  %.4f\n" , timer.elapsed() );
 	}
-
-	return 1;
 }
 
 
-template<class Real, class Data, class Solver>
-int RelaxationAndResidual(const std::vector<Real> & deepCoefficients, const SparseMatrix< Real, int> & boundaryDeepMatrix, Solver & boundarySolver, const std::vector<int> & boundaryGlobalIndex, const std::vector<SegmentedRasterLine> & segmentedLines, const std::vector<Data> & rhs, std::vector<Data> & x0, std::vector<Data> & boundaryRHS,std::vector<Data> & boundaryValue, std::vector<Data> & variableBoundaryRHS, const SparseMatrix< Real, int> & boundaryBoundaryMatrix, std::vector<Data> & residual, int numIterations = 2, bool verbose = false) {
-
+template< class Real , class Data , class Solver >
+void RelaxationAndResidual
+(
+	const std::vector< Real > &deepCoefficients , const SparseMatrix< Real , int > &boundaryDeepMatrix , Solver &boundarySolver , const std::vector< int > &boundaryGlobalIndex ,
+	const std::vector< SegmentedRasterLine > &segmentedLines ,
+	const std::vector< Data > &rhs , std::vector< Data > &x0 , std::vector< Data > &boundaryRHS , std::vector< Data > &boundaryValue , std::vector< Data > &variableBoundaryRHS ,
+	const SparseMatrix< Real , int > &boundaryBoundaryMatrix , std::vector< Data > &residual ,
+	int numIterations=2 , bool verbose=false
+)
+{
 	int numBoundaryVariables = boundaryGlobalIndex.size();
 
 #pragma omp parallel for
@@ -541,12 +561,10 @@ int RelaxationAndResidual(const std::vector<Real> & deepCoefficients, const Spar
 		for (int i = 0; i < numBoundaryVariables; i++)residual[boundaryGlobalIndex[i]] = boundaryRHS[i];
 		if( verbose ) printf( "\t Boundary residual =  %.4f\n" , timer.elapsed() );
 	}
-
-	return 1;
 }
 
 template< class Real , class Data , class DataReal=Real >
-int MultiplyBySystemMatrix( const SystemCoefficients< Real > &systemCoefficients , const std::vector< int > &boundaryGlobalIndex , const std::vector< RasterLine > &rasterLines , const std::vector< Data > &in , std::vector< Data > &out , bool verbose=false )
+void MultiplyBySystemMatrix( const SystemCoefficients< Real > &systemCoefficients , const std::vector< int > &boundaryGlobalIndex , const std::vector< RasterLine > &rasterLines , const std::vector< Data > &in , std::vector< Data > &out , bool verbose=false )
 {
 	Miscellany::Timer timer;
 
@@ -609,11 +627,10 @@ int MultiplyBySystemMatrix( const SystemCoefficients< Real > &systemCoefficients
 		for (int r = firstLine; r < lastLine; r++) UpdateRow(r);
 	}
 	if( verbose ) printf( "\t Multiply deep %.4f\n" , timer.elapsed() );
-	return 1;
 }
 
 template< class Real , class Data , class DataReal=Real >
-int MultiplyBySystemMatrix_NoReciprocals
+void MultiplyBySystemMatrix_NoReciprocals
 (
 	const SystemCoefficients< Real > &systemCoefficients ,
 	const std::vector< int >& boundaryGlobalIndex ,
@@ -690,12 +707,17 @@ int MultiplyBySystemMatrix_NoReciprocals
 		for( int r=firstLine ; r<lastLine ; r++ ) UpdateRow(r);
 	}
 	if( verbose ) printf( "\tMultiply deep = %.4f \n" , timer.elapsed() );
-	return 1;
 }
 
 
-template<class Real, class Data>
-int ComputeSystemResdiual(const std::vector<Real> & deepCoefficients, const SparseMatrix< Real, int> & boundaryDeepMatrix, const SparseMatrix< Real, int> & boundaryBoundaryMatrix, const std::vector<int> & boundaryGlobalIndex, const std::vector<RasterLine> & rasterLines, const std::vector<Data> & boundaryRHS, const std::vector<Data> & boundaryValues, const std::vector<Data> & in, const std::vector<Data> & rhs, std::vector<Data> & out, bool verbose = false)
+template< class Real , class Data >
+void ComputeSystemResidual
+(
+	const std::vector< Real > &deepCoefficients , const SparseMatrix< Real , int > &boundaryDeepMatrix , const SparseMatrix< Real , int > &boundaryBoundaryMatrix ,
+	const std::vector< int > &boundaryGlobalIndex , const std::vector< RasterLine > &rasterLines ,
+	const std::vector< Data > &boundaryRHS , const std::vector< Data > &boundaryValues , const std::vector< Data > &in , const std::vector< Data > &rhs , std::vector< Data > &out ,
+	bool verbose=false
+)
 {
 	Miscellany::Timer timer;
 	//Boundary residual
@@ -747,11 +769,15 @@ int ComputeSystemResdiual(const std::vector<Real> & deepCoefficients, const Spar
 		for (int r = firstLine; r < lastLine; r++) UpdateResidual(r);
 	}
 	if( verbose ) printf( "\t Residual Deep %.4f\n" , timer.elapsed() );
-	return 1;
 }
 
-template<class Real, class Data>
-int MultiplyByRestriction(const SparseMatrix< Real, int> & __boundaryRestrictionMatrix, const std::vector<int> & boundaryGlobalIndex, std::vector<Data> & boundaryValue, const std::vector<RasterLine> & restrictionLines, const std::vector<Data> & in, std::vector<Data> & out, bool verbose = false)
+template< class Real , class Data >
+void MultiplyByRestriction
+(
+	const SparseMatrix< Real , int > & __boundaryRestrictionMatrix , const std::vector< int > &boundaryGlobalIndex , std::vector< Data > &boundaryValue ,
+	const std::vector< RasterLine > &restrictionLines ,
+	const std::vector< Data > &in , std::vector< Data > &out , bool verbose=false
+)
 {
 	Miscellany::Timer timer;
 
@@ -798,11 +824,16 @@ int MultiplyByRestriction(const SparseMatrix< Real, int> & __boundaryRestriction
 	}
 
 	if( verbose ) printf( "\t Restriction deep %.4f \n" , timer.elapsed() );
-	return 1;
 }
 
-template<class Real, class Data>
-int MultiplyByProlongation(const std::vector<ProlongationLine> & prolongationLines, const std::vector<Data> & in, std::vector<Data> & out, bool verbose = false)
+template< class Real , class Data >
+void MultiplyByProlongation
+(
+	const std::vector< ProlongationLine > &prolongationLines ,
+	const std::vector< Data > &in ,
+	std::vector< Data > &out ,
+	bool verbose=false
+)
 {
 	Miscellany::Timer timer;
 
@@ -845,12 +876,11 @@ int MultiplyByProlongation(const std::vector<ProlongationLine> & prolongationLin
 		for (int r = firstLine; r < lastLine; r++) UpdateRow(r);
 	}
 	if( verbose ) printf( "\t Prolongation deep %.4f\n" , timer.elapsed() ); 
-	return 1;
 }
 
 
-template<class Real, class Data>
-int AddProlongation(const std::vector<ProlongationLine> & prolongationLines, const std::vector<Data> & in, std::vector<Data> & out, bool verbose = false)
+template< class Real , class Data >
+void AddProlongation( const std::vector< ProlongationLine > &prolongationLines , const std::vector< Data > &in , std::vector< Data > &out , bool verbose=false )
 {
 	Miscellany::Timer timer;
 
@@ -893,11 +923,10 @@ int AddProlongation(const std::vector<ProlongationLine> & prolongationLines, con
 		for (int r = firstLine; r < lastLine; r++) UpdateRow(r);
 	}
 	if( verbose ) printf( "\t Prolongation deep %.4f \n" , timer.elapsed() );
-	return 1;
 }
 
 template< class Real , unsigned int Channels , class Data >
-int CellStiffnessToTexelStiffness
+void CellStiffnessToTexelStiffness
 (
 	const std::vector< Real >& cellSharpenningMask ,
 	const std::vector< InteriorTexelToCellLine >& interiorTexelToCellLines ,
@@ -941,10 +970,9 @@ int CellStiffnessToTexelStiffness
 		for (int r = firstLine; r < lastLine; r++) UpdateRow(r);
 	}
 	if( verbose ) printf( "\t Interior update %.4f\n" , timer.elapsed() );
-	return 1;
 }
 template< class Real >
-int CellStiffnessToTexelStiffness
+void CellStiffnessToTexelStiffness
 (
 	const std::vector< Real >& cellSharpenningMask ,
 	const std::vector< InteriorTexelToCellLine >& interiorTexelToCellLines ,
@@ -987,11 +1015,10 @@ int CellStiffnessToTexelStiffness
 		for (int r = firstLine; r < lastLine; r++) UpdateRow(r);
 	}
 	if( verbose ) printf( "\t Interior update %.4f\n" , timer.elapsed() );
-	return 1;
 }
 
 template< class Real , class DataType , class DirectSolver >
-int VCycle(	std::vector< MultigridLevelVariables< DataType > > &variables , const std::vector< SystemCoefficients< Real > > &coefficients , const std::vector< MultigridLevelIndices< Real > > &indices , VCycleSolvers< DirectSolver > &vCycleSolvers , bool verbose , bool detailVerbose )
+void VCycle( std::vector< MultigridLevelVariables< DataType > > &variables , const std::vector< SystemCoefficients< Real > > &coefficients , const std::vector< MultigridLevelIndices< Real > > &indices , VCycleSolvers< DirectSolver > &vCycleSolvers , bool verbose , bool detailVerbose )
 {
 	int levels = (int)variables.size();
 
@@ -1015,10 +1042,7 @@ int VCycle(	std::vector< MultigridLevelVariables< DataType > > &variables , cons
 		if( verbose ) printf( "Level %d\n" , i );
 
 		Miscellany::Timer timer;
-		if( !RelaxationAndResidual( _coefficients.deepCoefficients , _coefficients.boundaryDeepMatrix , vCycleSolvers.boundary[i], _indices.boundaryGlobalIndex, _indices.threadTasks, _variables.rhs, _variables.x, _variables.boundary_rhs, _variables.boundary_value, _variables.variable_boundary_value, _coefficients.boundaryBoundaryMatrix, _variables.residual, 2, detailVerbose)) {
-			printf("ERROR : Failed hybrid gauss seidel solver! \n");
-			return 0;
-		}
+		RelaxationAndResidual( _coefficients.deepCoefficients , _coefficients.boundaryDeepMatrix , vCycleSolvers.boundary[i] , _indices.boundaryGlobalIndex , _indices.threadTasks , _variables.rhs , _variables.x , _variables.boundary_rhs , _variables.boundary_value , _variables.variable_boundary_value , _coefficients.boundaryBoundaryMatrix , _variables.residual , 2 , detailVerbose );
 		if( verbose ) printf("Relaxation  + Residual %.4f\n" , timer.elapsed() );
 
 		if( verbose ) timer.reset();
@@ -1039,11 +1063,7 @@ int VCycle(	std::vector< MultigridLevelVariables< DataType > > &variables , cons
 			MultigridLevelVariables<DataType> & _variables = variables[i];
 
 			if( verbose ) timer.reset();
-			if( !Relaxation( _coefficients.deepCoefficients , _coefficients.boundaryDeepMatrix , vCycleSolvers.boundary[i] , _indices.boundaryGlobalIndex , _indices.threadTasks , _variables.rhs , _variables.x , _variables.boundary_rhs , _variables.boundary_value , _variables.variable_boundary_value , 2 , true , detailVerbose ) )
-			{
-				fprintf( stderr , "[ERROR] Failed hybrid gauss seidel solver!\n" );
-				return 0;
-			}
+			Relaxation( _coefficients.deepCoefficients , _coefficients.boundaryDeepMatrix , vCycleSolvers.boundary[i] , _indices.boundaryGlobalIndex , _indices.threadTasks , _variables.rhs , _variables.x , _variables.boundary_rhs , _variables.boundary_value , _variables.variable_boundary_value , 2 , true , detailVerbose );
 			if( verbose ) printf( "Gauss Seidel %.4f\n" , timer.elapsed() );
 		}
 		else if( i==levels-1 )
@@ -1066,6 +1086,4 @@ int VCycle(	std::vector< MultigridLevelVariables< DataType > > &variables , cons
 			if( verbose ) printf( "Prolongation %.4f\n" , timer.elapsed() );
 		}
 	}
-
-	return 1;
 }

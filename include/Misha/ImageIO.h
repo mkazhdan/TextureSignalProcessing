@@ -4,6 +4,7 @@
 #if defined( NEW_CMD_LINE_PARSER ) || 1
 #include <string.h>
 #endif // NEW_CMD_LINE_PARSER
+#include "Miscellany.h"
 
 struct ImageReader
 {
@@ -20,7 +21,7 @@ struct ImageReader
 	{
 		unsigned int channels;
 		ImageReader* reader = Get( fileName , width , height , channels );
-		if( channels!=1 && channels!=3 ) fprintf( stderr , "[ERROR] ImageReader::ReadColor requres one- or three-channel input\n" ) , exit( 0 );
+		if( channels!=1 && channels!=3 ) Miscellany::ErrorOut( "Requres one- or three-channel input" );
 		unsigned char* pixels = new unsigned char[ width*height*3 ];
 		unsigned char* pixelRow = new unsigned char[ width*channels];
 		for( unsigned int j=0 ; j<height ; j++ )

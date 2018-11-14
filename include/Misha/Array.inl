@@ -77,10 +77,8 @@ protected:
 	{
 		if( idx<min || idx>=max )
 		{
-			if( message ) fprintf( stderr , "Array index out-of-bounds: %lld <= %lld < %lld [%s]\n" , min , idx , max , message );
-			else fprintf( stderr , "Array index out-of-bounds: %lld <= %lld < %lld\n" , min , idx , max );
-			ASSERT( 0 );
-			exit( 0 );
+			if( message ) Miscellany::ErrorOut( "Array index out-of-bounds: %lld <= %lld < %lld [%s]" , min , idx , max , message );
+			else          Miscellany::ErrorOut( "Array index out-of-bounds: %lld <= %lld < %lld" , min , idx , max );
 		}
 	}
 	C *data , *_data;
@@ -99,11 +97,7 @@ protected:
 		{
 			size_t idx;
 			for( idx=0 ; idx<memoryInfo.size( ) ; idx++ ) if( memoryInfo[idx].address==ptr ) break;
-			if( idx==memoryInfo.size() )
-			{
-				fprintf( stderr , "Could not find memory in address table\n" );
-				ASSERT( 0 );
-			}
+			if( idx==memoryInfo.size() ) Miscellany::ErrorOut( "Could not find memory in address table" );
 			else
 			{
 				memoryInfo[idx] = memoryInfo[memoryInfo.size()-1];
@@ -204,12 +198,7 @@ public:
 #endif
 			min = ( a.minimum() * szD ) / szC;
 			max = ( a.maximum() * szD ) / szC;
-			if( min*szC!=a.minimum()*szD || max*szC!=a.maximum()*szD )
-			{
-				fprintf( stderr , "Could not convert array [ %lld , %lld ] * %lld => [ %lld , %lld ] * %lld\n" , a.minimum() , a.maximum() , szD , min , max , szC );
-				ASSERT( 0 );
-				exit( 0 );
-			}
+			if( min*szC!=a.minimum()*szD || max*szC!=a.maximum()*szD ) Miscellany::ErrorOut( "Could not convert array [ %lld , %lld ] * %lld => [ %lld , %lld ] * %lld" , a.minimum() , a.maximum() , szD , min , max , szC );
 		}
 	}
 	static Array FromPointer( C* data , difference_type max )
@@ -309,12 +298,7 @@ public:
 protected:
 	void _assertBounds( difference_type idx ) const
 	{
-		if( idx<min || idx>=max )
-		{
-			fprintf( stderr , "ConstArray index out-of-bounds: %lld <= %lld < %lld\n" , min , idx , max );
-			ASSERT( 0 );
-			exit( 0 );
-		}
+		if( idx<min || idx>=max ) Miscellany::ErrorOut( "ConstArray index out-of-bounds: %lld <= %lld < %lld" , min , idx , max );
 	}
 protected:
 	const C *data;
@@ -346,12 +330,7 @@ public:
 		min = ( a.minimum() * szD ) / szC;
 		max = ( a.maximum() * szD ) / szC;
 		if( min*szC!=a.minimum()*szD || max*szC!=a.maximum()*szD )
-		{
-			//			fprintf( stderr , "Could not convert const array [ %lld , %lld ] * %lld => [ %lld , %lld ] * %lld\n" , a.minimum() , a.maximum() , szD , min , max , szC );
-			fprintf( stderr , "Could not convert const array [ %lld , %lld ] * %lld => [ %lld , %lld ] * %lld\n %lld %lld %lld\n" , a.minimum() , a.maximum() , szD , min , max , szC , a.minimum() , a.minimum()*szD , (a.minimum()*szD)/szC );
-			ASSERT( 0 );
-			exit( 0 );
-		}
+			Miscellany::ErrorOut( "Could not convert const array [ %lld , %lld ] * %lld => [ %lld , %lld ] * %lld %lld %lld %lld" , a.minimum() , a.maximum() , szD , min , max , szC , a.minimum() , a.minimum()*szD , (a.minimum()*szD)/szC );
 	}
 	template< class D >
 	inline ConstArray( const ConstArray< D >& a )
@@ -362,12 +341,7 @@ public:
 		data = ( const C*)a.ptr( );
 		min = ( a.minimum() * szD ) / szC;
 		max = ( a.maximum() * szD ) / szC;
-		if( min*szC!=a.minimum()*szD || max*szC!=a.maximum()*szD )
-		{
-			fprintf( stderr , "Could not convert array [ %lld , %lld ] * %lld => [ %lld , %lld ] * %lld\n" , a.minimum() , a.maximum() , szD , min , max , szC );
-			ASSERT( 0 );
-			exit( 0 );
-		}
+		if( min*szC!=a.minimum()*szD || max*szC!=a.maximum()*szD ) Miscellany::ErrorOut( "Could not convert array [ %lld , %lld ] * %lld => [ %lld , %lld ] * %lld" , a.minimum() , a.maximum() , szD , min , max , szC );
 	}
 	static ConstArray FromPointer( const C* data , difference_type max )
 	{
@@ -429,89 +403,49 @@ public:
 template< class C , class Offset > ConstArray< C > operator + ( Offset idx , const ConstArray< C >& a ){ return (a+idx); }
 
 #if FULL_ARRAY_DEBUG
-inline void PrintMemoryInfo( void ){ for( size_t i=0 ; i<memoryInfo.size() ; i++ ) printf( "%d] %s\n" , i , memoryInfo[i].name ); }
+inline void PrintMemoryInfo( void ){ for( size_t i=0 ; i<memoryInfo.size() ; i++ ) printf( "%d] %s" , i , memoryInfo[i].name ); }
 #endif // FULL_ARRAY_DEBUG
 template< class C >
 Array< C > memcpy( Array< C > destination , const void* source , size_t size )
 {
-	if( size>destination.maximum()*sizeof(C) )
-	{
-		fprintf( stderr , "Size of copy exceeds destination maximum: %lld > %lld\n" , ( long long )( size ) , ( long long )( destination.maximum()*sizeof( C ) ) );
-		ASSERT( 0 );
-		exit( 0 );
-	}
+	if( size>destination.maximum()*sizeof(C) ) Miscellany::ErrorOut( "Size of copy exceeds destination maximum: %lld > %lld" , ( long long )( size ) , ( long long )( destination.maximum()*sizeof( C ) ) );
 	if( size ) memcpy( &destination[0] , source , size );
 	return destination;
 }
 template< class C , class D >
 Array< C > memcpy( Array< C > destination , Array< D > source , size_t size )
 {
-	if( size>destination.maximum()*sizeof( C ) )
-	{
-		fprintf( stderr , "Size of copy exceeds destination maximum: %lld > %lld\n" , ( long long )( size ) , ( long long )( destination.maximum()*sizeof( C ) ) );
-		ASSERT( 0 );
-		exit( 0 );
-	}
-	if( size>source.maximum()*sizeof( D ) )
-	{
-		fprintf( stderr , "Size of copy exceeds source maximum: %lld > %lld\n" , ( long long )( size ) , ( long long )( source.maximum()*sizeof( D ) ) );
-		ASSERT( 0 );
-		exit( 0 );
-	}
+	if( size>destination.maximum()*sizeof( C ) ) Miscellany::ErrorOut( "Size of copy exceeds destination maximum: %lld > %lld" , ( long long )( size ) , ( long long )( destination.maximum()*sizeof( C ) ) );
+	if( size>source.maximum()*sizeof( D ) ) Miscellany::ErrorOut( "Size of copy exceeds source maximum: %lld > %lld" , ( long long )( size ) , ( long long )( source.maximum()*sizeof( D ) ) );
 	if( size ) memcpy( &destination[0] , &source[0] , size );
 	return destination;
 }
 template< class C , class D >
 Array< C > memcpy( Array< C > destination , ConstArray< D > source , size_t size )
 {
-	if( size>destination.maximum()*sizeof( C ) )
-	{
-		fprintf( stderr , "Size of copy exceeds destination maximum: %lld > %lld\n" , ( long long )( size ) , ( long  long )( destination.maximum()*sizeof( C ) ) );
-		ASSERT( 0 );
-		exit( 0 );
-	}
-	if( size>source.maximum()*sizeof( D ) )
-	{
-		fprintf( stderr , "Size of copy exceeds source maximum: %lld > %lld\n" , ( long long )( size ) , ( long long )( source.maximum()*sizeof( D ) ) );
-		ASSERT( 0 );
-		exit( 0 );
-	}
+	if( size>destination.maximum()*sizeof( C ) ) Miscellany::ErrorOut( "Size of copy exceeds destination maximum: %lld > %lld" , ( long long )( size ) , ( long  long )( destination.maximum()*sizeof( C ) ) );
+	if( size>source.maximum()*sizeof( D ) ) Miscellany::ErrorOut( "Size of copy exceeds source maximum: %lld > %lld" , ( long long )( size ) , ( long long )( source.maximum()*sizeof( D ) ) );
 	if( size ) memcpy( &destination[0] , &source[0] , size );
 	return destination;
 }
 template< class D >
 void* memcpy( void* destination , Array< D > source , size_t size )
 {
-	if( size>source.maximum()*sizeof( D ) )
-	{
-		fprintf( stderr , "Size of copy exceeds source maximum: %lld > %lld\n" , ( long long )( size ) , ( long long )( source.maximum()*sizeof( D ) ) );
-		ASSERT( 0 );
-		exit( 0 );
-	}
+	if( size>source.maximum()*sizeof( D ) ) Miscellany::ErrorOut( "Size of copy exceeds source maximum: %lld > %lld" , ( long long )( size ) , ( long long )( source.maximum()*sizeof( D ) ) );
 	if( size ) memcpy( destination , &source[0] , size );
 	return destination;
 }
 template< class D >
 void* memcpy( void* destination , ConstArray< D > source , size_t size )
 {
-	if( size>source.maximum()*sizeof( D ) )
-	{
-		fprintf( stderr , "Size of copy exceeds source maximum: %lld > %lld\n" , ( long long )( size ) , ( long long )( source.maximum()*sizeof( D ) ) );
-		ASSERT( 0 );
-		exit( 0 );
-	}
+	if( size>source.maximum()*sizeof( D ) ) Miscellany::ErrorOut( "Size of copy exceeds source maximum: %lld > %lld" , ( long long )( size ) , ( long long )( source.maximum()*sizeof( D ) ) );
 	if( size ) memcpy( destination , &source[0] , size );
 	return destination;
 }
 template< class C >
 Array< C > memset( Array< C > destination , int value , size_t size )
 {
-	if( size>destination.maximum()*sizeof( C ) )
-	{
-		fprintf( stderr , "Size of set exceeds destination maximum: %lld > %lld\n" , ( long long )( size ) , ( long long )( destination.maximum()*sizeof( C ) ) );
-		ASSERT( 0 );
-		exit( 0 );
-	}
+	if( size>destination.maximum()*sizeof( C ) ) Miscellany::ErrorOut( "Size of set exceeds destination maximum: %lld > %lld" , ( long long )( size ) , ( long long )( destination.maximum()*sizeof( C ) ) );
 	if( size ) memset( &destination[0] , value , size );
 	return destination;
 }
@@ -519,50 +453,25 @@ Array< C > memset( Array< C > destination , int value , size_t size )
 template< class C >
 size_t fread( Array< C > destination , size_t eSize , size_t count , FILE* fp )
 {
-	if( count*eSize>destination.maximum()*sizeof( C ) )
-	{
-		fprintf( stderr , "Size of read exceeds source maximum: %lld > %lld\n" , ( long long )( count*eSize ) , ( long long )( destination.maximum()*sizeof( C ) ) );
-		ASSERT( 0 );
-		exit( 0 );
-	}
+	if( count*eSize>destination.maximum()*sizeof( C ) ) Miscellany::ErrorOut( "Size of read exceeds source maximum: %lld > %lld" , ( long long )( count*eSize ) , ( long long )( destination.maximum()*sizeof( C ) ) );
 	return fread( &destination[0] , eSize , count , fp );
 }
 template< class C >
 size_t fwrite( Array< C > source , size_t eSize , size_t count , FILE* fp )
 {
-	if( count*eSize>source.maximum()*sizeof( C ) )
-	{
-		fprintf( stderr , "Size of write exceeds source maximum: %lld > %lld\n" , ( long long )( count*eSize ) , ( long long )( source.maximum()*sizeof( C ) ) );
-		ASSERT( 0 );
-		exit( 0 );
-	}
+	if( count*eSize>source.maximum()*sizeof( C ) ) Miscellany::ErrorOut( "Size of write exceeds source maximum: %lld > %lld" , ( long long )( count*eSize ) , ( long long )( source.maximum()*sizeof( C ) ) );
 	return fwrite( &source[0] , eSize , count , fp );
 }
 template< class C >
 size_t fwrite( ConstArray< C > source , size_t eSize , size_t count , FILE* fp )
 {
-	if( count*eSize>source.maximum()*sizeof( C ) )
-	{
-		fprintf( stderr , "Size of write exceeds source maximum: %lld > %lld\n" , ( long long )( count*eSize ) , ( long long )( source.maximum()*sizeof( C ) ) );
-		ASSERT( 0 );
-		exit( 0 );
-	}
+	if( count*eSize>source.maximum()*sizeof( C ) ) Miscellany::ErrorOut( "Size of write exceeds source maximum: %lld > %lld" , ( long long )( count*eSize ) , ( long long )( source.maximum()*sizeof( C ) ) );
 	return fwrite( &source[0] , eSize , count , fp );
 }
 template< class C >
 void qsort( Array< C > base , size_t numElements , size_t elementSize , int (*compareFunction)( const void* , const void* ) )
 {
-	if( sizeof(C)!=elementSize )
-	{
-		fprintf( stderr , "Element sizes differ: %lld != %lld\n" , ( long long )( sizeof(C) ) , ( long long )( elementSize ) );
-		ASSERT( 0 );
-		exit( 0 );
-	}
-	if( base.minimum()>0 || base.maximum()<numElements )
-	{
-		fprintf( stderr , "Array access out of bounds: %lld <= 0 <= %lld <= %lld\n" , base.minimum() , base.maximum() , ( long long )( numElements ) );
-		ASSERT( 0 );
-		exit( 0 );
-	}
+	if( sizeof(C)!=elementSize ) Miscellany::ErrorOut( "Element sizes differ: %lld != %lld" , ( long long )( sizeof(C) ) , ( long long )( elementSize ) );
+	if( base.minimum()>0 || base.maximum()<numElements ) Miscellany::ErrorOut( "Array access out of bounds: %lld <= 0 <= %lld <= %lld" , base.minimum() , base.maximum() , ( long long )( numElements ) );
 	qsort( base.ptr() , numElements , elementSize , compareFunction );
 }

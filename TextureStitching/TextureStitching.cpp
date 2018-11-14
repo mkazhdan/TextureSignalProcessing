@@ -26,6 +26,7 @@ ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF S
 DAMAGE.
 */
 
+
 enum
 {
 	SINGLE_INPUT_MODE,
@@ -202,12 +203,12 @@ public:
 	static void ParseImages( void );
 	static void SetUpSystem( void );
 	static void SolveSystem( void );
-	static int Init( void );
+	static void Init( void );
 	static void InitializeVisualization( void );
-	static int UpdateSolution( bool verbose=false , bool detailVerbose=false );
+	static void UpdateSolution( bool verbose=false , bool detailVerbose=false );
 	static void ComputeExactSolution( bool verbose=false );
-	static int InitializeSystem( int width , int height );
-	static int _InitializeSystem( std::vector< std::vector< SquareMatrix< PreReal , 2 > > > &parameterMetric , BoundaryProlongationData< Real > &boundaryProlongation );
+	static void InitializeSystem( int width , int height );
+	static void _InitializeSystem( std::vector< std::vector< SquareMatrix< PreReal , 2 > > > &parameterMetric , BoundaryProlongationData< Real > &boundaryProlongation );
 
 	static void UpdateFilteredColorTexture( const std::vector< Point3D< Real > > &solution );
 	static void UpdateFilteredTexture( const std::vector< Point3D< Real > > &solution );
@@ -342,7 +343,7 @@ void Stitching< PreReal , Real >::Idle( void )
 
 	if( updateCount && !UseDirectSolver.set && !visualization.promptCallBack )
 	{
-		if( !UpdateSolution() ) fprintf( stderr , "[ERROR] Updated solution failed!\n" ) , exit(0);
+		UpdateSolution();
 		UpdateFilteredColorTexture( multigridStitchingVariables[0].x );
 		visualization.UpdateColorTextureBuffer();
 		if( updateCount>0 ) updateCount--;
@@ -470,8 +471,7 @@ void  Stitching< PreReal , Real >::InterpolationWeightCallBack( Visualization *v
 	interpolationWeight = atof(prompt);
 	if( UseDirectSolver.set ) stitchingMatrix = mass*interpolationWeight + stiffness;
 	Miscellany::Timer timer;
-	if( !UpdateLinearSystem( interpolationWeight , (Real)1. , hierarchy , multigridStitchingCoefficients , massCoefficients , stiffnessCoefficients , vCycleSolvers , directSolver , stitchingMatrix , DetailVerbose.set , false , UseDirectSolver.set ) )
-		fprintf( stderr , "[ERROR] Failed system update!\n" ) , exit(0);
+	UpdateLinearSystem( interpolationWeight , (Real)1. , hierarchy , multigridStitchingCoefficients , massCoefficients , stiffnessCoefficients , vCycleSolvers , directSolver , stitchingMatrix , DetailVerbose.set , false , UseDirectSolver.set );
 	if( Verbose.set ) printf( "\tInitialized multigrid coefficients: %.2f(s)\n" , timer.elapsed() );
 
 #pragma omp parallel for
@@ -495,7 +495,7 @@ void Stitching< PreReal , Real >::ComputeExactSolution( bool verbose )
 }
 
 template< typename PreReal , typename Real >
-int Stitching< PreReal , Real >::UpdateSolution( bool verbose , bool detailVerbose )
+void Stitching< PreReal , Real >::UpdateSolution( bool verbose , bool detailVerbose )
 {
 	if( !rhsUpdated )
 	{
@@ -513,12 +513,10 @@ int Stitching< PreReal , Real >::UpdateSolution( bool verbose , bool detailVerbo
 	}
 
 	VCycle( multigridStitchingVariables , multigridStitchingCoefficients , multigridIndices , vCycleSolvers , verbose , detailVerbose );
-
-	return 1;
 }
 
 template< typename PreReal , typename Real >
-int Stitching< PreReal , Real >::_InitializeSystem( std::vector< std::vector< SquareMatrix< PreReal , 2 > > > &parameterMetric , BoundaryProlongationData< Real > &boundaryProlongation )
+void Stitching< PreReal , Real >::_InitializeSystem( std::vector< std::vector< SquareMatrix< PreReal , 2 > > > &parameterMetric , BoundaryProlongationData< Real > &boundaryProlongation )
 {
 	// Unused parameters
 	std::vector< Point3D< Real > > inputSignal;
@@ -526,70 +524,42 @@ int Stitching< PreReal , Real >::_InitializeSystem( std::vector< std::vector< Sq
 	SparseMatrix< Real , int > boundaryCellBasedStiffnessRHSMatrix[3];
 
 	{
-		int ret = 0;
 		switch( MatrixQuadrature.value )
 		{
-		case  1: ret = InitializeMassAndStiffness< 1>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
-		case  3: ret = InitializeMassAndStiffness< 3>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
-		case  6: ret = InitializeMassAndStiffness< 6>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
-		case 12: ret = InitializeMassAndStiffness<12>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
-		case 24: ret = InitializeMassAndStiffness<24>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
-		case 32: ret = InitializeMassAndStiffness<32>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
-		default: fprintf( stderr , "[ERROR] Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles\n" );
-		}
-		if( !ret )
-		{
-			fprintf( stderr, "[ERROR] Failed intialization!\n");
-			return 0;
+		case  1: InitializeMassAndStiffness< 1>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
+		case  3: InitializeMassAndStiffness< 3>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
+		case  6: InitializeMassAndStiffness< 6>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
+		case 12: InitializeMassAndStiffness<12>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
+		case 24: InitializeMassAndStiffness<24>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
+		case 32: InitializeMassAndStiffness<32>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
+		default: Miscellany::Throw( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
 		}
 	}
-	return 1;
 }
 
 template< typename PreReal , typename Real >
-int Stitching< PreReal , Real >::InitializeSystem( int width , int height )
+void Stitching< PreReal , Real >::InitializeSystem( int width , int height )
 {
 	Miscellany::Timer timer;
 	MultigridBlockInfo multigridBlockInfo( MultigridBlockWidth.value , MultigridBlockHeight.value , MultigridPaddedWidth.value , MultigridPaddedHeight.value , 0 );
-	if( !InitializeHierarchy( mesh , width , height , levels , textureNodes , bilinearElementIndices , hierarchy , atlasCharts , multigridBlockInfo , true , DetailVerbose.set ) )
-	{
-		fprintf( stderr , "[ERROR] Failed intialization!\n" );
-		return 0;
-	}
+	InitializeHierarchy( mesh , width , height , levels , textureNodes , bilinearElementIndices , hierarchy , atlasCharts , multigridBlockInfo , true , DetailVerbose.set );
 	if( Verbose.set ) printf( "\tInitialized hierarchy: %.2f(s)\n" , timer.elapsed() );
 
 	BoundaryProlongationData< Real > boundaryProlongation;
-	if( !InitializeBoundaryProlongationData( hierarchy.gridAtlases[0] , boundaryProlongation ) )
-	{
-		fprintf( stderr , "[ERROR] Failed boundary prolongation!\n" );
-		return 0;
-	}
+	InitializeBoundaryProlongationData( hierarchy.gridAtlases[0] , boundaryProlongation );
 
 	std::vector< Point3D< Real > > inputSignal;
 	std::vector< Real > texelToCellCoeffs;
 
 	std::vector< std::vector< SquareMatrix< PreReal , 2 > > > parameterMetric;
-	if( !InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric ) )
-	{
-		fprintf( stderr , "[ERROR] Unable to initialize metric\n" );
-		return 0;
-	}
-
-	if( !InitializeIntraChartEdgeIndexing( hierarchy.gridAtlases[0].gridCharts , edgeIndex ) )
-	{
-		fprintf( stderr , "[ERROR] Unable to initialize intra chart edge indices\n" );
-		return 0;
-	}
+	InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric );
+	InitializeIntraChartEdgeIndexing( hierarchy.gridAtlases[0].gridCharts , edgeIndex );
 
 	if( Verbose.set ) timer.reset();
-	if( !_InitializeSystem( parameterMetric , boundaryProlongation ) ) return 0;
+	_InitializeSystem( parameterMetric , boundaryProlongation );
 	if( Verbose.set ) printf( "\tInitialized system: %.2f(s)\n" , timer.elapsed() );
 	
-	if( !InitializeDivergenceRasteLines( edgeIndex , hierarchy.gridAtlases[0].rasterLines , divergenceRasterLines ) )
-	{
-		fprintf( stderr , "[ERROR] Unable to initialize divergence raster lines!\n" );
-		return 0;
-	}
+	InitializeDivergenceRasteLines( edgeIndex , hierarchy.gridAtlases[0].rasterLines , divergenceRasterLines );
 	
 	edgePairs.resize( edgeIndex.size() );
 	for( auto edgeIter=edgeIndex.begin() ; edgeIter!=edgeIndex.end() ; edgeIter++ )
@@ -626,11 +596,7 @@ int Stitching< PreReal , Real >::InitializeSystem( int width , int height )
 	}
 
 	if( Verbose.set ) timer.reset();
-	if( !UpdateLinearSystem( interpolationWeight , (Real)1. , hierarchy , multigridStitchingCoefficients , massCoefficients , stiffnessCoefficients , vCycleSolvers , directSolver , stitchingMatrix , DetailVerbose.set, true, UseDirectSolver.set ) )
-	{
-		fprintf( stderr , "[ERROR] Failed system update!\n" );
-		return 0;
-	}
+	UpdateLinearSystem( interpolationWeight , (Real)1. , hierarchy , multigridStitchingCoefficients , massCoefficients , stiffnessCoefficients , vCycleSolvers , directSolver , stitchingMatrix , DetailVerbose.set, true, UseDirectSolver.set );
 	if( Verbose.set ) printf( "\tInitialized multigrid coefficients: %.2f(s)\n" , timer.elapsed() );
 
 	multigridStitchingVariables.resize(levels);
@@ -644,8 +610,6 @@ int Stitching< PreReal , Real >::InitializeSystem( int width , int height )
 		variables.boundary_value.resize( hierarchy.gridAtlases[i].boundaryGlobalIndex.size() );
 		variables.variable_boundary_value.resize( hierarchy.gridAtlases[i].boundaryGlobalIndex.size() );
 	}
-
-	return 1;
 }
 template< typename PreReal , typename Real >
 void Stitching< PreReal , Real >::SetUpSystem( void )
@@ -868,7 +832,7 @@ void Stitching< PreReal , Real >::InitializeVisualization( void )
 	}
 
 	std::vector< int > boundaryEdges;
-	if( !mesh.initializeBoundaryEdges( boundaryEdges ) ) printf( "[WARNING] Unable to initialize boundary edges!\n" );
+	mesh.initializeBoundaryEdges( boundaryEdges );
 
 	for( int e=0 ; e<boundaryEdges.size() ; e++ )
 	{
@@ -906,7 +870,7 @@ void Stitching< PreReal , Real >::InitializeVisualization( void )
 }
 
 template< typename PreReal , typename Real >
-int Stitching< PreReal , Real >::Init( void )
+void Stitching< PreReal , Real >::Init( void )
 {
 	sprintf( stepsString , "Steps: 0" );
 	levels = std::max< int >( Levels.value , 1 );
@@ -914,11 +878,7 @@ int Stitching< PreReal , Real >::Init( void )
 	sprintf( referenceTextureStr , "Reference Texture: %02d of %02d\n" , textureIndex,numTextures );
 	sprintf( interpolationStr , "Interpolation: %.2e\n" , interpolationWeight );
 
-	if( !mesh.read( In.values[0] , NULL , DetailVerbose.set ) )
-	{
-		fprintf( stderr , "[ERROR] Unable to read mesh data\n" );
-		return 0;
-	}
+	mesh.read( In.values[0] , NULL , DetailVerbose.set );
 
 	// Define centroid and scale for visualization
 	Point3D< PreReal > centroid;
@@ -953,11 +913,7 @@ int Stitching< PreReal , Real >::Init( void )
 	}
 
 	Miscellany::Timer timer;
-	if( !InitializeSystem( textureWidth , textureHeight ) )
-	{
-		fprintf( stderr , "[ERROR] Unable to initialize system\n" );
-		return 0;
-	}
+	InitializeSystem( textureWidth , textureHeight );
 	if( Verbose.set )
 	{
 		printf( "Resolution: %d / %d x %d\n" , (int)textureNodes.size() , textureWidth , textureHeight );
@@ -1012,20 +968,18 @@ int Stitching< PreReal , Real >::Init( void )
 			if( texelId(ci,cj)!=-1 ) multiChartTexelCount++;
 			texelId(ci,cj) = i;
 		}
-		if( multiChartTexelCount ) fprintf( stderr , "[WARNING] %d texels belong to multiple charts!\n" , multiChartTexelCount );
+		if( multiChartTexelCount ) Miscellany::Warn( "%d texels belong to multiple charts" , multiChartTexelCount );
 	}
-
-	return 1;
 }
 
 template< typename PreReal , typename Real >
-int _main( int argc , char *argv[] )
+void _main( int argc , char *argv[] )
 {
 	Stitching< PreReal , Real >::inputMode = MultiInput.set ? MULTIPLE_INPUT_MODE : SINGLE_INPUT_MODE;
 	Stitching< PreReal , Real >::updateCount = MultiInput.set ? -1 : 0;
 
 	Stitching< PreReal , Real >::LoadImages();
-	if( !Stitching< PreReal , Real >::Init() ) return 0;
+	Stitching< PreReal , Real >::Init();
 	Stitching< PreReal , Real >::ParseImages();
 	Stitching< PreReal , Real >::SetUpSystem();
 
@@ -1042,7 +996,7 @@ int _main( int argc , char *argv[] )
 		char windowName[1024];
 		sprintf( windowName , "Stitching" );
 		glutCreateWindow( windowName );
-		if( glewInit()!=GLEW_OK ) fprintf( stderr , "[ERROR] glewInit failed\n" ) , exit(0);
+		if( glewInit()!=GLEW_OK ) Miscellany::Throw( "glewInit failed" );
 		glutDisplayFunc ( Stitching< PreReal , Real >::Display );
 		glutReshapeFunc ( Stitching< PreReal , Real >::Reshape );
 		glutMouseFunc   ( Stitching< PreReal , Real >::MouseFunc );
@@ -1058,8 +1012,6 @@ int _main( int argc , char *argv[] )
 		Stitching< PreReal , Real >::SolveSystem();
 		Stitching< PreReal , Real >::ExportTextureCallBack( &Stitching< PreReal , Real >::visualization , Output.value );
 	}
-
-	return 0;
 }
 
 int main( int argc , char* argv[] )
@@ -1088,7 +1040,15 @@ int main( int argc , char* argv[] )
 		printf( "|    'y':                         prescribe interpolation weight             |\n" );
 		printf( "+----------------------------------------------------------------------------+\n" );
 	}
-	if( Double.set ) _main< double , double >( argc , argv );
-	else             _main< double , float  >( argc , argv );
-	return 0;
+	try
+	{
+		if( Double.set ) _main< double , double >( argc , argv );
+		else             _main< double , float  >( argc , argv );
+	}
+	catch( Miscellany::Exception &e )
+	{
+		printf( "%s\n" , e.what() );
+		return EXIT_FAILURE;
+	}
+	return EXIT_SUCCESS;
 }

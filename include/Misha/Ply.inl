@@ -26,6 +26,7 @@ ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF S
 DAMAGE.
 */
 #include <unordered_map>
+#include "Miscellany.h"
 
 static char *full_elem_names[] = { "vertex", "edge" , "face" };
 static char *elem_names[] = { "vertex", "face" };
@@ -1037,7 +1038,7 @@ int MReadTriangles( const char* fileName , std::vector<Vertex>& vertices , std::
 			tri[0] = vMap[v1] , tri[1] = vMap[v2] , tri[2] = vMap[v3];
 			triangles.push_back( tri );
 		}
-		else fprintf( stderr , "[WARNING] Couldn't parse line: %s\n" , line );
+		else Miscellany::Warn( "Couldn't parse line: %s" , line );
 	}
 	fclose( fp );
 	return 1;

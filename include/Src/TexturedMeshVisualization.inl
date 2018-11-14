@@ -109,7 +109,7 @@ void TexturedMeshVisualization::ReadSceneConfigurationCallBack( Visualization *v
 	TexturedMeshVisualization* av = (TexturedMeshVisualization*)v;
 	FILE * file;
 	file = fopen( prompt , "rb" );
-	if( !file ) fprintf( stderr , "TexturedMeshVisualization::ReadSceneConfigurationCallBack: Camera Configuration File Not Valid: %s\n" , prompt );
+	if( !file ) Miscellany::Throw( "Camera Configuration File Not Valid: %s" , prompt );
 	else
 	{
 		fread( &av->screenWidth  , sizeof(int) , 1 , file );

@@ -27,24 +27,23 @@ DAMAGE.
 */
 #ifndef VECTOR_IO_INCLUDED
 #define VECTOR_IO_INCLUDED
-#include<cstdlib>
-#include<cstdio>
-#include<vector>
-#include<Misha/Image.h>
+#include <cstdlib>
+#include <cstdio>
+#include <vector>
+#include <Misha/Image.h>
+#include <Misha/Miscellany.h>
 
-template<typename T>
-int ReadVector( std::vector<T> & vec , const char * fileName )
+template< typename T >
+void ReadVector( std::vector<T> & vec , const char * fileName )
 {
-
 	FILE * file;
 	file = fopen( fileName , "rb" );
-	if( !file ){ printf( "Unable to read %s \n" , fileName ) ; return 0; }
+	if( !file ) Miscellany::Throw( "Unable to read %s" , fileName );
 	int vecSize;
 	fread( &vecSize , sizeof(int) , 1 , file );
 	vec.resize( vecSize );
 	fread( &vec[0] , sizeof(T) , vecSize , file );
 	fclose( file );
-	return 1;
 }
 
 template<typename T>
@@ -71,19 +70,18 @@ void WriteBinaryImage(const Image<T> & image, const char * fileName) {
 	fclose(file);
 }
 
-template <class T>
-int ReadBinaryImage(Image<T> & image, const char * fileName) {
-
+template< class T >
+void ReadBinaryImage( Image< T > &image , const char *fileName )
+{
 	FILE * file;
 	file = fopen(fileName, "rb");
-	if (!file) { printf("Unable to read %s \n", fileName); return 0; }
+	if( !file ) Miscellany::Throw( "Unable to read %s" , fileName );
 	int width, height;
 	fread(&width, sizeof(int), 1, file);
 	fread(&height, sizeof(int), 1, file);
 	image.resize(width, height);
 	fread(&image[0], sizeof(T), width*height, file);
 	fclose(file);
-	return 1;
 }
 
 #endif //VECTOR_IO_INCLUDED

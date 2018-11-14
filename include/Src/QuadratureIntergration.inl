@@ -27,8 +27,8 @@ DAMAGE.
 */
 #pragma once
 
-
 #include <functional>
+#include <Misha/Miscellany.h>
 #include "Hierarchy.h"
 
 class InteriorCellLine
@@ -39,7 +39,7 @@ public:
 };
 
 template< typename GeometryReal >
-int InitializeGridChartInteriorCellLines
+void InitializeGridChartInteriorCellLines
 (
 	const AtlasChart< GeometryReal > &atlasChart ,
 	const GridChart< GeometryReal > &gridChart ,
@@ -64,7 +64,7 @@ int InitializeGridChartInteriorCellLines
 		while( offset<width )
 		{
 			bool currentIsInterior = cellType(offset, j) == 1;
-			if( ( offset==0 || offset==width-1 ) && currentIsInterior ){ fprintf( stderr , "[ERROR] InitializeGridChartInteriorCellLines: Unexpected interior cell!\n" ) ; return 0; }
+			if( ( offset==0 || offset==width-1 ) && currentIsInterior ) Miscellany::Throw( "Unexpected interior cell" );
 			if(  currentIsInterior && !previousIsInterior ) rasterStart = offset; //Start raster line
 			if( !currentIsInterior &&  previousIsInterior ) //Terminate raster line
 			{ 
@@ -73,12 +73,12 @@ int InitializeGridChartInteriorCellLines
 				newLine.nextLineIndex = globalTexelIndex( rasterStart , j+1 );
 				newLine.length = offset - rasterStart;
 
-				if( newLine.prevLineIndex==-1 || newLine.nextLineIndex==-1 ){ fprintf( stderr , "[ERROR] InitializeGridChartInteriorCellLines: Inavlid Indexing!\n" ) ; return 0; }
+				if( newLine.prevLineIndex==-1 || newLine.nextLineIndex==-1 ) Miscellany::Throw( "Invalid indexing" );
 				int currentLine = (int)interiorCellLines.size();
 
 				for( int k=0 ; k<offset-rasterStart ; k++ )
 				{
-					if( gridChart.interiorCellCorners[localInteriorCellIndex][0]!=globalTexelInteriorIndex( rasterStart+k , j ) ){ fprintf( stderr , "[ERROR] InitializeGridChartInteriorCellLines: Unexpected corner id!\n" ) ; return 0; }
+					if( gridChart.interiorCellCorners[localInteriorCellIndex][0]!=globalTexelInteriorIndex( rasterStart+k , j ) ) Miscellany::Throw( "Unexpected corner ID" );
 
 					interiorCellLineIndex.push_back( std::pair< int , int >( currentLine , k ) );
 					localInteriorCellIndex++;
@@ -90,12 +90,10 @@ int InitializeGridChartInteriorCellLines
 			offset++;
 		}
 	}
-
-	return 1;
 }
 
 template< typename GeometryReal >
-int InitializeGridAtlasInteriorCellLines
+void InitializeGridAtlasInteriorCellLines
 (
 	const std::vector< AtlasChart< GeometryReal > >& atlasCharts ,
 	const std::vector< GridChart< GeometryReal > >& gridCharts ,
@@ -104,7 +102,6 @@ int InitializeGridAtlasInteriorCellLines
 )
 {
 	for( int i=0 ; i<gridCharts.size() ; i++ ) InitializeGridChartInteriorCellLines( atlasCharts[i] , gridCharts[i] , interiorCellLines , interiorCellLineIndex );
-	return 1;
 }
 
 //////////////////////////////////////
@@ -127,6 +124,7 @@ void SetInteriorCellDuals
 	// Compute the integrated Scalar of the bilinear basis function in the frame of the cell, weighted by the area of the unit triangle
 	for( int k=0 ; k<4 ; k++ ) sampleData.dualValues[k] += (Real)BilinearElementValue( k , pos ) * fragment_to_element_quadrature_weight;
 }
+
 template< unsigned int Samples , typename Real >
 void SetInteriorCellDuals
 (
@@ -150,6 +148,7 @@ void SetCellInTriangleDuals
 {
 	for( int k=0 ; k<4 ; k++ ) sampleData.dualValues[k] = interiorSampleData.dualValues[k] * element_area;
 }
+
 template< unsigned int Samples , typename Real >
 void SetCellInTriangleDuals
 (
@@ -175,6 +174,7 @@ void SetInteriorDuals
 	// Dualize the samples so that integration is simple a dot-product
 	for( int k=0 ; k<4 ; k++ ) sampleData.dualValues[k] += (Real)BilinearElementValue( k , pos ) * fragment_quadrature_weight;
 }
+
 template< unsigned int Samples , typename Real >
 void SetInteriorDuals
 (
@@ -202,6 +202,7 @@ void SetBoundaryDuals
 	// Dualize the samples so that integration is simple a dot-product
 	for( int k=0 ; k<6 ; k++ ) sampleData.dualValues[k] += (Real)QuadraticElementValue( k , pos ) * fragment_quadrature_weight;
 }
+
 template< unsigned int Samples , typename Real >
 void SetBoundaryDuals
 (
@@ -216,9 +217,8 @@ void SetBoundaryDuals
 	for( int k=0 ; k<6 ; k++ ) sampleData.dualGradients[k] += sample.tensor * Point2D< Real >( QuadraticElementGradient( k , pos ) * fragment_quadrature_weight );
 }
 
-
 template< unsigned int Samples , typename GeometryReal , typename ElementSamples >
-int InitializeIntegration
+void InitializeIntegration
 (
 	const std::vector< SquareMatrix< GeometryReal , 2 > > &texture_metrics ,
 	const AtlasChart< GeometryReal > &atlasChart ,
@@ -328,7 +328,7 @@ int InitializeIntegration
 			auto TextureToCell = [&]( Point2D< GeometryReal > p ){ return Point2D< GeometryReal >( ( p[0] / gridChart.cellSizeW ) - i , ( p[1] / gridChart.cellSizeH ) - j ); };
 
 			int localInteriorIndex = gridChart.localInteriorCellIndex(i,j) , localBoundaryIndex = gridChart.localBoundaryCellIndex(i,j);
-			if( localInteriorIndex!=-1 && localBoundaryIndex!=-1 ){ printf( "[ERROR] Cell simultaneosly interior and boundary!\n" ) ; return 0;	}
+			if( localInteriorIndex!=-1 && localBoundaryIndex!=-1 ) Miscellany::Throw( "Cell simultaneosly interior and boundary" );
 
 			// Interior cells
 			// If the cell is entirely interior to the triangle
@@ -401,7 +401,7 @@ int InitializeIntegration
 						for( int s=0 ; s<Samples ; s++ )
 						{
 							Point2D< typename ElementSamples::Real > pos = polygon[0] + dm[0] * (typename ElementSamples::Real)TriangleIntegrator< Samples >::Positions[s][0] + dm[1] * (typename ElementSamples::Real)TriangleIntegrator< Samples >::Positions[s][1];
-							if( !InUnitSquare( pos ) ){ printf( "[ERROR] Sample position out of unit square! (%f %f)\n" , pos[0] , pos[1] ) ; return 0; }
+							if( !InUnitSquare( pos ) ) Miscellany::Throw( "Sample position out of unit square! (%f %f)\n" , pos[0] , pos[1] );
 
 							typename ElementSamples::Bilinear::SampleData& sampleData = bilinearElementSample[ fastIntegration ? 0 : (p-2)*Samples+s ];
 							SetInteriorDuals< Samples >( sampleData , bilinearElementSample , pos , (typename ElementSamples::Real)( TriangleIntegrator< Samples >::Weights[s] * fragment_area ) );
@@ -455,7 +455,7 @@ int InitializeIntegration
 						{
 							int _fineBoundaryIndex = fineBoundaryIndex[ triangleElementIndices[k] ];
 							if( _fineBoundaryIndex!=-1 ) quadraticElementSample.fineNodes[k] = _fineBoundaryIndex;
-							else{ printf( "[ERROR] Invalid fine boundary index!\n" ) ; return 0; }
+							else Miscellany::Throw( "Invalid fine boundary index" );
 						}
 
 						for( int p=2 ; p<polygon.size() ; p++ )
@@ -471,7 +471,7 @@ int InitializeIntegration
 								for( int s=0 ; s<Samples ; s++ )
 								{
 									Point2D< GeometryReal > pos = polygon[0] + dm[0] * (GeometryReal)TriangleIntegrator< Samples >::Positions[s][0] + dm[1] * (GeometryReal)TriangleIntegrator< Samples >::Positions[s][1];
-									if( !InUnitTriangle( pos ) ){ printf( "[ERROR] Sample out of unit right triangle! (%f %f)\n", pos[0] , pos[1] ) ; return 0; }
+									if( !InUnitTriangle( pos ) ) Miscellany::Throw( "Sample out of unit right triangle! (%f %f)\n", pos[0] , pos[1] );
 									else
 									{
 										pos[0] = std::max< GeometryReal >( pos[0] , 0 );
@@ -487,7 +487,7 @@ int InitializeIntegration
 							}
 							else
 							{
-								printf( "[WARNING] Element discarded due to zero mass. Triangle %d. Boundary cell %d . Element %d. Sub triangle %d\n" , t , localBoundaryIndex , bt , p-2 );
+								Miscellany::Warn( "Element discarded due to zero mass. Triangle %d. Boundary cell %d . Element %d. Sub triangle %d" , t , localBoundaryIndex , bt , p-2 );
 
 								printf( "Atlas triangle\n" );
 								printf( "%d \n" , 3 );
@@ -510,23 +510,21 @@ int InitializeIntegration
 
 									ClipPartiallyIndexedPolygonToIndexedTriangle( _polygon , atlasTriangle , _bt==bt );
 								}
-								return 0;
 							}
 						}
 						if( fastIntegration ) quadraticElementSample[0].pos = Point2D< GeometryReal >( PolygonCenter( &polygon[0] , (unsigned int)polygon.size() ) );
 #pragma omp critical
 						elementSamples.quadratic.push_back( quadraticElementSample );
 					}
-					else if( clippingResult<0 ) return 0;
+					else if( clippingResult<0 ) Miscellany::Throw( "Bad clipping result: %g" , clippingResult );
 				}
 			}
 		}
 	}
-	return 1;
 }
 
 template< unsigned int Samples , typename GeometryReal , typename ElementSamples >
-int InitializeIntegration
+void InitializeIntegration
 (
 	const std::vector< std::vector< SquareMatrix< GeometryReal , 2 > > >& parameterMetric ,
 	const std::vector< AtlasChart< GeometryReal > > &atlasCharts ,
@@ -538,10 +536,7 @@ int InitializeIntegration
 )
 {
 #pragma omp parallel for
-	for( int i=0 ; i<gridCharts.size() ; i++ )
-		if( !InitializeIntegration< Samples >( parameterMetric[i] , atlasCharts[i] , gridCharts[i] , interiorCellLineIndex , fineBoundaryIndex , elementSamples , fastIntegration ) )
-			fprintf( stderr , "[ERROR] Failed to intialize integration: %d\n" , i ) , exit( 0 );
-	return 1;
+	for( int i=0 ; i<gridCharts.size() ; i++ ) InitializeIntegration< Samples >( parameterMetric[i] , atlasCharts[i] , gridCharts[i] , interiorCellLineIndex , fineBoundaryIndex , elementSamples , fastIntegration );
 }
 
 ///////////////////////////
@@ -562,6 +557,7 @@ void IntegrateBilinear
 		for( int k=0 ; k<4 ; k++ ) rhsValues[k] += scalar * sample[s].dualValues[k];
 	}
 }
+
 template< class Real , typename T , typename GradientFunctionType >
 void IntegrateBilinear
 (
@@ -593,6 +589,7 @@ void IntegrateQuadratic
 		for( int k=0 ; k<6 ; k++ ) rhsValues[k] += scalar * sample[s].dualValues[k];
 	}
 }
+
 template< class Real , typename T , typename GradientFunctionType >
 void IntegrateQuadratic
 (
@@ -610,7 +607,7 @@ void IntegrateQuadratic
 }
 
 template< typename Real , typename T , typename ElementSamples , typename SampleFunctionType >
-int Integrate
+void Integrate
 (
 	const std::vector< InteriorCellLine >& interiorCellLines ,
 	const ElementSamples &elementSamples ,
@@ -708,5 +705,4 @@ int Integrate
 		for( int k=0 ; k<6 ; k++ ) boundary_rhs[ sample.fineNodes[k] ] += rhsValues[k];
 	}
 	if( verbose ) printf( "Integrated quadratic: %.2f(s)\n" , timer.elapsed() );
-	return 1;
 }

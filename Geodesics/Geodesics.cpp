@@ -191,11 +191,11 @@ public:
 	static void ToggleUpdateCallBack( Visualization* v , const char* prompt );
 	static void IncrementUpdateCallBack( Visualization* v , const char* prompt );
 	static void ExportTextureCallBack( Visualization* v , const char* prompt );
-	static int Init();
+	static void Init( void );
 	static void InitializeVisualization( int width , int height );
 	static void ComputeExactSolution( bool verbose=false );
-	static int UpdateSolution( bool verbose=false , bool detailVerbose=false );
-	static int InitializeSystem( int width , int height );
+	static void UpdateSolution( bool verbose=false , bool detailVerbose=false );
+	static void InitializeSystem( int width , int height );
 
 	static void Display( void ){ visualization.Display(); }
 	static void MouseFunc( int button , int state , int x , int y );
@@ -305,10 +305,7 @@ void Geodesics< PreReal , Real >::ComputeExactSolution( bool verbose )
 	};
 	memset( &multigridGeodesicDistanceVariables[0].rhs[0] , 0 , multigridGeodesicDistanceVariables[0].rhs.size() * sizeof(Real) );
 	memset( &fineBoundaryRHS[0] , 0 , fineBoundaryRHS.size() * sizeof(Real) );
-	if( !Integrate< Real >( interiorCellLines , gradientSamples , multigridSmoothImpulseVariables[0].x , fineBoundaryValues , VectorFunction , fineGeodesicDistanceRHS , fineBoundaryRHS ) )
-	{
-		printf( "[ERROR] Unable to integrate normalized vector field!\n" );
-	}
+	Integrate< Real >( interiorCellLines , gradientSamples , multigridSmoothImpulseVariables[0].x , fineBoundaryValues , VectorFunction , fineGeodesicDistanceRHS , fineBoundaryRHS );
 	if( verbose ) printf( "Integrating normalized vector field %.4f\n" , timer.elapsed() );
 
 	if( verbose ) timer.reset();
@@ -411,8 +408,8 @@ void Geodesics< PreReal , Real >::Idle( void )
 	{
 		if( updateCount && !visualization.promptCallBack )
 		{
-			if( !UpdateSolution() ) fprintf( stderr , "Updated solution failed!\n" );
-			else if( updateCount>0 ) updateCount--;
+			UpdateSolution();
+			if( updateCount>0 ) updateCount--;
 			steps++;
 			sprintf( stepsString , "Steps: %d" , steps );
 			UpdateOutputBuffer( multigridGeodesicDistanceVariables[0].x );
@@ -539,8 +536,8 @@ void Geodesics< PreReal , Real >::ExportTextureCallBack(Visualization* v, const 
 	outputImage.write(prompt);
 }
 
-template< typename PreReal , typename Real>
-int Geodesics< PreReal , Real >::UpdateSolution( bool verbose , bool detailVerbose )
+template< typename PreReal , typename Real >
+void Geodesics< PreReal , Real >::UpdateSolution( bool verbose , bool detailVerbose )
 {
 	Miscellany::Timer timer;
 
@@ -569,10 +566,7 @@ int Geodesics< PreReal , Real >::UpdateSolution( bool verbose , bool detailVerbo
 
 	memset( &multigridGeodesicDistanceVariables[0].rhs[0] , 0 , multigridGeodesicDistanceVariables[0].rhs.size() * sizeof(Real) );
 	memset( &fineBoundaryRHS[0] , 0 , fineBoundaryRHS.size() * sizeof(Real) );
-	if( !Integrate< Real >( interiorCellLines , gradientSamples , multigridSmoothImpulseVariables[0].x , fineBoundaryValues , VectorFunction , multigridGeodesicDistanceVariables[0].rhs , fineBoundaryRHS ) )
-	{
-		fprintf( stderr , "[ERROR] Unable to integrate normalized vector field!\n" );
-	}
+	Integrate< Real >( interiorCellLines , gradientSamples , multigridSmoothImpulseVariables[0].x , fineBoundaryValues , VectorFunction , multigridGeodesicDistanceVariables[0].rhs , fineBoundaryRHS );
 	if( verbose ) printf( "Integrating normalized vector field %.4f \n" , timer.elapsed() );
 
 	if( verbose ) timer.reset();
@@ -591,32 +585,23 @@ int Geodesics< PreReal , Real >::UpdateSolution( bool verbose , bool detailVerbo
 
 #pragma omp parallel for
 	for (int i = 0; i < multigridGeodesicDistanceVariables[0].x.size(); i++) multigridGeodesicDistanceVariables[0].x[i] -= expectedMinDistance;
-
-	return 1;
 }
 
 template< typename PreReal , typename Real >
-int Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
+void Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 {
 	Miscellany::Timer timer;
 	MultigridBlockInfo multigridBlockInfo(MultigridBlockWidth.value, MultigridBlockHeight.value, MultigridPaddedWidth.value, MultigridPaddedHeight.value, 0);
-	if( !InitializeHierarchy( mesh , width , height , levels , textureNodes , bilinearElementIndices , hierarchy , atlasCharts , multigridBlockInfo , true , DetailVerbose.set ) )
-	{
-		printf("ERROR : Failed intialization! \n");
-		return 0;
-	}
+	InitializeHierarchy( mesh , width , height , levels , textureNodes , bilinearElementIndices , hierarchy , atlasCharts , multigridBlockInfo , true , DetailVerbose.set );
 	if( Verbose.set ) printf( "\tInitialized hierarchy: %.2f(s)\n" , timer.elapsed() );
 
 	//Initialize node index
 	nodeIndex.resize(width, height);
-	for (int i = 0; i < nodeIndex.size(); i++)nodeIndex[i] = -1;
-	for (int i = 0; i < textureNodes.size(); i++) nodeIndex(textureNodes[i].ci, textureNodes[i].cj) = i;
+	for( int i=0 ; i<nodeIndex.size() ; i++ ) nodeIndex[i] = -1;
+	for( int i=0 ; i<textureNodes.size() ; i++ ) nodeIndex( textureNodes[i].ci , textureNodes[i].cj ) = i;
 
 	BoundaryProlongationData< Real > boundaryProlongation;
-	if (!InitializeBoundaryProlongationData(hierarchy.gridAtlases[0], boundaryProlongation)) {
-		printf("ERROR : Failed boundary prolongation! \n");
-		return 0;
-	}
+	InitializeBoundaryProlongationData( hierarchy.gridAtlases[0] , boundaryProlongation );
 
 	SystemCoefficients< Real > massCoefficients;
 	SystemCoefficients< Real > stiffnessCoefficients;
@@ -625,25 +610,19 @@ int Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 	std::vector< Real > __texelToCellCoeffs;
 	SparseMatrix< Real , int > __boundaryCellBasedStiffnessRHSMatrix[3];
 
-	if( !InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric ) ){ fprintf( stderr , "[ERROR] Unable to initialize metric\n") ; return 0; }
+	InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric );
 
 	timer.reset();
 	{
-		int ret = 0;
 		switch( MatrixQuadrature.value )
 		{
-		case  1: ret = InitializeMassAndStiffness< 1>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		case  3: ret = InitializeMassAndStiffness< 3>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		case  6: ret = InitializeMassAndStiffness< 6>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		case 12: ret = InitializeMassAndStiffness<12>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		case 24: ret = InitializeMassAndStiffness<24>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		case 32: ret = InitializeMassAndStiffness<32>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		default: fprintf( stderr , "[ERROR] Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles\n" );
-		}
-		if( !ret )
-		{
-			fprintf( stderr , "[ERROR] Failed intialization!\n" );
-			return 0;
+		case  1: InitializeMassAndStiffness< 1>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
+		case  3: InitializeMassAndStiffness< 3>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
+		case  6: InitializeMassAndStiffness< 6>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
+		case 12: InitializeMassAndStiffness<12>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
+		case 24: InitializeMassAndStiffness<24>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
+		case 32: InitializeMassAndStiffness<32>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
+		default: Miscellany::Throw( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
 		}
 	}
 	if( Verbose.set ) printf( "\tInitialized mass and stiffness: %.2f(s)\n" , timer.elapsed() );
@@ -678,16 +657,8 @@ int Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 //////////////////////////////////// Initialize multigrid coefficients
 
 	timer.reset();
-	if( !UpdateLinearSystem( diffusionInterpolationWeight , (Real)1. , hierarchy , multigridSmoothImpulseCoefficients , massCoefficients , stiffnessCoefficients , smoothImpulseSolvers , fineSmoothImpulseSolver , smoothImpulseMatrix , DetailVerbose.set , true , UseDirectSolver.set ) )
-	{
-		fprintf( stderr , "[ERROR] Failed system update!\n" );
-		return 0;
-	}
-	if( !UpdateLinearSystem( geodesicInterpolationWeight , (Real)1. , hierarchy , multigridGeodesicDistanceCoefficients , massCoefficients , stiffnessCoefficients , geodesicDistanceSolvers , fineGeodesicDistanceSolver , geodesicDistanceMatrix , DetailVerbose.set , true , UseDirectSolver.set ) )
-	{
-		fprintf( stderr , "[ERROR] Failed system update!\n" );
-		return 0;
-	}
+	UpdateLinearSystem( diffusionInterpolationWeight , (Real)1. , hierarchy , multigridSmoothImpulseCoefficients , massCoefficients , stiffnessCoefficients , smoothImpulseSolvers , fineSmoothImpulseSolver , smoothImpulseMatrix , DetailVerbose.set , true , UseDirectSolver.set );
+	UpdateLinearSystem(  geodesicInterpolationWeight , (Real)1. , hierarchy , multigridGeodesicDistanceCoefficients , massCoefficients , stiffnessCoefficients , geodesicDistanceSolvers , fineGeodesicDistanceSolver , geodesicDistanceMatrix , DetailVerbose.set , true , UseDirectSolver.set );
 	if( Verbose.set ) printf( "\tInitialized multigrid coefficients: %.2f(s)\n" , timer.elapsed() );
 
 //////////////////////////////////// Initialize multigrid variables
@@ -716,14 +687,9 @@ int Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 
 //////////////////////////////////// Initialize cell samples
 
-	if (!InitializeGridAtlasInteriorCellLines(atlasCharts, hierarchy.gridAtlases[0].gridCharts, interiorCellLines, interiorCellLineIndex)) {
-		printf("Unable to initialize interior cell lines! \n");
-		return 0;
-	}
-	if (interiorCellLineIndex.size() != hierarchy.gridAtlases[0].numInteriorCells) {
-		printf("ERROR: Inconsistent number of interior cells!. Expected %d . Result %d. \n", hierarchy.gridAtlases[0].numInteriorCells, (int)interiorCellLineIndex.size());
-		return 0;
-	}
+	InitializeGridAtlasInteriorCellLines( atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLines , interiorCellLineIndex );
+	if( interiorCellLineIndex.size()!=hierarchy.gridAtlases[0].numInteriorCells )
+		Miscellany::Throw( "Inconsistent number of interior cells: %d!=%d" , hierarchy.gridAtlases[0].numInteriorCells , (int)interiorCellLineIndex.size() );
 
 	coarseBoundaryFineBoundaryProlongation = boundaryProlongation.coarseBoundaryFineBoundaryProlongation;
 	fineBoundaryCoarseBoundaryRestriction = boundaryProlongation.fineBoundaryCoarseBoundaryRestriction;
@@ -734,21 +700,15 @@ int Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 
 	timer.reset();
 	{
-		int ret = 0;
 		switch( VectorFieldQuadrature.value )
 		{
-		case  1: ret = InitializeIntegration<  1 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , gradientSamples , !PreciseIntegration.set ) ; break;
-		case  3: ret = InitializeIntegration<  3 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , gradientSamples , !PreciseIntegration.set ) ; break;
-		case  6: ret = InitializeIntegration<  6 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , gradientSamples , !PreciseIntegration.set ) ; break;
-		case 12: ret = InitializeIntegration< 12 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , gradientSamples , !PreciseIntegration.set ) ; break;
-		case 24: ret = InitializeIntegration< 24 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , gradientSamples , !PreciseIntegration.set ) ; break;
-		case 32: ret = InitializeIntegration< 32 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , gradientSamples , !PreciseIntegration.set ) ; break;
-		default: fprintf( stderr , "[ERROR] Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles\n" );
-		}
-		if( !ret )
-		{
-			fprintf( stderr , "[ERROR] Unable to initialize vector field integration samples!\n" );
-			return 0;
+		case  1: InitializeIntegration<  1 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , gradientSamples , !PreciseIntegration.set ) ; break;
+		case  3: InitializeIntegration<  3 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , gradientSamples , !PreciseIntegration.set ) ; break;
+		case  6: InitializeIntegration<  6 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , gradientSamples , !PreciseIntegration.set ) ; break;
+		case 12: InitializeIntegration< 12 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , gradientSamples , !PreciseIntegration.set ) ; break;
+		case 24: InitializeIntegration< 24 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , gradientSamples , !PreciseIntegration.set ) ; break;
+		case 32: InitializeIntegration< 32 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , gradientSamples , !PreciseIntegration.set ) ; break;
+		Miscellany::Throw( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
 		}
 	}
 	if( Verbose.set ) printf( "\tInitialized vector field integration: %.2f(s)\n" , timer.elapsed() );
@@ -761,9 +721,6 @@ int Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 
 	int numTexels = hierarchy.gridAtlases[0].numTexels;
 	int numFineNodes = hierarchy.gridAtlases[0].numFineNodes;
-
-	return 1;
-
 }
 
  template< typename PreReal , typename Real>
@@ -791,7 +748,7 @@ void Geodesics< PreReal , Real >::InitializeVisualization( int width , int heigh
 	}
 	
 	std::vector< int > boundaryEdges;
-	if( !mesh.initializeBoundaryEdges( boundaryEdges ) ) fprintf( stderr , "[WARNING] Unable to initialize boundary edges!\n" );
+	mesh.initializeBoundaryEdges( boundaryEdges );
 
 	for( int e=0 ; e<boundaryEdges.size() ; e++ )
 	{
@@ -838,7 +795,7 @@ void Geodesics< PreReal , Real >::IncrementUpdateCallBack( Visualization* v , co
 }
 
 template< typename PreReal , typename Real >
-int Geodesics< PreReal , Real >::Init( void )
+void Geodesics< PreReal , Real >::Init( void )
 {
 	sprintf( stepsString , "Steps: 0" );
 	levels = Levels.value;
@@ -846,11 +803,7 @@ int Geodesics< PreReal , Real >::Init( void )
 	textureWidth = Width.value;
 	textureHeight = Height.value;
 
-	if (!mesh.read( Input.value , NULL , DetailVerbose.set ) )
-	{
-		printf("Unable to read mesh data\n");
-		return 0;
-	}
+	mesh.read( Input.value , NULL , DetailVerbose.set );
 	if (1) for (int i = 0; i < mesh.textureCoordinates.size(); i++)mesh.textureCoordinates[i][1] = 1.0 - mesh.textureCoordinates[i][1];
 
 	if( RandomJitter.set )
@@ -879,7 +832,7 @@ int Geodesics< PreReal , Real >::Init( void )
 
 
 	Miscellany::Timer timer;
-	if( !InitializeSystem( textureWidth , textureHeight ) ){ fprintf( stderr , "[ERROR] Unable to initialize system\n") ; return 0; }
+	InitializeSystem( textureWidth , textureHeight );
 
 	if( Verbose.set )
 	{
@@ -920,13 +873,12 @@ int Geodesics< PreReal , Real >::Init( void )
 			mesh.vertices[ mesh.triangles[tID][2] ] *                                    baryncetricCoords[1]   ;
 		textureNodePositions[i] = Point3D< float >( p );
 	}
-	return 1;
 }
 
 template< typename PreReal , typename Real >
-int _main( int argc, char *argv[] )
+void _main( int argc, char *argv[] )
 {
-	if( !Geodesics< PreReal , Real >::Init() ) return 0;
+	Geodesics< PreReal , Real >::Init();
 
 	glutInitDisplayMode( GLUT_RGB | GLUT_DOUBLE );
 	Geodesics< PreReal , Real >::visualization.displayMode = DisplayMode.value;
@@ -937,9 +889,9 @@ int _main( int argc, char *argv[] )
 
 	glutInit(&argc, argv);
 	char windowName[1024];
-	sprintf(windowName, "Goedsics");
-	glutCreateWindow(windowName);
-	if (glewInit() != GLEW_OK) fprintf(stderr, "[ERROR] glewInit failed\n"), exit(0);
+	sprintf( windowName , "Goedsics" );
+	glutCreateWindow( windowName );
+	if( glewInit()!=GLEW_OK ) Miscellany::Throw( "glewInit failed" );
 	glutDisplayFunc ( Geodesics< PreReal , Real >::Display);
 	glutReshapeFunc ( Geodesics< PreReal , Real >::Reshape);
 	glutMouseFunc   ( Geodesics< PreReal , Real >::MouseFunc);
@@ -949,13 +901,11 @@ int _main( int argc, char *argv[] )
 	if( CameraConfig.set ) Geodesics< PreReal , Real >::visualization.ReadSceneConfigurationCallBack( &Geodesics< PreReal , Real >::visualization , CameraConfig.value );
 	Geodesics< PreReal , Real >::InitializeVisualization( Geodesics< PreReal , Real >::textureWidth , Geodesics< PreReal , Real >::textureHeight );
 	glutMainLoop();
-
-	return 0;
 }
 
 int main( int argc , char* argv[] )
 {
-	cmdLineParse(argc - 1, argv + 1, params);
+	cmdLineParse( argc-1 , argv+1 , params );
 	if( !Input.set ){ ShowUsage( argv[0] ) ; return EXIT_FAILURE; }
 	omp_set_num_threads( Threads.value );
 	if( !NoHelp.set )
@@ -968,7 +918,15 @@ int main( int argc , char* argv[] )
 		printf( "|    [Left/Right Mouse] + [SHIFT]: set source |\n" );
 		printf( "+---------------------------------------------+\n" );
 	}
-	if( Double.set ) _main< double , double >( argc , argv );
-	else             _main< double , float  >( argc , argv );
-	return 0;
+	try
+	{
+		if( Double.set ) _main< double , double >( argc , argv );
+		else             _main< double , float  >( argc , argv );
+	}
+	catch( Miscellany::Exception &e )
+	{
+		printf( "%s\n" , e.what() );
+		return EXIT_FAILURE;
+	}
+	return EXIT_SUCCESS;
 }

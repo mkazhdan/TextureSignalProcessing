@@ -27,6 +27,8 @@ DAMAGE.
 */
 #pragma once
 
+#include <Misha/Miscellany.h>
+
 #undef USE_CHOLMOD
 #define USE_EIGEN_SIMPLICIAL
 #undef USE_EIGEN_PARDISO
@@ -249,10 +251,10 @@ public:
 		switch( solver->info() )
 		{
 		case Eigen::Success: break;
-		case Eigen::NumericalIssue: fprintf( stderr , "[FAILED] Numerical issue!\n" ) ; break;
-		case Eigen::NoConvergence:  fprintf( stderr , "[FAILED] No convergence!\n"  ) ; break;
-		case Eigen::InvalidInput:   fprintf( stderr , "[FAILED] Invalid input!\n"   ) ; break;
-		default:                    fprintf( stderr , "[FAILED] Undetermined cause!\n" );
+		case Eigen::NumericalIssue: Miscellany::Throw( "Numerical issue" );
+		case Eigen::NoConvergence:  Miscellany::Throw( "No convergence" );
+		case Eigen::InvalidInput:   Miscellany::Throw( "Invalid input" );
+		default:                    Miscellany::Throw( "Undetermined cause" );
 		}
 
 		int numVariables = M.rows();

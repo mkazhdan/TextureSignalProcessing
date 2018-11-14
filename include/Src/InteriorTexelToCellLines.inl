@@ -27,8 +27,10 @@ DAMAGE.
 */
 #pragma once
 
+#include <Misha/Miscellany.h>
+
 template< typename GeometryReal , typename MatrixReal >
-int InitializeInteriorTexelToCellLines( std::vector< InteriorTexelToCellLine > &interiorTexeltoCellLine , const GridAtlas< GeometryReal , MatrixReal > &gridAtlas )
+void InitializeInteriorTexelToCellLines( std::vector< InteriorTexelToCellLine > &interiorTexeltoCellLine , const GridAtlas< GeometryReal , MatrixReal > &gridAtlas )
 {
 	const std::vector<RasterLine> & rasterLines = gridAtlas.rasterLines;
 	const std::vector<GridNodeInfo> & nodeInfo = gridAtlas.nodeInfo;
@@ -44,15 +46,10 @@ int InitializeInteriorTexelToCellLines( std::vector< InteriorTexelToCellLine > &
 		interiorTexeltoCellLine[i].texelEndIndex = rasterLines[i].lineEndIndex;
 		interiorTexeltoCellLine[i].coeffOffset = rasterLines[i].coeffStartIndex;
 
-		if (gridCharts[chartID].cellType(ci - 1, cj - 1) != 1) {
-			printf("ERROR: Non interior cell! \n");
-		}
+		if( gridCharts[chartID].cellType( ci-1 , cj-1)!=1 ) Miscellany::Throw( "Non interior cell" );
 		interiorTexeltoCellLine[i].previousCellStartIndex = gridCharts[chartID].localCellIndex(ci - 1, cj - 1) + gridCharts[chartID].globalIndexCellOffset;
 
-		if (gridCharts[chartID].cellType(ci - 1, cj) != 1) {
-			printf("ERROR: Non interior cell! \n");
-		}
+		if( gridCharts[chartID].cellType( ci-1 , cj )!=1 ) Miscellany::Throw( "Non interior cell" );
 		interiorTexeltoCellLine[i].nextCellStartIndex = gridCharts[chartID].localCellIndex(ci - 1, cj) + gridCharts[chartID].globalIndexCellOffset;
 	}
-	return 1;
 }

@@ -80,10 +80,10 @@ SquareMatrix< Real , 2 > FEM::TensorRoot( const SquareMatrix< Real , 2 >& tensor
 	// Code borrowed from: https://en.wikipedia.org/wiki/Square_root_of_a_2_by_2_matrix
 	SquareMatrix< Real , 2 > root = tensor;
 	Real det = tensor.determinant();
-	if( det<0 ) fprintf( stderr , "[ERROR] FEM::TensorRoot: Negative determinant: %g\n" , det ) , exit( 0 );
+	if( det<0 ) Miscellany::ErrorOut( "Negative determinant: %g" , det );
 	Real s = (Real)sqrt( det );
 	Real disc = (Real)( tensor.trace() + 2. * s );
-	if( disc<0 ) fprintf( stderr , "[ERROR] FEM::TensorRoot: Negative discriminant: %g\n" , disc ) , exit( 0 );
+	if( disc<0 ) Miscellany::ErrorOut( "Negative discriminant: %g" , disc );
 	root(0,0) += s , root(1,1) += s;
 	return root / (Real)sqrt( disc );
 }
@@ -97,8 +97,7 @@ inline Point2D< Real > FEM::RightTriangle< Real >::Center( const SquareMatrix< R
 	static const double SQRT_THREE_QUARTERS = sqrt( 3./4 );
 	switch( centerType )
 	{
-	case CENTER_BARYCENTRIC:
-		return Point2D< Real >( (Real)1./3 , (Real)1./3 );
+	case CENTER_BARYCENTRIC: return Point2D< Real >( (Real)1./3 , (Real)1./3 );
 	case CENTER_INCENTRIC:
 		{
 			Real lengths[] =
@@ -170,8 +169,9 @@ inline Point2D< Real > FEM::RightTriangle< Real >::Center( const SquareMatrix< R
 			return c;
 		}
 	default:
-		fprintf( stderr , "[ERROR] FEM::RightTriangle::Center: Unrecognized center type: %d\n" , centerType ) , exit( 0 );
+		Miscellany::ErrorOut( "Unrecognized center type: %d" , centerType );
 	}
+	return Point2D< Real >();
 }
 template< class Real >
 inline Point3D< Real > FEM::RightTriangle< Real >::SubTriangleAreas( const SquareMatrix< Real , 2 >& tensor , Point2D< Real > center )
@@ -203,7 +203,7 @@ inline V FEM::RightTriangle< Real >::EvaluateScalarField( ConstPointer( V ) c , 
 	switch( BasisType )
 	{
 		case BASIS_0_WHITNEY: return c[0] * (Real)( 1. - p[0] - p[1] ) + c[1] * p[0] + c[2] * p[1];
-		default: fprintf( stderr , "[ERROR] FEM::RightTriangle::EvaluateScalarField: unrecognized basis type: %d\n" , BasisType ) , exit( 0 );
+		default: Miscellany::ErrorOut( "Unrecognized basis type: %d" , BasisType );
 	}
 }
 template< class Real >
@@ -213,7 +213,7 @@ FEM::CotangentVector< V > FEM::RightTriangle< Real >::EvaluateScalarFieldGradien
 	switch( BasisType )
 	{
 		case BASIS_0_WHITNEY: return CotangentVector< V >( c[0]*CornerGradients[0][0] + c[1]*CornerGradients[1][0] + c[2]*CornerGradients[2][0] , c[0]*CornerGradients[0][1] + c[1]*CornerGradients[1][1] + c[2]*CornerGradients[2][1] );
-		default: fprintf( stderr , "[ERROR] FEM::RightTriangle::EvaluateScalarFieldGradient: unrecognized basis type: %d\n" , BasisType ) , exit( 0 );
+		default: Miscellany::ErrorOut( "Unrecognized basis type: %d" , BasisType );
 	}
 }
 template< class Real >
@@ -235,8 +235,9 @@ inline FEM::CotangentVector< V > FEM::RightTriangle< Real >::EvaluateCovectorFie
 			return CotangentVector< V >( n[0]*CornerGradients[0][0] + n[1]*CornerGradients[1][0] + n[2]*CornerGradients[2][0] , n[0]*CornerGradients[0][0] + n[1]*CornerGradients[1][1] + n[2]*CornerGradients[2][1] );
 		}
 		case BASIS_1_TRIANGLE_CONSTANT: return CotangentVector< V >( c[0] , c[1] );
-		default: fprintf( stderr , "[ERROR] FEM::RightTriangle::EvaluateCovectorField: unrecognized basis type: %d\n" , BasisType ) , exit( 0 );
+		default: Miscellany::ErrorOut( "Unrecognized basis type: %d" , BasisType );
 	}
+	return Point2D< Real >();
 }
 template< class Real >
 template< unsigned int BasisType , class V >
@@ -245,7 +246,7 @@ inline V FEM::RightTriangle< Real >::EvaluateDensityField( const SquareMatrix< R
 	switch( BasisType )
 	{
 		case BASIS_2_WHITNEY: return c[0] / Area( tensor );
-		default: fprintf( stderr , "[ERROR] FEM::RightTriangle::EvaluateDensityField: unrecognized basis type: %d\n" , BasisType ) , exit( 0 );
+		default: Miscellany::ErrorOut( "Unrecognized basis type: %d" , BasisType );
 	}
 }
 template< class Real >
@@ -256,7 +257,7 @@ typename FEM::BasisInfoSystem2< Real , InBasisType , OutBasisType >::MaskMatrix 
 Matrix< unsigned char , FEM::BasisInfo< InBasisType >::Coefficients , FEM::BasisInfo< OutBasisType >::Coefficients > FEM::RightTriangle< Real >::GetDMask( bool& redundant )
 #endif // NEW_FEM_CODE
 {
-	auto Fail = [&] ( void ){ fprintf( stderr , "[ERROR] FEM::RightTriangle::GetDMask: %s -> %s\n" , BasisNames[ InBasisType ] , BasisNames[ OutBasisType ] ) , exit( 0 ); };
+	auto Fail = [&] ( void ){ Miscellany::ErrorOut( "%s -> %s" , BasisNames[ InBasisType ] , BasisNames[ OutBasisType ] ); };
 
 	TestBasisType(  InBasisType , "FEM::RightTriangle::GetDMask" , false );
 	TestBasisType( OutBasisType , "FEM::RightTriangle::GetDMask" , false );
@@ -294,7 +295,7 @@ typename FEM::BasisInfoSystem2< Real , InBasisType , OutBasisType >::Matrix FEM:
 Matrix< Real , FEM::BasisInfo< InBasisType >::Coefficients , FEM::BasisInfo< OutBasisType >::Coefficients > FEM::RightTriangle< Real >::GetDMatrix( const SquareMatrix< Real , 2 >& tensor )
 #endif // NEW_FEM_CODE
 {
-	auto Fail = [&] ( void ){ fprintf( stderr , "[ERROR] FEM::RightTriangle::GetDMatrix: %s -> %s\n" , BasisNames[ InBasisType ] , BasisNames[ OutBasisType ] ) , exit( 0 ); };
+	auto Fail = [&] ( void ){ Miscellany::ErrorOut( "%s -> %s" , BasisNames[ InBasisType ] , BasisNames[ OutBasisType ] ); };
 
 	TestBasisType(  InBasisType , "FEM::RightTriangle::GetDMatrix" , false );
 	TestBasisType( OutBasisType , "FEM::RightTriangle::GetDMatrix" , false );
@@ -712,7 +713,7 @@ int FEM::RiemannianMesh< Real >::index( int t , int idx , bool& isAligned ) cons
 		case ELEMENT_VERTEX:   i = _triangles[t][e]                   ; break;
 		case ELEMENT_EDGE:     i = _edgeMap.edge( t*3+e , isAligned ) ; break;
 		case ELEMENT_TRIANGLE: i = t                                  ; break;
-		default: fprintf( stderr , "[ERROR] FEM::RiemannianMesh::index: unrecognized element type: %d\n" , BasisInfo< BasisType >::ElementType ) , exit( 0 );
+		default: Miscellany::ErrorOut( "Unrecognized element type: %d" , BasisInfo< BasisType >::ElementType );
 	}
 	return i * BasisInfo< BasisType >::CoefficientsPerElement + c;
 }
@@ -729,7 +730,7 @@ FEM::CoordinateXForm< Real > FEM::RiemannianMesh< Real >::xForm( int he ) const
 {
 	CoordinateXForm< Real > xForm;
 	int ohe = _edgeMap.opposite(he);
-	if( ohe==-1 ) fprintf( stderr , "[ERROR] FEM::RiemannianMesh::xForm: Boundary edge\n" ) , exit( 0 );
+	if( ohe==-1 ) Miscellany::ErrorOut( "Boundary edge" );
 
 	// The two triangles on this edge
 	int tIdx[] = { he/3 , ohe/3 };
@@ -851,7 +852,7 @@ bool FEM::RiemannianMesh< Real >::edgeFlip( int edge , Real eps )
 	{
 		if     ( _edgeMap._e2he[2*edges[i]+0]==old_he[i] ) _edgeMap._e2he[2*edges[i]+0] = new_he[i] , _edgeMap._he2e[ new_he[i] ] =  edges[i]+1;
 		else if( _edgeMap._e2he[2*edges[i]+1]==old_he[i] ) _edgeMap._e2he[2*edges[i]+1] = new_he[i] , _edgeMap._he2e[ new_he[i] ] = -edges[i]-1;
-		else fprintf( stderr , "[ERROR] FEM::RiemannianMesh::edgeFlip: Unmatched half-edge\n" ) , exit( 0 );
+		else Miscellany::ErrorOut( "Unmatched half-edge" );
 	}
 	_edgeMap._e2he[2*edge+0] = 3* t , _edgeMap._he2e[3* t] =  edge+1;
 	_edgeMap._e2he[2*edge+1] = 3*ot , _edgeMap._he2e[3*ot] = -edge-1;
@@ -925,7 +926,7 @@ FEM::CoordinateXForm< Real > FEM::RiemannianMesh< Real >::getVertexCoordinateXFo
 	{
 		int edge = currentT*3 + VertexToEdgeMap[ currentV ] , oEdge = _edgeMap.opposite( edge );
 		xForm = xForms[ edge ] * xForm;
-		if( oEdge==-1 ) fprintf( stderr , "[ERROR] Boundary vertex\n" ) , exit( 0 );
+		if( oEdge==-1 ) Miscellany::ErrorOut( "Boundary vertex" );
 		currentT = oEdge / 3;
 		currentV = EdgeToVertexMap[ oEdge%3 ];
 	}
@@ -946,7 +947,7 @@ std::vector< int > FEM::RiemannianMesh< Real >::getVertexCorners( int t , int v 
 	{
 		int he = currentT*3 + VertexToEdgeMap[ currentV ] , ohe = _edgeMap.opposite( he );
 		neighbors.push_back( currentT*3 + currentV );
-		if( ohe==-1 ) fprintf( stderr , "[ERROR] Boundary vertex\n" ) , exit( 0 );
+		if( ohe==-1 ) Miscellany::ErrorOut( "Boundary vertex" );
 		currentT = ohe / 3;
 		currentV = EdgeToVertexMap[ ohe%3 ];
 	}
@@ -965,7 +966,7 @@ Real FEM::RiemannianMesh< Real >::getVertexConeAngle( int t , int v ) const
 	{
 		int he = currentT*3 + VertexToEdgeMap[ currentV ] , ohe = _edgeMap.opposite( he );
 		angle += RightTriangle< Real >::Angle( _g[currentT] , currentV );
-		if( ohe==-1 ) fprintf( stderr , "[ERROR] Boundary vertex\n" ) , exit( 0 );
+		if( ohe==-1 ) Miscellany::ErrorOut( "Boundary vertex" );
 		currentT = ohe / 3;
 		currentV = EdgeToVertexMap[ ohe%3 ];
 	}
@@ -1042,7 +1043,7 @@ FEM::CoordinateXForm< Real > FEM::RiemannianMesh< Real >::exp( ConstPointer( Coo
 		}
 		count++;
 	}
-	if( !noWarning ) fprintf( stderr , "[WARNING] Failed to converge exp after %d iterations\n" , MAX_ITERS );
+	if( !noWarning ) Miscellany::Warn( "Failed to converge exp after %d iterations" , MAX_ITERS );
 	return xForm;
 }
 
@@ -1082,15 +1083,7 @@ FEM::CoordinateXForm< Real > FEM::RiemannianMesh< Real >::flow( ConstPointer( Co
 #endif
 		}
 #if 0
-		if( idx==-1 )
-		{
-			fprintf( stderr , "[ERROR] Ray does not intersect triangle[%d]: (%f %f) (%g %g) [%g/%g]\n" , count , p.p[0] , p.p[1] , v[0] , v[1] , Point2D< Real >::SquareNorm(v) , eps*eps );
-			Real s[] = { -p.p[1] / v[1]  , -p.p[0] / v[0] , ( Real(1.) - p.p[0]  - p.p[1] ) / ( v[1] + v[0] ) };
-			if( inEdge!=2 ) { Real foo = p.p[0] + v[0] * s[0] ; printf( "\t0] %g -> %f\n" , s[0] , foo ); }
-			if( inEdge!=1 ) { Real foo = p.p[1] + v[1] * s[1] ; printf( "\t1] %g -> %f\n" , s[1] , foo ); }
-			if( inEdge!=0 ) { Real foo = p.p[0] + v[0] * s[2] ; printf( "\t2] %g -> %f\n" , s[2] , foo ); }
-			exit( 0 );
-		}
+		if( idx==-1 ) Miscellany::ErrorOut( "Ray does not intersect triangle[%d]: (%f %f) (%g %g) [%g/%g]" , count , p.p[0] , p.p[1] , v[0] , v[1] , Point2D< Real >::SquareNorm(v) , eps*eps );
 #else
 		if( idx==-1 ) return xForm;
 #endif
@@ -1149,7 +1142,7 @@ FEM::CoordinateXForm< Real > FEM::RiemannianMesh< Real >::flow( ConstPointer( Co
 		}
 		count++;
 	}
-	if( !noWarning ) fprintf( stderr , "[WARNING] Failed to converge flow after %d iterations\n" , MAX_ITERS );
+	if( !noWarning ) Miscellany::Warn( "Failed to converge flow after %d iterations" , MAX_ITERS );
 	return xForm;
 #undef NEW_CODE
 }
@@ -1194,11 +1187,7 @@ void FEM::RiemannianMesh< Real >::setMetricFromEmbedding( ConstPointer( Vertex )
 		for( int j=0 ; j<2 ; j++ ) for( int k=0 ; k<2 ; k++ ) _g[i](j,k) = Point3D< Real >::Dot( e[j] , e[k] );
 		_g[i](0,1) = _g[i](1,0) = (Real)( ( _g[i](0,1) + _g[i](1,0) )/2 );
 
-		if( !_g[i].determinant() )
-		{
-			fprintf( stderr , "[WARNING] Vanishing metric tensor determinant\n" );
-			printf( "%g %g %g\t%g %g %g\n" , e[0][0] , e[0][1] , e[0][2] , e[1][0] , e[1][1] , e[1][2] );
-		}
+		if( !_g[i].determinant() ) Miscellany::Warn( "Vanishing metric tensor determinant: %g %g %g\t%g %g %g" , e[0][0] , e[0][1] , e[0][2] , e[1][0] , e[1][1] , e[1][2] );
 	}
 }
 template< class Real >
@@ -1392,7 +1381,7 @@ SparseMatrix< Real , int > FEM::RiemannianMesh< Real >::dMatrix( void ) const
 	TestBasisType(  InBasisType , "FEM::RiemannianMesh::dMatrix" , false );
 	TestBasisType( OutBasisType , "FEM::RiemannianMesh::dMatrix" , false );
 
-	auto Fail = [&] ( void ){ fprintf( stderr , "[ERROR] FEM::RiemannianMesh::dMatrix: %s -> %s\n" , BasisNames[ InBasisType ] , BasisNames[ OutBasisType ] ) , exit( 0 ); };
+	auto Fail = [&] ( void ){ Miscellany::ErrorOut( "%s -> %s" , BasisNames[ InBasisType ] , BasisNames[ OutBasisType ] ); };
 
 	bool redundant;
 	Matrix< unsigned char , BasisInfo< InBasisType >::Coefficients , BasisInfo< OutBasisType >::Coefficients > mask = RightTriangle< Real >::template GetDMask< InBasisType , OutBasisType >( redundant );
@@ -1502,7 +1491,7 @@ SparseMatrix< Real , int > FEM::RiemannianMesh< Real >::stiffnessMatrix( ConstPo
 		case 0:
 		{	
 			TestBasisType( PostBasisType , "FEM::RiemannianMesh::stiffnessMatrix" , false );
-			if( BasisInfo< PostBasisType >::Dimension!=BasisInfo< BasisType >::Dimension+1 ) fprintf( stderr , "[ERROR] FEM::RiemannianMesh::stiffnessMatrix: Incompatible basis type: %s -> %s\n" , BasisNames[BasisType] , BasisNames[PostBasisType] ) , exit( 0 );
+			if( BasisInfo< PostBasisType >::Dimension!=BasisInfo< BasisType >::Dimension+1 ) Miscellany::ErrorOut( "Incompatible basis type: %s -> %s" , BasisNames[BasisType] , BasisNames[PostBasisType] );
 			SparseMatrix< Real , int > M2 = massMatrix< PostBasisType >( BasisInfo< BasisType >::Lumpable , newTensors );
 			SparseMatrix< Real , int > D1 = dMatrix< BasisType , PostBasisType >( );
 			S = D1.transpose() * M2 * D1;
@@ -1512,8 +1501,8 @@ SparseMatrix< Real , int > FEM::RiemannianMesh< Real >::stiffnessMatrix( ConstPo
 		{
 			TestBasisType(  PreBasisType , "FEM::RiemannianMesh::stiffnessMatrix" , false );
 			TestBasisType( PostBasisType , "FEM::RiemannianMesh::stiffnessMatrix" , false );
-			if( BasisInfo< PreBasisType >::Dimension!=BasisInfo< BasisType >::Dimension-1 ) fprintf( stderr , "[ERROR] FEM::RiemannianMesh::stiffnessMatrix: Incompatible basis type: %s -> %s\n" , BasisNames[PreBasisType] , BasisNames[BasisType] ) , exit( 0 );
-			if( BasisInfo< PostBasisType >::Dimension!=BasisInfo< BasisType >::Dimension+1 ) fprintf( stderr , "[ERROR] FEM::RiemannianMesh::stiffnessMatrix: Incompatible basis type: %s -> %s\n" , BasisNames[BasisType] , BasisNames[PostBasisType] ) , exit( 0 );
+			if( BasisInfo< PreBasisType >::Dimension!=BasisInfo< BasisType >::Dimension-1 ) Miscellany::ErrorOut( "Incompatible basis type: %s -> %s" , BasisNames[PreBasisType] , BasisNames[BasisType] );
+			if( BasisInfo< PostBasisType >::Dimension!=BasisInfo< BasisType >::Dimension+1 ) Miscellany::ErrorOut( "Incompatible basis type: %s -> %s" , BasisNames[BasisType] , BasisNames[PostBasisType] );
 			SparseMatrix< Real , int > M0 = massMatrix<  PreBasisType >( true , newTensors );
 			SparseMatrix< Real , int > M1 = massMatrix<     BasisType >( BasisInfo< BasisType >::Lumpable , newTensors );
 			SparseMatrix< Real , int > M2 = massMatrix< PostBasisType >( BasisInfo< BasisType >::Lumpable , newTensors );
@@ -1525,7 +1514,7 @@ SparseMatrix< Real , int > FEM::RiemannianMesh< Real >::stiffnessMatrix( ConstPo
 		case 2:
 		{
 			TestBasisType(  PreBasisType , "FEM::RiemannianMesh::stiffnessMatrix" , false );
-			if( BasisInfo< PreBasisType >::Dimension!=BasisInfo< BasisType >::Dimension-1 ) fprintf( stderr , "[ERROR] FEM::RiemannianMesh::stiffnessMatrix: Incompatible basis type: %s -> %s\n" , BasisNames[PreBasisType] , BasisNames[BasisType] ) , exit( 0 );
+			if( BasisInfo< PreBasisType >::Dimension!=BasisInfo< BasisType >::Dimension-1 ) Miscellany::ErrorOut( "Incompatible basis type: %s -> %s" , BasisNames[PreBasisType] , BasisNames[BasisType] );
 			SparseMatrix< Real , int > M0 = massMatrix< PreBasisType >( true , newTensors );
 			SparseMatrix< Real , int > M1 = massMatrix<    BasisType >( BasisInfo< BasisType >::Lumpable , newTensors );
 			SparseMatrix< Real , int > D0 = dMatrix< PreBasisType , BasisType >( );

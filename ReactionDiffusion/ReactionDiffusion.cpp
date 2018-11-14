@@ -224,13 +224,13 @@ public:
 	static void ToggleUpdateCallBack( Visualization* v , const char* prompt );
 	static void IncrementUpdateCallBack( Visualization* v , const char* prompt );
 	static void ExportTextureCallBack( Visualization* v , const char* prompt );
-	static int Init( void );
+	static void Init( void );
 	static void InitializeVisualization( int width , int height );
-	static int SetRightHandSide( bool verbose=false );
-	static int UpdateExactSolution( bool verbose=false );
-	static int UpdateApproximateSolution( bool verbose=false , bool detailVerbose=false );
-	static int InitializeSystem( int width , int height );
-	static int InitializeConcentrations( void );
+	static void SetRightHandSide( bool verbose=false );
+	static void UpdateExactSolution( bool verbose=false );
+	static void UpdateApproximateSolution( bool verbose=false , bool detailVerbose=false );
+	static void InitializeSystem( int width , int height );
+	static void InitializeConcentrations( void );
 
 	static void Display( void ){ visualization.Display(); }
 	static void MouseFunc( int button , int state , int x , int y );
@@ -305,7 +305,7 @@ template< typename PreReal , typename Real > int																	GrayScottReacti
 
 
 template< typename PreReal , typename Real >
-int GrayScottReactionDiffusion< PreReal , Real >::SetRightHandSide( bool verbose )
+void GrayScottReactionDiffusion< PreReal , Real >::SetRightHandSide( bool verbose )
 {
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
 	// ( D + d * diff1 * S ) a[t+d] = D( a[t] + d * ( - a[t] * b[t] * b[t] + feed * ( 1 - a[t] ) ) )    //
@@ -334,7 +334,7 @@ int GrayScottReactionDiffusion< PreReal , Real >::SetRightHandSide( bool verbose
 	};
 	memset( &ab_rhs[0] , 0 , ab_rhs.size() * sizeof( Point2D< Real > ) );
 	memset( &fineBoundaryRHS[0] , 0 , fineBoundaryRHS.size() * sizeof( Point2D< Real > ) );
-	if( !Integrate< Real >( interiorCellLines , scalarSamples , ab_x , fineBoundaryValues , ABFunction , ab_rhs , fineBoundaryRHS ) ) fprintf( stderr , "[ERROR] Unable to integrate concentrations!\n" );
+	Integrate< Real >( interiorCellLines , scalarSamples , ab_x , fineBoundaryValues , ABFunction , ab_rhs , fineBoundaryRHS );
 	fineBoundaryCoarseBoundaryRestriction.Multiply( &fineBoundaryRHS[0] , &coarseBoundaryRHS[0] );
 	for( int ab=0 ; ab<2 ; ab++ )
 	{
@@ -343,11 +343,10 @@ int GrayScottReactionDiffusion< PreReal , Real >::SetRightHandSide( bool verbose
 #pragma omp parallel for
 		for( int i=0 ; i<boundaryGlobalIndex.size() ; i++ ) multigridVariables[ab][0].rhs[ boundaryGlobalIndex[i] ] += coarseBoundaryRHS[i][ab];
 	}
-	return 1;
 }
 
 template< typename PreReal , typename Real >
-int GrayScottReactionDiffusion< PreReal , Real >::UpdateExactSolution( bool verbose )
+void GrayScottReactionDiffusion< PreReal , Real >::UpdateExactSolution( bool verbose )
 {
 	// (1) Compute the right-hand-sides
 	{
@@ -366,11 +365,10 @@ int GrayScottReactionDiffusion< PreReal , Real >::UpdateExactSolution( bool verb
 		}
 		if( verbose ) printf( "Performed direct solve %.4f\n" , timer.elapsed() );
 	}
-	return 1;
 }
 
 template< typename PreReal , typename Real >
-int GrayScottReactionDiffusion< PreReal , Real >::UpdateApproximateSolution( bool verbose , bool detailVerbose )
+void GrayScottReactionDiffusion< PreReal , Real >::UpdateApproximateSolution( bool verbose , bool detailVerbose )
 {
 	double rhsTime , vCycleTime;
 	// Compute the right-hand-sides
@@ -392,8 +390,6 @@ int GrayScottReactionDiffusion< PreReal , Real >::UpdateApproximateSolution( boo
 		vCycleTime = timer.elapsed();
 	}
 	if( verbose ) printf( "Integrated constraints / performed v-cycle: %.3f / %.3f(s)\n" , rhsTime , vCycleTime );
-
-	return 1;
 }
 
 template< typename PreReal , typename Real >
@@ -431,8 +427,8 @@ void GrayScottReactionDiffusion< PreReal , Real >::Idle( void )
 {
 	if( updateCount && !visualization.promptCallBack )
 	{
-		if( UseDirectSolver.set ){ if( !UpdateExactSolution()       ) fprintf( stderr , "[WARNING] Exact update failed!\n" ); }
-		else                     { if( !UpdateApproximateSolution() ) fprintf( stderr , "[WARNING] Approximate update failed!\n" ); }
+		if( UseDirectSolver.set ) UpdateExactSolution();
+		else                      UpdateApproximateSolution();
 
 		if( updateCount>0 ) updateCount--;
 		steps++;
@@ -535,7 +531,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::ExportTextureCallBack( Visual
 }
 
 template< typename PreReal , typename Real >
-int GrayScottReactionDiffusion< PreReal , Real >::InitializeConcentrations( void )
+void GrayScottReactionDiffusion< PreReal , Real >::InitializeConcentrations( void )
 {
 	steps = 0;
 	for( int i=0 ; i<multigridVariables[0][0].x.size() ; i++ ) multigridVariables[0][0].x[i] = 1;
@@ -554,19 +550,18 @@ int GrayScottReactionDiffusion< PreReal , Real >::InitializeConcentrations( void
 			t[0] *= nodeIndex.width() , t[1] *= nodeIndex.height();
 			int idx = nodeIndex( (int)floor( t[0] +0.5 ) , (int)floor( t[1] +0.5 ) );
 			if( idx>=0 && idx<multigridVariables[1][0].x.size() ) multigridVariables[1][0].x[idx] = 1;
-			else fprintf( stderr , "[WARNING] Bad random texel: %f %f: %d\n" , t[0] , t[1] , idx );
+			else Miscellany::Warn( "Bad random texel: %f %f: %d\n" , t[0] , t[1] , idx );
 		}
 	}
-	return 1;
 }
 
 template< typename PreReal , typename Real >
-int GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width , int height )
+void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width , int height )
 {
 	Miscellany::Timer timer;
 	MultigridBlockInfo multigridBlockInfo( MultigridBlockWidth.value , MultigridBlockHeight.value , MultigridPaddedWidth.value , MultigridPaddedHeight.value , 0 );
 
-	if( !InitializeHierarchy( mesh , width , height , levels , textureNodes , bilinearElementIndices , hierarchy , atlasCharts , multigridBlockInfo , true , DetailVerbose.set ) ){ fprintf( stderr , "[ERROR] Failed intialization!\n" ) ; return 0; }
+	InitializeHierarchy( mesh , width , height , levels , textureNodes , bilinearElementIndices , hierarchy , atlasCharts , multigridBlockInfo , true , DetailVerbose.set );
 	if( Verbose.set ) printf( "\tInitialized hierarchy: %.2f(s)\n" , timer.elapsed() );
 
 	//Initialize node index
@@ -574,12 +569,12 @@ int GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width , 
 	for( int i=0 ; i<nodeIndex.size() ; i++ ) nodeIndex[i] = -1;
 	for( int i=0 ; i<textureNodes.size() ; i++ )
 	{
-		if( nodeIndex( textureNodes[i].ci , textureNodes[i].cj )!=-1 ) if( false ) fprintf( stderr , "[WARNING] Multiple nodes mapped to pixel %d %d!\n" , textureNodes[i].ci , textureNodes[i].cj );
+		if( nodeIndex( textureNodes[i].ci , textureNodes[i].cj )!=-1 ) if( false ) Miscellany::Warn( "Multiple nodes mapped to pixel %d %d!\n" , textureNodes[i].ci , textureNodes[i].cj );
 		nodeIndex( textureNodes[i].ci , textureNodes[i].cj ) = i;
 	}
 
 	BoundaryProlongationData< Real > boundaryProlongation;
-	if( !InitializeBoundaryProlongationData( hierarchy.gridAtlases[0] , boundaryProlongation ) ) { fprintf( stderr , "[ERROR] Failed boundary prolongation!\n" ) ; return 0; }
+	InitializeBoundaryProlongationData( hierarchy.gridAtlases[0] , boundaryProlongation );
 
 	std::vector< Point3D< Real > > __inputSignal;
 	std::vector< Real > __texelToCellCoeffs;
@@ -592,14 +587,14 @@ int GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width , 
 		// Read in the vector field
 		if( IntrinsicVectorField.set )
 		{
-			if( !ReadVector( vectorField , VectorField.value ) ){ fprintf( stderr , "[ERROR] Unable to read vector field: %s\n" , VectorField.value ) ; return 0; }
-			if( vectorField.size()!=mesh.triangles.size() ){ fprintf( stderr , "[ERROR] Triangle and vector counts don't match: %d != %d\n" , (int)mesh.triangles.size() , (int)vectorField.size() ) ; return 0; }
+			ReadVector( vectorField , VectorField.value );
+			if( vectorField.size()!=mesh.triangles.size() ) Miscellany::Throw( "Triangle and vector counts don't match: %d != %d" , (int)mesh.triangles.size() , (int)vectorField.size() );
 		}
 		else
 		{
 			std::vector< Point3D< PreReal > > _vectorField;
-			if( !ReadVector( _vectorField , VectorField.value ) ){ fprintf( stderr , "[ERROR] Unable to read vector field: %s\n" , VectorField.value ) ; return 0; }
-			if( _vectorField.size()!=mesh.triangles.size() ){ fprintf( stderr , "[ERROR] Triangle and vector counts don't match: %d != %d\n" , (int)mesh.triangles.size() , (int)_vectorField.size() ) ; return 0; }
+			ReadVector( _vectorField , VectorField.value );
+			if( _vectorField.size()!=mesh.triangles.size() ) Miscellany::Throw( "Triangle and vector counts don't match: %d != %d" , (int)mesh.triangles.size() , (int)_vectorField.size() );
 			vectorField.resize( _vectorField.size() );
 #pragma omp parallel for
 			for( int i=0 ; i<mesh.triangles.size() ; i++ )
@@ -637,15 +632,15 @@ int GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width , 
 			// infty -> infty
 			return (PreReal)( pow( len , AnisotropyExponent.value ) * AnisotropyScale.value );
 		};
-		if( !InitializeAnisotropicMetric( mesh , atlasCharts , vectorField , LengthToAnisotropy , parameterMetric ) ){ fprintf( stderr , "[ERROR] Unable to initialize vector field metric\n" ) ; return 0; } 
+		InitializeAnisotropicMetric( mesh , atlasCharts , vectorField , LengthToAnisotropy , parameterMetric );
 	}
 	else
 	{
 		// Initialize the metric from the embedding
-		if( !InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric ) ){ fprintf( stderr , "[ERROR] Unable to initialize embedding metric\n" ) ; return 0; }
+		InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric );
 	}
 #else // !VF_METRIC
-	if( !InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric ) ){ fprintf( stderr , "[ERROR] Unable to initialize embedding metric\n" ) ; return 0; }
+	InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric );
 #endif // VF_METRIC
 
 	// Scale the metric so that the area is equal to the resolution
@@ -653,18 +648,16 @@ int GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width , 
 
 	timer.reset();
 	{
-		int ret = 0;
 		switch( MatrixQuadrature.value )
 		{
-			case 1:  ret = InitializeMassAndStiffness< 1>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-			case 3:  ret = InitializeMassAndStiffness< 3>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-			case 6:  ret = InitializeMassAndStiffness< 6>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-			case 12: ret = InitializeMassAndStiffness<12>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-			case 24: ret = InitializeMassAndStiffness<24>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-			case 32: ret = InitializeMassAndStiffness<32>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-			default: fprintf( stderr , "[ERROR] Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles\n" );
+		case 1:  InitializeMassAndStiffness< 1>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
+		case 3:  InitializeMassAndStiffness< 3>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
+		case 6:  InitializeMassAndStiffness< 6>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
+		case 12: InitializeMassAndStiffness<12>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
+		case 24: InitializeMassAndStiffness<24>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
+		case 32: InitializeMassAndStiffness<32>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
+		default: Miscellany::Throw( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
 		}
-		if( !ret ){ fprintf( stderr , "[ERROR] Failed intialization!\n" ) ; return 0; }
 	}
 
 	if( Verbose.set ) printf( "\tInitialized mass and stiffness: %.2f(s)\n" , timer.elapsed() );
@@ -697,9 +690,7 @@ int GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width , 
 	//////////////////////////////////// Initialize multigrid coefficients
 
 	timer.reset();
-	for( int ab=0 ; ab<2 ; ab++ )
-		if( !UpdateLinearSystem( (Real)1. , diffusionRates[ab] * speed , hierarchy , multigridCoefficients[ab] , massCoefficients , stiffnessCoefficients , vCycleSolvers[ab] , fineSolvers[ab] , systemMatrices[ab] , DetailVerbose.set , true , UseDirectSolver.set ) )
-		{ fprintf( stderr , "[ERROR] Failed system update!\n" ) ; return 0; }
+	for( int ab=0 ; ab<2 ; ab++ ) UpdateLinearSystem( (Real)1. , diffusionRates[ab] * speed , hierarchy , multigridCoefficients[ab] , massCoefficients , stiffnessCoefficients , vCycleSolvers[ab] , fineSolvers[ab] , systemMatrices[ab] , DetailVerbose.set , true , UseDirectSolver.set );
 	if( Verbose.set ) printf( "\tInitialized multigrid coefficients: %.2f(s)\n" , timer.elapsed() );
 
 	//////////////////////////////////// Initialize multigrid variables
@@ -722,8 +713,8 @@ int GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width , 
 
 	//////////////////////////////////// Initialize cell samples
 
-	if( !InitializeGridAtlasInteriorCellLines( atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLines , interiorCellLineIndex ) ){ fprintf( stderr , "[ERROR] Unable to initialize interior cell lines!\n" ) ; return 0; }
-	if( interiorCellLineIndex.size()!=hierarchy.gridAtlases[0].numInteriorCells ){ fprintf( stderr , "[ERROR] Inconsistent number of interior cells! Expected %d . Result %d.\n" , hierarchy.gridAtlases[0].numInteriorCells , (int)interiorCellLineIndex.size() ) ; return 0; }
+	InitializeGridAtlasInteriorCellLines( atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLines , interiorCellLineIndex );
+	if( interiorCellLineIndex.size()!=hierarchy.gridAtlases[0].numInteriorCells ) Miscellany::Throw( "Inconsistent number of interior cells! Expected %d . Result %d." , hierarchy.gridAtlases[0].numInteriorCells , (int)interiorCellLineIndex.size() );
 
 	coarseBoundaryFineBoundaryProlongation = boundaryProlongation.coarseBoundaryFineBoundaryProlongation;
 	fineBoundaryCoarseBoundaryRestriction = boundaryProlongation.fineBoundaryCoarseBoundaryRestriction;
@@ -734,18 +725,16 @@ int GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width , 
 
 	timer.reset();
 	{
-		int ret = 0;
 		switch( RHSQuadrature.value )
 		{
-		case  1: ret = InitializeIntegration<  1 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , scalarSamples , ApproximateIntegration.set ) ; break;
-		case  3: ret = InitializeIntegration<  3 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , scalarSamples , ApproximateIntegration.set ) ; break;
-		case  6: ret = InitializeIntegration<  6 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , scalarSamples , ApproximateIntegration.set ) ; break;
-		case 12: ret = InitializeIntegration< 12 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , scalarSamples , ApproximateIntegration.set ) ; break;
-		case 24: ret = InitializeIntegration< 24 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , scalarSamples , ApproximateIntegration.set ) ; break;
-		case 32: ret = InitializeIntegration< 32 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , scalarSamples , ApproximateIntegration.set ) ; break;
-		default: fprintf( stderr , "[ERROR] Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles\n" );
+		case  1: InitializeIntegration<  1 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , scalarSamples , ApproximateIntegration.set ) ; break;
+		case  3: InitializeIntegration<  3 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , scalarSamples , ApproximateIntegration.set ) ; break;
+		case  6: InitializeIntegration<  6 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , scalarSamples , ApproximateIntegration.set ) ; break;
+		case 12: InitializeIntegration< 12 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , scalarSamples , ApproximateIntegration.set ) ; break;
+		case 24: InitializeIntegration< 24 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , scalarSamples , ApproximateIntegration.set ) ; break;
+		case 32: InitializeIntegration< 32 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , scalarSamples , ApproximateIntegration.set ) ; break;
+		default: Miscellany::Throw( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
 		}
-		if( !ret ){ fprintf( stderr , "[ERROR] Unable to initialize vector field integration samples!\n" ) ; return 0; }
 	}
 	if( Verbose.set ) printf( "\tInitialized vector field integration: %.2f(s)\n" , timer.elapsed() );
 	coarseBoundaryValues.resize( hierarchy.gridAtlases[0].numTexels - hierarchy.gridAtlases[0].numDeepTexels );
@@ -757,8 +746,6 @@ int GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width , 
 
 	int numTexels = hierarchy.gridAtlases[0].numTexels;
 	int numFineNodes = hierarchy.gridAtlases[0].numFineNodes;
-
-	return 1;
 }
 
 template< typename PreReal , typename Real >
@@ -783,7 +770,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeVisualization( int 
 	}
 
 	std::vector< int > boundaryEdges;
-	if( !mesh.initializeBoundaryEdges( boundaryEdges ) ) fprintf( stderr , "[WARNING] Unable to initialize boundary edges!\n" );
+	mesh.initializeBoundaryEdges( boundaryEdges );
 
 	for( int e=0 ; e<boundaryEdges.size() ; e++ )
 	{
@@ -839,7 +826,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::IncrementUpdateCallBack( Visu
 }
 
 template< typename PreReal , typename Real >
-int GrayScottReactionDiffusion< PreReal , Real >::Init( void )
+void GrayScottReactionDiffusion< PreReal , Real >::Init( void )
 {
 	sprintf( stepsString , "Steps: 0" );
 	levels = Levels.value;
@@ -851,7 +838,7 @@ int GrayScottReactionDiffusion< PreReal , Real >::Init( void )
 	for( int ab=0 ; ab<2 ; ab++ ) diffusionRates[ab] *= DiffusionScale.value / 10.;
 	textureWidth = Width.value;
 	textureHeight = Height.value;
-	if( !mesh.read( Input.value , NULL , DetailVerbose.set ) ){ fprintf( stderr , "[ERROR] GrayScottReactionDiffusion::Init: Unable to read mesh data\n" ) ; return 0; }
+	mesh.read( Input.value , NULL , DetailVerbose.set );
 
 	if( true ) for( int i=0 ; i<mesh.textureCoordinates.size() ; i++ ) mesh.textureCoordinates[i][1] = 1.0 - mesh.textureCoordinates[i][1];
 
@@ -882,7 +869,7 @@ int GrayScottReactionDiffusion< PreReal , Real >::Init( void )
 	for( int i=0 ; i<mesh.vertices.size() ; i++ ) mesh.vertices[i] = ( mesh.vertices[i]-centroid ) / radius;
 
 	Miscellany::Timer timer;
-	if( !InitializeSystem( textureWidth , textureHeight ) ){ fprintf( stderr , "[ERROR] Failed to initialize system\n") ; return 0; }
+	InitializeSystem( textureWidth , textureHeight );
 
 	if( Verbose.set )
 	{
@@ -928,18 +915,16 @@ int GrayScottReactionDiffusion< PreReal , Real >::Init( void )
 		textureNodePositions[i] = Point3D< float >( p );
 	}
 
-	if( !InitializeConcentrations() ){ fprintf( stderr , "[ERROR] Failed to initialize concentrations\n") ; return 0; }
+	InitializeConcentrations();
 
 	outputBuffer = new unsigned char[ textureHeight*textureWidth];
 	memset( outputBuffer , 204 , textureHeight * textureWidth * sizeof(unsigned char) );
-
-	return 1;
 }
 
 template< typename PreReal , typename Real >
-int _main( int argc , char* argv[] )
+void _main( int argc , char* argv[] )
 {
-	if( !GrayScottReactionDiffusion< PreReal , Real >::Init() ) return 0;
+	GrayScottReactionDiffusion< PreReal , Real >::Init();
 	if( !Output.set )
 	{
 		glutInitDisplayMode( GLUT_RGB | GLUT_DOUBLE );
@@ -952,7 +937,7 @@ int _main( int argc , char* argv[] )
 		char windowName[1024];
 		sprintf( windowName , "Gray-Scott Reaction Diffusion");
 		glutCreateWindow( windowName );
-		if( glewInit()!=GLEW_OK ) fprintf(stderr, "[ERROR] glewInit failed\n" ) , exit(0);
+		if( glewInit()!=GLEW_OK ) Miscellany::Throw( "glewInit failed" );
 		glutDisplayFunc ( GrayScottReactionDiffusion< PreReal , Real >::Display );
 		glutReshapeFunc ( GrayScottReactionDiffusion< PreReal , Real >::Reshape );
 		glutMouseFunc   ( GrayScottReactionDiffusion< PreReal , Real >::MouseFunc );
@@ -981,7 +966,6 @@ int _main( int argc , char* argv[] )
 		GrayScottReactionDiffusion< PreReal , Real >::SetOutputBuffer( GrayScottReactionDiffusion< PreReal , Real >::multigridVariables[1][0].x );
 		GrayScottReactionDiffusion< PreReal , Real >::ExportTextureCallBack( &GrayScottReactionDiffusion< PreReal , Real >::visualization , Output.value );
 	}
-	return 0;
 }
 
 int main( int argc , char* argv[] )
@@ -1006,7 +990,15 @@ int main( int argc , char* argv[] )
 		printf( "|    [SPACE]:                      start process |\n" );
 		printf( "+------------------------------------------------+\n" );
 	}
-	if( Double.set ) _main< double , double >( argc , argv );
-	else             _main< double , float  >( argc , argv );
-	return 0;
+	try
+	{
+		if( Double.set ) _main< double , double >( argc , argv );
+		else             _main< double , float  >( argc , argv );
+	}
+	catch( Miscellany::Exception &e )
+	{
+		printf( "%s\n" , e.what() );
+		return EXIT_FAILURE;
+	}
+	return EXIT_SUCCESS;
 }

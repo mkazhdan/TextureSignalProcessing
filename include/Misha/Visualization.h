@@ -31,9 +31,9 @@ DAMAGE.
 #include <GL/glut.h>
 #include <vector>
 #include <algorithm>
-#include <Misha/PNG.h>
-#include <Misha/Array.h>
-#include <Misha/Miscellany.h>
+#include "PNG.h"
+#include "Array.h"
+#include "Miscellany.h"
 
 #define KEY_UPARROW		101
 #define KEY_DOWNARROW	103
@@ -511,7 +511,7 @@ void Visualization::saveFrameBuffer( const char* fileName , int whichBuffer )
 		_pixels[ c + i * 3 + j * screenWidth * 3 ] = (unsigned char)ii;
 	}
 	FreePointer( pixels );
-	if( !ImageWriter::Write( fileName , _pixels , screenWidth , screenHeight , 3 ) ) fprintf( stderr , "[WARNING] Failed to write image: %s\n" , fileName );
+	if( !ImageWriter::Write( fileName , _pixels , screenWidth , screenHeight , 3 ) ) Miscellany::Warn( "Failed to write image: %s" , fileName );
 	FreePointer( _pixels );
 }
 

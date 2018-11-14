@@ -27,6 +27,8 @@ DAMAGE.
 */
 #ifndef POLYGON_CLIPPING_INCLUDED
 #define POLYGON_CLIPPING_INCLUDED
+
+#include <Misha/Miscellany.h>
 #include <Misha/Geometry.h>
 #include "IndexedPolygon.h"
 
@@ -155,7 +157,7 @@ int ClipTriangleToPrimalCell( CellClippedTriangle< GeometryReal >&tri , int i , 
 // 1 interior
 
 template< typename GeometryReal >
-int ClipPartiallyIndexedPolygonToIndexedEdge( AtlasIndexedPolygon< GeometryReal > &polygon , const Point2D< GeometryReal > &normal , GeometryReal &offset , int edgeIndex, int atlasVertexIndices[2] )
+void ClipPartiallyIndexedPolygonToIndexedEdge( AtlasIndexedPolygon< GeometryReal > &polygon , const Point2D< GeometryReal > &normal , GeometryReal &offset , int edgeIndex, int atlasVertexIndices[2] )
 {
 	std::vector< Point2D< GeometryReal > > outputVertices;
 	std::vector< int > outputVertexIndices; 
@@ -298,21 +300,15 @@ int ClipPartiallyIndexedPolygonToIndexedEdge( AtlasIndexedPolygon< GeometryReal 
 		polygon.atlasEdgeIndices = outputEdgeIndices;
 		polygon.atlasVertexParentEdge = outputParentVertexEdgeIndices;
 
-		if (polygon.vertices.size() != polygon.atlasVertexIndices.size() || polygon.vertices.size() != polygon.atlasEdgeIndices.size() || polygon.vertices.size() != polygon.atlasVertexParentEdge.size()){
-			printf("Polygon array size does not match! \n");
-			return 0;
-		}
+		if( polygon.vertices.size()!=polygon.atlasVertexIndices.size() || polygon.vertices.size()!=polygon.atlasEdgeIndices.size() || polygon.vertices.size()!=polygon.atlasVertexParentEdge.size() )
+			Miscellany::Throw( "Polygon array size does not match" );
 
 		//Check for non consecutive colinear edges
 		for (int i = 0; i < polygon.atlasEdgeIndices.size(); i++){
-			if (polygon.atlasEdgeIndices[i] != -1 && polygon.atlasEdgeIndices[i] == polygon.atlasEdgeIndices[(i + 1) % polygon.atlasEdgeIndices.size()]){
-				printf("Unexpected consecutive colinear edges! \n");
-				return 0;
-			}
+			if( polygon.atlasEdgeIndices[i]!=-1 && polygon.atlasEdgeIndices[i]==polygon.atlasEdgeIndices[ (i+1)%polygon.atlasEdgeIndices.size() ] )
+				Miscellany::Throw( "Unexpected consecutive colinear edges" );
 		}
 	}
-
-	return 1;
 }
 
 //Only for convex polygons
@@ -337,21 +333,17 @@ int ClipPartiallyIndexedPolygonToIndexedTriangle(AtlasIndexedPolygon< GeometryRe
 
 		int edgeIndex = triangle.atlasEdgeIndices[k];
 		int atlasVertexIndices[2] = { triangle.atlasVertexIndices[k], triangle.atlasVertexIndices[(k + 1) % 3] };
-		int clippingResult = ClipPartiallyIndexedPolygonToIndexedEdge(polygon, normal, offset, edgeIndex, atlasVertexIndices);
+		ClipPartiallyIndexedPolygonToIndexedEdge( polygon , normal , offset , edgeIndex , atlasVertexIndices );
 			
-		if (verbose){
+		if( verbose )
+		{
 			printf("polygon after clipping against edge %d, corners %d %d, normal  %f %f, offset %f. \n", edgeIndex, atlasVertexIndices[0], atlasVertexIndices[1],normal[0],normal[1],offset);
 			printf("%d \n", (int)polygon.vertices.size());
-			for (int v = 0; v < polygon.vertices.size(); v++)printf("%f %f %f \n", polygon.vertices[v][0], polygon.vertices[v][1], 0.);
+			for (int v = 0; v < polygon.vertices.size(); v++) printf("%f %f %f \n", polygon.vertices[v][0], polygon.vertices[v][1], 0.);
 			for (int v = 0; v < polygon.vertices.size(); v++) printf("%d ", polygon.atlasVertexIndices[v]);
 			printf("\n");
 			for (int v = 0; v < polygon.vertices.size(); v++) printf("%d ", polygon.atlasEdgeIndices[v]);
 			printf("\n");
-		}
-
-		if (!clippingResult){
-			printf("Clipping failed! \n");
-			return -1;
 		}
 	}
 
@@ -373,7 +365,7 @@ void SetAtlasIndexedPolygonFromTriangle( const AtlasIndexedTriangle< GeometryRea
 
 //Points in general positions
 template< typename GeometryReal >
-int  ClipIndexedIntersectionPolygonToIndexedIntersectionEdge( IndexedIntersectionPolygon< GeometryReal > &polygon , const Point2D< GeometryReal > &normal , GeometryReal &offset , int edgeIndex )
+void ClipIndexedIntersectionPolygonToIndexedIntersectionEdge( IndexedIntersectionPolygon< GeometryReal > &polygon , const Point2D< GeometryReal > &normal , GeometryReal &offset , int edgeIndex )
 {
 	std::vector< Point2D< GeometryReal > > outputVertices;
 	std::vector< unsigned long long > outputIndices;
@@ -433,8 +425,6 @@ int  ClipIndexedIntersectionPolygonToIndexedIntersectionEdge( IndexedIntersectio
 	polygon.vertices = outputVertices;
 	polygon.indices = outputIndices;
 	polygon.edgeIndices = outputEdgeIndices;
-
-	return 1;
 }
 
 template< typename GeometryReal >
@@ -478,9 +468,10 @@ int ClipIndexedIntersectionPolygonToIndexedIntersectionTriangle( IndexedIntersec
 		}
 
 		int edgeIndex = triangle.edgeIndices[k];
-		int clippingResult = ClipIndexedIntersectionPolygonToIndexedIntersectionEdge(polygon, normal, offset, edgeIndex);
+		ClipIndexedIntersectionPolygonToIndexedIntersectionEdge( polygon , normal , offset , edgeIndex );
 
-		if (verbose){
+		if( verbose )
+		{
 			printf("polygon after clipping against edge %d, normal  %f %f, offset %f. \n",edgeIndex,normal[0], normal[1], offset);
 			printf("%d \n", (int)polygon.vertices.size());
 			for (int v = 0; v < polygon.vertices.size(); v++)printf("%f %f %f \n", polygon.vertices[v][0], polygon.vertices[v][1], 0.);
@@ -491,11 +482,6 @@ int ClipIndexedIntersectionPolygonToIndexedIntersectionTriangle( IndexedIntersec
 			for (int v = 0; v < polygon.vertices.size(); v++) printf("%d ", polygon.edgeIndices[v]);
 			printf("\n");
 		}
-
-		//if (!clippingResult){
-		//	printf("Clipping failed! \n");
-		//	return -1;
-		//}
 	}
 
 	//Identify triangle corners

@@ -166,6 +166,71 @@ namespace Miscellany
 		}
 	};
 
+	///////////////
+	// Exception //
+	///////////////
+#include <exception>
+#include <string>
+	template< typename ... Args >
+	char *_MakeMessageString( const char *header , const char *functionName , const char *format , Args ... args )
+	{
+		size_t _size , size = std::snprintf( NULL , 0 , format , args ... );
+		size += strlen(header)+1;
+		size += strlen(functionName)+2;
+
+		char *_buffer , *buffer = new char[ size+1 ];
+		_size = size , _buffer = buffer;
+
+		sprintf( _buffer , "%s " , header );
+		_buffer += strlen(header)+1;
+		_size -= strlen(header)+1;
+
+		sprintf( _buffer , "%s: " , functionName );
+		_buffer += strlen(functionName)+2;
+		_size -= strlen(functionName)+2;
+
+		std::snprintf( _buffer , _size+1 , format , args ... );
+
+		return buffer;
+	}
+	struct Exception : public std::exception
+	{
+		const char *what( void ) const noexcept { return _message.c_str(); }
+		template< typename ... Args >
+		Exception( const char *functionName , const char *format , Args ... args )
+		{
+			char *buffer = _MakeMessageString( "[EXCEPTION]" , functionName , format , args ... );
+			_message = std::string( buffer );
+			delete[] buffer;
+		}
+	protected:
+		std::string _message;
+	};
+	template< typename ... Args > void _Throw( const char *functionName , const char *format , Args ... args ){ throw Exception( functionName , format , args ... ); }
+	template< typename ... Args >
+	void _Warn( const char *functionName , const char *format , Args ... args )
+	{
+		char *buffer = _MakeMessageString( "[WARNING]" , functionName , format , args ... );
+		fprintf( stderr , "%s\n" , buffer );
+		delete[] buffer;
+	}
+	template< typename ... Args >
+	void _ErrorOut( const char *functionName , const char *format , Args ... args )
+	{
+		char *buffer = _MakeMessageString( "[ERROR]" , functionName , format , args ... );
+		fprintf( stderr , "%s\n" , buffer );
+		delete[] buffer;
+	}
+#ifndef Warn
+#define Warn( ... ) _Warn( __FUNCTION__ , __VA_ARGS__ )
+#endif // Warn
+#ifndef Throw
+#define Throw( ... ) _Throw( __FUNCTION__ , __VA_ARGS__ )
+#endif // Throw
+#ifndef ErrorOut
+#define ErrorOut( ... ) _ErrorOut( __FUNCTION__ , __VA_ARGS__ )
+#endif // ErrorOut
+
 	//////////////////
 	// Memory Stuff //
 	//////////////////

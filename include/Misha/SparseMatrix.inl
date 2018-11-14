@@ -30,6 +30,7 @@ DAMAGE.
 #include <complex>
 #include <unordered_map>
 #include <omp.h>
+#include "Miscellany.h"
 
 ///////////////////
 //  SparseMatrix //
@@ -277,7 +278,7 @@ void SparseMatrix< T , IndexType >::SetRowSize( size_t row , size_t count )
 		}
 		rowSizes[row] = count;
 	}
-	else fprintf( stderr , "[ERROR] Row is out of bounds: 0 <= %d < %d\n" , (int)row , (int)rows ) , exit( 0 );
+	else Miscellany::ErrorOut( "Row is out of bounds: 0 <= %d < %d" , (int)row , (int)rows );
 }
 template< class T , class IndexType >
 void SparseMatrix< T , IndexType >::ResetRowSize( size_t row , size_t count )
@@ -289,7 +290,7 @@ void SparseMatrix< T , IndexType >::ResetRowSize( size_t row , size_t count )
 		if( count>oldCount ) memset( _entries[row]+oldCount , 0 , sizeof( MatrixEntry< T , IndexType > ) * ( count - oldCount ) );
 		rowSizes[row] = count;
 	}
-	else fprintf( stderr , "[ERROR] Row is out of bounds: 0 <= %d < %d\n" , (int)row , (int)rows ) , exit( 0 );
+	else Miscellany::ErrorOut( "Row is out of bounds: 0 <= %d < %d" , (int)row , (int)rows );
 }
 
 /////////////////////
@@ -355,7 +356,7 @@ SparseMatrix< T , IndexType > SparseMatrix< T , IndexType >::operator * ( const 
 	size_t bCols = 0 , bRows = B.rows;
 	for( int i=0 ; i<A.rows ; i++ ) for( int j=0 ; j<A.rowSizes[i] ; j++ ) if( aCols<=A[i][j].N ) aCols = A[i][j].N+1;
 	for( int i=0 ; i<B.rows ; i++ ) for( int j=0 ; j<B.rowSizes[i] ; j++ ) if( bCols<=B[i][j].N ) bCols = B[i][j].N+1;
-	if( bRows<aCols ) fprintf( stderr , "[Error] Matrix sizes do not support multiplication %lld x %lld * %lld x %lld\n" , (unsigned long long)aRows , (unsigned long long)aCols , (unsigned long long)bRows , (unsigned long long)bCols ) , exit( 0 );
+	if( bRows<aCols ) Miscellany::ErrorOut( "Matrix sizes do not support multiplication %lld x %lld * %lld x %lld" , (unsigned long long)aRows , (unsigned long long)aCols , (unsigned long long)bRows , (unsigned long long)bCols );
 
 	out.resize( (int)aRows );
 #pragma omp parallel for
@@ -491,11 +492,7 @@ SparseMatrix< T , IndexType > SparseMatrix< T , IndexType >::transpose( size_t a
 	const SparseMatrix& At = *this;
 	size_t _aRows = 0 , aCols = At.rows;
 	for( int i=0 ; i<At.rows ; i++ ) for( int j=0 ; j<At.rowSizes[i] ; j++ ) if( aCols<=At[i][j].N ) _aRows = At[i][j].N+1;
-	if( _aRows>aRows )
-	{
-		fprintf( stderr , "[Error] prescribed output dimension too low: %d < %zu\n" , aRows , _aRows );
-		return false;
-	}
+	if( _aRows>aRows ) Miscellany::ErrorOut( "prescribed output dimension too low: %d < %zu" , aRows , _aRows );
 
 	A.resize( aRows );
 	for( int i=0 ; i<aRows ; i++ ) A.rowSizes[i] = 0;
@@ -542,16 +539,8 @@ bool TransposeMultiply( const SparseMatrix< T1 , IndexType >& At , const SparseM
 	int bRows = B.rows , bCols = 0;
 	for( int i=0 ; i<At.rows ; i++ ) for( int j=0 ; j<At.rowSizes[i] ; j++ ) if( _aRows<=At[i][j].N ) _aRows = At[i][j].N+1;
 	for( int i=0 ; i< B.rows ; i++ ) for( int j=0 ; j< B.rowSizes[i] ; j++ ) if(  bCols<= B[i][j].N )  bCols =  B[i][j].N+1;
-	if( _aRows>aRows )
-	{
-		fprintf( stderr , "[Error] prescribed output dimension too low: %d < %d\n" , aRows , _aRows );
-		return false;
-	}
-	if( bCols>At.rows )
-	{
-		fprintf( stderr , "[Error] Matrix sizes do not support multiplication %d x %d * %d x %d\n" , aRows , aCols , bRows , bCols );
-		return false;
-	}
+	if( _aRows>aRows ) Miscellany::ErrorOut( "prescribed output dimension too low: %d < %d" , aRows , _aRows );
+	if( bCols>At.rows ) Miscellany::ErrorOut( "Matrix sizes do not support multiplication %d x %d * %d x %d" , aRows , aCols , bRows , bCols );
 
 	std::vector< std::unordered_map< IndexType , T3 > > rows;
 	rows.resize( _aRows );
@@ -593,11 +582,7 @@ bool Multiply( const SparseMatrixInterface< A_T , A_const_iterator >& A , const 
 	size_t bCols = 0 , bRows = B.Rows();
 	for( int i=0 ; i<A.Rows() ; i++ ) for( A_const_iterator iter=A.begin(i) ; iter!=A.end(i) ; iter++ ) if( aCols<=iter->N ) aCols = iter->N+1;
 	for( int i=0 ; i<B.Rows() ; i++ ) for( B_const_iterator iter=B.begin(i) ; iter!=B.end(i) ; iter++ ) if( bCols<=iter->N ) bCols = iter->N+1;
-	if( bRows<aCols )
-	{
-		fprintf( stderr , "[Error] Matrix sizes do not support multiplication %lld x %lld * %lld x %lld\n" , (unsigned long long)aRows , (unsigned long long)aCols , (unsigned long long)bRows , (unsigned long long)bCols );
-		return false;
-	}
+	if( bRows<aCols ) Miscellany::ErrorOut( "Matrix sizes do not support multiplication %lld x %lld * %lld x %lld" , (unsigned long long)aRows , (unsigned long long)aCols , (unsigned long long)bRows , (unsigned long long)bCols );
 
 	out.resize( (int)aRows );
 #pragma omp parallel for num_threads( threads )
@@ -663,11 +648,7 @@ bool Transpose( const SparseMatrixInterface< T , In_const_iterator >& At , Spars
 {
 	size_t _aRows = 0 , aCols = At.Rows();
 	for( int i=0 ; i<At.Rows() ; i++ ) for( In_const_iterator iter=At.begin(i) ; iter!=At.end(i) ; iter++ ) if( aCols<=iter->N ) _aRows = iter->N+1;
-	if( _aRows>aRows )
-	{
-		fprintf( stderr , "[Error] prescribed output dimension too low: %d < %zu\n" , aRows , _aRows );
-		return false;
-	}
+	if( _aRows>aRows ) Miscellany::ErrorOut( "prescribed output dimension too low: %d < %zu" , aRows , _aRows );
 
 	A.resize( aRows );
 	for( int i=0 ; i<aRows ; i++ ) A.rowSizes[i] = 0;
@@ -702,11 +683,7 @@ bool Multiply( const SparseMatrix< T1 , IndexType >& A , const SparseMatrix< T2 
 	int bCols = 0 , bRows = B.rows;
 	for( int i=0 ; i<A.rows ; i++ ) for( int j=0 ; j<A.rowSizes[i] ; j++ ) if( aCols<=A[i][j].N ) aCols = A[i][j].N+1;
 	for( int i=0 ; i<B.rows ; i++ ) for( int j=0 ; j<B.rowSizes[i] ; j++ ) if( bCols<=B[i][j].N ) bCols = B[i][j].N+1;
-	if( bRows<aCols )
-	{
-		fprintf( stderr , "[Error] Matrix sizes do not support multiplication %d x %d * %d x %d\n" , aRows , aCols , bRows , bCols );
-		return false;
-	}
+	if( bRows<aCols ) Miscellany::ErrorOut( "Matrix sizes do not support multiplication %d x %d * %d x %d" , aRows , aCols , bRows , bCols );
 
 	out.resize( aRows );
 #pragma omp parallel for num_threads( threads )
@@ -771,11 +748,7 @@ bool Transpose( const SparseMatrix< T , IndexType >& At , SparseMatrix< T , Inde
 {
 	int _aRows = 0 , aCols = At.rows;
 	for( int i=0 ; i<At.rows ; i++ ) for( int j=0 ; j<At.rowSizes[i] ; j++ ) if( _aRows<=At[i][j].N ) _aRows = At[i][j].N+1;
-	if( _aRows>aRows )
-	{
-		fprintf( stderr , "[Error] prescribed output dimension too low: %d < %d\n" , aRows , _aRows );
-		return false;
-	}
+	if( _aRows>aRows ) Miscellany::ErrorOut( "prescribed output dimension too low: %d < %d" , aRows , _aRows );
 
 	A.resize( aRows );
 	for( int i=0 ; i<aRows ; i++ ) A.rowSizes[i] = 0;
@@ -866,7 +839,7 @@ template< class T , unsigned int Radius > void BandedMatrix< T , Radius >::resiz
 	{
 		_rows = rows;
 		_entries = AllocPointer< T >( rows * ( 2 * Radius + 1 ) );
-		if( !_entries ) fprintf( stderr , "[ERROR] Failed to allocate BandedMatrix::_entries ( %d x %d )\n" , rows , 2*Radius+1 ) , exit( 0 );
+		if( !_entries ) Miscellany::ErrorOut( "Failed to allocate BandedMatrix::_entries ( %d x %d )" , rows , 2*Radius+1 );
 	}
 }
 template< class T , unsigned int Radius > void BandedMatrix< T , Radius >::resize( size_t rows , const T& clearValue )

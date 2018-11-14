@@ -201,12 +201,12 @@ public:
 	static void GradientModulationCallBack( Visualization* v , const char* prompt );
 	static void InterpolationWeightCallBack( Visualization* v , const char* prompt );
 
-	static int Init();
+	static void Init( void );
 	static void InitializeVisualization();
-	static int UpdateSolution(bool verbose = false, bool detailVerbose = false);
+	static void UpdateSolution(bool verbose = false, bool detailVerbose = false);
 	static void ComputeExactSolution( bool verbose=false );
-	static int InitializeSystem( int width , int height );
-	static int _InitializeSystem( std::vector<std::vector< SquareMatrix< PreReal , 2 > > > &parameterMetric , BoundaryProlongationData< Real > &boundaryProlongation , std::vector< Point3D< Real > > &inputSignal , std::vector< Real >& texelToCellCoeffs );
+	static void InitializeSystem( int width , int height );
+	static void _InitializeSystem( std::vector<std::vector< SquareMatrix< PreReal , 2 > > > &parameterMetric , BoundaryProlongationData< Real > &boundaryProlongation , std::vector< Point3D< Real > > &inputSignal , std::vector< Real >& texelToCellCoeffs );
 
 	static void UpdateFilteredColorTexture( const std::vector< Point3D< Real > >& solution );
 	static void UpdateFilteredTexture( const std::vector< Point3D< Real > >& solution );
@@ -413,7 +413,7 @@ void TextureFilter< PreReal , Real >::Idle( void )
 
 	if( updateCount && !UseDirectSolver.set && !visualization.promptCallBack )
 	{
-		if( !UpdateSolution() ) fprintf( stderr , "[ERROR] Updated solution failed!\n" );
+		UpdateSolution();
 
 		if( visualization.textureType==COLOR_TEXTURE )
 		{
@@ -610,8 +610,7 @@ void  TextureFilter< PreReal , Real >::InterpolationWeightCallBack( Visualizatio
 	interpolationWeight = atof(prompt);
 	if( UseDirectSolver.set ) filteringMatrix = mass*interpolationWeight + stiffness;
 	Miscellany::Timer timer;
-	if( !UpdateLinearSystem( interpolationWeight , (Real)1. , hierarchy , multigridFilteringCoefficients , massCoefficients , stiffnessCoefficients , vCycleSolvers , directSolver , filteringMatrix , DetailVerbose.set , false , UseDirectSolver.set ) )
-		fprintf( stderr , "[ERROR] Failed system update!\n" );
+	UpdateLinearSystem( interpolationWeight , (Real)1. , hierarchy , multigridFilteringCoefficients , massCoefficients , stiffnessCoefficients , vCycleSolvers , directSolver , filteringMatrix , DetailVerbose.set , false , UseDirectSolver.set );
 	if( Verbose.set ) printf( "\tInitialized multigrid coefficients: %.2f(s)\n" , timer.elapsed() );
 
 #pragma omp parallel for
@@ -643,7 +642,7 @@ void TextureFilter< PreReal , Real >::ComputeExactSolution( bool verbose )
 }
 
 template< typename PreReal , typename Real >
-int TextureFilter< PreReal , Real >::UpdateSolution( bool verbose , bool detailVerbose )
+void TextureFilter< PreReal , Real >::UpdateSolution( bool verbose , bool detailVerbose )
 {
 	if( !gradientModulationUpdated )
 	{
@@ -659,51 +658,38 @@ int TextureFilter< PreReal , Real >::UpdateSolution( bool verbose , bool detailV
 	}
 
 	VCycle( multigridFilteringVariables , multigridFilteringCoefficients , multigridIndices , vCycleSolvers , verbose , detailVerbose );
-
-	return 1;
 }
 
 template< typename PreReal , typename Real >
-int TextureFilter< PreReal , Real >::_InitializeSystem( std::vector< std::vector< SquareMatrix< PreReal , 2 > > > &parameterMetric , BoundaryProlongationData< Real > &boundaryProlongation , std::vector< Point3D< Real > > &inputSignal , std::vector< Real > &texelToCellCoeffs )
+void TextureFilter< PreReal , Real >::_InitializeSystem( std::vector< std::vector< SquareMatrix< PreReal , 2 > > > &parameterMetric , BoundaryProlongationData< Real > &boundaryProlongation , std::vector< Point3D< Real > > &inputSignal , std::vector< Real > &texelToCellCoeffs )
 {
 	Miscellany::Timer timer;
 	{
-		int ret = 0;
 		switch( MatrixQuadrature.value )
 		{
-		case  1: ret = InitializeMassAndStiffness< 1>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , true , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		case  3: ret = InitializeMassAndStiffness< 3>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , true , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		case  6: ret = InitializeMassAndStiffness< 6>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , true , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		case 12: ret = InitializeMassAndStiffness<12>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , true , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		case 24: ret = InitializeMassAndStiffness<24>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , true , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		case 32: ret = InitializeMassAndStiffness<32>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , true , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		default: fprintf( stderr , "[ERROR] Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles\n" );
-		}
-		if( !ret )
-		{
-			fprintf( stderr , "[ERROR] Failed intialization!\n" );
-			return 0;
+		case  1: InitializeMassAndStiffness< 1>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , true , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix ) ; break;
+		case  3: InitializeMassAndStiffness< 3>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , true , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix ) ; break;
+		case  6: InitializeMassAndStiffness< 6>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , true , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix ) ; break;
+		case 12: InitializeMassAndStiffness<12>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , true , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix ) ; break;
+		case 24: InitializeMassAndStiffness<24>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , true , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix ) ; break;
+		case 32: InitializeMassAndStiffness<32>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , true , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix ) ; break;
+		default: Miscellany::Throw( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
 		}
 	}
 	if( Verbose.set ) printf( "\tInitialized mass and stiffness: %.2f(s)\n" , timer.elapsed() );
-	return 1;
 }
 
 template< typename PreReal , typename Real >
-int TextureFilter< PreReal , Real >::InitializeSystem( int width , int height )
+void TextureFilter< PreReal , Real >::InitializeSystem( int width , int height )
 {
 	Miscellany::Timer timer;
 
 	MultigridBlockInfo multigridBlockInfo(MultigridBlockWidth.value, MultigridBlockHeight.value,MultigridPaddedWidth.value,MultigridPaddedHeight.value, 0);
-	if( !InitializeHierarchy( mesh , width , height , levels , textureNodes , bilinearElementIndices , hierarchy , atlasCharts , multigridBlockInfo , true , DetailVerbose.set ) )
-	{
-		printf("ERROR : Failed intialization! \n");
-		return 0;
-	}
+	InitializeHierarchy( mesh , width , height , levels , textureNodes , bilinearElementIndices , hierarchy , atlasCharts , multigridBlockInfo , true , DetailVerbose.set );
 	if( Verbose.set ) printf( "\tInitialized hierarchy: %.2f(s)\n" , timer.elapsed() );
 
 	BoundaryProlongationData< Real > boundaryProlongation;
-	if( !InitializeBoundaryProlongationData( hierarchy.gridAtlases[0] , boundaryProlongation ) ){ fprintf( stderr , "[ERROR] TextureFilter::InitializeSystem: Failed boundary prolongation!\n" ) ; return 0; }
+	InitializeBoundaryProlongationData( hierarchy.gridAtlases[0] , boundaryProlongation );
 
 	std::vector< Point3D< Real > > _x0;
 	_x0.resize(textureNodes.size());
@@ -720,20 +706,13 @@ int TextureFilter< PreReal , Real >::InitializeSystem( int width , int height )
 
 	timer.reset();
 	std::vector< std::vector< SquareMatrix< PreReal , 2 > > > parameterMetric;
-	if (!InitializeMetric(mesh, EMBEDDING_METRIC, atlasCharts, parameterMetric)) {
-		printf("ERROR: Unable to initialize metric \n");
-		return 0;
-	}
-
-	if( !_InitializeSystem( parameterMetric , boundaryProlongation , inputSignal , texelToCellCoeffs ) ) return 0;
+	InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric );
+	_InitializeSystem( parameterMetric , boundaryProlongation , inputSignal , texelToCellCoeffs );
 
 	interiorTexelToCellCoeffs.resize(4 * hierarchy.gridAtlases[0].numDeepTexels);
 	for( int i=0 ; i<4*hierarchy.gridAtlases[0].numDeepTexels ; i++ ) interiorTexelToCellCoeffs[i] = Point3D< Real >( Real(texelToCellCoeffs[3*i+0]) , Real(texelToCellCoeffs[3*i+1]) , Real(texelToCellCoeffs[3*i+2]) );
 	
-	if (!InitializeInteriorTexelToCellLines(interiorTexelToCellLines, hierarchy.gridAtlases[0])) {
-		printf("ERROR: Interior texel to cell not initialized! \n");
-		return 0;
-	}
+	InitializeInteriorTexelToCellLines( interiorTexelToCellLines , hierarchy.gridAtlases[0] );
 
 	for (int c = 0; c < 3; c++) boundaryTexelStiffness[c].resize(hierarchy.gridAtlases[0].boundaryGlobalIndex.size());
 	texelModulatedStiffness.resize(hierarchy.gridAtlases[0].numTexels);
@@ -759,11 +738,7 @@ int TextureFilter< PreReal , Real >::InitializeSystem( int width , int height )
 	}
 
 	timer.reset();
-	if( !UpdateLinearSystem( interpolationWeight , (Real)1. , hierarchy , multigridFilteringCoefficients , massCoefficients , stiffnessCoefficients , vCycleSolvers , directSolver , filteringMatrix , DetailVerbose.set , true , UseDirectSolver.set ) )
-	{
-		fprintf( stderr , "[ERROR] Failed system update!\n" );
-		return 0;
-	}
+	UpdateLinearSystem( interpolationWeight , (Real)1. , hierarchy , multigridFilteringCoefficients , massCoefficients , stiffnessCoefficients , vCycleSolvers , directSolver , filteringMatrix , DetailVerbose.set , true , UseDirectSolver.set );
 	if( Verbose.set ) printf( "\tInitialized multigrid coefficients: %.2f(s)\n" , timer.elapsed() );
 
 	multigridFilteringVariables.resize(levels);
@@ -796,7 +771,6 @@ int TextureFilter< PreReal , Real >::InitializeSystem( int width , int height )
 
 	if( UseDirectSolver.set ) ComputeExactSolution( Verbose.set );
 	UpdateFilteredTexture( multigridFilteringVariables[0].x );
-	return 1;
 }
 
 template< typename PreReal , typename Real >
@@ -830,9 +804,10 @@ void TextureFilter< PreReal , Real >::InitializeVisualization( void )
 	}
 
 	std::vector<int> boundaryEdges;
-	if( !mesh.initializeBoundaryEdges( boundaryEdges) ) fprintf( stderr , "[WARNING] Unable to initialize boundary edges!\n" );
+	mesh.initializeBoundaryEdges( boundaryEdges);
 
-	for (int e = 0; e < boundaryEdges.size(); e++) {
+	for( int e=0 ; e<boundaryEdges.size() ; e++ )
+	{
 		int tIndex = boundaryEdges[e] / 3;
 		int kIndex = boundaryEdges[e] % 3;
 		for (int c = 0; c < 2; c++)
@@ -884,7 +859,7 @@ void TextureFilter< PreReal , Real >::InitializeVisualization( void )
 }
 
 template< typename PreReal , typename Real >
-int TextureFilter< PreReal , Real >::Init( void )
+void TextureFilter< PreReal , Real >::Init( void )
 {
 	sprintf( stepsString , "Steps: 0" );
 	levels = std::max<int>(Levels.value,1);
@@ -894,11 +869,7 @@ int TextureFilter< PreReal , Real >::Init( void )
 	sprintf( gradientModulationStr , "Gradient modulation: %.2e\n" , gradientModulation );
 	sprintf( interpolationStr , "Interpolation: %.2e\n" , interpolationWeight );
 
-	if( !mesh.read( Input.values[0] , Input.values[1] , DetailVerbose.set ) )
-	{
-		printf( "Unable to read mesh data: %s %s\n" , Input.values[0] , Input.values[1] );
-		return 0;
-	}
+	mesh.read( Input.values[0] , Input.values[1] , DetailVerbose.set );
 
 	textureWidth = mesh.texture.width();
 	textureHeight = mesh.texture.height();
@@ -932,11 +903,7 @@ int TextureFilter< PreReal , Real >::Init( void )
 	}
 
 	Miscellany::Timer timer;
-	if( !InitializeSystem( textureWidth , textureHeight ) )
-	{
-		printf( "Unable to initialize system\n" );
-		return 0;
-	}
+	InitializeSystem( textureWidth , textureHeight );
 	if( Verbose.set )
 	{
 		printf( "Resolution: %d / %d x %d\n" , (int)textureNodes.size() , textureWidth , textureHeight );
@@ -1003,23 +970,17 @@ int TextureFilter< PreReal , Real >::Init( void )
 		for( int i=0 ; i<textureNodes.size() ; i++)
 		{
 			int ci = textureNodes[i].ci , cj = textureNodes[i].cj;
-			if( texelId(ci,cj)!=-1 )
-			{
-				if( false ) fprintf( stderr , "[WARNING] Texel (%d %d) belong to multiple charts!\n" , ci , cj );
-				multiChartTexelCount++;
-			}
+			if( texelId(ci,cj)!=-1 ) multiChartTexelCount++;
 			texelId(ci,cj) = i;
 		}
-		if( multiChartTexelCount ) fprintf( stderr , "[WARNING] %d texels belong to multiple charts!\n" , multiChartTexelCount );
+		if( multiChartTexelCount ) Miscellany::Warn( "%d texels belong to multiple charts!\n" , multiChartTexelCount );
 	}
-
-	return 1;
 }
 
 template< typename PreReal , typename Real >
-int _main(int argc, char* argv[])
+void _main( int argc , char *argv[] )
 {
-	if( !TextureFilter< PreReal , Real >::Init() ) return 0;
+	TextureFilter< PreReal , Real >::Init();
 
 	if( !Output.set )
 	{
@@ -1034,7 +995,7 @@ int _main(int argc, char* argv[])
 		char windowName[1024];
 		sprintf( windowName , "Texture Filtering" );
 		glutCreateWindow( windowName );
-		if( glewInit()!=GLEW_OK) fprintf( stderr , "[ERROR] glewInit failed\n" ) , exit(0);
+		if( glewInit()!=GLEW_OK ) Miscellany::Throw( "glewInit failed" );
 		glutDisplayFunc ( TextureFilter< PreReal , Real >::Display );
 		glutReshapeFunc ( TextureFilter< PreReal , Real >::Reshape );
 		glutMouseFunc   ( TextureFilter< PreReal , Real >::MouseFunc );
@@ -1052,8 +1013,6 @@ int _main(int argc, char* argv[])
 		else for ( int i=0 ; i<OutputVCycles.value ; i++ ) TextureFilter< PreReal , Real >::UpdateSolution();
 		TextureFilter< PreReal , Real >::ExportTextureCallBack( &TextureFilter< PreReal , Real >::visualization , Output.value );
 	}
-
-	return 0;
 }
 
 int main(int argc, char* argv[])
@@ -1074,7 +1033,15 @@ int main(int argc, char* argv[])
 		printf( "|    'y':                         prescribe interpolation weight       |\n" );
 		printf( "+----------------------------------------------------------------------+\n" );
 	}
-	if( Double.set ) _main< double , double >( argc , argv );
-	else             _main< double , float  >( argc , argv );
-	return 0;
+	try
+	{
+		if( Double.set ) _main< double , double >( argc , argv );
+		else             _main< double , float  >( argc , argv );
+	}
+	catch( Miscellany::Exception &e )
+	{
+		printf( "%s\n" , e.what() );
+		return EXIT_FAILURE;
+	}
+	return EXIT_SUCCESS;
 }

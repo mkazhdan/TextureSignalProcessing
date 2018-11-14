@@ -12,6 +12,7 @@
 #include <jerror.h>
 #include <jmorecfg.h>
 #endif // _WIN32
+#include "Miscellany.h"
 
 
 
@@ -32,7 +33,7 @@ my_error_exit (j_common_ptr cinfo)
 inline bool JPEGReader::GetInfo( const char* fileName , unsigned int& width , unsigned int& height , unsigned int& channels )
 {
 	FILE* fp = fopen( fileName , "rb" );
-	if( !fp ) fprintf( stderr , "[ERROR] JPEGReader: Failed to open: %s\n" , fileName ) , exit(0);
+	if( !fp ) Miscellany::ErrorOut( "Failed to open: %s" , fileName );
 
 	struct jpeg_decompress_struct cInfo;
 	struct my_error_mgr jErr;
@@ -42,8 +43,7 @@ inline bool JPEGReader::GetInfo( const char* fileName , unsigned int& width , un
 	if( setjmp( jErr.setjmp_buffer ) )
 	{
 		jpeg_destroy_decompress( &cInfo );
-		fprintf( stderr , "[ERROR] JPEGReader: JPEG error occured\n" );
-		exit( 0 );
+		Miscellany::ErrorOut( "JPEG error occured" );
 	}
 
 	jpeg_create_decompress( &cInfo );
@@ -64,15 +64,14 @@ inline JPEGReader::JPEGReader( const char* fileName , unsigned int& width , unsi
 {
 	_currentRow = 0;
 	_fp = fopen( fileName , "rb" );
-	if( !_fp ) fprintf( stderr , "[ERROR] JPEGReader: Failed to open: %s\n" , fileName ) , exit(0);
+	if( !_fp ) Miscellany::ErrorOut( "Failed to open: %s\n" , fileName );
 
 	_cInfo.err = jpeg_std_error( &_jErr.pub );
 	_jErr.pub.error_exit = my_error_exit;
 	if( setjmp( _jErr.setjmp_buffer ) )
 	{
 		jpeg_destroy_decompress( &_cInfo );
-		fprintf( stderr , "[ERROR] JPEGReader: JPEG error occured\n" );
-		exit( 0 );
+		Miscellany::ErrorOut( "JPEG error occured" );
 	}
 
 	jpeg_create_decompress( &_cInfo );
@@ -103,7 +102,7 @@ inline JPEGWriter::JPEGWriter( const char* fileName , unsigned int width , unsig
 {
 	_currentRow = 0;
 	_fp = fopen( fileName , "wb" );
-	if( !_fp ) fprintf( stderr , "[ERROR] JPEGWriter: Failed to open: %s\n" , fileName ) , exit(0);
+	if( !_fp ) Miscellany::ErrorOut( "Failed to open: %s" , fileName );
 
 	_cInfo.err = jpeg_std_error( &_jErr.pub );
 	jpeg_create_compress( &_cInfo );

@@ -31,6 +31,7 @@ DAMAGE.
 #include <Eigen/Sparse>
 #include <Misha/Ply.h>
 #include <Misha/Image.h>
+#include <Misha/Miscellany.h>
 #include <Src/VectorIO.h>
 
 template< typename GeometryReal >
@@ -80,17 +81,17 @@ public:
 			if( l>0 ) normals[i] /= l;
 		}
 	}
-	bool read( const char *fileName )
+	void read( const char *fileName )
 	{
 		vertices.clear();
 		triangles.clear();
 		int file_type;
 		std::vector< PlyVertex< GeometryReal > > ply_vertices;
-		if ( !PlyReadTriangles( fileName , ply_vertices , triangles , PlyVertex< GeometryReal >::ReadProperties , NULL , PlyVertex< GeometryReal >::ReadComponents, file_type ) ) return false;
+		if ( !PlyReadTriangles( fileName , ply_vertices , triangles , PlyVertex< GeometryReal >::ReadProperties , NULL , PlyVertex< GeometryReal >::ReadComponents, file_type ) )
+			Miscellany::Throw( "Failed to read ply file: %s" , fileName );
 		vertices.resize( ply_vertices.size() );
 		for( int i=0 ; i<ply_vertices.size() ; i++ ) vertices[i] = ply_vertices[i].point;
 		updateNormals();
-		return true;
 	}
 	void write( const char *fileName ) const
 	{
@@ -289,7 +290,7 @@ public:
 		else PlyWritePolygons( fileName , vertices , texturedTriangles , PlyVertex< GeometryReal >::WriteProperties , PlyVertex< GeometryReal >::WriteComponents , PlyTexturedFace< GeometryReal >::WriteProperties , PlyTexturedFace< GeometryReal >::WriteComponents , PLY_BINARY_NATIVE );
 	}
 
-	bool read( const char *meshName , const char *atlasName , bool verbose )
+	void read( const char *meshName , const char *atlasName , bool verbose )
 	{
 		vertices.clear();
 		triangles.clear();
@@ -297,7 +298,8 @@ public:
 		int file_type;
 		std::vector< PlyVertex< GeometryReal > > ply_vertices;
 		std::vector< PlyTexturedFace< GeometryReal > > ply_faces;
-		if( !PlyReadPolygons( meshName , ply_vertices , ply_faces , PlyVertex< GeometryReal >::ReadProperties , NULL , PlyVertex< GeometryReal >::ReadComponents , PlyTexturedFace< GeometryReal >::ReadProperties , NULL , PlyTexturedFace< GeometryReal >::ReadComponents , file_type ) ) return false;
+		if( !PlyReadPolygons( meshName , ply_vertices , ply_faces , PlyVertex< GeometryReal >::ReadProperties , NULL , PlyVertex< GeometryReal >::ReadComponents , PlyTexturedFace< GeometryReal >::ReadProperties , NULL , PlyTexturedFace< GeometryReal >::ReadComponents , file_type ) )
+			Miscellany::Throw( "Failed to read ply file: %s" , meshName );
 
 		vertices.resize( ply_vertices.size() );
 		for( int i=0 ; i<ply_vertices.size() ; i++ ) vertices[i] = ply_vertices[i].point;
@@ -319,18 +321,17 @@ public:
 			if( !strcasecmp( ext , "normap" ) )
 			{
 				if( verbose ) printf( "Reading normal texture\n" );
-				if( !ReadBinaryImage( texture , atlasName ) ){ fprintf( stderr , "[WARNING] TexturedMesh::read: Unable to read texture: %s\n" , atlasName ) ; delete[] ext ; return false; }
+				ReadBinaryImage( texture , atlasName );
 			}
 			else
 			{
 				if( verbose ) printf( "Reading color texture\n" );
-				if( !texture.read( atlasName ) ){ fprintf( stderr , "[WARNING] TexturedMesh::read: Unable to read texture: %s\n" , atlasName ) ; delete[] ext ; return false; }
+				texture.read( atlasName );
 			}
 			delete[] ext;
 		}
-		return true;
 	}
-	int initializeBoundaryEdges( std::vector< int > &boundaryEdges ) const
+	void initializeBoundaryEdges( std::vector< int > &boundaryEdges ) const
 	{
 		bool isClosedMesh = true;
 
@@ -339,7 +340,7 @@ public:
 		{
 			unsigned long long edgeKey = SetMeshEdgeKey( triangles[i][k] , triangles[i][(k+1)%3] );
 			if( edgeIndex.find(edgeKey)==edgeIndex.end() ) edgeIndex[edgeKey] = 3*i+k;
-			else{ fprintf( stderr , "[WARNING] TexturedMesh::initializeBoundaryEdges: Non manifold mesh.\n" ) ; return 0; }
+			else Miscellany::Throw( "Non manifold mesh" );
 		}
 
 		for( int i=0 ; i<triangles.size() ; i++ ) for( int k=0 ; k<3 ; k++ )
@@ -368,7 +369,6 @@ public:
 				boundaryEdges.push_back( currentEdgeIndex );
 			}
 		}
-		return 1;
 	}
 	void subdivide( int iters )
 	{

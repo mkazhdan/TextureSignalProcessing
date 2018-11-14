@@ -27,10 +27,12 @@ DAMAGE.
 */
 #ifndef CHART_DECOMPOSITION_INCLUDED
 #define CHART_DECOMPOSITION_INCLUDED
+
+#include <Misha/Miscellany.h>
 #include <Src/SimpleMesh.h>
 #include <queue>
 
-int AddComponent( std::vector< int > &vertexComponent , int vIndex , int currentComponent , const std::vector< std::vector< int > > &neighbours )
+void AddComponent( std::vector< int > &vertexComponent , int vIndex , int currentComponent , const std::vector< std::vector< int > > &neighbours )
 {
 	vertexComponent[vIndex] = currentComponent;
 	std::queue< int > visitingQueue;
@@ -48,26 +50,21 @@ int AddComponent( std::vector< int > &vertexComponent , int vIndex , int current
 				vertexComponent[ vertexNeighbours[i] ] = currentComponent;
 				visitingQueue.push( vertexNeighbours[i] );
 			}
-			else if( vertexComponent[ vertexNeighbours[i] ]==currentComponent) ;
-			else
-			{
-				fprintf( stderr , "[WARNING] AddComponent: Unexpected Condition on a connected component. Expected %d. Obtained %d.\n" , currentComponent , vertexComponent[ vertexNeighbours[i] ] );
-				return 0;
-			}
+			else if( vertexComponent[ vertexNeighbours[i] ]==currentComponent ) ;
+			else Miscellany::Throw( "Unexpected Condition on a connected component. Expected %d. Obtained %d.\n" , currentComponent , vertexComponent[ vertexNeighbours[i] ] );
 		}
 	}
-	return 1;
 }
 
 template< typename GeometryReal >
-int InitializeTriangleChartIndexing( const TexturedMesh< GeometryReal > &mesh , std::vector< int > &chartIndex , int &numCharts )
+void InitializeTriangleChartIndexing( const TexturedMesh< GeometryReal > &mesh , std::vector< int > &chartIndex , int &numCharts )
 {
 	std::unordered_map< unsigned long long , int > edgeIndex;
 	for( int i=0 ; i<mesh.triangles.size() ; i++ ) for( int k=0 ; k<3 ; k++ )
 	{
 		unsigned long long  edgeKey = SetMeshEdgeKey( mesh.triangles[i][k] , mesh.triangles[i][(k+1)%3] );
 		if( edgeIndex.find(edgeKey)==edgeIndex.end() ) edgeIndex[edgeKey] = 3*i+k;
-		else{ fprintf( stderr , "[WARNING] InitializeTriangleChartIndexing: Non manifold mesh\n" ) ; return 0; }
+		else Miscellany::Throw( "Non manifold mesh" );
 	}
 
 	std::vector< std::vector< int > > neighbours( mesh.triangles.size() );
@@ -96,7 +93,6 @@ int InitializeTriangleChartIndexing( const TexturedMesh< GeometryReal > &mesh , 
 		AddComponent( chartIndex , v , currentComponent , neighbours );
 	}
 	numCharts = currentComponent + 1;
-	return 1;
 }
 
 

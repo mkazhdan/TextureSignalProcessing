@@ -37,6 +37,7 @@ DAMAGE.
 #include <string.h>
 #include <algorithm>
 #include "SparseMatrix.h"
+#include "Miscellany.h"
 #include "Geometry.h"
 #include "Array.h"
 
@@ -78,8 +79,8 @@ namespace FEM
 	};
 	static void TestElementType( unsigned int ElementType , const char* header , bool forceFailure )
 	{
-		if( ElementType>=ELEMENT_COUNT ) fprintf( stderr , "[ERROR] %s: Unrecognized element type: 0 <= %d < %d\n" , header , ElementType , ELEMENT_COUNT ) , exit( 0 );
-		else if( forceFailure ) fprintf( stderr , "[ERROR] %s: Element type unsupported: %d (%s)\n" , header , ElementType , ElementNames[ElementType] ) ,  exit( 0 );
+		if( ElementType>=ELEMENT_COUNT ) Miscellany::ErrorOut( "%s: Unrecognized element type: 0 <= %d < %d" , header , ElementType , ELEMENT_COUNT );
+		else if( forceFailure ) Miscellany::ErrorOut( "%s: Element type unsupported: %d (%s)\n" , header , ElementType , ElementNames[ElementType] );
 	}
 
 	//////////////////////////////
@@ -121,8 +122,8 @@ namespace FEM
 
 	static void TestBasisType( unsigned int BasisType , const char* header , bool forceFailure )
 	{
-		if( BasisType>=BASIS_COUNT ) fprintf( stderr , "[ERROR] %s: Unrecognized basis type: 0 <= %d < %d\n" , header , BasisType , BASIS_COUNT ) , exit( 0 );
-		else if( forceFailure ) fprintf( stderr , "[ERROR] %s: Basis type unsupported: %d (%s)\n" , header , BasisType , BasisNames[BasisType] ) ,  exit( 0 );
+		if( BasisType>=BASIS_COUNT ) Miscellany::ErrorOut( "%s: Unrecognized basis type: 0 <= %d < %d" , header , BasisType , BASIS_COUNT );
+		else if( forceFailure ) Miscellany::ErrorOut( "%s: Basis type unsupported: %d (%s)" , header , BasisType , BasisNames[BasisType] );
 	}
 
 	///////////////////////////////

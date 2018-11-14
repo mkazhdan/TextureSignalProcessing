@@ -27,6 +27,7 @@ DAMAGE.
 */
 #include <cassert>
 #include <string.h>
+#include "Miscellany.h"
 
 #ifdef WIN32
 inline int strcasecmp( char* c1 , char* c2 ){ return _stricmp( c1 , c2 ); }
@@ -251,11 +252,11 @@ inline void cmdLineParse( int argc , char **argv , cmdLineReadable** params )
 			}
 			else
 			{
-				fprintf( stderr , "[WARNING] Invalid option: %s\n" , argv[0] );
+				Miscellany::Warn( "Invalid option: %s" , argv[0] );
 				for( int i=0 ; params[i]!=NULL ; i++ ) printf( "\t--%s\n" , params[i]->name );
 			}
 		}
-		else fprintf( stderr , "[WARNING] Parameter name should be of the form --<name>: %s\n" , argv[0] );
+		else Miscellany::Warn( "Parameter name should be of the form --<name>: %s" , argv[0] );
 		++argv , --argc;
 	}
 }

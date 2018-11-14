@@ -29,8 +29,10 @@ DAMAGE.
 #ifndef EDGE_INDEXING_INCLUDED
 #define EDGE_INDEXING_INCLUDED
 
+#include <Misha/Miscellany.h>
+
 template< typename GeometryReal >
-int InitializeIntraChartEdgeIndexing( std::unordered_map< unsigned long long , int > &boundaryCoarseEdgeIndex , const GridChart< GeometryReal > &gridChart , int &lastAddedEdgeIndex )
+void InitializeIntraChartEdgeIndexing( std::unordered_map< unsigned long long , int > &boundaryCoarseEdgeIndex , const GridChart< GeometryReal > &gridChart , int &lastAddedEdgeIndex )
 {	
 	int edgesPerCell = 2;
 	int pairsToAdd[4] = { 0,1,0,3 };
@@ -55,26 +57,21 @@ int InitializeIntraChartEdgeIndexing( std::unordered_map< unsigned long long , i
 				boundaryCoarseEdgeIndex[edgeKey] = lastAddedEdgeIndex;
 				lastAddedEdgeIndex++;
 			}
-			else {
-				printf("ERROR: Edge already added!\n");
-				return 0;
-			}
+			else Miscellany::Throw( "Edge already added" );
 		}
 	}
-	return 1;
 }
 
 template< typename GeometryReal >
-int InitializeIntraChartEdgeIndexing( const std::vector< GridChart< GeometryReal > > &gridCharts , std::unordered_map< unsigned long long , int > &boundaryCoarseEdgeIndex )
+void InitializeIntraChartEdgeIndexing( const std::vector< GridChart< GeometryReal > > &gridCharts , std::unordered_map< unsigned long long , int > &boundaryCoarseEdgeIndex )
 {
 	//Add edges within charts
 	int lastAddedEdgeIndex = 0;
-	for( int i=0 ; i<gridCharts.size() ; i++ ) if( !InitializeIntraChartEdgeIndexing( boundaryCoarseEdgeIndex , gridCharts[i] , lastAddedEdgeIndex ) ) return 0;
-	return 1;
+	for( int i=0 ; i<gridCharts.size() ; i++ ) InitializeIntraChartEdgeIndexing( boundaryCoarseEdgeIndex , gridCharts[i] , lastAddedEdgeIndex );
 }
 
 template< typename MatrixReal >
-int InitializeBoundaryEdgeIndexing( const SparseMatrix< MatrixReal , int > &boundaryAdjancencyMatrix , const std::vector< int > &boundaryGlobalIndex , std::unordered_map< unsigned long long , int > &coarseEdgeIndex , std::vector< int > &boundaryEdgeToGlobalEdge , std::unordered_map< unsigned long long , int > &boundaryEdgeIndex )
+void InitializeBoundaryEdgeIndexing( const SparseMatrix< MatrixReal , int > &boundaryAdjancencyMatrix , const std::vector< int > &boundaryGlobalIndex , std::unordered_map< unsigned long long , int > &coarseEdgeIndex , std::vector< int > &boundaryEdgeToGlobalEdge , std::unordered_map< unsigned long long , int > &boundaryEdgeIndex )
 {
 	int lastAddedCoarseEdgeIndex = (int)coarseEdgeIndex.size();
 	int lastAddedBoundaryEdgeIndex = 0;
@@ -112,11 +109,10 @@ int InitializeBoundaryEdgeIndexing( const SparseMatrix< MatrixReal , int > &boun
 			}
 		}
 	}
-	return 1;
 }
 
 template< typename GeometryReal >
-int InitializeFineBoundaryEdgeChartIndexing( const std::vector< int > &fineBoundaryNodeIndex , std::unordered_map< unsigned long long , int > &fineBoundaryEdgeIndex , const GridChart< GeometryReal > &gridChart , int &lastAddedEdgeIndex )
+void InitializeFineBoundaryEdgeChartIndexing( const std::vector< int > &fineBoundaryNodeIndex , std::unordered_map< unsigned long long , int > &fineBoundaryEdgeIndex , const GridChart< GeometryReal > &gridChart , int &lastAddedEdgeIndex )
 {
 
 	for (int c = 0; c < gridChart.boundaryTriangles.size(); c++) {
@@ -136,23 +132,17 @@ int InitializeFineBoundaryEdgeChartIndexing( const std::vector< int > &fineBound
 			}
 		}
 	}
-	return 1;
 }
 
 template< typename GeometryReal >
-int InitializeFineBoundaryEdgeIndexing( const std::vector< int > &fineBoundaryNodeIndex , std::unordered_map< unsigned long long , int > &fineBoundaryEdgeIndex , const std::vector< GridChart< GeometryReal > > &gridCharts )
+void InitializeFineBoundaryEdgeIndexing( const std::vector< int > &fineBoundaryNodeIndex , std::unordered_map< unsigned long long , int > &fineBoundaryEdgeIndex , const std::vector< GridChart< GeometryReal > > &gridCharts )
 {
 	int lastAddedEdgeIndex = 0;
-	for (int i = 0; i < gridCharts.size(); i++) {
-		if (!InitializeFineBoundaryEdgeChartIndexing(fineBoundaryNodeIndex, fineBoundaryEdgeIndex, gridCharts[i], lastAddedEdgeIndex)) {
-			return 0;
-		}
-	}
-	return 1;
+	for( int i=0 ; i<gridCharts.size() ; i++ ) InitializeFineBoundaryEdgeChartIndexing( fineBoundaryNodeIndex , fineBoundaryEdgeIndex , gridCharts[i] , lastAddedEdgeIndex );
 }
 
 template< typename MatrixReal >
-int InitializeBoundaryCoarseToFineBoundaryOneFormProlongation( const SparseMatrix< MatrixReal , int > &boundaryCoarseToFineNodeProlongation , std::unordered_map< unsigned long long , int > &boundaryCoarseEdgeIndex , std::unordered_map< unsigned long long , int > &boundaryFineEdgeIndex , SparseMatrix< MatrixReal , int > &boundaryFineToBoundaryCoarseOneFormProlongation )
+void InitializeBoundaryCoarseToFineBoundaryOneFormProlongation( const SparseMatrix< MatrixReal , int > &boundaryCoarseToFineNodeProlongation , std::unordered_map< unsigned long long , int > &boundaryCoarseEdgeIndex , std::unordered_map< unsigned long long , int > &boundaryFineEdgeIndex , SparseMatrix< MatrixReal , int > &boundaryFineToBoundaryCoarseOneFormProlongation )
 {
 	std::vector< Eigen::Triplet< MatrixReal > > coarseToFineOneFormProlongation;
 	std::vector< std::vector< Eigen::Triplet< MatrixReal > > > _coarseToFineOneFormProlongation( omp_get_max_threads() );
@@ -204,7 +194,7 @@ int InitializeBoundaryCoarseToFineBoundaryOneFormProlongation( const SparseMatri
 							_coarseToFineOneFormProlongation[thread].push_back( Eigen::Triplet< MatrixReal >( fineEdgeId , coarseEdgeId , -coarseValue1 *coarseValue2 ) );
 						}
 					}
-					if( !foundEdge ) fprintf( stderr , "[ERROR] Edge (%d,%d) not found\n" , coarseIndex1 , coarseIndex2 ) , exit( 0 );
+					if( !foundEdge ) Miscellany::Throw( "Edge (%d,%d) not found" , coarseIndex1 , coarseIndex2 );
 				}
 			}
 		}
@@ -222,6 +212,5 @@ int InitializeBoundaryCoarseToFineBoundaryOneFormProlongation( const SparseMatri
 	int numFineOneForms = (int)boundaryFineEdgeIndex.size();
 
 	boundaryFineToBoundaryCoarseOneFormProlongation = SetSparseMatrix( coarseToFineOneFormProlongation , numFineOneForms , numCoarseOneForms , false );
-	return 1;
 }
 #endif // EDGE_INDEXING_INCLUDED

@@ -30,9 +30,11 @@ DAMAGE.
 
 #include <unordered_map>
 #include <unordered_set>
+#include <Misha/Miscellany.h>
 
 
-int LoopVertices(std::unordered_map<unsigned long long, unsigned long long> & forwardMap, std::vector<std::vector<unsigned long long>> & loopVertices){
+void LoopVertices( std::unordered_map< unsigned long long , unsigned long long > &forwardMap , std::vector< std::vector< unsigned long long > > &loopVertices )
+{
 	loopVertices.clear();
 	std::unordered_set<unsigned long long> alreadyVisitedVertex;
 	unsigned int loopCounter = 0;
@@ -54,17 +56,11 @@ int LoopVertices(std::unordered_map<unsigned long long, unsigned long long> & fo
 						edgeCounter++;
 						currentVertex = nextVertex;
 					}
-					else{
-						printf("Vertex to dead end! \n");
-						return 0;
-					}
+					else Miscellany::Throw( "Vertex to dead end" );
 				}
-				else{
-					if (currentVertex != sourceVertex){
-						printf("Non simple loop! \n");
-						printf("Node %llu \n", currentVertex);
-						return 0;
-					}
+				else
+				{
+					if( currentVertex!=sourceVertex ) Miscellany::Throw( "Non-simple loop, node %llu" , currentVertex );
 					terminate = true;
 				}
 			} while (!terminate);
@@ -72,10 +68,10 @@ int LoopVertices(std::unordered_map<unsigned long long, unsigned long long> & fo
 			loopVertices.push_back(currentLoop);
 		}
 	}
-	return 1;
 }
 
-int ListVerticesSimpleLoop(std::unordered_map<int, int> & forwardMap, std::vector<int> & vertexList) {
+void ListVerticesSimpleLoop( std::unordered_map< int , int > &forwardMap , std::vector< int > &vertexList )
+{
 	vertexList.clear();
 	std::unordered_set<int> alreadyVisitedVertex;
 	int loopCounter = 0;
@@ -83,7 +79,8 @@ int ListVerticesSimpleLoop(std::unordered_map<int, int> & forwardMap, std::vecto
 	int sourceVertex = (*forwardMap.begin()).first;
 	int currentVertex = sourceVertex;
 	bool terminate = false;
-	do {
+	do
+	{
 		if (alreadyVisitedVertex.find(currentVertex) == alreadyVisitedVertex.end()) {
 			alreadyVisitedVertex.insert(currentVertex);
 			vertexList.push_back(currentVertex);
@@ -92,21 +89,15 @@ int ListVerticesSimpleLoop(std::unordered_map<int, int> & forwardMap, std::vecto
 				unsigned long long nextVertex = (*mappedVertex).second;
 				currentVertex = (int)nextVertex;
 			}
-			else {
-				printf("Vertex to dead end! \n");
-				return 0;
-			}
+			else Miscellany::Throw( "Vertex to dead end" );
 		}
-		else {
-			if (currentVertex != sourceVertex) {
-				printf("Non simple loop! \n");
-				return 0;
-			}
+		else
+		{
+			if( currentVertex!=sourceVertex ) Miscellany::Throw( "Non-simple loop" );
 			terminate = true;
 		}
-	} while (!terminate);
-
-	return 1;
+	}
+	while (!terminate);
 }
 
 #endif //MAPLOOP_INCLUDED

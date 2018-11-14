@@ -27,6 +27,8 @@ DAMAGE.
 */
 #pragma once
 
+#include <Misha/Miscellany.h>
+
 enum
 {
 	EMBEDDING_METRIC,
@@ -38,7 +40,7 @@ enum
 
 
 template< typename GeometryReal , typename LengthToAnisotropyFunctor >
-int InitializeVectorFieldMetric( const std::vector< SquareMatrix< GeometryReal , 2 > >& embeddingMetric , const std::vector< Point2D< GeometryReal > >& vf , const LengthToAnisotropyFunctor &LengthToAnisotropy , bool normalizeArea , std::vector< SquareMatrix< GeometryReal , 2 > >& outputMetric )
+void InitializeVectorFieldMetric( const std::vector< SquareMatrix< GeometryReal , 2 > >& embeddingMetric , const std::vector< Point2D< GeometryReal > >& vf , const LengthToAnisotropyFunctor &LengthToAnisotropy , bool normalizeArea , std::vector< SquareMatrix< GeometryReal , 2 > >& outputMetric )
 {
 	int tCount = (int)embeddingMetric.size();
 
@@ -83,7 +85,6 @@ int InitializeVectorFieldMetric( const std::vector< SquareMatrix< GeometryReal ,
 		totalMass += sqrt( outputMetric[t].determinant() ) / 2;
 	}
 	if( normalizeArea ) for( int t=0 ; t<tCount ; t++ )	outputMetric[t] /= totalMass;
-	return 1;
 }
 
 #define NORMALIZE_SURFACE_EMBEDDING
@@ -94,8 +95,9 @@ struct PrincipalCurvature
 	Point2D< GeometryReal > dirs[2];
 	GeometryReal values[2];
 };
+
 template< typename GeometryReal >
-int InitializePrincipalCurvatureDirection( const TexturedMesh< GeometryReal > &mesh , const std::vector< Point3D< GeometryReal > >& vNormals , std::vector< PrincipalCurvature< GeometryReal > >& principalCurvatures )
+void InitializePrincipalCurvatureDirection( const TexturedMesh< GeometryReal > &mesh , const std::vector< Point3D< GeometryReal > >& vNormals , std::vector< PrincipalCurvature< GeometryReal > >& principalCurvatures )
 {
 	principalCurvatures.resize( mesh.triangles.size() );
 
@@ -131,7 +133,7 @@ int InitializePrincipalCurvatureDirection( const TexturedMesh< GeometryReal > &m
 		GeometryReal c = S.determinant();
 		GeometryReal discriminant = (GeometryReal)( b*b - 4.0*a*c );
 
-		if( discriminant<0 ){ fprintf( stderr , "[ERROR] Unexpected negative discriminant!\n" ) ; return 0; }
+		if( discriminant<0 ) Miscellany::Throw( "Negative discriminant" );
 
 		discriminant = (GeometryReal)sqrt(discriminant);
 		GeometryReal roots[] = { (-b-discriminant) / (2.0*a) , (-b+discriminant) / (2.0*a) };
@@ -153,11 +155,10 @@ int InitializePrincipalCurvatureDirection( const TexturedMesh< GeometryReal > &m
 			else         principalCurvatures[t].dirs[i] = vectors[i] * 0;
 		}
 	}
-	return 1;
 }
 
 template< typename GeometryReal >
-int InitializeEmbeddingMetric( const TexturedMesh< GeometryReal > &mesh , bool normalizeArea , std::vector< SquareMatrix< GeometryReal , 2 > > &embeddingMetric )
+void InitializeEmbeddingMetric( const TexturedMesh< GeometryReal > &mesh , bool normalizeArea , std::vector< SquareMatrix< GeometryReal , 2 > > &embeddingMetric )
 {
 	embeddingMetric.resize( mesh.triangles.size() );
 
@@ -178,12 +179,10 @@ int InitializeEmbeddingMetric( const TexturedMesh< GeometryReal > &mesh , bool n
 	}
 
 	if( normalizeArea ) for( int t=0 ; t<mesh.triangles.size() ; t++ ) embeddingMetric[t] /= totalMass;
-
-	return 1;
 }
 
 template< typename GeometryReal >
-int InitializeUniformMetric( const TexturedMesh< GeometryReal > &mesh , bool normalizeArea , std::vector< SquareMatrix< GeometryReal , 2 > > &embeddingMetric )
+void InitializeUniformMetric( const TexturedMesh< GeometryReal > &mesh , bool normalizeArea , std::vector< SquareMatrix< GeometryReal , 2 > > &embeddingMetric )
 {
 	embeddingMetric.resize( mesh.triangles.size() );
 
@@ -205,12 +204,10 @@ int InitializeUniformMetric( const TexturedMesh< GeometryReal > &mesh , bool nor
 	}
 
 	if( normalizeArea ) for( int t=0 ; t<mesh.triangles.size() ; t++ ) embeddingMetric[t] /= totalMass;
-
-	return 1;
 }
 
 template< typename GeometryReal >
-int InitializeParameterMetric( const TexturedMesh< GeometryReal > &mesh , const std::vector< SquareMatrix< GeometryReal , 2 > > &embeddingMetric , const std::vector< AtlasChart< GeometryReal > > &atlasCharts , std::vector< std::vector< SquareMatrix< GeometryReal , 2 > > > &parameterMetric )
+void InitializeParameterMetric( const TexturedMesh< GeometryReal > &mesh , const std::vector< SquareMatrix< GeometryReal , 2 > > &embeddingMetric , const std::vector< AtlasChart< GeometryReal > > &atlasCharts , std::vector< std::vector< SquareMatrix< GeometryReal , 2 > > > &parameterMetric )
 {
 	parameterMetric.resize( atlasCharts.size() );
 	for( int i=0 ; i<atlasCharts.size() ; i++ )
@@ -239,11 +236,10 @@ int InitializeParameterMetric( const TexturedMesh< GeometryReal > &mesh , const 
 			parameterMetric[i][k] = parameter_metric;
 		}
 	}
-	return 1;
 }
 
 template< typename GeometryReal >
-int InitializeMetric( TexturedMesh< GeometryReal > &mesh , int metricMode , const std::vector< AtlasChart< GeometryReal > > &atlasCharts , std::vector< std::vector< SquareMatrix< GeometryReal , 2 > > > &parameterMetric )
+void InitializeMetric( TexturedMesh< GeometryReal > &mesh , int metricMode , const std::vector< AtlasChart< GeometryReal > > &atlasCharts , std::vector< std::vector< SquareMatrix< GeometryReal , 2 > > > &parameterMetric )
 {
 	std::vector< SquareMatrix< GeometryReal , 2 > > surfaceMetric;
 	std::vector< SquareMatrix< GeometryReal , 2 > > embeddingMetric;
@@ -252,13 +248,12 @@ int InitializeMetric( TexturedMesh< GeometryReal > &mesh , int metricMode , cons
 
 	if     ( metricMode==EMBEDDING_METRIC ) surfaceMetric = embeddingMetric;
 	else if( metricMode==UNIFORM_METRIC   ) InitializeUniformMetric( mesh , true , surfaceMetric );
-	else{ fprintf( stderr , "[ERROR] InitializeMetric: Unrecognized  metric!\n") ; return 0; }
+	else Miscellany::Throw( "Unrecognized  metric: %d" , metricMode );
 	InitializeParameterMetric( mesh , surfaceMetric , atlasCharts , parameterMetric );
-	return 1;
 }
 
 template< typename GeometryReal , typename LengthToAnisotropyFunctor >
-int InitializeAnisotropicMetric( TexturedMesh< GeometryReal > &mesh , const std::vector< AtlasChart< GeometryReal > > &atlasCharts , const std::vector< Point2D< GeometryReal > > &vf , const LengthToAnisotropyFunctor &LengthToAnisotropy , std::vector< std::vector< SquareMatrix< GeometryReal , 2 > > > &parameterMetric )
+void InitializeAnisotropicMetric( TexturedMesh< GeometryReal > &mesh , const std::vector< AtlasChart< GeometryReal > > &atlasCharts , const std::vector< Point2D< GeometryReal > > &vf , const LengthToAnisotropyFunctor &LengthToAnisotropy , std::vector< std::vector< SquareMatrix< GeometryReal , 2 > > > &parameterMetric )
 {
 	std::vector< SquareMatrix< GeometryReal , 2 > > surfaceMetric;
 	std::vector< SquareMatrix< GeometryReal , 2 > > embeddingMetric;
@@ -266,5 +261,4 @@ int InitializeAnisotropicMetric( TexturedMesh< GeometryReal > &mesh , const std:
 	InitializeEmbeddingMetric( mesh , true , embeddingMetric );
 	InitializeVectorFieldMetric( embeddingMetric , vf , LengthToAnisotropy , true , surfaceMetric );
 	InitializeParameterMetric( mesh , surfaceMetric , atlasCharts , parameterMetric );
-	return 1;
 }

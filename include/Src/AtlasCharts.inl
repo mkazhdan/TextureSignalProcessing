@@ -28,7 +28,7 @@ DAMAGE.
 #pragma once
 
 template< typename GeometryReal >
-int InitializeAtlasCharts( AtlasMesh< GeometryReal > &atlasMesh , const std::vector< bool > &isBoundaryHalfEdge , int width , int height , std::vector< AtlasChart< GeometryReal > > &atlasCharts )
+void InitializeAtlasCharts( AtlasMesh< GeometryReal > &atlasMesh , const std::vector< bool > &isBoundaryHalfEdge , int width , int height , std::vector< AtlasChart< GeometryReal > > &atlasCharts )
 {
 	atlasCharts.resize( atlasMesh.numCharts );
 
@@ -101,26 +101,22 @@ int InitializeAtlasCharts( AtlasMesh< GeometryReal > &atlasMesh , const std::vec
 			for( int k=0 ; k<3 ; k++ ) if( isBoundaryHalfEdge[ 3*tIndex+k ] ) boundaryHalfEdges.push_back( 3*t+k );
 		}
 	}
-
-	return 1;
 }
 
 
 template< typename GeometryReal >
-int InitializeAtlasMesh( const TexturedMesh< GeometryReal > &mesh , int width , int height , AtlasMesh< GeometryReal > &atlasMesh , std::vector< AtlasChart< GeometryReal > > &atlasCharts , std::vector< int > &oppositeHalfEdge , std::unordered_map< int , int > &boundaryVerticesIndices , int &numBoundaryVertices , bool &isClosedMesh , bool verbose )
+void InitializeAtlasMesh( const TexturedMesh< GeometryReal > &mesh , int width , int height , AtlasMesh< GeometryReal > &atlasMesh , std::vector< AtlasChart< GeometryReal > > &atlasCharts , std::vector< int > &oppositeHalfEdge , std::unordered_map< int , int > &boundaryVerticesIndices , int &numBoundaryVertices , bool &isClosedMesh , bool verbose )
 {
-	if( !InitializeAtlasMesh( mesh , atlasMesh , width , height , verbose ) ){ fprintf( stderr , "[WARNING] InitializeAtlasMesh: Failed atlas mesh construction\n" ) ; return 0; }
+	InitializeAtlasMesh( mesh , atlasMesh , width , height , verbose );
 
 	std::vector< int > boundaryHalfEdges;
 	std::vector< bool > isBoundaryHalfEdge;
-	if( !InitializeBoundaryHalfEdges( mesh , boundaryHalfEdges , oppositeHalfEdge , isBoundaryHalfEdge , isClosedMesh ) ){ fprintf( stderr , "[WARNING] InitializeAtlasMesh: Failed boundary halfedge construction\n" ) ; return 0; }
+	InitializeBoundaryHalfEdges( mesh , boundaryHalfEdges , oppositeHalfEdge , isBoundaryHalfEdge , isClosedMesh );
 
 	int lastBoundaryIndex;
-	if( !InitiallizeBoundaryVertices( mesh , boundaryHalfEdges , boundaryVerticesIndices , lastBoundaryIndex ) ){ fprintf( stderr , "[WARNING] InitializeAtlasMesh: Failed intialize boundary vertices\n") ; return 0; }
+	InitiallizeBoundaryVertices( mesh , boundaryHalfEdges , boundaryVerticesIndices , lastBoundaryIndex );
 
 	numBoundaryVertices = lastBoundaryIndex;
 
-	if( !InitializeAtlasCharts( atlasMesh , isBoundaryHalfEdge , width , height , atlasCharts ) ){ fprintf( stderr , "[WARNING] InitializeAtlasMesh: Failed intialize atlas charts\n" ) ; return 0; }
-
-	return 1;
+	InitializeAtlasCharts( atlasMesh , isBoundaryHalfEdge , width , height , atlasCharts );
 }

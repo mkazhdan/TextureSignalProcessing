@@ -36,6 +36,7 @@ DAMAGE.
 #endif
 #include <float.h>
 #include <unordered_map>
+#include "Miscellany.h"
 
 inline long long HalfEdgeKey( int i1 , int i2 )
 {
@@ -233,7 +234,7 @@ SquareMatrix< Real , Dim > SquareMatrix< Real , Dim >::inverse( bool& success ) 
 		for( int j=i+1 ; j<Dim ; j++ ) if( fabs( xForm(i,j) )>v ) p = j , v = (Real)fabs( xForm(i,j) );
 		if( !v )
 		{
-			fprintf( stderr , "[WARNING] Failed to invert matrix\n" );
+			Miscellany::Warn( "Failed to invert matrix" );
 			success = false;
 			return SquareMatrix();
 		}
@@ -954,7 +955,7 @@ void MergeFacets
 				int fSize = FacetSize( facets[f] );
 				int v;
 				for( v=0 ; v<fSize ; v++ ) if( facets[f][v]==v2 && facets[f][(v+1)%fSize]==v1 ) break;
-				if( v==fSize ) fprintf( stderr , "[Error] Couldn't find opposite edge in facet\n" ) , exit( 0 );
+				if( v==fSize ) Miscellany::ErrorOut( "Couldn't find opposite edge in facet" );
 				// Add in the chain of vertices into the current loop.
 				polyLoop[i1].second = polyLoop.size();
 				for( int i=(v+2)%fSize ; i!=v ; i=( (i+1)%fSize ) )

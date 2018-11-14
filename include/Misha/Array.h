@@ -30,6 +30,7 @@ DAMAGE.
 #define ARRAY_INCLUDED
 
 #include <vector>
+#include "Miscellany.h"
 
 #ifdef _WIN64
 #include <io.h>
@@ -148,7 +149,7 @@ class OOCArray
 		mktemp ( _fileName );
 		_fp = fopen( _fileName , "w+b" );
 #endif // _WIN32
-		if( !_fp ) fprintf( stderr , "[ERROR] Failed to open file for writing: %s\n" , _fileName ) , exit( 0 );
+		if( !_fp ) Miscellany::ErrorOut( "Failed to open file for writing: %s\n" , _fileName );
 		_currentBufferIndex = 0;
 	}
 public:

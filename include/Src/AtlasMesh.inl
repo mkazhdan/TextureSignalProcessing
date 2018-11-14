@@ -27,10 +27,12 @@ DAMAGE.
 */
 #pragma once
 
+#include <Misha/Miscellany.h>
+
 template< typename GeometryReal >
-int InitializeAtlasMesh( const TexturedMesh< GeometryReal > &inputMesh , AtlasMesh< GeometryReal > &outputMesh , const int width , const int height , bool verbose )
+void InitializeAtlasMesh( const TexturedMesh< GeometryReal > &inputMesh , AtlasMesh< GeometryReal > &outputMesh , const int width , const int height , bool verbose )
 {
-	if( !InitializeTriangleChartIndexing( inputMesh , outputMesh.triangleChartIndex , outputMesh.numCharts ) ){ fprintf( stderr , "[WARNING] InitializeAtlasMesh: Failed triangle chart indexing\n") ; return 0; }
+	InitializeTriangleChartIndexing( inputMesh , outputMesh.triangleChartIndex , outputMesh.numCharts );
 	if( verbose ) printf( "Num Charts %d \n" , outputMesh.numCharts );
 
 	int lastVertexIndex = 0;
@@ -84,7 +86,7 @@ int InitializeAtlasMesh( const TexturedMesh< GeometryReal > &inputMesh , AtlasMe
 	{
 		unsigned long long  edgeKey = SetMeshEdgeKey( outputMesh.triangles[i][k] , outputMesh.triangles[i][ (k+1)%3 ] );
 		if( halfEdgeIndex.find(edgeKey)==halfEdgeIndex.end() ) halfEdgeIndex[edgeKey] = 3*i+k;
-		else{ fprintf( stderr , "[WARNING] InitializeAtlasMesh: Non oriented manifold mesh!\n" ) ; return 0; }
+		else Miscellany::Throw( "Non oriented manifold mesh" );
 	}
 
 	int fineGridResolution = std::max< int >( width , height );
@@ -111,15 +113,13 @@ int InitializeAtlasMesh( const TexturedMesh< GeometryReal > &inputMesh , AtlasMe
 			lastEdgeIndex++;
 		}
 	}
-	for( int i=0 ; i<outputMesh.triangles.size() ; i++ ) for( int k=0 ; k<3 ; k++ ) if( halfEdgeToEdgeIndex[3*i+k]==-1 ){ fprintf( stderr , "[WARNING] InitializeAtlasMesh: Non indexed half edge!\n" ) ; return 0; }
+	for( int i=0 ; i<outputMesh.triangles.size() ; i++ ) for( int k=0 ; k<3 ; k++ ) if( halfEdgeToEdgeIndex[3*i+k]==-1 ) Miscellany::Throw( "Non indexed half edge" );
 
 	outputMesh.halfEdgeToEdgeIndex = halfEdgeToEdgeIndex;
-
-	return 1;
 }
 
 template< typename GeometryReal >
-int InitializeBoundaryHalfEdges( const TexturedMesh< GeometryReal > &mesh , std::vector< int > &boundaryHalfEdges , std::vector< int > &oppositeHalfEdge , std::vector< bool > &isBoundaryHalfEdge , bool &isClosedMesh )
+void InitializeBoundaryHalfEdges( const TexturedMesh< GeometryReal > &mesh , std::vector< int > &boundaryHalfEdges , std::vector< int > &oppositeHalfEdge , std::vector< bool > &isBoundaryHalfEdge , bool &isClosedMesh )
 {
 	isClosedMesh = true;
 
@@ -128,7 +128,7 @@ int InitializeBoundaryHalfEdges( const TexturedMesh< GeometryReal > &mesh , std:
 	{
 		unsigned long long  edgeKey = SetMeshEdgeKey( mesh.triangles[i][k] , mesh.triangles[i][ (k+1)%3 ] );
 		if( edgeIndex.find(edgeKey)==edgeIndex.end() ) edgeIndex[edgeKey] = 3*i+k;
-		else{ fprintf( stderr , "[WARNING] InitializeBoundaryHalfEdges: Non manifold mesh!\n" ) ; return 0; }
+		else Miscellany::Throw( "Non manifold mesh" );
 	}
 
 	oppositeHalfEdge.resize( 3*mesh.triangles.size() );
@@ -169,11 +169,10 @@ int InitializeBoundaryHalfEdges( const TexturedMesh< GeometryReal > &mesh , std:
 			isBoundaryHalfEdge[currentEdgeIndex] = true;
 		}
 	}
-	return 1;
 }
 
 template< typename GeometryReal >
-int InitiallizeBoundaryVertices( const TexturedMesh< GeometryReal > &mesh , const std::vector< int > &boundaryHalfEdges , std::unordered_map< int , int > &boundaryVerticesIndices , int &lastBoundaryIndex )
+void InitiallizeBoundaryVertices( const TexturedMesh< GeometryReal > &mesh , const std::vector< int > &boundaryHalfEdges , std::unordered_map< int , int > &boundaryVerticesIndices , int &lastBoundaryIndex )
 {
 	lastBoundaryIndex = 0;
 
@@ -185,6 +184,4 @@ int InitiallizeBoundaryVertices( const TexturedMesh< GeometryReal > &mesh , cons
 		if( boundaryVerticesIndices.find( mesh.triangles[i][k] )==boundaryVerticesIndices.end() ) boundaryVerticesIndices[ mesh.triangles[i][k] ] = lastBoundaryIndex++;
 		if( boundaryVerticesIndices.find( mesh.triangles[i][(k+1)%3] )==boundaryVerticesIndices.end() ) boundaryVerticesIndices[ mesh.triangles[i][(k+1)%3] ] = lastBoundaryIndex++;
 	}
-
-	return 1;
 }

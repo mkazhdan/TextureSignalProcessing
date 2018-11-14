@@ -30,7 +30,7 @@ DAMAGE.
 #include <Misha/Miscellany.h>
 
 template< typename GeometryReal >
-int InitializeBoundaryAndDeepTexelIndexing( const std::vector< GridChart< GeometryReal > > &gridCharts , const int numTexels , std::vector< int > &boundaryAndDeepIndex , std::vector< int > &boundaryGlobalIndex , std::vector< int > &deepGlobalIndex ) 
+void InitializeBoundaryAndDeepTexelIndexing( const std::vector< GridChart< GeometryReal > > &gridCharts , const int numTexels , std::vector< int > &boundaryAndDeepIndex , std::vector< int > &boundaryGlobalIndex , std::vector< int > &deepGlobalIndex ) 
 {
 	boundaryAndDeepIndex.resize(numTexels, 0);
 	int lastGlobalIndex = 0;
@@ -45,31 +45,24 @@ int InitializeBoundaryAndDeepTexelIndexing( const std::vector< GridChart< Geomet
 				boundaryGlobalIndex.push_back(lastGlobalIndex);
 				boundaryAndDeepIndex[lastGlobalIndex] = lastBoundaryIndex;
 				lastBoundaryIndex++;
-				if (gridChart.globalTexelIndex(i, j) != lastGlobalIndex) {
-					printf("ERROR: Unexpected global index: actual %d, expected %d! \n", gridChart.globalTexelIndex(i, j), lastGlobalIndex);
-					return 0;
-				}
+				if( gridChart.globalTexelIndex(i,j)!=lastGlobalIndex ) Miscellany::Throw( "Unexpected global index: actual %d, expected %d" , gridChart.globalTexelIndex(i,j) , lastGlobalIndex );
 				lastGlobalIndex++;
 			}
 			else if (gridChart.nodeType(i, j) == 2) {
 				deepGlobalIndex.push_back(lastGlobalIndex);
 				boundaryAndDeepIndex[lastGlobalIndex] = lastDeepIndex;
 				lastDeepIndex--;
-				if (gridChart.globalTexelIndex(i, j) != lastGlobalIndex) {
-					printf("ERROR: Unexpected global index: actual %d, expected %d! \n", gridChart.globalTexelIndex(i, j), lastGlobalIndex);
-					return 0;
-				}
+				if( gridChart.globalTexelIndex(i,j)!=lastGlobalIndex ) Miscellany::Throw( "Unexpected global index: actual %d, expected %d" , gridChart.globalTexelIndex(i,j) , lastGlobalIndex );
 				lastGlobalIndex++;
 			}
 		}
 	}
-	return 1;
 }
 
 //Node type : inactive(-1) , exterior (0), interior boundary (1), interior deep (2) hybryd (both deep and boundary for the solver)(3).
 //Cell type : inactive(-1) , boundary (0), interior (1).
 template< typename GeometryReal >
-int InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< GeometryReal > &atlasChart , GridChart< GeometryReal > &gridChart , std::vector< GridNodeInfo > &nodeInfo , std::vector< RasterLine > &rasterLines , std::vector< SegmentedRasterLine > &segmentedLines , std::vector< ThreadTask > &threadTasks , int &lastGlobalTexelIndex , int &lastGlobalTexelInteriorIndex , int &lastGlobalTexelDeepIndex , int &lastGlobalTexelBoundaryIndex , int &lastGlobalCellIndex , int &lastGlobalBoundaryCellIndex , int &lastGlobalInteriorCellIndex , const MultigridBlockInfo &multigridBlockInfo )
+void InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< GeometryReal > &atlasChart , GridChart< GeometryReal > &gridChart , std::vector< GridNodeInfo > &nodeInfo , std::vector< RasterLine > &rasterLines , std::vector< SegmentedRasterLine > &segmentedLines , std::vector< ThreadTask > &threadTasks , int &lastGlobalTexelIndex , int &lastGlobalTexelInteriorIndex , int &lastGlobalTexelDeepIndex , int &lastGlobalTexelBoundaryIndex , int &lastGlobalCellIndex , int &lastGlobalBoundaryCellIndex , int &lastGlobalInteriorCellIndex , const MultigridBlockInfo &multigridBlockInfo )
 {
 	int width = gridChart.width;
 	int height = gridChart.height;
@@ -107,7 +100,7 @@ int InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geomet
 			Point2D< GeometryReal > barycentricCoord = barycentricMap*texel_pos;
 			if( barycentricCoord[0]>=0 && barycentricCoord[1]>=0 && ( barycentricCoord[0]+barycentricCoord[1] )<=1 )
 			{
-				if( nodeType(i,j)!=-1 ){ fprintf( stderr , "[ERROR] InitializeGridChartsActiveNodes: Node already covered!\n" ) ; return 0; }
+				if( nodeType(i,j)!=-1 ) Miscellany::Throw( "Node already covered" );
 				nodeType(i,j) = 1;
 				triangleID(i,j) = atlasChart.meshTriangleIndices[t];
 				barycentricCoords(i,j) = barycentricCoord;
@@ -346,10 +339,7 @@ int InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geomet
 			if (globalTexelIndices[0] != -1 && globalTexelIndices[1] != -1 && globalTexelIndices[2] != -1 && globalTexelIndices[3] != -1) {
 				bilinearElementIndices.push_back( BilinearElementIndex( globalTexelIndices[0] , globalTexelIndices[1] , globalTexelIndices[2] , globalTexelIndices[3] ) );
 			}
-			else {
-				printf("ERROR: Active cell adjacent to unactive node! \n");
-				return 0;
-			}
+			else Miscellany::Throw( "Active cell adjacent to unactive node" );
 
 			if (gridChart.cellType(i, j) == 0) {
 				localBoundaryCellIndex(i, j) = lastLocalBoundaryCellIndex;
@@ -365,11 +355,7 @@ int InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geomet
 					interiorCellCorners.push_back( BilinearElementIndex( globalTexelInteriorIndices[0] , globalTexelInteriorIndices[1] , globalTexelInteriorIndices[2] , globalTexelInteriorIndices[3] ) );
 					interiorCellGlobalCorners.push_back( BilinearElementIndex( globalTexelIndices[0] , globalTexelIndices[1] , globalTexelIndices[2] , globalTexelIndices[3] ) );
 				}
-				else
-				{
-					fprintf( stderr , "[ERROR] Interior cell adjacent to non interior node!\n" );
-					return 0;
-				}
+				else Miscellany::Throw( "Interior cell adjacent to non interior node" );
 				lastLocalInteriorCellIndex++;
 			}
 		}
@@ -406,10 +392,7 @@ int InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geomet
 				newLine.nextLineIndex = globalTexelIndex(rasterStart, j + 1);
 				newLine.coeffStartIndex = globalTexelDeepIndex(rasterStart, j);
 
-				if (newLine.lineStartIndex == -1 || newLine.lineEndIndex == -1 || newLine.prevLineIndex == -1 || newLine.nextLineIndex == -1) {
-					printf("Inavlid Indexing! \n");
-					return 0;
-				}
+				if( newLine.lineStartIndex==-1 || newLine.lineEndIndex==-1 || newLine.prevLineIndex==-1 || newLine.nextLineIndex==-1 ) Miscellany::Throw( "Inavlid Indexing" );
 				rasterLines.push_back(newLine);
 
 				SegmentedRasterLine & newSegmentLine = segmentedLines.back();
@@ -514,12 +497,10 @@ int InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geomet
 			threadTasks.push_back(threadTask);
 		}
 	}
-
-	return 1;
 }
 
 template< typename GeometryReal >
-int InitializeGridCharts( const std::vector< AtlasChart< GeometryReal > > &atlasCharts , const GeometryReal &cellSizeW , const GeometryReal &cellSizeH , std::vector< GridNodeInfo > &nodeInfo , std::vector< GridChart< GeometryReal > > &gridCharts , std::vector< RasterLine > &rasterLines , std::vector< SegmentedRasterLine > &segmentedLines , std::vector< ThreadTask > &threadTasks , int &numTexels , int &numInteriorTexels , int &numDeepTexels , int &numBoundaryTexels , int &numCells , int &numBoundaryCells , int &numInteriorCells , const MultigridBlockInfo &multigridBlockInfo )
+void InitializeGridCharts( const std::vector< AtlasChart< GeometryReal > > &atlasCharts , const GeometryReal &cellSizeW , const GeometryReal &cellSizeH , std::vector< GridNodeInfo > &nodeInfo , std::vector< GridChart< GeometryReal > > &gridCharts , std::vector< RasterLine > &rasterLines , std::vector< SegmentedRasterLine > &segmentedLines , std::vector< ThreadTask > &threadTasks , int &numTexels , int &numInteriorTexels , int &numDeepTexels , int &numBoundaryTexels , int &numCells , int &numBoundaryCells , int &numInteriorCells , const MultigridBlockInfo &multigridBlockInfo )
 {
 	gridCharts.resize( atlasCharts.size() );
 
@@ -560,11 +541,10 @@ int InitializeGridCharts( const std::vector< AtlasChart< GeometryReal > > &atlas
 		gridCharts[i].gridIndexOffset = 2 * approxGridResolution*approxGridResolution*i;
 		InitializeGridChartsActiveNodes(i, atlasCharts[i], gridCharts[i], nodeInfo, rasterLines, segmentedLines, threadTasks, numTexels, numInteriorTexels, numDeepTexels, numBoundaryTexels, numCells, numBoundaryCells, numInteriorCells, multigridBlockInfo);
 	}
-	return 1;
 }
 
 template< typename GeometryReal >
-int InitializeTextureNodes( const std::vector< GridChart< GeometryReal > > &gridCharts , std::vector< TextureNodeInfo< GeometryReal > > &textureNodes )
+void InitializeTextureNodes( const std::vector< GridChart< GeometryReal > > &gridCharts , std::vector< TextureNodeInfo< GeometryReal > > &textureNodes )
 {
 	for (int c = 0; c < gridCharts.size(); c++)
 	{
@@ -585,12 +565,10 @@ int InitializeTextureNodes( const std::vector< GridChart< GeometryReal > > &grid
 			}
 		}
 	}
-
-	return 1;
 }
 
 template< typename GeometryReal >
-int InitializeCellNodes( const std::vector< GridChart< GeometryReal > > &gridCharts , std::vector< BilinearElementIndex > &cellNodes )
+void InitializeCellNodes( const std::vector< GridChart< GeometryReal > > &gridCharts , std::vector< BilinearElementIndex > &cellNodes )
 {
 	for( int c=0 ; c<gridCharts.size() ; c++ )
 	{
@@ -598,11 +576,10 @@ int InitializeCellNodes( const std::vector< GridChart< GeometryReal > > &gridCha
 		const std::vector< BilinearElementIndex >& localBilinearElementIndices = gridChart.bilinearElementIndices;
 		for( int i=0 ; i<localBilinearElementIndices.size() ; i++ ) cellNodes.push_back( localBilinearElementIndices[i] );
 	}
-	return 1;
 }
 
 template< typename GeometryReal , typename MatrixReal >
-int InitializeAtlasHierachicalBoundaryCoefficients( const GridAtlas< GeometryReal , MatrixReal > &fineAtlas , GridAtlas< GeometryReal , MatrixReal > &coarseAtlas , SparseMatrix< MatrixReal , int > &boundaryCoarseFineProlongation , std::vector< BoundaryDeepIndex > &boundaryDeepIndices , std::vector< BoundaryBoundaryIndex< MatrixReal > > &boundaryBoundaryIndices )
+void InitializeAtlasHierachicalBoundaryCoefficients( const GridAtlas< GeometryReal , MatrixReal > &fineAtlas , GridAtlas< GeometryReal , MatrixReal > &coarseAtlas , SparseMatrix< MatrixReal , int > &boundaryCoarseFineProlongation , std::vector< BoundaryDeepIndex > &boundaryDeepIndices , std::vector< BoundaryBoundaryIndex< MatrixReal > > &boundaryBoundaryIndices )
 {
 	std::vector< Eigen::Triplet< MatrixReal > > prolongationTriplets;
 
@@ -736,13 +713,11 @@ int InitializeAtlasHierachicalBoundaryCoefficients( const GridAtlas< GeometryRea
 	int numCoarseBoundaryTexels = coarseAtlas.numBoundaryTexels;
 	int numFineBoundaryTexels = fineAtlas.numBoundaryTexels;
 	boundaryCoarseFineProlongation = SetSparseMatrix( prolongationTriplets , numFineBoundaryTexels , numCoarseBoundaryTexels , false );
-
-	return 1;
 }
 
 
 template< typename GeometryReal , typename MatrixReal >
-int InitializeHierarchy( const std::vector< int > &oppositeHalfEdge , const int width , const int height , HierarchicalSystem< GeometryReal , MatrixReal > &hierarchy , AtlasMesh< GeometryReal > &atlasMesh , std::vector< AtlasChart< GeometryReal > > &atlasCharts , const int levels , const MultigridBlockInfo &multigridBlockInfo , bool verbose=false )
+void InitializeHierarchy( const std::vector< int > &oppositeHalfEdge , const int width , const int height , HierarchicalSystem< GeometryReal , MatrixReal > &hierarchy , AtlasMesh< GeometryReal > &atlasMesh , std::vector< AtlasChart< GeometryReal > > &atlasCharts , const int levels , const MultigridBlockInfo &multigridBlockInfo , bool verbose=false )
 {
 	Miscellany::Timer timer;
 
@@ -755,61 +730,30 @@ int InitializeHierarchy( const std::vector< int > &oppositeHalfEdge , const int 
 		GeometryReal cellSizeW = (GeometryReal)reductionFactor / width;
 		GeometryReal cellSizeH = (GeometryReal)reductionFactor / height;
 		//gridAtlases[i].resolution = resolution;
-		if( !InitializeGridCharts( atlasCharts , cellSizeW , cellSizeH , gridAtlases[i].nodeInfo , gridAtlases[i].gridCharts , gridAtlases[i].rasterLines , gridAtlases[i].segmentedLines , gridAtlases[i].threadTasks , gridAtlases[i].numTexels , gridAtlases[i].numInteriorTexels , gridAtlases[i].numDeepTexels , gridAtlases[i].numBoundaryTexels , gridAtlases[i].numCells , gridAtlases[i].numBoundaryCells , gridAtlases[i].numInteriorCells , multigridBlockInfo ) )
+		InitializeGridCharts( atlasCharts , cellSizeW , cellSizeH , gridAtlases[i].nodeInfo , gridAtlases[i].gridCharts , gridAtlases[i].rasterLines , gridAtlases[i].segmentedLines , gridAtlases[i].threadTasks , gridAtlases[i].numTexels , gridAtlases[i].numInteriorTexels , gridAtlases[i].numDeepTexels , gridAtlases[i].numBoundaryTexels , gridAtlases[i].numCells , gridAtlases[i].numBoundaryCells , gridAtlases[i].numInteriorCells , multigridBlockInfo );
+
+		if( gridAtlases[i].numTexels!=gridAtlases[i].numBoundaryTexels+gridAtlases[i].numDeepTexels )
+			Miscellany::Throw( "Boundary and deep texels does not form a partition: %d != %d + %d" , gridAtlases[i].numTexels , gridAtlases[i].numBoundaryTexels , gridAtlases[i].numDeepTexels );
+		InitializeBoundaryAndDeepTexelIndexing( gridAtlases[i].gridCharts , gridAtlases[i].numTexels , gridAtlases[i].boundaryAndDeepIndex , gridAtlases[i].boundaryGlobalIndex , gridAtlases[i].deepGlobalIndex );
+
+		if( verbose )
 		{
-			printf("Failed intialize grid charts! \n");
-			return 0;
-		}
-
-		if (gridAtlases[i].numTexels != gridAtlases[i].numBoundaryTexels + gridAtlases[i].numDeepTexels) {
-			printf("ERROR: Boundary and deep texels does not form a partition!. %d != %d + %d \n", gridAtlases[i].numTexels, gridAtlases[i].numBoundaryTexels, gridAtlases[i].numDeepTexels);
-			return 0;
-		}
-		if (!InitializeBoundaryAndDeepTexelIndexing(gridAtlases[i].gridCharts, gridAtlases[i].numTexels, gridAtlases[i].boundaryAndDeepIndex, gridAtlases[i].boundaryGlobalIndex, gridAtlases[i].deepGlobalIndex)) {
-			printf("ERROR: Unable to initialize boundary and deep texel indexing! \n");
-			return 0;
-		}
-
-		if (verbose) {
-			printf("Level %d : \n", i);
-			//printf("\t Resolution  %d \n", resolution);
-			printf("\t Active texels %d \n", gridAtlases[i].numTexels);
-			printf("\t Deep texels %d \n", gridAtlases[i].numDeepTexels);
-			printf("\t Boundary texels %d \n", gridAtlases[i].numBoundaryTexels);
-			printf("\t Active cells %d \n", gridAtlases[i].numCells);
-			printf("\t Interior texture nodes %d \n", gridAtlases[i].numInteriorTexels);
-			printf("\t Deep lines %d \n", (int)gridAtlases[i].segmentedLines.size());
-			printf("\t Deep segments %d \n", (int)gridAtlases[i].rasterLines.size());
+			printf( "Level %d:\n" , i );
+			printf( "\t Active texels %d\n", gridAtlases[i].numTexels );
+			printf( "\t Deep texels %d\n" , gridAtlases[i].numDeepTexels );
+			printf( "\t Boundary texels %d\n" , gridAtlases[i].numBoundaryTexels );
+			printf( "\t Active cells %d\n" , gridAtlases[i].numCells );
+			printf( "\t Interior texture nodes %d\n" , gridAtlases[i].numInteriorTexels );
+			printf( "\t Deep lines %d\n" , (int)gridAtlases[i].segmentedLines.size() );
+			printf( "\t Deep segments %d\n" , (int)gridAtlases[i].rasterLines.size() );
 		}
 	}
 	if( verbose ) printf("Hierarchy structure =  %.4f \n" , timer.elapsed() );
 
 	if( verbose ) timer.reset();
-	hierarchy.boundaryRestriction.resize(levels - 1);
-	for (int i = 0; i < levels - 1; i++) {
-		if (!InitializeAtlasHierachicalRestriction(gridAtlases[i], gridAtlases[i + 1], hierarchy.boundaryRestriction[i])) {
-			printf("Error: failed grid hierarchical restriction! \n");
-			return 0;
-		}
-	}
-
-	if (0) {
-		printf("Enabled for Debug \n");
-		hierarchy.prolongation.resize(levels - 1);
-	}
-	for (int i = 0; i < levels - 1; i++) {
-		if (!InitializeAtlasHierachicalProlongation(gridAtlases[i], gridAtlases[i + 1])) {
-			printf("Error: failed grid hierarchical restriction! \n");
-			return 0;
-		}
-		if (0) {
-			printf("Enabled for Debug \n");
-			if (!InitializeProlongationMatrix(gridAtlases[i], gridAtlases[i + 1], hierarchy.prolongation[i])) {
-				printf("Error: failed initialize prolongation! \n");
-				return 0;
-			}
-		}
-	}
+	hierarchy.boundaryRestriction.resize( levels-1 );
+	for( int i=0 ; i<levels-1 ; i++ ) InitializeAtlasHierachicalRestriction( gridAtlases[i] , gridAtlases[i+1] , hierarchy.boundaryRestriction[i] );
+	for( int i=0 ; i<levels-1 ; i++ ) InitializeAtlasHierachicalProlongation( gridAtlases[i] , gridAtlases[i+1] );
 
 	if( verbose ) printf( "Hierarchy prolongation and restriction =  %.4f \n" , timer.elapsed() );
 
@@ -820,21 +764,16 @@ int InitializeHierarchy( const std::vector< int > &oppositeHalfEdge , const int 
 
 	if( verbose ) timer.reset();
 
-	for (int i = 1; i < levels; i++) {
-		InitializeAtlasHierachicalBoundaryCoefficients(hierarchy.gridAtlases[i - 1], hierarchy.gridAtlases[i], hierarchy.boundaryCoarseFineProlongation[i], hierarchy.boundaryDeepIndices[i], hierarchy.boundaryBoundaryIndices[i]);
-		hierarchy.boundaryFineCoarseRestriction[i - 1] = hierarchy.boundaryCoarseFineProlongation[i].transpose();
+	for( int i=1 ; i<levels ; i++ )
+	{
+		InitializeAtlasHierachicalBoundaryCoefficients( hierarchy.gridAtlases[i-1] , hierarchy.gridAtlases[i] , hierarchy.boundaryCoarseFineProlongation[i] , hierarchy.boundaryDeepIndices[i] , hierarchy.boundaryBoundaryIndices[i] );
+		hierarchy.boundaryFineCoarseRestriction[i-1] = hierarchy.boundaryCoarseFineProlongation[i].transpose();
 	}
 	if( verbose ) printf( "Boundary coefficient initialization =  %.4f \n" , timer.elapsed() );
-
-	return 1;
 }
 
-
-
-
-
 template< typename GeometryReal , typename MatrixReal >
-int InitializeHierarchy
+void InitializeHierarchy
 (
 	TexturedMesh< GeometryReal > & mesh , const int width , const int height , const int levels , std::vector< TextureNodeInfo< GeometryReal > > &textureNodes , std::vector< BilinearElementIndex > &cellNodes ,
 	HierarchicalSystem< GeometryReal , MatrixReal > &hierarchy , std::vector< AtlasChart< GeometryReal > > &atlasCharts , const MultigridBlockInfo &multigridBlockInfo , bool verbose=false , bool detailVerbose=false , bool computeProlongation=false
@@ -849,43 +788,25 @@ int InitializeHierarchy
 	int numBoundaryVertices;
 	bool isClosedMesh;
 
-	if( !InitializeAtlasMesh( mesh , width , height , atlasMesh , atlasCharts , oppositeHalfEdge , boundaryVerticesIndices , numBoundaryVertices , isClosedMesh , detailVerbose ) )
-	{ fprintf( stderr , "[ERROR] InitializeHierarchy: Unable to initialize atlas mesh!\n" ) ; return 0; }
+	InitializeAtlasMesh( mesh , width , height , atlasMesh , atlasCharts , oppositeHalfEdge , boundaryVerticesIndices , numBoundaryVertices , isClosedMesh , detailVerbose );
 
 	if( verbose ) timer.reset();
 	//(2) Initialize Hierarchy
-	if (!InitializeHierarchy(oppositeHalfEdge, width,height, hierarchy, atlasMesh, atlasCharts, levels, multigridBlockInfo, detailVerbose)) {
-		printf("Unable to initialize hierarchy! \n");
-		return 0;
-	}
+	InitializeHierarchy( oppositeHalfEdge , width , height , hierarchy , atlasMesh , atlasCharts , levels , multigridBlockInfo , detailVerbose );
 	if( detailVerbose ) printf( "Hierarchy construction =  %.4f \n" , timer.elapsed() );
 
 	//(3) Initialize fine level texture nodes and cells
-	if (!InitializeTextureNodes(hierarchy.gridAtlases[0].gridCharts, textureNodes)) {
-		printf("ERROR: Unable to initialize texture nodes! \n");
-		return 0;
-	}
-	if (!InitializeCellNodes(hierarchy.gridAtlases[0].gridCharts, cellNodes)) {
-		printf("ERROR: Unable to initialize cell nodes! \n");
-		return 0;
-	}
+	InitializeTextureNodes( hierarchy.gridAtlases[0].gridCharts , textureNodes );
+	InitializeCellNodes( hierarchy.gridAtlases[0].gridCharts , cellNodes );
 
 	//(4) Initialize boundary triangulation
-	if (!InitializeBoundaryTriangulation(hierarchy.gridAtlases[0], atlasMesh, atlasCharts, oppositeHalfEdge, boundaryVerticesIndices, numBoundaryVertices, isClosedMesh)) {
-		printf("ERROR: Unable to initialize boundary triangulation \n");
-		return 0;
-	}
+	InitializeBoundaryTriangulation( hierarchy.gridAtlases[0] , atlasMesh , atlasCharts , oppositeHalfEdge , boundaryVerticesIndices , numBoundaryVertices , isClosedMesh );
 
 	//(5) Unnnecesary
 	if( computeProlongation )
 	{
 		Eigen::SparseMatrix< MatrixReal > __prolongation;
-		if( !InitializeProlongation( hierarchy.gridAtlases[0].numInteriorTexels , hierarchy.gridAtlases[0].numFineNodes , hierarchy.gridAtlases[0].numTexels , hierarchy.gridAtlases[0].gridCharts , hierarchy.gridAtlases[0].nodeInfo , __prolongation ) )
-		{
-			printf("ERROR: Unable to initialize prolongation! \n");
-			return 0;
-		}
+		InitializeProlongation( hierarchy.gridAtlases[0].numInteriorTexels , hierarchy.gridAtlases[0].numFineNodes , hierarchy.gridAtlases[0].numTexels , hierarchy.gridAtlases[0].gridCharts , hierarchy.gridAtlases[0].nodeInfo , __prolongation );
 		hierarchy.gridAtlases[0].coarseToFineNodeProlongation = __prolongation;
 	}
-	return 1;
 }
