@@ -28,7 +28,7 @@ DAMAGE.
 #ifndef MISCELLANY_INCLUDED
 #define MISCELLANY_INCLUDED
 
-#define VERBOSE_MESSAGING
+#undef VERBOSE_MESSAGING
 
 //////////////////
 // OpenMP Stuff //
