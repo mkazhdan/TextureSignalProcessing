@@ -27,7 +27,7 @@ DAMAGE.
 */
 
 #ifndef DIVERGENCE_INCLUDED
-#define DIVERGENCE_INCLUDE
+#define DIVERGENCE_INCLUDED
 
 #include <Misha/Miscellany.h>
 #include "EdgeIndexing.h"
@@ -119,4 +119,4 @@ void ComputeDivergence( const std::vector< Data > &edgeValues , std::vector< Dat
 #pragma omp parallel for
 	for (int r = 0; r < divergenceRasterLines.size(); r++) UpdateRow(r);
 }
-#endif // DIVERGENCE_INCLUDE
+#endif // DIVERGENCE_INCLUDED

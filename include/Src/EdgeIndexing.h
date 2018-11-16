@@ -117,7 +117,6 @@ void InitializeFineBoundaryEdgeChartIndexing( const std::vector< int > &fineBoun
 
 	for (int c = 0; c < gridChart.boundaryTriangles.size(); c++) {
 		for (int b = 0; b < gridChart.boundaryTriangles[c].size(); b++) {
-			int i = gridChart.boundaryTriangles[c][b].id;
 			const QuadraticElementIndex & indices = gridChart.boundaryTriangles[c][b].indices;
 			int fineHexIndices[6];
 			for (int k = 0; k < 6; k++) fineHexIndices[k] = fineBoundaryNodeIndex[indices[k]];

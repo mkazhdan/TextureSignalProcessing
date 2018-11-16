@@ -193,7 +193,6 @@ int SolveCG(SPDOperator& L, int iters, int dim, const T* b, T* x, TDotT dot, CGS
 template< class Real, typename T, class SPDOperator, class SPDPreconditioner>
 int SolvePreconditionedCG(SPDOperator& L, SPDPreconditioner& Pinverse, int iters, int dim, const T* b, T* x, PreconditionedCGScratch< T >* scratch = NULL, double eps = 1e-8, bool verbose = false)
 {
-	int threads = omp_get_num_threads();
 	eps *= eps;
 	T *r, *d, *q, *s;
 	if (scratch) r = scratch->r, d = scratch->d, q = scratch->q, s = scratch->s;

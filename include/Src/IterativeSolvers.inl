@@ -651,9 +651,9 @@ void MultiplyBySystemMatrix_NoReciprocals
 
 	timer.reset();
 	//  Perform the boundary -> boundary multiplication
-	systemCoefficients.boundaryBoundaryMatrix.Multiply< Data , DataReal >( &inBoundaryValues[0] , &outBoundaryValues[0] );
+	systemCoefficients.boundaryBoundaryMatrix.template Multiply< Data , DataReal >( &inBoundaryValues[0] , &outBoundaryValues[0] );
 	// Perform the interior -> boundary multiplication
-	systemCoefficients.boundaryDeepMatrix.Multiply< Data , DataReal >( &in[0] , &outBoundaryValues[0] , MULTIPLY_ADD );
+	systemCoefficients.boundaryDeepMatrix.template Multiply< Data , DataReal >( &in[0] , &outBoundaryValues[0] , MULTIPLY_ADD );
 	if( verbose ) printf( "\tMultiply boundary = %.4f\n" , timer.elapsed() );
 
 	// Write the boundary values back into the output array
@@ -1041,13 +1041,13 @@ void VCycle( std::vector< MultigridLevelVariables< DataType > > &variables , con
 
 		if( verbose ) printf( "Level %d\n" , i );
 
-		Miscellany::Timer timer;
+		Miscellany::Timer tmr;
 		RelaxationAndResidual( _coefficients.deepCoefficients , _coefficients.boundaryDeepMatrix , vCycleSolvers.boundary[i] , _indices.boundaryGlobalIndex , _indices.threadTasks , _variables.rhs , _variables.x , _variables.boundary_rhs , _variables.boundary_value , _variables.variable_boundary_value , _coefficients.boundaryBoundaryMatrix , _variables.residual , 2 , detailVerbose );
-		if( verbose ) printf("Relaxation  + Residual %.4f\n" , timer.elapsed() );
+		if( verbose ) printf("Relaxation  + Residual %.4f\n" , tmr.elapsed() );
 
-		if( verbose ) timer.reset();
+		if( verbose ) tmr.reset();
 		MultiplyByRestriction(_indices.boundaryRestriction, nextLevelIndices.boundaryGlobalIndex, nextLevelVariables.boundary_value, nextLevelIndices.restrictionLines, _variables.residual, nextLevelVariables.rhs, detailVerbose);
-		if( verbose ) printf( "Restriction %.4f\n" , timer.elapsed() );
+		if( verbose ) printf( "Restriction %.4f\n" , tmr.elapsed() );
 	}
 
 	//Prolongation phase
@@ -1056,23 +1056,23 @@ void VCycle( std::vector< MultigridLevelVariables< DataType > > &variables , con
 		if( verbose ) printf( "Level %d\n" , i );
 		if( i<levels-1 )
 		{
-			Miscellany::Timer timer;
+			Miscellany::Timer tmr;
 
 			const SystemCoefficients< Real > & _coefficients = coefficients[i];
 			const MultigridLevelIndices<Real> & _indices = indices[i];
 			MultigridLevelVariables<DataType> & _variables = variables[i];
 
-			if( verbose ) timer.reset();
+			if( verbose ) tmr.reset();
 			Relaxation( _coefficients.deepCoefficients , _coefficients.boundaryDeepMatrix , vCycleSolvers.boundary[i] , _indices.boundaryGlobalIndex , _indices.threadTasks , _variables.rhs , _variables.x , _variables.boundary_rhs , _variables.boundary_value , _variables.variable_boundary_value , 2 , true , detailVerbose );
-			if( verbose ) printf( "Gauss Seidel %.4f\n" , timer.elapsed() );
+			if( verbose ) printf( "Gauss Seidel %.4f\n" , tmr.elapsed() );
 		}
 		else if( i==levels-1 )
 		{
 			MultigridLevelVariables<DataType> & _variables = variables[i];
-			Miscellany::Timer timer;
-			if( verbose ) timer.reset();
+			Miscellany::Timer tmr;
+			if( verbose ) tmr.reset();
 			solve( vCycleSolvers.coarse , _variables.x , _variables.rhs );
-			if( verbose ) printf( "Direct solver %.4f\n" , timer.elapsed() );
+			if( verbose ) printf( "Direct solver %.4f\n" , tmr.elapsed() );
 		}
 
 		if( i>0 )
@@ -1081,9 +1081,9 @@ void VCycle( std::vector< MultigridLevelVariables< DataType > > &variables , con
 			const MultigridLevelIndices<Real> & previousLevelIndices = indices[i - 1];
 			MultigridLevelVariables<DataType> & previousLevelVariables = variables[i - 1];
 
-			Miscellany::Timer timer;
+			Miscellany::Timer tmr;
 			AddProlongation<Real>(previousLevelIndices.prolongationLines, _variables.x, previousLevelVariables.x, detailVerbose);
-			if( verbose ) printf( "Prolongation %.4f\n" , timer.elapsed() );
+			if( verbose ) printf( "Prolongation %.4f\n" , tmr.elapsed() );
 		}
 	}
 }

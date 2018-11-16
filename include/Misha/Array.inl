@@ -25,7 +25,6 @@ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING 
 ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
 DAMAGE.
 */
-#define FULL_ARRAY_DEBUG    0	// Note that this is not thread-safe
 
 #include <stdio.h>
 #include <emmintrin.h>
@@ -53,16 +52,6 @@ template< >         inline bool IsValid< __m128 >( const __m128& m )
 template< class C > inline bool IsValid( const C& c ){ return true; }
 
 
-#if FULL_ARRAY_DEBUG
-class DebugMemoryInfo
-{
-public:
-	const void* address;
-	char name[512];
-};
-static std::vector< DebugMemoryInfo > memoryInfo;
-#endif // FULL_ARRAY_DEBUG
-
 template< class C >
 class Array
 {
@@ -83,48 +72,22 @@ protected:
 	}
 	C *data , *_data;
 	difference_type min , max;
-#if FULL_ARRAY_DEBUG
-	static void _AddMemoryInfo( const void* ptr , const char* name )
-	{
-		size_t sz = memoryInfo.size();
-		memoryInfo.resize( sz + 1 );
-		memoryInfo[sz].address = ptr;
-		if( name ) strcpy( memoryInfo[sz].name , name );
-		else memoryInfo[sz].name[0] = 0;
-	}
-	static void _RemoveMemoryInfo( const void* ptr )
-	{
-		{
-			size_t idx;
-			for( idx=0 ; idx<memoryInfo.size( ) ; idx++ ) if( memoryInfo[idx].address==ptr ) break;
-			if( idx==memoryInfo.size() ) Miscellany::ErrorOut( "Could not find memory in address table" );
-			else
-			{
-				memoryInfo[idx] = memoryInfo[memoryInfo.size()-1];
-				memoryInfo.pop_back( );
-			}
-		}
-	}
-#endif // FULL_ARRAY_DEBUG
 
 public:
 	difference_type minimum( void ) const { return min; }
 	difference_type maximum( void ) const { return max; }
 
 	operator C*() { return data; }
-	static inline Array New( size_t size , const char* name=NULL )
+	static inline Array New( size_t size )
 	{
 		Array a;
 		a._data = a.data = new C[size];
 		a.min = 0;
 #pragma message( "[WARNING] Casting unsigned to signed" )
 		a.max = ( difference_type ) size;
-#if FULL_ARRAY_DEBUG
-		_AddMemoryInfo( a._data , name );
-#endif // FULL_ARRAY_DEBUG
 		return a;
 	}
-	static inline Array Alloc( size_t size , bool clear , const char* name=NULL )
+	static inline Array Alloc( size_t size , bool clear )
 	{
 		Array a;
 		a._data = a.data = ( C* ) malloc( size * sizeof( C ) );
@@ -133,12 +96,9 @@ public:
 		a.min = 0;
 #pragma message( "[WARNING] Casting unsigned to signed" )
 		a.max = ( difference_type ) size;
-#if FULL_ARRAY_DEBUG
-		_AddMemoryInfo( a._data , name );
-#endif // FULL_ARRAY_DEBUG
 		return a;
 	}
-	static inline Array AlignedAlloc( size_t size , size_t alignment , bool clear , const char* name=NULL )
+	static inline Array AlignedAlloc( size_t size , size_t alignment , bool clear )
 	{
 		Array a;
 		a.data = ( C* ) aligned_malloc( sizeof(C) * size , alignment );
@@ -148,26 +108,17 @@ public:
 		a.min = 0;
 #pragma message( "[WARNING] Casting unsigned to signed" )
 		a.max = ( difference_type ) size;
-#if FULL_ARRAY_DEBUG
-		_AddMemoryInfo( a._data , name );
-#endif // FULL_ARRAY_DEBUG
 		return a;
 	}
-	static inline Array ReAlloc( Array& a , size_t size , bool clear , const char* name=NULL )
+	static inline Array ReAlloc( Array& a , size_t size , bool clear )
 	{
 		Array _a;
 		_a._data = _a.data = ( C* ) realloc( a.data , size * sizeof( C ) );
 		if( clear ) memset( _a.data ,  0 , size * sizeof( C ) );
-#if FULL_ARRAY_DEBUG
-		_RemoveMemoryInfo( a._data );
-#endif // FULL_ARRAY_DEBUG
 		a._data = NULL;
 		_a.min = 0;
 #pragma message( "[WARNING] Casting unsigned to signed" )
 		_a.max = ( difference_type ) size;
-#if FULL_ARRAY_DEBUG
-		_AddMemoryInfo( _a._data , name );
-#endif // FULL_ARRAY_DEBUG
 		return _a;
 	}
 
@@ -266,9 +217,6 @@ public:
 		if( _data )
 		{
 			free( _data );
-#if FULL_ARRAY_DEBUG
-			_RemoveMemoryInfo( _data );
-#endif // FULL_ARRAY_DEBUG
 		}
 		(*this) = Array( );
 	}
@@ -277,9 +225,6 @@ public:
 		if( _data )
 		{
 			delete[] _data;
-#if FULL_ARRAY_DEBUG
-			_RemoveMemoryInfo( _data );
-#endif // FULL_ARRAY_DEBUG
 		}
 		(*this) = Array( );
 	}
@@ -402,9 +347,7 @@ public:
 };
 template< class C , class Offset > ConstArray< C > operator + ( Offset idx , const ConstArray< C >& a ){ return (a+idx); }
 
-#if FULL_ARRAY_DEBUG
-inline void PrintMemoryInfo( void ){ for( size_t i=0 ; i<memoryInfo.size() ; i++ ) printf( "%d] %s" , i , memoryInfo[i].name ); }
-#endif // FULL_ARRAY_DEBUG
+
 template< class C >
 Array< C > memcpy( Array< C > destination , const void* source , size_t size )
 {

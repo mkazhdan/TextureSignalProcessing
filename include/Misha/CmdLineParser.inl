@@ -33,9 +33,9 @@ DAMAGE.
 inline int strcasecmp( char* c1 , char* c2 ){ return _stricmp( c1 , c2 ); }
 #endif // WIN32
 
-template< > void cmdLineCleanUp< int    >( int*    t ){ }
-template< > void cmdLineCleanUp< float  >( float*  t ){ }
-template< > void cmdLineCleanUp< double >( double* t ){ }
+template< > void cmdLineCleanUp< int    >( int *    ){ }
+template< > void cmdLineCleanUp< float  >( float *  ){ }
+template< > void cmdLineCleanUp< double >( double * ){ }
 template< > void cmdLineCleanUp< char*  >( char** t ){ if( *t ) free( *t ) ; *t = NULL; }
 template< > int    cmdLineInitialize< int    >( void ){ return 0; }
 template< > float  cmdLineInitialize< float  >( void ){ return 0.f; }

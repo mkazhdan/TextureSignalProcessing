@@ -1,5 +1,4 @@
 TARGET= ReactionDiffusion
-
 SOURCE= ReactionDiffusion.cpp
 
 
@@ -9,7 +8,7 @@ LFLAGS += -lgomp -lz -lGL -lGLU -lglut -lGLEW -lpng -ljpeg
 CFLAGS_DEBUG = -DDEBUG -g3
 LFLAGS_DEBUG =
 
-CFLAGS_RELEASE = -O3 -DRELEASE -funroll-loops -ffast-math -DNDEBUG
+CFLAGS_RELEASE = -O3 -DRELEASE -funroll-loops -ffast-math -DNDEBUG -DNEW_CODE
 LFLAGS_RELEASE = -O3 
 
 SRC = ./

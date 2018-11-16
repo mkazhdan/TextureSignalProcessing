@@ -28,21 +28,15 @@ DAMAGE.
 #ifndef CONSTRAINED_TRIANGULATION_INCLUDED
 #define CONSTRAINED_TRIANGULATION_INCLUDED
 
-#include<Misha/Geometry.h>
+#include <Misha/Geometry.h>
 
-#undef REAL
-#undef dest
-#define ANSI_DECLARATORS
-#define TRILIBRARY
-#define NO_TIMER
-
-#include "triangle.c"
+#include "Triangle.h"
 
 template< typename GeometryReal >
 void TriangulatePolygon( const std::vector< Point2D< GeometryReal > > &vertices , std::vector< TriangleIndex > &outputTriangles )
 {
 
-	struct triangulateio in, out;
+	struct triangulateio< GeometryReal > in, out;
 
 	/* Define input points. */
 
@@ -77,7 +71,7 @@ void TriangulatePolygon( const std::vector< Point2D< GeometryReal > > &vertices 
 	/* Refine the triangulation according to the attached */
 	/*   triangle area constraints.                       */
 
-	triangulate("pQ", &in, &out, (struct triangulateio *) NULL);
+	triangulate( "pQ" , &in , &out , (struct triangulateio< GeometryReal > *) NULL );
 
 	outputTriangles.resize(out.numberoftriangles);
 	for (int i = 0; i < out.numberoftriangles; i++) outputTriangles[i] = TriangleIndex(out.trianglelist[3 * i] - 1, out.trianglelist[3 * i + 1] - 1, out.trianglelist[3 * i + 2] - 1);
@@ -95,12 +89,5 @@ void TriangulatePolygon( const std::vector< Point2D< GeometryReal > > &vertices 
 	free(out.triangleattributelist);
 	free(out.segmentmarkerlist);
 }
-
-
-#undef REAL
-#undef dest
-#undef ANSI_DECLARATORS
-#undef TRILIBRARY
-#undef NO_TIMER
 
 #endif //CONSTRAINED_TRIANGULATION_INCLUDED

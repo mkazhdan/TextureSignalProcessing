@@ -45,7 +45,6 @@ void LoopVertices( std::unordered_map< unsigned long long , unsigned long long >
 			std::vector< unsigned long long> currentLoop;
 			unsigned long long currentVertex = sourceVertex;
 			bool terminate = false;
-			unsigned int startEdgeCounter = edgeCounter;
 			do{
 				if (alreadyVisitedVertex.find(currentVertex) == alreadyVisitedVertex.end()){
 					alreadyVisitedVertex.insert(currentVertex);
@@ -74,7 +73,6 @@ void ListVerticesSimpleLoop( std::unordered_map< int , int > &forwardMap , std::
 {
 	vertexList.clear();
 	std::unordered_set<int> alreadyVisitedVertex;
-	int loopCounter = 0;
 
 	int sourceVertex = (*forwardMap.begin()).first;
 	int currentVertex = sourceVertex;

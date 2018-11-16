@@ -229,7 +229,7 @@ public:
 	static void ExportTextureCallBack(Visualization* v, const char* prompt);
 
 	static void Init( void );
-	static void InitializeVisualization( int width , int height );
+	static void InitializeVisualization( void );
 	static void ComputeExactSolution( bool verbose= false );
 	static void UpdateSolution( bool verbose=false , bool detailVerbose=false );
 	static void InitializeSystem( const FEM::RiemannianMesh< PreReal >& rMesh , int width , int height );
@@ -383,7 +383,8 @@ void LineConvolution< PreReal , Real >::Idle( void )
 }
 
 template< typename PreReal , typename  Real >
-void LineConvolution< PreReal , Real >::MouseFunc(int button, int state, int x, int y) {
+void LineConvolution< PreReal , Real >::MouseFunc( int button , int /*state*/ , int x , int y )
+{
 
 	visualization.newX = x; visualization.newY = y;
 	visualization.rotating = visualization.scaling = visualization.panning = false;
@@ -398,8 +399,6 @@ void LineConvolution< PreReal , Real >::MotionFunc(int x, int y) {
 	if( !visualization.showMesh )
 	{
 		visualization.oldX = visualization.newX, visualization.oldY = visualization.newY, visualization.newX = x, visualization.newY = y;
-
-		int imageSize = std::min< int >( visualization.screenWidth , visualization.screenHeight );
 		if( visualization.panning ) visualization.xForm.offset[0] -= ( visualization.newX-visualization.oldX ) / visualization.imageToScreenScale() , visualization.xForm.offset[1] += ( visualization.newY-visualization.oldY ) / visualization.imageToScreenScale();
 		else
 		{
@@ -426,7 +425,7 @@ void LineConvolution< PreReal , Real >::MotionFunc(int x, int y) {
 	glutPostRedisplay();
 }
 template< typename PreReal , typename Real >
-void LineConvolution< PreReal , Real >::SharpeningInterpolationWeightCallBack( Visualization* v , const char* prompt )
+void LineConvolution< PreReal , Real >::SharpeningInterpolationWeightCallBack( Visualization * /*v*/ , const char* prompt )
 {
 	for( int i=0 ; i<multigridLineConvolutionVariables[0].x.size() ; i++) multigridLineConvolutionVariables[0].x[i] *= 0;
 	for( int i=0 ; i<multigridModulationVariables[0].x.size() ; i++) multigridModulationVariables[0].x[i] *= 0;
@@ -440,7 +439,7 @@ void LineConvolution< PreReal , Real >::SharpeningInterpolationWeightCallBack( V
 	if( UseDirectSolver.set ) UpdateOutputBuffer( multigridModulationVariables[0].x );
 }
 template< typename PreReal , typename Real >
-void LineConvolution< PreReal , Real >::LICInterpolationWeightCallBack( Visualization* v , const char* prompt )
+void LineConvolution< PreReal , Real >::LICInterpolationWeightCallBack( Visualization * /*v*/ , const char* prompt )
 {
 	for( int i=0 ; i<multigridLineConvolutionVariables[0].x.size() ; i++ ) multigridLineConvolutionVariables[0].x[i] *= 0;
 	for( int i=0 ; i<multigridModulationVariables[0].x.size() ; i++ ) multigridModulationVariables[0].x[i] *= 0;
@@ -455,7 +454,7 @@ void LineConvolution< PreReal , Real >::LICInterpolationWeightCallBack( Visualiz
 	if( UseDirectSolver.set ) UpdateOutputBuffer( multigridModulationVariables[0].x );
 }
 template< typename PreReal , typename Real >
-void LineConvolution< PreReal , Real >::SharpeningGradientModulationCallBack( Visualization* v , const char* prompt )
+void LineConvolution< PreReal , Real >::SharpeningGradientModulationCallBack( Visualization * /*v*/ , const char* prompt )
 {
 	for( int i=0 ; i<multigridLineConvolutionVariables[0].x.size() ; i++ ) multigridLineConvolutionVariables[0].x[i] *= 0;
 	for( int i=0 ; i<multigridModulationVariables[0].x.size() ; i++ ) multigridModulationVariables[0].x[i] *= 0;
@@ -466,21 +465,21 @@ void LineConvolution< PreReal , Real >::SharpeningGradientModulationCallBack( Vi
 }
 
 template< typename PreReal , typename Real >
-void LineConvolution< PreReal , Real >::ToggleUpdateCallBack( Visualization* v , const char* prompt )
+void LineConvolution< PreReal , Real >::ToggleUpdateCallBack( Visualization * /*v*/ , const char * /*prompt*/ )
 {
 	if( updateCount ) updateCount =  0;
 	else              updateCount = -1;
 }
 
 template< typename PreReal , typename Real >
-void LineConvolution< PreReal , Real >::IncrementUpdateCallBack( Visualization* v , const char* prompt )
+void LineConvolution< PreReal , Real >::IncrementUpdateCallBack( Visualization * /*v*/ , const char * /*prompt*/ )
 {
 	if( updateCount<0 ) updateCount = 1;
 	else updateCount++;
 }
 
 template< typename PreReal , typename Real >
-void LineConvolution< PreReal , Real >::ExportTextureCallBack( Visualization* v , const char* prompt )
+void LineConvolution< PreReal , Real >::ExportTextureCallBack( Visualization * /*v*/ , const char *prompt )
 {
 	Image< Point3D< float > > outputImage;
 	outputImage.resize( textureWidth , textureHeight );
@@ -590,7 +589,7 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 			mesh.updateNormals();
 			// Smooth the normals
 			{
-				Miscellany::Timer timer;
+				Miscellany::Timer tmr;
 
 				SparseMatrix< PreReal , int > M , _M = rMesh.template massMatrix< FEM::BASIS_0_WHITNEY >() , _S = rMesh.template stiffnessMatrix< FEM::BASIS_0_WHITNEY >();
 				M.resize( 2*mesh.vertices.size() );
@@ -643,7 +642,7 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 						for( int i=0 ; i<mesh.vertices.size() ; i++ ) mesh.normals[i] += tangents[2*i+0] * o[2*i+0] + tangents[2*i+1] * o[2*i+1] , mesh.normals[i] /= Length( mesh.normals[i] );
 					}
 				}		
-				if( Verbose.set ) printf( "\tSmoothed normals: %.2f(s)\n" , timer.elapsed() );
+				if( Verbose.set ) printf( "\tSmoothed normals: %.2f(s)\n" , tmr.elapsed() );
 			}
 			InitializePrincipalCurvatureDirection( mesh , mesh.normals , principalCurvatures );
 			mesh.updateNormals();
@@ -727,11 +726,11 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 
 		if( UseDirectSolver.set )
 		{
-			Miscellany::Timer timer;
+			Miscellany::Timer tmr;
 			FullMatrixConstruction( hierarchy.gridAtlases[0] , anisoMassCoefficients , anisotropicMass);
 			FullMatrixConstruction( hierarchy.gridAtlases[0] , anisoStiffnessCoefficients , anisotropicStiffness);
 			lineConvolutionMatrix = anisotropicMass * licInterpolationWeight + anisotropicStiffness;
-			printf( "Assembling matrices =  %.4f\n" , timer.elapsed() );
+			printf( "Assembling matrices =  %.4f\n" , tmr.elapsed() );
 		}
 
 		timer.reset();
@@ -740,7 +739,7 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 	}
 
 	//////////////////////////////////// 	Modulation coefficients
-	SparseMatrix< Real, int > modulationMatrix;
+	SparseMatrix< Real, int > modMatrix;
 	{
 		InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric );
 
@@ -765,15 +764,15 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 
 		if( UseDirectSolver.set )
 		{
-			Miscellany::Timer timer;
+			Miscellany::Timer tmr;
 			FullMatrixConstruction( hierarchy.gridAtlases[0] , massCoefficients , mass);
 			FullMatrixConstruction( hierarchy.gridAtlases[0] , stiffnessCoefficients , stiffness);
-			modulationMatrix = mass * sharpeningInterpolationWeight + stiffness;
-			printf( "Assembling matrices =  %.4f\n" , timer.elapsed() );
+			modMatrix = mass * sharpeningInterpolationWeight + stiffness;
+			printf( "Assembling matrices =  %.4f\n" , tmr.elapsed() );
 		}
 
 		timer.reset();
-		UpdateLinearSystem( sharpeningInterpolationWeight , (Real)1. , hierarchy , multigridModulationCoefficients , massCoefficients , stiffnessCoefficients , modulationSolvers , fineModulationSolver , modulationMatrix , DetailVerbose.set , true , UseDirectSolver.set );
+		UpdateLinearSystem( sharpeningInterpolationWeight , (Real)1. , hierarchy , multigridModulationCoefficients , massCoefficients , stiffnessCoefficients , modulationSolvers , fineModulationSolver , modMatrix , DetailVerbose.set , true , UseDirectSolver.set );
 		if( Verbose.set ) printf( "\tInitialized multigrid coefficients: %.2f(s)\n" , timer.elapsed() );
 	}
 
@@ -800,9 +799,6 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 		variables.variable_boundary_value.resize(hierarchy.gridAtlases[i].boundaryGlobalIndex.size());
 	}
 
-	int numTexels = hierarchy.gridAtlases[0].numTexels;
-	int numFineNodes = hierarchy.gridAtlases[0].numFineNodes;
-
 	randSignal.resize( textureNodes.size() );
 
 	for( int i=0 ; i<randSignal.size() ; i++ )
@@ -826,7 +822,7 @@ void LineConvolution< PreReal , Real >::Reset( void )
 }
 
 template< typename PreReal , typename  Real >
-void LineConvolution< PreReal , Real >::InitializeVisualization( int width , int height )
+void LineConvolution< PreReal , Real >::InitializeVisualization( void )
 {
 	int tCount = (int)mesh.triangles.size();
 
@@ -974,7 +970,7 @@ void _main( int argc , char* argv[] )
 		glutKeyboardFunc( LineConvolution< PreReal , Real >::KeyboardFunc );
 		if( !UseDirectSolver.set ) glutIdleFunc( LineConvolution< PreReal , Real >::Idle );
 		if( CameraConfig.set ) LineConvolution< PreReal , Real >::visualization.ReadSceneConfigurationCallBack( &LineConvolution< PreReal , Real >::visualization , CameraConfig.value );
-		LineConvolution< PreReal , Real >::InitializeVisualization( LineConvolution< PreReal , Real >::textureWidth , LineConvolution< PreReal , Real >::textureHeight );
+		LineConvolution< PreReal , Real >::InitializeVisualization();
 		glutMainLoop();
 	}
 	else

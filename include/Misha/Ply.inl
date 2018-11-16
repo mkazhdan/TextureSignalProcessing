@@ -644,7 +644,6 @@ int PlyReadPolygons( const char* fileName,
 	int nr_elems;
 	char **elist;
 	float version;
-	int i,j;
 	PlyFile* ply;
 	char* elem_name;
 	int num_elems;
@@ -678,15 +677,15 @@ int PlyReadPolygons( const char* fileName,
 				}
 				free( ply->elems[i]->props );
 			}
-			for(i=0;i<nr_elems;i++){free(ply->elems[i]);}
+			for( int ii=0 ; ii<nr_elems ; ii++ ) free( ply->elems[ii] );
 			free(ply->elems);
-			for(i=0;i<ply->num_comments;i++){free(ply->comments[i]);}
+			for( int ii=0 ; ii<ply->num_comments ; ii++ ) free( ply->comments[ii] );
 			free(ply->comments);
-			for(i=0;i<ply->num_obj_info;i++){free(ply->obj_info[i]);}
+			for( int ii=0 ; ii<ply->num_obj_info ; ii++ ) free( ply->obj_info[ii] );
 			free(ply->obj_info);
 			ply_free_other_elements (ply->other_elems);
 			
-			for(i=0;i<nr_elems;i++){free(elist[i]);}
+			for( int ii=0 ; ii<nr_elems ; ii++ ) free( elist[ii] );
 			free(elist);
 			ply_close(ply);
 			return 0;
@@ -721,25 +720,25 @@ int PlyReadPolygons( const char* fileName,
 		free( plist );
 	}  // for each type of element
 	
-	for(i=0;i<nr_elems;i++){
+	for( int i=0;i<nr_elems;i++){
 		free(ply->elems[i]->name);
 		free(ply->elems[i]->store_prop);
-		for(j=0;j<ply->elems[i]->nprops;j++){
+		for( int j=0;j<ply->elems[i]->nprops;j++){
 			free(ply->elems[i]->props[j]->name);
 			free(ply->elems[i]->props[j]);
 		}
 		if(ply->elems[i]->props && ply->elems[i]->nprops){free(ply->elems[i]->props);}
 	}
-	for(i=0;i<nr_elems;i++){free(ply->elems[i]);}
+	for( int i=0;i<nr_elems;i++){free(ply->elems[i]);}
 	free(ply->elems);
-	for(i=0;i<ply->num_comments;i++){free(ply->comments[i]);}
+	for( int i=0;i<ply->num_comments;i++){free(ply->comments[i]);}
 	free(ply->comments);
-	for(i=0;i<ply->num_obj_info;i++){free(ply->obj_info[i]);}
+	for( int i=0;i<ply->num_obj_info;i++){free(ply->obj_info[i]);}
 	free(ply->obj_info);
 	ply_free_other_elements (ply->other_elems);
 	
 	
-	for(i=0;i<nr_elems;i++){free(elist[i]);}
+	for( int i=0;i<nr_elems;i++){free(elist[i]);}
 	free(elist);
 	ply_close(ply);
 	return 1;

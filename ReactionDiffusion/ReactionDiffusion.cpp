@@ -225,8 +225,8 @@ public:
 	static void IncrementUpdateCallBack( Visualization* v , const char* prompt );
 	static void ExportTextureCallBack( Visualization* v , const char* prompt );
 	static void Init( void );
-	static void InitializeVisualization( int width , int height );
-	static void SetRightHandSide( bool verbose=false );
+	static void InitializeVisualization( void );
+	static void SetRightHandSide( void );
 	static void UpdateExactSolution( bool verbose=false );
 	static void UpdateApproximateSolution( bool verbose=false , bool detailVerbose=false );
 	static void InitializeSystem( int width , int height );
@@ -305,7 +305,7 @@ template< typename PreReal , typename Real > int																	GrayScottReacti
 
 
 template< typename PreReal , typename Real >
-void GrayScottReactionDiffusion< PreReal , Real >::SetRightHandSide( bool verbose )
+void GrayScottReactionDiffusion< PreReal , Real >::SetRightHandSide( void )
 {
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
 	// ( D + d * diff1 * S ) a[t+d] = D( a[t] + d * ( - a[t] * b[t] * b[t] + feed * ( 1 - a[t] ) ) )    //
@@ -351,7 +351,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::UpdateExactSolution( bool ver
 	// (1) Compute the right-hand-sides
 	{
 		Miscellany::Timer timer;
-		SetRightHandSide( verbose );
+		SetRightHandSide();
 		if( verbose ) printf( "Integrating normalized vector field %.4f\n" , timer.elapsed() );
 	}
 
@@ -374,7 +374,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::UpdateApproximateSolution( bo
 	// Compute the right-hand-sides
 	{
 		Miscellany::Timer timer;
-		SetRightHandSide( verbose );
+		SetRightHandSide();
 		rhsTime = timer.elapsed();
 	}
 
@@ -492,8 +492,6 @@ void GrayScottReactionDiffusion< PreReal , Real >::MotionFunc( int x , int y )
 		if( !visualization.showMesh )
 		{
 			visualization.oldX = visualization.newX , visualization.oldY = visualization.newY , visualization.newX = x , visualization.newY = y;
-
-			int imageSize = std::min< int >( visualization.screenWidth , visualization.screenHeight );
 			if( visualization.panning ) visualization.xForm.offset[0] -= ( visualization.newX - visualization.oldX ) / visualization.imageToScreenScale() , visualization.xForm.offset[1] += ( visualization.newY - visualization.oldY ) / visualization.imageToScreenScale();
 			else
 			{
@@ -521,7 +519,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::MotionFunc( int x , int y )
 }
 
 template< typename PreReal , typename Real >
-void GrayScottReactionDiffusion< PreReal , Real >::ExportTextureCallBack( Visualization* v , const char* prompt )
+void GrayScottReactionDiffusion< PreReal , Real >::ExportTextureCallBack( Visualization * /*v*/ , const char* prompt )
 {
 	Image< Point3D< Real > > outputImage;
 	outputImage.resize( textureWidth , textureHeight );
@@ -664,12 +662,12 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 
 	if( UseDirectSolver.set )
 	{
-		Miscellany::Timer timer;
+		Miscellany::Timer tmr;
 		FullMatrixConstruction( hierarchy.gridAtlases[0] , massCoefficients , mass );
 		FullMatrixConstruction( hierarchy.gridAtlases[0] , stiffnessCoefficients , stiffness );
 		systemMatrices[0] = mass + stiffness * diffusionRates[0] * speed;
 		systemMatrices[1] = mass + stiffness * diffusionRates[1] * speed;
-		if( Verbose.set ) printf( "\tAssembled matrices: %.2f(s)\n" , timer.elapsed() );
+		if( Verbose.set ) printf( "\tAssembled matrices: %.2f(s)\n" , tmr.elapsed() );
 	}
 
 	//////////////////////////////////// Initialize multigrid indices
@@ -713,7 +711,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 
 	//////////////////////////////////// Initialize cell samples
 
-	InitializeGridAtlasInteriorCellLines( atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLines , interiorCellLineIndex );
+	InitializeGridAtlasInteriorCellLines( hierarchy.gridAtlases[0].gridCharts , interiorCellLines , interiorCellLineIndex );
 	if( interiorCellLineIndex.size()!=hierarchy.gridAtlases[0].numInteriorCells ) Miscellany::Throw( "Inconsistent number of interior cells! Expected %d . Result %d." , hierarchy.gridAtlases[0].numInteriorCells , (int)interiorCellLineIndex.size() );
 
 	coarseBoundaryFineBoundaryProlongation = boundaryProlongation.coarseBoundaryFineBoundaryProlongation;
@@ -743,13 +741,10 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 	fineBoundaryRHS.resize   ( numFineBoundarNodes );
 
 	scalarSamples.sort();
-
-	int numTexels = hierarchy.gridAtlases[0].numTexels;
-	int numFineNodes = hierarchy.gridAtlases[0].numFineNodes;
 }
 
 template< typename PreReal , typename Real >
-void GrayScottReactionDiffusion< PreReal , Real >::InitializeVisualization( int width , int height )
+void GrayScottReactionDiffusion< PreReal , Real >::InitializeVisualization( void )
 {
 	int tCount = (int)mesh.triangles.size();
 
@@ -945,7 +940,7 @@ void _main( int argc , char* argv[] )
 		glutKeyboardFunc( GrayScottReactionDiffusion< PreReal , Real >::KeyboardFunc );
 		glutIdleFunc    ( GrayScottReactionDiffusion< PreReal , Real >::Idle );
 		if( CameraConfig.set ) GrayScottReactionDiffusion< PreReal , Real >::visualization.ReadSceneConfigurationCallBack( &GrayScottReactionDiffusion< PreReal , Real >::visualization , CameraConfig.value );
-		GrayScottReactionDiffusion< PreReal , Real >::InitializeVisualization( GrayScottReactionDiffusion< PreReal , Real >::textureWidth , GrayScottReactionDiffusion< PreReal , Real >::textureHeight );
+		GrayScottReactionDiffusion< PreReal , Real >::InitializeVisualization();
 		glutMainLoop();
 	}
 	else

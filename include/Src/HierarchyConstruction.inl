@@ -583,7 +583,6 @@ void InitializeAtlasHierachicalBoundaryCoefficients( const GridAtlas< GeometryRe
 {
 	std::vector< Eigen::Triplet< MatrixReal > > prolongationTriplets;
 
-	const std::vector<GridNodeInfo> & fineNodeInfo = fineAtlas.nodeInfo;
 	const std::vector<GridNodeInfo> & coarseNodeInfo = coarseAtlas.nodeInfo;
 	for (int i = 0; i < coarseAtlas.boundaryGlobalIndex.size(); i++) {
 		const GridNodeInfo & currentNode = coarseNodeInfo[coarseAtlas.boundaryGlobalIndex[i]];
@@ -645,7 +644,7 @@ void InitializeAtlasHierachicalBoundaryCoefficients( const GridAtlas< GeometryRe
 				int fineGlobalIndex = fineChart.globalTexelIndex(pi, pj);
 				if (fineGlobalIndex != -1) {
 					int fineBoundaryIndex = fineAtlas.boundaryAndDeepIndex[fineGlobalIndex];
-					MatrixReal weight = (MatrixReal)( 1.0 / (1.0 + fabs(di) ) / ( 1.0 + fabs(dj) ) );
+					MatrixReal weight = (MatrixReal)( 1.0 / (1.0 + std::abs(di) ) / ( 1.0 + std::abs(dj) ) );
 					if (fineBoundaryIndex > 0) {//Boundary
 						fineBoundaryIndex -= 1;
 						prolongationTriplets.push_back( Eigen::Triplet< MatrixReal >( fineBoundaryIndex , i , weight ) );
@@ -662,8 +661,8 @@ void InitializeAtlasHierachicalBoundaryCoefficients( const GridAtlas< GeometryRe
 										int oi = di + ki;
 										int oj = dj + kj;
 										for (int n = 0; n < numBoundaryNeighbours; n++) {
-											MatrixReal diff_i = (MatrixReal)fabs( oi - boundary_offset_i[n] );
-											MatrixReal diff_j = (MatrixReal)fabs( oj - boundary_offset_j[n] );
+											MatrixReal diff_i = (MatrixReal)std::abs( oi - boundary_offset_i[n] );
+											MatrixReal diff_j = (MatrixReal)std::abs( oj - boundary_offset_j[n] );
 											if (diff_i < 1.5 && diff_j < 1.5) {
 												MatrixReal weight2 = (MatrixReal)( 1.0 / (1.0 + diff_i ) / ( 1.0 + diff_j ) );
 												BoundaryBoundaryIndex< MatrixReal > bbIndex;
@@ -688,8 +687,8 @@ void InitializeAtlasHierachicalBoundaryCoefficients( const GridAtlas< GeometryRe
 
 							for (int n = 0; n < numBoundaryNeighbours; n++)
 							{
-								MatrixReal diff_i = (MatrixReal)fabs( oi - boundary_offset_i[n] );
-								MatrixReal diff_j = (MatrixReal)fabs( oj - boundary_offset_j[n] );
+								MatrixReal diff_i = (MatrixReal)std::abs( oi - boundary_offset_i[n] );
+								MatrixReal diff_j = (MatrixReal)std::abs( oj - boundary_offset_j[n] );
 								if (diff_i < 1.5 && diff_j < 1.5)
 								{
 									MatrixReal weight2 = (MatrixReal)( 1.0 / ( 1.0 + diff_i ) / ( 1.0 + diff_j ) );
@@ -717,7 +716,7 @@ void InitializeAtlasHierachicalBoundaryCoefficients( const GridAtlas< GeometryRe
 
 
 template< typename GeometryReal , typename MatrixReal >
-void InitializeHierarchy( const std::vector< int > &oppositeHalfEdge , const int width , const int height , HierarchicalSystem< GeometryReal , MatrixReal > &hierarchy , AtlasMesh< GeometryReal > &atlasMesh , std::vector< AtlasChart< GeometryReal > > &atlasCharts , const int levels , const MultigridBlockInfo &multigridBlockInfo , bool verbose=false )
+void InitializeHierarchy( const int width , const int height , HierarchicalSystem< GeometryReal , MatrixReal > &hierarchy , std::vector< AtlasChart< GeometryReal > > &atlasCharts , const int levels , const MultigridBlockInfo &multigridBlockInfo , bool verbose=false )
 {
 	Miscellany::Timer timer;
 
@@ -792,7 +791,7 @@ void InitializeHierarchy
 
 	if( verbose ) timer.reset();
 	//(2) Initialize Hierarchy
-	InitializeHierarchy( oppositeHalfEdge , width , height , hierarchy , atlasMesh , atlasCharts , levels , multigridBlockInfo , detailVerbose );
+	InitializeHierarchy( width , height , hierarchy , atlasCharts , levels , multigridBlockInfo , detailVerbose );
 	if( detailVerbose ) printf( "Hierarchy construction =  %.4f \n" , timer.elapsed() );
 
 	//(3) Initialize fine level texture nodes and cells

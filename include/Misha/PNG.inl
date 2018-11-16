@@ -77,7 +77,7 @@ inline bool PNGReader::GetInfo( const char* fileName , unsigned int& width , uns
 	return true;
 }
 
-PNGWriter::PNGWriter( const char* fileName , unsigned int width , unsigned int height , unsigned int channels , unsigned int quality )
+PNGWriter::PNGWriter( const char* fileName , unsigned int width , unsigned int height , unsigned int channels , unsigned int /*quality*/ )
 {
 	_currentRow = 0;
 

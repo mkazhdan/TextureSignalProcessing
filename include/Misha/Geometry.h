@@ -921,7 +921,7 @@ public:
 
 	ConeVertex()
 		: v(-1), two_cone_angle_over_pi(0) { }
-	ConeVertex(int i, int doubleConeAngleOverPi)
+	ConeVertex(int i, char doubleConeAngleOverPi)
 		: v(i), two_cone_angle_over_pi(doubleConeAngleOverPi)
 	{
 	}
@@ -1029,18 +1029,6 @@ public:
 		: TriangleIndex(t) { m_uv[0] = m_uv[1] = m_uv[2] = 0; }
 	int &uv(int idx)        { return m_uv[idx]; }
 	int  uv(int idx) const  { return m_uv[idx]; }
-	////////////////////////////////////////////////////////////////////////////
-	/*! Typecast to TriangleIndex strips uv indices
-	*///////////////////////////////////////////////////////////////////////////
-	operator TriangleIndex() const
-	{
-		TriangleIndex out(v[0], v[1], v[2]);
-		return out;
-	}
-	operator TriangleIndex&()
-	{
-		return *((TriangleIndex *) this);
-	}
 };
 
 template <class Real>

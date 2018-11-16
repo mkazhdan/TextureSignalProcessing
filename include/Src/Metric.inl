@@ -105,7 +105,6 @@ void InitializePrincipalCurvatureDirection( const TexturedMesh< GeometryReal > &
 	GeometryReal inputMass = mesh.area();
 	GeometryReal edgeScaling = (GeometryReal)( 1.0 / sqrt(inputMass) );
 #endif // NORMALIZE_SURFACE_EMBEDDING
-	GeometryReal totalMass = 0;
 	for( int t=0 ; t<mesh.triangles.size() ; t++ )
 	{
 		Point3D< GeometryReal > vPos[3];
@@ -220,7 +219,7 @@ void InitializeParameterMetric( const TexturedMesh< GeometryReal > &mesh , const
 			SquareMatrix< GeometryReal , 2 > embedding_metric = embeddingMetric[t];
 
 			Point2D< GeometryReal > tPos[3];
-			for ( int i=0 ; i<3 ; i++ ) tPos[i] = mesh.textureCoordinates[3*t+i];
+			for( int ii=0 ; ii<3 ; ii++ ) tPos[ii] = mesh.textureCoordinates[3*t+ii];
 
 			Point2D< GeometryReal > dp[2] = { tPos[1] - tPos[0], tPos[2] - tPos[0] };
 

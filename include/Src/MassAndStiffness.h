@@ -254,7 +254,7 @@ void InitializeChartMassAndStiffness
 				if( ClipTriangleToPrimalCell( polygon , i , j , gridChart.cellSizeW , gridChart.cellSizeH ) )
 				{
 					// Transform the polygon vertices into the coordinate frame of the cell
-					for( int i=0 ; i<polygon.size() ; i++ ) polygon[i] = TextureToElement( polygon[i] );
+					for( int ii=0 ; ii<polygon.size() ; ii++ ) polygon[ii] = TextureToElement( polygon[ii] );
 					SquareMatrix< GeometryReal , 4 > polygonStiffness , polygonMass;
 					SquareMatrix< GeometryReal , 4 > polygonDivergence;
 					
@@ -333,7 +333,7 @@ void InitializeChartMassAndStiffness
 				{
 					BoundaryIndexedTriangle< GeometryReal > element = cellBoundaryTriangles[bt];
 					std::vector< Point2D< GeometryReal > > element_vertices(3);
-					for( int i=0 ; i<3 ; i++ ) element_vertices[i] = TextureToCell( element[i] );
+					for( int ii=0 ; ii<3 ; ii++ ) element_vertices[ii] = TextureToCell( element[ii] );
 					int boundaryTriangleId = element.id;
 
 					AtlasIndexedPolygon< GeometryReal > polygon;
@@ -344,7 +344,7 @@ void InitializeChartMassAndStiffness
 					if( clippingResult>0 )
 					{
 						// Convert the polygon vertices from the texture frame to the cell frame
-						for( int i=0 ; i<polygon.size() ; i++ ) polygon[i] = TextureToCell( polygon[i] );
+						for( int ii=0 ; ii<polygon.size() ; ii++ ) polygon[ii] = TextureToCell( polygon[ii] );
 
 						SquareMatrix< GeometryReal , 2 > element_to_cell_differential , cell_to_element_differential;
 						Point2D< GeometryReal > dm[] = { element_vertices[1]-element_vertices[0] , element_vertices[2]-element_vertices[0] };
@@ -352,7 +352,7 @@ void InitializeChartMassAndStiffness
 						cell_to_element_differential = element_to_cell_differential.inverse();
 						auto CellToElement = [&]( Point2D< GeometryReal > p ){ return cell_to_element_differential * ( p - element_vertices[0] ); };
 						// Convert the polygon vertices from the cell frame to the element frame
-						for( int i=0 ; i<polygon.size() ; i++ ) polygon[i] = CellToElement( polygon[i] );
+						for( int ii=0 ; ii<polygon.size() ; ii++ ) polygon[ii] = CellToElement( polygon[ii] );
 
 						SquareMatrix< GeometryReal , 2 > element_metric = element_to_cell_differential.transpose() * cell_metric * element_to_cell_differential;
 						SquareMatrix< GeometryReal , 2 > element_metric_inverse = element_metric.inverse();
@@ -363,10 +363,10 @@ void InitializeChartMassAndStiffness
 
 						for( int p=2 ; p<polygon.vertices.size() ; p++ )
 						{
-							Point2D< GeometryReal > dm[] = { polygon[p-1]-polygon[0] , polygon[p]-polygon[0] };
+							Point2D< GeometryReal > d[] = { polygon[p-1]-polygon[0] , polygon[p]-polygon[0] };
 
 							SquareMatrix< GeometryReal , 2 > fragment_to_element_differential;
-							for( int x=0 ; x<2 ; x++ ) for( int y=0 ; y<2 ; y++ ) fragment_to_element_differential(x,y) = dm[x][y];
+							for( int x=0 ; x<2 ; x++ ) for( int y=0 ; y<2 ; y++ ) fragment_to_element_differential(x,y) = d[x][y];
 							GeometryReal fragment_to_element_area_scale_factor = fabs( fragment_to_element_differential.determinant() );
 							GeometryReal fragment_area = fragment_to_element_area_scale_factor * element_area_scale_factor / 2;
 							if( fragment_area>0 )
@@ -376,7 +376,7 @@ void InitializeChartMassAndStiffness
 								Point2D< GeometryReal > fragment_samples[Samples];
 								for( int s=0 ; s<Samples ; s++ )
 								{
-									fragment_samples[s] = polygon.vertices[0] + dm[0] * (GeometryReal)TriangleIntegrator<Samples>::Positions[s][0] + dm[1] * (GeometryReal)TriangleIntegrator<Samples>::Positions[s][1];
+									fragment_samples[s] = polygon.vertices[0] + d[0] * (GeometryReal)TriangleIntegrator<Samples>::Positions[s][0] + d[1] * (GeometryReal)TriangleIntegrator<Samples>::Positions[s][1];
 									if( !InUnitTriangle( fragment_samples[s] ) ) Miscellany::Throw( "Boundary sample out of unit right triangle! (%f %f)\n" , fragment_samples[s][0] , fragment_samples[s][1] );
 									else
 									{
@@ -621,16 +621,16 @@ void InitializeChartMassAndStiffness
 			{
 				Point< GeometryReal , 6 > prod[3];
 				Point3D < GeometryReal > values[6] = { boundarySignal[fineTriangleElementIndices[0]],boundarySignal[fineTriangleElementIndices[1]],boundarySignal[fineTriangleElementIndices[2]],boundarySignal[fineTriangleElementIndices[3]],boundarySignal[fineTriangleElementIndices[4]],boundarySignal[fineTriangleElementIndices[5]] };
-				for (int c = 0; c < 3; c++)
+				for( int cc=0 ; cc<3 ; cc++ )
 				{
 					Point< GeometryReal , 6 > v;
-					v[0] = values[0][c];
-					v[1] = values[1][c];
-					v[2] = values[2][c];
-					v[3] = values[3][c];
-					v[4] = values[4][c];
-					v[5] = values[5][c];
-					prod[c] = triangleElementStiffness[i] * v;
+					v[0] = values[0][cc];
+					v[1] = values[1][cc];
+					v[2] = values[2][cc];
+					v[3] = values[3][cc];
+					v[4] = values[4][cc];
+					v[5] = values[5][cc];
+					prod[cc] = triangleElementStiffness[i] * v;
 				}
 
 				for (int k = 0; k < 6; k++)

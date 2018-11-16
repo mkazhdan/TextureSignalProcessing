@@ -414,8 +414,6 @@ void Stitching< PreReal , Real >::MotionFunc( int x , int y )
 		else
 		{
 			visualization.oldX = visualization.newX , visualization.oldY = visualization.newY , visualization.newX = x , visualization.newY = y;
-
-			int imageSize = std::min< int >( visualization.screenWidth , visualization.screenHeight );
 			if( visualization.panning ) visualization.xForm.offset[0] -= ( visualization.newX - visualization.oldX ) / visualization.imageToScreenScale() , visualization.xForm.offset[1] += ( visualization.newY - visualization.oldY ) / visualization.imageToScreenScale();
 			else
 			{
@@ -427,7 +425,7 @@ void Stitching< PreReal , Real >::MotionFunc( int x , int y )
 	glutPostRedisplay();
 }
 
-template< typename PreReal , typename Real > void Stitching< PreReal , Real >::ToggleForwardReferenceTextureCallBack( Visualization *v , const char* )
+template< typename PreReal , typename Real > void Stitching< PreReal , Real >::ToggleForwardReferenceTextureCallBack( Visualization * /*v*/ , const char* )
 {
 	textureIndex = ( textureIndex+1 ) % numTextures;
 	visualization.referenceIndex = textureIndex;
@@ -435,7 +433,7 @@ template< typename PreReal , typename Real > void Stitching< PreReal , Real >::T
 	glutPostRedisplay();
 }
 
-template< typename PreReal , typename Real > void Stitching< PreReal , Real >::ToggleBackwardReferenceTextureCallBack( Visualization *v , const char* )
+template< typename PreReal , typename Real > void Stitching< PreReal , Real >::ToggleBackwardReferenceTextureCallBack( Visualization * /*v*/ , const char* )
 {
 	textureIndex = ( textureIndex+numTextures-1 ) % numTextures;
 	visualization.referenceIndex = textureIndex;
@@ -443,21 +441,21 @@ template< typename PreReal , typename Real > void Stitching< PreReal , Real >::T
 	glutPostRedisplay();
 }
 
-template< typename PreReal , typename Real > void Stitching< PreReal , Real >::ToggleUpdateCallBack( Visualization *v , const char * )
+template< typename PreReal , typename Real > void Stitching< PreReal , Real >::ToggleUpdateCallBack( Visualization * /*v*/ , const char * )
 {
 	if( updateCount ) updateCount = 0;
 	else              updateCount = -1;
 }
 
 template< typename PreReal , typename Real >
-void Stitching< PreReal , Real >::IncrementUpdateCallBack( Visualization *v , const char * )
+void Stitching< PreReal , Real >::IncrementUpdateCallBack( Visualization * /*v*/ , const char * )
 {
 	if( updateCount<0 ) updateCount = 1;
 	else                updateCount++;
 }
 
 template< typename PreReal , typename Real >
-void Stitching< PreReal , Real >::ExportTextureCallBack( Visualization *v , const char *prompt )
+void Stitching< PreReal , Real >::ExportTextureCallBack( Visualization * /*v*/ , const char *prompt )
 {
 	UpdateFilteredTexture( multigridStitchingVariables[0].x );
 	Image< Point3D< Real > > outputTexture = filteredTexture;
@@ -466,7 +464,7 @@ void Stitching< PreReal , Real >::ExportTextureCallBack( Visualization *v , cons
 }
 
 template< typename PreReal , typename Real >
-void  Stitching< PreReal , Real >::InterpolationWeightCallBack( Visualization *v , const char *prompt )
+void  Stitching< PreReal , Real >::InterpolationWeightCallBack( Visualization * /*v*/ , const char *prompt )
 {
 	interpolationWeight = atof(prompt);
 	if( UseDirectSolver.set ) stitchingMatrix = mass*interpolationWeight + stiffness;
@@ -499,7 +497,6 @@ void Stitching< PreReal , Real >::UpdateSolution( bool verbose , bool detailVerb
 {
 	if( !rhsUpdated )
 	{
-		int numTexels = (int)multigridStitchingVariables[0].rhs.size();
 		Miscellany::Timer timer;
 
 		MultiplyBySystemMatrix_NoReciprocals( massCoefficients , hierarchy.gridAtlases[0].boundaryGlobalIndex , hierarchy.gridAtlases[0].rasterLines , texelValues , texelMass );
@@ -703,10 +700,6 @@ void Stitching< PreReal , Real >::LoadImages( void )
 template< typename PreReal , typename Real >
 void Stitching< PreReal , Real >::ParseImages( void )
 {
-
-	int width = textureWidth;
-	int height = textureHeight;
-
 	int numNodes = (int)textureNodes.size();
 	int numEdges = (int)edgeIndex.size();
 	unobservedTexel.resize( numNodes );

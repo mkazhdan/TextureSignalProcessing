@@ -167,7 +167,6 @@ void ClipPartiallyIndexedPolygonToIndexedEdge( AtlasIndexedPolygon< GeometryReal
 	outputVertexIndices.reserve( polygon.vertices.size()+3 );
 	outputEdgeIndices.reserve( polygon.vertices.size()+3 );
 	outputParentVertexEdgeIndices.reserve( polygon.vertices.size()+3 );
-	int lastAddedVertexType = -2;
 
 	Point2D< GeometryReal > previousVertex = polygon.vertices[polygon.vertices.size() - 1];
 	int previousVertexIndex = polygon.atlasVertexIndices[polygon.vertices.size() - 1];
@@ -181,8 +180,6 @@ void ClipPartiallyIndexedPolygonToIndexedEdge( AtlasIndexedPolygon< GeometryReal
 	bool emptyPolygon = true;
 
 	bool isCurrentVertexACorner = previousVertexIndex != -1 && (previousVertexIndex == atlasVertexIndices[0] || previousVertexIndex == atlasVertexIndices[1]);
-	//bool isPreviousEdgeColinear = previousEdgeIndex != -1 && previousEdgeIndex == edgeIndex;
-   // bool isNextEdgeColinear = nextEdgeIndex != -1 && nextEdgeIndex == edgeIndex;
 	bool isOnTheEdge = previousVertexEdgeSupport != -1 && previousVertexEdgeSupport == edgeIndex;
 	if (isOnTheEdge || isCurrentVertexACorner)
 	{

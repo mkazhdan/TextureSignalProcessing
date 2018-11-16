@@ -116,13 +116,13 @@ public:
 		_fps = 0;
 	}
 	virtual void idle( void ){;}
-	virtual void keyboardFunc( unsigned char key , int x , int y ){;}
-	virtual void specialFunc( int key, int x, int y ){;}
+	virtual void keyboardFunc( unsigned char /*key*/ , int /*x*/ , int /*y*/ ){;}
+	virtual void specialFunc( int /*key*/ , int /*x*/ , int /*y*/ ){;}
 	virtual void display( void ){;}
-	virtual void reshape( int w , int h ){;}
-	virtual void mouseFunc( int button , int state , int x , int y ){;}
-	virtual void motionFunc( int x , int y ){;}
-	virtual void passiveMotionFunc( int x , int y ){;}
+	virtual void reshape( int /*w*/ , int /*h*/ ){;}
+	virtual void mouseFunc( int /*button*/ , int /*state*/ , int /*x*/ , int /*y*/ ){;}
+	virtual void motionFunc( int /*x*/ , int /*y*/ ){;}
+	virtual void passiveMotionFunc( int /*x*/ , int /*y*/ ){;}
 
 	void Idle        ( void );
 	void KeyboardFunc( unsigned char key , int x , int y );
@@ -411,11 +411,11 @@ void Visualization::Display( void )
 			glVertex2f(     0 , screenHeight-fontHeight*2 );
 		}
 		glEnd();
-		double t = Miscellany::Time();
-		t -= floor( t );
+		double tm = Miscellany::Time();
+		tm -= floor( tm );
 		static char _promptString[1024];
-		if( t<0.5 ) sprintf( _promptString , "%s " , promptString );
-		else        sprintf( _promptString , "%s_" , promptString );
+		if( tm<0.5 ) sprintf( _promptString , "%s " , promptString );
+		else         sprintf( _promptString , "%s_" , promptString );
 		writeLeftString( 10 , screenHeight-fontHeight-fontHeight/2 , _promptString );
 		font = _font;
 		fontHeight = _fontHeight;

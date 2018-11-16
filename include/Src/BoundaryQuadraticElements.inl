@@ -533,7 +533,7 @@ void InitializeChartQuadraticElements( GridChart< GeometryReal > &gridChart , st
 	for (int i = 0; i < boundaryPolygons.size(); i++) {
 		for (int j = 0; j < boundaryPolygons[i].size(); j++) {
 			const AtlasIndexedPolygon< GeometryReal > &currentPolygon = boundaryPolygons[i][j];
-			std::vector<TriangleIndex> delanauyTriangles;
+			std::vector< TriangleIndex > delanauyTriangles;
 			TriangulatePolygon( currentPolygon.vertices , delanauyTriangles );
 			if( delanauyTriangles.size()!=currentPolygon.vertices.size()-2 )
 			{
@@ -551,22 +551,20 @@ void InitializeChartQuadraticElements( GridChart< GeometryReal > &gridChart , st
 					triangle.atlasVertexIndices[v] = currentPolygon.atlasVertexIndices[currentPolygonVertex];
 					triangle.atlasVertexParentEdge[v] = currentPolygon.atlasVertexParentEdge[currentPolygonVertex];
 					triangle.atlasEdgeIndices[v] = -1;
-					bool isAtlasEdge = false;
-					int nextPolygonVertex = (currentPolygonVertex + 1) % currentPolygon.vertices.size();
+					unsigned int nextPolygonVertex = (currentPolygonVertex + 1) % currentPolygon.vertices.size();
 					if (delanauyTriangles[k][(v + 1) % 3] == nextPolygonVertex) { //preserve orientation
 						triangle.atlasEdgeIndices[v] = currentPolygon.atlasEdgeIndices[currentPolygonVertex];
 					}
-					int previousPolygonVertex = (int)( (currentPolygonVertex + currentPolygon.vertices.size() - 1) % currentPolygon.vertices.size() );
-					if (delanauyTriangles[k][(v + 1) % 3] == previousPolygonVertex) {//reverse orientation
+					unsigned int previousPolygonVertex = (unsigned int)( (currentPolygonVertex + currentPolygon.vertices.size() - 1) % currentPolygon.vertices.size() );
+					if( delanauyTriangles[k][(v + 1) % 3] == previousPolygonVertex) {//reverse orientation
 						triangle.atlasEdgeIndices[v] = currentPolygon.atlasEdgeIndices[previousPolygonVertex];
 					}
 
 				}
 				int midVexterIndex[3];
 
-				for (int v = 0; v < 3; v++) {
-					int mIndex = -1;
-
+				for (int v = 0; v < 3; v++)
+				{
 					Point2D< GeometryReal > edgeMidPoint = ( triangle.vertices[ (v+1)%3 ] + triangle.vertices[ (v+2)%3 ] ) / 2;
 					int edgeCorners[2] = { (int)triangle.indices[(v + 1) % 3], (int)triangle.indices[(v + 2) % 3] };
 					if (edgeCorners[0] > edgeCorners[1]) std::swap(edgeCorners[0], edgeCorners[1]);

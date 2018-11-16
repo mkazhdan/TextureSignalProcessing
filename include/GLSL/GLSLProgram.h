@@ -39,8 +39,8 @@ class GLSLProgram
 	template< unsigned int Dim > static void glUniformMatrixfv( GLint location , GLsizei count , GLboolean transpose , const GLfloat* value );
 
 	// Make these private in order to make the object non-copyable
-	GLSLProgram( const GLSLProgram & other ) { }
-	GLSLProgram & operator=( const GLSLProgram &other ){ return *this; }
+	GLSLProgram( const GLSLProgram &/*other*/ ) { }
+	GLSLProgram & operator=( const GLSLProgram &/*other*/ ){ return *this; }
 
 public:
 	static bool fileExists( const std::string & fileName );
@@ -179,7 +179,10 @@ GLSLShader::GLSLShaderType GLSLProgram::getShaderType( const char* fileName ) th
 	int numExts = sizeof( GLSLShaderInfo::extensions ) / sizeof( GLSLShaderInfo::shader_file_extension );
 
 	std::string ext = getExtension( fileName );
+#ifdef NEW_CODE
+#else // !NEW_CODE
 	bool matchFound = false;
+#endif // NEW_CODE
 	for( int i=0 ; i<numExts ; i++ ) if( ext==GLSLShaderInfo::extensions[i].ext ) return GLSLShaderInfo::extensions[i].type;
 	throw GLSLProgramException( std::string( "Unrecognized extension: " ) + ext );
 }

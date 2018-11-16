@@ -119,23 +119,23 @@ template< class Data > void Image< Data >::write( const char* fileName ) const {
 template<>
 void Image< Point3D< float > >::read( const char* fileName )
 {
-	unsigned int w , h , c;
-	unsigned char* pixels = ImageReader::Read( fileName , w , h , c );
+	unsigned int width , height , channels;
+	unsigned char* pixels = ImageReader::Read( fileName , width , height , channels );
 	if( !pixels ) Miscellany::Throw( "Failed to read image: %s\n" , fileName );
-	if( c!=3 ) Miscellany::Throw( "Only three channel images are supported: %d\n" , c );
-	resize(w,h);
-	for( int i=0 ; i<(int)w ; i++ ) for( int j=0 ; j<(int)h ; j++ ) for( int c=0 ; c<3 ; c++ ) (*this)(i,j)[c] = ( (float)pixels[ (j*w+i)*3+c ] ) / 255.f;
+	if( channels!=3 ) Miscellany::Throw( "Only three channel images are supported: %d\n" , channels );
+	resize( width , height );
+	for( int i=0 ; i<(int)width ; i++ ) for( int j=0 ; j<(int)height ; j++ ) for( int c=0 ; c<(int)channels ; c++ ) (*this)(i,j)[c] = ( (float)pixels[ (j*width+i)*3+c ] ) / 255.f;
 	delete[] pixels;
 }
 template<>
 void Image< Point3D< double > >::read( const char* fileName )
 {
-	unsigned int w , h , c;
-	unsigned char* pixels = ImageReader::Read( fileName , w , h , c );
+	unsigned int width , height , channels;
+	unsigned char* pixels = ImageReader::Read( fileName , width , height , channels );
 	if( !pixels ) Miscellany::Throw( "Failed to read image: %s\n" , fileName );
-	if( c!=3 ) Miscellany::Throw( "Only three channel images are supported: %d\n" , c );
-	resize( w , h );
-	for( int i=0 ; i<(int)w ; i++ ) for( int j=0 ; j<(int)h ; j++ ) for( int c=0 ; c<3 ; c++) (*this)(i,j)[c] = ( (double)pixels[ (j*w+i)*3+c ] ) / 255.;
+	if( channels!=3 ) Miscellany::Throw( "Only three channel images are supported: %d\n" , channels );
+	resize( width , height );
+	for( int i=0 ; i<(int)width ; i++ ) for( int j=0 ; j<(int)height ; j++ ) for( int c=0 ; c<(int)channels ; c++) (*this)(i,j)[c] = ( (double)pixels[ (j*width+i)*3+c ] ) / 255.;
 	delete[] pixels;
 }
 template<>

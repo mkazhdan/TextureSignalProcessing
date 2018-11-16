@@ -530,7 +530,6 @@ void TextureFilter< PreReal , Real >::MotionFunc( int x , int y )
 		else {
 			visualization.oldX = visualization.newX, visualization.oldY = visualization.newY, visualization.newX = x, visualization.newY = y;
 
-			int imageSize = std::min< int >(visualization.screenWidth, visualization.screenHeight);
 			if (visualization.panning) visualization.xForm.offset[0] -= (visualization.newX - visualization.oldX) / visualization.imageToScreenScale(), visualization.xForm.offset[1] += (visualization.newY - visualization.oldY) / visualization.imageToScreenScale();
 			else
 			{
@@ -543,21 +542,21 @@ void TextureFilter< PreReal , Real >::MotionFunc( int x , int y )
 }
 
 template< typename PreReal , typename Real >
-void TextureFilter< PreReal , Real >::ToggleUpdateCallBack( Visualization* v , const char* prompt )
+void TextureFilter< PreReal , Real >::ToggleUpdateCallBack( Visualization * /*v*/ , const char * /*prompt*/ )
 {
 	if( updateCount ) updateCount = 0;
 	else              updateCount = -1;
 }
 
 template< typename PreReal , typename Real >
-void TextureFilter< PreReal , Real >::IncrementUpdateCallBack( Visualization* v , const char* prompt )
+void TextureFilter< PreReal , Real >::IncrementUpdateCallBack( Visualization * /*v*/ , const char * /*prompt*/ )
 {
 	if( updateCount<0 ) updateCount = 1;
 	else updateCount++;
 }
 
 template< typename PreReal , typename Real >
-void TextureFilter< PreReal , Real >::ExportTextureCallBack( Visualization* v , const char* prompt )
+void TextureFilter< PreReal , Real >::ExportTextureCallBack( Visualization * /*v*/ , const char* prompt )
 {
 	UpdateFilteredTexture( multigridFilteringVariables[0].x );
 	Image< Point3D< Real > > outputTexture = filteredTexture;
@@ -581,7 +580,7 @@ void TextureFilter< PreReal , Real >::ExportTextureCallBack( Visualization* v , 
 }
 
 template< typename PreReal , class Real >
-void  TextureFilter< PreReal , Real >::GradientModulationCallBack( Visualization* v , const char* prompt )
+void  TextureFilter< PreReal , Real >::GradientModulationCallBack( Visualization * /*v*/ , const char* prompt )
 {
 	gradientModulation = atof( prompt );
 #pragma omp parallel for
@@ -605,7 +604,7 @@ void  TextureFilter< PreReal , Real >::GradientModulationCallBack( Visualization
 }
 
 template< typename PreReal , class Real >
-void  TextureFilter< PreReal , Real >::InterpolationWeightCallBack( Visualization* v , const char* prompt )
+void  TextureFilter< PreReal , Real >::InterpolationWeightCallBack( Visualization * /*v*/ , const char* prompt )
 {
 	interpolationWeight = atof(prompt);
 	if( UseDirectSolver.set ) filteringMatrix = mass*interpolationWeight + stiffness;

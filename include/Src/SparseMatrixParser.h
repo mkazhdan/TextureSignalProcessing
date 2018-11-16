@@ -29,7 +29,7 @@ DAMAGE.
 #include <set>
 
 template< class Real , class RealOut=Real >
-SparseMatrix< RealOut , int > SetSparseMatrix( const std::vector< Eigen::Triplet< Real > >& triplets , int cols , int rows , bool rowMajor )
+SparseMatrix< RealOut , int > SetSparseMatrix( const std::vector< Eigen::Triplet< Real > >& triplets , int cols , int /*rows*/ , bool rowMajor )
 {
 	SparseMatrix< RealOut , int > M;
 	M.resize( cols );

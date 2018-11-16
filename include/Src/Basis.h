@@ -79,6 +79,7 @@ GeometryReal QuadraticElementValue( int elementIndex , Point2D< GeometryReal > p
 	case 5: return -4 * pos[0] * pos[0] - 4 * pos[0] * pos[1] + 4 * pos[0];
 	default: Miscellany::Throw( "Element out of bounds" );
 	}
+	return (GeometryReal)0;
 }
 
 template< typename GeometryReal >
@@ -94,6 +95,7 @@ Point2D< GeometryReal > QuadraticElementGradient( int elementIndex , Point2D< Ge
 	case 5: return Point2D< GeometryReal >( -8 * pos[0] - 4 * pos[1] + 4 , -4 * pos[0] );
 	default: Miscellany::Throw( "Element out of bounds" );
 	}
+	return Point2D< GeometryReal >();
 }
 template< typename GeometryReal >
 void QuadraticElementValuesAndGradients( Point2D< GeometryReal > pos , GeometryReal values[] , Point2D< GeometryReal > gradients[] )
@@ -218,6 +220,7 @@ GeometryReal LinearElementValue( int elementIndex , Point2D< GeometryReal > pos 
 	case 2: return pos[1];
 	default: Miscellany::Throw( "Element out of bounds" );
 	}
+	return (GeometryReal)0;
 }
 
 template< typename GeometryReal >
@@ -230,6 +233,7 @@ Point2D< GeometryReal > LinearElementGradient( int elementIndex )
 	case 2: return Point2D< GeometryReal >( 0, 1);
 	default: Miscellany::Throw( "Element out of bounds" );
 	}
+	return Point2D< GeometryReal >();
 }
 
 template< typename GeometryReal >
@@ -243,6 +247,7 @@ GeometryReal BilinearElementValue( int elementIndex , Point2D<GeometryReal> pos 
 	case 3: return ( (GeometryReal)1.-pos[0]) * pos[1];
 	default: Miscellany::Throw( "Element out of bounds" );
 	}
+	return (GeometryReal)0;
 }
 
 template< typename GeometryReal >
@@ -256,6 +261,7 @@ Point2D< GeometryReal > BilinearElementGradient( int elementIndex , Point2D< Geo
 	case 3: return Point2D< GeometryReal >( -pos[1] , (GeometryReal)1.-pos[0] );
 	default: Miscellany::Throw( "Element out of bounds" );
 	}
+	return Point2D< GeometryReal >();
 }
 
 template< typename GeometryReal >

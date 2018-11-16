@@ -132,7 +132,6 @@ void InitializeBoundaryHalfEdges( const TexturedMesh< GeometryReal > &mesh , std
 	}
 
 	oppositeHalfEdge.resize( 3*mesh.triangles.size() );
-	int lastBoundaryIndex = 0;
 	isBoundaryHalfEdge.resize( 3*mesh.triangles.size() , false );
 
 	for( int i=0 ; i<mesh.triangles.size() ; i++ ) for( int k=0 ; k<3 ; k++ )

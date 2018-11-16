@@ -105,7 +105,7 @@ void StitchingVisualization::UpdateCompositeTextureBuffer( const Image< Point3D<
 	unsigned char * imValues = new unsigned char[composite.size() * 3];
 	for( int j=0 ; j<composite.size() ; j++ ) for( int c=0 ; c<3 ; c++ ) imValues[3 * j + c] = (unsigned char)(composite[j][c] * 255.0);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, composite.width(), composite.height(), 0, GL_RGB, GL_UNSIGNED_BYTE, (GLvoid*)&imValues[0]);
-	delete imValues;
+	delete[] imValues;
 
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
@@ -128,7 +128,7 @@ void StitchingVisualization::UpdateReferenceTextureBuffers( const std::vector< I
 		unsigned char * imValues = new unsigned char[images[i].size() * 3];
 		for (int j = 0; j < images[i].size(); j++) for (int c = 0; c < 3; c++) imValues[3 * j + c] = (unsigned char)(images[i][j][c]*255.0);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, images[i].width(), images[i].height(), 0, GL_RGB, GL_UNSIGNED_BYTE, (GLvoid*)&imValues[0]);
-		delete imValues;
+		delete[] imValues;
 
 		glBindTexture(GL_TEXTURE_2D, 0);
 	}

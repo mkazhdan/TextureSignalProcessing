@@ -195,21 +195,20 @@ void TexturedMeshVisualization::UpdateFaceBuffer() {
 	delete[] _triangles;
 }
 
-void TexturedMeshVisualization::UpdateTextureBuffer() {
-	if (!glIsBuffer(textureBuffer)) {
-		glGenTextures(1, &textureBuffer);
-	}
+void TexturedMeshVisualization::UpdateTextureBuffer( void )
+{
+	if( !glIsBuffer( textureBuffer ) ) glGenTextures( 1 , &textureBuffer );
 
 	int height = textureImage.height();
 	int width = textureImage.width();
-	unsigned char * colors = new unsigned char[height*width * 3];
+	unsigned char *clrs = new unsigned char[height*width * 3];
 	for( int j=0 ; j<height ; j++ ) for( int i=0 ; i<width ; i++ ) for( int c=0 ; c<3 ; c++ )
-		colors[ 3*(width*j + i)+c ] = (unsigned char)( std::min< float >( (float)textureImage(i,j)[c]*255.f , 255.f ) );
+		clrs[ 3*(width*j + i)+c ] = (unsigned char)( std::min< float >( (float)textureImage(i,j)[c]*255.f , 255.f ) );
 	glBindTexture( GL_TEXTURE_2D , textureBuffer );
-	glTexImage2D( GL_TEXTURE_2D , 0 , GL_RGBA , width , height , 0 , GL_RGB , GL_UNSIGNED_BYTE , (GLvoid*)&colors[0] );
+	glTexImage2D( GL_TEXTURE_2D , 0 , GL_RGBA , width , height , 0 , GL_RGB , GL_UNSIGNED_BYTE , (GLvoid*)&clrs[0] );
 	glBindTexture( GL_TEXTURE_2D , 0 );
 
-	delete[] colors;
+	delete[] clrs;
 }
 
 
@@ -686,9 +685,9 @@ void TexturedMeshVisualization::display( void )
 }
 
 
-void TexturedMeshVisualization::keyboardFunc( unsigned char key , int x , int y ){}
+void TexturedMeshVisualization::keyboardFunc( unsigned char /*key*/ , int /*x*/ , int /*y*/ ){}
 
-void TexturedMeshVisualization::mouseFunc( int button , int state , int x , int y )
+void TexturedMeshVisualization::mouseFunc( int button , int /*state*/ , int x , int y )
 {
 	if (!showMesh) {
 		newX = x; newY = y;
@@ -714,7 +713,6 @@ void TexturedMeshVisualization::motionFunc(int x, int y)
 	{
 		oldX = newX, oldY = newY, newX = x, newY = y;
 
-		int imageSize = std::min< int >(screenWidth, screenHeight);
 		if (panning) xForm.offset[0] -= (newX - oldX) / imageToScreenScale(), xForm.offset[1] += (newY - oldY) / imageToScreenScale();
 		else
 		{

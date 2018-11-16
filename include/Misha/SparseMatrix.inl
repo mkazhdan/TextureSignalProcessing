@@ -29,7 +29,6 @@ DAMAGE.
 #include <float.h>
 #include <complex>
 #include <unordered_map>
-#include <omp.h>
 #include "Miscellany.h"
 
 ///////////////////
@@ -386,10 +385,8 @@ template< class T , class IndexType >
 SparseMatrix< T , IndexType > SparseMatrix< T , IndexType >::operator + ( const SparseMatrix< T , IndexType >& B ) const
 {
 	const SparseMatrix& A = *this;
-	size_t rows = std::max< size_t >( A.rows , B.rows );
 	SparseMatrix out;
-
-	out.resize( rows );
+	out.resize( std::max< size_t >( A.rows , B.rows ) );
 #pragma omp parallel for
 	for( int i=0 ; i<rows ; i++ )
 	{
@@ -456,7 +453,7 @@ SparseMatrix< T , IndexType > SparseMatrix< T , IndexType >::transpose( T (*Tran
 {
 	SparseMatrix A;
 	const SparseMatrix& At = *this;
-	size_t aRows = 0 , aCols = At.rows;
+	size_t aRows = 0;
 	for( int i=0 ; i<At.rows ; i++ ) for( int j=0 ; j<At.rowSizes[i] ; j++ ) if( aRows<=At[i][j].N ) aRows = At[i][j].N+1;
 
 	A.resize( aRows );

@@ -370,7 +370,6 @@ void Geodesics< PreReal , Real >::Idle( void )
 	if( mouseSelectionActive )
 	{
 		Point3D< float > selectedPoint;
-		bool validSelection = false;
 		if( visualization.showMesh )
 		{
 			visualization.select(mouseX, mouseY, selectedPoint);
@@ -497,7 +496,6 @@ void Geodesics< PreReal , Real >::MotionFunc( int x , int y )
 		{
 			visualization.oldX = visualization.newX, visualization.oldY = visualization.newY, visualization.newX = x, visualization.newY = y;
 
-			int imageSize = std::min< int >(visualization.screenWidth, visualization.screenHeight);
 			if (visualization.panning) visualization.xForm.offset[0] -= (visualization.newX - visualization.oldX) / visualization.imageToScreenScale(), visualization.xForm.offset[1] += (visualization.newY - visualization.oldY) / visualization.imageToScreenScale();
 			else
 			{
@@ -526,7 +524,7 @@ void Geodesics< PreReal , Real >::MotionFunc( int x , int y )
 }
 
 template< typename PreReal , typename Real>
-void Geodesics< PreReal , Real >::ExportTextureCallBack(Visualization* v, const char* prompt)
+void Geodesics< PreReal , Real >::ExportTextureCallBack( Visualization * /*v*/ , const char* prompt )
 {
 
 	Image<Point3D<float>> outputImage;
@@ -629,12 +627,12 @@ void Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 
 	if( UseDirectSolver.set )
 	{
-		Miscellany::Timer timer;
+		Miscellany::Timer tmr;
 		FullMatrixConstruction( hierarchy.gridAtlases[0] , massCoefficients , mass );
 		FullMatrixConstruction( hierarchy.gridAtlases[0] , stiffnessCoefficients , stiffness );
 		smoothImpulseMatrix = mass * diffusionInterpolationWeight + stiffness;
 		geodesicDistanceMatrix = mass * geodesicInterpolationWeight + stiffness;
-		printf( "\tAssembled matrices: %.2f(s) \n" , timer.elapsed() );
+		printf( "\tAssembled matrices: %.2f(s) \n" , tmr.elapsed() );
 	}
 
 //////////////////////////////////// Initialize multigrid indices
@@ -687,7 +685,7 @@ void Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 
 //////////////////////////////////// Initialize cell samples
 
-	InitializeGridAtlasInteriorCellLines( atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLines , interiorCellLineIndex );
+	InitializeGridAtlasInteriorCellLines( hierarchy.gridAtlases[0].gridCharts , interiorCellLines , interiorCellLineIndex );
 	if( interiorCellLineIndex.size()!=hierarchy.gridAtlases[0].numInteriorCells )
 		Miscellany::Throw( "Inconsistent number of interior cells: %d!=%d" , hierarchy.gridAtlases[0].numInteriorCells , (int)interiorCellLineIndex.size() );
 
@@ -718,9 +716,6 @@ void Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 	fineBoundaryRHS.resize(numFineBoundarNodes);
 
 	gradientSamples.sort();
-
-	int numTexels = hierarchy.gridAtlases[0].numTexels;
-	int numFineNodes = hierarchy.gridAtlases[0].numFineNodes;
 }
 
  template< typename PreReal , typename Real>
@@ -781,14 +776,14 @@ void Geodesics< PreReal , Real >::InitializeVisualization( int width , int heigh
 }
 
 template< typename PreReal , typename Real >
-void Geodesics< PreReal , Real >::ToggleUpdateCallBack( Visualization* v , const char* prompt )
+void Geodesics< PreReal , Real >::ToggleUpdateCallBack( Visualization * /*v*/ , const char * /*prompt*/ )
 {
 	if( updateCount ) updateCount = 0;
 	else              updateCount = -1;
 }
 
 template< typename PreReal , typename Real >
-void Geodesics< PreReal , Real >::IncrementUpdateCallBack( Visualization* v , const char* prompt )
+void Geodesics< PreReal , Real >::IncrementUpdateCallBack( Visualization * /*v*/ , const char * /*prompt*/ )
 {
 	if( updateCount<0 ) updateCount = 1;
 	else updateCount++;

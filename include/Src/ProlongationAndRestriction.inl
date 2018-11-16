@@ -342,8 +342,6 @@ void InitializeAtlasHierachicalRestriction(const GridAtlas< GeometryReal , Matri
 
 	//Initialize boundary nodes prolongation
 
-	MatrixReal expectedWeight = 0;
-
 	for (int k = 0; k < fineAtlas.gridCharts.size(); k++)
 	{
 		const GridChart< GeometryReal > &fineChart = fineAtlas.gridCharts[k];

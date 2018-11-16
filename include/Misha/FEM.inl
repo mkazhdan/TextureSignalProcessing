@@ -673,7 +673,7 @@ template< class Real >
 FEM::RiemannianMesh< Real >::RiemannianMesh( Pointer( TriangleIndex ) t , size_t tC ) : _triangles(t) , _tCount(tC) , _edgeMap( t , tC )
 {
 	_g = AllocPointer< SquareMatrix< Real , 2 > >( _tCount );
-	for( int t=0 ; t<_tCount ; t++ ) _g[t] = SquareMatrix< Real , 2 >::Identity();
+	for( size_t i=0 ; i<_tCount ; i++ ) _g[i] = SquareMatrix< Real , 2 >::Identity();
 	_vCount = 0;
 	for( size_t i=0 ; i<_tCount ; i++ ) for( int j=0 ; j<3 ; j++ ) _vCount = std::max< size_t >( _vCount , _triangles[i][j]+1 );
 }
@@ -692,6 +692,7 @@ size_t FEM::RiemannianMesh< Real >::dimension( void ) const
 		default:
 			TestBasisType( BasisType , "FEM::RiemannianMesh::dimension" , false );
 			TestElementType( BasisInfo< BasisType >::ElementType , "FEM::RiemannianMesh::dimension" , true );
+			dim = 0;
 	}
 	return dim;
 }
@@ -713,7 +714,9 @@ int FEM::RiemannianMesh< Real >::index( int t , int idx , bool& isAligned ) cons
 		case ELEMENT_VERTEX:   i = _triangles[t][e]                   ; break;
 		case ELEMENT_EDGE:     i = _edgeMap.edge( t*3+e , isAligned ) ; break;
 		case ELEMENT_TRIANGLE: i = t                                  ; break;
-		default: Miscellany::ErrorOut( "Unrecognized element type: %d" , BasisInfo< BasisType >::ElementType );
+		default:
+			Miscellany::ErrorOut( "Unrecognized element type: %d" , BasisInfo< BasisType >::ElementType );
+			i=0;
 	}
 	return i * BasisInfo< BasisType >::CoefficientsPerElement + c;
 }
@@ -897,9 +900,9 @@ std::vector< FEM::SamplePoint< Real > > FEM::RiemannianMesh< Real >::randomSampl
 			int d;
 			while( (d=(int)(b-a))>1 )
 			{
-				Real *i = a + d/2;
-				if( r<*i ) b=i;
-				else       a=i;
+				Real *iter = a + d/2;
+				if( r<*iter ) b=iter;
+				else          a=iter;
 			}
 			samples[i].tIdx = (int)( b - cumAreas );
 		}
@@ -1144,7 +1147,6 @@ FEM::CoordinateXForm< Real > FEM::RiemannianMesh< Real >::flow( ConstPointer( Co
 	}
 	if( !noWarning ) Miscellany::Warn( "Failed to converge flow after %d iterations" , MAX_ITERS );
 	return xForm;
-#undef NEW_CODE
 }
 
 /////////////////////////
@@ -1215,7 +1217,7 @@ template< class Real >
 void FEM::RiemannianMesh< Real >::setMetricFromSquareEdgeLengths( ConstPointer( Real ) squareEdgeLengths )
 {
 #pragma omp parallel for
-	for( int i=0 ; i<tCount ; i++ )
+	for( int i=0 ; i<_tCount ; i++ )
 	{
 		_g[i](0,0) = squareEdgeLengths[i*3+2];
 		_g[i](1,1) = squareEdgeLengths[i*3+1];
@@ -1347,7 +1349,6 @@ SparseMatrix< Real , int > FEM::RiemannianMesh< Real >::massMatrix( bool lump , 
 				bool iAligned;
 				int ii = index< BasisType >( t , i , iAligned );
 
-				int idx = 0;
 				for( int j=0 ; j<BasisInfo< BasisType >::Coefficients ; j++ ) if( mask(i,j) )
 				{
 					bool jAligned;
@@ -1582,12 +1583,12 @@ inline Real FEM::RiemannianMesh< Real >::getDotProduct( ConstPointer( Real ) coe
 		if( lump )
 		{
 			Point< Real , 3 > mass = RightTriangle< Real >::GetDiagonalMassMatrix( _g[i] );
-			for( int j=0 ; j<3 ; j++ ) dotProduct += mass[j] * coefficients1[ triangles[i][j] ] * coefficients2[ triangles[i][j] ];
+			for( int j=0 ; j<3 ; j++ ) dotProduct += mass[j] * coefficients1[ _triangles[i][j] ] * coefficients2[ _triangles[i][j] ];
 		}
 		else
 		{
 			SquareMatrix< Real , 3 > mass = RightTriangle< Real >::GetMassMatrix( _g[i] );
-			for( int j=0 ; j<3 ; j++ ) for( int k=0 ; k<3 ; k++ ) dotProduct += mass(j,k) * coefficients1[ triangles[i][j] ] * coefficients2[ triangles[i][k] ];
+			for( int j=0 ; j<3 ; j++ ) for( int k=0 ; k<3 ; k++ ) dotProduct += mass(j,k) * coefficients1[ _triangles[i][j] ] * coefficients2[ _triangles[i][k] ];
 		}
 	}
 	return dotProduct;

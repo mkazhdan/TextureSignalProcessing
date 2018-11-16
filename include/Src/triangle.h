@@ -247,43 +247,62 @@
 /*  not used, `numberofsegments' will indicate the number of boundary edges. */
 /*                                                                           */
 /*****************************************************************************/
+#ifndef TRIANGLE_INCLUDED
+#define TRIANGLE_INCLUDED
 
-struct triangulateio {
-  REAL *pointlist;                                               /* In / out */
-  REAL *pointattributelist;                                      /* In / out */
-  int *pointmarkerlist;                                          /* In / out */
-  int numberofpoints;                                            /* In / out */
-  int numberofpointattributes;                                   /* In / out */
+#ifdef SINGLE
+#define REAL float
+#else /* not SINGLE */
+#define REAL double
+#endif /* not SINGLE */
 
-  int *trianglelist;                                             /* In / out */
-  REAL *triangleattributelist;                                   /* In / out */
-  REAL *trianglearealist;                                         /* In only */
-  int *neighborlist;                                             /* Out only */
-  int numberoftriangles;                                         /* In / out */
-  int numberofcorners;                                           /* In / out */
-  int numberoftriangleattributes;                                /* In / out */
 
-  int *segmentlist;                                              /* In / out */
-  int *segmentmarkerlist;                                        /* In / out */
-  int numberofsegments;                                          /* In / out */
 
-  REAL *holelist;                        /* In / pointer to array copied out */
-  int numberofholes;                                      /* In / copied out */
+template< typename Real >
+struct triangulateio
+{
+	Real *pointlist;                                               /* In / out */
+	Real *pointattributelist;                                      /* In / out */
+	int *pointmarkerlist;                                          /* In / out */
+	int numberofpoints;                                            /* In / out */
+	int numberofpointattributes;                                   /* In / out */
 
-  REAL *regionlist;                      /* In / pointer to array copied out */
-  int numberofregions;                                    /* In / copied out */
+	int *trianglelist;                                             /* In / out */
+	Real *triangleattributelist;                                   /* In / out */
+	Real *trianglearealist;                                         /* In only */
+	int *neighborlist;                                             /* Out only */
+	int numberoftriangles;                                         /* In / out */
+	int numberofcorners;                                           /* In / out */
+	int numberoftriangleattributes;                                /* In / out */
 
-  int *edgelist;                                                 /* Out only */
-  int *edgemarkerlist;            /* Not used with Voronoi diagram; out only */
-  REAL *normlist;                /* Used only with Voronoi diagram; out only */
-  int numberofedges;                                             /* Out only */
+	int *segmentlist;                                              /* In / out */
+	int *segmentmarkerlist;                                        /* In / out */
+	int numberofsegments;                                          /* In / out */
+
+	Real *holelist;                        /* In / pointer to array copied out */
+	int numberofholes;                                      /* In / copied out */
+
+	Real *regionlist;                      /* In / pointer to array copied out */
+	int numberofregions;                                    /* In / copied out */
+
+	int *edgelist;                                                 /* Out only */
+	int *edgemarkerlist;            /* Not used with Voronoi diagram; out only */
+	Real *normlist;                /* Used only with Voronoi diagram; out only */
+	int numberofedges;                                             /* Out only */
 };
 
-#ifdef ANSI_DECLARATORS
-void triangulate(char *, struct triangulateio *, struct triangulateio *,
-                 struct triangulateio *);
-void trifree(int *memptr);
-#else /* not ANSI_DECLARATORS */
-void triangulate();
-void trifree();
-#endif /* not ANSI_DECLARATORS */
+#include "Triangle.inl"
+
+template< typename Real >
+void triangulate
+(
+	char *triswitches,
+	struct triangulateio< Real > *in,
+	struct triangulateio< Real > *out,
+	struct triangulateio< Real > *vorout
+)
+{
+	return Shewchuk< Real >::triangulate( triswitches , in , out , vorout );
+}
+template< typename Real > void trifree( int *memptr ){ return Shewchuk< Real >::trifree(memptr); }
+#endif // TRIANGLE_INCLUDED
