@@ -25,6 +25,9 @@ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING 
 ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
 DAMAGE.
 */
+
+#define NEW_CODE
+
 #ifndef VISUALIZATION_INCLUDED
 #define VISUALIZATION_INCLUDED
 #include <GL/glew.h>
@@ -53,6 +56,10 @@ protected:
 	double _lastFPSTime;
 	int _lastFPSCount;
 	double _fps;
+#ifdef NEW_CODE
+	int _currentFrame , _frameStride , _totalFrames;
+	bool _exitAfterVideo;
+#endif // NEW_CODE
 public:
 	int screenWidth , screenHeight;
 	void *font , *promptFont;
@@ -62,6 +69,9 @@ public:
 	char promptString[1024];
 	int promptLength;
 	char* snapshotName;
+#ifdef NEW_CODE
+	char videoHeader[1024];
+#endif // NEW_CODE
 	bool flushImage;
 
 	struct KeyboardCallBack
@@ -98,7 +108,12 @@ public:
 		callBacks.push_back( KeyboardCallBack( this , 'F' , "toggle fps"  , ToggleFPSCallBack ) );
 		callBacks.push_back( KeyboardCallBack( this , 'H' , "toggle help" , ToggleHelpCallBack ) );
 		callBacks.push_back( KeyboardCallBack( this , 'I' , "toggle info" , ToggleInfoCallBack ) );
+#ifdef NEW_CODE
+		callBacks.push_back( KeyboardCallBack( this , 'i' , "save frame buffer" , "<Ouput image>" , SetFrameBufferCallBack ) );
+		callBacks.push_back( KeyboardCallBack( this , 'v' , "save video" , "<Ouput header> [<stride>] <number of frames>" , SetVideoCallBack ) );
+#else // !NEW_CODE
 		callBacks.push_back( KeyboardCallBack( this , 'i' , "save frame buffer" , "Ouput image" , SetFrameBufferCallBack ) );
+#endif // NEW_CODE
 		snapshotName = NULL;
 		flushImage = false;
 		screenWidth = screenHeight = 512;
@@ -146,6 +161,19 @@ public:
 			v->flushImage = true;
 		}
 	}
+#ifdef NEW_CODE
+	static void SetVideoCallBack( Visualization* v , const char* prompt )
+	{
+		if( prompt )
+		{
+			if     ( sscanf( prompt , " %s %d %d " , v->videoHeader , &v->_frameStride , &v->_totalFrames )==3 ) ;
+			else if( sscanf( prompt , " %s %d "    , v->videoHeader ,                    &v->_totalFrames )==2 ) v->_frameStride=1;
+			else  v->_totalFrames = 0;
+			v->_currentFrame = 0;
+			v->_exitAfterVideo = true;
+		}
+	}
+#endif // NEW_CODE
 
 	static void WriteLeftString( int x , int y , void* font , const char* format , ... );
 	static int StringWidth( void* font , const char* format , ... );
@@ -201,6 +229,20 @@ void Visualization::Idle( void )
 			snapshotName = NULL;
 		}
 	}
+#ifdef NEW_CODE
+	else if( strlen(videoHeader) && _currentFrame<_totalFrames )
+	{
+		if( !(_currentFrame%_frameStride) )
+		{
+			char snapshotName[1024];
+			sprintf( snapshotName , "%s.%04d.jpg" , videoHeader , _currentFrame/_frameStride );
+			printf( "Frame: %d\n" , _currentFrame );
+			saveFrameBuffer( snapshotName , GL_FRONT );
+		}
+		_currentFrame++;
+		if( _currentFrame==_totalFrames && _exitAfterVideo ) exit( 0 );
+	}
+#endif // NEW_CODE
 	idle();
 }
 void Visualization::KeyboardFunc( unsigned char key , int x , int y )

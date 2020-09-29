@@ -95,7 +95,12 @@ public:
 	//Line drawing parameters
 	float polygonOffsetFactor = 1.f;
 	float polygonOffsetUnits = 1.f;
+#ifdef NEW_CODE
+	float lineWidth = 2.f;
+	Point3D< float > lineColor;
+#else // !NEW_CODE
 	float lineWidth = 1.f;
+#endif // NEW_CODE
 
 	GLuint vertexBuffer = 0;
 	GLuint normalBuffer = 0;
@@ -117,6 +122,7 @@ public:
 	void display( void );
 	void mouseFunc( int button , int state , int x , int y );
 	void motionFunc( int x , int y );
+	void takeScreenshot( const char *fileName );
 	static void WriteSceneConfigurationCallBack(Visualization* v, const char* prompt);
 	static void ShowEdgesCallBack( Visualization* v , const char* )
 	{

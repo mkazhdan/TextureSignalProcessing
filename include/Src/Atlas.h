@@ -29,9 +29,26 @@ DAMAGE.
 #ifndef ATLAS_MESH_INLCUDED
 #define ATLAS_MESH_INLCUDED
 
+#define DEBUG_ATLAS
+
 #include "SimpleMesh.h"
 #include "ChartDecomposition.h"
 #include <set>
+
+
+#ifdef DEBUG_ATLAS
+struct _TriangleIndex
+{
+	TriangleIndex index;
+	int oldIndex;
+	_TriangleIndex( void ) : oldIndex( -1 ){}
+	_TriangleIndex( TriangleIndex i , int o ) : index( i ) , oldIndex( o ){}
+
+	unsigned int &operator[] ( unsigned int idx )       { return index[idx]; }
+	unsigned int  operator[] ( unsigned int idx ) const { return index[idx]; }
+	int operator()( void ) const { return oldIndex; }
+};
+#endif // DEBUG_ATLAS
 
 template< typename GeometryReal >
 class AtlasMesh
@@ -54,7 +71,11 @@ public:
 	Point2D< GeometryReal > maxCorner;
 	Point2D< GeometryReal > gridOrigin;
 	int originCoords[2];
+#ifdef DEBUG_ATLAS
+	std::vector< _TriangleIndex > triangles;
+#else // !DEBUG_ATLAS
 	std::vector< TriangleIndex > triangles;
+#endif // DEBUG_ATLAS
 	std::vector< Point2D< GeometryReal > > vertices;
 	std::vector< int > boundaryHalfEdges;
 	std::vector< int > atlasEdgeIndices;

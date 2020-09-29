@@ -71,6 +71,10 @@ void InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geome
 	Image< int > &nodeType = gridChart.nodeType;
 	nodeType.resize( width , height );
 	for( int i=0 ; i<nodeType.size() ; i++ ) nodeType[i] = -1;
+#ifdef DEBUG_ATLAS
+	Image< int > nodeOwner;
+	nodeOwner.resize( width , height );
+#endif // DEBUG_ATLAS
 
 	Image< int > &cellType = gridChart.cellType;
 	cellType.resize( width-1 , height-1 );
@@ -100,14 +104,20 @@ void InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geome
 			Point2D< GeometryReal > barycentricCoord = barycentricMap*texel_pos;
 			if( barycentricCoord[0]>=0 && barycentricCoord[1]>=0 && ( barycentricCoord[0]+barycentricCoord[1] )<=1 )
 			{
-				if( nodeType(i,j)!=-1 ) Miscellany::Throw( "Node already covered" );
+#ifdef DEBUG_ATLAS
+				if( nodeType(i,j)!=-1 ) Miscellany::Throw( "Node ( %d , %d ) covered by two triangles: %d %d" , i , j , atlasChart.triangles[t]() , nodeOwner(i,j) );
+#else // !DEBUG_ATLAS
+				if( nodeType(i,j)!=-1 ) Miscellany::Throw( "Node ( %d , %d ) in chart %d already covered" , i , j , chartID );
+#endif // DEBUG_ATLAS
 				nodeType(i,j) = 1;
+#ifdef DEBUG_ATLAS
+				nodeOwner(i,j) = atlasChart.triangles[t]();
+#endif // DEBUG_ATLAS
 				triangleID(i,j) = atlasChart.meshTriangleIndices[t];
 				barycentricCoords(i,j) = barycentricCoord;
 			}
 		}
 	}
-
 	//(2) Add texels adjacent to boundary cells
 	int interiorCellTriangles = 0;
 

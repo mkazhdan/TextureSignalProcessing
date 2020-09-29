@@ -386,7 +386,11 @@ void TexturedMeshVisualization::DrawGeometry( GLuint& textureBufferId , bool pho
 	{
 		glDisable(GL_LIGHTING);
 		glLineWidth(lineWidth);
+#ifdef NEW_CODE
+		glColor3f( lineColor[0] , lineColor[1] , lineColor[2] );
+#else // !NEW_CODE
 		glColor3f(1.0, 1.0, 1.0);
+#endif // NEW_CODE
 		glDisable(GL_MULTISAMPLE);
 		glEnable(GL_BLEND);
 		glEnable(GL_LINE_SMOOTH);
@@ -705,6 +709,13 @@ void TexturedMeshVisualization::mouseFunc( int button , int /*state*/ , int x , 
 			else                                        rotating = true;
 		else if (button == GLUT_RIGHT_BUTTON) scaling = true;
 	}
+}
+
+void TexturedMeshVisualization::takeScreenshot( const char* fileName )
+{
+	Image< Point3D< float > > image;
+	RenderOffScreenBuffer( image );
+	image.write( fileName );
 }
 
 void TexturedMeshVisualization::motionFunc(int x, int y)

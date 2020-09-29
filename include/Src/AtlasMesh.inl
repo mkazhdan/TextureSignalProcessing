@@ -64,6 +64,7 @@ void InitializeAtlasMesh( const TexturedMesh< GeometryReal > &inputMesh , AtlasM
 		}
 		outputMesh.triangles.push_back( TriangleIndex( cornerIndices[0] , cornerIndices[1] , cornerIndices[2] ) );
 	}
+
 	if( true ) // Jitter vertices lying on the grid to avoid degeneracies
 	{
 		GeometryReal precision = (GeometryReal)1e-6;
