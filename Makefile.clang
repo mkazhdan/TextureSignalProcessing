@@ -1,0 +1,18 @@
+programs = Geodesics LineIntegralConvolution TextureFiltering TextureStitching ReactionDiffusion
+
+# Allow "make -j" to operate in parallel over the programs.
+all: $(programs)
+$(programs):
+	$(MAKE) -C $@ -f Makefile.clang
+
+programs_debug = $(foreach n,$(programs),debug_$(n))  # pseudo-dependency to allow "make -j" parallelism
+debug: $(programs_debug)
+$(programs_debug):
+	$(MAKE) -C $(@:debug_%:%) debug -f Makefile.clang
+
+programs_clean = $(foreach n,$(programs),clean_$(n))  # pseudo-dependency to allow "make -j" parallelism
+clean: $(programs_clean)
+$(programs_clean):
+	$(MAKE) -C $(@:clean_%=%) clean -f Makefile.clang
+
+.PHONY: $(programs) $(programs_debug) $(programs_clean)

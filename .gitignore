@@ -12,7 +12,6 @@ include/Misha.V1/
 include/Src.V1/
 include/Src.V2/
 *.pdf
-*.zip
 *.VC.db
 *.vcxproj.user
 Geodesics/x64/

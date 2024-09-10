@@ -55,7 +55,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Include", "Include", "{FC29
 		include\Src\TexturedMeshVisualization.inl = include\Src\TexturedMeshVisualization.inl
 		include\Src\TextureFilteringVisualization.h = include\Src\TextureFilteringVisualization.h
 		include\Src\TextureFilteringVisualization.inl = include\Src\TextureFilteringVisualization.inl
-		Triangle\triangle.h = Triangle\triangle.h
+		include\Src\Triangle.h = include\Src\Triangle.h
+		include\Src\Triangle.inl = include\Src\Triangle.inl
 		include\Src\UpdateCoefficients.inl = include\Src\UpdateCoefficients.inl
 		include\Src\VectorIO.h = include\Src\VectorIO.h
 	EndProjectSection

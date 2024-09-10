@@ -671,6 +671,17 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 
 		if( OutVectorField.set )
 		{
+#if 1
+			std::cerr << "[WARNING] Forcing extrinsic output" << std::endl;
+			std::vector< Point3D< PreReal > > _vectorField( vectorField.size() );
+#pragma omp parallel for
+			for( int i=0 ; i<mesh.triangles.size() ; i++ )
+			{
+				Point3D< PreReal > v[] = { mesh.vertices[ mesh.triangles[i][0] ] , mesh.vertices[ mesh.triangles[i][1] ] , mesh.vertices[ mesh.triangles[i][2] ] };
+				_vectorField[i] = (v[1]-v[0]) * vectorField[i][0] + (v[2]-v[0]) * vectorField[i][1];
+			}
+			WriteVector( _vectorField , OutVectorField.value );
+#else
 			if( IntrinsicVectorField.set ) WriteVector( vectorField , OutVectorField.value );
 			else
 			{
@@ -683,6 +694,7 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 				}
 				WriteVector( _vectorField , OutVectorField.value );
 			}
+#endif
 		}
 		{
 			std::vector< FEM::SamplePoint< PreReal > > randomSamples = rMesh.randomSamples( 5e5 );

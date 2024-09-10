@@ -366,6 +366,7 @@ void Geodesics< PreReal , Real >::UpdateOutputBuffer( const std::vector< Real > 
 template< typename PreReal , typename Real >
 void Geodesics< PreReal , Real >::Idle( void )
 {
+	visualization.Idle();
 	int selectedTexel = -1;
 	if( mouseSelectionActive )
 	{
@@ -882,16 +883,16 @@ void _main( int argc, char *argv[] )
 
 	glutInitWindowSize( Geodesics< PreReal , Real >::visualization.screenWidth , Geodesics< PreReal , Real >::visualization.screenHeight );
 
-	glutInit(&argc, argv);
+	glutInit( &argc , argv );
 	char windowName[1024];
 	sprintf( windowName , "Goedsics" );
 	glutCreateWindow( windowName );
 	if( glewInit()!=GLEW_OK ) Miscellany::Throw( "glewInit failed" );
-	glutDisplayFunc ( Geodesics< PreReal , Real >::Display);
-	glutReshapeFunc ( Geodesics< PreReal , Real >::Reshape);
-	glutMouseFunc   ( Geodesics< PreReal , Real >::MouseFunc);
-	glutMotionFunc  ( Geodesics< PreReal , Real >::MotionFunc);
-	glutKeyboardFunc( Geodesics< PreReal , Real >::KeyboardFunc);
+	glutDisplayFunc ( Geodesics< PreReal , Real >::Display );
+	glutReshapeFunc ( Geodesics< PreReal , Real >::Reshape );
+	glutMouseFunc   ( Geodesics< PreReal , Real >::MouseFunc );
+	glutMotionFunc  ( Geodesics< PreReal , Real >::MotionFunc );
+	glutKeyboardFunc( Geodesics< PreReal , Real >::KeyboardFunc );
 	if( !UseDirectSolver.set ) glutIdleFunc( Geodesics< PreReal , Real >::Idle );
 	if( CameraConfig.set ) Geodesics< PreReal , Real >::visualization.ReadSceneConfigurationCallBack( &Geodesics< PreReal , Real >::visualization , CameraConfig.value );
 	Geodesics< PreReal , Real >::InitializeVisualization( Geodesics< PreReal , Real >::textureWidth , Geodesics< PreReal , Real >::textureHeight );

@@ -26,10 +26,10 @@ ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF S
 DAMAGE.
 */
 
-#define NEW_CODE
-
 #ifndef VISUALIZATION_INCLUDED
 #define VISUALIZATION_INCLUDED
+#define NEW_CODE
+
 #include <GL/glew.h>
 #include <GL/glut.h>
 #include <vector>

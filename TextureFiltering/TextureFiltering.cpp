@@ -36,6 +36,8 @@ DAMAGE.
 #include <Src/MassAndStiffness.h>
 #include <Src/InteriorTexelToCellLines.inl>
 #include <Src/Padding.h>
+#ifdef NO_VISUALIZATION
+#else // !NO_VISUALIZATION
 #include <Src/TextureFilteringVisualization.h>
 
 const std::string vertex_shader_src =
@@ -44,13 +46,17 @@ const std::string vertex_shader_src =
 const std::string fragment_shader_src =
 #include <Shaders/normal_texture_fragment.fs>
 ;
+#endif //NO_VISUALIZATION
 
 cmdLineParameterArray< char* , 2 > Input( "in" );
 cmdLineParameter< char* > Output( "out" );
 cmdLineParameter< int   > OutputVCycles( "outVCycles" , 6 );
 cmdLineParameter< float > InterpolationWeight( "interpolation" , 1e3 );
 cmdLineParameter< float > GradientModulation( "modulation" , 1.0 );
+#ifdef NO_VISUALIZATION
+#else // !NO_VISUALIZATION
 cmdLineParameter< int   > DisplayMode("display",FOUR_REGION_DISPLAY);
+#endif // NO_VISUALIZATION
 cmdLineParameter< int   > Threads("threads", omp_get_num_procs());
 cmdLineParameter< int   > Levels("levels", 4);
 cmdLineParameter< int   > MatrixQuadrature( "mQuadrature" , 6 );
@@ -69,8 +75,12 @@ cmdLineReadable DetailVerbose( "detail" );
 cmdLineReadable Double( "double" );
 cmdLineReadable* params[] =
 {
-	&Input , &Output , &InterpolationWeight , &GradientModulation , &CameraConfig , &Levels , &UseDirectSolver , &Threads , &DisplayMode , &Verbose ,
+	&Input , &Output , &InterpolationWeight , &GradientModulation , &CameraConfig , &Levels , &UseDirectSolver , &Threads  , &Verbose ,
 	&DetailVerbose , &MultigridBlockHeight , &MultigridBlockWidth , &MultigridPaddedHeight , &MultigridPaddedWidth , &RandomJitter ,
+#ifdef NO_VISUALIZATION
+#else // !NO_VISUALIZATION
+	&DisplatMode ,
+#endif // NO_VISUALIZATION
 	&Double ,
 	&MatrixQuadrature ,
 	&OutputVCycles ,
@@ -83,7 +93,11 @@ void ShowUsage( const char* ex )
 	printf( "Usage %s:\n" , ex );
 
 	printf( "\t --%s <input mesh and texture>\n" , Input.name );
+#ifdef NO_VISUALIZATION
+	printf( "\t --%s <output texture>\n" , Output.name );
+#else // !NO_VISUALIZATION
 	printf( "\t[--%s <output texture>]\n" , Output.name );
+#endif // NO_VISUALIZATION
 	printf( "\t[--%s <output v-cycles>=%d]\n" , OutputVCycles.name , OutputVCycles.value );
 	printf( "\t[--%s <interpolation weight>=%f]\n" , InterpolationWeight.name , InterpolationWeight.value );
 	printf( "\t[--%s <gradient modulation>=%f]\n" , GradientModulation.name , GradientModulation.value );
@@ -96,11 +110,14 @@ void ShowUsage( const char* ex )
 	printf( "\t[--%s <hierarchy levels>=%d]\n" , Levels.name , Levels.value );
 	printf( "\t[--%s <threads>=%d]\n" , Threads.name , Threads.value );
 	printf( "\t[--%s]\n" , DetailVerbose.name );
+#ifdef NO_VISUALIZATION
+#else // !NO_VISUALIZATION
 	printf( "\t[--%s <display mode>=%d]\n" , DisplayMode.name , DisplayMode.value );
 	printf( "\t\t%d] One Region \n"   , ONE_REGION_DISPLAY   );
 	printf( "\t\t%d] Two Region \n"   , TWO_REGION_DISPLAY   );
 	printf( "\t\t%d] Three Region \n" , THREE_REGION_DISPLAY );
 	printf( "\t\t%d] Four Region \n"  , FOUR_REGION_DISPLAY  );
+#endif // NO_VISUALIZATION
 	printf( "\t[--%s <multigrid block width>=%d]\n"    , MultigridBlockWidth.name    , MultigridBlockWidth.value    );
 	printf( "\t[--%s <multigrid block height>=%d]\n"   , MultigridBlockHeight.name   , MultigridBlockHeight.value   );
 	printf( "\t[--%s <multigrid padded width>=%d]\n"   , MultigridPaddedWidth.name   , MultigridPaddedWidth.value   );
@@ -131,9 +148,13 @@ public:
 	static bool positiveModulation;
 
 	static Image< Point3D< Real > > filteredTexture;
+
+#ifdef NO_VISUALIZATION
+#else // !NO_VISUALIZATION
 	//UI
 	static char gradientModulationStr[1024];
 	static char interpolationStr[1024];
+#endif // NO_VISUALIZATION
 
 	static std::vector<Real> uniformTexelModulationMask;
 	static std::vector<Real> cellModulationMask;
@@ -190,6 +211,10 @@ public:
 
 	static Padding padding;
 
+#ifdef NO_VISUALIZATION
+	static int updateCount;
+	static void WriteTexture( const char* prompt );
+#else // !NO_VISUALIZATION
 	//Visulization
 	static TextureFilteringVisualization visualization;
 	static int updateCount;
@@ -200,19 +225,27 @@ public:
 
 	static void GradientModulationCallBack( Visualization* v , const char* prompt );
 	static void InterpolationWeightCallBack( Visualization* v , const char* prompt );
+#endif // NO_VISUALIZATION
 
 	static void Init( void );
+#ifdef NO_VISUALIZATION
+#else // !NO_VISUALIZATION
 	static void InitializeVisualization();
+#endif // NO_VISUALIZATION
 	static void UpdateSolution(bool verbose = false, bool detailVerbose = false);
 	static void ComputeExactSolution( bool verbose=false );
 	static void InitializeSystem( int width , int height );
 	static void _InitializeSystem( std::vector<std::vector< SquareMatrix< PreReal , 2 > > > &parameterMetric , BoundaryProlongationData< Real > &boundaryProlongation , std::vector< Point3D< Real > > &inputSignal , std::vector< Real >& texelToCellCoeffs );
 
+#ifdef NO_VISUALIZATION
+#else // !NO_VISUALIZATION
 	static void UpdateFilteredColorTexture( const std::vector< Point3D< Real > >& solution );
+#endif // NO_VISUALIZATION
 	static void UpdateFilteredTexture( const std::vector< Point3D< Real > >& solution );
 
+#ifdef NO_VISUALIZATION
+#else // !NO_VISUALIZATION
 	static void UpdateMaskTexture();
-
 
 	static void Display( void ){ visualization.Display(); }
 	static void MouseFunc( int button , int state , int x , int y );
@@ -220,15 +253,22 @@ public:
 	static void Reshape( int w , int h ){ visualization.Reshape(w,h); }
 	static void KeyboardFunc(unsigned char key, int x, int y){ visualization.KeyboardFunc( key , x , y ); }
 	static void Idle( void );
+#endif // NO_VISUALIZATION
 };
 
+#ifdef NO_VISUALIZATION
+#else // !NO_VISUALIZATION
 template< typename PreReal , typename Real > char																TextureFilter< PreReal , Real >::gradientModulationStr[1024];
 template< typename PreReal , typename Real > char																TextureFilter< PreReal , Real >::interpolationStr[1024];
+#endif // NO_VISUALIZATION
 
 template< typename PreReal , typename Real > TexturedMesh< PreReal >											TextureFilter< PreReal , Real >::mesh;
 template< typename PreReal , typename Real > int																TextureFilter< PreReal , Real >::textureWidth;
 template< typename PreReal , typename Real > int																TextureFilter< PreReal , Real >::textureHeight;
+#ifdef NO_VISUALIZATION
+#else // !NO_VISUALIZATION
 template< typename PreReal , typename Real > TextureFilteringVisualization										TextureFilter< PreReal , Real >::visualization;
+#endif // NO_VISUALIZATION
 template< typename PreReal , typename Real > SparseMatrix< Real , int >											TextureFilter< PreReal , Real >::mass;
 template< typename PreReal , typename Real > SparseMatrix< Real , int >											TextureFilter< PreReal , Real >::stiffness;
 template< typename PreReal , typename Real > SparseMatrix< Real , int >											TextureFilter< PreReal , Real >::filteringMatrix;
@@ -283,6 +323,8 @@ template< typename PreReal , typename Real > SystemCoefficients< Real >									
 template< typename PreReal , typename Real > int																TextureFilter< PreReal , Real >::updateCount = -1;
 
 
+#ifdef NO_VISUALIZATION
+#else // !NO_VISUALIZATION
 template< typename PreReal , typename Real >
 void TextureFilter< PreReal , Real >::UpdateMaskTexture( void )
 {
@@ -328,6 +370,7 @@ void TextureFilter< PreReal , Real >::UpdateFilteredColorTexture( const std::vec
 		}
 	}
 }
+#endif // NO_VISUALIZATION
 
 template< typename PreReal , typename Real >
 void TextureFilter< PreReal , Real >::UpdateFilteredTexture( const std::vector< Point3D< Real > >& solution )
@@ -340,6 +383,20 @@ void TextureFilter< PreReal , Real >::UpdateFilteredTexture( const std::vector< 
 	}
 }
 
+#ifdef NO_VISUALIZATION
+template< typename PreReal , typename Real >
+void TextureFilter< PreReal , Real >::WriteTexture( const char* fileName )
+{
+	UpdateFilteredTexture( multigridFilteringVariables[0].x );
+	Image< Point3D< Real > > outputTexture = filteredTexture;
+	if( padding.nonTrivial ) UnpadImage( padding , outputTexture );
+
+	char* ext = GetFileExtension( fileName );
+	if( !strcasecmp( ext , "normap" ) ) WriteBinaryImage( outputTexture , fileName );
+	else outputTexture.write( fileName );
+	delete[] ext;
+}
+#else // !NO_VISUALIZATION
 template< typename PreReal , typename Real >
 void TextureFilter< PreReal , Real >::Idle( void )
 {
@@ -429,7 +486,7 @@ void TextureFilter< PreReal , Real >::Idle( void )
 		steps++;
 		sprintf( stepsString , "Steps: %d" , steps );
 	}
-	
+
 	glutPostRedisplay();
 }
 
@@ -631,6 +688,7 @@ void  TextureFilter< PreReal , Real >::InterpolationWeightCallBack( Visualizatio
 	}
 	sprintf( interpolationStr , "Interpolation weight: %e\n" , interpolationWeight );
 }
+#endif // NO_VISUALIZATION
 
 template< typename PreReal , typename Real >
 void TextureFilter< PreReal , Real >::ComputeExactSolution( bool verbose )
@@ -772,9 +830,14 @@ void TextureFilter< PreReal , Real >::InitializeSystem( int width , int height )
 	UpdateFilteredTexture( multigridFilteringVariables[0].x );
 }
 
+#ifdef NO_VISUALIZATION
+#else // !NO_VISUALIZATION
 template< typename PreReal , typename Real >
 void TextureFilter< PreReal , Real >::InitializeVisualization( void )
 {
+	sprintf( gradientModulationStr , "Gradient modulation: %.2e\n" , gradientModulation );
+	sprintf( interpolationStr , "Interpolation: %.2e\n" , interpolationWeight );
+
 	visualization.textureWidth = textureWidth;
 	visualization.textureHeight = textureHeight;
 
@@ -856,6 +919,7 @@ void TextureFilter< PreReal , Real >::InitializeVisualization( void )
 	}
 	visualization.UpdateMaskTextureBuffer();
 }
+#endif // NO_VISUALIZATION
 
 template< typename PreReal , typename Real >
 void TextureFilter< PreReal , Real >::Init( void )
@@ -864,9 +928,6 @@ void TextureFilter< PreReal , Real >::Init( void )
 	levels = std::max<int>(Levels.value,1);
 	interpolationWeight = InterpolationWeight.value;
 	gradientModulation = GradientModulation.value;
-
-	sprintf( gradientModulationStr , "Gradient modulation: %.2e\n" , gradientModulation );
-	sprintf( interpolationStr , "Interpolation: %.2e\n" , interpolationWeight );
 
 	mesh.read( Input.values[0] , Input.values[1] , DetailVerbose.set );
 
@@ -981,6 +1042,11 @@ void _main( int argc , char *argv[] )
 {
 	TextureFilter< PreReal , Real >::Init();
 
+#ifdef NO_VISUALIZATION
+	if( UseDirectSolver.set ) TextureFilter< PreReal , Real >::ComputeExactSolution( Verbose.set );
+	else for ( int i=0 ; i<OutputVCycles.value ; i++ ) TextureFilter< PreReal , Real >::UpdateSolution();
+	TextureFilter< PreReal , Real >::WriteTexture( Output.value );
+#else // !NO_VISUALIZATION
 	if( !Output.set )
 	{
 		glutInitDisplayMode( GLUT_RGB | GLUT_DOUBLE );
@@ -1012,12 +1078,17 @@ void _main( int argc , char *argv[] )
 		else for ( int i=0 ; i<OutputVCycles.value ; i++ ) TextureFilter< PreReal , Real >::UpdateSolution();
 		TextureFilter< PreReal , Real >::ExportTextureCallBack( &TextureFilter< PreReal , Real >::visualization , Output.value );
 	}
+#endif // NO_VISUALIZATION
 }
 
 int main(int argc, char* argv[])
 {
 	cmdLineParse( argc-1 , argv+1 , params );
+#ifdef NO_VISUALIZATION
+	if( !Input.set || !Output.set ) { ShowUsage( argv[0] ) ; return EXIT_FAILURE; }
+#else // !NO_VISUALIZATION
 	if( !Input.set ) { ShowUsage( argv[0] ) ; return EXIT_FAILURE; }
+#endif // NO_VISUALIZATION
 	omp_set_num_threads( Threads.value );
 	if( !NoHelp.set && !Output.set )
 	{

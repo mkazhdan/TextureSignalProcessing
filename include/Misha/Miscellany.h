@@ -30,11 +30,54 @@ DAMAGE.
 
 #undef VERBOSE_MESSAGING
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif // _OPENMP
+#include <string.h>
+#include <sys/timeb.h>
+#ifndef WIN32
+#include <sys/time.h>
+#endif // WIN32
+#if 1
+#else
+#include <cstdio>
+#include <ctime>
+#include <chrono>
+#endif
+#include <stdarg.h>
+#include <vector>
+#include <exception>
+#include <string>
+#if defined( _WIN32 ) || defined( _WIN64 )
+#include <Windows.h>
+#include <Psapi.h>
+#else // !_WIN32 && !_WIN64
+#include <sys/time.h> 
+#include <sys/resource.h> 
+#endif // _WIN32 || _WIN64
+
+#if defined(_WIN32) || defined( _WIN64 )
+#elif defined(__unix__) || defined(__unix) || defined(unix) || (defined(__APPLE__) && defined(__MACH__))
+#include <unistd.h>
+#include <sys/resource.h>
+
+#if defined(__APPLE__) && defined(__MACH__)
+#include <mach/mach.h>
+
+#elif (defined(_AIX) || defined(__TOS__AIX__)) || (defined(__sun__) || defined(__sun) || defined(sun) && (defined(__SVR4) || defined(__svr4__)))
+#include <fcntl.h>
+#include <procfs.h>
+
+#elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__)
+#include <stdio.h>
+
+#endif
+#endif
+
 //////////////////
 // OpenMP Stuff //
 //////////////////
 #ifdef _OPENMP
-#include <omp.h>
 #else // !_OPENMP
 inline int omp_get_num_procs  ( void ){ return 1; }
 inline int omp_get_max_threads( void ){ return 1; }
@@ -53,12 +96,6 @@ namespace Miscellany
 	////////////////
 	// Time Stuff //
 	////////////////
-#include <string.h>
-#include <sys/timeb.h>
-#ifndef WIN32
-#include <sys/time.h>
-#endif // WIN32
-
 	inline double Time( void )
 	{
 #ifdef WIN32
@@ -82,9 +119,6 @@ namespace Miscellany
 		double _start;
 	};
 #else
-#include <cstdio>
-#include <ctime>
-#include <chrono>
 	struct Timer
 	{
 		Timer( void ){ _startCPUClock = std::clock() , _startWallClock = std::chrono::system_clock::now(); }
@@ -113,8 +147,6 @@ namespace Miscellany
 #endif // _WIN32 || _WIN64
 #endif // !SetTempDirectory
 
-#include <stdarg.h>
-#include <vector>
 	struct MessageWriter
 	{
 		char* outputFile;
@@ -171,8 +203,6 @@ namespace Miscellany
 	///////////////
 	// Exception //
 	///////////////
-#include <exception>
-#include <string>
 #ifdef VERBOSE_MESSAGING
 	inline char *_MakeMessageString( const char *header , const char *fileName , int line , const char *functionName , const char *format , ... )
 	{
@@ -350,8 +380,6 @@ namespace Miscellany
 		static int PeakMemoryUsageMB( void ){ return (int)( getPeakRSS()>>20 ); }
 	};
 #if defined( _WIN32 ) || defined( _WIN64 )
-#include <Windows.h>
-#include <Psapi.h>
 	inline void SetPeakMemoryMB( size_t sz )
 	{
 		sz <<= 20;
@@ -365,8 +393,6 @@ namespace Miscellany
 		if( !SetInformationJobObject( h , JobObjectExtendedLimitInformation , &jeli , sizeof( jeli ) ) ) fprintf( stderr , "Failed to set memory limit\n" );
 	}
 #else // !_WIN32 && !_WIN64
-#include <sys/time.h> 
-#include <sys/resource.h> 
 	inline void SetPeakMemoryMB( size_t sz )
 	{
 		sz <<= 20;
@@ -385,22 +411,14 @@ namespace Miscellany
 	*/
 
 #if defined(_WIN32) || defined( _WIN64 )
-#include <windows.h>
-#include <psapi.h>
 
 #elif defined(__unix__) || defined(__unix) || defined(unix) || (defined(__APPLE__) && defined(__MACH__))
-#include <unistd.h>
-#include <sys/resource.h>
 
 #if defined(__APPLE__) && defined(__MACH__)
-#include <mach/mach.h>
 
 #elif (defined(_AIX) || defined(__TOS__AIX__)) || (defined(__sun__) || defined(__sun) || defined(sun) && (defined(__SVR4) || defined(__svr4__)))
-#include <fcntl.h>
-#include <procfs.h>
 
 #elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__)
-#include <stdio.h>
 
 #endif
 

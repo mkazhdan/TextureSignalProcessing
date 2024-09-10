@@ -1,0 +1,29 @@
+﻿C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VC\v170\Microsoft.CppBuild.targets(531,5): warning MSB8028: The intermediate directory (x64\Release\TextureStitching\) contains files shared from another project (TextureStitching-DESKTOP-EEGME38.vcxproj).  This can lead to incorrect clean and rebuild behavior.
+  TextureStitching.cpp
+C:\Research\TextureSignalProcessing\TSP.Source\TextureStitching\TextureStitching.cpp(402,3): error C3861: 'UpdateFilteredColorTexture': identifier not found
+      C:\Research\TextureSignalProcessing\TSP.Source\TextureStitching\TextureStitching.cpp(402,3):
+      the template instantiation context (the oldest one first) is
+          C:\Research\TextureSignalProcessing\TSP.Source\TextureStitching\TextureStitching.cpp(1111,20):
+          see reference to function template instantiation 'void _main<double,double>(int,char *[])' being compiled
+          C:\Research\TextureSignalProcessing\TSP.Source\TextureStitching\TextureStitching.cpp(1031,31):
+          see reference to class template instantiation 'Stitching<PreReal,Real>' being compiled
+          with
+          [
+              PreReal=double,
+              Real=double
+          ]
+          C:\Research\TextureSignalProcessing\TSP.Source\TextureStitching\TextureStitching.cpp(378,1):
+          while compiling class template member function 'void Stitching<PreReal,Real>::Idle(void)'
+          with
+          [
+              PreReal=double,
+              Real=double
+          ]
+              C:\Research\TextureSignalProcessing\TSP.Source\TextureStitching\TextureStitching.cpp(1062,19):
+              see the first reference to 'Stitching<PreReal,Real>::Idle' in '_main'
+          with
+          [
+              PreReal=double,
+              Real=double
+          ]
+  

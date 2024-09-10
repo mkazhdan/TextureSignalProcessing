@@ -26,7 +26,6 @@ ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF S
 DAMAGE.
 */
 
-
 enum
 {
 	SINGLE_INPUT_MODE,
@@ -44,7 +43,10 @@ enum
 #include <Src/Solver.h>
 #include <Src/MassAndStiffness.h>
 #include <Src/Padding.h>
+#ifdef NO_VISUALIZATION
+#else // !NO_VISUALIZATION
 #include <Src/StitchingVisualization.h>
+#endif // NO_VISUALIZATION
 
 cmdLineParameterArray< char * , 3 > In( "in" );
 cmdLineParameter< char* > Output( "out" );
@@ -60,7 +62,10 @@ cmdLineParameter< int   > MultigridPaddedHeight( "mPadH"   ,   0 );
 cmdLineParameter< int   > MultigridPaddedWidth ( "mPadW"   ,   2 );
 
 cmdLineReadable RandomJitter( "jitter" );
+#ifdef NO_VISUALIZATION
+#else // !NO_VISUALIZATION
 cmdLineParameter< char* > CameraConfig( "camera" );
+#endif // NO_VISUALIZATION
 cmdLineReadable UseDirectSolver( "useDirectSolver" );
 cmdLineReadable Verbose( "verbose" );
 cmdLineReadable NoHelp( "noHelp" );
@@ -69,9 +74,13 @@ cmdLineReadable Double( "double" );
 cmdLineReadable MultiInput( "multi" );
 cmdLineReadable* params[] =
 {
-	&In , &Output , &InterpolationWeight , &CameraConfig , &Levels , &UseDirectSolver , &Threads, &Verbose ,
+	&In , &Output , &InterpolationWeight , &Levels , &UseDirectSolver , &Threads, &Verbose ,
 	&DetailVerbose , &MultigridBlockHeight , &MultigridBlockWidth , &MultigridPaddedHeight , &MultigridPaddedWidth , &RandomJitter ,
 	&Double , &MatrixQuadrature , &OutputVCycles , &NoHelp , &MultiInput ,
+#ifdef NO_VISUALIZATION
+#else // !NO_VISUALIZATION
+	&CameraConfig ,
+#endif // NO_VISUALIZATION
 	NULL
 };
 
@@ -80,7 +89,11 @@ void ShowUsage(const char* ex)
 	printf("Usage %s:\n", ex);
 
 	printf( "\t --%s <input mesh, texels , and mask>\n" , In.name );
+#ifdef NO_VISUALIZATION
+	printf( "\t --%s <output texture>\n" , Output.name );
+#else // !NO_VISUALIZATION
 	printf( "\t[--%s <output texture>]\n" , Output.name );
+#endif // NO_VISUALIZATION
 	printf( "\t[--%s <output v-cycles>=%d]\n" , OutputVCycles.name , OutputVCycles.value );
 	printf( "\t[--%s <interpolation weight>=%f]\n" , InterpolationWeight.name , InterpolationWeight.value );
 	printf( "\t[--%s <system matrix quadrature points per triangle>=%d]\n" , MatrixQuadrature.name, MatrixQuadrature.value );
@@ -89,7 +102,10 @@ void ShowUsage(const char* ex)
 	printf( "\t[--%s]\n" , RandomJitter.name );
 	printf( "\t[--%s]\n" , Verbose.name );
 
+#ifdef NO_VISUALIZATION
+#else // !NO_VISUALIZATION
 	printf( "\t[--%s <camera configuration file>]\n" , CameraConfig.name );
+#endif // NO_VISUALIZATION
 	printf( "\t[--%s <hierarchy levels>=%d]\n" , Levels.name, Levels.value );
 	printf( "\t[--%s <threads>=%d]\n", Threads.name , Threads.value );
 	printf( "\t[--%s <multigrid block width>=%d]\n" , MultigridBlockWidth.name , MultigridBlockWidth.value );
@@ -127,9 +143,13 @@ public:
 	static std::vector< std::vector< Point3D< Real > > > partialEdgeValues;
 
 	static Image< Point3D< Real > > filteredTexture;
+
+#ifdef NO_VISUALIZATION
+#else // !NO_VISUALIZATION
 	// UI
 	static char interpolationStr[1024];
 	static char referenceTextureStr[1024];
+#endif // NO_VISUALIZATION
 
 	static std::vector< Point3D< float > >textureNodePositions;
 	static std::vector< Point3D< float > >textureEdgePositions;
@@ -188,6 +208,10 @@ public:
 
 	static Padding padding;
 
+#ifdef NO_VISUALIZATION
+	static int updateCount;
+	static void WriteTexture( const char *fileName );
+#else // !NO_VISUALIZATION
 	// Visulization
 	static StitchingVisualization visualization;
 	static int updateCount;
@@ -198,36 +222,53 @@ public:
 	static void IncrementUpdateCallBack               ( Visualization *v , const char *prompt );
 	static void ExportTextureCallBack                 ( Visualization *v , const char *prompt );
 	static void InterpolationWeightCallBack           ( Visualization *v , const char *prompt );
+#endif // NO_VISUALIZATION
 
 	static void LoadImages( void );
 	static void ParseImages( void );
 	static void SetUpSystem( void );
 	static void SolveSystem( void );
 	static void Init( void );
+#ifdef NO_VISUALIZATION
+#else // !NO_VISUALIZATION
 	static void InitializeVisualization( void );
+#endif // NO_VISUALIZATION
 	static void UpdateSolution( bool verbose=false , bool detailVerbose=false );
 	static void ComputeExactSolution( bool verbose=false );
 	static void InitializeSystem( int width , int height );
 	static void _InitializeSystem( std::vector< std::vector< SquareMatrix< PreReal , 2 > > > &parameterMetric , BoundaryProlongationData< Real > &boundaryProlongation );
 
+#ifdef NEW_CODE
+#else // !NEW_CODE
 	static void UpdateFilteredColorTexture( const std::vector< Point3D< Real > > &solution );
+#endif // NEW_CODE
 	static void UpdateFilteredTexture( const std::vector< Point3D< Real > > &solution );
 
+#ifdef NO_VISUALIZATION
+#else // !NO_VISUALIZATION
 	static void Display( void ){ visualization.Display(); }
 	static void MouseFunc( int button , int state , int x , int y );
 	static void MotionFunc( int x , int y );
 	static void Reshape( int w , int h ) { visualization.Reshape(w,h); }
 	static void KeyboardFunc( unsigned char key , int x , int y ) { visualization.KeyboardFunc(key,x,y); }
 	static void Idle( void );
+#endif // NO_VISUALIZATION
 };
+
+#ifdef NO_VISUALIZATION
+#else // !NO_VISUALIZATION
 template< typename PreReal , typename Real > char															Stitching< PreReal , Real >::referenceTextureStr[1024];
 template< typename PreReal , typename Real > char															Stitching< PreReal , Real >::interpolationStr[1024];
+#endif // NO_VISUALIZATION
 
 template< typename PreReal , typename Real > int															Stitching< PreReal , Real >::inputMode;
 template< typename PreReal , typename Real > TexturedMesh< PreReal >										Stitching< PreReal , Real >::mesh;
 template< typename PreReal , typename Real > int															Stitching< PreReal , Real >::textureWidth;
 template< typename PreReal , typename Real > int															Stitching< PreReal , Real >::textureHeight;
+#ifdef NO_VISUALIZATION
+#else // !NO_VISUALIZATION
 template< typename PreReal , typename Real > StitchingVisualization											Stitching< PreReal , Real >::visualization;
+#endif // NO_VISUALIZATION
 template< typename PreReal , typename Real > SparseMatrix< Real , int >										Stitching< PreReal , Real >::mass;
 template< typename PreReal , typename Real > SparseMatrix< Real , int >										Stitching< PreReal , Real >::stiffness;
 template< typename PreReal , typename Real > SparseMatrix< Real , int >										Stitching< PreReal , Real >::stitchingMatrix;
@@ -290,6 +331,8 @@ template< typename PreReal , typename Real >  std::vector< std::vector< Point3D<
 template< typename PreReal , typename Real > int															Stitching< PreReal , Real >::textureIndex = 0;
 
 
+#ifdef NEW_CODE
+#else // !NEW_CODE
 template< typename PreReal , typename Real >
 void Stitching< PreReal , Real >::UpdateFilteredColorTexture( const std::vector< Point3D< Real > > &solution )
 {
@@ -306,6 +349,7 @@ void Stitching< PreReal , Real >::UpdateFilteredColorTexture( const std::vector<
 		}
 	}
 }
+#endif // NEW_CODE
 
 template< typename PreReal , typename Real >
 void Stitching< PreReal , Real >::UpdateFilteredTexture( const std::vector< Point3D< Real > > &solution )
@@ -318,6 +362,17 @@ void Stitching< PreReal , Real >::UpdateFilteredTexture( const std::vector< Poin
 	}
 }
 
+#ifdef NO_VISUALIZATION
+template< typename PreReal , typename Real >
+void Stitching< PreReal , Real >::WriteTexture( const char *fileName )
+{
+	UpdateFilteredTexture( multigridStitchingVariables[0].x );
+	Image< Point3D< Real > > outputTexture = filteredTexture;
+	if( padding.nonTrivial ) UnpadImage( padding , outputTexture );
+	outputTexture.write( fileName );
+}
+
+#else // !NO_VISUALIZATION
 template< typename PreReal , typename Real >
 void Stitching< PreReal , Real >::Idle( void )
 {
@@ -482,6 +537,7 @@ void  Stitching< PreReal , Real >::InterpolationWeightCallBack( Visualization * 
 	visualization.UpdateColorTextureBuffer();
 	sprintf( interpolationStr , "Interpolation weight: %e\n" , interpolationWeight );
 }
+#endif // NO_VISUALIZATION
 
 
 template< typename PreReal , typename Real >
@@ -795,9 +851,14 @@ void Stitching< PreReal , Real >::ParseImages( void )
 	for( int i=0 ; i<textureNodes.size() ; i++ ) multigridStitchingVariables[0].x[i] = texelValues[i];
 }
 
+#ifdef NO_VISUALIZATION
+#else // !NO_VISUALIZATION
 template< typename PreReal , typename Real >
 void Stitching< PreReal , Real >::InitializeVisualization( void )
 {
+	sprintf( referenceTextureStr , "Reference Texture: %02d of %02d\n" , textureIndex,numTextures );
+	sprintf( interpolationStr , "Interpolation: %.2e\n" , interpolationWeight );
+
 	visualization.textureWidth = textureWidth;
 	visualization.textureHeight = textureHeight;
 
@@ -861,6 +922,7 @@ void Stitching< PreReal , Real >::InitializeVisualization( void )
 	if( inputMode==MULTIPLE_INPUT_MODE ) visualization.UpdateReferenceTextureBuffers( inputTextures );
 	if( inputMode==SINGLE_INPUT_MODE )   visualization.UpdateCompositeTextureBuffer( inputComposition );
 }
+#endif // NO_VISUALIZATION
 
 template< typename PreReal , typename Real >
 void Stitching< PreReal , Real >::Init( void )
@@ -868,8 +930,6 @@ void Stitching< PreReal , Real >::Init( void )
 	sprintf( stepsString , "Steps: 0" );
 	levels = std::max< int >( Levels.value , 1 );
 	interpolationWeight = InterpolationWeight.value;
-	sprintf( referenceTextureStr , "Reference Texture: %02d of %02d\n" , textureIndex,numTextures );
-	sprintf( interpolationStr , "Interpolation: %.2e\n" , interpolationWeight );
 
 	mesh.read( In.values[0] , NULL , DetailVerbose.set );
 
@@ -976,6 +1036,10 @@ void _main( int argc , char *argv[] )
 	Stitching< PreReal , Real >::ParseImages();
 	Stitching< PreReal , Real >::SetUpSystem();
 
+#ifdef NO_VISUALIZATION
+	Stitching< PreReal , Real >::SolveSystem();
+	Stitching< PreReal , Real >::WriteTexture( Output.value );
+#else // !NO_VISUALIZATION
 	if( !Output.set )
 	{
 		glutInitDisplayMode( GLUT_RGB | GLUT_DOUBLE );
@@ -1005,16 +1069,25 @@ void _main( int argc , char *argv[] )
 		Stitching< PreReal , Real >::SolveSystem();
 		Stitching< PreReal , Real >::ExportTextureCallBack( &Stitching< PreReal , Real >::visualization , Output.value );
 	}
+#endif // NO_VISUALIZATION
 }
 
 int main( int argc , char* argv[] )
 {
 	cmdLineParse( argc-1 , argv+1 , params );
+#ifdef NO_VISUALIZATION
+	if( !In.set || !Output.set )
+	{
+		ShowUsage( argv[0] );
+		return EXIT_FAILURE;
+	}
+#else // !NO_VISUALIZATION
 	if( !In.set )
 	{
 		ShowUsage( argv[0] );
 		return EXIT_FAILURE;
 	}
+#endif // NO_VISUALIZATION
 	omp_set_num_threads( Threads.value );
 	if( !NoHelp.set && !Output.set )
 	{

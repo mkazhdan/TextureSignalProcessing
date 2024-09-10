@@ -1,4 +1,4 @@
-<center><h2>Gradient Domain Texture Processing (Version 3.00)</h2></center>
+<center><h2>Gradient Domain Texture Processing (Version 4.00)</h2></center>
 <center>
 <a href="#LINKS">links</a>
 <a href="#EXECUTABLES">executables</a>
@@ -24,9 +24,9 @@ This software supports gradient-domain signal processing within a texture atlas.
 <a href="https://www.cs.cmu.edu/~kmcrane/Projects/HeatMethod/">[Crane, Weischedel, and Wardetzky, 2013]</a>
 <br>
 <b>Executables: </b>
-<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/TSP.x64.zip">Win64</a><br>
+<a href="TSP.x64.zip">Win64</a><br>
 <b>Source Code:</b>
-<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/TSP.Source.zip">ZIP</a> <a href="https://github.com/mkazhdan/TextureSignalProcessing">GitHub</a><br>
+<a href="TSP.Source.zip">ZIP</a> <a href="https://github.com/mkazhdan/TextureSignalProcessing">GitHub</a><br>
 <B>Data:</B>
 <A HREF="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/TSP.Data.zip">ZIP</A><br>
 <b>Older Versions:</b>
@@ -423,6 +423,8 @@ Here a "dots" pattern is written out to an image. (Empirically, we have found th
 <ul><li> Added support for reaction-diffusion based on the Gray-Scott model.</li></ul>
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version3.00/">Version 3</a>:
 <ul><li> Added support for texture stitching.</li></ul>
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.00/">Version 4</a>:
+<ul><li> Added <CODE>Makefile.no_visual</CODE> to allow building texture filtering/stitching applications without visualizations..</li></ul>
 </details>
 
 
@@ -432,3 +434,4 @@ This work genersouly supported by NSF grant #1422325.
 
 <hr>
 <a href="http://www.cs.jhu.edu/~misha">HOME</a>
+
