@@ -380,7 +380,6 @@ public:
 
 			triangles.resize( obj_faces.size() );
 			textureCoordinates.resize( 3*obj_faces.size() );
-#if 1
 			for( int i=0 ; i<obj_faces.size() ; i++ ) for( int j=0 ; j<3 ; j++ )
 			{
 				if     ( obj_faces[i][j].vIndex>0 ) triangles[i][j] = obj_faces[i][j].vIndex-1;
@@ -391,10 +390,6 @@ public:
 				else if( obj_faces[i][j].tIndex<0 ) textureCoordinates[3*i+j] = obj_textures[ (int)obj_textures.size() + obj_faces[i][j].tIndex ];
 				else Miscellany::ErrorOut( "Zero texture index unexpected in obj file" );
 			}
-#else
-			Miscellany::ErrorOut( "no obj support yet" );
-#endif
-
 		}
 		else Miscellany::ErrorOut( "Unrecognized file extension: " , std::string( meshName ) );
 		delete[] ext;

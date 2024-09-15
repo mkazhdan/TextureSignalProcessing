@@ -79,7 +79,7 @@ cmdLineReadable* params[] =
 	&DetailVerbose , &MultigridBlockHeight , &MultigridBlockWidth , &MultigridPaddedHeight , &MultigridPaddedWidth , &RandomJitter ,
 #ifdef NO_VISUALIZATION
 #else // !NO_VISUALIZATION
-	&DisplatMode ,
+	&DisplayMode ,
 #endif // NO_VISUALIZATION
 	&Double ,
 	&MatrixQuadrature ,
