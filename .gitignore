@@ -8,6 +8,10 @@
 *.o
 .vs/*
 *.tlog
+*.iobj
+*.ipdb
+*.pdb
+*.log
 include/Misha.V1/
 include/Src.V1/
 include/Src.V2/

@@ -295,6 +295,111 @@ public:
 		vertices.clear();
 		triangles.clear();
 		textureCoordinates.clear();
+#if 1 // NEW_CODE
+		char * ext = GetFileExtension( meshName );
+		if( !strcasecmp( ext , "ply" ) )
+		{
+			int file_type;
+			std::vector< PlyVertex< GeometryReal > > ply_vertices;
+			std::vector< PlyTexturedFace< GeometryReal > > ply_faces;
+			if( !PlyReadPolygons( meshName , ply_vertices , ply_faces , PlyVertex< GeometryReal >::ReadProperties , NULL , PlyVertex< GeometryReal >::ReadComponents , PlyTexturedFace< GeometryReal >::ReadProperties , NULL , PlyTexturedFace< GeometryReal >::ReadComponents , file_type ) )
+				Miscellany::Throw( "Failed to read ply file: %s" , meshName );
+
+			vertices.resize( ply_vertices.size() );
+			for( int i=0 ; i<ply_vertices.size() ; i++ ) vertices[i] = ply_vertices[i].point;
+
+			triangles.resize( ply_faces.size() );
+			textureCoordinates.resize( 3*ply_faces.size() );
+			for( int i=0 ; i<ply_faces.size() ; i++ ) for( int j=0 ; j<3 ; j++ )
+			{
+				triangles[i][j] = ply_faces[i][j];
+				textureCoordinates[3*i+j] = ply_faces[i].texture(j);
+			}
+		}
+		else if( !strcasecmp( ext , "obj" ) )
+		{
+			struct ObjFaceIndex
+			{
+				int vIndex , tIndex;
+			};
+			std::vector< Point3D< GeometryReal > > obj_vertices;
+			std::vector< Point2D< GeometryReal > > obj_textures;
+			std::vector< std::vector< ObjFaceIndex > > obj_faces;
+			std::ifstream in( meshName );
+			if( !in.is_open() ) Miscellany::ErrorOut( "Could not open file for reading: " , std::string(meshName) );
+
+			std::string( line );
+			unsigned int count = 0;
+			while( std::getline( in , line ) )
+			{
+				std::stringstream ss;
+				if( line[0]=='v' && line[1]==' ' )
+				{
+					line = line.substr(2);
+					std::stringstream ss( line );
+					Point3D< GeometryReal > p;
+					ss >> p[0] >> p[1] >> p[2];
+					obj_vertices.push_back( p );
+				}
+				else if( line[0]=='v' && line[1]=='t' && line[2]==' ' )
+				{
+					line = line.substr(3);
+					std::stringstream ss( line );
+					Point2D< GeometryReal > p;
+					ss >> p[0] >> p[1];
+					obj_textures.push_back( p );
+				}
+				else if( line[0]=='f' && line[1]==' ' )
+				{
+					std::vector< ObjFaceIndex > face;
+					line = line.substr(2);
+					std::stringstream ss( line );
+					std::string token;
+					while( std::getline( ss , token , ' ' ) )
+					{
+						std::stringstream _ss(token);
+						std::string _token;
+						unsigned int count = 0;
+						ObjFaceIndex idx;
+						while( std::getline( _ss , _token , '/' ) )
+						{
+							if     ( count==0 ) idx.vIndex = std::stoi( _token );
+							else if( count==1 ) idx.tIndex = std::stoi( _token );
+							count++;
+						}
+						face.push_back( idx );
+					}
+					if( face.size()!=3 ) Miscellany::ErrorOut( "Expectred triangular face: " , face.size() );
+					obj_faces.push_back( face );
+				}
+				count++;
+			}
+
+			vertices.resize( obj_vertices.size() );
+			for( int i=0 ; i<obj_vertices.size() ; i++ ) vertices[i] = obj_vertices[i];
+
+			triangles.resize( obj_faces.size() );
+			textureCoordinates.resize( 3*obj_faces.size() );
+#if 1
+			for( int i=0 ; i<obj_faces.size() ; i++ ) for( int j=0 ; j<3 ; j++ )
+			{
+				if     ( obj_faces[i][j].vIndex>0 ) triangles[i][j] = obj_faces[i][j].vIndex-1;
+				else if( obj_faces[i][j].vIndex<0 ) triangles[i][j] = (int)obj_vertices.size() + obj_faces[i][j].vIndex;
+				else Miscellany::ErrorOut( "Zero vertex index unexpected in obj file" );
+
+				if     ( obj_faces[i][j].tIndex>0 ) textureCoordinates[3*i+j] = obj_textures[ obj_faces[i][j].tIndex-1 ];
+				else if( obj_faces[i][j].tIndex<0 ) textureCoordinates[3*i+j] = obj_textures[ (int)obj_textures.size() + obj_faces[i][j].tIndex ];
+				else Miscellany::ErrorOut( "Zero texture index unexpected in obj file" );
+			}
+#else
+			Miscellany::ErrorOut( "no obj support yet" );
+#endif
+
+		}
+		else Miscellany::ErrorOut( "Unrecognized file extension: " , std::string( meshName ) );
+		delete[] ext;
+
+#else // !NEW_CODE
 		int file_type;
 		std::vector< PlyVertex< GeometryReal > > ply_vertices;
 		std::vector< PlyTexturedFace< GeometryReal > > ply_faces;
@@ -311,6 +416,7 @@ public:
 			triangles[i][j] = ply_faces[i][j];
 			textureCoordinates[3*i+j] = ply_faces[i].texture(j);
 		}
+#endif // NEW_CODE
 		SimpleMesh< GeometryReal >::updateNormals();
 
 		if( atlasName )
@@ -331,6 +437,7 @@ public:
 			delete[] ext;
 		}
 	}
+
 	void initializeBoundaryEdges( std::vector< int > &boundaryEdges ) const
 	{
 		bool isClosedMesh = true;

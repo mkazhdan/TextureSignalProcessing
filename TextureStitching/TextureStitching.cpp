@@ -238,10 +238,10 @@ public:
 	static void InitializeSystem( int width , int height );
 	static void _InitializeSystem( std::vector< std::vector< SquareMatrix< PreReal , 2 > > > &parameterMetric , BoundaryProlongationData< Real > &boundaryProlongation );
 
-#ifdef NEW_CODE
-#else // !NEW_CODE
+#ifdef NO_VISUALIZATION
+#else // !NO_VISUALIZATION
 	static void UpdateFilteredColorTexture( const std::vector< Point3D< Real > > &solution );
-#endif // NEW_CODE
+#endif // NO_VISUALIZATION
 	static void UpdateFilteredTexture( const std::vector< Point3D< Real > > &solution );
 
 #ifdef NO_VISUALIZATION
@@ -331,8 +331,8 @@ template< typename PreReal , typename Real >  std::vector< std::vector< Point3D<
 template< typename PreReal , typename Real > int															Stitching< PreReal , Real >::textureIndex = 0;
 
 
-#ifdef NEW_CODE
-#else // !NEW_CODE
+#ifdef NO_VISUALIZATION
+#else // !NO_VISUALIZATION
 template< typename PreReal , typename Real >
 void Stitching< PreReal , Real >::UpdateFilteredColorTexture( const std::vector< Point3D< Real > > &solution )
 {
@@ -349,7 +349,7 @@ void Stitching< PreReal , Real >::UpdateFilteredColorTexture( const std::vector<
 		}
 	}
 }
-#endif // NEW_CODE
+#endif // NO_VISUALIZATION
 
 template< typename PreReal , typename Real >
 void Stitching< PreReal , Real >::UpdateFilteredTexture( const std::vector< Point3D< Real > > &solution )
