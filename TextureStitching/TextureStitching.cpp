@@ -55,6 +55,9 @@ cmdLineParameter< float > InterpolationWeight( "interpolation" , 1e2 );
 cmdLineParameter< int   > Threads( "threads", omp_get_num_procs() );
 cmdLineParameter< int   > Levels( "levels" , 4 );
 cmdLineParameter< int   > MatrixQuadrature( "mQuadrature" , 6 );
+#ifdef NEW_CODE
+cmdLineParameter< int   > BoundaryDilationRadius( "dilateBoundaries" , -1 );
+#endif // NEWW_CODE
 
 cmdLineParameter< int   > MultigridBlockHeight ( "mBlockH" ,  16 );
 cmdLineParameter< int   > MultigridBlockWidth  ( "mBlockW" , 128 );
@@ -83,6 +86,9 @@ cmdLineReadable* params[] =
 #else // !NO_VISUALIZATION
 	&CameraConfig ,
 #endif // NO_VISUALIZATION
+#ifdef NEW_CODE
+	&BoundaryDilationRadius ,
+#endif // NEW_CODE
 	&OutputChartMaskErode ,
 	&OutputChartMask ,
 	NULL
@@ -99,10 +105,13 @@ void ShowUsage(const char* ex)
 	printf( "\t[--%s <output texture>]\n" , Output.name );
 #endif // NO_VISUALIZATION
 	printf( "\t[--%s <output chart mask image>]\n" , OutputChartMask.name );
-	printf( "\t[--%s <output chart mask erosion radius>=%d]\n" , OutputChartMaskErode.name );
+	printf( "\t[--%s <output chart mask erosion radius>=%d]\n" , OutputChartMaskErode.name , OutputChartMaskErode.value );
 	printf( "\t[--%s <output v-cycles>=%d]\n" , OutputVCycles.name , OutputVCycles.value );
 	printf( "\t[--%s <interpolation weight>=%f]\n" , InterpolationWeight.name , InterpolationWeight.value );
 	printf( "\t[--%s <system matrix quadrature points per triangle>=%d]\n" , MatrixQuadrature.name, MatrixQuadrature.value );
+#ifdef NEW_CODE
+	printf( "\t[--%s <boundary dilation radius>=%d]\n" , BoundaryDilationRadius.name , BoundaryDilationRadius.value );
+#endif // NEW_CODE
 	printf( "\t[--%s]\n" , UseDirectSolver.name );
 	printf( "\t[--%s]\n" , MultiInput.name );
 	printf( "\t[--%s]\n" , RandomJitter.name );
@@ -755,10 +764,58 @@ void Stitching< PreReal , Real >::LoadImages( void )
 		inputComposition.read( In.values[1] );
 		textureWidth = inputComposition.width();
 		textureHeight = inputComposition.height();
+#ifdef NEW_CODE
+		Image< Point3D< unsigned char > > textureConfidence;
+		textureConfidence.read( In.values[2] );
+
+		if( BoundaryDilationRadius.value>=0 )
+		{
+			auto ToIndex = []( Point3D< unsigned char > c ){ return (size_t)c[0] * 256 *256 + (size_t)c[1]*256 + (size_t)c[2]; };
+			auto FromIndex = []( size_t idx )
+				{
+					Point3D< unsigned char > c;
+					c[2] = idx%256;
+					idx /= 256;
+					c[1] = idx %256;
+					idx /= 256;
+					c[0] = idx %256;
+					return c;
+				};
+			Image< Point3D< unsigned char > > old = textureConfidence;
+
+			unsigned int r = BoundaryDilationRadius.value;
+
+#pragma omp parallel for
+			for( int i=0 ; i<textureConfidence.width() ; i++ ) for( int j=0 ; j<textureConfidence.height() ; j++ )
+			{
+				size_t idx = ToIndex( old(i,j) );
+				if( idx==0 ) textureConfidence(i,j) = Point3D< unsigned char >(0,0,0);
+				else
+				{
+					std::set< size_t > indices;
+					for( int x=(int)i-r ; x<=(int)i+r ; x++ )
+						if( x>=0 && x<textureConfidence.width() )
+							for( int y=(int)j-r ; y<=(int)j+r ; y++ )
+								if( y>=0 && y<textureConfidence.height() )
+									if( (x-i)*(x-i) + (y-j)*(y-j)<=r*r )
+									{
+										idx = ToIndex( old(x,y) );
+										if( idx ) indices.insert( idx );
+									}
+					if( indices.size()>=2 ) for( int c=0 ; c<3 ; c++ ) textureConfidence(i,j)[c] = rand()%256;
+				}
+			}
+
+			inputColorMask.resize( textureConfidence.width() , textureConfidence.height() );
+			for( unsigned int i=0 ; i<textureConfidence.width() ; i++ ) for( unsigned int j=0 ; j<textureConfidence.height() ; j++ ) for( unsigned int c=0 ; c<3 ; c++ )
+				inputColorMask(i,j)[c] = ( (Real)textureConfidence(i,j)[c] )/255;
+	}
+#else // !NEW_CODE
 		inputColorMask.read( In.values[2] );
 
 		Image< Point3D< unsigned char > > textureConfidence;
 		textureConfidence.read( In.values[2] );
+#endif // NEW_CODE
 
 		inputMask.resize( textureWidth , textureHeight );
 		for( int p=0 ; p<textureConfidence.size() ; p++ )

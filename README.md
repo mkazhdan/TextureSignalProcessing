@@ -1,4 +1,4 @@
-<center><h2>Gradient Domain Texture Processing (Version 4.01)</h2></center>
+<center><h2>Gradient Domain Texture Processing (Version 4.03)</h2></center>
 <center>
 <a href="#LINKS">links</a>
 <a href="#EXECUTABLES">executables</a>
@@ -30,6 +30,8 @@ This software supports gradient-domain signal processing within a texture atlas.
 <B>Data:</B>
 <A HREF="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/TSP.Data.zip">ZIP</A><br>
 <b>Older Versions:</b>
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.02/">V4.02</a>,
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.01/">V4.01</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.00/">V4.00</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version3.00/">V3.00</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version2.00/">V2.00</a>,
@@ -423,17 +425,37 @@ Here a "dots" pattern is written out to an image. (Empirically, we have found th
 <a name="CHANGES"><b>HISTORY OF CHANGES</b></a><br>
 </summary>
 
-<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version2.00/">Version 2</a>:
-<ul><li> Added support for reaction-diffusion based on the Gray-Scott model.</li></ul>
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version2.00/">Version 2.00</a>:
+<ul>
+<li> Added support for reaction-diffusion based on the Gray-Scott model.
+</ul>
 
-<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version3.00/">Version 3</a>:
-<ul><li> Added support for texture stitching.</li></ul>
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version3.00/">Version 3.00</a>:
+<ul>
+<li> Added support for texture stitching.
+</ul>
 
-<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.00/">Version 4</a>:
-<ul><li> Added <CODE>Makefile.no_visual</CODE> to allow building texture filtering/stitching applications without visualizations..</li></ul>
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.00/">Version 4.00</a>:
+<ul>
+<li> Added <CODE>Makefile.no_visual</CODE> to allow building texture filtering/stitching applications without visualizations.
+</ul>
 
-<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.01/">Version 4</a>:
-<ul><li> Added support for reading <code>.obj</code> files.
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.01/">Version 4.01</a>:
+<ul>
+<li> Added support for reading <code>.obj</code> files.
+</ul>
+
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.02/">Version 4.02</a>:
+<ul>
+<li> Added support for mask visualization.
+<li> Switched exceptions to warnings.
+</ul>
+
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.03/">Version 4.03</a>:
+<ul>
+<li> Added support for segment boundary dilation in the <CODE>TextureStitching</CODE> code.
+</ul>
+
 </details>
 
 
