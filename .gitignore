@@ -6,6 +6,8 @@
 *.opensdf
 *.bat
 *.o
+*.obj
+*.recipe
 .vs/*
 *.tlog
 *.iobj
