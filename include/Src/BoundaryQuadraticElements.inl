@@ -518,7 +518,7 @@ void InitializeBoundaryPolygons
 		InitializeChartBoundaryPolygons( atlasEdgeIndex , oppositeHalfEdge , atlasCharts[i] , gridCharts[i] , numInteriorNodes , numBoundaryVertices , numBoundaryNodes , boundaryEdgeIntersections , localBoundarySegmentsInfo[i] , localBoundaryNodeIndices[i] , localBoundaryNodePosition[i] , coveredOppositeBoundaryNode );
 
 	if( isClosedMesh ) for ( int i=0 ; i<coveredOppositeBoundaryNode.size() ; i++ ) if( coveredOppositeBoundaryNode[i]!=1 )
-		Miscellany::Throw( "Non-opposite boundary node at node %d" , i );
+		Miscellany::Warn( "Non-opposite boundary node at node %d" , i );
 }
 
 #include "ConstrainedTriangulation.h"
@@ -610,7 +610,6 @@ template< typename GeometryReal , typename MatrixReal >
 void InitializeBoundaryTriangulation( GridAtlas< GeometryReal , MatrixReal > &gridAtlas , AtlasMesh< GeometryReal > &atlasMesh , std::vector< AtlasChart< GeometryReal > > &atlasCharts , std::vector< int > &oppositeHalfEdge , std::unordered_map< int , int > &boundaryVerticesIndices , int numBoundaryVertices , const bool &isClosedMesh , bool verbose=false )
 {
 	InitializeBoundaryPolygons( atlasMesh.halfEdgeToEdgeIndex , oppositeHalfEdge , atlasCharts , gridAtlas.gridCharts , boundaryVerticesIndices , gridAtlas.numInteriorTexels , numBoundaryVertices , gridAtlas.numBoundaryNodes , isClosedMesh );
-
 	InitializeBoundaryQuadraticElements( gridAtlas.gridCharts , gridAtlas.numBoundaryNodes + gridAtlas.numInteriorTexels , gridAtlas.numMidPoints );
 
 	if( verbose )

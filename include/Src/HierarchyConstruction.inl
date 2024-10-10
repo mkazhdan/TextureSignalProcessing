@@ -88,12 +88,11 @@ void InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geome
 	barycentricCoords.resize(width, height);
 
 	//(1) Add interior texels
-	for (int t = 0; t < atlasChart.triangles.size(); t++)
+	for( int t=0 ; t<atlasChart.triangles.size() ; t++ )
 	{
 		Point2D< GeometryReal > tPos[3];
-		for (int i = 0; i < 3; i++) tPos[i] = atlasChart.vertices[atlasChart.triangles[t][i]] - gridChart.corner;
-		int minCorner[2];
-		int maxCorner[2];
+		for( int i=0 ; i<3 ; i++ ) tPos[i] = atlasChart.vertices[ atlasChart.triangles[t][i] ] - gridChart.corner;
+		int minCorner[2] , maxCorner[2];
 		GetTriangleIntegerBBox( tPos , (GeometryReal)1./cellSizeW , (GeometryReal)1./cellSizeH , minCorner , maxCorner );
 
 		SquareMatrix< GeometryReal , 2 > barycentricMap = GetBarycentricMap(tPos);
@@ -105,9 +104,9 @@ void InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geome
 			if( barycentricCoord[0]>=0 && barycentricCoord[1]>=0 && ( barycentricCoord[0]+barycentricCoord[1] )<=1 )
 			{
 #ifdef DEBUG_ATLAS
-				if( nodeType(i,j)!=-1 ) Miscellany::Throw( "Node ( %d , %d ) covered by two triangles: %d %d" , i , j , atlasChart.triangles[t]() , nodeOwner(i,j) );
+				if( nodeType(i,j)!=-1 ) Miscellany::Warn( "Node ( %d , %d ) covered by two triangles: %d %d" , i , j , atlasChart.triangles[t]() , nodeOwner(i,j) );
 #else // !DEBUG_ATLAS
-				if( nodeType(i,j)!=-1 ) Miscellany::Throw( "Node ( %d , %d ) in chart %d already covered" , i , j , chartID );
+				if( nodeType(i,j)!=-1 ) Miscellany::Warn( "Node ( %d , %d ) in chart %d already covered [%d]" , i , j , chartID , t );
 #endif // DEBUG_ATLAS
 				nodeType(i,j) = 1;
 #ifdef DEBUG_ATLAS
@@ -118,6 +117,7 @@ void InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geome
 			}
 		}
 	}
+
 	//(2) Add texels adjacent to boundary cells
 	int interiorCellTriangles = 0;
 
@@ -788,6 +788,7 @@ void InitializeHierarchy
 	HierarchicalSystem< GeometryReal , MatrixReal > &hierarchy , std::vector< AtlasChart< GeometryReal > > &atlasCharts , const MultigridBlockInfo &multigridBlockInfo , bool verbose=false , bool detailVerbose=false , bool computeProlongation=false
 )
 {
+
 	Miscellany::Timer timer;
 
 	//(1) Initialize Atlas Mesh
@@ -800,6 +801,7 @@ void InitializeHierarchy
 	InitializeAtlasMesh( mesh , width , height , atlasMesh , atlasCharts , oppositeHalfEdge , boundaryVerticesIndices , numBoundaryVertices , isClosedMesh , detailVerbose );
 
 	if( verbose ) timer.reset();
+
 	//(2) Initialize Hierarchy
 	InitializeHierarchy( width , height , hierarchy , atlasCharts , levels , multigridBlockInfo , detailVerbose );
 	if( detailVerbose ) printf( "Hierarchy construction =  %.4f \n" , timer.elapsed() );

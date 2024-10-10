@@ -56,10 +56,8 @@ protected:
 	double _lastFPSTime;
 	int _lastFPSCount;
 	double _fps;
-#ifdef NEW_CODE
 	int _currentFrame , _frameStride , _totalFrames;
 	bool _exitAfterVideo;
-#endif // NEW_CODE
 public:
 	int screenWidth , screenHeight;
 	void *font , *promptFont;
@@ -69,9 +67,7 @@ public:
 	char promptString[1024];
 	int promptLength;
 	char* snapshotName;
-#ifdef NEW_CODE
 	char videoHeader[1024];
-#endif // NEW_CODE
 	bool flushImage;
 
 	struct KeyboardCallBack
@@ -108,12 +104,8 @@ public:
 		callBacks.push_back( KeyboardCallBack( this , 'F' , "toggle fps"  , ToggleFPSCallBack ) );
 		callBacks.push_back( KeyboardCallBack( this , 'H' , "toggle help" , ToggleHelpCallBack ) );
 		callBacks.push_back( KeyboardCallBack( this , 'I' , "toggle info" , ToggleInfoCallBack ) );
-#ifdef NEW_CODE
 		callBacks.push_back( KeyboardCallBack( this , 'i' , "save frame buffer" , "<Ouput image>" , SetFrameBufferCallBack ) );
 		callBacks.push_back( KeyboardCallBack( this , 'v' , "save video" , "<Ouput header> [<stride>] <number of frames>" , SetVideoCallBack ) );
-#else // !NEW_CODE
-		callBacks.push_back( KeyboardCallBack( this , 'i' , "save frame buffer" , "Ouput image" , SetFrameBufferCallBack ) );
-#endif // NEW_CODE
 		snapshotName = NULL;
 		flushImage = false;
 		screenWidth = screenHeight = 512;
@@ -161,7 +153,6 @@ public:
 			v->flushImage = true;
 		}
 	}
-#ifdef NEW_CODE
 	static void SetVideoCallBack( Visualization* v , const char* prompt )
 	{
 		if( prompt )
@@ -173,7 +164,6 @@ public:
 			v->_exitAfterVideo = true;
 		}
 	}
-#endif // NEW_CODE
 
 	static void WriteLeftString( int x , int y , void* font , const char* format , ... );
 	static int StringWidth( void* font , const char* format , ... );
@@ -229,7 +219,6 @@ void Visualization::Idle( void )
 			snapshotName = NULL;
 		}
 	}
-#ifdef NEW_CODE
 	else if( strlen(videoHeader) && _currentFrame<_totalFrames )
 	{
 		if( !(_currentFrame%_frameStride) )
@@ -242,7 +231,6 @@ void Visualization::Idle( void )
 		_currentFrame++;
 		if( _currentFrame==_totalFrames && _exitAfterVideo ) exit( 0 );
 	}
-#endif // NEW_CODE
 	idle();
 }
 void Visualization::KeyboardFunc( unsigned char key , int x , int y )

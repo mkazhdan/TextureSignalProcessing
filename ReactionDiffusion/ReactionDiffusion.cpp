@@ -216,17 +216,13 @@ public:
 
 	static void SetOutputBuffer( const std::vector< Real >& solution );
 	static void UpdateOutputBuffer( const std::vector< Real >& solution );
-#ifdef NEW_CODE
 	static void UpdateOutputBuffer( void );
-#endif // NEW_CODE
 
 	static int updateCount;
 
 	static void SetConcentration1CallBack( Visualization* v , const char* prompt );
 	static void SetConcentration2CallBack( Visualization* v , const char* prompt );
-#ifdef NEW_CODE
 	static void HideConcentrationsCallBack( Visualization *v , const char *prompt );
-#endif // NEW_CODE
 	static void ToggleUpdateCallBack( Visualization* v , const char* prompt );
 	static void IncrementUpdateCallBack( Visualization* v , const char* prompt );
 	static void ExportTextureCallBack( Visualization* v , const char* prompt );
@@ -428,21 +424,17 @@ void GrayScottReactionDiffusion< PreReal , Real >::UpdateOutputBuffer( const std
 	glutPostRedisplay();
 }
 
-#ifdef NEW_CODE
 template< typename PreReal , typename Real >
 void GrayScottReactionDiffusion< PreReal , Real >::UpdateOutputBuffer( void )
 {
 	std::vector< Real > solution( textureNodes.size() , 0 );
 	UpdateOutputBuffer( solution );
 }
-#endif // NEW_CODE
 
 template< typename PreReal , typename Real >
 void GrayScottReactionDiffusion< PreReal , Real >::Idle( void )
 {
-#ifdef NEW_CODE
 	visualization.Idle();
-#endif // NEW_CODE
 	if( updateCount && !visualization.promptCallBack )
 	{
 		if( UseDirectSolver.set ) UpdateExactSolution();
@@ -452,12 +444,8 @@ void GrayScottReactionDiffusion< PreReal , Real >::Idle( void )
 		steps++;
 		sprintf( stepsString , "Steps: %d" , steps );
 	}
-#ifdef NEW_CODE
 	if( whichConcentration<0 ) UpdateOutputBuffer();
 	else                       UpdateOutputBuffer( multigridVariables[whichConcentration][0].x );
-#else// !NEW_CODE
-	UpdateOutputBuffer( multigridVariables[whichConcentration][0].x );
-#endif // NEW_CODE
 }
 
 template< typename PreReal , typename Real >
@@ -806,9 +794,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeVisualization( void
 	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , '+' , "increment update" , IncrementUpdateCallBack ) );
 	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , '2' , "show concentration 2" , SetConcentration2CallBack ) );
 	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , '1' , "show concentration 1" , SetConcentration1CallBack ) );
-#ifdef NEW_CODE
 	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , '0' , "hide concetrations" , HideConcentrationsCallBack ) );
-#endif // NEW_CODE
 
 	visualization.UpdateVertexBuffer();
 	visualization.UpdateFaceBuffer();
@@ -832,10 +818,8 @@ void GrayScottReactionDiffusion< PreReal , Real >::SetConcentration1CallBack( Vi
 template< typename PreReal , typename Real >
 void GrayScottReactionDiffusion< PreReal , Real >::SetConcentration2CallBack( Visualization* , const char* ){ whichConcentration = 1; }
 
-#ifdef NEW_CODE
 template< typename PreReal , typename Real >
 void GrayScottReactionDiffusion< PreReal , Real >::HideConcentrationsCallBack( Visualization* , const char* ){ whichConcentration = -1; }
-#endif // NEW_CODE
 
 template< typename PreReal , typename Real >
 void GrayScottReactionDiffusion< PreReal , Real >::ToggleUpdateCallBack( Visualization* , const char* )

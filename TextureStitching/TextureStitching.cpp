@@ -62,6 +62,8 @@ cmdLineParameter< int   > MultigridPaddedHeight( "mPadH"   ,   0 );
 cmdLineParameter< int   > MultigridPaddedWidth ( "mPadW"   ,   2 );
 
 cmdLineReadable RandomJitter( "jitter" );
+cmdLineParameter< int    > OutputChartMaskErode( "outChartMaskErode" , 0 );
+cmdLineParameter< char * > OutputChartMask( "outChartMask" );
 #ifdef NO_VISUALIZATION
 #else // !NO_VISUALIZATION
 cmdLineParameter< char* > CameraConfig( "camera" );
@@ -81,6 +83,8 @@ cmdLineReadable* params[] =
 #else // !NO_VISUALIZATION
 	&CameraConfig ,
 #endif // NO_VISUALIZATION
+	&OutputChartMaskErode ,
+	&OutputChartMask ,
 	NULL
 };
 
@@ -88,12 +92,14 @@ void ShowUsage(const char* ex)
 {
 	printf("Usage %s:\n", ex);
 
-	printf( "\t --%s <input mesh, texels , and mask>\n" , In.name );
+	printf( "\t --%s <input mesh, texels, and mask>\n" , In.name );
 #ifdef NO_VISUALIZATION
 	printf( "\t --%s <output texture>\n" , Output.name );
 #else // !NO_VISUALIZATION
 	printf( "\t[--%s <output texture>]\n" , Output.name );
 #endif // NO_VISUALIZATION
+	printf( "\t[--%s <output chart mask image>]\n" , OutputChartMask.name );
+	printf( "\t[--%s <output chart mask erosion radius>=%d]\n" , OutputChartMaskErode.name );
 	printf( "\t[--%s <output v-cycles>=%d]\n" , OutputVCycles.name , OutputVCycles.value );
 	printf( "\t[--%s <interpolation weight>=%f]\n" , InterpolationWeight.name , InterpolationWeight.value );
 	printf( "\t[--%s <system matrix quadrature points per triangle>=%d]\n" , MatrixQuadrature.name, MatrixQuadrature.value );
@@ -134,6 +140,7 @@ public:
 	// Single input mode
 	static Image< int > inputMask;
 	static Image< Point3D< Real > > inputComposition;
+	static Image< Point3D< Real > > inputColorMask;
 
 	// Multiple input mode
 	static int numTextures;
@@ -218,6 +225,7 @@ public:
 
 	static void ToggleForwardReferenceTextureCallBack ( Visualization *v , const char *prompt );
 	static void ToggleBackwardReferenceTextureCallBack( Visualization *v , const char *prompt );
+	static void ToggleMaskCallBack                    ( Visualization *v , const char *prompt );
 	static void ToggleUpdateCallBack                  ( Visualization *v , const char *prompt );
 	static void IncrementUpdateCallBack               ( Visualization *v , const char *prompt );
 	static void ExportTextureCallBack                 ( Visualization *v , const char *prompt );
@@ -290,6 +298,7 @@ template< typename PreReal , typename Real> Image< Point3D< Real > >										St
 
 template< typename PreReal , typename Real > Image< int >												    Stitching< PreReal , Real >::inputMask;
 template< typename PreReal , typename Real > Image< Point3D< Real > >										Stitching< PreReal , Real >::inputComposition;
+template< typename PreReal , typename Real > Image< Point3D< Real > >										Stitching< PreReal , Real >::inputColorMask;
 
 template< typename PreReal , typename Real > int															Stitching< PreReal , Real >::numTextures;
 template< typename PreReal , typename Real > std::vector< Image< Real > >									Stitching< PreReal , Real >::inputConfidence;
@@ -477,6 +486,12 @@ void Stitching< PreReal , Real >::MotionFunc( int x , int y )
 			}
 		}
 	}
+	glutPostRedisplay();
+}
+
+template< typename PreReal , typename Real > void Stitching< PreReal , Real >::ToggleMaskCallBack( Visualization * /*v*/ , const char * )
+{
+	visualization.showMask = !visualization.showMask;
 	glutPostRedisplay();
 }
 
@@ -740,6 +755,7 @@ void Stitching< PreReal , Real >::LoadImages( void )
 		inputComposition.read( In.values[1] );
 		textureWidth = inputComposition.width();
 		textureHeight = inputComposition.height();
+		inputColorMask.read( In.values[2] );
 
 		Image< Point3D< unsigned char > > textureConfidence;
 		textureConfidence.read( In.values[2] );
@@ -899,6 +915,7 @@ void Stitching< PreReal , Real >::InitializeVisualization( void )
 		}
 	}
 
+	if( inputMode==SINGLE_INPUT_MODE ) visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , 'M' , "toggle mask" , ToggleMaskCallBack ) );
 	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , 's' , "export texture" , "Output Texture" , ExportTextureCallBack ) );
 	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , 'y' , "interpolation weight" , "Interpolation Weight" , InterpolationWeightCallBack ) );
 	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , ' ' , "toggle update" , ToggleUpdateCallBack ) );
@@ -921,6 +938,8 @@ void Stitching< PreReal , Real >::InitializeVisualization( void )
 
 	if( inputMode==MULTIPLE_INPUT_MODE ) visualization.UpdateReferenceTextureBuffers( inputTextures );
 	if( inputMode==SINGLE_INPUT_MODE )   visualization.UpdateCompositeTextureBuffer( inputComposition );
+	if( inputMode==SINGLE_INPUT_MODE )   visualization.UpdateMaskTextureBuffer( inputColorMask );
+
 }
 #endif // NO_VISUALIZATION
 
@@ -951,8 +970,6 @@ void Stitching< PreReal , Real >::Init( void )
 		for( int i=0 ; i<randomOffset.size() ; i++ ) randomOffset[i] = Point2D< PreReal >( (PreReal)1. - Random< PreReal >()*2 , (PreReal)1. - Random< PreReal >()*2 ) * jitterScale;
 		for( int i=0 ; i<mesh.triangles.size() ; i++ ) for( int k=0 ; k<3 ; k++ ) mesh.textureCoordinates[ 3*i+k ] += randomOffset[ mesh.triangles[i][k] ];
 	}
-
-
 
 	ComputePadding( padding , textureWidth , textureHeight , mesh.textureCoordinates , DetailVerbose.set );
 	if( padding.nonTrivial )
@@ -1010,6 +1027,32 @@ void Stitching< PreReal , Real >::Init( void )
 	textureEdgePositions.resize( edgePairs.size() );
 	for( int i=0 ; i<edgePairs.size() ; i++ ) textureEdgePositions[i] = ( textureNodePositions[ edgePairs[i].first ] + textureNodePositions[ edgePairs[i].second ] ) / 2;
 
+	if( OutputChartMask.set )
+	{
+		auto IsBlack = []( Point3D< unsigned char > c ){ return !c[0] && !c[1] && !c[2]; };
+
+		Image< Point3D< unsigned char > > mask;
+		mask.resize( textureWidth , textureHeight );
+		for( unsigned int i=0 ; i<textureWidth ; i++ ) for( unsigned int j=0 ; j<textureHeight ; j++ ) mask(i,j) = Point3D< unsigned char >(0,0,0);
+
+		std::map< int , Point3D< unsigned char > > chartColors;
+		for( unsigned int i=0 ; i<textureNodes.size() ; i++ ) if( chartColors.find( textureNodes[i].chartID )==chartColors.end() )
+		{
+			Point3D< unsigned char > c;
+			while( IsBlack(c) ) c[0] = rand()%256 , c[1] = rand()%256 , c[2] = rand()%256;
+			chartColors[ textureNodes[i].chartID ] = c;
+		}
+
+		for( int i=0 ; i<textureNodes.size() ; i++ ) mask( textureNodes[i].ci , textureNodes[i].cj ) = chartColors[ textureNodes[i].chartID ];
+		for( int e=0 ; e<OutputChartMaskErode.value ; e++ )
+		{
+			Image< Point3D< unsigned char > > _mask = mask;
+			for( int i=0 ; i<textureWidth ; i++ ) for( int j=0 ; j<textureHeight ; j++ ) if( mask(i,j)[0] || mask(i,j)[1] || mask(i,j)[2] )
+				for( int di=-1 ; di<=1 ; di++ ) for( int dj=-1 ; dj<=1 ; dj++ )
+					if( i+di>=0 && i+di<textureWidth && j+dj>0 && j+dj<textureHeight ) if( IsBlack( _mask(i+di,j+dj) ) ) mask(i,j) = Point3D< unsigned char >();
+		}
+		mask.write( OutputChartMask.value );
+	}
 	{
 		int multiChartTexelCount = 0;
 		Image< int > texelId;

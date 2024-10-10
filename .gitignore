@@ -26,4 +26,7 @@ ReactionDiffusion/x64/
 TextureFiltering/x64/
 ZLIB/x64/
 CHOLMOD/*
+*/_Eigen/*
+*/Debug/*
+*/Release/*
 *~

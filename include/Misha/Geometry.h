@@ -329,7 +329,7 @@ public:
 
 	//////////////////////////
 	// Vector space methods //
-	void Add            ( const LinearFunction& lf ) { this->gradient += lf.gradient , offset += lf.offset; }
+	void Add            ( const LinearFunction& lf ) { this->gradients += lf.gradients , offset += lf.offset; }
 	void Scale          ( _R s ) { gradients *= s , offset *= s; }
 	//////////////////////////
 };
@@ -371,6 +371,8 @@ struct Point2D
 	static Real SquareNorm( const Point2D& p ){ return p.coords[0]*p.coords[0] + p.coords[1]*p.coords[1]; }
 	static Real Length( const Point2D& p ){ return (Real)sqrt( SquareNorm(p) ); }
 	Real coords[2];
+
+	friend std::ostream & operator << ( std::ostream & os , Point2D< Real > p ){ return os << "{ " << p[0] << " , " << p[1] << " }"; }
 };
 template< class Real > Point2D< Real > operator * ( Real s , const Point2D< Real >& v ){ return v * s; }
 template< class Real > Point2D< Real > operator / ( Real s , const Point2D< Real >& v ){ return v / s; }
@@ -411,6 +413,9 @@ struct Point3D
 		return Point3D( p1.coords[1]*p2.coords[2] - p1.coords[2]*p2.coords[1], - p1.coords[0]*p2.coords[2] + p1.coords[2]*p2.coords[0] , p1.coords[0]*p2.coords[1] - p1.coords[1]*p2.coords[0] );
 	}
 	Real coords[3];
+
+	friend std::ostream & operator << ( std::ostream & os , Point3D< Real > p ){ return os << "{ " << p[0] << " , " << p[1] << " , " << p[2] << " }"; }
+
 };
 template< class Real > Point3D< Real > operator * ( Real s , const Point3D< Real > &p ){ return p*s; }
 template< class Real > Point3D< Real > operator * ( const SquareMatrix< Real , 3 >& M , const Point3D< Real >& v )
@@ -819,7 +824,7 @@ void BarycentricCoordinates( const Point< Real , Dim >& p , const Point< Real , 
 template< class Real , int Count >
 void BarycentricCoordinates( const Point3D< Real >& p , const Point3D< Real > v[Count] , Real a[Count] , bool inside=false )
 {
-	return BarycentricCoordinatesImplementation< Real , Count >::template BarycentricCoordinates( p , v , a , inside );
+	return BarycentricCoordinatesImplementation< Real , Count >::BarycentricCoordinates( p , v , a , inside );
 }
 
 ////////////////////////////////////////////////////////////////////////////////

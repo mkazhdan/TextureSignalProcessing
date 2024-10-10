@@ -73,6 +73,7 @@ cmdLineReadable Verbose( "verbose" );
 cmdLineReadable NoHelp( "noHelp" );
 cmdLineReadable DetailVerbose( "detail" );
 cmdLineReadable Double( "double" );
+cmdLineReadable Seamless( "seamless" );
 cmdLineReadable* params[] =
 {
 	&Input , &Output , &InterpolationWeight , &GradientModulation , &CameraConfig , &Levels , &UseDirectSolver , &Threads  , &Verbose ,
@@ -84,6 +85,7 @@ cmdLineReadable* params[] =
 	&Double ,
 	&MatrixQuadrature ,
 	&OutputVCycles ,
+	&Seamless ,
 	&NoHelp ,
 	NULL
 };
@@ -102,6 +104,7 @@ void ShowUsage( const char* ex )
 	printf( "\t[--%s <interpolation weight>=%f]\n" , InterpolationWeight.name , InterpolationWeight.value );
 	printf( "\t[--%s <gradient modulation>=%f]\n" , GradientModulation.name , GradientModulation.value );
 	printf( "\t[--%s <system matrix quadrature points per triangle>=%d]\n" , MatrixQuadrature.name , MatrixQuadrature.value );
+	printf( "\t[--%s]\n" , Seamless.name );
 	printf( "\t[--%s]\n" , UseDirectSolver.name );
 	printf( "\t[--%s]\n" , RandomJitter.name );
 	printf( "\t[--%s]\n" , Verbose.name );

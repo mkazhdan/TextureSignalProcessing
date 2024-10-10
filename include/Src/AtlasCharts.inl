@@ -73,6 +73,7 @@ void InitializeAtlasCharts( AtlasMesh< GeometryReal > &atlasMesh , const std::ve
 			}
 			vertexID[k] = chartVertexID[atlasVertexID];
 		}
+
 #ifdef DEBUG_ATLAS
 		atlasCharts[chartID].triangles.push_back( _TriangleIndex( TriangleIndex( vertexID[0] , vertexID[1] , vertexID[2] ) , t ) );
 #else // !DEBUG_ATLAS

@@ -50,11 +50,12 @@ void StitchingVisualization::display(void)
 	glEnable(GL_DEPTH_TEST);
 
 	setViewport(0);
-	DrawRegion(showMesh, textureBuffer, false,false);
+	if(visualizationMode == MULTIPLE_INPUT_MODE) DrawRegion(showMesh, textureBuffer, false,false);
+	else DrawRegion(showMesh, showMask ? maskTextureBuffer : textureBuffer , false,false);
 
 	setViewport(1);
 	if(visualizationMode == MULTIPLE_INPUT_MODE) DrawRegion(showMesh, referenceTextureBuffers[referenceIndex], false, false);
-	else DrawRegion(showMesh, compositeTextureBuffer, false, false); 
+	else DrawRegion(showMesh, showMask ? maskTextureBuffer : compositeTextureBuffer , false, false); 
 
 	glDisable(GL_TEXTURE_2D);
 	glBindTexture(GL_TEXTURE_2D, 0);
@@ -81,9 +82,7 @@ void StitchingVisualization::display(void)
 }
 
 void StitchingVisualization::UpdateColorTextureBuffer() {
-	if (!glIsBuffer(textureBuffer)) {
-		glGenTextures(1, &textureBuffer);
-	}
+	if( !glIsBuffer(textureBuffer ) ) glGenTextures(1, &textureBuffer);
 	glBindTexture(GL_TEXTURE_2D, textureBuffer);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, textureWidth, textureHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, (GLvoid*)&colorTextureBuffer[0]);
 	glBindTexture(GL_TEXTURE_2D, 0);
@@ -92,9 +91,7 @@ void StitchingVisualization::UpdateColorTextureBuffer() {
 template< typename Real >
 void StitchingVisualization::UpdateCompositeTextureBuffer( const Image< Point3D< Real > > &composite )
 {
-	if (!glIsBuffer(compositeTextureBuffer)) {
-		glGenTextures(1, &compositeTextureBuffer);
-	}
+	if( !glIsBuffer(compositeTextureBuffer) ) glGenTextures(1, &compositeTextureBuffer);
 	glBindTexture(GL_TEXTURE_2D, compositeTextureBuffer);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
@@ -105,6 +102,25 @@ void StitchingVisualization::UpdateCompositeTextureBuffer( const Image< Point3D<
 	unsigned char * imValues = new unsigned char[composite.size() * 3];
 	for( int j=0 ; j<composite.size() ; j++ ) for( int c=0 ; c<3 ; c++ ) imValues[3 * j + c] = (unsigned char)(composite[j][c] * 255.0);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, composite.width(), composite.height(), 0, GL_RGB, GL_UNSIGNED_BYTE, (GLvoid*)&imValues[0]);
+	delete[] imValues;
+
+	glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+template< typename Real >
+void StitchingVisualization::UpdateMaskTextureBuffer( const Image< Point3D< Real > > &mask )
+{
+	if( !glIsBuffer(maskTextureBuffer) ) glGenTextures(1, &maskTextureBuffer);
+	glBindTexture(GL_TEXTURE_2D, maskTextureBuffer);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	unsigned char * imValues = new unsigned char[mask.size() * 3];
+	for( int j=0 ; j<mask.size() ; j++ ) for( int c=0 ; c<3 ; c++ ) imValues[3 * j + c] = (unsigned char)(mask[j][c] * 255.0);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, mask.width(), mask.height(), 0, GL_RGB, GL_UNSIGNED_BYTE, (GLvoid*)&imValues[0]);
 	delete[] imValues;
 
 	glBindTexture(GL_TEXTURE_2D, 0);
@@ -162,4 +178,7 @@ StitchingVisualization::StitchingVisualization(void)
 	referenceIndex = 0;
 	showDisk = true;
 	isBrushActive = false;
+	showMask = false;
+	compositeTextureBuffer = 0;
+	maskTextureBuffer = 0;
 }

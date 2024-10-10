@@ -47,9 +47,14 @@ public:
 	bool showDisk;
 	
 	//Single input
+	bool showMask;
 	GLuint compositeTextureBuffer;
+	GLuint maskTextureBuffer;
 	template< typename Real >
 	void UpdateCompositeTextureBuffer( const Image< Point3D< Real > > &composite );
+	template< typename Real >
+	void UpdateMaskTextureBuffer( const Image< Point3D< Real > > &mask );
+
 
 	//Multiple input
 	int referenceIndex;

@@ -95,12 +95,8 @@ public:
 	//Line drawing parameters
 	float polygonOffsetFactor = 1.f;
 	float polygonOffsetUnits = 1.f;
-#ifdef NEW_CODE
 	float lineWidth = 2.f;
 	Point3D< float > lineColor;
-#else // !NEW_CODE
-	float lineWidth = 1.f;
-#endif // NEW_CODE
 
 	GLuint vertexBuffer = 0;
 	GLuint normalBuffer = 0;

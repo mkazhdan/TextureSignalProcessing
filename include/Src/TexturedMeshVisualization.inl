@@ -386,11 +386,7 @@ void TexturedMeshVisualization::DrawGeometry( GLuint& textureBufferId , bool pho
 	{
 		glDisable(GL_LIGHTING);
 		glLineWidth(lineWidth);
-#ifdef NEW_CODE
 		glColor3f( lineColor[0] , lineColor[1] , lineColor[2] );
-#else // !NEW_CODE
-		glColor3f(1.0, 1.0, 1.0);
-#endif // NEW_CODE
 		glDisable(GL_MULTISAMPLE);
 		glEnable(GL_BLEND);
 		glEnable(GL_LINE_SMOOTH);

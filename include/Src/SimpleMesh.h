@@ -28,6 +28,7 @@ DAMAGE.
 #ifndef SIMPLE_MESH_INCLUDED
 #define SIMPLE_MESH_INCLUDED
 
+#include <fstream>
 #include <Eigen/Sparse>
 #include <Misha/Ply.h>
 #include <Misha/Image.h>
@@ -295,7 +296,6 @@ public:
 		vertices.clear();
 		triangles.clear();
 		textureCoordinates.clear();
-#if 1 // NEW_CODE
 		char * ext = GetFileExtension( meshName );
 		if( !strcasecmp( ext , "ply" ) )
 		{
@@ -326,7 +326,7 @@ public:
 			std::vector< Point2D< GeometryReal > > obj_textures;
 			std::vector< std::vector< ObjFaceIndex > > obj_faces;
 			std::ifstream in( meshName );
-			if( !in.is_open() ) Miscellany::ErrorOut( "Could not open file for reading: " , std::string(meshName) );
+			if( !in.is_open() ) Miscellany::ErrorOut( "Could not open file for reading: %s" , meshName );
 
 			std::string( line );
 			unsigned int count = 0;
@@ -391,27 +391,9 @@ public:
 				else Miscellany::ErrorOut( "Zero texture index unexpected in obj file" );
 			}
 		}
-		else Miscellany::ErrorOut( "Unrecognized file extension: " , std::string( meshName ) );
+		else Miscellany::ErrorOut( "Unrecognized file extension: %s" , meshName );
 		delete[] ext;
 
-#else // !NEW_CODE
-		int file_type;
-		std::vector< PlyVertex< GeometryReal > > ply_vertices;
-		std::vector< PlyTexturedFace< GeometryReal > > ply_faces;
-		if( !PlyReadPolygons( meshName , ply_vertices , ply_faces , PlyVertex< GeometryReal >::ReadProperties , NULL , PlyVertex< GeometryReal >::ReadComponents , PlyTexturedFace< GeometryReal >::ReadProperties , NULL , PlyTexturedFace< GeometryReal >::ReadComponents , file_type ) )
-			Miscellany::Throw( "Failed to read ply file: %s" , meshName );
-
-		vertices.resize( ply_vertices.size() );
-		for( int i=0 ; i<ply_vertices.size() ; i++ ) vertices[i] = ply_vertices[i].point;
-
-		triangles.resize( ply_faces.size() );
-		textureCoordinates.resize( 3*ply_faces.size() );
-		for( int i=0 ; i<ply_faces.size() ; i++ ) for( int j=0 ; j<3 ; j++ )
-		{
-			triangles[i][j] = ply_faces[i][j];
-			textureCoordinates[3*i+j] = ply_faces[i].texture(j);
-		}
-#endif // NEW_CODE
 		SimpleMesh< GeometryReal >::updateNormals();
 
 		if( atlasName )
