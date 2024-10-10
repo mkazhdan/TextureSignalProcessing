@@ -130,6 +130,11 @@ The default value for this parameter is 6.
 The default value for this parameter is 100.
 </dd>
 
+<dt>[<b>--dilateBounaries</b> &lt;<i>dilation radius</i>&gt;]</dt>
+<dd> This integer values gives the radius by which the boundaries of the segments should be dilated before stithing is performed.<BR>
+The default value for this parameter is -1, indicating no dilation.
+</dd>
+
 </dd><dt>[<b>--useDirectSolver</B>]</dt>
 <dd> If enabled, this flag specifies that a direct solver should be used (instead of the default multigrid solver).
 </dd>
