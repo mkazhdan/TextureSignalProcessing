@@ -51,11 +51,11 @@ void StitchingVisualization::display(void)
 
 	setViewport(0);
 	if(visualizationMode == MULTIPLE_INPUT_MODE) DrawRegion(showMesh, textureBuffer, false,false);
-	else DrawRegion(showMesh, showMask ? maskTextureBuffer : textureBuffer , false,false);
+	else DrawRegion( showMesh , showMask ? maskTextureBuffer : textureBuffer , false,false);
 
 	setViewport(1);
 	if(visualizationMode == MULTIPLE_INPUT_MODE) DrawRegion(showMesh, referenceTextureBuffers[referenceIndex], false, false);
-	else DrawRegion(showMesh, showMask ? maskTextureBuffer : compositeTextureBuffer , false, false); 
+	else DrawRegion( showMesh , showMask ? maskTextureBuffer : compositeTextureBuffer , false, false); 
 
 	glDisable(GL_TEXTURE_2D);
 	glBindTexture(GL_TEXTURE_2D, 0);

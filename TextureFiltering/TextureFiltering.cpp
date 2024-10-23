@@ -66,7 +66,8 @@ cmdLineParameter< int   > MultigridBlockWidth ("mBlockW", 128);
 cmdLineParameter< int   > MultigridPaddedHeight("mPadH", 0);
 cmdLineParameter< int   > MultigridPaddedWidth("mPadW", 2);
 
-cmdLineReadable RandomJitter("jitter");
+cmdLineParameter< int   > RandomJitter( "jitter" , 0 );
+cmdLineReadable Paused( "paused" );
 cmdLineParameter< char* > CameraConfig("camera");
 cmdLineReadable UseDirectSolver("useDirectSolver");
 cmdLineReadable Verbose( "verbose" );
@@ -78,6 +79,7 @@ cmdLineReadable* params[] =
 {
 	&Input , &Output , &InterpolationWeight , &GradientModulation , &CameraConfig , &Levels , &UseDirectSolver , &Threads  , &Verbose ,
 	&DetailVerbose , &MultigridBlockHeight , &MultigridBlockWidth , &MultigridPaddedHeight , &MultigridPaddedWidth , &RandomJitter ,
+	&Paused ,
 #ifdef NO_VISUALIZATION
 #else // !NO_VISUALIZATION
 	&DisplayMode ,
@@ -106,7 +108,7 @@ void ShowUsage( const char* ex )
 	printf( "\t[--%s <system matrix quadrature points per triangle>=%d]\n" , MatrixQuadrature.name , MatrixQuadrature.value );
 	printf( "\t[--%s]\n" , Seamless.name );
 	printf( "\t[--%s]\n" , UseDirectSolver.name );
-	printf( "\t[--%s]\n" , RandomJitter.name );
+	printf( "\t[--%s <jittering seed>]\n" , RandomJitter.name );
 	printf( "\t[--%s]\n" , Verbose.name );
 
 	printf( "\t[--%s <camera configuration file>]\n" , CameraConfig.name );
@@ -126,6 +128,7 @@ void ShowUsage( const char* ex )
 	printf( "\t[--%s <multigrid padded width>=%d]\n"   , MultigridPaddedWidth.name   , MultigridPaddedWidth.value   );
 	printf( "\t[--%s <multigrid padded height>=%d]\n"  , MultigridPaddedHeight.name  , MultigridPaddedHeight.value  );
 	printf( "\t[--%s]\n" , NoHelp.name );
+	printf( "\t[--%s]\n" , Paused.name );
 }
 
 enum
@@ -762,6 +765,7 @@ void TextureFilter< PreReal , Real >::InitializeSystem( int width , int height )
 
 	std::vector< Point3D< Real > > inputSignal(textureNodes.size());
 	for( int i=0 ; i<textureNodes.size() ; i++ ) inputSignal[i] = mesh.texture( textureNodes[i].ci , textureNodes[i].cj );
+
 	std::vector< Real > texelToCellCoeffs;
 
 	timer.reset();
@@ -949,7 +953,8 @@ void TextureFilter< PreReal , Real >::Init( void )
 
 	if( RandomJitter.set )
 	{
-		srand( time(NULL) );
+		if( RandomJitter.value ) srand( RandomJitter.value );
+		else                     srand( time(NULL) );
 		std::vector< Point2D< PreReal > >randomOffset( mesh.vertices.size() );
 		PreReal jitterScale = (PreReal)1e-3 / std::max< int >( textureWidth , textureHeight );
 		for( int i=0 ; i<randomOffset.size() ; i++ ) randomOffset[i] = Point2D< PreReal >( (PreReal)1. - Random< PreReal >()*2 , (PreReal)1. - Random< PreReal >()*2 )*jitterScale;
@@ -1044,6 +1049,8 @@ template< typename PreReal , typename Real >
 void _main( int argc , char *argv[] )
 {
 	TextureFilter< PreReal , Real >::Init();
+
+	TextureFilter< PreReal , Real >::updateCount = Paused.set ?  0 : -1;
 
 #ifdef NO_VISUALIZATION
 	if( UseDirectSolver.set ) TextureFilter< PreReal , Real >::ComputeExactSolution( Verbose.set );

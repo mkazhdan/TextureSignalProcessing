@@ -55,16 +55,14 @@ cmdLineParameter< float > InterpolationWeight( "interpolation" , 1e2 );
 cmdLineParameter< int   > Threads( "threads", omp_get_num_procs() );
 cmdLineParameter< int   > Levels( "levels" , 4 );
 cmdLineParameter< int   > MatrixQuadrature( "mQuadrature" , 6 );
-#ifdef NEW_CODE
 cmdLineParameter< int   > BoundaryDilationRadius( "dilateBoundaries" , -1 );
-#endif // NEWW_CODE
 
 cmdLineParameter< int   > MultigridBlockHeight ( "mBlockH" ,  16 );
 cmdLineParameter< int   > MultigridBlockWidth  ( "mBlockW" , 128 );
 cmdLineParameter< int   > MultigridPaddedHeight( "mPadH"   ,   0 );
 cmdLineParameter< int   > MultigridPaddedWidth ( "mPadW"   ,   2 );
 
-cmdLineReadable RandomJitter( "jitter" );
+cmdLineParameter< int   > RandomJitter( "jitter" , 0 );
 cmdLineParameter< int    > OutputChartMaskErode( "outChartMaskErode" , 0 );
 cmdLineParameter< char * > OutputChartMask( "outChartMask" );
 #ifdef NO_VISUALIZATION
@@ -86,9 +84,7 @@ cmdLineReadable* params[] =
 #else // !NO_VISUALIZATION
 	&CameraConfig ,
 #endif // NO_VISUALIZATION
-#ifdef NEW_CODE
 	&BoundaryDilationRadius ,
-#endif // NEW_CODE
 	&OutputChartMaskErode ,
 	&OutputChartMask ,
 	NULL
@@ -109,12 +105,10 @@ void ShowUsage(const char* ex)
 	printf( "\t[--%s <output v-cycles>=%d]\n" , OutputVCycles.name , OutputVCycles.value );
 	printf( "\t[--%s <interpolation weight>=%f]\n" , InterpolationWeight.name , InterpolationWeight.value );
 	printf( "\t[--%s <system matrix quadrature points per triangle>=%d]\n" , MatrixQuadrature.name, MatrixQuadrature.value );
-#ifdef NEW_CODE
 	printf( "\t[--%s <boundary dilation radius>=%d]\n" , BoundaryDilationRadius.name , BoundaryDilationRadius.value );
-#endif // NEW_CODE
 	printf( "\t[--%s]\n" , UseDirectSolver.name );
 	printf( "\t[--%s]\n" , MultiInput.name );
-	printf( "\t[--%s]\n" , RandomJitter.name );
+	printf( "\t[--%s <jittering seed>]\n" , RandomJitter.name );
 	printf( "\t[--%s]\n" , Verbose.name );
 
 #ifdef NO_VISUALIZATION
@@ -764,7 +758,6 @@ void Stitching< PreReal , Real >::LoadImages( void )
 		inputComposition.read( In.values[1] );
 		textureWidth = inputComposition.width();
 		textureHeight = inputComposition.height();
-#ifdef NEW_CODE
 		Image< Point3D< unsigned char > > textureConfidence;
 		textureConfidence.read( In.values[2] );
 
@@ -805,17 +798,11 @@ void Stitching< PreReal , Real >::LoadImages( void )
 					if( indices.size()>=2 ) for( int c=0 ; c<3 ; c++ ) textureConfidence(i,j)[c] = rand()%256;
 				}
 			}
+		}
 
-			inputColorMask.resize( textureConfidence.width() , textureConfidence.height() );
-			for( unsigned int i=0 ; i<textureConfidence.width() ; i++ ) for( unsigned int j=0 ; j<textureConfidence.height() ; j++ ) for( unsigned int c=0 ; c<3 ; c++ )
-				inputColorMask(i,j)[c] = ( (Real)textureConfidence(i,j)[c] )/255;
-	}
-#else // !NEW_CODE
-		inputColorMask.read( In.values[2] );
-
-		Image< Point3D< unsigned char > > textureConfidence;
-		textureConfidence.read( In.values[2] );
-#endif // NEW_CODE
+		inputColorMask.resize( textureConfidence.width() , textureConfidence.height() );
+		for( unsigned int i=0 ; i<textureConfidence.width() ; i++ ) for( unsigned int j=0 ; j<textureConfidence.height() ; j++ ) for( unsigned int c=0 ; c<3 ; c++ )
+			inputColorMask(i,j)[c] = ( (Real)textureConfidence(i,j)[c] )/255;
 
 		inputMask.resize( textureWidth , textureHeight );
 		for( int p=0 ; p<textureConfidence.size() ; p++ )
@@ -1021,7 +1008,8 @@ void Stitching< PreReal , Real >::Init( void )
 
 	if( RandomJitter.set )
 	{
-		srand( time(NULL) );
+		if( RandomJitter.value ) srand( RandomJitter.value );
+		else                     srand( time(NULL) );
 		std::vector< Point2D< PreReal > > randomOffset( mesh.vertices.size() );
 		PreReal jitterScale = (PreReal)1e-3 / std::max< int >( textureWidth , textureHeight );
 		for( int i=0 ; i<randomOffset.size() ; i++ ) randomOffset[i] = Point2D< PreReal >( (PreReal)1. - Random< PreReal >()*2 , (PreReal)1. - Random< PreReal >()*2 ) * jitterScale;

@@ -67,7 +67,7 @@ cmdLineParameter< int   > MultigridBlockWidth("mBlockW", 128);
 cmdLineParameter< int   > MultigridPaddedHeight("mPadH", 0);
 cmdLineParameter< int   > MultigridPaddedWidth("mPadW", 2);
 
-cmdLineReadable RandomJitter( "jitter" );
+cmdLineParameter< int   > RandomJitter( "jitter" , 0 );
 cmdLineReadable Verbose("verbose");
 cmdLineReadable DetailVerbose("detail");
 cmdLineReadable UseDirectSolver("useDirectSolver");
@@ -103,7 +103,7 @@ void ShowUsage(const char* ex)
 	printf( "\t[--%s]\n" , IntrinsicVectorField.name );
 	printf( "\t[--%s]\n" , MinimalCurvature.name );
 	printf( "\t[--%s]\n" , UseDirectSolver.name );
-	printf( "\t[--%s]\n" , RandomJitter.name );
+	printf( "\t[--%s <jittering seed>]\n" , RandomJitter.name );
 	printf( "\t[--%s]\n" , Verbose.name );
 
 	printf( "\t[--%s <camera configuration file>\n" , CameraConfig.name);
@@ -900,7 +900,8 @@ void LineConvolution< PreReal , Real >::Init( void )
 
 	if( RandomJitter.set )
 	{
-		srand( time( NULL ) );
+		if( RandomJitter.value ) srand( RandomJitter.value );
+		else                     srand( time(NULL) );
 		std::vector< Point2D< PreReal > >randomOffset( mesh.vertices.size() );
 		PreReal jitterScale = (PreReal)1e-3 / std::max< int >( textureWidth , textureHeight );
 		for( int i=0 ; i<randomOffset.size() ; i++ ) randomOffset[i] = Point2D< PreReal >( (PreReal)1. - Random< PreReal >()*2 , (PreReal)1. - Random< PreReal >()*2 ) * jitterScale;

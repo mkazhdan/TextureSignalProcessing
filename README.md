@@ -1,4 +1,4 @@
-<center><h2>Gradient Domain Texture Processing (Version 4.03)</h2></center>
+<center><h2>Gradient Domain Texture Processing (Version 4.05)</h2></center>
 <center>
 <a href="#LINKS">links</a>
 <a href="#EXECUTABLES">executables</a>
@@ -74,13 +74,14 @@ The default value for this parameter is 1000.
 The default value for this parameter is 1.
 </dd>
 
+</dd><dt>[<b>--jitter</B> &lt;<i>random seed</i>&gt;]</dt>
+<dd> If specified, this integer value is used to seed the random number generation for jittering. (This is used to avoid singular situations when mesh vertices fall directly on edges in the texture grid. In such a situation, the executable will issue a warning <B>"Zero row at index ..."</B>.)
+</dd>
+
 </dd><dt>[<b>--useDirectSolver</B>]</dt>
 <dd> If enabled, this flag specifies that a direct solver should be used (instead of the default multigrid solver).
 </dd>
 
-</dd><dt>[<b>--jitter</B>]</dt>
-<dd> If enabled, this flag specifies that the texture coordinates should be jittered slightly. (This is used to avoid singular situations when mesh vertices fall directly on edges in the texture grid. In such a situation, the executable will issue a warning <B>"Zero row at index ..."</B>.)
-</dd>
 
 </details>
 </dl>
@@ -135,6 +136,10 @@ The default value for this parameter is 100.
 The default value for this parameter is -1, indicating no dilation.
 </dd>
 
+</dd><dt>[<b>--jitter</B> &lt;<i>random seed</i>&gt;]</dt>
+<dd> If specified, this integer value is used to seed the random number generation for jittering. (This is used to avoid singular situations when mesh vertices fall directly on edges in the texture grid. In such a situation, the executable will issue a warning <B>"Zero row at index ..."</B>.)
+</dd>
+
 </dd><dt>[<b>--useDirectSolver</B>]</dt>
 <dd> If enabled, this flag specifies that a direct solver should be used (instead of the default multigrid solver).
 </dd>
@@ -143,9 +148,6 @@ The default value for this parameter is -1, indicating no dilation.
 <dd> If enabled, this flag specifies that the second and third arguments to the <b>--in</b> parameter are to be interpreted as format specifiers for the textures confidence map files.
 </dd>
 
-</dd><dt>[<b>--jitter</B>]</dt>
-<dd> If enabled, this flag specifies that the texture coordinates should be jittered slightly. (This is used to avoid singular situations when mesh vertices fall directly on edges in the texture grid. In such a situation, the executable will issue a warning <B>"Zero row at index ..."</B>.)
-</dd>
 
 </details>
 </dl>
@@ -210,16 +212,16 @@ The default value for this parameter is 2048.
 The default value for this parameter is 2048.
 </dd>
 
+</dd><dt>[<b>--jitter</B> &lt;<i>random seed</i>&gt;]</dt>
+<dd> If specified, this integer value is used to seed the random number generation for jittering. (This is used to avoid singular situations when mesh vertices fall directly on edges in the texture grid. In such a situation, the executable will issue a warning <B>"Zero row at index ..."</B>.)
+</dd>
+
 </dd><dt>[<b>--minor</B>]</dt>
 <dd> If enabled, this flag specifies that the directions of minimal principal curvature should be used to define the vector-field (instead of the default maximal principal curvature directions).
 </dd>
 
 </dd><dt>[<b>--useDirectSolver</B>]</dt>
 <dd> If enabled, this flag specifies that a direct solver should be used (instead of the default multigrid solver).
-</dd>
-
-</dd><dt>[<b>--jitter</B>]</dt>
-<dd> If enabled, this flag specifies that the texture coordinates should be jittered slightly. (This is used to avoid singular situations when mesh vertices fall directly on edges in the texture grid. In such a situation, the executable will issue a warning <B>"Zero row at index ..."</B>.)
 </dd>
 
 </details>
@@ -255,13 +257,14 @@ The default value for this parameter is 1024.
 The default value for this parameter is 1024.
 </dd>
 
+</dd><dt>[<b>--jitter</B> &lt;<i>random seed</i>&gt;]</dt>
+<dd> If specified, this integer value is used to seed the random number generation for jittering. (This is used to avoid singular situations when mesh vertices fall directly on edges in the texture grid. In such a situation, the executable will issue a warning <B>"Zero row at index ..."</B>.)
+</dd>
+
 </dd><dt>[<b>--useDirectSolver</B>]</dt>
 <dd> If enabled, this flag specifies that a direct solver should be used (instead of the default multigrid solver).
 </dd>
 
-</dd><dt>[<b>--jitter</B>]</dt>
-<dd> If enabled, this flag specifies that the texture coordinates should be jittered slightly. (This is used to avoid singular situations when mesh vertices fall directly on edges in the texture grid. In such a situation, the executable will issue a warning <B>"Zero row at index ..."</B>.)
-</dd>
 
 </details>
 </dl>
@@ -300,12 +303,12 @@ The default value for this parameter is 512.
 The default value for this parameter is 512.
 </dd>
 
-</dd><dt>[<b>--useDirectSolver</B>]</dt>
-<dd> If enabled, this flag specifies that a direct solver should be used (instead of the default multigrid solver).
+</dd><dt>[<b>--jitter</B> &lt;<i>random seed</i>&gt;]</dt>
+<dd> If specified, this integer value is used to seed the random number generation for jittering. (This is used to avoid singular situations when mesh vertices fall directly on edges in the texture grid. In such a situation, the executable will issue a warning <B>"Zero row at index ..."</B>.)
 </dd>
 
-</dd><dt>[<b>--jitter</B>]</dt>
-<dd> If enabled, this flag specifies that the texture coordinates should be jittered slightly. (This is used to avoid singular situations when mesh vertices fall directly on edges in the texture grid. In such a situation, the executable will issue a warning <B>"Zero row at index ..."</B>.)
+</dd><dt>[<b>--useDirectSolver</B>]</dt>
+<dd> If enabled, this flag specifies that a direct solver should be used (instead of the default multigrid solver).
 </dd>
 
 </dd><dt>[<b>--dots</B>]</dt>
@@ -459,6 +462,11 @@ Here a "dots" pattern is written out to an image. (Empirically, we have found th
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.03/">Version 4.03</a>:
 <ul>
 <li> Added support for segment boundary dilation in the <CODE>TextureStitching</CODE> code.
+</ul>
+
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.05/">Version 4.05</a>:
+<ul>
+<li> Modified the <code>--jitter</code> flag to take a random seed.
 </ul>
 
 </details>

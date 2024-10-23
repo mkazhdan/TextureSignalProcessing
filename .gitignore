@@ -30,4 +30,5 @@ ZLIB/x64/
 CHOLMOD/*
 */Debug/*
 */Release/*
+*/_Eigen/
 *~
