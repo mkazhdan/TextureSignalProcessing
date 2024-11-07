@@ -1,4 +1,4 @@
-<center><h2>Gradient Domain Texture Processing (Version 4.05)</h2></center>
+<center><h2>Gradient Domain Texture Processing (Version 4.06)</h2></center>
 <center>
 <a href="#LINKS">links</a>
 <a href="#EXECUTABLES">executables</a>
@@ -30,6 +30,8 @@ This software supports gradient-domain signal processing within a texture atlas.
 <B>Data:</B>
 <A HREF="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/TSP.Data.zip">ZIP</A><br>
 <b>Older Versions:</b>
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.05/">V4.05</a>,
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.03/">V4.03</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.02/">V4.02</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.01/">V4.01</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.00/">V4.00</a>,
@@ -467,6 +469,11 @@ Here a "dots" pattern is written out to an image. (Empirically, we have found th
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.05/">Version 4.05</a>:
 <ul>
 <li> Modified the <code>--jitter</code> flag to take a random seed.
+</ul>
+
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.06/">Version 4.06</a>:
+<ul>
+<li> Added support for visualizing weights when using multi-stitching.
 </ul>
 
 </details>

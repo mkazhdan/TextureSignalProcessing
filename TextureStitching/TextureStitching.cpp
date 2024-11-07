@@ -786,11 +786,11 @@ void Stitching< PreReal , Real >::LoadImages( void )
 				else
 				{
 					std::set< size_t > indices;
-					for( int x=(int)i-r ; x<=(int)i+r ; x++ )
+					for( int x=(int)i-r ; x<=(int)(i+r) ; x++ )
 						if( x>=0 && x<textureConfidence.width() )
-							for( int y=(int)j-r ; y<=(int)j+r ; y++ )
+							for( int y=(int)j-r ; y<=(int)(j+r) ; y++ )
 								if( y>=0 && y<textureConfidence.height() )
-									if( (x-i)*(x-i) + (y-j)*(y-j)<=r*r )
+									if( (x-i)*(x-i) + (y-j)*(y-j)<=(int)(r*r) )
 									{
 										idx = ToIndex( old(x,y) );
 										if( idx ) indices.insert( idx );
@@ -801,7 +801,7 @@ void Stitching< PreReal , Real >::LoadImages( void )
 		}
 
 		inputColorMask.resize( textureConfidence.width() , textureConfidence.height() );
-		for( unsigned int i=0 ; i<textureConfidence.width() ; i++ ) for( unsigned int j=0 ; j<textureConfidence.height() ; j++ ) for( unsigned int c=0 ; c<3 ; c++ )
+		for( unsigned int i=0 ; i<(unsigned int)textureConfidence.width() ; i++ ) for( unsigned int j=0 ; j<(unsigned int)textureConfidence.height() ; j++ ) for( unsigned int c=0 ; c<3 ; c++ )
 			inputColorMask(i,j)[c] = ( (Real)textureConfidence(i,j)[c] )/255;
 
 		inputMask.resize( textureWidth , textureHeight );
@@ -960,6 +960,7 @@ void Stitching< PreReal , Real >::InitializeVisualization( void )
 	}
 
 	if( inputMode==SINGLE_INPUT_MODE ) visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , 'M' , "toggle mask" , ToggleMaskCallBack ) );
+	else                               visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , 'M' , "toggle weights" , ToggleMaskCallBack ) );
 	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , 's' , "export texture" , "Output Texture" , ExportTextureCallBack ) );
 	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , 'y' , "interpolation weight" , "Interpolation Weight" , InterpolationWeightCallBack ) );
 	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , ' ' , "toggle update" , ToggleUpdateCallBack ) );
@@ -981,6 +982,7 @@ void Stitching< PreReal , Real >::InitializeVisualization( void )
 	visualization.UpdateTextureBuffer( filteredTexture );
 
 	if( inputMode==MULTIPLE_INPUT_MODE ) visualization.UpdateReferenceTextureBuffers( inputTextures );
+	if( inputMode==MULTIPLE_INPUT_MODE ) visualization.UpdateReferenceConfidenceBuffers( inputConfidence );
 	if( inputMode==SINGLE_INPUT_MODE )   visualization.UpdateCompositeTextureBuffer( inputComposition );
 	if( inputMode==SINGLE_INPUT_MODE )   visualization.UpdateMaskTextureBuffer( inputColorMask );
 
@@ -1078,7 +1080,7 @@ void Stitching< PreReal , Real >::Init( void )
 
 		Image< Point3D< unsigned char > > mask;
 		mask.resize( textureWidth , textureHeight );
-		for( unsigned int i=0 ; i<textureWidth ; i++ ) for( unsigned int j=0 ; j<textureHeight ; j++ ) mask(i,j) = Point3D< unsigned char >(0,0,0);
+		for( unsigned int i=0 ; i<(unsigned int)textureWidth ; i++ ) for( unsigned int j=0 ; j<(unsigned int)textureHeight ; j++ ) mask(i,j) = Point3D< unsigned char >(0,0,0);
 
 		std::map< int , Point3D< unsigned char > > chartColors;
 		for( unsigned int i=0 ; i<textureNodes.size() ; i++ ) if( chartColors.find( textureNodes[i].chartID )==chartColors.end() )
@@ -1117,7 +1119,7 @@ template< typename PreReal , typename Real >
 void _main( int argc , char *argv[] )
 {
 	Stitching< PreReal , Real >::inputMode = MultiInput.set ? MULTIPLE_INPUT_MODE : SINGLE_INPUT_MODE;
-	Stitching< PreReal , Real >::updateCount = MultiInput.set ? -1 : 0;
+	Stitching< PreReal , Real >::updateCount = 0;
 
 	Stitching< PreReal , Real >::LoadImages();
 	Stitching< PreReal , Real >::Init();

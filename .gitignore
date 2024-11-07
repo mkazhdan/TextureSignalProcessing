@@ -3,6 +3,8 @@
 /Obj/
 /Debug/
 /Bin/
+*.bin
+*.vsidx
 *.opensdf
 *.bat
 *.o

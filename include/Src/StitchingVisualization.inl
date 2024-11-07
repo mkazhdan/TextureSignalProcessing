@@ -44,32 +44,40 @@ void StitchingVisualization::LoadGeometryData() {
 
 void StitchingVisualization::display(void)
 {
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
-	glEnable(GL_TEXTURE_2D);
-	glEnable(GL_DEPTH_TEST);
+	glEnable( GL_TEXTURE_2D );
+	glEnable( GL_DEPTH_TEST );
 
-	setViewport(0);
-	if(visualizationMode == MULTIPLE_INPUT_MODE) DrawRegion(showMesh, textureBuffer, false,false);
-	else DrawRegion( showMesh , showMask ? maskTextureBuffer : textureBuffer , false,false);
+	// Show the output texture
+	{
+		GLuint mBuffer = visualizationMode==MULTIPLE_INPUT_MODE ? referenceConfidenceBuffers[referenceIndex] : maskTextureBuffer;
+		GLuint tBuffer = textureBuffer;
+		setViewport( 0 );
+		DrawRegion( showMesh , showMask ? mBuffer : tBuffer , false , false );
+	}
 
-	setViewport(1);
-	if(visualizationMode == MULTIPLE_INPUT_MODE) DrawRegion(showMesh, referenceTextureBuffers[referenceIndex], false, false);
-	else DrawRegion( showMesh , showMask ? maskTextureBuffer : compositeTextureBuffer , false, false); 
+	// Show the input texture
+	{
+		GLuint mBuffer = visualizationMode==MULTIPLE_INPUT_MODE ? referenceConfidenceBuffers[referenceIndex] : maskTextureBuffer;
+		GLuint tBuffer = visualizationMode==MULTIPLE_INPUT_MODE ? referenceTextureBuffers[referenceIndex] : compositeTextureBuffer;
+		setViewport( 1 );
+		DrawRegion( showMesh , showMask ? mBuffer : tBuffer , false , false );
+	}
 
-	glDisable(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D, 0);
+	glDisable( GL_TEXTURE_2D );
+	glBindTexture( GL_TEXTURE_2D , 0 );
 	
 	setViewport();
 
 	if (showDisk && isBrushActive)
 	{
-		glDisable(GL_DEPTH_TEST);
-		glMatrixMode(GL_PROJECTION);
+		glDisable( GL_DEPTH_TEST );
+		glMatrixMode( GL_PROJECTION );
 		glLoadIdentity();
 		glOrtho(0, screenWidth, 0, screenHeight, -1, 1);
 
-		glMatrixMode(GL_MODELVIEW);
+		glMatrixMode( GL_MODELVIEW );
 		glLoadIdentity();
 
 		glColor3f(0, 1.0, 0);
@@ -77,15 +85,16 @@ void StitchingVisualization::display(void)
 		glTranslatef(diskX, screenHeight - diskY, 0);
 		gluDisk(quad, 18, 22, 40, 3);
 		gluDeleteQuadric(quad);
-		glEnable(GL_DEPTH_TEST);
+		glEnable( GL_DEPTH_TEST );
 	}
 }
 
-void StitchingVisualization::UpdateColorTextureBuffer() {
+void StitchingVisualization::UpdateColorTextureBuffer( void )
+{
 	if( !glIsBuffer(textureBuffer ) ) glGenTextures(1, &textureBuffer);
-	glBindTexture(GL_TEXTURE_2D, textureBuffer);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, textureWidth, textureHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, (GLvoid*)&colorTextureBuffer[0]);
-	glBindTexture(GL_TEXTURE_2D, 0);
+	glBindTexture( GL_TEXTURE_2D , textureBuffer );
+	glTexImage2D( GL_TEXTURE_2D , 0 , GL_RGBA , textureWidth , textureHeight , 0 , GL_RGB , GL_UNSIGNED_BYTE , (GLvoid*)&colorTextureBuffer[0] );
+	glBindTexture( GL_TEXTURE_2D , 0 );
 }
 
 template< typename Real >
@@ -129,11 +138,11 @@ void StitchingVisualization::UpdateMaskTextureBuffer( const Image< Point3D< Real
 template< typename Real >
 void StitchingVisualization::UpdateReferenceTextureBuffers( const std::vector< Image< Point3D< Real > > > &images )
 {
-	referenceTextureBuffers.resize(images.size());
-	for (int i = 0; i < referenceTextureBuffers.size(); i++) {
-		if (!glIsBuffer(referenceTextureBuffers[i])) {
-			glGenTextures(1, &referenceTextureBuffers[i]);
-		}
+	referenceTextureBuffers.resize( images.size() );
+	for( int i=0 ; i<referenceTextureBuffers.size() ; i++ )
+	{
+		if( !glIsBuffer( referenceTextureBuffers[i] ) ) glGenTextures( 1 , &referenceTextureBuffers[i] );
+
 		glBindTexture(GL_TEXTURE_2D, referenceTextureBuffers[i]);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
@@ -147,6 +156,30 @@ void StitchingVisualization::UpdateReferenceTextureBuffers( const std::vector< I
 		delete[] imValues;
 
 		glBindTexture(GL_TEXTURE_2D, 0);
+	}
+}
+
+template< typename Real >
+void StitchingVisualization::UpdateReferenceConfidenceBuffers( const std::vector< Image< Real > > &confidences )
+{
+	referenceConfidenceBuffers.resize( confidences.size() );
+	for( int i=0 ; i<referenceConfidenceBuffers.size() ; i++ )
+	{
+		if( !glIsBuffer( referenceConfidenceBuffers[i] ) ) glGenTextures( 1 , &referenceConfidenceBuffers[i] );
+
+		glBindTexture( GL_TEXTURE_2D , referenceConfidenceBuffers[i] );
+		glTexParameteri( GL_TEXTURE_2D , GL_TEXTURE_WRAP_S , GL_MIRRORED_REPEAT );
+		glTexParameteri( GL_TEXTURE_2D , GL_TEXTURE_WRAP_T , GL_MIRRORED_REPEAT );
+
+		glTexParameteri( GL_TEXTURE_2D , GL_TEXTURE_MIN_FILTER , GL_LINEAR );
+		glTexParameteri( GL_TEXTURE_2D , GL_TEXTURE_MAG_FILTER , GL_LINEAR );
+
+		unsigned char * imValues = new unsigned char[confidences[i].size() * 3];
+		for( int j=0 ; j<confidences[i].size() ; j++ ) for( int c=0 ; c<3 ; c++ ) imValues[ 3*j + c ] = (unsigned char)(confidences[i][j]*255.0);
+		glTexImage2D( GL_TEXTURE_2D , 0 , GL_RGBA , confidences[i].width() , confidences[i].height() , 0 , GL_RGB , GL_UNSIGNED_BYTE , (GLvoid*)&imValues[0] );
+		delete[] imValues;
+
+		glBindTexture( GL_TEXTURE_2D , 0 );
 	}
 }
 

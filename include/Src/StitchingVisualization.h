@@ -60,7 +60,10 @@ public:
 	int referenceIndex;
 	std::vector<GLuint> referenceTextureBuffers;
 	template< typename Real >
-	void UpdateReferenceTextureBuffers( const std::vector< Image< Point3D< Real > > > &images);
+	void UpdateReferenceTextureBuffers( const std::vector< Image< Point3D< Real > > > &images );
+	std::vector< GLuint > referenceConfidenceBuffers;
+	template< typename Real >
+	void UpdateReferenceConfidenceBuffers( const std::vector< Image< Real > > &confidences );
 
 	unsigned char * colorTextureBuffer;
 	int textureWidth;
