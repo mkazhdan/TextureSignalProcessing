@@ -388,6 +388,8 @@ void Stitching< PreReal , Real >::WriteTexture( const char *fileName )
 template< typename PreReal , typename Real >
 void Stitching< PreReal , Real >::Idle( void )
 {
+	visualization.Idle();
+
 	float radius = 0.03;
 	float radiusSquared = radius * radius;
 	if( inputMode==MULTIPLE_INPUT_MODE )

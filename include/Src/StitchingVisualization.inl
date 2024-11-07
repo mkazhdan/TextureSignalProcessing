@@ -51,7 +51,13 @@ void StitchingVisualization::display(void)
 
 	// Show the output texture
 	{
+#if 1
+		// Show the mask / confidnce
 		GLuint mBuffer = visualizationMode==MULTIPLE_INPUT_MODE ? referenceConfidenceBuffers[referenceIndex] : maskTextureBuffer;
+#else
+		// Show the result
+		GLuint mBuffer = visualizationMode==MULTIPLE_INPUT_MODE ? textureBuffer : compositeTextureBuffer;
+#endif
 		GLuint tBuffer = textureBuffer;
 		setViewport( 0 );
 		DrawRegion( showMesh , showMask ? mBuffer : tBuffer , false , false );
