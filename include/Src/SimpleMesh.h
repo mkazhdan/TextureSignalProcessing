@@ -260,7 +260,6 @@ public:
 	using SimpleMesh< GeometryReal >::vertices;
 	using SimpleMesh< GeometryReal >::triangles;
 	std::vector< Point2D< GeometryReal > > textureCoordinates;
-	Image< Point3D< ImageReal > > texture;
 
 	void write( const char *fileName , const char *atlasName=NULL ) const
 	{
@@ -291,7 +290,7 @@ public:
 		else PlyWritePolygons( fileName , vertices , texturedTriangles , PlyVertex< GeometryReal >::WriteProperties , PlyVertex< GeometryReal >::WriteComponents , PlyTexturedFace< GeometryReal >::WriteProperties , PlyTexturedFace< GeometryReal >::WriteComponents , PLY_BINARY_NATIVE );
 	}
 
-	void read( const char *meshName , const char *atlasName , bool verbose )
+	void read( const char *meshName , bool verbose )
 	{
 		vertices.clear();
 		triangles.clear();
@@ -395,24 +394,6 @@ public:
 		delete[] ext;
 
 		SimpleMesh< GeometryReal >::updateNormals();
-
-		if( atlasName )
-		{
-
-			char *ext = GetFileExtension( atlasName );
-
-			if( !strcasecmp( ext , "normap" ) )
-			{
-				if( verbose ) printf( "Reading normal texture\n" );
-				ReadBinaryImage( texture , atlasName );
-			}
-			else
-			{
-				if( verbose ) printf( "Reading color texture\n" );
-				texture.read( atlasName );
-			}
-			delete[] ext;
-		}
 	}
 
 	void initializeBoundaryEdges( std::vector< int > &boundaryEdges ) const

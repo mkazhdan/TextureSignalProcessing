@@ -26,6 +26,8 @@ ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF S
 DAMAGE.
 */
 
+#include <Src/PreProcessing.h>
+
 #include <Misha/CmdLineParser.h>
 #include <Misha/Miscellany.h>
 #include <Misha/FEM.h>
@@ -484,7 +486,7 @@ void LineConvolution< PreReal , Real >::ExportTextureCallBack( Visualization * /
 	Image< Point3D< float > > outputImage;
 	outputImage.resize( textureWidth , textureHeight );
 	for( int i=0 ; i<outputImage.size() ; i++ ) outputImage[i] = Point3D< float >( outputBuffer[3*i] , outputBuffer[3*i+1] , outputBuffer[3*i+2] ) / 255.f;
-	if( padding.nonTrivial ) UnpadImage( padding , outputImage );
+	padding.unpad( outputImage );
 	outputImage.write( prompt );
 }
 
@@ -895,8 +897,10 @@ void LineConvolution< PreReal , Real >::Init( void )
 	sharpeningInterpolationWeight = SharpeningInterpolationWeight.value;
 	licInterpolationWeight = LICInterpolationWeight.value;
 
-	mesh.read( Input.value , NULL , DetailVerbose.set );
-	if( true ) for( int i=0 ; i<mesh.textureCoordinates.size() ; i++ ) mesh.textureCoordinates[i][1] = 1.0 - mesh.textureCoordinates[i][1];
+	mesh.read( Input.value , DetailVerbose.set );
+#ifdef FLIP_TEXTURE
+	for( int i=0 ; i<mesh.textureCoordinates.size() ; i++ ) mesh.textureCoordinates[i][1] = 1.0 - mesh.textureCoordinates[i][1];
+#endif // FLIP_TEXTURE
 
 	if( RandomJitter.set )
 	{
@@ -908,12 +912,11 @@ void LineConvolution< PreReal , Real >::Init( void )
 		for( int i=0 ; i<mesh.triangles.size() ; i++ ) for( int k=0 ; k<3 ; k++ ) mesh.textureCoordinates[ 3*i+k ] += randomOffset[ mesh.triangles[i][k] ];
 	}
 
-	ComputePadding( padding , textureWidth , textureHeight , mesh.textureCoordinates , DetailVerbose.set );
-	if( padding.nonTrivial )
 	{
-		PadTextureCoordinates(padding, textureWidth, textureHeight, mesh.textureCoordinates);
-		textureWidth += (padding.left + padding.right);
-		textureHeight += (padding.bottom + padding.top);
+		padding = Padding::Init( textureWidth , textureHeight , mesh.textureCoordinates , DetailVerbose.set );
+		padding.pad( textureWidth , textureHeight , mesh.textureCoordinates );
+		textureWidth  += padding.width();
+		textureHeight += padding.height();
 	}
 
 	// Define centroid and scale for visualization

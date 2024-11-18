@@ -1,4 +1,4 @@
-<center><h2>Gradient Domain Texture Processing (Version 4.06)</h2></center>
+<center><h2>Gradient Domain Texture Processing (Version 4.07)</h2></center>
 <center>
 <a href="#LINKS">links</a>
 <a href="#EXECUTABLES">executables</a>
@@ -30,6 +30,7 @@ This software supports gradient-domain signal processing within a texture atlas.
 <B>Data:</B>
 <A HREF="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/TSP.Data.zip">ZIP</A><br>
 <b>Older Versions:</b>
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.06/">V4.06</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.05/">V4.05</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.03/">V4.03</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.02/">V4.02</a>,
@@ -474,6 +475,11 @@ Here a "dots" pattern is written out to an image. (Empirically, we have found th
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.06/">Version 4.06</a>:
 <ul>
 <li> Added support for visualizing weights when using multi-stitching.
+</ul>
+
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.07/">Version 4.07</a>:
+<ul>
+<li> Added support for providing a separate low-frequency signal for texture processing.
 </ul>
 
 </details>

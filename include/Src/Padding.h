@@ -27,105 +27,122 @@ DAMAGE.
 */
 #pragma once
 
-class Padding
+// A structure for computing and (un)setting the padding needed to ensure that texture coordinates fall within the rectangle defined by the _centers_ of the corner texels.
+// Given a texture coordinate (s) indexing a texture map of width W, we have:
+//		s -> W*s
+// Offsetting W -> W+D we want the associated texture coordinate t to satisfy:
+//		(W+D)*t = D + W*s
+//		t = ( W*s + D ) / (W+D)
+struct Padding
 {
-public:
-	Padding(void) : left(0) , bottom(0) , right(0) , top(0) , nonTrivial(false) {}
-	int left , right , bottom , top;
-	bool nonTrivial;
+	unsigned int left , right , bottom , top;
+
+	Padding( void ) : left(0) , bottom(0) , right(0) , top(0){}
+
+	unsigned int width( void ) const { return left+right; }
+	unsigned int height( void ) const { return bottom+top; }
+
+	template< typename GeometryReal >
+	static Padding Init( unsigned int width , unsigned int height , const std::vector< Point2D< GeometryReal > > &textureCoordinates , bool verbose=false )
+	{
+		Padding padding;
+		Point2D< GeometryReal > pixMinCorner( (GeometryReal)0.5/width , (GeometryReal)0.5/height );
+		Point2D< GeometryReal > pixMaxCorner( (GeometryReal)( width-0.5 )/ width , (GeometryReal)( height-0.5 )/height );
+
+		Point2D< GeometryReal > texMinCorner = textureCoordinates[0];
+		Point2D< GeometryReal > texMaxCorner = textureCoordinates[0];
+		for( int i=0 ; i<textureCoordinates.size() ; i++ )
+		{
+			for( int c=0 ; c<2 ; c++ ) texMinCorner[c] = std::min< GeometryReal >( texMinCorner[c] , textureCoordinates[i][c] );
+			for( int c=0 ; c<2 ; c++ ) texMaxCorner[c] = std::max< GeometryReal >( texMaxCorner[c] , textureCoordinates[i][c] );
+		}
+
+		padding.left   = texMinCorner[0] < pixMinCorner[0] ? (int)ceil( ( pixMinCorner[0]-texMinCorner[0] )*width  ) : 0;
+		padding.bottom = texMinCorner[1] < pixMinCorner[1] ? (int)ceil( ( pixMinCorner[1]-texMinCorner[1] )*height ) : 0;
+
+		padding.right = texMaxCorner[0] > pixMaxCorner[0] ? (int)ceil( ( texMaxCorner[0]-pixMaxCorner[0] )*width  ) : 0;
+		padding.top   = texMaxCorner[1] > pixMaxCorner[1] ? (int)ceil( ( texMaxCorner[1]-pixMaxCorner[1] )*height ) : 0;
+
+		// Make image dimensions multiples of 8 (Hardware texture mapping seems to fail if not)
+		{
+			int newWidth = width + padding.left + padding.right;
+			int newHeight = height + padding.bottom + padding.top;
+
+			int paddedWidth = 8 * (((newWidth - 1) / 8) + 1);
+			int paddedHeight = 8 * (((newHeight - 1) / 8) + 1);
+			padding.left += (paddedWidth - newWidth);
+			padding.bottom += (paddedHeight - newHeight);
+		}
+
+		if( verbose )
+			if( padding.width() || padding.height() ) printf( "Padding applied : Left %d. Right %d. Bottom %d. Top %d.\n" , padding.left , padding.right , padding.bottom , padding.top );
+			else                                      printf( "No padding required!\n" );
+
+		return padding;
+	}
+
+	// Add the padding to an image (set new texelv alues to closest boundary texel)
+	// [WARNING] Assuming the image dimensions match those used to define the object
+	template< typename DataType >
+	void pad( Image< DataType > &im ) const
+	{
+		if( !( left || right || bottom || top ) ) return;
+
+		unsigned int newWidth = im.width() + left + right;
+		unsigned int newHeight = im.height() + bottom + top;
+
+		Image< DataType > newIm;
+		newIm.resize( newWidth , newHeight );
+		for( unsigned int i=0 ; i<newWidth ; i++ ) for( unsigned int j=0 ; j<newHeight ; j++ )
+		{
+			unsigned int ni = std::min< int >( std::max< int >( 0 , (int)i-(int)left   ) , im.width()  - 1 );
+			unsigned int nj = std::min< int >( std::max< int >( 0 , (int)j-(int)bottom ) , im.height() - 1 );
+			newIm(i,j) = im(ni,nj);
+		}
+		im = newIm;
+	}
+
+	// Remove the padding from an image
+	template< class DataType >
+	void unpad( Image<DataType> &im ) const
+	{
+		if( !( left || right || bottom || top ) ) return;
+			
+		unsigned int outputWidth = im.width() - left - right;
+		unsigned int outputHeight = im.height() - bottom - top;
+		Image< DataType > newIm;
+		newIm.resize( outputWidth , outputHeight );
+		for( unsigned int i=0 ; i<outputWidth ; i++ ) for( unsigned int j=0 ; j<outputHeight ; j++ ) newIm(i,j) = im( left+i , bottom+j );
+		im = newIm;
+	}
+
+	template< typename GeometryReal >
+	void pad( int width , int height , std::vector< Point2D< GeometryReal > > &textureCoordinates ) const
+	{
+		if( !( left || right || bottom || top ) ) return;
+
+		int newWidth = width + left + right;
+		int newHeight = height + bottom + top;
+
+		for( int i=0 ; i<textureCoordinates.size() ; i++ )
+		{
+			textureCoordinates[i][0] = ( textureCoordinates[i][0]*width  + (GeometryReal)( left   ) )/newWidth;
+			textureCoordinates[i][1] = ( textureCoordinates[i][1]*height + (GeometryReal)( bottom ) )/newHeight;
+		}
+	}
+
+	template< typename GeometryReal >
+	void unpad( int width , int height , std::vector< Point2D< GeometryReal > > &textureCoordinates ) const
+	{
+		if( !( left || right || bottom || top ) ) return;
+
+		int newWidth = width + left + right;
+		int newHeight = height + bottom + top;
+
+		for( int i=0 ; i<textureCoordinates.size() ; i++ )
+		{
+			textureCoordinates[i][0] = ( textureCoordinates[i][0]*newWidth  - (GeometryReal)( left   ) )/width;
+			textureCoordinates[i][1] = ( textureCoordinates[i][1]*newHeight - (GeometryReal)( bottom ) )/height;
+		}
+	}
 };
-
-template< typename GeometryReal >
-void ComputePadding( Padding &padding , int width , int height , std::vector< Point2D< GeometryReal > > &textureCoordinates , bool verbose )
-{
-	Point2D< GeometryReal > pixMinCorner( (GeometryReal)0.5/width , (GeometryReal)0.5/height );
-	Point2D< GeometryReal > pixMaxCorner( (GeometryReal)( width-0.5 )/ width , (GeometryReal)( height-0.5 )/height );
-
-	Point2D< GeometryReal > texMinCorner = textureCoordinates[0];
-	Point2D< GeometryReal > texMaxCorner = textureCoordinates[0];
-	for( int i=0 ; i<textureCoordinates.size() ; i++ )
-	{
-		for( int c=0 ; c<2 ; c++ ) texMinCorner[c] = std::min< GeometryReal >( texMinCorner[c] , textureCoordinates[i][c] );
-		for( int c=0 ; c<2 ; c++ ) texMaxCorner[c] = std::max< GeometryReal >( texMaxCorner[c] , textureCoordinates[i][c] );
-	}
-
-	padding.left   = texMinCorner[0] < pixMinCorner[0] ? (int)ceil( ( pixMinCorner[0]-texMinCorner[0] )*width  ) : 0;
-	padding.bottom = texMinCorner[1] < pixMinCorner[1] ? (int)ceil( ( pixMinCorner[1]-texMinCorner[1] )*height ) : 0;
-
-	padding.right = texMaxCorner[0] > pixMaxCorner[0] ? (int)ceil( ( texMaxCorner[0]-pixMaxCorner[0] )*width  ) : 0;
-	padding.top   = texMaxCorner[1] > pixMaxCorner[1] ? (int)ceil( ( texMaxCorner[1]-pixMaxCorner[1] )*height ) : 0;
-
-	//Make image dimensions are multiples of 8 (Hardware texture mapping seems to fail if not)
-	int newWidth = width + padding.left + padding.right;
-	int newHeight = height + padding.bottom + padding.top;
-
-	int paddedWidth = 8 * (((newWidth - 1) / 8) + 1);
-	int paddedHeight = 8 * (((newHeight - 1) / 8) + 1);
-	padding.left += (paddedWidth - newWidth);
-	padding.bottom += (paddedHeight - newHeight);
-
-	if( padding.left || padding.right || padding.bottom || padding.top ) padding.nonTrivial = true;
-	if( padding.nonTrivial )
-	{
-		if( verbose ) printf( "Padding applied : Left %d. Right %d. Bottom %d. Top %d.\n" , padding.left , padding.right , padding.bottom , padding.top );
-	}
-	else
-	{
-		if( verbose ) printf( "No padding required!\n" );
-	}
-}
-
-template< class DataType >
-void PadImage( Padding &padding , Image< DataType > &im )
-{
-	int newWidth = im.width() + padding.left + padding.right;
-	int newHeight = im.height() + padding.bottom + padding.top;
-
-	Image< DataType > newIm;
-	newIm.resize( newWidth , newHeight );
-	for( int i=0 ; i<newWidth ; i++ ) for( int j=0 ; j<newHeight ; j++ )
-	{
-		int ni = std::min< int >( std::max< int >( 0 , i-padding.left   ) , im.width()  - 1 );
-		int nj = std::min< int >( std::max< int >( 0 , j-padding.bottom ) , im.height() - 1 );
-		newIm(i,j) = im(ni,nj);
-	}
-	im = newIm;
-}
-
-template< class DataType >
-void UnpadImage( Padding & padding , Image<DataType> & im )
-{
-	int outputWidth = im.width() - padding.left - padding.right;
-	int outputHeight = im.height() - padding.bottom - padding.top;
-	Image< DataType > newIm;
-	newIm.resize( outputWidth , outputHeight );
-	for( int i=0 ; i<outputWidth ; i++ ) for( int j=0 ; j<outputHeight ; j++ ) newIm(i,j) = im( padding.left+i , padding.bottom+j );
-	im = newIm;
-}
-
-
-template< typename GeometryReal >
-void PadTextureCoordinates( Padding &padding , int width , int height , std::vector< Point2D< GeometryReal > > &textureCoordinates )
-{
-	int newWidth = width + padding.left + padding.right;
-	int newHeight = height + padding.bottom + padding.top;
-
-	for( int i=0 ; i<textureCoordinates.size() ; i++ )
-	{
-		textureCoordinates[i][0] = ( textureCoordinates[i][0]*width  + (GeometryReal)( padding.left   ) )/newWidth;
-		textureCoordinates[i][1] = ( textureCoordinates[i][1]*height + (GeometryReal)( padding.bottom ) )/newHeight;
-	}
-}
-
-template< typename GeometryReal >
-void UnpadTextureCoordinates( Padding &padding , int width , int height , std::vector< Point2D< GeometryReal > > &textureCoordinates )
-{
-	int newWidth = width + padding.left + padding.right;
-	int newHeight = height + padding.bottom + padding.top;
-
-	for( int i=0 ; i<textureCoordinates.size() ; i++ )
-	{
-		textureCoordinates[i][0] = ( textureCoordinates[i][0]*newWidth  - (GeometryReal)( padding.left   ) )/width;
-		textureCoordinates[i][1] = ( textureCoordinates[i][1]*newHeight - (GeometryReal)( padding.bottom ) )/height;
-	}
-}

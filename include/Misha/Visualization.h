@@ -28,7 +28,6 @@ DAMAGE.
 
 #ifndef VISUALIZATION_INCLUDED
 #define VISUALIZATION_INCLUDED
-#define NEW_CODE
 
 #include <GL/glew.h>
 #include <GL/glut.h>

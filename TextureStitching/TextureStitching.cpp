@@ -33,6 +33,7 @@ enum
 	INPUT_MODE_COUNT
 };
 
+#include <Src/PreProcessing.h>
 
 #include <Misha/CmdLineParser.h> 
 #include <Misha/Miscellany.h>
@@ -43,12 +44,15 @@ enum
 #include <Src/Solver.h>
 #include <Src/MassAndStiffness.h>
 #include <Src/Padding.h>
-#ifdef NO_VISUALIZATION
-#else // !NO_VISUALIZATION
+#ifdef NO_OPEN_GL_VISUALIZATION
+#else // !NO_OPEN_GL_VISUALIZATION
 #include <Src/StitchingVisualization.h>
-#endif // NO_VISUALIZATION
+#endif // NO_OPEN_GL_VISUALIZATION
 
 cmdLineParameterArray< char * , 3 > In( "in" );
+#ifdef USE_LOW_FREQUENCY
+cmdLineParameter< char * > InputLowFrequency( "inLow" );
+#endif // USE_LOW_FREQUENCY
 cmdLineParameter< char* > Output( "out" );
 cmdLineParameter< int   > OutputVCycles( "outVCycles" , 6 );
 cmdLineParameter< float > InterpolationWeight( "interpolation" , 1e2 );
@@ -65,10 +69,10 @@ cmdLineParameter< int   > MultigridPaddedWidth ( "mPadW"   ,   2 );
 cmdLineParameter< int   > RandomJitter( "jitter" , 0 );
 cmdLineParameter< int    > OutputChartMaskErode( "outChartMaskErode" , 0 );
 cmdLineParameter< char * > OutputChartMask( "outChartMask" );
-#ifdef NO_VISUALIZATION
-#else // !NO_VISUALIZATION
+#ifdef NO_OPEN_GL_VISUALIZATION
+#else // !NO_OPEN_GL_VISUALIZATION
 cmdLineParameter< char* > CameraConfig( "camera" );
-#endif // NO_VISUALIZATION
+#endif // NO_OPEN_GL_VISUALIZATION
 cmdLineReadable UseDirectSolver( "useDirectSolver" );
 cmdLineReadable Verbose( "verbose" );
 cmdLineReadable NoHelp( "noHelp" );
@@ -78,28 +82,34 @@ cmdLineReadable MultiInput( "multi" );
 cmdLineReadable* params[] =
 {
 	&In , &Output , &InterpolationWeight , &Levels , &UseDirectSolver , &Threads, &Verbose ,
+#ifdef USE_LOW_FREQUENCY
+	&InputLowFrequency ,
+#endif // USE_LOW_FREQUENCY
 	&DetailVerbose , &MultigridBlockHeight , &MultigridBlockWidth , &MultigridPaddedHeight , &MultigridPaddedWidth , &RandomJitter ,
 	&Double , &MatrixQuadrature , &OutputVCycles , &NoHelp , &MultiInput ,
-#ifdef NO_VISUALIZATION
-#else // !NO_VISUALIZATION
+#ifdef NO_OPEN_GL_VISUALIZATION
+#else // !NO_OPEN_GL_VISUALIZATION
 	&CameraConfig ,
-#endif // NO_VISUALIZATION
+#endif // NO_OPEN_GL_VISUALIZATION
 	&BoundaryDilationRadius ,
 	&OutputChartMaskErode ,
 	&OutputChartMask ,
 	NULL
 };
 
-void ShowUsage(const char* ex)
+void ShowUsage( const char *ex )
 {
-	printf("Usage %s:\n", ex);
+	printf( "Usage %s:\n" , ex );
 
 	printf( "\t --%s <input mesh, texels, and mask>\n" , In.name );
-#ifdef NO_VISUALIZATION
+#ifdef USE_LOW_FREQUENCY
+	printf( "\t[--%s <input low-frequency texture>\n" , InputLowFrequency.name );
+#endif // USE_LOW_FREQUENCY
+#ifdef NO_OPEN_GL_VISUALIZATION
 	printf( "\t --%s <output texture>\n" , Output.name );
-#else // !NO_VISUALIZATION
+#else // !NO_OPEN_GL_VISUALIZATION
 	printf( "\t[--%s <output texture>]\n" , Output.name );
-#endif // NO_VISUALIZATION
+#endif // NO_OPEN_GL_VISUALIZATION
 	printf( "\t[--%s <output chart mask image>]\n" , OutputChartMask.name );
 	printf( "\t[--%s <output chart mask erosion radius>=%d]\n" , OutputChartMaskErode.name , OutputChartMaskErode.value );
 	printf( "\t[--%s <output v-cycles>=%d]\n" , OutputVCycles.name , OutputVCycles.value );
@@ -111,10 +121,10 @@ void ShowUsage(const char* ex)
 	printf( "\t[--%s <jittering seed>]\n" , RandomJitter.name );
 	printf( "\t[--%s]\n" , Verbose.name );
 
-#ifdef NO_VISUALIZATION
-#else // !NO_VISUALIZATION
+#ifdef NO_OPEN_GL_VISUALIZATION
+#else // !NO_OPEN_GL_VISUALIZATION
 	printf( "\t[--%s <camera configuration file>]\n" , CameraConfig.name );
-#endif // NO_VISUALIZATION
+#endif // NO_OPEN_GL_VISUALIZATION
 	printf( "\t[--%s <hierarchy levels>=%d]\n" , Levels.name, Levels.value );
 	printf( "\t[--%s <threads>=%d]\n", Threads.name , Threads.value );
 	printf( "\t[--%s <multigrid block width>=%d]\n" , MultigridBlockWidth.name , MultigridBlockWidth.value );
@@ -142,6 +152,9 @@ public:
 
 	// Single input mode
 	static Image< int > inputMask;
+#ifdef USE_LOW_FREQUENCY
+	static Image< Point3D< Real > > lowFrequencyTexture;
+#endif // USE_LOW_FREQUENCY
 	static Image< Point3D< Real > > inputComposition;
 	static Image< Point3D< Real > > inputColorMask;
 
@@ -154,12 +167,12 @@ public:
 
 	static Image< Point3D< Real > > filteredTexture;
 
-#ifdef NO_VISUALIZATION
-#else // !NO_VISUALIZATION
+#ifdef NO_OPEN_GL_VISUALIZATION
+#else // !NO_OPEN_GL_VISUALIZATION
 	// UI
 	static char interpolationStr[1024];
 	static char referenceTextureStr[1024];
-#endif // NO_VISUALIZATION
+#endif // NO_OPEN_GL_VISUALIZATION
 
 	static std::vector< Point3D< float > >textureNodePositions;
 	static std::vector< Point3D< float > >textureEdgePositions;
@@ -218,10 +231,10 @@ public:
 
 	static Padding padding;
 
-#ifdef NO_VISUALIZATION
+#ifdef NO_OPEN_GL_VISUALIZATION
 	static int updateCount;
 	static void WriteTexture( const char *fileName );
-#else // !NO_VISUALIZATION
+#else // !NO_OPEN_GL_VISUALIZATION
 	// Visulization
 	static StitchingVisualization visualization;
 	static int updateCount;
@@ -233,53 +246,53 @@ public:
 	static void IncrementUpdateCallBack               ( Visualization *v , const char *prompt );
 	static void ExportTextureCallBack                 ( Visualization *v , const char *prompt );
 	static void InterpolationWeightCallBack           ( Visualization *v , const char *prompt );
-#endif // NO_VISUALIZATION
+#endif // NO_OPEN_GL_VISUALIZATION
 
 	static void LoadImages( void );
 	static void ParseImages( void );
 	static void SetUpSystem( void );
 	static void SolveSystem( void );
 	static void Init( void );
-#ifdef NO_VISUALIZATION
-#else // !NO_VISUALIZATION
+#ifdef NO_OPEN_GL_VISUALIZATION
+#else // !NO_OPEN_GL_VISUALIZATION
 	static void InitializeVisualization( void );
-#endif // NO_VISUALIZATION
+#endif // NO_OPEN_GL_VISUALIZATION
 	static void UpdateSolution( bool verbose=false , bool detailVerbose=false );
 	static void ComputeExactSolution( bool verbose=false );
 	static void InitializeSystem( int width , int height );
 	static void _InitializeSystem( std::vector< std::vector< SquareMatrix< PreReal , 2 > > > &parameterMetric , BoundaryProlongationData< Real > &boundaryProlongation );
 
-#ifdef NO_VISUALIZATION
-#else // !NO_VISUALIZATION
+#ifdef NO_OPEN_GL_VISUALIZATION
+#else // !NO_OPEN_GL_VISUALIZATION
 	static void UpdateFilteredColorTexture( const std::vector< Point3D< Real > > &solution );
-#endif // NO_VISUALIZATION
+#endif // NO_OPEN_GL_VISUALIZATION
 	static void UpdateFilteredTexture( const std::vector< Point3D< Real > > &solution );
 
-#ifdef NO_VISUALIZATION
-#else // !NO_VISUALIZATION
+#ifdef NO_OPEN_GL_VISUALIZATION
+#else // !NO_OPEN_GL_VISUALIZATION
 	static void Display( void ){ visualization.Display(); }
 	static void MouseFunc( int button , int state , int x , int y );
 	static void MotionFunc( int x , int y );
 	static void Reshape( int w , int h ) { visualization.Reshape(w,h); }
 	static void KeyboardFunc( unsigned char key , int x , int y ) { visualization.KeyboardFunc(key,x,y); }
 	static void Idle( void );
-#endif // NO_VISUALIZATION
+#endif // NO_OPEN_GL_VISUALIZATION
 };
 
-#ifdef NO_VISUALIZATION
-#else // !NO_VISUALIZATION
+#ifdef NO_OPEN_GL_VISUALIZATION
+#else // !NO_OPEN_GL_VISUALIZATION
 template< typename PreReal , typename Real > char															Stitching< PreReal , Real >::referenceTextureStr[1024];
 template< typename PreReal , typename Real > char															Stitching< PreReal , Real >::interpolationStr[1024];
-#endif // NO_VISUALIZATION
+#endif // NO_OPEN_GL_VISUALIZATION
 
 template< typename PreReal , typename Real > int															Stitching< PreReal , Real >::inputMode;
 template< typename PreReal , typename Real > TexturedMesh< PreReal >										Stitching< PreReal , Real >::mesh;
 template< typename PreReal , typename Real > int															Stitching< PreReal , Real >::textureWidth;
 template< typename PreReal , typename Real > int															Stitching< PreReal , Real >::textureHeight;
-#ifdef NO_VISUALIZATION
-#else // !NO_VISUALIZATION
+#ifdef NO_OPEN_GL_VISUALIZATION
+#else // !NO_OPEN_GL_VISUALIZATION
 template< typename PreReal , typename Real > StitchingVisualization											Stitching< PreReal , Real >::visualization;
-#endif // NO_VISUALIZATION
+#endif // NO_OPEN_GL_VISUALIZATION
 template< typename PreReal , typename Real > SparseMatrix< Real , int >										Stitching< PreReal , Real >::mass;
 template< typename PreReal , typename Real > SparseMatrix< Real , int >										Stitching< PreReal , Real >::stiffness;
 template< typename PreReal , typename Real > SparseMatrix< Real , int >										Stitching< PreReal , Real >::stitchingMatrix;
@@ -300,6 +313,9 @@ template< typename PreReal , typename Real > bool															Stitching< PreRe
 template< typename PreReal , typename Real> Image< Point3D< Real > >										Stitching< PreReal , Real >::filteredTexture;
 
 template< typename PreReal , typename Real > Image< int >												    Stitching< PreReal , Real >::inputMask;
+#ifdef USE_LOW_FREQUENCY
+template< typename PreReal , typename Real > Image< Point3D< Real > >										Stitching< PreReal , Real >::lowFrequencyTexture;
+#endif // USE_LOW_FREQUENCY
 template< typename PreReal , typename Real > Image< Point3D< Real > >										Stitching< PreReal , Real >::inputComposition;
 template< typename PreReal , typename Real > Image< Point3D< Real > >										Stitching< PreReal , Real >::inputColorMask;
 
@@ -343,8 +359,8 @@ template< typename PreReal , typename Real >  std::vector< std::vector< Point3D<
 template< typename PreReal , typename Real > int															Stitching< PreReal , Real >::textureIndex = 0;
 
 
-#ifdef NO_VISUALIZATION
-#else // !NO_VISUALIZATION
+#ifdef NO_OPEN_GL_VISUALIZATION
+#else // !NO_OPEN_GL_VISUALIZATION
 template< typename PreReal , typename Real >
 void Stitching< PreReal , Real >::UpdateFilteredColorTexture( const std::vector< Point3D< Real > > &solution )
 {
@@ -361,7 +377,7 @@ void Stitching< PreReal , Real >::UpdateFilteredColorTexture( const std::vector<
 		}
 	}
 }
-#endif // NO_VISUALIZATION
+#endif // NO_OPEN_GL_VISUALIZATION
 
 template< typename PreReal , typename Real >
 void Stitching< PreReal , Real >::UpdateFilteredTexture( const std::vector< Point3D< Real > > &solution )
@@ -374,17 +390,17 @@ void Stitching< PreReal , Real >::UpdateFilteredTexture( const std::vector< Poin
 	}
 }
 
-#ifdef NO_VISUALIZATION
+#ifdef NO_OPEN_GL_VISUALIZATION
 template< typename PreReal , typename Real >
 void Stitching< PreReal , Real >::WriteTexture( const char *fileName )
 {
 	UpdateFilteredTexture( multigridStitchingVariables[0].x );
 	Image< Point3D< Real > > outputTexture = filteredTexture;
-	if( padding.nonTrivial ) UnpadImage( padding , outputTexture );
+	padding.unpad( outputTexture );
 	outputTexture.write( fileName );
 }
 
-#else // !NO_VISUALIZATION
+#else // !NO_OPEN_GL_VISUALIZATION
 template< typename PreReal , typename Real >
 void Stitching< PreReal , Real >::Idle( void )
 {
@@ -402,9 +418,9 @@ void Stitching< PreReal , Real >::Idle( void )
 			if( validSelection )
 			{
 #pragma omp parallel for
-				for( int i=0 ; i<textureNodePositions.size() ; i++ ) if( Point3D< float >::SquareNorm( textureNodePositions[i]-selectedPoint )<radiusSquared ) texelValues[i] = partialTexelValues[textureIndex][i];
+				for( int i=0 ; i<textureNodePositions.size() ; i++ ) if( Point3D< float >::SquareNorm( textureNodePositions[i]-selectedPoint )<radiusSquared ) texelValues[i] = partialTexelValues[ textureIndex ][i];
 #pragma omp parallel for
-				for( int i=0 ; i<textureEdgePositions.size() ; i++ ) if( Point3D< float >::SquareNorm( textureEdgePositions[i]-selectedPoint )<radiusSquared ) edgeValues[i] = partialEdgeValues[textureIndex][i];
+				for( int i=0 ; i<textureEdgePositions.size() ; i++ ) if( Point3D< float >::SquareNorm( textureEdgePositions[i]-selectedPoint )<radiusSquared ) edgeValues[i] = partialEdgeValues[ textureIndex ][i];
 				rhsUpdated = false;
 			}
 		}
@@ -534,7 +550,7 @@ void Stitching< PreReal , Real >::ExportTextureCallBack( Visualization * /*v*/ ,
 {
 	UpdateFilteredTexture( multigridStitchingVariables[0].x );
 	Image< Point3D< Real > > outputTexture = filteredTexture;
-	if( padding.nonTrivial ) UnpadImage( padding , outputTexture );
+	padding.unpad( outputTexture );
 	outputTexture.write( prompt );
 }
 
@@ -557,7 +573,7 @@ void  Stitching< PreReal , Real >::InterpolationWeightCallBack( Visualization * 
 	visualization.UpdateColorTextureBuffer();
 	sprintf( interpolationStr , "Interpolation weight: %e\n" , interpolationWeight );
 }
-#endif // NO_VISUALIZATION
+#endif // NO_OPEN_GL_VISUALIZATION
 
 
 template< typename PreReal , typename Real >
@@ -838,7 +854,11 @@ void Stitching< PreReal , Real >::ParseImages( void )
 
 		for( int textureIter=0 ; textureIter<numTextures ; textureIter++ )
 		{
+#ifdef USE_LOW_FREQUENCY
+			Image< Point3D< Real > > textureValues = InputLowFrequency.set ? lowFrequencyTexture : inputTextures[textureIter];
+#else // !USE_LOW_FREQUENCY
 			Image< Point3D< Real > > textureValues = inputTextures[textureIter];
+#endif // USE_LOW_FREQUENCY
 			Image< Real > textureConfidence = inputConfidence[textureIter];
 
 			for( int i=0 ; i<textureNodes.size() ; i++ )
@@ -883,7 +903,11 @@ void Stitching< PreReal , Real >::ParseImages( void )
 		for( int i=0 ; i<textureNodes.size() ; i++ )
 		{
 			unobservedTexel[i] = inputMask( textureNodes[i].ci , textureNodes[i].cj )==-1;
+#ifdef USE_LOW_FREQUENCY
+			texelValues[i] = InputLowFrequency.set ? lowFrequencyTexture( textureNodes[i].ci , textureNodes[i].cj ) : inputComposition( textureNodes[i].ci , textureNodes[i].cj );
+#else // !USE_LOW_FREQUENCY
 			texelValues[i] = inputComposition( textureNodes[i].ci , textureNodes[i].cj );
+#endif // USE_LOW_FREQUENCY
 		}
 		for( int e=0 ; e<edgePairs.size() ; e++ )
 		{
@@ -913,8 +937,8 @@ void Stitching< PreReal , Real >::ParseImages( void )
 	for( int i=0 ; i<textureNodes.size() ; i++ ) multigridStitchingVariables[0].x[i] = texelValues[i];
 }
 
-#ifdef NO_VISUALIZATION
-#else // !NO_VISUALIZATION
+#ifdef NO_OPEN_GL_VISUALIZATION
+#else // !NO_OPEN_GL_VISUALIZATION
 template< typename PreReal , typename Real >
 void Stitching< PreReal , Real >::InitializeVisualization( void )
 {
@@ -989,7 +1013,7 @@ void Stitching< PreReal , Real >::InitializeVisualization( void )
 	if( inputMode==SINGLE_INPUT_MODE )   visualization.UpdateMaskTextureBuffer( inputColorMask );
 
 }
-#endif // NO_VISUALIZATION
+#endif // NO_OPEN_GL_VISUALIZATION
 
 template< typename PreReal , typename Real >
 void Stitching< PreReal , Real >::Init( void )
@@ -998,7 +1022,10 @@ void Stitching< PreReal , Real >::Init( void )
 	levels = std::max< int >( Levels.value , 1 );
 	interpolationWeight = InterpolationWeight.value;
 
-	mesh.read( In.values[0] , NULL , DetailVerbose.set );
+	mesh.read( In.values[0] , DetailVerbose.set );
+#ifdef USE_LOW_FREQUENCY
+	if( InputLowFrequency.set ) lowFrequencyTexture.read( InputLowFrequency.value );
+#endif // USE_LOW_FREQUENCY
 
 	// Define centroid and scale for visualization
 	Point3D< PreReal > centroid;
@@ -1008,27 +1035,28 @@ void Stitching< PreReal , Real >::Init( void )
 	for( int i=0 ; i<mesh.vertices.size() ; i++ ) radius = std::max< PreReal >( radius , Point3D< PreReal >::Length( mesh.vertices[i]-centroid ) );
 	for( int i=0 ; i<mesh.vertices.size() ; i++ ) mesh.vertices[i] = ( mesh.vertices[i]-centroid ) / radius;
 
+#ifdef FLIP_TEXTURE
 	for( int i=0 ; i<mesh.textureCoordinates.size() ; i++ ) mesh.textureCoordinates[i][1] = 1.0-mesh.textureCoordinates[i][1];
+#endif // FLIP_TEXTURE
 
 	if( RandomJitter.set )
 	{
 		if( RandomJitter.value ) srand( RandomJitter.value );
-		else                     srand( time(NULL) );
+		else                     srand( (unsigned int)time(NULL) );
 		std::vector< Point2D< PreReal > > randomOffset( mesh.vertices.size() );
 		PreReal jitterScale = (PreReal)1e-3 / std::max< int >( textureWidth , textureHeight );
 		for( int i=0 ; i<randomOffset.size() ; i++ ) randomOffset[i] = Point2D< PreReal >( (PreReal)1. - Random< PreReal >()*2 , (PreReal)1. - Random< PreReal >()*2 ) * jitterScale;
 		for( int i=0 ; i<mesh.triangles.size() ; i++ ) for( int k=0 ; k<3 ; k++ ) mesh.textureCoordinates[ 3*i+k ] += randomOffset[ mesh.triangles[i][k] ];
 	}
 
-	ComputePadding( padding , textureWidth , textureHeight , mesh.textureCoordinates , DetailVerbose.set );
-	if( padding.nonTrivial )
 	{
-		PadTextureCoordinates( padding , textureWidth , textureHeight , mesh.textureCoordinates );
-		if( inputMode==MULTIPLE_INPUT_MODE ) for( int i=0 ; i<numTextures ; i++ ) PadImage( padding , inputTextures[i] ) , PadImage( padding , inputConfidence[i] );
-		else PadImage( padding , inputComposition ) , PadImage( padding , inputMask );
-		
-		textureWidth  += ( padding.left   + padding.right );
-		textureHeight += ( padding.bottom + padding.top );		
+		padding = Padding::Init( textureWidth , textureHeight , mesh.textureCoordinates , DetailVerbose.set );
+		padding.pad( textureWidth , textureHeight , mesh.textureCoordinates );
+		if( inputMode==MULTIPLE_INPUT_MODE ) for( int i=0 ; i<numTextures ; i++ ) padding.pad( inputTextures[i] ) , padding.pad( inputConfidence[i] );
+		else padding.pad( inputComposition ) , padding.pad( inputMask );
+
+		textureWidth  += padding.width();
+		textureHeight += padding.height();
 	}
 
 	Miscellany::Timer timer;
@@ -1128,10 +1156,10 @@ void _main( int argc , char *argv[] )
 	Stitching< PreReal , Real >::ParseImages();
 	Stitching< PreReal , Real >::SetUpSystem();
 
-#ifdef NO_VISUALIZATION
+#ifdef NO_OPEN_GL_VISUALIZATION
 	Stitching< PreReal , Real >::SolveSystem();
 	Stitching< PreReal , Real >::WriteTexture( Output.value );
-#else // !NO_VISUALIZATION
+#else // !NO_OPEN_GL_VISUALIZATION
 	if( !Output.set )
 	{
 		glutInitDisplayMode( GLUT_RGB | GLUT_DOUBLE );
@@ -1161,25 +1189,25 @@ void _main( int argc , char *argv[] )
 		Stitching< PreReal , Real >::SolveSystem();
 		Stitching< PreReal , Real >::ExportTextureCallBack( &Stitching< PreReal , Real >::visualization , Output.value );
 	}
-#endif // NO_VISUALIZATION
+#endif // NO_OPEN_GL_VISUALIZATION
 }
 
 int main( int argc , char* argv[] )
 {
 	cmdLineParse( argc-1 , argv+1 , params );
-#ifdef NO_VISUALIZATION
+#ifdef NO_OPEN_GL_VISUALIZATION
 	if( !In.set || !Output.set )
 	{
 		ShowUsage( argv[0] );
 		return EXIT_FAILURE;
 	}
-#else // !NO_VISUALIZATION
+#else // !NO_OPEN_GL_VISUALIZATION
 	if( !In.set )
 	{
 		ShowUsage( argv[0] );
 		return EXIT_FAILURE;
 	}
-#endif // NO_VISUALIZATION
+#endif // NO_OPEN_GL_VISUALIZATION
 	omp_set_num_threads( Threads.value );
 	if( !NoHelp.set && !Output.set )
 	{

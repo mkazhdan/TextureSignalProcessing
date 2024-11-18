@@ -26,7 +26,7 @@ ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF S
 DAMAGE.
 */
 
-#define VF_METRIC
+#include <Src/PreProcessing.h>
 
 #include <Misha/CmdLineParser.h> 
 #include <Misha/Miscellany.h>
@@ -74,12 +74,11 @@ cmdLineReadable UseDirectSolver( "useDirectSolver" );
 cmdLineReadable Double( "double" );
 cmdLineReadable ApproximateIntegration( "approximateIntegration" );
 cmdLineReadable Dots( "dots" );
-#ifdef VF_METRIC
+
 cmdLineParameter< char* > VectorField( "inVF" );
 cmdLineParameter< float > AnisotropyScale( "aScl" , 1.f );
 cmdLineParameter< float > AnisotropyExponent( "aExp" , 0.f );
 cmdLineReadable IntrinsicVectorField( "intrinsicVF" );
-#endif // VF_METRIC
 
 cmdLineReadable* params[] =
 {
@@ -90,9 +89,7 @@ cmdLineReadable* params[] =
 	&MatrixQuadrature , &RHSQuadrature ,
 	&ApproximateIntegration , &Dots ,
 	&NoHelp ,
-#ifdef VF_METRIC
 	&VectorField , &IntrinsicVectorField , &AnisotropyScale , &AnisotropyExponent , 
-#endif // VF_METRIC
 	NULL
 };
 
@@ -127,12 +124,12 @@ void ShowUsage( const char* ex )
 	printf( "\t[--%s <multigrid block height>=%d]\n"  , MultigridBlockHeight.name  , MultigridBlockHeight.value  );
 	printf( "\t[--%s <multigrid padded width>=%d]\n"  , MultigridPaddedWidth.name  , MultigridPaddedWidth.value  );
 	printf( "\t[--%s <multigrid padded height>=%d]\n" , MultigridPaddedHeight.name , MultigridPaddedHeight.value );
-#ifdef VF_METRIC
+
 	printf( "\t[--%s <input vector field>]\n" , VectorField.name );
 	printf( "\t[--%s <anisotropy scale>=%f]\n" , AnisotropyScale.name , AnisotropyScale.value );
 	printf( "\t[--%s <anisotropy exponent>=%f]\n" , AnisotropyExponent.name , AnisotropyExponent.value );
 	printf( "\t[--%s]\n" , IntrinsicVectorField.name );
-#endif // VF_METRIC
+
 	printf( "\t[--%s]\n" , NoHelp.name );
 }
 
@@ -535,7 +532,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::ExportTextureCallBack( Visual
 	Image< Point3D< Real > > outputImage;
 	outputImage.resize( textureWidth , textureHeight );
 	for( int i=0 ; i<outputImage.size() ; i++ ) outputImage[i] = Point3D< Real >( outputBuffer[i] , outputBuffer[i] , outputBuffer[i] ) / (Real)255.;
-	if( padding.nonTrivial ) UnpadImage( padding , outputImage );
+	padding.unpad( outputImage );
 	outputImage.write( prompt );
 }
 
@@ -589,7 +586,6 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 	std::vector< Real > __texelToCellCoeffs;
 	SparseMatrix< Real , int > __boundaryCellBasedStiffnessRHSMatrix[3];
 
-#ifdef VF_METRIC
 	if( VectorField.set )
 	{
 		std::vector< Point2D< PreReal > > vectorField;
@@ -648,9 +644,6 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 		// Initialize the metric from the embedding
 		InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric );
 	}
-#else // !VF_METRIC
-	InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric );
-#endif // VF_METRIC
 
 	// Scale the metric so that the area is equal to the resolution
 	for( int i=0 ; i<parameterMetric.size() ; i++ ) for( int j=0 ; j<parameterMetric[i].size() ; j++ ) parameterMetric[i][j] *= textureNodes.size() / 2;
@@ -848,9 +841,10 @@ void GrayScottReactionDiffusion< PreReal , Real >::Init( void )
 	for( int ab=0 ; ab<2 ; ab++ ) diffusionRates[ab] *= DiffusionScale.value / 10.;
 	textureWidth = Width.value;
 	textureHeight = Height.value;
-	mesh.read( Input.value , NULL , DetailVerbose.set );
-
-	if( true ) for( int i=0 ; i<mesh.textureCoordinates.size() ; i++ ) mesh.textureCoordinates[i][1] = 1.0 - mesh.textureCoordinates[i][1];
+	mesh.read( Input.value , DetailVerbose.set );
+#ifdef FLIP_TEXTURE
+	for( int i=0 ; i<mesh.textureCoordinates.size() ; i++ ) mesh.textureCoordinates[i][1] = 1.0 - mesh.textureCoordinates[i][1];
+#endif // FLIP_TEXTURE
 
 	if( RandomJitter.set )
 	{
@@ -862,12 +856,11 @@ void GrayScottReactionDiffusion< PreReal , Real >::Init( void )
 		for( int i=0 ; i<mesh.triangles.size() ; i++ ) for( int k=0 ; k<3 ; k++ ) mesh.textureCoordinates[3*i+k] += randomOffset[ mesh.triangles[i][k] ];
 	}
 
-	ComputePadding( padding , textureWidth , textureHeight , mesh.textureCoordinates , DetailVerbose.set );
-	if( padding.nonTrivial )
 	{
-		PadTextureCoordinates( padding , textureWidth , textureHeight , mesh.textureCoordinates );
-		textureWidth  += ( padding.left   + padding.right );
-		textureHeight += ( padding.bottom + padding.top   );
+		padding = Padding::Init( textureWidth , textureHeight , mesh.textureCoordinates , DetailVerbose.set );
+		padding.pad( textureWidth , textureHeight , mesh.textureCoordinates );
+		textureWidth  += padding.width();
+		textureHeight += padding.height();
 	}
 
 	// Define centroid and scale for visualization

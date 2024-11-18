@@ -70,11 +70,11 @@ void InitializeChartMassAndStiffness
 	triangleElementStiffness.resize( gridChart.numBoundaryTriangles );
 
 	std::vector< SquareMatrix< GeometryReal , 4 > > cellDivergence;
-	if(computeDivergence ) cellDivergence.resize( gridChart.numInteriorCells );
+	if( computeDivergence ) cellDivergence.resize( gridChart.numInteriorCells );
 	std::vector< Matrix< GeometryReal , 6 , 15 > > triangleElementDivergence;
 	if( computeDivergence ) triangleElementDivergence.resize(gridChart.numBoundaryTriangles);
 
-	////Rasterize
+	//// Rasterize
 	int zeroAreaElementCount = 0;
 	GeometryReal PRECISION_ERROR = (GeometryReal)1e-3;
 
@@ -87,23 +87,23 @@ void InitializeChartMassAndStiffness
 	int cellCornerPairs[12] = { 0,1,0,3,0,2,1,3,3,2,1,2 };
 
 	// Cell edge indexing
-	//		 ---0---
+	//		+---0--+
 	//		|\    /|
 	//		| 2  / |
 	//		|  \/  5
 	//		1  /\  |
 	//		| 3  \ |
 	//		|/    \|
-	//       ---4---
+	//      +---4--+
 
 	int reducedCellCornerPairs[8] = { 0,1,0,3,3,2,1,2 };
 
 	// Reduced cell edge indexing
-	//		---0---
+	//		+--0---+
 	//		|      |
 	//		1      3
 	//		|      |
-	//		---2---
+	//		+--2---+
 	
 
 	auto InUnitSquare =   [&]( Point2D< GeometryReal > p ){ return !( p[0]<0-PRECISION_ERROR || p[1]<0-PRECISION_ERROR || p[0]>1+PRECISION_ERROR || p[1]>1+PRECISION_ERROR ); };
@@ -477,21 +477,21 @@ void InitializeChartMassAndStiffness
 		17, 14,  5,  8 };
 
 	// Interior texel neighbour edge indexing
-	//		---0--- ---4--- 
+	//		+--0---+---4--+ 
 	//		|\    /|\    /|  
 	//		| 2  / | 6  / |
 	//		|  \/  |  \/  |
 	//		1  /\  5  /\  8
 	//		| 3  \ | 7  \ |
 	//		|/    \|/    \|
-	//		---9-----13---
+	//		+--9---+--13--+
 	//		|\    /|\    /|
 	//		| 11 / | 15 / |
 	//		|  \/  |  \/  |
 	//		10 /\ 14  /\ 17
 	//		| 12 \ | 16 \ |
 	//		|/    \|/	 \|
-	//		---18-- --19--
+	//		+--18--+--19--+
 
 
 	int reducedCellEdgeCornerOffset[24] = {7, 5, 0, 2,
@@ -502,15 +502,15 @@ void InitializeChartMassAndStiffness
 
 
 	// Reduced interior texel neighbour edge indexing
-	//		--0-----2-- 
+	//		+-0--+--2-+ 
 	//		|    |    |
 	//		1    3    4
 	//		|    |    |
-	//		--5----7--
+	//		+-5--+-7--+
 	//		|    |    |
 	//		6    8    9
 	//		|    |    |
-	//      --10---11--
+	//      +-10-+-11-+
 
 	auto NeighbourOffset = [&]( int k , int l ){ return ( offset_j[l] - offset_j[k] + 1 ) * 3 + ( offset_i[l] - offset_i[k] + 1 ); };
 	for( int i=0 ; i<gridChart.interiorCellCorners.size() ; i++ )
@@ -527,7 +527,7 @@ void InitializeChartMassAndStiffness
 		Point< GeometryReal , 4 > prod[3];
 		if( computeCellBasedStiffness )
 		{
-			Point3D< GeometryReal > values[4] = { inputSignal[indicesGlobal[0]],inputSignal[indicesGlobal[1]], inputSignal[indicesGlobal[2]], inputSignal[indicesGlobal[3]] };
+			Point3D< GeometryReal > values[4] = { inputSignal[ indicesGlobal[0] ] , inputSignal[ indicesGlobal[1] ] , inputSignal[ indicesGlobal[2] ] , inputSignal[ indicesGlobal[3] ] };
 			for( int c=0 ; c<3 ; c++ )
 			{
 				Point< GeometryReal , 4 > v;
@@ -561,24 +561,26 @@ void InitializeChartMassAndStiffness
 				}
 				if( computeDivergence ) for( int l=0 ; l<4 ; l++ ) deepDivergenceCoefficients[ 12*deepIndex + reducedCellEdgeCornerOffset[4*l+k] ] = (MatrixReal)( cellDivergence[i](k,l) + deepDivergenceCoefficients[ 12*deepIndex + reducedCellEdgeCornerOffset[4*l+k] ] );
 			}
-			else //Bundary
+			else // Boundary
 			{
 				int boundaryIndex = _currentBoundaryAndDeepIndex - 1;
-				for (int l = 0; l < 4; l++) {
+				for( int l=0 ; l<4 ; l++ )
+				{
 					int neighbourNode = indicesGlobal[l];
 					int _neighbourBoundaryAndDeepIndex = boundaryAndDeepIndex[neighbourNode];
 					if (_neighbourBoundaryAndDeepIndex < 0) {//Deep
 						boundaryDeepMassTriplets.push_back( Eigen::Triplet< MatrixReal >( boundaryIndex , neighbourNode , (MatrixReal)cellMass[i](k,l) ) );
 						boundaryDeepStiffnessTriplets.push_back(Eigen::Triplet< MatrixReal >( boundaryIndex , neighbourNode , (MatrixReal)cellStiffness[i](k,l) ) );
 					}
-					else {//Boundary
+					else // Boundary
+					{
 						boundaryBoundaryMassTriplets.push_back( Eigen::Triplet< MatrixReal >( fineBoundaryIndex[ indicesInterior[k] ] , fineBoundaryIndex[ indicesInterior[l] ] , (MatrixReal)cellMass[i](k,l) ) );
 						boundaryBoundaryStiffnessTriplets.push_back( Eigen::Triplet< MatrixReal >( fineBoundaryIndex[ indicesInterior[k] ] , fineBoundaryIndex[ indicesInterior[l] ] , (MatrixReal)cellStiffness[i](k,l) ) );
 					}
 				}
 				if( computeCellBasedStiffness )
 				{
-					//Add cell data
+					// Add cell data
 					int _fineBoundaryIndex = fineBoundaryIndex[indicesInterior[k]];
 					Point3D< MatrixReal > p( (MatrixReal)prod[0][k] , (MatrixReal)prod[1][k] , (MatrixReal)prod[2][k] );
 					boundaryCellStiffnessTriplets.push_back( Eigen::Triplet< Point3D< MatrixReal > >( _fineBoundaryIndex , globalCellIndex , p ) );
@@ -604,8 +606,8 @@ void InitializeChartMassAndStiffness
 		}
 	}
 
-	for (int c = 0; c < gridChart.boundaryTriangles.size(); c++) {
-
+	for( int c=0 ; c<gridChart.boundaryTriangles.size() ; c++ )
+	{
 		int localCellIndex = gridChart.boundaryCellIndexToLocalCellIndex[c];
 		int globalCellIndex = localCellIndex + gridChart.globalIndexCellOffset;
 
@@ -615,9 +617,9 @@ void InitializeChartMassAndStiffness
 			QuadraticElementIndex fineTriangleElementIndices;
 			for (int k = 0; k < 6; k++) fineTriangleElementIndices[k] = fineBoundaryIndex[indices[k]];
 
-			//Add cell data
+			// Add cell data
 			
-			if (computeCellBasedStiffness)
+			if( computeCellBasedStiffness )
 			{
 				Point< GeometryReal , 6 > prod[3];
 				Point3D < GeometryReal > values[6] = { boundarySignal[fineTriangleElementIndices[0]],boundarySignal[fineTriangleElementIndices[1]],boundarySignal[fineTriangleElementIndices[2]],boundarySignal[fineTriangleElementIndices[3]],boundarySignal[fineTriangleElementIndices[4]],boundarySignal[fineTriangleElementIndices[5]] };

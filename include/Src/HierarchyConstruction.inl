@@ -743,6 +743,7 @@ void InitializeHierarchy( const int width , const int height , HierarchicalSyste
 
 		if( gridAtlases[i].numTexels!=gridAtlases[i].numBoundaryTexels+gridAtlases[i].numDeepTexels )
 			Miscellany::Throw( "Boundary and deep texels does not form a partition: %d != %d + %d" , gridAtlases[i].numTexels , gridAtlases[i].numBoundaryTexels , gridAtlases[i].numDeepTexels );
+
 		InitializeBoundaryAndDeepTexelIndexing( gridAtlases[i].gridCharts , gridAtlases[i].numTexels , gridAtlases[i].boundaryAndDeepIndex , gridAtlases[i].boundaryGlobalIndex , gridAtlases[i].deepGlobalIndex );
 
 		if( verbose )
@@ -757,7 +758,7 @@ void InitializeHierarchy( const int width , const int height , HierarchicalSyste
 			printf( "\t Deep segments %d\n" , (int)gridAtlases[i].rasterLines.size() );
 		}
 	}
-	if( verbose ) printf("Hierarchy structure =  %.4f \n" , timer.elapsed() );
+	if( verbose ) printf( "Hierarchy structure =  %.4f \n" , timer.elapsed() );
 
 	if( verbose ) timer.reset();
 	hierarchy.boundaryRestriction.resize( levels-1 );

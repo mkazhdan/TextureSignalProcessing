@@ -26,6 +26,8 @@ ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF S
 DAMAGE.
 */
 
+#include <Src/PreProcessing.h>
+
 #include <Misha/CmdLineParser.h> 
 #include <Misha/Miscellany.h>
 #include <Misha/FEM.h>
@@ -36,8 +38,8 @@ DAMAGE.
 #include <Src/MassAndStiffness.h>
 #include <Src/InteriorTexelToCellLines.inl>
 #include <Src/Padding.h>
-#ifdef NO_VISUALIZATION
-#else // !NO_VISUALIZATION
+#ifdef NO_OPEN_GL_VISUALIZATION
+#else // !NO_OPEN_GL_VISUALIZATION
 #include <Src/TextureFilteringVisualization.h>
 
 const std::string vertex_shader_src =
@@ -46,30 +48,33 @@ const std::string vertex_shader_src =
 const std::string fragment_shader_src =
 #include <Shaders/normal_texture_fragment.fs>
 ;
-#endif //NO_VISUALIZATION
+#endif // NO_OPEN_GL_VISUALIZATION
 
 cmdLineParameterArray< char* , 2 > Input( "in" );
+#ifdef USE_LOW_FREQUENCY
+cmdLineParameter< char * > InputLowFrequency( "inLow" );
+#endif // USE_LOW_FREQUENCY
 cmdLineParameter< char* > Output( "out" );
 cmdLineParameter< int   > OutputVCycles( "outVCycles" , 6 );
 cmdLineParameter< float > InterpolationWeight( "interpolation" , 1e3 );
 cmdLineParameter< float > GradientModulation( "modulation" , 1.0 );
-#ifdef NO_VISUALIZATION
-#else // !NO_VISUALIZATION
-cmdLineParameter< int   > DisplayMode("display",FOUR_REGION_DISPLAY);
-#endif // NO_VISUALIZATION
+#ifdef NO_OPEN_GL_VISUALIZATION
+#else // !NO_OPEN_GL_VISUALIZATION
+cmdLineParameter< int   > DisplayMode( "display" , FOUR_REGION_DISPLAY );
+#endif // NO_OPEN_GL_VISUALIZATION
 cmdLineParameter< int   > Threads("threads", omp_get_num_procs());
 cmdLineParameter< int   > Levels("levels", 4);
 cmdLineParameter< int   > MatrixQuadrature( "mQuadrature" , 6 );
 
-cmdLineParameter< int   > MultigridBlockHeight("mBlockH", 16);
-cmdLineParameter< int   > MultigridBlockWidth ("mBlockW", 128);
-cmdLineParameter< int   > MultigridPaddedHeight("mPadH", 0);
-cmdLineParameter< int   > MultigridPaddedWidth("mPadW", 2);
+cmdLineParameter< int   > MultigridBlockHeight ( "mBlockH" , 16 );
+cmdLineParameter< int   > MultigridBlockWidth  ( "mBlockW" , 128 );
+cmdLineParameter< int   > MultigridPaddedHeight( "mPadH" , 0 );
+cmdLineParameter< int   > MultigridPaddedWidth ( "mPadW" , 2 );
 
 cmdLineParameter< int   > RandomJitter( "jitter" , 0 );
 cmdLineReadable Paused( "paused" );
-cmdLineParameter< char* > CameraConfig("camera");
-cmdLineReadable UseDirectSolver("useDirectSolver");
+cmdLineParameter< char* > CameraConfig( "camera" );
+cmdLineReadable UseDirectSolver( "useDirectSolver" );
 cmdLineReadable Verbose( "verbose" );
 cmdLineReadable NoHelp( "noHelp" );
 cmdLineReadable DetailVerbose( "detail" );
@@ -78,12 +83,15 @@ cmdLineReadable Seamless( "seamless" );
 cmdLineReadable* params[] =
 {
 	&Input , &Output , &InterpolationWeight , &GradientModulation , &CameraConfig , &Levels , &UseDirectSolver , &Threads  , &Verbose ,
+#ifdef USE_LOW_FREQUENCY
+	&InputLowFrequency ,
+#endif // USE_LOW_FREQUENCY
 	&DetailVerbose , &MultigridBlockHeight , &MultigridBlockWidth , &MultigridPaddedHeight , &MultigridPaddedWidth , &RandomJitter ,
 	&Paused ,
-#ifdef NO_VISUALIZATION
-#else // !NO_VISUALIZATION
+#ifdef NO_OPEN_GL_VISUALIZATION
+#else // !NO_OPEN_GL_VISUALIZATION
 	&DisplayMode ,
-#endif // NO_VISUALIZATION
+#endif // NO_OPEN_GL_VISUALIZATION
 	&Double ,
 	&MatrixQuadrature ,
 	&OutputVCycles ,
@@ -97,11 +105,14 @@ void ShowUsage( const char* ex )
 	printf( "Usage %s:\n" , ex );
 
 	printf( "\t --%s <input mesh and texture>\n" , Input.name );
-#ifdef NO_VISUALIZATION
+#ifdef USE_LOW_FREQUENCY
+	printf( "\t[--%s <input low-frequency texture>\n" , InputLowFrequency.name );
+#endif // USE_LOW_FREQUENCY
+#ifdef NO_OPEN_GL_VISUALIZATION
 	printf( "\t --%s <output texture>\n" , Output.name );
-#else // !NO_VISUALIZATION
+#else // !NO_OPEN_GL_VISUALIZATION
 	printf( "\t[--%s <output texture>]\n" , Output.name );
-#endif // NO_VISUALIZATION
+#endif // NO_OPEN_GL_VISUALIZATION
 	printf( "\t[--%s <output v-cycles>=%d]\n" , OutputVCycles.name , OutputVCycles.value );
 	printf( "\t[--%s <interpolation weight>=%f]\n" , InterpolationWeight.name , InterpolationWeight.value );
 	printf( "\t[--%s <gradient modulation>=%f]\n" , GradientModulation.name , GradientModulation.value );
@@ -115,14 +126,14 @@ void ShowUsage( const char* ex )
 	printf( "\t[--%s <hierarchy levels>=%d]\n" , Levels.name , Levels.value );
 	printf( "\t[--%s <threads>=%d]\n" , Threads.name , Threads.value );
 	printf( "\t[--%s]\n" , DetailVerbose.name );
-#ifdef NO_VISUALIZATION
-#else // !NO_VISUALIZATION
+#ifdef NO_OPEN_GL_VISUALIZATION
+#else // !NO_OPEN_GL_VISUALIZATION
 	printf( "\t[--%s <display mode>=%d]\n" , DisplayMode.name , DisplayMode.value );
 	printf( "\t\t%d] One Region \n"   , ONE_REGION_DISPLAY   );
 	printf( "\t\t%d] Two Region \n"   , TWO_REGION_DISPLAY   );
 	printf( "\t\t%d] Three Region \n" , THREE_REGION_DISPLAY );
 	printf( "\t\t%d] Four Region \n"  , FOUR_REGION_DISPLAY  );
-#endif // NO_VISUALIZATION
+#endif // NO_OPEN_GL_VISUALIZATION
 	printf( "\t[--%s <multigrid block width>=%d]\n"    , MultigridBlockWidth.name    , MultigridBlockWidth.value    );
 	printf( "\t[--%s <multigrid block height>=%d]\n"   , MultigridBlockHeight.name   , MultigridBlockHeight.value   );
 	printf( "\t[--%s <multigrid padded width>=%d]\n"   , MultigridPaddedWidth.name   , MultigridPaddedWidth.value   );
@@ -154,13 +165,19 @@ public:
 	static bool positiveModulation;
 
 	static Image< Point3D< Real > > filteredTexture;
+#ifdef USE_LOW_FREQUENCY
+	static Image< Point3D< float > > highFrequencyTexture;
+	static Image< Point3D< float > > lowFrequencyTexture;
+#else // !USE_LOW_FREQUENCY
+	static Image< Point3D< float > > texture;
+#endif // USE_LOW_FREQUENCY
 
-#ifdef NO_VISUALIZATION
-#else // !NO_VISUALIZATION
+#ifdef NO_OPEN_GL_VISUALIZATION
+#else // !NO_OPEN_GL_VISUALIZATION
 	//UI
 	static char gradientModulationStr[1024];
 	static char interpolationStr[1024];
-#endif // NO_VISUALIZATION
+#endif // NO_OPEN_GL_VISUALIZATION
 
 	static std::vector<Real> uniformTexelModulationMask;
 	static std::vector<Real> cellModulationMask;
@@ -217,11 +234,11 @@ public:
 
 	static Padding padding;
 
-#ifdef NO_VISUALIZATION
+#ifdef NO_OPEN_GL_VISUALIZATION
 	static int updateCount;
 	static void WriteTexture( const char* prompt );
-#else // !NO_VISUALIZATION
-	//Visulization
+#else // !NO_OPEN_GL_VISUALIZATION
+	// Visualization
 	static TextureFilteringVisualization visualization;
 	static int updateCount;
 
@@ -231,26 +248,26 @@ public:
 
 	static void GradientModulationCallBack( Visualization* v , const char* prompt );
 	static void InterpolationWeightCallBack( Visualization* v , const char* prompt );
-#endif // NO_VISUALIZATION
+#endif // NO_OPEN_GL_VISUALIZATION
 
 	static void Init( void );
-#ifdef NO_VISUALIZATION
-#else // !NO_VISUALIZATION
+#ifdef NO_OPEN_GL_VISUALIZATION
+#else // !NO_OPEN_GL_VISUALIZATION
 	static void InitializeVisualization();
-#endif // NO_VISUALIZATION
+#endif // NO_OPEN_GL_VISUALIZATION
 	static void UpdateSolution(bool verbose = false, bool detailVerbose = false);
 	static void ComputeExactSolution( bool verbose=false );
 	static void InitializeSystem( int width , int height );
 	static void _InitializeSystem( std::vector<std::vector< SquareMatrix< PreReal , 2 > > > &parameterMetric , BoundaryProlongationData< Real > &boundaryProlongation , std::vector< Point3D< Real > > &inputSignal , std::vector< Real >& texelToCellCoeffs );
 
-#ifdef NO_VISUALIZATION
-#else // !NO_VISUALIZATION
+#ifdef NO_OPEN_GL_VISUALIZATION
+#else // !NO_OPEN_GL_VISUALIZATION
 	static void UpdateFilteredColorTexture( const std::vector< Point3D< Real > >& solution );
-#endif // NO_VISUALIZATION
+#endif // NO_OPEN_GL_VISUALIZATION
 	static void UpdateFilteredTexture( const std::vector< Point3D< Real > >& solution );
 
-#ifdef NO_VISUALIZATION
-#else // !NO_VISUALIZATION
+#ifdef NO_OPEN_GL_VISUALIZATION
+#else // !NO_OPEN_GL_VISUALIZATION
 	static void UpdateMaskTexture();
 
 	static void Display( void ){ visualization.Display(); }
@@ -259,22 +276,22 @@ public:
 	static void Reshape( int w , int h ){ visualization.Reshape(w,h); }
 	static void KeyboardFunc(unsigned char key, int x, int y){ visualization.KeyboardFunc( key , x , y ); }
 	static void Idle( void );
-#endif // NO_VISUALIZATION
+#endif // NO_OPEN_GL_VISUALIZATION
 };
 
-#ifdef NO_VISUALIZATION
-#else // !NO_VISUALIZATION
+#ifdef NO_OPEN_GL_VISUALIZATION
+#else // !NO_OPEN_GL_VISUALIZATION
 template< typename PreReal , typename Real > char																TextureFilter< PreReal , Real >::gradientModulationStr[1024];
 template< typename PreReal , typename Real > char																TextureFilter< PreReal , Real >::interpolationStr[1024];
-#endif // NO_VISUALIZATION
+#endif // NO_OPEN_GL_VISUALIZATION
 
 template< typename PreReal , typename Real > TexturedMesh< PreReal >											TextureFilter< PreReal , Real >::mesh;
 template< typename PreReal , typename Real > int																TextureFilter< PreReal , Real >::textureWidth;
 template< typename PreReal , typename Real > int																TextureFilter< PreReal , Real >::textureHeight;
-#ifdef NO_VISUALIZATION
-#else // !NO_VISUALIZATION
+#ifdef NO_OPEN_GL_VISUALIZATION
+#else // !NO_OPEN_GL_VISUALIZATION
 template< typename PreReal , typename Real > TextureFilteringVisualization										TextureFilter< PreReal , Real >::visualization;
-#endif // NO_VISUALIZATION
+#endif // NO_OPEN_GL_VISUALIZATION
 template< typename PreReal , typename Real > SparseMatrix< Real , int >											TextureFilter< PreReal , Real >::mass;
 template< typename PreReal , typename Real > SparseMatrix< Real , int >											TextureFilter< PreReal , Real >::stiffness;
 template< typename PreReal , typename Real > SparseMatrix< Real , int >											TextureFilter< PreReal , Real >::filteringMatrix;
@@ -300,6 +317,13 @@ template< typename PreReal , typename Real > std::vector< Real >												Text
 template< typename PreReal , typename Real > std::vector< Real >												TextureFilter< PreReal , Real >::uniformCellModulationMask;
 
 template< typename PreReal , typename Real > Image< Point3D< Real > >											TextureFilter< PreReal , Real >::filteredTexture;
+#ifdef USE_LOW_FREQUENCY
+template< typename PreReal , typename Real > Image< Point3D< float > >											TextureFilter< PreReal , Real >::highFrequencyTexture;
+template< typename PreReal , typename Real > Image< Point3D< float > >											TextureFilter< PreReal , Real >::lowFrequencyTexture;
+#else // !USE_LOW_FREQUENCY
+template< typename PreReal , typename Real > Image< Point3D< float > >											TextureFilter< PreReal , Real >::texture;
+#endif // USE_LOW_FREQUENCY
+
 template< typename PreReal , typename Real > std::vector< Point3D< Real > >										TextureFilter< PreReal , Real >::stiffness_x0;
 template< typename PreReal , typename Real > std::vector< Point3D< Real > >										TextureFilter< PreReal , Real >::mass_x0;
 
@@ -328,9 +352,8 @@ template< typename PreReal , typename Real > SystemCoefficients< Real >									
 template< typename PreReal , typename Real > SystemCoefficients< Real >											TextureFilter< PreReal , Real >::stiffnessCoefficients;
 template< typename PreReal , typename Real > int																TextureFilter< PreReal , Real >::updateCount = -1;
 
-
-#ifdef NO_VISUALIZATION
-#else // !NO_VISUALIZATION
+#ifdef NO_OPEN_GL_VISUALIZATION
+#else // !NO_OPEN_GL_VISUALIZATION
 template< typename PreReal , typename Real >
 void TextureFilter< PreReal , Real >::UpdateMaskTexture( void )
 {
@@ -376,7 +399,7 @@ void TextureFilter< PreReal , Real >::UpdateFilteredColorTexture( const std::vec
 		}
 	}
 }
-#endif // NO_VISUALIZATION
+#endif // NO_OPEN_GL_VISUALIZATION
 
 template< typename PreReal , typename Real >
 void TextureFilter< PreReal , Real >::UpdateFilteredTexture( const std::vector< Point3D< Real > >& solution )
@@ -389,20 +412,20 @@ void TextureFilter< PreReal , Real >::UpdateFilteredTexture( const std::vector< 
 	}
 }
 
-#ifdef NO_VISUALIZATION
+#ifdef NO_OPEN_GL_VISUALIZATION
 template< typename PreReal , typename Real >
 void TextureFilter< PreReal , Real >::WriteTexture( const char* fileName )
 {
 	UpdateFilteredTexture( multigridFilteringVariables[0].x );
 	Image< Point3D< Real > > outputTexture = filteredTexture;
-	if( padding.nonTrivial ) UnpadImage( padding , outputTexture );
+	padding.unpad( outputTexture );
 
 	char* ext = GetFileExtension( fileName );
 	if( !strcasecmp( ext , "normap" ) ) WriteBinaryImage( outputTexture , fileName );
 	else outputTexture.write( fileName );
 	delete[] ext;
 }
-#else // !NO_VISUALIZATION
+#else // !NO_OPEN_GL_VISUALIZATION
 template< typename PreReal , typename Real >
 void TextureFilter< PreReal , Real >::Idle( void )
 {
@@ -623,7 +646,7 @@ void TextureFilter< PreReal , Real >::ExportTextureCallBack( Visualization * /*v
 {
 	UpdateFilteredTexture( multigridFilteringVariables[0].x );
 	Image< Point3D< Real > > outputTexture = filteredTexture;
-	if( padding.nonTrivial ) UnpadImage( padding , outputTexture );
+	padding.unpad( outputTexture );
 
 	char* ext = GetFileExtension( prompt );
 	if( !strcasecmp( ext , "normap" ) ) WriteBinaryImage( outputTexture , prompt );
@@ -694,7 +717,7 @@ void  TextureFilter< PreReal , Real >::InterpolationWeightCallBack( Visualizatio
 	}
 	sprintf( interpolationStr , "Interpolation weight: %e\n" , interpolationWeight );
 }
-#endif // NO_VISUALIZATION
+#endif // NO_OPEN_GL_VISUALIZATION
 
 template< typename PreReal , typename Real >
 void TextureFilter< PreReal , Real >::ComputeExactSolution( bool verbose )
@@ -747,24 +770,27 @@ void TextureFilter< PreReal , Real >::InitializeSystem( int width , int height )
 {
 	Miscellany::Timer timer;
 
-	MultigridBlockInfo multigridBlockInfo(MultigridBlockWidth.value, MultigridBlockHeight.value,MultigridPaddedWidth.value,MultigridPaddedHeight.value, 0);
+	MultigridBlockInfo multigridBlockInfo( MultigridBlockWidth.value , MultigridBlockHeight.value ,MultigridPaddedWidth.value , MultigridPaddedHeight.value , 0 );
 	InitializeHierarchy( mesh , width , height , levels , textureNodes , bilinearElementIndices , hierarchy , atlasCharts , multigridBlockInfo , true , DetailVerbose.set );
 	if( Verbose.set ) printf( "\tInitialized hierarchy: %.2f(s)\n" , timer.elapsed() );
 
 	BoundaryProlongationData< Real > boundaryProlongation;
 	InitializeBoundaryProlongationData( hierarchy.gridAtlases[0] , boundaryProlongation );
 
-	std::vector< Point3D< Real > > _x0;
-	_x0.resize(textureNodes.size());
-	
-	for( int i=0 ; i<textureNodes.size() ; i++ )
-	{
-		Point3D< Real > texelValue = mesh.texture(textureNodes[i].ci, textureNodes[i].cj);
-		_x0[i] = Point3D< Real >( texelValue[0] , texelValue[1] , texelValue[2] );
-	}
+#ifdef USE_LOW_FREQUENCY
+	std::vector< Point3D< Real > > low_x0( textureNodes.size() ) , high_x0( textureNodes.size() );
+	for( int i=0 ; i<textureNodes.size() ; i++ ) high_x0[i] = highFrequencyTexture( textureNodes[i].ci , textureNodes[i].cj ) , low_x0[i] = lowFrequencyTexture( textureNodes[i].ci , textureNodes[i].cj );
+#else // !USE_LOW_FREQUENCY
+	std::vector< Point3D< Real > > _x0( textureNodes.size() );
+	for( int i=0 ; i<textureNodes.size() ; i++ ) _x0[i] = mesh.texture( textureNodes[i].ci , textureNodes[i].cj );
+#endif // USE_LOW_FREQUENCY
 
-	std::vector< Point3D< Real > > inputSignal(textureNodes.size());
+	std::vector< Point3D< Real > > inputSignal( textureNodes.size() );
+#ifdef USE_LOW_FREQUENCY
+	for( int i=0 ; i<textureNodes.size() ; i++ ) inputSignal[i] = highFrequencyTexture( textureNodes[i].ci , textureNodes[i].cj );
+#else // !USE_LOW_FREQUENCY
 	for( int i=0 ; i<textureNodes.size() ; i++ ) inputSignal[i] = mesh.texture( textureNodes[i].ci , textureNodes[i].cj );
+#endif // USE_LOW_FREQUENCY
 
 	std::vector< Real > texelToCellCoeffs;
 
@@ -773,12 +799,12 @@ void TextureFilter< PreReal , Real >::InitializeSystem( int width , int height )
 	InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric );
 	_InitializeSystem( parameterMetric , boundaryProlongation , inputSignal , texelToCellCoeffs );
 
-	interiorTexelToCellCoeffs.resize(4 * hierarchy.gridAtlases[0].numDeepTexels);
+	interiorTexelToCellCoeffs.resize( 4*hierarchy.gridAtlases[0].numDeepTexels );
 	for( int i=0 ; i<4*hierarchy.gridAtlases[0].numDeepTexels ; i++ ) interiorTexelToCellCoeffs[i] = Point3D< Real >( Real(texelToCellCoeffs[3*i+0]) , Real(texelToCellCoeffs[3*i+1]) , Real(texelToCellCoeffs[3*i+2]) );
 	
 	InitializeInteriorTexelToCellLines( interiorTexelToCellLines , hierarchy.gridAtlases[0] );
 
-	for (int c = 0; c < 3; c++) boundaryTexelStiffness[c].resize(hierarchy.gridAtlases[0].boundaryGlobalIndex.size());
+	for( int c=0 ; c<3 ; c++ ) boundaryTexelStiffness[c].resize( hierarchy.gridAtlases[0].boundaryGlobalIndex.size() );
 	texelModulatedStiffness.resize(hierarchy.gridAtlases[0].numTexels);
 
 	if( UseDirectSolver.set )
@@ -817,17 +843,35 @@ void TextureFilter< PreReal , Real >::InitializeSystem( int width , int height )
 		variables.variable_boundary_value.resize(hierarchy.gridAtlases[i].boundaryGlobalIndex.size());
 	}
 
-	mass_x0.resize(textureNodes.size());
+	mass_x0.resize( textureNodes.size() );
+#ifdef USE_LOW_FREQUENCY
+	MultiplyBySystemMatrix_NoReciprocals( massCoefficients , hierarchy.gridAtlases[0].boundaryGlobalIndex , hierarchy.gridAtlases[0].rasterLines , low_x0 , mass_x0 );
+#else // !USE_LOW_FREQUENCY
 	MultiplyBySystemMatrix_NoReciprocals( massCoefficients , hierarchy.gridAtlases[0].boundaryGlobalIndex , hierarchy.gridAtlases[0].rasterLines , _x0 , mass_x0 );
+#endif // USE_LOW_FREQUENCY
 
 	stiffness_x0.resize(textureNodes.size());
+#ifdef USE_LOW_FREQUENCY
+	MultiplyBySystemMatrix_NoReciprocals( stiffnessCoefficients , hierarchy.gridAtlases[0].boundaryGlobalIndex , hierarchy.gridAtlases[0].rasterLines , high_x0 , stiffness_x0 );
+#else // !USE_LOW_FREQUENCY
 	MultiplyBySystemMatrix_NoReciprocals( stiffnessCoefficients , hierarchy.gridAtlases[0].boundaryGlobalIndex , hierarchy.gridAtlases[0].rasterLines , _x0 , stiffness_x0 );
+#endif // USE_LOW_FREQUENCY
 
+#ifdef USE_LOW_FREQUENCY
 #pragma omp parallel for
-	for (int i = 0; i <_x0.size(); i++){
+	for( int i=0 ; i<low_x0.size() ; i++ )
+	{
+		multigridFilteringVariables[0].x[i] = low_x0[i];
+		multigridFilteringVariables[0].rhs[i] = mass_x0[i] * interpolationWeight + stiffness_x0[i] * gradientModulation;
+	}
+#else // !USE_LOW_FREQUENCY
+#pragma omp parallel for
+	for( int i=0 ; i<_x0.size() ; i++ )
+	{
 		multigridFilteringVariables[0].x[i] = _x0[i];
 		multigridFilteringVariables[0].rhs[i] = mass_x0[i] * interpolationWeight + stiffness_x0[i] * gradientModulation;
 	}
+#endif // USE_LOW_FREQUENCY
 
 	filteredTexture.resize(width, height);
 	for (int i = 0; i < filteredTexture.size(); i++) filteredTexture[i] = Point3D< Real >( (Real)0.5 , (Real)0.5 , (Real)0.5 );
@@ -837,8 +881,8 @@ void TextureFilter< PreReal , Real >::InitializeSystem( int width , int height )
 	UpdateFilteredTexture( multigridFilteringVariables[0].x );
 }
 
-#ifdef NO_VISUALIZATION
-#else // !NO_VISUALIZATION
+#ifdef NO_OPEN_GL_VISUALIZATION
+#else // !NO_OPEN_GL_VISUALIZATION
 template< typename PreReal , typename Real >
 void TextureFilter< PreReal , Real >::InitializeVisualization( void )
 {
@@ -862,14 +906,13 @@ void TextureFilter< PreReal , Real >::InitializeVisualization( void )
 	visualization.normals.resize( 3*tCount );
 
 
-	for (int i = 0; i < tCount; i++) for (int k = 0; k < 3; k++) visualization.triangles[i][k] = 3 * i + k;
+	for( int i=0 ; i<tCount ; i++ ) for( int k=0 ; k<3 ; k++ ) visualization.triangles[i][k] = 3 * i + k;
 
-	for (int i = 0; i<tCount; i++){
-		for (int j = 0; j < 3; j++){
-			visualization.vertices[3 * i + j] = mesh.vertices[mesh.triangles[i][j]];
-			visualization.normals[3 * i + j] = mesh.normals[mesh.triangles[i][j]];
-			visualization.textureCoordinates[3 * i + j] = mesh.textureCoordinates[3 * i + j];
-		}
+	for( int i=0 ; i<tCount ; i++ ) for( int j=0 ; j<3 ; j++ )
+	{
+		visualization.vertices[3 * i + j] = mesh.vertices[mesh.triangles[i][j]];
+		visualization.normals[3 * i + j] = mesh.normals[mesh.triangles[i][j]];
+		visualization.textureCoordinates[3 * i + j] = mesh.textureCoordinates[3 * i + j];
 	}
 
 	std::vector<int> boundaryEdges;
@@ -896,7 +939,7 @@ void TextureFilter< PreReal , Real >::InitializeVisualization( void )
 	visualization.info.push_back( gradientModulationStr );
 	visualization.info.push_back( interpolationStr );
 
-	char* ext = GetFileExtension( Input.values[1] );
+	char *ext = GetFileExtension( Input.values[1] );
 	if( !strcasecmp( ext , "normap" ) )
 	{
 		visualization.textureType = NORMAL_TEXTURE;
@@ -926,7 +969,7 @@ void TextureFilter< PreReal , Real >::InitializeVisualization( void )
 	}
 	visualization.UpdateMaskTextureBuffer();
 }
-#endif // NO_VISUALIZATION
+#endif // NO_OPEN_GL_VISUALIZATION
 
 template< typename PreReal , typename Real >
 void TextureFilter< PreReal , Real >::Init( void )
@@ -936,38 +979,75 @@ void TextureFilter< PreReal , Real >::Init( void )
 	interpolationWeight = InterpolationWeight.value;
 	gradientModulation = GradientModulation.value;
 
-	mesh.read( Input.values[0] , Input.values[1] , DetailVerbose.set );
+	mesh.read( Input.values[0] , DetailVerbose.set );
+	{
+		char *ext = GetFileExtension( Input.values[1] );
+#ifdef USE_LOW_FREQUENCY
+		if( !strcasecmp( ext , "normap" ) ) ReadBinaryImage( highFrequencyTexture , Input.values[1] );
+		else highFrequencyTexture.read( Input.values[1] );
+#else // !USE_LOW_FREQUENCY
+		if( !strcasecmp( ext , "normap" ) ) ReadBinaryImage( texture , Input.values[1] );
+		else texture.read( Input.values[1] );
+#endif // USE_LOW_FREQUENCY
+		delete[] ext;
+	}
+#ifdef USE_LOW_FREQUENCY
+	if( InputLowFrequency.set )
+	{
+		char *ext = GetFileExtension( InputLowFrequency.value );
+		if( !strcasecmp( ext , "normap" ) ) ReadBinaryImage( lowFrequencyTexture , InputLowFrequency.value );
+		else lowFrequencyTexture.read( InputLowFrequency.value );
+		delete[] ext;
+	}
+	else lowFrequencyTexture = highFrequencyTexture;
+	if( lowFrequencyTexture.width()!=highFrequencyTexture.width() || lowFrequencyTexture.height()!=highFrequencyTexture.height() )
+		Miscellany::ErrorOut( "Low/high texture resolutions don't match: " , lowFrequencyTexture.width() , " x " , lowFrequencyTexture.height() , " != " , highFrequencyTexture.width() , " x " , highFrequencyTexture.height() );
 
-	textureWidth = mesh.texture.width();
-	textureHeight = mesh.texture.height();
+	textureWidth = highFrequencyTexture.width();
+	textureHeight = highFrequencyTexture.height();
+#else // !USE_LOW_FREQUENCY
+	textureWidth = texture.width();
+	textureHeight = texture.height();
+#endif // USE_LOW_FREQUENCY
 
-	//Define centroid and scale for visualization
-	Point3D< PreReal > centroid;
-	for( int i=0 ; i<mesh.vertices.size() ; i++ ) centroid += mesh.vertices[i];
-	centroid /= (int)mesh.vertices.size();
-	PreReal radius = 0;
-	for( int i=0 ; i<mesh.vertices.size() ; i++ ) radius = std::max< PreReal >( radius , Point3D< PreReal >::Length( mesh.vertices[i] - centroid ) );
-	for (int i = 0; i < mesh.vertices.size(); i++) mesh.vertices[i] = (mesh.vertices[i] - centroid) / radius;
+	// Define centroid and scale for visualization
+	{
+		Point3D< PreReal > centroid;
+		for( int i=0 ; i<mesh.vertices.size() ; i++ ) centroid += mesh.vertices[i];
+		centroid /= (int)mesh.vertices.size();
+		PreReal radius = 0;
+		for( int i=0 ; i<mesh.vertices.size() ; i++ ) radius = std::max< PreReal >( radius , Point3D< PreReal >::Length( mesh.vertices[i] - centroid ) );
+		for( int i=0 ; i<mesh.vertices.size() ; i++ ) mesh.vertices[i] = (mesh.vertices[i] - centroid) / radius;
+	}
 
-	if( true ) for( int i=0 ; i<mesh.textureCoordinates.size() ; i++ ) mesh.textureCoordinates[i][1] = (PreReal)1. - mesh.textureCoordinates[i][1];
+#ifdef FLIP_TEXTURE
+	// Flip the vertical axis
+	for( int i=0 ; i<mesh.textureCoordinates.size() ; i++ ) mesh.textureCoordinates[i][1] = (PreReal)1. - mesh.textureCoordinates[i][1];
+#endif // FLIP_TEXTURE
 
+	// Apply a random jitter to the texture coordinates
 	if( RandomJitter.set )
 	{
 		if( RandomJitter.value ) srand( RandomJitter.value );
-		else                     srand( time(NULL) );
+		else                     srand( (unsigned int)time(NULL) );
 		std::vector< Point2D< PreReal > >randomOffset( mesh.vertices.size() );
 		PreReal jitterScale = (PreReal)1e-3 / std::max< int >( textureWidth , textureHeight );
 		for( int i=0 ; i<randomOffset.size() ; i++ ) randomOffset[i] = Point2D< PreReal >( (PreReal)1. - Random< PreReal >()*2 , (PreReal)1. - Random< PreReal >()*2 )*jitterScale;
 		for( int i=0 ; i<mesh.triangles.size() ; i++ ) for( int k=0 ; k<3 ; k++ ) mesh.textureCoordinates[ 3*i+k ] += randomOffset[ mesh.triangles[i][k] ];
 	}
 
-	ComputePadding( padding , textureWidth , textureHeight , mesh.textureCoordinates , DetailVerbose.set );
-	if( padding.nonTrivial )
+	// Pad the texture and texture coordinates
 	{
-		PadTextureCoordinates(padding, textureWidth, textureHeight, mesh.textureCoordinates);
-		PadImage( padding , mesh.texture );
-		textureWidth += (padding.left + padding.right);
-		textureHeight += (padding.bottom + padding.top);
+		padding = Padding::Init( textureWidth , textureHeight , mesh.textureCoordinates , DetailVerbose.set );
+		padding.pad( textureWidth , textureHeight , mesh.textureCoordinates );
+#ifdef USE_LOW_FREQUENCY
+		padding.pad( highFrequencyTexture );
+		padding.pad( lowFrequencyTexture );
+#else // !USE_LOW_FREQUENCY
+		padding.pad( texture );
+#endif // USE_LOW_FREQUENCY
+		textureWidth  += padding.width();
+		textureHeight += padding.height();
 	}
 
 	Miscellany::Timer timer;
@@ -979,7 +1059,7 @@ void TextureFilter< PreReal , Real >::Init( void )
 		printf( "Peak Memory (MB): %d\n" , Miscellany::MemoryInfo::PeakMemoryUsageMB() );
 	}
 
-	//Assign position to exterior nodes using barycentric-exponential map
+	// Assign position to exterior nodes using barycentric-exponential map
 	{
 		FEM::RiemannianMesh< PreReal > rMesh( GetPointer( mesh.triangles ) , mesh.triangles.size() );
 		rMesh.setMetricFromEmbedding( GetPointer( mesh.vertices ) );
@@ -1052,11 +1132,11 @@ void _main( int argc , char *argv[] )
 
 	TextureFilter< PreReal , Real >::updateCount = Paused.set ?  0 : -1;
 
-#ifdef NO_VISUALIZATION
+#ifdef NO_OPEN_GL_VISUALIZATION
 	if( UseDirectSolver.set ) TextureFilter< PreReal , Real >::ComputeExactSolution( Verbose.set );
 	else for ( int i=0 ; i<OutputVCycles.value ; i++ ) TextureFilter< PreReal , Real >::UpdateSolution();
 	TextureFilter< PreReal , Real >::WriteTexture( Output.value );
-#else // !NO_VISUALIZATION
+#else // !NO_OPEN_GL_VISUALIZATION
 	if( !Output.set )
 	{
 		glutInitDisplayMode( GLUT_RGB | GLUT_DOUBLE );
@@ -1088,17 +1168,17 @@ void _main( int argc , char *argv[] )
 		else for ( int i=0 ; i<OutputVCycles.value ; i++ ) TextureFilter< PreReal , Real >::UpdateSolution();
 		TextureFilter< PreReal , Real >::ExportTextureCallBack( &TextureFilter< PreReal , Real >::visualization , Output.value );
 	}
-#endif // NO_VISUALIZATION
+#endif // NO_OPEN_GL_VISUALIZATION
 }
 
 int main(int argc, char* argv[])
 {
 	cmdLineParse( argc-1 , argv+1 , params );
-#ifdef NO_VISUALIZATION
+#ifdef NO_OPEN_GL_VISUALIZATION
 	if( !Input.set || !Output.set ) { ShowUsage( argv[0] ) ; return EXIT_FAILURE; }
-#else // !NO_VISUALIZATION
+#else // !NO_OPEN_GL_VISUALIZATION
 	if( !Input.set ) { ShowUsage( argv[0] ) ; return EXIT_FAILURE; }
-#endif // NO_VISUALIZATION
+#endif // NO_OPEN_GL_VISUALIZATION
 	omp_set_num_threads( Threads.value );
 	if( !NoHelp.set && !Output.set )
 	{
