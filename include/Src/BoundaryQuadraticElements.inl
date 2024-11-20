@@ -278,8 +278,9 @@ void InitializeChartBoundaryPolygons
 
 	//(2) Process cells
 
-	gridChart.boundaryPolygons.resize(gridChart.numBoundaryCells);
-	for (auto cellIter = cellSegments.begin(); cellIter != cellSegments.end(); cellIter++) {
+	gridChart.boundaryPolygons.resize( gridChart.numBoundaryCells );
+	for( auto cellIter=cellSegments.begin() ; cellIter!=cellSegments.end() ; cellIter++ )
+	{
 		std::vector<std::pair<unsigned long long, unsigned long long>> segments = (*cellIter).second;
 		int cellID = (*cellIter).first;
 
@@ -317,7 +318,7 @@ void InitializeChartBoundaryPolygons
 		LoopVertices( forwardMap , loopKeys );
 
 		//Keep only the grid nodes and the boundary vertices
-		std::vector< std::vector< Point2D< GeometryReal > > > loopPositions(loopKeys.size());
+		std::vector< std::vector< Point2D< GeometryReal > > > loopPositions( loopKeys.size() );
 		std::vector< std::vector< int> > loopIndices(loopKeys.size());
 		std::vector< std::vector< int> > loopAtlasVertexIndices(loopKeys.size());
 		for (int i = 0; i < loopKeys.size(); i++) {
@@ -329,7 +330,8 @@ void InitializeChartBoundaryPolygons
 				unsigned long long currentVertexKey = loopKeys[i][j];
 				unsigned long tElement, vElement;
 				GetIntersectionKey(currentVertexKey, tElement, vElement);
-				if (tElement == 4294967295) {
+				if( tElement == 4294967295 )
+				{
 					vElement -= gridChart.gridIndexOffset;
 					int pi = vElement % gridChart.width;
 					int pj = vElement / gridChart.width;
@@ -479,7 +481,34 @@ void InitializeChartBoundaryPolygons
 			loopAtlasVertexParentEdges[i] = expandedVertexParentEdgeIndex;
 		}
 
-		for (int i = 0; i < loopPositions.size(); i++){
+#ifdef CLEAN_LOOP
+		for( unsigned int i=0 ; i<loopPositions.size() ; i++ )
+		{
+			std::vector< Point2D< GeometryReal > > cleanedLoop;
+			std::vector< int > cleanedLoopIndices , cleanedLoopAtlasVertexIndices , cleanedLoopAtlasEdges , cleanedLoopAtlasVertexParentEdges;
+
+			for( unsigned int j=0 ; j<loopPositions[i].size() ; j++ )
+			{
+				double d = Point2D< GeometryReal >::Length( loopPositions[i][j] - loopPositions[i][(j+1)%loopPositions[i].size()] );
+				if( d>1e-12 )
+				{
+					cleanedLoop.push_back( loopPositions[i][j] );
+					cleanedLoopIndices.push_back( loopIndices[i][j] );
+					cleanedLoopAtlasVertexIndices.push_back( loopAtlasVertexIndices[i][j] );
+					cleanedLoopAtlasEdges.push_back( loopAtlasEdges[i][j] );
+					cleanedLoopAtlasVertexParentEdges.push_back( loopAtlasVertexParentEdges[i][j] );
+				}
+			}
+			loopPositions[i] = cleanedLoop;
+			loopIndices[i] = cleanedLoopIndices;
+			loopAtlasVertexIndices[i] = cleanedLoopAtlasVertexIndices;
+			loopAtlasEdges[i] = cleanedLoopAtlasEdges;
+			loopAtlasVertexParentEdges[i] = cleanedLoopAtlasVertexParentEdges;
+		}
+#endif // CLEAN_LOOP
+
+		for( int i=0 ; i<loopPositions.size() ; i++ )
+		{
 			AtlasIndexedPolygon< GeometryReal > poly;
 			poly.vertices = loopPositions[i];
 			poly.indices = loopIndices[i];
@@ -530,8 +559,10 @@ void InitializeChartQuadraticElements( GridChart< GeometryReal > &gridChart , st
 	std::vector< std::vector< BoundaryIndexedTriangle< GeometryReal > > > & boundaryTriangles = gridChart.boundaryTriangles;
 	boundaryTriangles.resize(gridChart.numBoundaryCells);
 	int numBoundaryTriangles = 0;
-	for (int i = 0; i < boundaryPolygons.size(); i++) {
-		for (int j = 0; j < boundaryPolygons[i].size(); j++) {
+	for( int i=0 ; i<boundaryPolygons.size() ; i++ )
+	{
+		for( int j=0 ; j<boundaryPolygons[i].size() ; j++ )
+		{
 			const AtlasIndexedPolygon< GeometryReal > &currentPolygon = boundaryPolygons[i][j];
 			std::vector< TriangleIndex > delanauyTriangles;
 			TriangulatePolygon( currentPolygon.vertices , delanauyTriangles );
@@ -539,7 +570,7 @@ void InitializeChartQuadraticElements( GridChart< GeometryReal > &gridChart , st
 			{
 				int localCellPos[2] = { -1,-1 };
 				for( int li=0 ; li<gridChart.localBoundaryCellIndex.width() ; li++ ) for( int lj=0 ; lj<gridChart.localBoundaryCellIndex.height() ; lj++ ) if( gridChart.localBoundaryCellIndex(li,lj) == i ) localCellPos[0] = li , localCellPos[1] = lj;
-				Miscellany::Warn( "Unexpected number of triangles produced by delaunay triangulation at global cell (%d,%d). Polygon may self intersect!" , gridChart.cornerCoords[0] + localCellPos[0] , gridChart.cornerCoords[1] + localCellPos[1] );
+				Miscellany::Warn( "Unexpected number of triangles produced by delaunay triangulation at global cell (%d,%d). Polygon may self intersect! %d != %d" , gridChart.cornerCoords[0] + localCellPos[0] , gridChart.cornerCoords[1] + localCellPos[1] , delanauyTriangles.size() , currentPolygon.vertices.size()-2 );
 			}
 
 			for (int k = 0; k < delanauyTriangles.size(); k++) {

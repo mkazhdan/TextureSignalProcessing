@@ -29,8 +29,10 @@ DAMAGE.
 #define PRE_PROCESSING_INCLUDED
 
 #define NEW_CODE					// General-purpose experimental code encapsulation
-#undef NO_OPEN_GL_VISUALIZATION		// Disable OpenGL visualization
+//#define NO_OPEN_GL_VISUALIZATION		// Disable OpenGL visualization
 #define FLIP_TEXTURE				// Flip the texture vertically
+
+#define CLEAN_LOOP					// Merge loop positions if they are too close together
 
 #define USE_LOW_FREQUENCY			// Use a separate low-frequency signal for filtering.stitching
 
