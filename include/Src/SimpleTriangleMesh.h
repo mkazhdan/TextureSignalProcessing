@@ -56,52 +56,19 @@ void GetMeshEdgeIndices( unsigned long long key , unsigned long & i0 , unsigned 
 	i0 = static_cast< unsigned long >( (key>>32) & 0x00000000FFFFFFFF );
 }
 
-#ifdef NEW_CODE
 template< typename GeometryReal , unsigned int Dim >
-#else // !NEW_CODE
-template< typename GeometryReal >
-#endif // NEW_CODE
 class SimpleTriangleMesh
 {
 public:
-#ifdef NEW_CODE
 	template< typename Real=GeometryReal >
 	using Position = std::conditional_t< Dim==2 , Point2D< Real > , std::conditional_t< Dim==3 , Point3D< Real > , Point< Real , Dim > > >;
 	std::vector< Position<> > vertices;
-#else // !NEW_CODE
-	std::vector< Point3D< GeometryReal > > vertices;
-	std::vector< Point3D< GeometryReal > > normals;
-#endif // NEW_CODE
 	std::vector< TriangleIndex > triangles;
 
-#ifdef NEW_CODE
 	unsigned long long edgeKey( unsigned int t , unsigned int c , bool flip=false ) const
 	{
 		return flip ? SetMeshEdgeKey( triangles[t][(c+1)%3] , triangles[t][c] ) : SetMeshEdgeKey( triangles[t][c] , triangles[t][(c+1)%3] );
 	}
-#endif // NEW_CODE
-
-#ifdef NEW_CODE
-#else // !NEW_CODE
-	void updateNormals( void )
-	{
-		normals.clear();
-		normals.resize( vertices.size() );
-		for( int t=0 ; t<triangles.size() ; t++ )
-		{
-			Point3D< GeometryReal > d01 = vertices[ triangles[t][1] ] - vertices[ triangles[t][0] ];
-			Point3D< GeometryReal > d02 = vertices[ triangles[t][2] ] - vertices[ triangles[t][0] ];
-			Point3D< GeometryReal > n = Point3D< GeometryReal >::CrossProduct( d01 , d02 );
-			for( int v=0 ; v<3 ; v++ ) normals[ triangles[t][v] ] += n;
-		}
-
-		for( int i=0 ; i<normals.size() ; i++ )
-		{
-			GeometryReal l = Point3D< GeometryReal >::Length( normals[i] );
-			if( l>0 ) normals[i] /= l;
-		}
-	}
-#endif // NEW_CODE
 
 	void read( const char *fileName )
 	{
@@ -113,10 +80,6 @@ public:
 			Miscellany::Throw( "Failed to read ply file: %s" , fileName );
 		vertices.resize( ply_vertices.size() );
 		for( int i=0 ; i<ply_vertices.size() ; i++ ) vertices[i] = ply_vertices[i].point;
-#ifdef NEW_CODE
-#else // !NEW_CODE
-		updateNormals();
-#endif // NEW_CODE
 	}
 
 	void write( const char *fileName ) const
@@ -126,7 +89,6 @@ public:
 		PlyWriteTriangles( fileName , ply_vertices , triangles , PlyVertex< GeometryReal >::WriteProperties , PlyVertex< GeometryReal >::WriteComponents , PLY_BINARY_NATIVE );
 	}
 
-#ifdef NEW_CODE
 	GeometryReal triangleArea( unsigned int t ) const
 	{
 		Position<> d[2] = { vertices[ triangles[t][1] ] - vertices[ triangles[t][0] ] , vertices[ triangles[t][2] ] - vertices[ triangles[t][0] ] };
@@ -134,26 +96,14 @@ public:
 		for( unsigned int i=0 ; i<2 ; i++ ) for( unsigned int j=0 ; j<2 ; j++ ) M(i,j) = Position<>::Dot( d[i] , d[j] );
 		return (GeometryReal)( sqrt( M.determinant() ) / 2. );
 	}
-#endif // NEW_CODE
 
 	GeometryReal area( void ) const
 	{
 		GeometryReal meshArea = 0;
-#ifdef NEW_CODE
 		for( int t=0 ; t<triangles.size() ; t++ ) meshArea += triangleArea( t );
-#else // !NEW_CODE
-		for( int t=0 ; t<triangles.size() ; t++ )
-		{
-			Point3D< GeometryReal > d01 = vertices[ triangles[t][1] ] - vertices[ triangles[t][0] ];
-			Point3D< GeometryReal > d02 = vertices[ triangles[t][2] ] - vertices[ triangles[t][0] ];
-			Point3D< GeometryReal > n = Point3D< GeometryReal >::CrossProduct( d01 , d02 );
-			meshArea += Point3D< GeometryReal >::Length(n) / 2;
-		}
-#endif // NEW_CODE
 		return meshArea;
 	}
 
-#ifdef NEW_CODE
 	Position<> centroid( void ) const
 	{
 		GeometryReal meshArea = 0;
@@ -167,37 +117,11 @@ public:
 		}
 		return centroid/meshArea;
 	}
-#else // !NEW_CODE
-	Point3D< GeometryReal > centroid( void ) const
-	{
-		GeometryReal meshArea = 0;
-		Point3D< GeometryReal > centroid;
-		for( int t=0 ; t<triangles.size() ; t++ )
-		{
-			Point3D< GeometryReal > d01 = vertices[ triangles[t][1] ] - vertices[ triangles[t][0] ];
-			Point3D< GeometryReal > d02 = vertices[ triangles[t][2] ] - vertices[ triangles[t][0] ];
-			Point3D< GeometryReal > n = Point3D< GeometryReal >::CrossProduct( d01 , d02 );
-			GeometryReal tArea = Point3D< GeometryReal >::Length(n) / 2;
-			Point3D< GeometryReal > baricenter = ( vertices[ triangles[t][0] ] + vertices[ triangles[t][1] ] + vertices[ triangles[t][2]] ) / 3;
-			centroid += baricenter*tArea;
-			meshArea += tArea;
-		}
-		return centroid/meshArea;
-	}
-#endif // NEW_CODE
 
-#ifdef NEW_CODE
 	GeometryReal radius( const Position<> &centroid )
-#else // !NEW_CODE
-	GeometryReal radius( const Point3D< GeometryReal > &centroid )
-#endif // NEW_CODE
 	{
 		GeometryReal radius = 0;
-#ifdef NEW_CODE
 		for( int v=0 ; v<vertices.size() ; v++ ) radius = std::max< GeometryReal >( radius , Position<>::Length( vertices[v] - centroid ) );
-#else // !NEW_CODE
-		for( int v=0 ; v<vertices.size() ; v++ ) radius = std::max< GeometryReal >( radius , Point3D< GeometryReal >::Length( vertices[v] - centroid ) );
-#endif // NEW_CODE
 		return radius;
 	}
 
@@ -207,13 +131,8 @@ public:
 		MatrixReal meshMass = 0;
 		for( int t=0 ; t<triangles.size() ; t++ )
 		{
-#ifdef NEW_CODE
 			Position< MatrixReal > p[3] = { vertices[ triangles[t][0] ] , vertices[ triangles[t][1] ] , vertices[ triangles[t][2] ] };
 			Position< MatrixReal > d[2] = { vertices[ triangles[t][1] ] - vertices[ triangles[t][0] ] , vertices[ triangles[t][2] ] - vertices[ triangles[t][0] ] };
-#else // !NEW_CODE
-			Point3D< MatrixReal > p[3] = { vertices[ triangles[t][0] ] , vertices[ triangles[t][1] ] , vertices[ triangles[t][2] ] };
-			Point3D< MatrixReal > d[2] = { vertices[ triangles[t][1] ] - vertices[ triangles[t][0] ] , vertices[ triangles[t][2] ] - vertices[ triangles[t][0] ] };
-#endif // NEW_CODE
 			SquareMatrix< MatrixReal , 2 > g;
 			for( int k=0 ; k<2 ; k++ ) for( int l=0 ; l<2 ; l++ ) g(k,l) = Point3D<MatrixReal>::Dot( d[k] , d[l] );
 			MatrixReal _mass = sqrt(g.determinant()) / 2.0;
@@ -225,13 +144,8 @@ public:
 		std::vector< Eigen::Triplet< MatrixReal > > sTriplets;
 		for( int t=0 ; t<triangles.size() ; t++ )
 		{
-#ifdef NEW_CODE
 			Position< MatrixReal > p[3] = { vertices[ triangles[t][0] ] , vertices[ triangles[t][1] ] , vertices[ triangles[t][2] ] };
 			Position< MatrixReal > d[2] = { vertices[ triangles[t][1] ] - vertices[ triangles[t][0] ] , vertices[ triangles[t][2] ] - vertices[ triangles[t][0] ] };
-#else // !NEW_CODE
-			Point3D< MatrixReal > p[3] = { vertices[ triangles[t][0] ] , vertices[ triangles[t][1] ] , vertices[ triangles[t][2] ] };
-			Point3D< MatrixReal > d[2] = { vertices[ triangles[t][1] ] - vertices[ triangles[t][0] ] , vertices[ triangles[t][2] ] - vertices[ triangles[t][0] ] };
-#endif // NEW_CODE
 			SquareMatrix< MatrixReal , 2 > g;
 			for( int k=0 ; k<2 ; k++ ) for( int l=0 ; l<2 ; l++ ) g(k,l) = Point3D< MatrixReal >::Dot( d[k] , d[l] );
 			g /= meshMass;
@@ -264,11 +178,7 @@ public:
 		std::unordered_map< unsigned long long , int > edgeIndex;
 		for( int i=0 ; i<triangles.size() ; i++ ) for( int k=0 ; k<3 ; k++ )
 		{
-#ifdef NEW_CODE
 			unsigned long long edgeKey = this->edgeKey(i,k);
-#else // !NEW_CODE
-			unsigned long long edgeKey = SetMeshEdgeKey( triangles[i][k] , triangles[i][ (k+1)%3 ] );
-#endif // NEW_CODE
 			if( edgeIndex.find(edgeKey)==edgeIndex.end() ) edgeIndex[edgeKey] = 3*i+k;
 			else Miscellany::Throw( "Non manifold mesh" );
 		}
@@ -276,11 +186,7 @@ public:
 		for( int i=0 ; i<triangles.size() ; i++ ) for( int k=0 ; k<3 ; k++ )
 		{
 			// Get an iterator to the opposite edge
-#ifdef NEW_CODE
 			auto iter = edgeIndex.find( edgeKey( i , k , true ) );
-#else // !NEW_CODE
-			auto iter = edgeIndex.find( SetMeshEdgeKey( triangles[i][ (k+1)%3 ] , triangles[i][k] ) );
-#endif // NEW_CODE
 			if( iter!=edgeIndex.end() ) oppositeHalfEdges[ 3*i+k ] = iter->second;
 			else isClosed = false;
 		}
@@ -288,7 +194,6 @@ public:
 	}
 };
 
-#ifdef NEW_CODE
 template< typename GeometryReal >
 class SimpleOrientedTriangleMesh : public SimpleTriangleMesh< GeometryReal , 3 >
 {
@@ -323,23 +228,13 @@ public:
 		updateNormals();
 	}
 };
-#endif // NEW_CODE
 
 template< typename GeometryReal >
-#ifdef NEW_CODE
 class OrientedColoredTriangleMesh : public SimpleOrientedTriangleMesh< GeometryReal >
-#else // !NEW_CODE
-class ColoredTriangleMesh : public SimpleTriangleMesh< GeometryReal >
-#endif // NEW_CODE
 {
 public:
-#ifdef NEW_CODE
 	using SimpleOrientedTriangleMesh< GeometryReal >::vertices;
 	using SimpleOrientedTriangleMesh< GeometryReal >::triangles;
-#else // !NEW_CODE
-	using SimpleTriangleMesh< GeometryReal >::vertices;
-	using SimpleTriangleMesh< GeometryReal >::triangles;
-#endif // NEW_CODE
 	std::vector< Point3D< GeometryReal > > colors;
 
 	void write( const char *fileName ) const
@@ -351,11 +246,7 @@ public:
 };
 
 template< typename GeometryReal , typename ImageReal=float >
-#ifdef NEW_CODE
 class OrientedTexturedTriangleMesh : public SimpleOrientedTriangleMesh< GeometryReal >
-#else // !NEW_CODE
-class OrientedTexturedTriangleMesh : public SimpleTriangleMesh< GeometryReal >
-#endif // NEW_CODE
 {
 protected:
 	static void _Subdivide( std::vector< Point3D< GeometryReal > > &vertices , std::vector< TriangleIndex > &triangles , std::vector< Point2D< GeometryReal > > & tCoordinates )
@@ -411,13 +302,8 @@ protected:
 #undef EDGE_KEY
 	}
 public:
-#ifdef NEW_CODE
 	using SimpleOrientedTriangleMesh< GeometryReal >::vertices;
 	using SimpleOrientedTriangleMesh< GeometryReal >::triangles;
-#else // !NEW_CODE
-	using SimpleTriangleMesh< GeometryReal >::vertices;
-	using SimpleTriangleMesh< GeometryReal >::triangles;
-#endif // NEW_CODE
 #ifdef USE_TEXTURE_TRIANGLES
 	std::vector< TriangleIndex > textureTriangles;
 	std::vector< Point2D< GeometryReal > > tCoordinates;
@@ -632,20 +518,14 @@ public:
 		else Miscellany::ErrorOut( "Unrecognized file extension: %s" , meshName );
 		delete[] ext;
 
-#ifdef NEW_CODE
 		// Flip the vertical axis
 #ifdef USE_TEXTURE_TRIANGLES
 		for( int i=0 ; i<tCoordinates.size() ; i++ ) tCoordinates[i][1] = (GeometryReal)1. - tCoordinates[i][1];
 #else // !USE_TEXTURE_TRIANGLES
 		for( int i=0 ; i<textureCoordinates.size() ; i++ ) textureCoordinates[i][1] = (GeometryReal)1. - textureCoordinates[i][1];
 #endif // USE_TEXTURE_TRIANGLES
-#endif // NEW_CODE
 
-#ifdef NEW_CODE
 		SimpleOrientedTriangleMesh< GeometryReal >::updateNormals();
-#else // !NEW_CODE
-		SimpleTriangleMesh< GeometryReal >::updateNormals();
-#endif // NEW_CODE
 	}
 
 	void initializeBoundaryEdges( std::vector< int > &boundaryEdges ) const
@@ -655,11 +535,7 @@ public:
 		std::unordered_map< unsigned long long , int > edgeIndex;
 		for( int i=0 ; i<triangles.size() ; i++ ) for( int k=0 ; k<3 ; k++ )
 		{
-#ifdef NEW_CODE
 			unsigned long long edgeKey = this->edgeKey(i,k);
-#else // !NEW_CODE
-			unsigned long long edgeKey = SetMeshEdgeKey( triangles[i][k] , triangles[i][(k+1)%3] );
-#endif // NEW_CODE
 			if( edgeIndex.find(edgeKey)==edgeIndex.end() ) edgeIndex[edgeKey] = 3*i+k;
 			else Miscellany::Throw( "Non manifold mesh" );
 		}
@@ -667,11 +543,7 @@ public:
 		for( int i=0 ; i<triangles.size() ; i++ ) for( int k=0 ; k<3 ; k++ )
 		{
 			int currentEdgeIndex = 3*i+k;
-#ifdef NEW_CODE
 			unsigned long long edgeKey = this->edgeKey(i,k,true);
-#else // !NEW_CODE
-			unsigned long long edgeKey = SetMeshEdgeKey( triangles[i][(k+1)%3] , triangles[i][k] );
-#endif // NEW_CODE
 			if( edgeIndex.find(edgeKey)!=edgeIndex.end() )
 			{
 				int oppositeEdgeIndex = edgeIndex[edgeKey];
@@ -699,11 +571,7 @@ public:
 	void subdivide( int iters )
 	{
 		for( int i=0 ; i<iters ; i++ ) _Subdivide( vertices , triangles , textureCoordinates );
-#ifdef NEW_CODE
 		SimpleOrientedTriangleMesh< GeometryReal >::updateNormals();
-#else // !NEW_CODE
-		SimpleTriangleMesh< GeometryReal >::updateNormals();
-#endif // NEW_CODE
 	}
 };
 #endif // SIMPLE_TRIANGLE_MESH_INCLUDED

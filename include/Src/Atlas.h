@@ -56,6 +56,7 @@ class AtlasMesh : public SimpleTriangleMesh< GeometryReal , 2 >
 public:
 	using SimpleTriangleMesh< GeometryReal , 2 >::vertices;
 	using SimpleTriangleMesh< GeometryReal , 2 >::triangles;
+
 	std::vector< int > triangleIndexInChart;
 	std::vector< int > triangleChartIndex;
 	std::vector< int > halfEdgeToEdgeIndex;
