@@ -30,9 +30,9 @@ DAMAGE.
 
 #define NEW_CODE					// General-purpose experimental code encapsulation
 //#define NO_OPEN_GL_VISUALIZATION		// Disable OpenGL visualization
-#define FLIP_TEXTURE				// Flip the texture vertically
+//#define USE_TEXTURE_TRIANGLES		// Represent textures using a separate triangulation
 
-#define CLEAN_LOOP					// Merge loop positions if they are too close together
+#define INSERTION_EPSILON 1e-12		// Separation from interval end-points required for insertion
 
 #define USE_LOW_FREQUENCY			// Use a separate low-frequency signal for filtering.stitching
 

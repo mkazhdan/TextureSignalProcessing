@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.26730.12
+# Visual Studio Version 17
+VisualStudioVersion = 17.11.35312.102
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TextureFiltering", "TextureFiltering\TextureFiltering.vcxproj", "{C6ABBF5D-BB74-4812-AB52-973D8B76A266}"
 	ProjectSection(ProjectDependencies) = postProject
@@ -46,8 +46,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Include", "Include", "{FC29
 		include\Src\ProlongationAndRestriction.inl = include\Src\ProlongationAndRestriction.inl
 		include\Src\QuadratureIntergration.inl = include\Src\QuadratureIntergration.inl
 		include\Src\RightTriangleQuadrature.h = include\Src\RightTriangleQuadrature.h
-		include\Src\SimpleMesh.h = include\Src\SimpleMesh.h
 		include\Src\Solver.h = include\Src\Solver.h
+		include\Src\SimpleMesh.h = include\Src\SimpleMesh.h
 		include\Src\SparseMatrixParser.h = include\Src\SparseMatrixParser.h
 		include\Src\StitchingVisualization.h = include\Src\StitchingVisualization.h
 		include\Src\StitchingVisualization.inl = include\Src\StitchingVisualization.inl

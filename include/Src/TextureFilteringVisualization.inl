@@ -57,14 +57,14 @@ void TextureFilteringVisualization::DrawSlideBar( void )
 
 	GLint viewport[4];
 	glGetIntegerv( GL_VIEWPORT , viewport );
-	glMatrixMode(GL_PROJECTION);
+	glMatrixMode( GL_PROJECTION );
 	glLoadIdentity();
 	glOrtho( 0 , viewport[2] , 0 , viewport[3] , -1 ,  1 );
 
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 
-	glBegin(GL_QUADS);
+	glBegin( GL_QUADS );
 	glColor3f( 0.0f , 0.0f , 1.0f ) ; glVertex2f( 20 , viewport[3] - 20 );
 	glColor3f( 0.8f , 0.8f , 0.8f ) ; glVertex2f( viewport[2] / 2 , viewport[3] - 20 );
 	glColor3f( 0.8f , 0.8f , 0.8f ) ; glVertex2f( viewport[2] / 2 , viewport[3] - 30 );
@@ -176,19 +176,23 @@ void TextureFilteringVisualization::display( void )
 
 	if( showDisk && isBrushActive )
 	{
-		glDisable(GL_DEPTH_TEST);
-		glMatrixMode(GL_PROJECTION);
+		glDisable( GL_DEPTH_TEST );
+		setViewport(0);
+		GLint viewport[4];
+		glGetIntegerv( GL_VIEWPORT , viewport );
+		glMatrixMode( GL_PROJECTION );
 		glLoadIdentity();
-		glOrtho(0, screenWidth, 0, screenHeight, -1, 1);
+		glOrtho( 0 , viewport[2] , 0 , viewport[3] , -1 ,  1 );
 
-		glMatrixMode(GL_MODELVIEW);
+		glMatrixMode( GL_MODELVIEW );
 		glLoadIdentity();
 
-		glColor3f(0, 1.0, 0);
+		if( positiveModulation) glColor3f( 1.0 , 0.0 , 0.0 );
+		else                    glColor3f( 0.0 , 0.0 , 1.0 );
 		GLUquadric* quad = gluNewQuadric();
-		glTranslatef(diskX, screenHeight - diskY, 0);
-		gluDisk(quad, 18, 22, 40, 3);
-		gluDeleteQuadric(quad);
+		glTranslatef( diskX , screenHeight - diskY , 0);
+		gluDisk( quad , 18 , 22 , 40 , 3 );
+		gluDeleteQuadric( quad );
 		glEnable( GL_DEPTH_TEST );
 	}
 

@@ -30,39 +30,43 @@ DAMAGE.
 #include <Misha/Miscellany.h>
 
 template< typename GeometryReal >
-void InitializeAtlasMesh( const TexturedMesh< GeometryReal > &inputMesh , AtlasMesh< GeometryReal > &outputMesh , const int width , const int height , bool verbose )
+void InitializeAtlasMesh( const OrientedTexturedTriangleMesh< GeometryReal > &inputMesh , AtlasMesh< GeometryReal > &outputMesh , const int width , const int height , bool verbose )
 {
+	// Compute the mapping from triangles to charts
 	InitializeTriangleChartIndexing( inputMesh , outputMesh.triangleChartIndex , outputMesh.numCharts );
 	if( verbose ) printf( "Num Charts %d \n" , outputMesh.numCharts );
 
-	int lastVertexIndex = 0;
-	std::set< IndexedVector2D< GeometryReal > , IndexedVector2DComparison< GeometryReal > > IndexedPointSet;
-	typename std::set< IndexedVector2D< GeometryReal > , IndexedVector2DComparison< GeometryReal > >::iterator it;
-
-	for( int t=0 ; t<inputMesh.triangles.size() ; t++ )
+	// Compute the 2D mesh(es)
 	{
-		int cornerIndices[3];
-		for( int k=0 ; k<3 ; k++ )
+		int lastVertexIndex = 0;
+		std::set< IndexedVector2D< GeometryReal > , IndexedVector2DComparison< GeometryReal > > IndexedPointSet;
+		typename std::set< IndexedVector2D< GeometryReal > , IndexedVector2DComparison< GeometryReal > >::iterator it;
+
+		for( int t=0 ; t<inputMesh.triangles.size() ; t++ )
 		{
-			int currentCorner = -1;
-			IndexedVector2D< GeometryReal > idxP( inputMesh.textureCoordinates[ 3*t+k ] , lastVertexIndex , inputMesh.triangles[t][k] );
-			it = IndexedPointSet.find( idxP );
-			if( it==IndexedPointSet.end() )
+			int cornerIndices[3];
+			for( int k=0 ; k<3 ; k++ )
 			{
-				IndexedPointSet.insert( idxP );
-				outputMesh.vertexMap.push_back( inputMesh.triangles[t][k] );
-				currentCorner = lastVertexIndex;
-				outputMesh.vertices.push_back( inputMesh.textureCoordinates[ 3*t+k ] );
-				lastVertexIndex++;
+				int currentCorner = -1;
+				IndexedVector2D< GeometryReal > idxP( inputMesh.textureCoordinates[ 3*t+k ] , lastVertexIndex , inputMesh.triangles[t][k] );
+				it = IndexedPointSet.find( idxP );
+				if( it==IndexedPointSet.end() )
+				{
+					IndexedPointSet.insert( idxP );
+					outputMesh.vertexMap.push_back( inputMesh.triangles[t][k] );
+					currentCorner = lastVertexIndex;
+					outputMesh.vertices.push_back( inputMesh.textureCoordinates[ 3*t+k ] );
+					lastVertexIndex++;
+				}
+				else
+				{
+					IndexedVector2D< GeometryReal > indexPoint = *it;
+					currentCorner = indexPoint.index;
+				}
+				cornerIndices[k] = currentCorner;
 			}
-			else
-			{
-				IndexedVector2D< GeometryReal > indexPoint = *it;
-				currentCorner = indexPoint.index;
-			}
-			cornerIndices[k] = currentCorner;
+			outputMesh.triangles.push_back( TriangleIndex( cornerIndices[0] , cornerIndices[1] , cornerIndices[2] ) );
 		}
-		outputMesh.triangles.push_back( TriangleIndex( cornerIndices[0] , cornerIndices[1] , cornerIndices[2] ) );
 	}
 
 	if( true ) // Jitter vertices lying on the grid to avoid degeneracies
@@ -82,105 +86,82 @@ void InitializeAtlasMesh( const TexturedMesh< GeometryReal > &inputMesh , AtlasM
 		}
 	}
 
-	std::unordered_map< unsigned long long , int > halfEdgeIndex;
-	for( int i=0 ; i<outputMesh.triangles.size() ; i++ ) for( int k=0 ; k<3 ; k++ )
+	// Set the mapping from half-edges to edges
 	{
-		unsigned long long  edgeKey = SetMeshEdgeKey( outputMesh.triangles[i][k] , outputMesh.triangles[i][ (k+1)%3 ] );
-		if( halfEdgeIndex.find(edgeKey)==halfEdgeIndex.end() ) halfEdgeIndex[edgeKey] = 3*i+k;
-		else Miscellany::Throw( "Non oriented manifold mesh" );
-	}
-
-	int fineGridResolution = std::max< int >( width , height );
-
-	int lastEdgeIndex = 2 * fineGridResolution*fineGridResolution*outputMesh.numCharts;
-	std::vector< int > halfEdgeToEdgeIndex(3 * outputMesh.triangles.size(), -1);
-	for( int i=0 ; i<outputMesh.triangles.size() ; i++ ) for( int k=0 ; k<3 ; k++ )
-	{
-		int currentEdgeIndex = 3*i+k;
-		unsigned long long edgeKey = SetMeshEdgeKey( outputMesh.triangles[i][ (k+1)%3 ] , outputMesh.triangles[i][k] );
-		if( halfEdgeIndex.find(edgeKey)!=halfEdgeIndex.end() )
+		// A map from vertex to pairs to half-edge indices
+		std::unordered_map< unsigned long long , int > halfEdgeIndex;
+		for( int i=0 ; i<outputMesh.triangles.size() ; i++ ) for( int k=0 ; k<3 ; k++ )
 		{
-			int oppositeEdgeIndex = halfEdgeIndex[edgeKey];
+			unsigned long long edgeKey = outputMesh.edgeKey(i,k);
+			if( halfEdgeIndex.find(edgeKey)==halfEdgeIndex.end() ) halfEdgeIndex[edgeKey] = 3*i+k;
+			else Miscellany::Throw( "Non oriented manifold mesh" );	// If the same half-edge appears twice
+		}
 
-			if( currentEdgeIndex<oppositeEdgeIndex )
+		int lastEdgeIndex = 0;
+		std::vector< int > halfEdgeToEdgeIndex( 3*outputMesh.triangles.size() , -1 );
+		for( int i=0 ; i<outputMesh.triangles.size() ; i++ ) for( int k=0 ; k<3 ; k++ )
+		{
+			int currentHalfEdgeIndex = 3*i+k;
+			unsigned long long oppositeEdgeKey = outputMesh.edgeKey(i,k,true);
+
+			// Set the edge associated to both halves of the edge (once)
+			if( halfEdgeIndex.find(oppositeEdgeKey)!=halfEdgeIndex.end() ) // If the opposite edge exists
 			{
-				halfEdgeToEdgeIndex[currentEdgeIndex] = halfEdgeToEdgeIndex[oppositeEdgeIndex] = lastEdgeIndex;
-				lastEdgeIndex++;
-			}
-		}
-		else
-		{
-			halfEdgeToEdgeIndex[currentEdgeIndex] = lastEdgeIndex;
-			lastEdgeIndex++;
-		}
-	}
-	for( int i=0 ; i<outputMesh.triangles.size() ; i++ ) for( int k=0 ; k<3 ; k++ ) if( halfEdgeToEdgeIndex[3*i+k]==-1 ) Miscellany::Throw( "Non indexed half edge" );
+				int oppositeHalfEdgeIndex = halfEdgeIndex[oppositeEdgeKey];
 
-	outputMesh.halfEdgeToEdgeIndex = halfEdgeToEdgeIndex;
+				if( currentHalfEdgeIndex<oppositeHalfEdgeIndex ) halfEdgeToEdgeIndex[currentHalfEdgeIndex] = halfEdgeToEdgeIndex[oppositeHalfEdgeIndex] = lastEdgeIndex++;
+			}
+			else halfEdgeToEdgeIndex[currentHalfEdgeIndex] = lastEdgeIndex++;
+		}
+		for( int i=0 ; i<outputMesh.triangles.size() ; i++ ) for( int k=0 ; k<3 ; k++ ) if( halfEdgeToEdgeIndex[3*i+k]==-1 ) Miscellany::Throw( "Non indexed half edge" );
+
+		outputMesh.halfEdgeToEdgeIndex = halfEdgeToEdgeIndex;
+	}
 }
 
 template< typename GeometryReal >
-void InitializeBoundaryHalfEdges( const TexturedMesh< GeometryReal > &mesh , std::vector< int > &boundaryHalfEdges , std::vector< int > &oppositeHalfEdge , std::vector< bool > &isBoundaryHalfEdge , bool &isClosedMesh )
+void InitializeBoundaryHalfEdges( const OrientedTexturedTriangleMesh< GeometryReal > &mesh , std::vector< int > &boundaryHalfEdges , std::vector< int > &oppositeHalfEdge , std::vector< bool > &isBoundaryHalfEdge , bool &isClosedMesh )
 {
-	isClosedMesh = true;
+	oppositeHalfEdge = mesh.getOppositeHalfEdges( isClosedMesh );
 
-	std::unordered_map< unsigned long long , int > edgeIndex;
-	for( int i=0 ; i<mesh.triangles.size() ; i++ ) for( int k=0 ; k<3 ; k++ )
-	{
-		unsigned long long  edgeKey = SetMeshEdgeKey( mesh.triangles[i][k] , mesh.triangles[i][ (k+1)%3 ] );
-		if( edgeIndex.find(edgeKey)==edgeIndex.end() ) edgeIndex[edgeKey] = 3*i+k;
-		else Miscellany::Throw( "Non manifold mesh" );
-	}
-
-	oppositeHalfEdge.resize( 3*mesh.triangles.size() );
 	isBoundaryHalfEdge.resize( 3*mesh.triangles.size() , false );
 
 	for( int i=0 ; i<mesh.triangles.size() ; i++ ) for( int k=0 ; k<3 ; k++ )
 	{
-		int currentEdgeIndex = 3*i+k;
-		unsigned long long edgeKey = SetMeshEdgeKey( mesh.triangles[i][ (k+1)%3 ] , mesh.triangles[i][k] );
-		if( edgeIndex.find(edgeKey)!= edgeIndex.end() )
+		int heIndex = 3*i+k;
+		if( oppositeHalfEdge[heIndex]!=-1 )
 		{
-			int oppositeEdgeIndex = edgeIndex[edgeKey];
+			int _heIndex = oppositeHalfEdge[heIndex];
 
-			if( currentEdgeIndex<oppositeEdgeIndex ) oppositeHalfEdge[currentEdgeIndex] = oppositeEdgeIndex ,  oppositeHalfEdge[oppositeEdgeIndex] = currentEdgeIndex;
-
-			int tIndex = oppositeEdgeIndex / 3;
-			int kIndex = oppositeEdgeIndex % 3;
-			if( mesh.textureCoordinates[ 3*i+(k+1)%3 ][0] == mesh.textureCoordinates[ 3*tIndex+kIndex ][0] &&
-				mesh.textureCoordinates[ 3*i+(k+1)%3 ][1] == mesh.textureCoordinates[ 3*tIndex+kIndex ][1] &&
-				mesh.textureCoordinates[ 3*i+k ][0] == mesh.textureCoordinates[ 3*tIndex+(kIndex+1)%3 ][0] &&
-				mesh.textureCoordinates[ 3*i+k ][1] == mesh.textureCoordinates[ 3*tIndex+(kIndex+1)%3 ][1] ) ;
+			int _i = _heIndex / 3 , _k = _heIndex % 3;
+			if( mesh.textureCoordinates[ 3*i+(k+1)%3 ][0] == mesh.textureCoordinates[ 3*_i+_k ][0] &&
+				mesh.textureCoordinates[ 3*i+(k+1)%3 ][1] == mesh.textureCoordinates[ 3*_i+_k ][1] &&
+				mesh.textureCoordinates[ 3*i+k ][0] == mesh.textureCoordinates[ 3*_i+(_k+1)%3 ][0] &&
+				mesh.textureCoordinates[ 3*i+k ][1] == mesh.textureCoordinates[ 3*_i+(_k+1)%3 ][1] ) ;
 			else
 			{
-				if( currentEdgeIndex<oppositeEdgeIndex )
-				{
-					boundaryHalfEdges.push_back(currentEdgeIndex);
-					boundaryHalfEdges.push_back(oppositeEdgeIndex);
-					isBoundaryHalfEdge[currentEdgeIndex] = isBoundaryHalfEdge[oppositeEdgeIndex] = true;
-				}
+				boundaryHalfEdges.push_back( heIndex );
+				isBoundaryHalfEdge[heIndex] = true;
 			}
 		}
 		else
 		{
 			isClosedMesh = false;
-			oppositeHalfEdge[currentEdgeIndex] = -1;
-			boundaryHalfEdges.push_back( currentEdgeIndex );
-			isBoundaryHalfEdge[currentEdgeIndex] = true;
+			boundaryHalfEdges.push_back( heIndex );
+			isBoundaryHalfEdge[heIndex] = true;
 		}
 	}
 }
 
 template< typename GeometryReal >
-void InitiallizeBoundaryVertices( const TexturedMesh< GeometryReal > &mesh , const std::vector< int > &boundaryHalfEdges , std::unordered_map< int , int > &boundaryVerticesIndices , int &lastBoundaryIndex )
+void InitiallizeBoundaryVertices( const OrientedTexturedTriangleMesh< GeometryReal > &mesh , const std::vector< int > &boundaryHalfEdges , std::unordered_map< int , int > &boundaryVerticesIndices , int &lastBoundaryIndex )
 {
 	lastBoundaryIndex = 0;
 
 	for( int b=0 ; b< boundaryHalfEdges.size() ; b++ )
 	{
-		int halfEdgeIndex = boundaryHalfEdges[b];
-		int i = halfEdgeIndex / 3;
-		int k = halfEdgeIndex % 3;
+		int he = boundaryHalfEdges[b];
+		int i = he / 3 , k = he % 3;
 		if( boundaryVerticesIndices.find( mesh.triangles[i][k] )==boundaryVerticesIndices.end() ) boundaryVerticesIndices[ mesh.triangles[i][k] ] = lastBoundaryIndex++;
 		if( boundaryVerticesIndices.find( mesh.triangles[i][(k+1)%3] )==boundaryVerticesIndices.end() ) boundaryVerticesIndices[ mesh.triangles[i][(k+1)%3] ] = lastBoundaryIndex++;
 	}

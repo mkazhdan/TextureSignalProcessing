@@ -25,8 +25,8 @@ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING 
 ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
 DAMAGE.
 */
-#ifndef SIMPLE_MESH_INCLUDED
-#define SIMPLE_MESH_INCLUDED
+#ifndef SIMPLE_TRIANGLE_MESH_INCLUDED
+#define SIMPLE_TRIANGLE_MESH_INCLUDED
 
 #include <fstream>
 #include <Eigen/Sparse>
@@ -56,14 +56,33 @@ void GetMeshEdgeIndices( unsigned long long key , unsigned long & i0 , unsigned 
 	i0 = static_cast< unsigned long >( (key>>32) & 0x00000000FFFFFFFF );
 }
 
+#ifdef NEW_CODE
+template< typename GeometryReal , unsigned int Dim >
+#else // !NEW_CODE
 template< typename GeometryReal >
-class SimpleMesh
+#endif // NEW_CODE
+class SimpleTriangleMesh
 {
 public:
+#ifdef NEW_CODE
+	template< typename Real=GeometryReal >
+	using Position = std::conditional_t< Dim==2 , Point2D< Real > , std::conditional_t< Dim==3 , Point3D< Real > , Point< Real , Dim > > >;
+	std::vector< Position<> > vertices;
+#else // !NEW_CODE
 	std::vector< Point3D< GeometryReal > > vertices;
 	std::vector< Point3D< GeometryReal > > normals;
+#endif // NEW_CODE
 	std::vector< TriangleIndex > triangles;
 
+#ifdef NEW_CODE
+	unsigned long long edgeKey( unsigned int t , unsigned int c , bool flip=false ) const
+	{
+		return flip ? SetMeshEdgeKey( triangles[t][(c+1)%3] , triangles[t][c] ) : SetMeshEdgeKey( triangles[t][c] , triangles[t][(c+1)%3] );
+	}
+#endif // NEW_CODE
+
+#ifdef NEW_CODE
+#else // !NEW_CODE
 	void updateNormals( void )
 	{
 		normals.clear();
@@ -82,6 +101,8 @@ public:
 			if( l>0 ) normals[i] /= l;
 		}
 	}
+#endif // NEW_CODE
+
 	void read( const char *fileName )
 	{
 		vertices.clear();
@@ -92,8 +113,12 @@ public:
 			Miscellany::Throw( "Failed to read ply file: %s" , fileName );
 		vertices.resize( ply_vertices.size() );
 		for( int i=0 ; i<ply_vertices.size() ; i++ ) vertices[i] = ply_vertices[i].point;
+#ifdef NEW_CODE
+#else // !NEW_CODE
 		updateNormals();
+#endif // NEW_CODE
 	}
+
 	void write( const char *fileName ) const
 	{
 		std::vector< PlyVertex< GeometryReal > > ply_vertices( vertices.size() );
@@ -101,9 +126,22 @@ public:
 		PlyWriteTriangles( fileName , ply_vertices , triangles , PlyVertex< GeometryReal >::WriteProperties , PlyVertex< GeometryReal >::WriteComponents , PLY_BINARY_NATIVE );
 	}
 
+#ifdef NEW_CODE
+	GeometryReal triangleArea( unsigned int t ) const
+	{
+		Position<> d[2] = { vertices[ triangles[t][1] ] - vertices[ triangles[t][0] ] , vertices[ triangles[t][2] ] - vertices[ triangles[t][0] ] };
+		SquareMatrix< GeometryReal , 2 > M;
+		for( unsigned int i=0 ; i<2 ; i++ ) for( unsigned int j=0 ; j<2 ; j++ ) M(i,j) = Position<>::Dot( d[i] , d[j] );
+		return (GeometryReal)( sqrt( M.determinant() ) / 2. );
+	}
+#endif // NEW_CODE
+
 	GeometryReal area( void ) const
 	{
 		GeometryReal meshArea = 0;
+#ifdef NEW_CODE
+		for( int t=0 ; t<triangles.size() ; t++ ) meshArea += triangleArea( t );
+#else // !NEW_CODE
 		for( int t=0 ; t<triangles.size() ; t++ )
 		{
 			Point3D< GeometryReal > d01 = vertices[ triangles[t][1] ] - vertices[ triangles[t][0] ];
@@ -111,9 +149,25 @@ public:
 			Point3D< GeometryReal > n = Point3D< GeometryReal >::CrossProduct( d01 , d02 );
 			meshArea += Point3D< GeometryReal >::Length(n) / 2;
 		}
+#endif // NEW_CODE
 		return meshArea;
 	}
 
+#ifdef NEW_CODE
+	Position<> centroid( void ) const
+	{
+		GeometryReal meshArea = 0;
+		Position<> centroid;
+		for( int t=0 ; t<triangles.size() ; t++ )
+		{
+			GeometryReal tArea = triangleArea(t);
+			Position<> baricenter = ( vertices[ triangles[t][0] ] + vertices[ triangles[t][1] ] + vertices[ triangles[t][2]] ) / 3;
+			centroid += baricenter*tArea;
+			meshArea += tArea;
+		}
+		return centroid/meshArea;
+	}
+#else // !NEW_CODE
 	Point3D< GeometryReal > centroid( void ) const
 	{
 		GeometryReal meshArea = 0;
@@ -130,11 +184,20 @@ public:
 		}
 		return centroid/meshArea;
 	}
+#endif // NEW_CODE
 
+#ifdef NEW_CODE
+	GeometryReal radius( const Position<> &centroid )
+#else // !NEW_CODE
 	GeometryReal radius( const Point3D< GeometryReal > &centroid )
+#endif // NEW_CODE
 	{
 		GeometryReal radius = 0;
+#ifdef NEW_CODE
+		for( int v=0 ; v<vertices.size() ; v++ ) radius = std::max< GeometryReal >( radius , Position<>::Length( vertices[v] - centroid ) );
+#else // !NEW_CODE
 		for( int v=0 ; v<vertices.size() ; v++ ) radius = std::max< GeometryReal >( radius , Point3D< GeometryReal >::Length( vertices[v] - centroid ) );
+#endif // NEW_CODE
 		return radius;
 	}
 
@@ -144,8 +207,13 @@ public:
 		MatrixReal meshMass = 0;
 		for( int t=0 ; t<triangles.size() ; t++ )
 		{
+#ifdef NEW_CODE
+			Position< MatrixReal > p[3] = { vertices[ triangles[t][0] ] , vertices[ triangles[t][1] ] , vertices[ triangles[t][2] ] };
+			Position< MatrixReal > d[2] = { vertices[ triangles[t][1] ] - vertices[ triangles[t][0] ] , vertices[ triangles[t][2] ] - vertices[ triangles[t][0] ] };
+#else // !NEW_CODE
 			Point3D< MatrixReal > p[3] = { vertices[ triangles[t][0] ] , vertices[ triangles[t][1] ] , vertices[ triangles[t][2] ] };
 			Point3D< MatrixReal > d[2] = { vertices[ triangles[t][1] ] - vertices[ triangles[t][0] ] , vertices[ triangles[t][2] ] - vertices[ triangles[t][0] ] };
+#endif // NEW_CODE
 			SquareMatrix< MatrixReal , 2 > g;
 			for( int k=0 ; k<2 ; k++ ) for( int l=0 ; l<2 ; l++ ) g(k,l) = Point3D<MatrixReal>::Dot( d[k] , d[l] );
 			MatrixReal _mass = sqrt(g.determinant()) / 2.0;
@@ -157,8 +225,13 @@ public:
 		std::vector< Eigen::Triplet< MatrixReal > > sTriplets;
 		for( int t=0 ; t<triangles.size() ; t++ )
 		{
+#ifdef NEW_CODE
+			Position< MatrixReal > p[3] = { vertices[ triangles[t][0] ] , vertices[ triangles[t][1] ] , vertices[ triangles[t][2] ] };
+			Position< MatrixReal > d[2] = { vertices[ triangles[t][1] ] - vertices[ triangles[t][0] ] , vertices[ triangles[t][2] ] - vertices[ triangles[t][0] ] };
+#else // !NEW_CODE
 			Point3D< MatrixReal > p[3] = { vertices[ triangles[t][0] ] , vertices[ triangles[t][1] ] , vertices[ triangles[t][2] ] };
 			Point3D< MatrixReal > d[2] = { vertices[ triangles[t][1] ] - vertices[ triangles[t][0] ] , vertices[ triangles[t][2] ] - vertices[ triangles[t][0] ] };
+#endif // NEW_CODE
 			SquareMatrix< MatrixReal , 2 > g;
 			for( int k=0 ; k<2 ; k++ ) for( int l=0 ; l<2 ; l++ ) g(k,l) = Point3D< MatrixReal >::Dot( d[k] , d[l] );
 			g /= meshMass;
@@ -181,14 +254,92 @@ public:
 		mass.resize( vertices.size() , vertices.size() );
 		mass.setFromTriplets( mTriplets.begin() , mTriplets.end() );
 	}
+
+	std::vector< int > getOppositeHalfEdges( bool &isClosed ) const
+	{
+		std::vector< int > oppositeHalfEdges( 3*triangles.size() , -1 );
+
+		isClosed = true;
+
+		std::unordered_map< unsigned long long , int > edgeIndex;
+		for( int i=0 ; i<triangles.size() ; i++ ) for( int k=0 ; k<3 ; k++ )
+		{
+#ifdef NEW_CODE
+			unsigned long long edgeKey = this->edgeKey(i,k);
+#else // !NEW_CODE
+			unsigned long long edgeKey = SetMeshEdgeKey( triangles[i][k] , triangles[i][ (k+1)%3 ] );
+#endif // NEW_CODE
+			if( edgeIndex.find(edgeKey)==edgeIndex.end() ) edgeIndex[edgeKey] = 3*i+k;
+			else Miscellany::Throw( "Non manifold mesh" );
+		}
+
+		for( int i=0 ; i<triangles.size() ; i++ ) for( int k=0 ; k<3 ; k++ )
+		{
+			// Get an iterator to the opposite edge
+#ifdef NEW_CODE
+			auto iter = edgeIndex.find( edgeKey( i , k , true ) );
+#else // !NEW_CODE
+			auto iter = edgeIndex.find( SetMeshEdgeKey( triangles[i][ (k+1)%3 ] , triangles[i][k] ) );
+#endif // NEW_CODE
+			if( iter!=edgeIndex.end() ) oppositeHalfEdges[ 3*i+k ] = iter->second;
+			else isClosed = false;
+		}
+		return oppositeHalfEdges;
+	}
 };
 
+#ifdef NEW_CODE
 template< typename GeometryReal >
-class ColoredMesh : public SimpleMesh< GeometryReal >
+class SimpleOrientedTriangleMesh : public SimpleTriangleMesh< GeometryReal , 3 >
 {
 public:
-	using SimpleMesh< GeometryReal >::vertices;
-	using SimpleMesh< GeometryReal >::triangles;
+	using SimpleTriangleMesh< GeometryReal , 3 >::vertices;
+	using SimpleTriangleMesh< GeometryReal , 3 >::triangles;
+
+	std::vector< Point3D< GeometryReal > > normals;
+
+	void updateNormals( void )
+	{
+		normals.clear();
+		normals.resize( vertices.size() );
+		for( int t=0 ; t<triangles.size() ; t++ )
+		{
+			Point3D< GeometryReal > d01 = vertices[ triangles[t][1] ] - vertices[ triangles[t][0] ];
+			Point3D< GeometryReal > d02 = vertices[ triangles[t][2] ] - vertices[ triangles[t][0] ];
+			Point3D< GeometryReal > n = Point3D< GeometryReal >::CrossProduct( d01 , d02 );
+			for( int v=0 ; v<3 ; v++ ) normals[ triangles[t][v] ] += n;
+		}
+
+		for( int i=0 ; i<normals.size() ; i++ )
+		{
+			GeometryReal l = Point3D< GeometryReal >::Length( normals[i] );
+			if( l>0 ) normals[i] /= l;
+		}
+	}
+
+	void read( const char *fileName )
+	{
+		SimpleTriangleMesh< GeometryReal , 3 >::read( fileName );
+		updateNormals();
+	}
+};
+#endif // NEW_CODE
+
+template< typename GeometryReal >
+#ifdef NEW_CODE
+class OrientedColoredTriangleMesh : public SimpleOrientedTriangleMesh< GeometryReal >
+#else // !NEW_CODE
+class ColoredTriangleMesh : public SimpleTriangleMesh< GeometryReal >
+#endif // NEW_CODE
+{
+public:
+#ifdef NEW_CODE
+	using SimpleOrientedTriangleMesh< GeometryReal >::vertices;
+	using SimpleOrientedTriangleMesh< GeometryReal >::triangles;
+#else // !NEW_CODE
+	using SimpleTriangleMesh< GeometryReal >::vertices;
+	using SimpleTriangleMesh< GeometryReal >::triangles;
+#endif // NEW_CODE
 	std::vector< Point3D< GeometryReal > > colors;
 
 	void write( const char *fileName ) const
@@ -197,11 +348,14 @@ public:
 		for( int i=0 ; i<vertices.size() ; i++ ) ply_vertices[i].point = vertices[i] , ply_vertices[i].color = colors[i];
 		PlyWriteTriangles( fileName , ply_vertices , triangles , PlyColorVertex< GeometryReal >::WriteProperties , PlyColorVertex< GeometryReal >::WriteComponents , PLY_BINARY_NATIVE );
 	}
-
 };
 
 template< typename GeometryReal , typename ImageReal=float >
-class TexturedMesh : public SimpleMesh< GeometryReal >
+#ifdef NEW_CODE
+class OrientedTexturedTriangleMesh : public SimpleOrientedTriangleMesh< GeometryReal >
+#else // !NEW_CODE
+class OrientedTexturedTriangleMesh : public SimpleTriangleMesh< GeometryReal >
+#endif // NEW_CODE
 {
 protected:
 	static void _Subdivide( std::vector< Point3D< GeometryReal > > &vertices , std::vector< TriangleIndex > &triangles , std::vector< Point2D< GeometryReal > > & tCoordinates )
@@ -257,21 +411,34 @@ protected:
 #undef EDGE_KEY
 	}
 public:
-	using SimpleMesh< GeometryReal >::vertices;
-	using SimpleMesh< GeometryReal >::triangles;
+#ifdef NEW_CODE
+	using SimpleOrientedTriangleMesh< GeometryReal >::vertices;
+	using SimpleOrientedTriangleMesh< GeometryReal >::triangles;
+#else // !NEW_CODE
+	using SimpleTriangleMesh< GeometryReal >::vertices;
+	using SimpleTriangleMesh< GeometryReal >::triangles;
+#endif // NEW_CODE
+#ifdef USE_TEXTURE_TRIANGLES
+	std::vector< TriangleIndex > textureTriangles;
+	std::vector< Point2D< GeometryReal > > tCoordinates;
+#else // !USE_TEXTURE_TRIANGLES
 	std::vector< Point2D< GeometryReal > > textureCoordinates;
+#endif // USE_TEXTURE_TRIANGLES
 
 	void write( const char *fileName , const char *atlasName=NULL ) const
 	{
-		std::vector< PlyTexturedFace< GeometryReal > > texturedTriangles;
-		texturedTriangles.resize( triangles.size() );
+		std::vector< PlyTexturedFace< GeometryReal > > plyTexturedFaces( triangles.size() );
 		for( int i=0 ; i<triangles.size() ; i++ )
 		{
-			texturedTriangles[i].resize(3);
+			plyTexturedFaces[i].resize(3);
 			for( int j=0 ; j<3 ; j++ )
 			{
-				texturedTriangles[i][j] = triangles[i][j];
-				texturedTriangles[i].texture(j) = textureCoordinates[3*i+j];
+				plyTexturedFaces[i][j] = triangles[i][j];
+#ifdef USE_TEXTURE_TRIANGLES
+				plyTexturedFaces[i].texture(j) = tCoordinates[ textureTriangles[i][j] ];
+#else // !USE_TEXTURE_TRIANGLES
+				plyTexturedFaces[i].texture(j) = textureCoordinates[3*i+j];
+#endif // USE_TEXTURE_TRIANGLES
 			}
 		}
 
@@ -284,10 +451,10 @@ public:
 			char atlas_comment[256];
 			sprintf( atlas_comment , "TextureFile %s" , atlasName );
 			comments[0] = atlas_comment;
-			PlyWritePolygons( fileName , vertices , texturedTriangles , PlyVertex< GeometryReal >::WriteProperties , PlyVertex< GeometryReal >::WriteComponents , PlyTexturedFace< GeometryReal >::WriteProperties , PlyTexturedFace< GeometryReal >::WriteComponents , PLY_BINARY_NATIVE , comments , 1 );
+			PlyWritePolygons( fileName , vertices , plyTexturedFaces , PlyVertex< GeometryReal >::WriteProperties , PlyVertex< GeometryReal >::WriteComponents , PlyTexturedFace< GeometryReal >::WriteProperties , PlyTexturedFace< GeometryReal >::WriteComponents , PLY_BINARY_NATIVE , comments , 1 );
 			delete[] comments;
 		}
-		else PlyWritePolygons( fileName , vertices , texturedTriangles , PlyVertex< GeometryReal >::WriteProperties , PlyVertex< GeometryReal >::WriteComponents , PlyTexturedFace< GeometryReal >::WriteProperties , PlyTexturedFace< GeometryReal >::WriteComponents , PLY_BINARY_NATIVE );
+		else PlyWritePolygons( fileName , vertices , plyTexturedFaces , PlyVertex< GeometryReal >::WriteProperties , PlyVertex< GeometryReal >::WriteComponents , PlyTexturedFace< GeometryReal >::WriteProperties , PlyTexturedFace< GeometryReal >::WriteComponents , PLY_BINARY_NATIVE );
 	}
 
 	void read( const char *meshName , bool verbose )
@@ -308,19 +475,74 @@ public:
 			for( int i=0 ; i<ply_vertices.size() ; i++ ) vertices[i] = ply_vertices[i].point;
 
 			triangles.resize( ply_faces.size() );
+#ifdef USE_TEXTURE_TRIANGLES
+			textureTriangles.resize( ply_faces.size() );
+			std::vector< Point2D< GeometryReal > > textureCoordinates( 3*ply_faces.size() );
+			for( int i=0 ; i<ply_faces.size() ; i++ ) for( int j=0 ; j<3 ; j++ ) triangles[i][j] = ply_faces[i][j];
+
+			struct IndexedTextureCoordinate
+			{
+				Point2D< GeometryReal > p;
+				int index , vertex;
+				IndexedTextureCoordinate( Point2D< GeometryReal > p , int index , int vertex ) : p(p) , index(index) , vertex(vertex){}
+			};
+
+			class IndexedTextureCoordinateComparison
+			{
+			public:
+				bool operator()( const IndexedTextureCoordinate &p1 , const IndexedTextureCoordinate &p2 ) const
+				{
+					for( int i=0 ; i<2 ; i++ )
+					{
+						if      ( p1.p[i]<p2.p[i] ) return true;
+						else if ( p2.p[i]<p1.p[i] ) return false;
+						else
+						{
+							if     ( p1.vertex<p2.vertex ) return true;
+							else if( p2.vertex<p1.vertex ) return false;
+						}
+					}
+					return false;
+				}
+			};
+
+			std::set< IndexedTextureCoordinate , IndexedTextureCoordinateComparison > indexedTextureCoordinateSet;
+
+			int lastVertexIndex = 0;
+			for( int i=0 ; i<ply_faces.size() ; i++ ) for( int j=0 ; j<3 ; j++ )
+			{
+				IndexedTextureCoordinate itc( ply_faces[i].texture(j) , lastVertexIndex , ply_faces[i][j] );
+				auto iter = indexedTextureCoordinateSet.find( itc );
+				if( iter==indexedTextureCoordinateSet.end() )
+				{
+					indexedTextureCoordinateSet.insert( itc );
+					lastVertexIndex++;
+				}
+			}
+			tCoordinates.resize( indexedTextureCoordinateSet.size() );
+			for( auto iter=indexedTextureCoordinateSet.begin() ; iter!=indexedTextureCoordinateSet.end() ; iter++ ) tCoordinate[ iter->index ] = iter->p;
+
+			for( int i=0 ; i<ply_faces.size() ; i++ ) for( int j=0 ; j<3 ; j++ )
+			{
+				IndexedTextureCoordinate itc( ply_faces[i].texture(j) , -1 , ply_faces[i][j] );
+				auto iter = indexedTextureCoordinateSet.find( itc );
+				if( iter==indexedTextureCoordinateSet.end() ) Miscellany::ErrorOut( "Could not find texture in texture set" );
+				else textureTriangles[i][j] = iter->index;
+			}
+
+#else // !USE_TEXTURE_TRIANGLES
 			textureCoordinates.resize( 3*ply_faces.size() );
 			for( int i=0 ; i<ply_faces.size() ; i++ ) for( int j=0 ; j<3 ; j++ )
 			{
 				triangles[i][j] = ply_faces[i][j];
 				textureCoordinates[3*i+j] = ply_faces[i].texture(j);
 			}
+#endif // USE_TEXTURE_TRIANGLES
 		}
 		else if( !strcasecmp( ext , "obj" ) )
 		{
-			struct ObjFaceIndex
-			{
-				int vIndex , tIndex;
-			};
+			struct ObjFaceIndex{ int vIndex , tIndex; };
+
 			std::vector< Point3D< GeometryReal > > obj_vertices;
 			std::vector< Point2D< GeometryReal > > obj_textures;
 			std::vector< std::vector< ObjFaceIndex > > obj_faces;
@@ -332,6 +554,8 @@ public:
 			while( std::getline( in , line ) )
 			{
 				std::stringstream ss;
+
+				// Read vertex position
 				if( line[0]=='v' && line[1]==' ' )
 				{
 					line = line.substr(2);
@@ -340,6 +564,7 @@ public:
 					ss >> p[0] >> p[1] >> p[2];
 					obj_vertices.push_back( p );
 				}
+				// Read texture coordinate
 				else if( line[0]=='v' && line[1]=='t' && line[2]==' ' )
 				{
 					line = line.substr(3);
@@ -348,6 +573,7 @@ public:
 					ss >> p[0] >> p[1];
 					obj_textures.push_back( p );
 				}
+				// Read face
 				else if( line[0]=='f' && line[1]==' ' )
 				{
 					std::vector< ObjFaceIndex > face;
@@ -376,24 +602,50 @@ public:
 
 			vertices.resize( obj_vertices.size() );
 			for( int i=0 ; i<obj_vertices.size() ; i++ ) vertices[i] = obj_vertices[i];
+#ifdef USE_TEXTURE_TRIANGLES
+			tCoordinates.resize( obj_textures.size() );
+			for( int i=0 ; i<obj_textures.size() ; i++ ) tCoordinates[i] = obj_textures[i];
+#endif // USE_TEXTURE_TRIANGLES
 
 			triangles.resize( obj_faces.size() );
+#ifdef USE_TEXTURE_TRIANGLES
+			textureTriangles.resize( obj_faces.size() );
+#else // !USE_TEXTURE_TRIANGLES
 			textureCoordinates.resize( 3*obj_faces.size() );
+#endif // USE_TEXTURE_TRIANGLES
 			for( int i=0 ; i<obj_faces.size() ; i++ ) for( int j=0 ; j<3 ; j++ )
 			{
 				if     ( obj_faces[i][j].vIndex>0 ) triangles[i][j] = obj_faces[i][j].vIndex-1;
 				else if( obj_faces[i][j].vIndex<0 ) triangles[i][j] = (int)obj_vertices.size() + obj_faces[i][j].vIndex;
-				else Miscellany::ErrorOut( "Zero vertex index unexpected in obj file" );
+				else Miscellany::ErrorOut( "Zero vertex index unexpected in .obj file" );
 
+#ifdef USE_TEXTURE_TRIANGLES
+				if     ( obj_faces[i][j].tIndex>0 ) textureTriangles[i][j] = obj_faces[i][j].tIndex-1;
+				else if( obj_faces[i][j].tIndex<0 ) textureTriangles[i][j] = (int)obj_textures.size() + obj_faces[i][j].tIndex;
+#else // !USE_TEXTURE_TRIANGLES
 				if     ( obj_faces[i][j].tIndex>0 ) textureCoordinates[3*i+j] = obj_textures[ obj_faces[i][j].tIndex-1 ];
 				else if( obj_faces[i][j].tIndex<0 ) textureCoordinates[3*i+j] = obj_textures[ (int)obj_textures.size() + obj_faces[i][j].tIndex ];
-				else Miscellany::ErrorOut( "Zero texture index unexpected in obj file" );
+#endif // USE_TEXTURE_TRIANGLES
+				else Miscellany::ErrorOut( "Zero texture index unexpected in .obj file" );
 			}
 		}
 		else Miscellany::ErrorOut( "Unrecognized file extension: %s" , meshName );
 		delete[] ext;
 
-		SimpleMesh< GeometryReal >::updateNormals();
+#ifdef NEW_CODE
+		// Flip the vertical axis
+#ifdef USE_TEXTURE_TRIANGLES
+		for( int i=0 ; i<tCoordinates.size() ; i++ ) tCoordinates[i][1] = (GeometryReal)1. - tCoordinates[i][1];
+#else // !USE_TEXTURE_TRIANGLES
+		for( int i=0 ; i<textureCoordinates.size() ; i++ ) textureCoordinates[i][1] = (GeometryReal)1. - textureCoordinates[i][1];
+#endif // USE_TEXTURE_TRIANGLES
+#endif // NEW_CODE
+
+#ifdef NEW_CODE
+		SimpleOrientedTriangleMesh< GeometryReal >::updateNormals();
+#else // !NEW_CODE
+		SimpleTriangleMesh< GeometryReal >::updateNormals();
+#endif // NEW_CODE
 	}
 
 	void initializeBoundaryEdges( std::vector< int > &boundaryEdges ) const
@@ -403,7 +655,11 @@ public:
 		std::unordered_map< unsigned long long , int > edgeIndex;
 		for( int i=0 ; i<triangles.size() ; i++ ) for( int k=0 ; k<3 ; k++ )
 		{
+#ifdef NEW_CODE
+			unsigned long long edgeKey = this->edgeKey(i,k);
+#else // !NEW_CODE
 			unsigned long long edgeKey = SetMeshEdgeKey( triangles[i][k] , triangles[i][(k+1)%3] );
+#endif // NEW_CODE
 			if( edgeIndex.find(edgeKey)==edgeIndex.end() ) edgeIndex[edgeKey] = 3*i+k;
 			else Miscellany::Throw( "Non manifold mesh" );
 		}
@@ -411,7 +667,11 @@ public:
 		for( int i=0 ; i<triangles.size() ; i++ ) for( int k=0 ; k<3 ; k++ )
 		{
 			int currentEdgeIndex = 3*i+k;
+#ifdef NEW_CODE
+			unsigned long long edgeKey = this->edgeKey(i,k,true);
+#else // !NEW_CODE
 			unsigned long long edgeKey = SetMeshEdgeKey( triangles[i][(k+1)%3] , triangles[i][k] );
+#endif // NEW_CODE
 			if( edgeIndex.find(edgeKey)!=edgeIndex.end() )
 			{
 				int oppositeEdgeIndex = edgeIndex[edgeKey];
@@ -435,10 +695,15 @@ public:
 			}
 		}
 	}
+
 	void subdivide( int iters )
 	{
 		for( int i=0 ; i<iters ; i++ ) _Subdivide( vertices , triangles , textureCoordinates );
-		SimpleMesh< GeometryReal >::updateNormals();
+#ifdef NEW_CODE
+		SimpleOrientedTriangleMesh< GeometryReal >::updateNormals();
+#else // !NEW_CODE
+		SimpleTriangleMesh< GeometryReal >::updateNormals();
+#endif // NEW_CODE
 	}
 };
-#endif//SIMPLE_MESH_INCLUDED
+#endif // SIMPLE_TRIANGLE_MESH_INCLUDED

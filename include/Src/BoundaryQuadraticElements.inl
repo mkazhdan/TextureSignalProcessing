@@ -317,7 +317,7 @@ void InitializeChartBoundaryPolygons
 		std::vector< std::vector< unsigned long long > > loopKeys;
 		LoopVertices( forwardMap , loopKeys );
 
-		//Keep only the grid nodes and the boundary vertices
+		// Keep only the grid nodes and the boundary vertices
 		std::vector< std::vector< Point2D< GeometryReal > > > loopPositions( loopKeys.size() );
 		std::vector< std::vector< int> > loopIndices(loopKeys.size());
 		std::vector< std::vector< int> > loopAtlasVertexIndices(loopKeys.size());
@@ -358,7 +358,7 @@ void InitializeChartBoundaryPolygons
 			loopAtlasVertexIndices[i] = currentAtlasVertexIndices;
 		}
 
-		//Add the intermediate vertices for boundary segments
+		// Add the intermediate vertices for boundary segments
 		std::vector<std::vector<int>> loopAtlasEdges(loopKeys.size());
 		std::vector<std::vector<int>> loopAtlasVertexParentEdges(loopKeys.size());
 		for (int i = 0; i < loopKeys.size(); i++) {
@@ -403,7 +403,11 @@ void InitializeChartBoundaryPolygons
 							{
 								GeometryReal reversedTime = (GeometryReal)1. - oppositeIntersection[oppIter].time;
 								GeometryReal normalizedTime = ( reversedTime-startTime ) / ( endTime-startTime );
+#ifdef INSERTION_EPSILON
+								if( normalizedTime>INSERTION_EPSILON && normalizedTime<(1.-INSERTION_EPSILON) )
+#else // !INSERTION_EPSILON
 								if (normalizedTime > 0 && normalizedTime < 1)
+#endif // INSERTION_EPSILON
 								{
 									segmentIndicesToInsert.push_back(oppositeIntersection[oppIter].intersectionIndex);
 									segmentTimesToInsert.push_back(normalizedTime);
@@ -411,25 +415,25 @@ void InitializeChartBoundaryPolygons
 							}
 
 
-							if (segmentIndicesToInsert.size() > 0)
+							if( segmentIndicesToInsert.size()>0 )
 							{
 								isInsertionPos[j] = true;
-								indicesToInsert.push_back(segmentIndicesToInsert);
-								timesToInsert.push_back(segmentTimesToInsert);
+								indicesToInsert.push_back( segmentIndicesToInsert );
+								timesToInsert.push_back( segmentTimesToInsert );
 							}
 						}
 					}
 				}
 			}
-			//Do insertions
+			// Do insertions
 			int insertionCount = 0;
 			std::vector< Point2D< GeometryReal > > expandedLoopPositions;
 			std::vector< int > expandedLoopIndices;
 			std::vector< int > expandedLoopAtlasVertexIndices;
 			std::vector< int > expandedLoopAtlasEdgeIndex;
 			std::vector< int > expandedVertexParentEdgeIndex;
-			for (int j = 0; j < loopKeys[i].size(); j++) {
-
+			for( int j=0 ; j<loopKeys[i].size() ; j++ )
+			{
 				//expandedLoopKeys.push_back(loopKeys[i][j]);
 				expandedLoopPositions.push_back(loopPositions[i][j]);
 				expandedLoopIndices.push_back(loopIndices[i][j]);
@@ -439,7 +443,7 @@ void InitializeChartBoundaryPolygons
 				expandedLoopAtlasEdgeIndex.push_back(currentSegmentAtlasEdgeIndex);
 				expandedVertexParentEdgeIndex.push_back(polygonAtlaVertexParentEdges[j]);
 
-				if (isInsertionPos[j])
+				if( isInsertionPos[j] )
 				{
 					std::vector< int > _indices = indicesToInsert[insertionCount];
 					std::vector< GeometryReal > _times = timesToInsert[insertionCount];
@@ -447,7 +451,7 @@ void InitializeChartBoundaryPolygons
 					Point2D< GeometryReal > nextPos = loopPositions[i][ (j+1)%loopKeys[i].size() ];
 
 					if( currentSegmentAtlasEdgeIndex==-1 ) Miscellany::Throw( "Invalid atlas edge index" );
-					for (int k = 0; k < _indices.size(); k++)
+					for( int k=0 ; k<_indices.size() ; k++ )
 					{
 						GeometryReal alpha = _times[k];
 						Point2D< GeometryReal > interpolatedPos = (GeometryReal)( 1.-alpha )*currentPos + nextPos*alpha;
@@ -481,32 +485,6 @@ void InitializeChartBoundaryPolygons
 			loopAtlasVertexParentEdges[i] = expandedVertexParentEdgeIndex;
 		}
 
-#ifdef CLEAN_LOOP
-		for( unsigned int i=0 ; i<loopPositions.size() ; i++ )
-		{
-			std::vector< Point2D< GeometryReal > > cleanedLoop;
-			std::vector< int > cleanedLoopIndices , cleanedLoopAtlasVertexIndices , cleanedLoopAtlasEdges , cleanedLoopAtlasVertexParentEdges;
-
-			for( unsigned int j=0 ; j<loopPositions[i].size() ; j++ )
-			{
-				double d = Point2D< GeometryReal >::Length( loopPositions[i][j] - loopPositions[i][(j+1)%loopPositions[i].size()] );
-				if( d>1e-12 )
-				{
-					cleanedLoop.push_back( loopPositions[i][j] );
-					cleanedLoopIndices.push_back( loopIndices[i][j] );
-					cleanedLoopAtlasVertexIndices.push_back( loopAtlasVertexIndices[i][j] );
-					cleanedLoopAtlasEdges.push_back( loopAtlasEdges[i][j] );
-					cleanedLoopAtlasVertexParentEdges.push_back( loopAtlasVertexParentEdges[i][j] );
-				}
-			}
-			loopPositions[i] = cleanedLoop;
-			loopIndices[i] = cleanedLoopIndices;
-			loopAtlasVertexIndices[i] = cleanedLoopAtlasVertexIndices;
-			loopAtlasEdges[i] = cleanedLoopAtlasEdges;
-			loopAtlasVertexParentEdges[i] = cleanedLoopAtlasVertexParentEdges;
-		}
-#endif // CLEAN_LOOP
-
 		for( int i=0 ; i<loopPositions.size() ; i++ )
 		{
 			AtlasIndexedPolygon< GeometryReal > poly;
@@ -524,10 +502,15 @@ void InitializeChartBoundaryPolygons
 template< typename GeometryReal >
 void InitializeBoundaryPolygons
 (
-	const std::vector< int > &atlasEdgeIndex , const std::vector< int > &oppositeHalfEdge ,
-	const std::vector< AtlasChart< GeometryReal > > &atlasCharts , std::vector< GridChart< GeometryReal > > &gridCharts ,
+	const std::vector< int > &halfEdgeToEdgeIndex ,
+	const std::vector< int > &oppositeHalfEdge ,
+	const std::vector< AtlasChart< GeometryReal > > &atlasCharts ,
+	std::vector< GridChart< GeometryReal > > &gridCharts ,
 	std::unordered_map< int , int > &boundaryVerticesIndices ,
-	int numInteriorNodes , int numBoundaryVertices , int &numBoundaryNodes , const bool isClosedMesh
+	int numInteriorNodes ,
+	int numBoundaryVertices ,
+	int &numBoundaryNodes ,
+	const bool isClosedMesh
 )
 { //Fine System
 
@@ -542,9 +525,9 @@ void InitializeBoundaryPolygons
 		InitializeChartBoundaryEdgeGridIntersections( atlasCharts[i] , gridCharts[i] , boundaryVerticesIndices , lastBoundaryIndex , numInteriorNodes , boundaryEdgeIntersections , localBoundarySegmentsInfo[i] , localBoundaryNodeIndices[i] , localBoundaryNodePosition[i] );
 
 	numBoundaryNodes = lastBoundaryIndex;
-	std::vector<int> coveredOppositeBoundaryNode(numBoundaryNodes - numBoundaryVertices, 0);
+	std::vector< int > coveredOppositeBoundaryNode( numBoundaryNodes-numBoundaryVertices , 0 );
 	for( int i=0 ; i<gridCharts.size() ; i++ )
-		InitializeChartBoundaryPolygons( atlasEdgeIndex , oppositeHalfEdge , atlasCharts[i] , gridCharts[i] , numInteriorNodes , numBoundaryVertices , numBoundaryNodes , boundaryEdgeIntersections , localBoundarySegmentsInfo[i] , localBoundaryNodeIndices[i] , localBoundaryNodePosition[i] , coveredOppositeBoundaryNode );
+		InitializeChartBoundaryPolygons( halfEdgeToEdgeIndex , oppositeHalfEdge , atlasCharts[i] , gridCharts[i] , numInteriorNodes , numBoundaryVertices , numBoundaryNodes , boundaryEdgeIntersections , localBoundarySegmentsInfo[i] , localBoundaryNodeIndices[i] , localBoundaryNodePosition[i] , coveredOppositeBoundaryNode );
 
 	if( isClosedMesh ) for ( int i=0 ; i<coveredOppositeBoundaryNode.size() ; i++ ) if( coveredOppositeBoundaryNode[i]!=1 )
 		Miscellany::Warn( "Non-opposite boundary node at node %d" , i );

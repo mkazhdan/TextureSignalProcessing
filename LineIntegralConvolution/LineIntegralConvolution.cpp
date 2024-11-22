@@ -135,7 +135,7 @@ public:
 	static Real sharpeningInterpolationWeight;
 	static Real licInterpolationWeight;
 
-	static TexturedMesh< PreReal > mesh;
+	static OrientedTexturedTriangleMesh< PreReal > mesh;
 	static int textureWidth;
 	static int textureHeight;
 	static int levels;
@@ -249,7 +249,7 @@ template< typename PreReal , typename Real > Real														LineConvolution< 
 template< typename PreReal , typename Real > Real														LineConvolution< PreReal , Real >::sharpeningInterpolationWeight;
 template< typename PreReal , typename Real > Real														LineConvolution< PreReal , Real >::licInterpolationWeight;
 
-template< typename PreReal , typename Real > TexturedMesh< PreReal >									LineConvolution< PreReal , Real >::mesh;
+template< typename PreReal , typename Real > OrientedTexturedTriangleMesh< PreReal >					LineConvolution< PreReal , Real >::mesh;
 template< typename PreReal , typename Real > int														LineConvolution< PreReal , Real >::textureWidth;
 template< typename PreReal , typename Real > int														LineConvolution< PreReal , Real >::textureHeight;
 
@@ -898,9 +898,6 @@ void LineConvolution< PreReal , Real >::Init( void )
 	licInterpolationWeight = LICInterpolationWeight.value;
 
 	mesh.read( Input.value , DetailVerbose.set );
-#ifdef FLIP_TEXTURE
-	for( int i=0 ; i<mesh.textureCoordinates.size() ; i++ ) mesh.textureCoordinates[i][1] = 1.0 - mesh.textureCoordinates[i][1];
-#endif // FLIP_TEXTURE
 
 	if( RandomJitter.set )
 	{

@@ -785,7 +785,7 @@ void InitializeHierarchy( const int width , const int height , HierarchicalSyste
 template< typename GeometryReal , typename MatrixReal >
 void InitializeHierarchy
 (
-	TexturedMesh< GeometryReal > & mesh , const int width , const int height , const int levels , std::vector< TextureNodeInfo< GeometryReal > > &textureNodes , std::vector< BilinearElementIndex > &cellNodes ,
+	OrientedTexturedTriangleMesh< GeometryReal > & mesh , const int width , const int height , const int levels , std::vector< TextureNodeInfo< GeometryReal > > &textureNodes , std::vector< BilinearElementIndex > &cellNodes ,
 	HierarchicalSystem< GeometryReal , MatrixReal > &hierarchy , std::vector< AtlasChart< GeometryReal > > &atlasCharts , const MultigridBlockInfo &multigridBlockInfo , bool verbose=false , bool detailVerbose=false , bool computeProlongation=false
 )
 {

@@ -32,7 +32,7 @@ DAMAGE.
 #include <Misha/Miscellany.h>
 #include <Misha/FEM.h>
 #include <Src/Hierarchy.h>
-#include <Src/SimpleMesh.h>
+#include <Src/SimpleTriangleMesh.h>
 #include <Src/Basis.h>
 #include <Src/Solver.h>
 #include <Src/MassAndStiffness.h>
@@ -153,7 +153,7 @@ template< typename PreReal , typename Real>
 class TextureFilter
 {
 public:
-	static TexturedMesh< PreReal > mesh;
+	static OrientedTexturedTriangleMesh< PreReal > mesh;
 	static int textureWidth;
 	static int textureHeight;
 	static Real interpolationWeight;
@@ -285,7 +285,7 @@ template< typename PreReal , typename Real > char																TextureFilter< 
 template< typename PreReal , typename Real > char																TextureFilter< PreReal , Real >::interpolationStr[1024];
 #endif // NO_OPEN_GL_VISUALIZATION
 
-template< typename PreReal , typename Real > TexturedMesh< PreReal >											TextureFilter< PreReal , Real >::mesh;
+template< typename PreReal , typename Real > OrientedTexturedTriangleMesh< PreReal >							TextureFilter< PreReal , Real >::mesh;
 template< typename PreReal , typename Real > int																TextureFilter< PreReal , Real >::textureWidth;
 template< typename PreReal , typename Real > int																TextureFilter< PreReal , Real >::textureHeight;
 #ifdef NO_OPEN_GL_VISUALIZATION
@@ -554,6 +554,8 @@ void TextureFilter< PreReal , Real >::MouseFunc( int button , int state , int x 
 
 		if     ( button==GLUT_RIGHT_BUTTON ) positiveModulation = true;
 		else if( button==GLUT_LEFT_BUTTON  ) positiveModulation = false;
+
+		visualization.positiveModulation = positiveModulation;
 	}
 	else if( visualization.showSlideBar && x>10 && x<visualization.slideBarWidth()-10 && y>18 && y<32 ) // Slide bar update
 	{
@@ -1019,11 +1021,6 @@ void TextureFilter< PreReal , Real >::Init( void )
 		for( int i=0 ; i<mesh.vertices.size() ; i++ ) radius = std::max< PreReal >( radius , Point3D< PreReal >::Length( mesh.vertices[i] - centroid ) );
 		for( int i=0 ; i<mesh.vertices.size() ; i++ ) mesh.vertices[i] = (mesh.vertices[i] - centroid) / radius;
 	}
-
-#ifdef FLIP_TEXTURE
-	// Flip the vertical axis
-	for( int i=0 ; i<mesh.textureCoordinates.size() ; i++ ) mesh.textureCoordinates[i][1] = (PreReal)1. - mesh.textureCoordinates[i][1];
-#endif // FLIP_TEXTURE
 
 	// Apply a random jitter to the texture coordinates
 	if( RandomJitter.set )

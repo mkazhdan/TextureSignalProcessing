@@ -31,7 +31,7 @@ DAMAGE.
 
 #define DEBUG_ATLAS
 
-#include "SimpleMesh.h"
+#include "SimpleTriangleMesh.h"
 #include "ChartDecomposition.h"
 #include <set>
 
@@ -51,11 +51,11 @@ struct _TriangleIndex
 #endif // DEBUG_ATLAS
 
 template< typename GeometryReal >
-class AtlasMesh
+class AtlasMesh : public SimpleTriangleMesh< GeometryReal , 2 >
 {
 public:
-	std::vector< Point2D< GeometryReal > > vertices;
-	std::vector< TriangleIndex > triangles;
+	using SimpleTriangleMesh< GeometryReal , 2 >::vertices;
+	using SimpleTriangleMesh< GeometryReal , 2 >::triangles;
 	std::vector< int > triangleIndexInChart;
 	std::vector< int > triangleChartIndex;
 	std::vector< int > halfEdgeToEdgeIndex;
@@ -105,7 +105,7 @@ class IndexedVector2DComparison
 public:
 	bool operator()( const IndexedVector2D< GeometryReal > &p1 , const IndexedVector2D< GeometryReal > &p2 ) const
 	{
-		for (int i = 0; i < 2; i++)
+		for( int i=0 ; i<2 ; i++ )
 		{
 			if      ( p1.p[i]<p2.p[i] ) return true;
 			else if ( p2.p[i]<p1.p[i] ) return false;

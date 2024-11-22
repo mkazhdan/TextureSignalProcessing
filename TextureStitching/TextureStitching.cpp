@@ -39,7 +39,7 @@ enum
 #include <Misha/Miscellany.h>
 #include <Misha/FEM.h>
 #include <Src/Hierarchy.h>
-#include <Src/SimpleMesh.h>
+#include <Src/SimpleTriangleMesh.h>
 #include <Src/Basis.h>
 #include <Src/Solver.h>
 #include <Src/MassAndStiffness.h>
@@ -140,7 +140,7 @@ class Stitching
 {
 public:
 	static int inputMode;
-	static TexturedMesh< PreReal > mesh;
+	static OrientedTexturedTriangleMesh< PreReal > mesh;
 	static int textureWidth;
 	static int textureHeight;
 	static Real interpolationWeight;
@@ -286,7 +286,7 @@ template< typename PreReal , typename Real > char															Stitching< PreRe
 #endif // NO_OPEN_GL_VISUALIZATION
 
 template< typename PreReal , typename Real > int															Stitching< PreReal , Real >::inputMode;
-template< typename PreReal , typename Real > TexturedMesh< PreReal >										Stitching< PreReal , Real >::mesh;
+template< typename PreReal , typename Real > OrientedTexturedTriangleMesh< PreReal >						Stitching< PreReal , Real >::mesh;
 template< typename PreReal , typename Real > int															Stitching< PreReal , Real >::textureWidth;
 template< typename PreReal , typename Real > int															Stitching< PreReal , Real >::textureHeight;
 #ifdef NO_OPEN_GL_VISUALIZATION
@@ -1034,10 +1034,6 @@ void Stitching< PreReal , Real >::Init( void )
 	PreReal radius = 0;
 	for( int i=0 ; i<mesh.vertices.size() ; i++ ) radius = std::max< PreReal >( radius , Point3D< PreReal >::Length( mesh.vertices[i]-centroid ) );
 	for( int i=0 ; i<mesh.vertices.size() ; i++ ) mesh.vertices[i] = ( mesh.vertices[i]-centroid ) / radius;
-
-#ifdef FLIP_TEXTURE
-	for( int i=0 ; i<mesh.textureCoordinates.size() ; i++ ) mesh.textureCoordinates[i][1] = 1.0-mesh.textureCoordinates[i][1];
-#endif // FLIP_TEXTURE
 
 	if( RandomJitter.set )
 	{

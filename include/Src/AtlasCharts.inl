@@ -110,18 +110,31 @@ void InitializeAtlasCharts( AtlasMesh< GeometryReal > &atlasMesh , const std::ve
 
 
 template< typename GeometryReal >
-void InitializeAtlasMesh( const TexturedMesh< GeometryReal > &mesh , int width , int height , AtlasMesh< GeometryReal > &atlasMesh , std::vector< AtlasChart< GeometryReal > > &atlasCharts , std::vector< int > &oppositeHalfEdge , std::unordered_map< int , int > &boundaryVerticesIndices , int &numBoundaryVertices , bool &isClosedMesh , bool verbose )
+void InitializeAtlasMesh
+(
+	const OrientedTexturedTriangleMesh< GeometryReal > &mesh ,
+	int width ,
+	int height ,
+	AtlasMesh< GeometryReal > &atlasMesh ,
+	std::vector< AtlasChart< GeometryReal > > &atlasCharts ,
+	std::vector< int > &oppositeHalfEdge ,
+	std::unordered_map< int , int > &boundaryVerticesIndices ,
+	int &numBoundaryVertices ,
+	bool &isClosedMesh ,
+	bool verbose
+)
 {
+	// Compute the 2D mesh and set the half-edge to edge map
 	InitializeAtlasMesh( mesh , atlasMesh , width , height , verbose );
 
+	// 1. Compute the opposite half-edges
+	// 2. Identify the half-edges that are chart boundaries
 	std::vector< int > boundaryHalfEdges;
 	std::vector< bool > isBoundaryHalfEdge;
 	InitializeBoundaryHalfEdges( mesh , boundaryHalfEdges , oppositeHalfEdge , isBoundaryHalfEdge , isClosedMesh );
 
-	int lastBoundaryIndex;
-	InitiallizeBoundaryVertices( mesh , boundaryHalfEdges , boundaryVerticesIndices , lastBoundaryIndex );
-
-	numBoundaryVertices = lastBoundaryIndex;
+	// Set the map taking boundary vertices to boundary vertex indices
+	InitiallizeBoundaryVertices( mesh , boundaryHalfEdges , boundaryVerticesIndices , numBoundaryVertices );
 
 	InitializeAtlasCharts( atlasMesh , isBoundaryHalfEdge , width , height , atlasCharts );
 }

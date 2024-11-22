@@ -44,6 +44,7 @@ public:
 	bool isBrushActive;
 	bool isSlideBarActive;
 	int diskX, diskY;
+	bool positiveModulation;
 	bool showDisk;
 	bool showSlideBar;
 	GLuint maskTextureBuffer = 0;

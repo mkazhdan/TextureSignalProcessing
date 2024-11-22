@@ -97,7 +97,7 @@ struct PrincipalCurvature
 };
 
 template< typename GeometryReal >
-void InitializePrincipalCurvatureDirection( const TexturedMesh< GeometryReal > &mesh , const std::vector< Point3D< GeometryReal > >& vNormals , std::vector< PrincipalCurvature< GeometryReal > >& principalCurvatures )
+void InitializePrincipalCurvatureDirection( const OrientedTexturedTriangleMesh< GeometryReal > &mesh , const std::vector< Point3D< GeometryReal > >& vNormals , std::vector< PrincipalCurvature< GeometryReal > >& principalCurvatures )
 {
 	principalCurvatures.resize( mesh.triangles.size() );
 
@@ -157,7 +157,7 @@ void InitializePrincipalCurvatureDirection( const TexturedMesh< GeometryReal > &
 }
 
 template< typename GeometryReal >
-void InitializeEmbeddingMetric( const TexturedMesh< GeometryReal > &mesh , bool normalizeArea , std::vector< SquareMatrix< GeometryReal , 2 > > &embeddingMetric )
+void InitializeEmbeddingMetric( const OrientedTexturedTriangleMesh< GeometryReal > &mesh , bool normalizeArea , std::vector< SquareMatrix< GeometryReal , 2 > > &embeddingMetric )
 {
 	embeddingMetric.resize( mesh.triangles.size() );
 
@@ -181,7 +181,7 @@ void InitializeEmbeddingMetric( const TexturedMesh< GeometryReal > &mesh , bool 
 }
 
 template< typename GeometryReal >
-void InitializeUniformMetric( const TexturedMesh< GeometryReal > &mesh , bool normalizeArea , std::vector< SquareMatrix< GeometryReal , 2 > > &embeddingMetric )
+void InitializeUniformMetric( const OrientedTexturedTriangleMesh< GeometryReal > &mesh , bool normalizeArea , std::vector< SquareMatrix< GeometryReal , 2 > > &embeddingMetric )
 {
 	embeddingMetric.resize( mesh.triangles.size() );
 
@@ -206,7 +206,7 @@ void InitializeUniformMetric( const TexturedMesh< GeometryReal > &mesh , bool no
 }
 
 template< typename GeometryReal >
-void InitializeParameterMetric( const TexturedMesh< GeometryReal > &mesh , const std::vector< SquareMatrix< GeometryReal , 2 > > &embeddingMetric , const std::vector< AtlasChart< GeometryReal > > &atlasCharts , std::vector< std::vector< SquareMatrix< GeometryReal , 2 > > > &parameterMetric )
+void InitializeParameterMetric( const OrientedTexturedTriangleMesh< GeometryReal > &mesh , const std::vector< SquareMatrix< GeometryReal , 2 > > &embeddingMetric , const std::vector< AtlasChart< GeometryReal > > &atlasCharts , std::vector< std::vector< SquareMatrix< GeometryReal , 2 > > > &parameterMetric )
 {
 	parameterMetric.resize( atlasCharts.size() );
 	for( int i=0 ; i<atlasCharts.size() ; i++ )
@@ -238,7 +238,7 @@ void InitializeParameterMetric( const TexturedMesh< GeometryReal > &mesh , const
 }
 
 template< typename GeometryReal >
-void InitializeMetric( TexturedMesh< GeometryReal > &mesh , int metricMode , const std::vector< AtlasChart< GeometryReal > > &atlasCharts , std::vector< std::vector< SquareMatrix< GeometryReal , 2 > > > &parameterMetric )
+void InitializeMetric( OrientedTexturedTriangleMesh< GeometryReal > &mesh , int metricMode , const std::vector< AtlasChart< GeometryReal > > &atlasCharts , std::vector< std::vector< SquareMatrix< GeometryReal , 2 > > > &parameterMetric )
 {
 	std::vector< SquareMatrix< GeometryReal , 2 > > surfaceMetric;
 	std::vector< SquareMatrix< GeometryReal , 2 > > embeddingMetric;
@@ -252,7 +252,7 @@ void InitializeMetric( TexturedMesh< GeometryReal > &mesh , int metricMode , con
 }
 
 template< typename GeometryReal , typename LengthToAnisotropyFunctor >
-void InitializeAnisotropicMetric( TexturedMesh< GeometryReal > &mesh , const std::vector< AtlasChart< GeometryReal > > &atlasCharts , const std::vector< Point2D< GeometryReal > > &vf , const LengthToAnisotropyFunctor &LengthToAnisotropy , std::vector< std::vector< SquareMatrix< GeometryReal , 2 > > > &parameterMetric )
+void InitializeAnisotropicMetric( OrientedTexturedTriangleMesh< GeometryReal > &mesh , const std::vector< AtlasChart< GeometryReal > > &atlasCharts , const std::vector< Point2D< GeometryReal > > &vf , const LengthToAnisotropyFunctor &LengthToAnisotropy , std::vector< std::vector< SquareMatrix< GeometryReal , 2 > > > &parameterMetric )
 {
 	std::vector< SquareMatrix< GeometryReal , 2 > > surfaceMetric;
 	std::vector< SquareMatrix< GeometryReal , 2 > > embeddingMetric;

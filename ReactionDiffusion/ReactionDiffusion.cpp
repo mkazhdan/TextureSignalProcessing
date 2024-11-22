@@ -32,7 +32,7 @@ DAMAGE.
 #include <Misha/Miscellany.h>
 #include <Misha/FEM.h>
 #include <Src/Hierarchy.h>
-#include <Src/SimpleMesh.h>
+#include <Src/SimpleTriangleMesh.h>
 #include <Src/Basis.h>
 #include <Src/Solver.h>
 #include <Src/QuadratureIntergration.inl>
@@ -138,7 +138,7 @@ class GrayScottReactionDiffusion
 {
 public:
 	static std::vector< FEM::SamplePoint< PreReal > > randomSamples;
-	static TexturedMesh< PreReal > mesh;
+	static OrientedTexturedTriangleMesh< PreReal > mesh;
 	static int textureWidth;
 	static int textureHeight;
 	static Real diffusionRates[2];
@@ -240,7 +240,7 @@ public:
 };
 
 template< typename PreReal , typename Real > std::vector< FEM::SamplePoint< PreReal > >								GrayScottReactionDiffusion< PreReal , Real >::randomSamples;
-template< typename PreReal , typename Real > TexturedMesh< PreReal >												GrayScottReactionDiffusion< PreReal , Real >::mesh;
+template< typename PreReal , typename Real > OrientedTexturedTriangleMesh< PreReal >								GrayScottReactionDiffusion< PreReal , Real >::mesh;
 template< typename PreReal , typename Real > int																	GrayScottReactionDiffusion< PreReal , Real >::textureWidth;
 template< typename PreReal , typename Real > int																	GrayScottReactionDiffusion< PreReal , Real >::textureHeight;
 template< typename PreReal , typename Real > TexturedMeshVisualization												GrayScottReactionDiffusion< PreReal , Real >::visualization;
@@ -842,9 +842,6 @@ void GrayScottReactionDiffusion< PreReal , Real >::Init( void )
 	textureWidth = Width.value;
 	textureHeight = Height.value;
 	mesh.read( Input.value , DetailVerbose.set );
-#ifdef FLIP_TEXTURE
-	for( int i=0 ; i<mesh.textureCoordinates.size() ; i++ ) mesh.textureCoordinates[i][1] = 1.0 - mesh.textureCoordinates[i][1];
-#endif // FLIP_TEXTURE
 
 	if( RandomJitter.set )
 	{

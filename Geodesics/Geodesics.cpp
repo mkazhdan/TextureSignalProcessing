@@ -32,7 +32,7 @@ DAMAGE.
 #include <Misha/Miscellany.h>
 #include <Misha/FEM.h>
 #include <Src/Hierarchy.h>
-#include <Src/SimpleMesh.h>
+#include <Src/SimpleTriangleMesh.h>
 #include <Src/Basis.h>
 #include <Src/Solver.h>
 #include <Src/QuadratureIntergration.inl>
@@ -108,7 +108,7 @@ template< typename PreReal , typename Real >
 class Geodesics
 {
 public:
-	static TexturedMesh< PreReal > mesh;
+	static OrientedTexturedTriangleMesh< PreReal > mesh;
 	static int textureWidth;
 	static int textureHeight;
 	static Real diffusionInterpolationWeight;
@@ -207,7 +207,7 @@ public:
 	static void Idle( void );
 };
 
-template< typename PreReal , typename Real > TexturedMesh< PreReal >										Geodesics< PreReal , Real >::mesh;
+template< typename PreReal , typename Real > OrientedTexturedTriangleMesh< PreReal >						Geodesics< PreReal , Real >::mesh;
 template< typename PreReal , typename Real > int															Geodesics< PreReal , Real >::textureWidth;
 template< typename PreReal , typename Real > int															Geodesics< PreReal , Real >::textureHeight;
 template< typename PreReal , typename Real > TexturedMeshVisualization										Geodesics< PreReal , Real >::visualization;
@@ -802,9 +802,6 @@ void Geodesics< PreReal , Real >::Init( void )
 	textureHeight = Height.value;
 
 	mesh.read( Input.value , DetailVerbose.set );
-#ifdef FLIP_TEXTURE
-	for( int i=0 ; i<mesh.textureCoordinates.size() ; i++ ) mesh.textureCoordinates[i][1] = 1.0 - mesh.textureCoordinates[i][1];
-#endif // FLIP_TEXTURE
 
 	if( RandomJitter.set )
 	{

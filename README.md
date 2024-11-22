@@ -1,4 +1,4 @@
-<center><h2>Gradient Domain Texture Processing (Version 4.08)</h2></center>
+<center><h2>Gradient Domain Texture Processing (Version 4.50)</h2></center>
 <center>
 <a href="#LINKS">links</a>
 <a href="#EXECUTABLES">executables</a>
@@ -30,6 +30,7 @@ This software supports gradient-domain signal processing within a texture atlas.
 <B>Data:</B>
 <A HREF="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/TSP.Data.zip">ZIP</A><br>
 <b>Older Versions:</b>
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.08/">V4.08</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.07/">V4.07</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.06/">V4.06</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.05/">V4.05</a>,
@@ -488,12 +489,14 @@ Here a "dots" pattern is written out to an image. (Empirically, we have found th
 <li> Removing numerical issues in loop construction.
 </ul>
 
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.08/">Version 4.50</a>:
+<ul>
+<li> Code clean-up
+</ul>
+
 </details>
 
 
 <hr>
 <a name="SUPPORT"><b>SUPPORT</b></a><br>
 This work genersouly supported by NSF grant #1422325.
-
-<hr>
-<a href="http://www.cs.jhu.edu/~misha">HOME</a>

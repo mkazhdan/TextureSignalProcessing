@@ -29,7 +29,7 @@ DAMAGE.
 #define CHART_DECOMPOSITION_INCLUDED
 
 #include <Misha/Miscellany.h>
-#include <Src/SimpleMesh.h>
+#include <Src/SimpleTriangleMesh.h>
 #include <queue>
 
 void AddComponent( std::vector< int > &vertexComponent , int vIndex , int currentComponent , const std::vector< std::vector< int > > &neighbours )
@@ -57,12 +57,12 @@ void AddComponent( std::vector< int > &vertexComponent , int vIndex , int curren
 }
 
 template< typename GeometryReal >
-void InitializeTriangleChartIndexing( const TexturedMesh< GeometryReal > &mesh , std::vector< int > &chartIndex , int &numCharts )
+void InitializeTriangleChartIndexing( const OrientedTexturedTriangleMesh< GeometryReal > &mesh , std::vector< int > &chartIndex , int &numCharts )
 {
 	std::unordered_map< unsigned long long , int > edgeIndex;
 	for( int i=0 ; i<mesh.triangles.size() ; i++ ) for( int k=0 ; k<3 ; k++ )
 	{
-		unsigned long long  edgeKey = SetMeshEdgeKey( mesh.triangles[i][k] , mesh.triangles[i][(k+1)%3] );
+		unsigned long long  edgeKey = mesh.edgeKey(i,k);
 		if( edgeIndex.find(edgeKey)==edgeIndex.end() ) edgeIndex[edgeKey] = 3*i+k;
 		else Miscellany::Throw( "Non manifold mesh" );
 	}
@@ -70,7 +70,7 @@ void InitializeTriangleChartIndexing( const TexturedMesh< GeometryReal > &mesh ,
 	std::vector< std::vector< int > > neighbours( mesh.triangles.size() );
 	for( int i=0 ; i<mesh.triangles.size() ; i++ ) for( int k=0 ; k<3 ; k++ )
 	{
-		unsigned long long edgeKey = SetMeshEdgeKey( mesh.triangles[i][(k+1)%3] , mesh.triangles[i][k] );
+		unsigned long long edgeKey = mesh.edgeKey(i,k,true);
 		if( edgeIndex.find(edgeKey)!=edgeIndex.end() )
 		{
 			int tIndex = edgeIndex[edgeKey] / 3;
