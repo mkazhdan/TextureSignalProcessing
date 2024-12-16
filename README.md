@@ -116,7 +116,7 @@ The input mesh is assumed to be in <a href="http://www.cc.gatech.edu/projects/la
 The input texture is assumed to be an image in <I>png</I>, <I>jpg</I>, or <I>jpeg</I> format.
 </dd>
 
-<dt>[<b>--inMask</b> &lt;<i>input mask</i>&gt;]</dt>
+<dt>[<b>--mask</b> &lt;<i>input mask</i>&gt;]</dt>
 <dd> This string specifies the name of the mask image.<br>
 The input mask is assumed to be an image in <I>png</I>, <I>jpg</I>, or <I>jpeg</I> format (though results may be unpredictable if it is encoded using lossy compression). Black pixels in the mask file should be used to denote regions where the texel value is unkown.
 </dd>
@@ -150,7 +150,7 @@ The default value for this parameter is -1, indicating no dilation.
 
 </dd><dt>[<b>--multi</B>]</dt>
 <dd> If enabled, this flag specifies that the second and third arguments to the <b>--in</b> parameter are to be interpreted as format specifiers for the textures confidence map files.<BR>
-<B>Note:</B> If this flat is enabled, the input masks must be specified using the <b>--inMask</b> parameter.
+<B>Note:</B> If this flat is enabled, the input masks must be specified using the <b>--mask</b> parameter.
 </dd>
 
 
@@ -357,7 +357,7 @@ In addition to the input mesh, specify a (single) composite texture and mask.
 If adjacent texels share the same mask color, they are assumed to come from the same source, and the gradient between them is preserved.
 Otherwise, the gradient is set to zero. Additionally, a mask color of black is reserved to indicate that the texel value is unknown.<BR>
 For example, running
-<blockquote><code>% Bin/*/TextureFiltering --in Rooster/rooster.ply ../TSP.Data/Rooster/texels.png --inMask ../TSP.Data/Rooster/mask.png</code></blockquote>
+<blockquote><code>% Bin/*/TextureFiltering --in Rooster/rooster.ply ../TSP.Data/Rooster/texels.png --mask ../TSP.Data/Rooster/mask.png</code></blockquote>
 opens a viewer showing the stitched texture on the left and the composite texture on the right.
 <LI>
 In addition to the input mesh, specify (multiple) partial textures and associated confidence maps.
@@ -365,13 +365,13 @@ The code blends the gradients in regions of overlap, with weights determined by 
 Texel and confidence file names are specified using integer format specifiers, with zero-indexing.
 Colors are transformed to scalar confidence values by computing the gray-scale value and normalizing to the range [0,1].<br>
 For example, running
-<blockquote><code>% Bin/*/TextureFiltering --in Rooster/rooster.ply ../TSP.Data/Rooster/texels-%02d.png --inMask ../TSP.Data/Rooster/mask-%02d.png --multi</code></blockquote>
+<blockquote><code>% Bin/*/TextureFiltering --in Rooster/rooster.ply ../TSP.Data/Rooster/texels-%02d.png --mask ../TSP.Data/Rooster/mask-%02d.png --multi</code></blockquote>
 opens a viewer showing the stitched texture on the left and the first partial textures on the right.<BR>
 Pressing the 't' key toggles forward through the partial textures and pressing 'T' toggles backwards.<BR>
 Holding [SHIFT] and clicking on the stitched model replaces the blended gradients under the paint-brush with the gradients from the currently visualized partial-texture.<BR>
 </OL>
 You can also bypass the viewer and output the stitched texture to a file:
-<blockquote><code>% Bin/*/TextureStitching --in Rooster/rooster.ply ../TSP.Data/Rooster/texels-%02d.png --inMask ../TSP.Data/Rooster/mask-%02d.png --multi --out stitched.png</code></blockquote>
+<blockquote><code>% Bin/*/TextureStitching --in Rooster/rooster.ply ../TSP.Data/Rooster/texels-%02d.png --mask ../TSP.Data/Rooster/mask-%02d.png --multi --out stitched.png</code></blockquote>
 </details>
 </dl>
 
@@ -496,7 +496,7 @@ Here a "dots" pattern is written out to an image. (Empirically, we have found th
 
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.60/">Version 4.60</a>:
 <ul>
-<li> Added <B>--inMask</B> for specifying mask(s) to support default cross-chart smoothing.
+<li> Added <B>--mask</B> for specifying mask(s) to support default cross-chart smoothing.
 </ul>
 
 </details>
