@@ -81,8 +81,7 @@ cmdLineReadable Double( "double" );
 cmdLineReadable MultiInput( "multi" );
 cmdLineReadable* params[] =
 {
-	&In , &Output , &InterpolationWeight , &Levels , &UseDirectSolver , &Threads, &Verbose ,
-	&InMask ,
+	&In , &InMask , &Output , &InterpolationWeight , &Levels , &UseDirectSolver , &Threads, &Verbose ,
 #ifdef USE_LOW_FREQUENCY
 	&InputLowFrequency ,
 #endif // USE_LOW_FREQUENCY
