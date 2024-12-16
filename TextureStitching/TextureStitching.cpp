@@ -49,7 +49,8 @@ enum
 #include <Src/StitchingVisualization.h>
 #endif // NO_OPEN_GL_VISUALIZATION
 
-cmdLineParameterArray< char * , 3 > In( "in" );
+cmdLineParameterArray< char * , 2 > In( "in" );
+cmdLineParameter< char * > InMask( "mask" );
 #ifdef USE_LOW_FREQUENCY
 cmdLineParameter< char * > InputLowFrequency( "inLow" );
 #endif // USE_LOW_FREQUENCY
@@ -66,9 +67,8 @@ cmdLineParameter< int   > MultigridBlockWidth  ( "mBlockW" , 128 );
 cmdLineParameter< int   > MultigridPaddedHeight( "mPadH"   ,   0 );
 cmdLineParameter< int   > MultigridPaddedWidth ( "mPadW"   ,   2 );
 
-cmdLineParameter< int   > RandomJitter( "jitter" , 0 );
-cmdLineParameter< int    > OutputChartMaskErode( "outChartMaskErode" , 0 );
-cmdLineParameter< char * > OutputChartMask( "outChartMask" );
+cmdLineParameter< int    > RandomJitter( "jitter" , 0 );
+cmdLineParameter< int    > ChartMaskErode( "erode" , 0 );
 #ifdef NO_OPEN_GL_VISUALIZATION
 #else // !NO_OPEN_GL_VISUALIZATION
 cmdLineParameter< char* > CameraConfig( "camera" );
@@ -82,6 +82,7 @@ cmdLineReadable MultiInput( "multi" );
 cmdLineReadable* params[] =
 {
 	&In , &Output , &InterpolationWeight , &Levels , &UseDirectSolver , &Threads, &Verbose ,
+	&InMask ,
 #ifdef USE_LOW_FREQUENCY
 	&InputLowFrequency ,
 #endif // USE_LOW_FREQUENCY
@@ -92,8 +93,7 @@ cmdLineReadable* params[] =
 	&CameraConfig ,
 #endif // NO_OPEN_GL_VISUALIZATION
 	&BoundaryDilationRadius ,
-	&OutputChartMaskErode ,
-	&OutputChartMask ,
+	&ChartMaskErode ,
 	NULL
 };
 
@@ -101,7 +101,8 @@ void ShowUsage( const char *ex )
 {
 	printf( "Usage %s:\n" , ex );
 
-	printf( "\t --%s <input mesh, texels, and mask>\n" , In.name );
+	printf( "\t --%s <input mesh and texels>\n" , In.name );
+	printf( "\t[--%s <input mask>]\n" , InMask.name );
 #ifdef USE_LOW_FREQUENCY
 	printf( "\t[--%s <input low-frequency texture>\n" , InputLowFrequency.name );
 #endif // USE_LOW_FREQUENCY
@@ -110,8 +111,7 @@ void ShowUsage( const char *ex )
 #else // !NO_OPEN_GL_VISUALIZATION
 	printf( "\t[--%s <output texture>]\n" , Output.name );
 #endif // NO_OPEN_GL_VISUALIZATION
-	printf( "\t[--%s <output chart mask image>]\n" , OutputChartMask.name );
-	printf( "\t[--%s <output chart mask erosion radius>=%d]\n" , OutputChartMaskErode.name , OutputChartMaskErode.value );
+	printf( "\t[--%s <chart mask erosion radius>=%d]\n" , ChartMaskErode.name , ChartMaskErode.value );
 	printf( "\t[--%s <output v-cycles>=%d]\n" , OutputVCycles.name , OutputVCycles.value );
 	printf( "\t[--%s <interpolation weight>=%f]\n" , InterpolationWeight.name , InterpolationWeight.value );
 	printf( "\t[--%s <system matrix quadrature points per triangle>=%d]\n" , MatrixQuadrature.name, MatrixQuadrature.value );
@@ -248,7 +248,9 @@ public:
 	static void InterpolationWeightCallBack           ( Visualization *v , const char *prompt );
 #endif // NO_OPEN_GL_VISUALIZATION
 
-	static void LoadImages( void );
+	static Image< Point3D< unsigned char > > GetChartMask( void );
+	static void LoadTextures( void );
+	static void LoadMasks( void );
 	static void ParseImages( void );
 	static void SetUpSystem( void );
 	static void SolveSystem( void );
@@ -730,7 +732,44 @@ void Stitching< PreReal , Real >::SolveSystem( void )
 }
 
 template< typename PreReal , typename Real >
-void Stitching< PreReal , Real >::LoadImages( void )
+Image< Point3D< unsigned char > > Stitching< PreReal , Real >::GetChartMask( void )
+{
+	auto IsBlack = []( Point3D< unsigned char > c ){ return !c[0] && !c[1] && !c[2]; };
+
+	Image< Point3D< unsigned char > > chartMask;
+	chartMask.resize( textureWidth , textureHeight );
+	for( unsigned int i=0 ; i<(unsigned int)textureWidth ; i++ ) for( unsigned int j=0 ; j<(unsigned int)textureHeight ; j++ ) chartMask(i,j) = Point3D< unsigned char >(0,0,0);
+
+	std::map< int , Point3D< unsigned char > > chartColors;
+	auto ColorAlreadyUsed = [&]( Point3D< unsigned char > c )
+		{
+			for( auto iter=chartColors.begin() ; iter!=chartColors.end() ; iter++ )
+				if( c[0]==iter->second[0] && c[1]==iter->second[1] && c[2]==iter->second[2] ) return true;
+			return false;
+		};
+
+	for( unsigned int i=0 ; i<textureNodes.size() ; i++ ) if( chartColors.find( textureNodes[i].chartID )==chartColors.end() )
+	{
+		Point3D< unsigned char > c;
+		while( IsBlack(c) || ColorAlreadyUsed(c) ) c[0] = rand()%256 , c[1] = rand()%256 , c[2] = rand()%256;
+		chartColors[ textureNodes[i].chartID ] = c;
+	}
+
+	for( int i=0 ; i<textureNodes.size() ; i++ ) chartMask( textureNodes[i].ci , textureNodes[i].cj ) = chartColors[ textureNodes[i].chartID ];
+	for( int e=0 ; e<ChartMaskErode.value ; e++ )
+	{
+		Image< Point3D< unsigned char > > _chartMask = chartMask;
+		for( int i=0 ; i<textureWidth ; i++ ) for( int j=0 ; j<textureHeight ; j++ ) if( chartMask(i,j)[0] || chartMask(i,j)[1] || chartMask(i,j)[2] )
+			for( int di=-1 ; di<=1 ; di++ ) for( int dj=-1 ; dj<=1 ; dj++ )
+				if( i+di>=0 && i+di<textureWidth && j+dj>0 && j+dj<textureHeight ) if( IsBlack( _chartMask(i+di,j+dj) ) ) chartMask(i,j) = Point3D< unsigned char >();
+	}
+	chartMask.write( "misha.png" );
+
+	return chartMask;
+}
+
+template< typename PreReal , typename Real >
+void Stitching< PreReal , Real >::LoadTextures( void )
 {
 	if( inputMode==MULTIPLE_INPUT_MODE )
 	{
@@ -758,13 +797,25 @@ void Stitching< PreReal , Real >::LoadImages( void )
 		textureHeight = inputTextures[0].height();
 
 		if( Verbose.set ) printf( "Texture count: %d\n" , numTextures );
-
+	}
+	else
+	{
+		inputComposition.read( In.values[1] );
+		textureWidth = inputComposition.width();
+		textureHeight = inputComposition.height();
+	}
+}
+template< typename PreReal , typename Real >
+void Stitching< PreReal , Real >::LoadMasks( void )
+{
+	if( inputMode==MULTIPLE_INPUT_MODE )
+	{
 		inputConfidence.resize( numTextures );
 #pragma omp parallel for
 		for( int i=0 ; i<numTextures ; i++ )
 		{
 			char confidenceName[256];
-			sprintf( confidenceName , In.values[2] , i );
+			sprintf( confidenceName , InMask.value , i );
 			Image< Point3D< Real > > textureConfidence;
 			textureConfidence.read( confidenceName );
 			inputConfidence[i].resize( textureWidth , textureHeight );
@@ -773,11 +824,9 @@ void Stitching< PreReal , Real >::LoadImages( void )
 	}
 	else
 	{
-		inputComposition.read( In.values[1] );
-		textureWidth = inputComposition.width();
-		textureHeight = inputComposition.height();
 		Image< Point3D< unsigned char > > textureConfidence;
-		textureConfidence.read( In.values[2] );
+		if( InMask.set ) textureConfidence.read( InMask.value );
+		else textureConfidence = GetChartMask();
 
 		if( BoundaryDilationRadius.value>=0 )
 		{
@@ -1100,32 +1149,6 @@ void Stitching< PreReal , Real >::Init( void )
 	textureEdgePositions.resize( edgePairs.size() );
 	for( int i=0 ; i<edgePairs.size() ; i++ ) textureEdgePositions[i] = ( textureNodePositions[ edgePairs[i].first ] + textureNodePositions[ edgePairs[i].second ] ) / 2;
 
-	if( OutputChartMask.set )
-	{
-		auto IsBlack = []( Point3D< unsigned char > c ){ return !c[0] && !c[1] && !c[2]; };
-
-		Image< Point3D< unsigned char > > mask;
-		mask.resize( textureWidth , textureHeight );
-		for( unsigned int i=0 ; i<(unsigned int)textureWidth ; i++ ) for( unsigned int j=0 ; j<(unsigned int)textureHeight ; j++ ) mask(i,j) = Point3D< unsigned char >(0,0,0);
-
-		std::map< int , Point3D< unsigned char > > chartColors;
-		for( unsigned int i=0 ; i<textureNodes.size() ; i++ ) if( chartColors.find( textureNodes[i].chartID )==chartColors.end() )
-		{
-			Point3D< unsigned char > c;
-			while( IsBlack(c) ) c[0] = rand()%256 , c[1] = rand()%256 , c[2] = rand()%256;
-			chartColors[ textureNodes[i].chartID ] = c;
-		}
-
-		for( int i=0 ; i<textureNodes.size() ; i++ ) mask( textureNodes[i].ci , textureNodes[i].cj ) = chartColors[ textureNodes[i].chartID ];
-		for( int e=0 ; e<OutputChartMaskErode.value ; e++ )
-		{
-			Image< Point3D< unsigned char > > _mask = mask;
-			for( int i=0 ; i<textureWidth ; i++ ) for( int j=0 ; j<textureHeight ; j++ ) if( mask(i,j)[0] || mask(i,j)[1] || mask(i,j)[2] )
-				for( int di=-1 ; di<=1 ; di++ ) for( int dj=-1 ; dj<=1 ; dj++ )
-					if( i+di>=0 && i+di<textureWidth && j+dj>0 && j+dj<textureHeight ) if( IsBlack( _mask(i+di,j+dj) ) ) mask(i,j) = Point3D< unsigned char >();
-		}
-		mask.write( OutputChartMask.value );
-	}
 	{
 		int multiChartTexelCount = 0;
 		Image< int > texelId;
@@ -1147,8 +1170,9 @@ void _main( int argc , char *argv[] )
 	Stitching< PreReal , Real >::inputMode = MultiInput.set ? MULTIPLE_INPUT_MODE : SINGLE_INPUT_MODE;
 	Stitching< PreReal , Real >::updateCount = 0;
 
-	Stitching< PreReal , Real >::LoadImages();
+	Stitching< PreReal , Real >::LoadTextures();
 	Stitching< PreReal , Real >::Init();
+	Stitching< PreReal , Real >::LoadMasks();
 	Stitching< PreReal , Real >::ParseImages();
 	Stitching< PreReal , Real >::SetUpSystem();
 
@@ -1204,6 +1228,8 @@ int main( int argc , char* argv[] )
 		return EXIT_FAILURE;
 	}
 #endif // NO_OPEN_GL_VISUALIZATION
+	if( MultiInput.set && !InMask.set ) Miscellany::ErrorOut( "Input mask required for multi-input" );
+
 	omp_set_num_threads( Threads.value );
 	if( !NoHelp.set && !Output.set )
 	{

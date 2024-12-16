@@ -305,8 +305,7 @@ public:
 	using SimpleOrientedTriangleMesh< GeometryReal >::vertices;
 	using SimpleOrientedTriangleMesh< GeometryReal >::triangles;
 #ifdef USE_TEXTURE_TRIANGLES
-	std::vector< TriangleIndex > textureTriangles;
-	std::vector< Point2D< GeometryReal > > tCoordinates;
+	SimplexTriangleMesh< GeometryReal , 2 > textureMesh;
 #else // !USE_TEXTURE_TRIANGLES
 	std::vector< Point2D< GeometryReal > > textureCoordinates;
 #endif // USE_TEXTURE_TRIANGLES
@@ -321,7 +320,7 @@ public:
 			{
 				plyTexturedFaces[i][j] = triangles[i][j];
 #ifdef USE_TEXTURE_TRIANGLES
-				plyTexturedFaces[i].texture(j) = tCoordinates[ textureTriangles[i][j] ];
+				plyTexturedFaces[i].texture(j) = textureMesh.vertices[ textureTriangles[i][j] ];
 #else // !USE_TEXTURE_TRIANGLES
 				plyTexturedFaces[i].texture(j) = textureCoordinates[3*i+j];
 #endif // USE_TEXTURE_TRIANGLES
@@ -362,7 +361,7 @@ public:
 
 			triangles.resize( ply_faces.size() );
 #ifdef USE_TEXTURE_TRIANGLES
-			textureTriangles.resize( ply_faces.size() );
+			textureMesh.triangles.resize( ply_faces.size() );
 			std::vector< Point2D< GeometryReal > > textureCoordinates( 3*ply_faces.size() );
 			for( int i=0 ; i<ply_faces.size() ; i++ ) for( int j=0 ; j<3 ; j++ ) triangles[i][j] = ply_faces[i][j];
 
@@ -405,15 +404,15 @@ public:
 					lastVertexIndex++;
 				}
 			}
-			tCoordinates.resize( indexedTextureCoordinateSet.size() );
-			for( auto iter=indexedTextureCoordinateSet.begin() ; iter!=indexedTextureCoordinateSet.end() ; iter++ ) tCoordinate[ iter->index ] = iter->p;
+			textureMesh.vertices.resize( indexedTextureCoordinateSet.size() );
+			for( auto iter=indexedTextureCoordinateSet.begin() ; iter!=indexedTextureCoordinateSet.end() ; iter++ ) textureMesh.vertices[ iter->index ] = iter->p;
 
 			for( int i=0 ; i<ply_faces.size() ; i++ ) for( int j=0 ; j<3 ; j++ )
 			{
 				IndexedTextureCoordinate itc( ply_faces[i].texture(j) , -1 , ply_faces[i][j] );
 				auto iter = indexedTextureCoordinateSet.find( itc );
 				if( iter==indexedTextureCoordinateSet.end() ) Miscellany::ErrorOut( "Could not find texture in texture set" );
-				else textureTriangles[i][j] = iter->index;
+				else textureMesh.triangles[i][j] = iter->index;
 			}
 
 #else // !USE_TEXTURE_TRIANGLES
@@ -489,13 +488,13 @@ public:
 			vertices.resize( obj_vertices.size() );
 			for( int i=0 ; i<obj_vertices.size() ; i++ ) vertices[i] = obj_vertices[i];
 #ifdef USE_TEXTURE_TRIANGLES
-			tCoordinates.resize( obj_textures.size() );
-			for( int i=0 ; i<obj_textures.size() ; i++ ) tCoordinates[i] = obj_textures[i];
+			textureMesh.vertices.resize( obj_textures.size() );
+			for( int i=0 ; i<obj_textures.size() ; i++ ) textureMesh.vertices[i] = obj_textures[i];
 #endif // USE_TEXTURE_TRIANGLES
 
 			triangles.resize( obj_faces.size() );
 #ifdef USE_TEXTURE_TRIANGLES
-			textureTriangles.resize( obj_faces.size() );
+			textureMesh.triangles.resize( obj_faces.size() );
 #else // !USE_TEXTURE_TRIANGLES
 			textureCoordinates.resize( 3*obj_faces.size() );
 #endif // USE_TEXTURE_TRIANGLES
@@ -506,8 +505,8 @@ public:
 				else Miscellany::ErrorOut( "Zero vertex index unexpected in .obj file" );
 
 #ifdef USE_TEXTURE_TRIANGLES
-				if     ( obj_faces[i][j].tIndex>0 ) textureTriangles[i][j] = obj_faces[i][j].tIndex-1;
-				else if( obj_faces[i][j].tIndex<0 ) textureTriangles[i][j] = (int)obj_textures.size() + obj_faces[i][j].tIndex;
+				if     ( obj_faces[i][j].tIndex>0 ) textureMesh.triangles[i][j] = obj_faces[i][j].tIndex-1;
+				else if( obj_faces[i][j].tIndex<0 ) textureMesh.triangles[i][j] = (int)obj_textures.size() + obj_faces[i][j].tIndex;
 #else // !USE_TEXTURE_TRIANGLES
 				if     ( obj_faces[i][j].tIndex>0 ) textureCoordinates[3*i+j] = obj_textures[ obj_faces[i][j].tIndex-1 ];
 				else if( obj_faces[i][j].tIndex<0 ) textureCoordinates[3*i+j] = obj_textures[ (int)obj_textures.size() + obj_faces[i][j].tIndex ];
@@ -520,7 +519,7 @@ public:
 
 		// Flip the vertical axis
 #ifdef USE_TEXTURE_TRIANGLES
-		for( int i=0 ; i<tCoordinates.size() ; i++ ) tCoordinates[i][1] = (GeometryReal)1. - tCoordinates[i][1];
+		for( int i=0 ; i<textureMesh.vertices.size() ; i++ ) textureMesh.vertices[i][1] = (GeometryReal)1. - textureMesh.vertices[i][1];
 #else // !USE_TEXTURE_TRIANGLES
 		for( int i=0 ; i<textureCoordinates.size() ; i++ ) textureCoordinates[i][1] = (GeometryReal)1. - textureCoordinates[i][1];
 #endif // USE_TEXTURE_TRIANGLES

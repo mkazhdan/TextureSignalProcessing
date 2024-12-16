@@ -1,4 +1,4 @@
-<center><h2>Gradient Domain Texture Processing (Version 4.50)</h2></center>
+<center><h2>Gradient Domain Texture Processing (Version 4.60)</h2></center>
 <center>
 <a href="#LINKS">links</a>
 <a href="#EXECUTABLES">executables</a>
@@ -30,6 +30,7 @@ This software supports gradient-domain signal processing within a texture atlas.
 <B>Data:</B>
 <A HREF="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/TSP.Data.zip">ZIP</A><br>
 <b>Older Versions:</b>
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.50/">V4.50</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.08/">V4.08</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.07/">V4.07</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.06/">V4.06</a>,
@@ -101,25 +102,23 @@ The default value for this parameter is 1.
 Supports the stitching together of multiple (possibly overlapping) textures by solving a screened Poisson equation with value constraints defined by the input texture.
 The interactive viewer runs in two modes:
 <OL>
-<LI> A user specifies a single composite texture and mask file indicating when texels in the composite come from the same source.
-In this case gradient constraints are obtained by copying gradients from the composite whenever the two texels defining an edge come from the same source, and setting the gradient constraint to zero along edges coming from different sources.
+<LI> A user specifies a single composite texture and (optionally) a mask file indicating when texels in the composite come from the same source.
+In this case gradient constraints are obtained by copying gradients from the composite whenever the two texels defining an edge come from the same source, and setting the gradient constraint to zero along edges coming from different sources. If no mask file is provided, a default mask is created by assigning texels the same color if and only if they are covered by the same chart.<BR>
 The viewer shows the stitched texture on the left and the composite texture on the right.
 <LI> A user specifies multiple partial texture files and corresponding confidence masks.
 In this case gradient constraints are obtained by blending gradients from the different inputs, weighted by confidence, and setting gradients to zero in regions where there are no textures with non-zero confidence.
 The viewer shows the stitched texture on the left and a partial texture on the right. The user can selectively replace blended value/gradient constraints with the values/gradients from the partial texture by holding the [SHIFT] key down and dragging over the region to be in-painted.
 </OL>
 </summary>
-<dt><b>--in</b> &lt;<i>input mesh, composite texture, and mask</i>&gt;</dt>
-<dd> These three strings specify the the names of the mesh, the texture image, and the mask image.<br>
+<dt><b>--in</b> &lt;<i>input mesh and composite texture</i>&gt;</dt>
+<dd> These two strings specify the names of the mesh and the texture image.<br>
 The input mesh is assumed to be in <a href="http://www.cc.gatech.edu/projects/large_models/ply.html">PLY</a> format, giving the set of vertices with the x-, y-, and z-coordinates of the positions encoded by the properties <i>x</i>, <i>y</i>, and <i>z</i> the set of polygons encoded by two lists. The first gives the indices of the vertices in the polygon (integers). The second gives the texture coordinates at each polygon corner (pairs of floats).<br>
-The input texture and mask are assumed to be images in <I>png</I>, <I>jpg</I>, or <I>jpeg</I> format. Black pixels in the mask file should be used to denote regions where the texel value is unkown.
+The input texture is assumed to be an image in <I>png</I>, <I>jpg</I>, or <I>jpeg</I> format.
 </dd>
 
-<dt><b>--in</b> &lt;<i>input mesh, texture format specifier, and confidence format specifier</i>&gt;</dt>
-<dd> These three strings specify the the names of the mesh, the format string for the texture images, and the format string for the confidence images.<br>
-The input mesh is assumed to be in <a href="http://www.cc.gatech.edu/projects/large_models/ply.html">PLY</a> format, giving the set of vertices with the x-, y-, and z-coordinates of the positions encoded by the properties <i>x</i>, <i>y</i>, and <i>z</i> the set of polygons encoded by two lists. The first gives the indices of the vertices in the polygon (integers). The second gives the texture coordinates at each polygon corner (pairs of floats).<br>
-The input textures and confidence maps are assumed to be images in <I>png</I>, <I>jpg</I>, or <I>jpeg</I> format.<BR>
-For the texture and confidence names to be interpreted as format specifiers, the  <b>--multi</b> flag must be specified.
+<dt>[<b>--inMask</b> &lt;<i>input mask</i>&gt;]</dt>
+<dd> This string specifies the name of the mask image.<br>
+The input mask is assumed to be an image in <I>png</I>, <I>jpg</I>, or <I>jpeg</I> format (though results may be unpredictable if it is encoded using lossy compression). Black pixels in the mask file should be used to denote regions where the texel value is unkown.
 </dd>
 
 <dt>[<b>--out</b> &lt;<i>output texture</i>&gt;]</dt>
@@ -150,7 +149,8 @@ The default value for this parameter is -1, indicating no dilation.
 </dd>
 
 </dd><dt>[<b>--multi</B>]</dt>
-<dd> If enabled, this flag specifies that the second and third arguments to the <b>--in</b> parameter are to be interpreted as format specifiers for the textures confidence map files.
+<dd> If enabled, this flag specifies that the second and third arguments to the <b>--in</b> parameter are to be interpreted as format specifiers for the textures confidence map files.<BR>
+<B>Note:</B> If this flat is enabled, the input masks must be specified using the <b>--inMask</b> parameter.
 </dd>
 
 
@@ -357,7 +357,7 @@ In addition to the input mesh, specify a (single) composite texture and mask.
 If adjacent texels share the same mask color, they are assumed to come from the same source, and the gradient between them is preserved.
 Otherwise, the gradient is set to zero. Additionally, a mask color of black is reserved to indicate that the texel value is unknown.<BR>
 For example, running
-<blockquote><code>% Bin/*/TextureFiltering --in Rooster/rooster.ply ../TSP.Data/Rooster/texels.png ../TSP.Data/Rooster/mask.png</code></blockquote>
+<blockquote><code>% Bin/*/TextureFiltering --in Rooster/rooster.ply ../TSP.Data/Rooster/texels.png --inMask ../TSP.Data/Rooster/mask.png</code></blockquote>
 opens a viewer showing the stitched texture on the left and the composite texture on the right.
 <LI>
 In addition to the input mesh, specify (multiple) partial textures and associated confidence maps.
@@ -365,13 +365,13 @@ The code blends the gradients in regions of overlap, with weights determined by 
 Texel and confidence file names are specified using integer format specifiers, with zero-indexing.
 Colors are transformed to scalar confidence values by computing the gray-scale value and normalizing to the range [0,1].<br>
 For example, running
-<blockquote><code>% Bin/*/TextureFiltering --in Rooster/rooster.ply ../TSP.Data/Rooster/texels-%02d.png ../TSP.Data/Rooster/mask-%02d.png --multi</code></blockquote>
+<blockquote><code>% Bin/*/TextureFiltering --in Rooster/rooster.ply ../TSP.Data/Rooster/texels-%02d.png --inMask ../TSP.Data/Rooster/mask-%02d.png --multi</code></blockquote>
 opens a viewer showing the stitched texture on the left and the first partial textures on the right.<BR>
 Pressing the 't' key toggles forward through the partial textures and pressing 'T' toggles backwards.<BR>
 Holding [SHIFT] and clicking on the stitched model replaces the blended gradients under the paint-brush with the gradients from the currently visualized partial-texture.<BR>
 </OL>
 You can also bypass the viewer and output the stitched texture to a file:
-<blockquote><code>% Bin/*/TextureStitching --in Rooster/rooster.ply ../TSP.Data/Rooster/texels-%02d.png ../TSP.Data/Rooster/mask-%02d.png --multi --out stitched.png</code></blockquote>
+<blockquote><code>% Bin/*/TextureStitching --in Rooster/rooster.ply ../TSP.Data/Rooster/texels-%02d.png --inMask ../TSP.Data/Rooster/mask-%02d.png --multi --out stitched.png</code></blockquote>
 </details>
 </dl>
 
@@ -489,9 +489,14 @@ Here a "dots" pattern is written out to an image. (Empirically, we have found th
 <li> Removing numerical issues in loop construction.
 </ul>
 
-<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.08/">Version 4.50</a>:
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.50/">Version 4.50</a>:
 <ul>
 <li> Code clean-up
+</ul>
+
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.60/">Version 4.60</a>:
+<ul>
+<li> Added <B>--inMask</B> for specifying mask(s) to support default cross-chart smoothing.
 </ul>
 
 </details>
