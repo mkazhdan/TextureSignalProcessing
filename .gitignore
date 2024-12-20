@@ -1,5 +1,6 @@
 *.sdf
 *.suo
+replicability_instructions.htm
 /Obj/
 /Debug/
 /Bin/
