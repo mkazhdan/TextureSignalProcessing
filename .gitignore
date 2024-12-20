@@ -30,6 +30,7 @@ LineIntegralConvolution/x64/
 PNG/x64/
 ReactionDiffusion/x64/
 TextureFiltering/x64/
+TextureStitching/x64/
 ZLIB/x64/
 CHOLMOD/*
 */Debug/*
