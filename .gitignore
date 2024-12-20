@@ -3,6 +3,7 @@
 /Obj/
 /Debug/
 /Bin/
+/x64/
 *.bin
 *.vsidx
 *.opensdf
@@ -32,5 +33,6 @@ ZLIB/x64/
 CHOLMOD/*
 */Debug/*
 */Release/*
+*/x64/*
 */_Eigen/
 *~
