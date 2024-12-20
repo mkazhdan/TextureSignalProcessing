@@ -149,7 +149,11 @@ enum
 	TEXTURE_COUNT
 };
 
-template< typename PreReal , typename Real>
+#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
+template< typename PreReal , typename Real , unsigned int TextureBitDepth >
+#else // !VARIABLE_SIZED_IMAGE_CHANNEL
+template< typename PreReal , typename Real >
+#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 class TextureFilter
 {
 public:
@@ -279,6 +283,81 @@ public:
 #endif // NO_OPEN_GL_VISUALIZATION
 };
 
+#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
+#ifdef NO_OPEN_GL_VISUALIZATION
+#else // !NO_OPEN_GL_VISUALIZATION
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > char																TextureFilter< PreReal , Real , TextureBitDepth >::gradientModulationStr[1024];
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > char																TextureFilter< PreReal , Real , TextureBitDepth >::interpolationStr[1024];
+#endif // NO_OPEN_GL_VISUALIZATION
+
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > OrientedTexturedTriangleMesh< PreReal >								TextureFilter< PreReal , Real , TextureBitDepth >::mesh;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > int																	TextureFilter< PreReal , Real , TextureBitDepth >::textureWidth;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > int																	TextureFilter< PreReal , Real , TextureBitDepth >::textureHeight;
+#ifdef NO_OPEN_GL_VISUALIZATION
+#else // !NO_OPEN_GL_VISUALIZATION
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > TextureFilteringVisualization										TextureFilter< PreReal , Real , TextureBitDepth >::visualization;
+#endif // NO_OPEN_GL_VISUALIZATION
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > SparseMatrix< Real , int >											TextureFilter< PreReal , Real , TextureBitDepth >::mass;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > SparseMatrix< Real , int >											TextureFilter< PreReal , Real , TextureBitDepth >::stiffness;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > SparseMatrix< Real , int >											TextureFilter< PreReal , Real , TextureBitDepth >::filteringMatrix;
+
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > Real																TextureFilter< PreReal , Real , TextureBitDepth >::interpolationWeight;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > Real																TextureFilter< PreReal , Real , TextureBitDepth >::gradientModulation;
+
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< TextureNodeInfo< PreReal > >							TextureFilter< PreReal , Real , TextureBitDepth >::textureNodes;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< BilinearElementIndex >									TextureFilter< PreReal , Real , TextureBitDepth >::bilinearElementIndices;
+
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > int																	TextureFilter< PreReal , Real , TextureBitDepth >::steps;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > char																TextureFilter< PreReal , Real , TextureBitDepth >::stepsString[1024];
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > int																	TextureFilter< PreReal , Real , TextureBitDepth >::levels;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > HierarchicalSystem< PreReal , Real >								TextureFilter< PreReal , Real , TextureBitDepth >::hierarchy;
+
+
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > bool																TextureFilter< PreReal , Real , TextureBitDepth >::gradientModulationUpdated = true;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > bool																TextureFilter< PreReal , Real , TextureBitDepth >::positiveModulation = true;
+
+//UI
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Real >													TextureFilter< PreReal , Real , TextureBitDepth >::texelStiffness[3];
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Real >													TextureFilter< PreReal , Real , TextureBitDepth >::cellModulationMask;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Real >													TextureFilter< PreReal , Real , TextureBitDepth >::uniformCellModulationMask;
+
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > Image< Point3D< Real > >											TextureFilter< PreReal , Real , TextureBitDepth >::filteredTexture;
+#ifdef USE_LOW_FREQUENCY
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > Image< Point3D< float > >											TextureFilter< PreReal , Real , TextureBitDepth >::highFrequencyTexture;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > Image< Point3D< float > >											TextureFilter< PreReal , Real , TextureBitDepth >::lowFrequencyTexture;
+#else // !USE_LOW_FREQUENCY
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > Image< Point3D< float > >											TextureFilter< PreReal , Real , TextureBitDepth >::texture;
+#endif // USE_LOW_FREQUENCY
+
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Point3D< Real > >										TextureFilter< PreReal , Real , TextureBitDepth >::stiffness_x0;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Point3D< Real > >										TextureFilter< PreReal , Real , TextureBitDepth >::mass_x0;
+
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< SystemCoefficients< Real > >							TextureFilter< PreReal , Real , TextureBitDepth >::multigridFilteringCoefficients;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< MultigridLevelVariables< Point3D< Real > > >			TextureFilter< PreReal , Real , TextureBitDepth >::multigridFilteringVariables;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector<MultigridLevelIndices<Real>>							TextureFilter< PreReal , Real , TextureBitDepth >::multigridIndices;
+
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > VCycleSolvers< typename TextureFilter< PreReal , Real , TextureBitDepth >::DirectSolver >		TextureFilter< PreReal , Real , TextureBitDepth >::vCycleSolvers;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > typename TextureFilter< PreReal , Real , TextureBitDepth >::DirectSolver						TextureFilter< PreReal , Real , TextureBitDepth >::directSolver;
+
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< AtlasChart< PreReal > >								TextureFilter< PreReal , Real , TextureBitDepth >::atlasCharts;
+
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector<InteriorTexelToCellLine>								TextureFilter< PreReal , Real , TextureBitDepth >::interiorTexelToCellLines;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Point3D< Real > >										TextureFilter< PreReal , Real , TextureBitDepth >::interiorTexelToCellCoeffs;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > SparseMatrix<Real, int>												TextureFilter< PreReal , Real , TextureBitDepth >::boundaryCellBasedStiffnessRHSMatrix[3];
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector<Real>													TextureFilter< PreReal , Real , TextureBitDepth >::boundaryTexelStiffness[3];
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Point3D< Real > >										TextureFilter< PreReal , Real , TextureBitDepth >::texelModulatedStiffness;
+
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Point3D< float > >										TextureFilter< PreReal , Real , TextureBitDepth >::cellCenterPositions;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Point3D< float > >										TextureFilter< PreReal , Real , TextureBitDepth >::textureNodePositions;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Real >													TextureFilter< PreReal , Real , TextureBitDepth >::uniformTexelModulationMask;
+
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > Padding																TextureFilter< PreReal , Real , TextureBitDepth >::padding;
+
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > SystemCoefficients< Real >											TextureFilter< PreReal , Real , TextureBitDepth >::massCoefficients;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > SystemCoefficients< Real >											TextureFilter< PreReal , Real , TextureBitDepth >::stiffnessCoefficients;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > int																	TextureFilter< PreReal , Real , TextureBitDepth >::updateCount = -1;
+
+#else // !VARIABLE_SIZED_IMAGE_CHANNEL
 #ifdef NO_OPEN_GL_VISUALIZATION
 #else // !NO_OPEN_GL_VISUALIZATION
 template< typename PreReal , typename Real > char																TextureFilter< PreReal , Real >::gradientModulationStr[1024];
@@ -351,11 +430,18 @@ template< typename PreReal , typename Real > Padding															TextureFilter
 template< typename PreReal , typename Real > SystemCoefficients< Real >											TextureFilter< PreReal , Real >::massCoefficients;
 template< typename PreReal , typename Real > SystemCoefficients< Real >											TextureFilter< PreReal , Real >::stiffnessCoefficients;
 template< typename PreReal , typename Real > int																TextureFilter< PreReal , Real >::updateCount = -1;
+#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 
 #ifdef NO_OPEN_GL_VISUALIZATION
 #else // !NO_OPEN_GL_VISUALIZATION
+
+#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
+template< typename PreReal , typename Real , unsigned int TextureBitDepth >
+void TextureFilter< PreReal , Real , TextureBitDepth >::UpdateMaskTexture( void )
+#else // !VARIABLE_SIZED_IMAGE_CHANNEL
 template< typename PreReal , typename Real >
 void TextureFilter< PreReal , Real >::UpdateMaskTexture( void )
+#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 {
 #pragma omp parallel for
 	for (int i = 0; i < textureNodes.size(); i++){
@@ -384,8 +470,13 @@ void TextureFilter< PreReal , Real >::UpdateMaskTexture( void )
 	visualization.UpdateMaskTextureBuffer();
 }
 
+#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
+template< typename PreReal , typename Real , unsigned int TextureBitDepth >
+void TextureFilter< PreReal , Real , TextureBitDepth >::UpdateFilteredColorTexture( const std::vector< Point3D< Real > > & solution )
+#else // !VARIABLE_SIZED_IMAGE_CHANNEL
 template< typename PreReal , typename Real >
 void TextureFilter< PreReal , Real >::UpdateFilteredColorTexture( const std::vector< Point3D< Real > > & solution )
+#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 {
 #pragma omp parallel for
 	for (int i = 0; i < textureNodes.size(); i++) {
@@ -401,8 +492,13 @@ void TextureFilter< PreReal , Real >::UpdateFilteredColorTexture( const std::vec
 }
 #endif // NO_OPEN_GL_VISUALIZATION
 
+#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
+template< typename PreReal , typename Real , unsigned int TextureBitDepth >
+void TextureFilter< PreReal , Real , TextureBitDepth >::UpdateFilteredTexture( const std::vector< Point3D< Real > >& solution )
+#else // !VARIABLE_SIZED_IMAGE_CHANNEL
 template< typename PreReal , typename Real >
 void TextureFilter< PreReal , Real >::UpdateFilteredTexture( const std::vector< Point3D< Real > >& solution )
+#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 {
 #pragma omp parallel for
 	for( int i=0 ; i<textureNodes.size() ; i++ )
@@ -413,8 +509,13 @@ void TextureFilter< PreReal , Real >::UpdateFilteredTexture( const std::vector< 
 }
 
 #ifdef NO_OPEN_GL_VISUALIZATION
+#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
+template< typename PreReal , typename Real , unsigned int TextureBitDepth >
+void TextureFilter< PreReal , Real , TextureBitDepth >::WriteTexture( const char* fileName )
+#else // !VARIABLE_SIZED_IMAGE_CHANNEL
 template< typename PreReal , typename Real >
 void TextureFilter< PreReal , Real >::WriteTexture( const char* fileName )
+#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 {
 	UpdateFilteredTexture( multigridFilteringVariables[0].x );
 	Image< Point3D< Real > > outputTexture = filteredTexture;
@@ -422,12 +523,21 @@ void TextureFilter< PreReal , Real >::WriteTexture( const char* fileName )
 
 	char* ext = GetFileExtension( fileName );
 	if( !strcasecmp( ext , "normap" ) ) WriteBinaryImage( outputTexture , fileName );
+#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
+	else outputTexture.template write< TextureBitDepth >( fileName );
+#else // !VARIABLE_SIZED_IMAGE_CHANNEL
 	else outputTexture.write( fileName );
+#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 	delete[] ext;
 }
 #else // !NO_OPEN_GL_VISUALIZATION
+#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
+template< typename PreReal , typename Real , unsigned int TextureBitDepth >
+void TextureFilter< PreReal , Real , TextureBitDepth >::Idle( void )
+#else // !VARIABLE_SIZED_IMAGE_CHANNEL
 template< typename PreReal , typename Real >
 void TextureFilter< PreReal , Real >::Idle( void )
+#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 {
 	if( visualization.promptCallBack ) visualization.showSlideBar = false;
 	else                               visualization.showSlideBar = true;
@@ -519,8 +629,13 @@ void TextureFilter< PreReal , Real >::Idle( void )
 	glutPostRedisplay();
 }
 
+#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
+template< typename PreReal , typename Real , unsigned int TextureBitDepth >
+void TextureFilter< PreReal , Real , TextureBitDepth >::MouseFunc( int button , int state , int x , int y )
+#else // !VARIABLE_SIZED_IMAGE_CHANNEL
 template< typename PreReal , typename Real >
 void TextureFilter< PreReal , Real >::MouseFunc( int button , int state , int x , int y )
+#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 {
 	if( state==GLUT_UP && UseDirectSolver.set && ( visualization.isBrushActive || visualization.isSlideBarActive ) )
 	{
@@ -581,8 +696,13 @@ void TextureFilter< PreReal , Real >::MouseFunc( int button , int state , int x 
 	glutPostRedisplay();
 }
 
+#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
+template< typename PreReal , typename Real , unsigned int TextureBitDepth >
+void TextureFilter< PreReal , Real , TextureBitDepth >::MotionFunc( int x , int y )
+#else // !VARIABLE_SIZED_IMAGE_CHANNEL
 template< typename PreReal , typename Real >
 void TextureFilter< PreReal , Real >::MotionFunc( int x , int y )
+#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 {
 
 	if( visualization.isBrushActive )
@@ -629,22 +749,37 @@ void TextureFilter< PreReal , Real >::MotionFunc( int x , int y )
 	glutPostRedisplay();
 }
 
+#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
+template< typename PreReal , typename Real , unsigned int TextureBitDepth >
+void TextureFilter< PreReal , Real , TextureBitDepth >::ToggleUpdateCallBack( Visualization * /*v*/ , const char * /*prompt*/ )
+#else // !VARIABLE_SIZED_IMAGE_CHANNEL
 template< typename PreReal , typename Real >
 void TextureFilter< PreReal , Real >::ToggleUpdateCallBack( Visualization * /*v*/ , const char * /*prompt*/ )
+#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 {
 	if( updateCount ) updateCount = 0;
 	else              updateCount = -1;
 }
 
+#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
+template< typename PreReal , typename Real , unsigned int TextureBitDepth >
+void TextureFilter< PreReal , Real , TextureBitDepth >::IncrementUpdateCallBack( Visualization * /*v*/ , const char * /*prompt*/ )
+#else // !VARIABLE_SIZED_IMAGE_CHANNEL
 template< typename PreReal , typename Real >
 void TextureFilter< PreReal , Real >::IncrementUpdateCallBack( Visualization * /*v*/ , const char * /*prompt*/ )
+#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 {
 	if( updateCount<0 ) updateCount = 1;
 	else updateCount++;
 }
 
+#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
+template< typename PreReal , typename Real , unsigned int TextureBitDepth >
+void TextureFilter< PreReal , Real , TextureBitDepth >::ExportTextureCallBack( Visualization * /*v*/ , const char* prompt )
+#else // !VARIABLE_SIZED_IMAGE_CHANNEL
 template< typename PreReal , typename Real >
 void TextureFilter< PreReal , Real >::ExportTextureCallBack( Visualization * /*v*/ , const char* prompt )
+#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 {
 	UpdateFilteredTexture( multigridFilteringVariables[0].x );
 	Image< Point3D< Real > > outputTexture = filteredTexture;
@@ -662,13 +797,22 @@ void TextureFilter< PreReal , Real >::ExportTextureCallBack( Visualization * /*v
 				outputTexture[i] = outputTexture[i] * 0.5f + Point3D< Real >( (Real)0.5 , (Real)0.5 , (Real)0.5 );
 			}
 		}
+#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
+		outputTexture.template write< TextureBitDepth >( prompt );
+#else // !VARIABLE_SIZED_IMAGE_CHANNEL
 		outputTexture.write( prompt );
+#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 	}
 	delete[] ext;
 }
 
+#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
+template< typename PreReal , class Real , unsigned int TextureBitDepth >
+void  TextureFilter< PreReal , Real , TextureBitDepth >::GradientModulationCallBack( Visualization * /*v*/ , const char* prompt )
+#else // !VARIABLE_SIZED_IMAGE_CHANNEL
 template< typename PreReal , class Real >
 void  TextureFilter< PreReal , Real >::GradientModulationCallBack( Visualization * /*v*/ , const char* prompt )
+#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 {
 	gradientModulation = atof( prompt );
 #pragma omp parallel for
@@ -691,8 +835,13 @@ void  TextureFilter< PreReal , Real >::GradientModulationCallBack( Visualization
 	sprintf( gradientModulationStr , "Gradient modulation: %e\n" , gradientModulation );
 }
 
+#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
+template< typename PreReal , class Real , unsigned int TextureBitDepth >
+void  TextureFilter< PreReal , Real , TextureBitDepth >::InterpolationWeightCallBack( Visualization * /*v*/ , const char* prompt )
+#else // !VARIABLE_SIZED_IMAGE_CHANNEL
 template< typename PreReal , class Real >
 void  TextureFilter< PreReal , Real >::InterpolationWeightCallBack( Visualization * /*v*/ , const char* prompt )
+#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 {
 	interpolationWeight = atof(prompt);
 	if( UseDirectSolver.set ) filteringMatrix = mass*interpolationWeight + stiffness;
@@ -721,16 +870,26 @@ void  TextureFilter< PreReal , Real >::InterpolationWeightCallBack( Visualizatio
 }
 #endif // NO_OPEN_GL_VISUALIZATION
 
+#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
+template< typename PreReal , typename Real , unsigned int TextureBitDepth >
+void TextureFilter< PreReal , Real , TextureBitDepth >::ComputeExactSolution( bool verbose )
+#else // !VARIABLE_SIZED_IMAGE_CHANNEL
 template< typename PreReal , typename Real >
 void TextureFilter< PreReal , Real >::ComputeExactSolution( bool verbose )
+#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 {
 	Miscellany::Timer timer;
 	solve( directSolver , multigridFilteringVariables[0].x , multigridFilteringVariables[0].rhs );
 	if( verbose ) printf( "Solving time =  %.4f\n" , timer.elapsed() );
 }
 
+#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
+template< typename PreReal , typename Real , unsigned int TextureBitDepth >
+void TextureFilter< PreReal , Real , TextureBitDepth >::UpdateSolution( bool verbose , bool detailVerbose )
+#else // !VARIABLE_SIZED_IMAGE_CHANNEL
 template< typename PreReal , typename Real >
 void TextureFilter< PreReal , Real >::UpdateSolution( bool verbose , bool detailVerbose )
+#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 {
 	if( !gradientModulationUpdated )
 	{
@@ -748,8 +907,13 @@ void TextureFilter< PreReal , Real >::UpdateSolution( bool verbose , bool detail
 	VCycle( multigridFilteringVariables , multigridFilteringCoefficients , multigridIndices , vCycleSolvers , verbose , detailVerbose );
 }
 
+#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
+template< typename PreReal , typename Real , unsigned int TextureBitDepth >
+void TextureFilter< PreReal , Real , TextureBitDepth >::_InitializeSystem( std::vector< std::vector< SquareMatrix< PreReal , 2 > > > &parameterMetric , BoundaryProlongationData< Real > &boundaryProlongation , std::vector< Point3D< Real > > &inputSignal , std::vector< Real > &texelToCellCoeffs )
+#else // !VARIABLE_SIZED_IMAGE_CHANNEL
 template< typename PreReal , typename Real >
 void TextureFilter< PreReal , Real >::_InitializeSystem( std::vector< std::vector< SquareMatrix< PreReal , 2 > > > &parameterMetric , BoundaryProlongationData< Real > &boundaryProlongation , std::vector< Point3D< Real > > &inputSignal , std::vector< Real > &texelToCellCoeffs )
+#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 {
 	Miscellany::Timer timer;
 	{
@@ -767,8 +931,13 @@ void TextureFilter< PreReal , Real >::_InitializeSystem( std::vector< std::vecto
 	if( Verbose.set ) printf( "\tInitialized mass and stiffness: %.2f(s)\n" , timer.elapsed() );
 }
 
+#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
+template< typename PreReal , typename Real , unsigned int TextureBitDepth >
+void TextureFilter< PreReal , Real , TextureBitDepth >::InitializeSystem( int width , int height )
+#else // !VARIABLE_SIZED_IMAGE_CHANNEL
 template< typename PreReal , typename Real >
 void TextureFilter< PreReal , Real >::InitializeSystem( int width , int height )
+#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 {
 	Miscellany::Timer timer;
 
@@ -885,8 +1054,13 @@ void TextureFilter< PreReal , Real >::InitializeSystem( int width , int height )
 
 #ifdef NO_OPEN_GL_VISUALIZATION
 #else // !NO_OPEN_GL_VISUALIZATION
+#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
+template< typename PreReal , typename Real , unsigned int TextureBitDepth >
+void TextureFilter< PreReal , Real , TextureBitDepth >::InitializeVisualization( void )
+#else // !VARIABLE_SIZED_IMAGE_CHANNEL
 template< typename PreReal , typename Real >
 void TextureFilter< PreReal , Real >::InitializeVisualization( void )
+#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 {
 	sprintf( gradientModulationStr , "Gradient modulation: %.2e\n" , gradientModulation );
 	sprintf( interpolationStr , "Interpolation: %.2e\n" , interpolationWeight );
@@ -973,8 +1147,13 @@ void TextureFilter< PreReal , Real >::InitializeVisualization( void )
 }
 #endif // NO_OPEN_GL_VISUALIZATION
 
+#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
+template< typename PreReal , typename Real , unsigned int TextureBitDepth >
+void TextureFilter< PreReal , Real , TextureBitDepth >::Init( void )
+#else // !VARIABLE_SIZED_IMAGE_CHANNEL
 template< typename PreReal , typename Real >
 void TextureFilter< PreReal , Real >::Init( void )
+#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 {
 	sprintf( stepsString , "Steps: 0" );
 	levels = std::max<int>(Levels.value,1);
@@ -986,10 +1165,18 @@ void TextureFilter< PreReal , Real >::Init( void )
 		char *ext = GetFileExtension( Input.values[1] );
 #ifdef USE_LOW_FREQUENCY
 		if( !strcasecmp( ext , "normap" ) ) ReadBinaryImage( highFrequencyTexture , Input.values[1] );
+#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
+		else highFrequencyTexture.template read< TextureBitDepth >( Input.values[1] );
+#else // !VARIABLE_SIZED_IMAGE_CHANNEL
 		else highFrequencyTexture.read( Input.values[1] );
+#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 #else // !USE_LOW_FREQUENCY
 		if( !strcasecmp( ext , "normap" ) ) ReadBinaryImage( texture , Input.values[1] );
+#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
+		else texture.template read< TextureBitDepth >( Input.values[1] );
+#else // !VARIABLE_SIZED_IMAGE_CHANNEL
 		else texture.read( Input.values[1] );
+#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 #endif // USE_LOW_FREQUENCY
 		delete[] ext;
 	}
@@ -998,7 +1185,11 @@ void TextureFilter< PreReal , Real >::Init( void )
 	{
 		char *ext = GetFileExtension( InputLowFrequency.value );
 		if( !strcasecmp( ext , "normap" ) ) ReadBinaryImage( lowFrequencyTexture , InputLowFrequency.value );
+#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
+		else lowFrequencyTexture.template read< TextureBitDepth >( InputLowFrequency.value );
+#else // !VARIABLE_SIZED_IMAGE_CHANNEL
 		else lowFrequencyTexture.read( InputLowFrequency.value );
+#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 		delete[] ext;
 	}
 	else lowFrequencyTexture = highFrequencyTexture;
@@ -1122,9 +1313,57 @@ void TextureFilter< PreReal , Real >::Init( void )
 	}
 }
 
+#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
+template< typename PreReal , typename Real , unsigned int TextureBitDepth >
+#else // !VARIABLE_SIZED_IMAGE_CHANNEL
 template< typename PreReal , typename Real >
+#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 void _main( int argc , char *argv[] )
 {
+#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
+	TextureFilter< PreReal , Real , TextureBitDepth >::Init();
+
+	TextureFilter< PreReal , Real , TextureBitDepth >::updateCount = Paused.set ?  0 : -1;
+
+#ifdef NO_OPEN_GL_VISUALIZATION
+	if( UseDirectSolver.set ) TextureFilter< PreReal , Real , TextureBitDepth >::ComputeExactSolution( Verbose.set );
+	else for ( int i=0 ; i<OutputVCycles.value ; i++ ) TextureFilter< PreReal , Real , TextureBitDepth >::UpdateSolution();
+	TextureFilter< PreReal , Real , TextureBitDepth >::WriteTexture( Output.value );
+#else // !NO_OPEN_GL_VISUALIZATION
+	if( !Output.set )
+	{
+		glutInitDisplayMode( GLUT_RGB | GLUT_DOUBLE );
+		TextureFilter< PreReal , Real , TextureBitDepth >::visualization.displayMode = DisplayMode.value;
+		if     ( DisplayMode.value==ONE_REGION_DISPLAY   ) TextureFilter< PreReal , Real , TextureBitDepth >::visualization.screenWidth =  800 , TextureFilter< PreReal , Real , TextureBitDepth >::visualization.screenHeight = 800;
+		else if( DisplayMode.value==TWO_REGION_DISPLAY   ) TextureFilter< PreReal , Real , TextureBitDepth >::visualization.screenWidth = 1600 , TextureFilter< PreReal , Real , TextureBitDepth >::visualization.screenHeight = 800;
+		else if( DisplayMode.value==THREE_REGION_DISPLAY ) TextureFilter< PreReal , Real , TextureBitDepth >::visualization.screenWidth = 1200 , TextureFilter< PreReal , Real , TextureBitDepth >::visualization.screenHeight = 800;
+		else if( DisplayMode.value==FOUR_REGION_DISPLAY  ) TextureFilter< PreReal , Real , TextureBitDepth >::visualization.screenWidth = 1500 , TextureFilter< PreReal , Real , TextureBitDepth >::visualization.screenHeight = 600;
+		glutInitWindowSize( TextureFilter< PreReal , Real , TextureBitDepth >::visualization.screenWidth , TextureFilter< PreReal , Real , TextureBitDepth >::visualization.screenHeight );
+		glutInit( &argc , argv );
+		char windowName[1024];
+		sprintf( windowName , "Texture Filtering" );
+		glutCreateWindow( windowName );
+		if( glewInit()!=GLEW_OK ) Miscellany::Throw( "glewInit failed" );
+		glutDisplayFunc ( TextureFilter< PreReal , Real , TextureBitDepth >::Display );
+		glutReshapeFunc ( TextureFilter< PreReal , Real , TextureBitDepth >::Reshape );
+		glutMouseFunc   ( TextureFilter< PreReal , Real , TextureBitDepth >::MouseFunc );
+		glutMotionFunc  ( TextureFilter< PreReal , Real , TextureBitDepth >::MotionFunc );
+		glutKeyboardFunc( TextureFilter< PreReal , Real , TextureBitDepth >::KeyboardFunc) ;
+		glutIdleFunc    ( TextureFilter< PreReal , Real , TextureBitDepth >::Idle );
+		if( CameraConfig.set ) TextureFilter< PreReal , Real , TextureBitDepth >::visualization.ReadSceneConfigurationCallBack( &TextureFilter< PreReal , Real , TextureBitDepth >::visualization , CameraConfig.value );
+		TextureFilter< PreReal , Real , TextureBitDepth >::InitializeVisualization();
+		TextureFilter< PreReal , Real , TextureBitDepth >::visualization.showSlideBar = true;
+		glutMainLoop(); 
+	}
+	else
+	{
+		if( UseDirectSolver.set ) TextureFilter< PreReal , Real , TextureBitDepth >::ComputeExactSolution( Verbose.set );
+		else for ( int i=0 ; i<OutputVCycles.value ; i++ ) TextureFilter< PreReal , Real , TextureBitDepth >::UpdateSolution();
+		TextureFilter< PreReal , Real , TextureBitDepth >::ExportTextureCallBack( &TextureFilter< PreReal , Real , TextureBitDepth >::visualization , Output.value );
+	}
+#endif // NO_OPEN_GL_VISUALIZATION
+
+#else // !VARIABLE_SIZED_IMAGE_CHANNEL
 	TextureFilter< PreReal , Real >::Init();
 
 	TextureFilter< PreReal , Real >::updateCount = Paused.set ?  0 : -1;
@@ -1166,7 +1405,23 @@ void _main( int argc , char *argv[] )
 		TextureFilter< PreReal , Real >::ExportTextureCallBack( &TextureFilter< PreReal , Real >::visualization , Output.value );
 	}
 #endif // NO_OPEN_GL_VISUALIZATION
+#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 }
+
+#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
+template< typename PreReal , typename Real >
+void _main( int argc , char *argv[] , unsigned int bitDepth )
+{
+	switch( bitDepth )
+	{
+	case  8: return _main< PreReal , Real ,  8 >( argc , argv );
+	case 16: return _main< PreReal , Real , 16 >( argc , argv );
+	case 32: return _main< PreReal , Real , 32 >( argc , argv );
+	case 64: return _main< PreReal , Real , 64 >( argc , argv );
+	default: Miscellany::ErrorOut( "Only bit depths of 8, 16, 32, and 64 supported: %d" , bitDepth );
+	}
+}
+#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 
 int main(int argc, char* argv[])
 {
@@ -1176,6 +1431,15 @@ int main(int argc, char* argv[])
 #else // !NO_OPEN_GL_VISUALIZATION
 	if( !Input.set ) { ShowUsage( argv[0] ) ; return EXIT_FAILURE; }
 #endif // NO_OPEN_GL_VISUALIZATION
+
+#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
+	unsigned int bitDepth;
+	{
+		unsigned int width , height , channels;
+		ImageReader< 8 >::GetInfo( Input.values[1] , width , height , channels , bitDepth );
+	}
+#endif // VARIABLE_SIZED_IMAGE_CHANNEL
+
 	omp_set_num_threads( Threads.value );
 	if( !NoHelp.set && !Output.set )
 	{
@@ -1192,8 +1456,13 @@ int main(int argc, char* argv[])
 	}
 	try
 	{
+#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
+		if( Double.set ) _main< double , double >( argc , argv , bitDepth );
+		else             _main< double , float  >( argc , argv , bitDepth );
+#else // !VARIABLE_SIZED_IMAGE_CHANNEL
 		if( Double.set ) _main< double , double >( argc , argv );
 		else             _main< double , float  >( argc , argv );
+#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 	}
 	catch( Miscellany::Exception &e )
 	{

@@ -128,7 +128,11 @@ void TexturedMeshVisualization::ScreenshotCallBack(Visualization* v, const char*
 	Image< Point3D< float > > image;
 	TexturedMeshVisualization* av = (TexturedMeshVisualization*)v;
 	av->RenderOffScreenBuffer( image );
+#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
+	image.template write< 8 >( prompt );
+#else // !VARIABLE_SIZED_IMAGE_CHANNEL
 	image.write( prompt );
+#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 }
 
 void TexturedMeshVisualization::UpdateVertexBuffer() {
@@ -711,7 +715,11 @@ void TexturedMeshVisualization::takeScreenshot( const char* fileName )
 {
 	Image< Point3D< float > > image;
 	RenderOffScreenBuffer( image );
+#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
+	image.template write< 8 >( fileName );
+#else // !VARIABLE_SIZED_IMAGE_CHANNEL
 	image.write( fileName );
+#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 }
 
 void TexturedMeshVisualization::motionFunc(int x, int y)

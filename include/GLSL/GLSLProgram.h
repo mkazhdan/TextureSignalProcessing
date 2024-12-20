@@ -45,7 +45,7 @@ class GLSLProgram
 public:
 	static bool fileExists( const std::string & fileName );
 	static std::string getExtension( const std::string & fileName );
-	static GLSLShader::GLSLShaderType getShaderType( const char* fileName ) throw( GLSLProgramException );
+	static GLSLShader::GLSLShaderType getShaderType( const char* fileName );// throw( GLSLProgramException );
 
 	int handle;
 	bool linked;
@@ -53,16 +53,16 @@ public:
 	std::string fragment_shader_src;
 
 	GLSLProgram( void );
-	GLSLProgram( const char* vs_filename , const char* fs_filename ) throw( GLSLProgramException );
+	GLSLProgram( const char* vs_filename , const char* fs_filename );// throw( GLSLProgramException );
 	GLSLProgram( const std::string& vs_src , const std::string& fs_src );
 
 	~GLSLProgram( void );
 
-	void compileShader( const std::string & source , GLSLShader::GLSLShaderType type ) throw( GLSLProgramException );
+	void compileShader( const std::string & source , GLSLShader::GLSLShaderType type );// throw( GLSLProgramException );
 
-	void link( void )     throw( GLSLProgramException );
-	void validate( void ) throw( GLSLProgramException );
-	void use( void )      throw( GLSLProgramException );
+	void link( void );//     throw( GLSLProgramException );
+	void validate( void );// throw( GLSLProgramException );
+	void use( void );//      throw( GLSLProgramException );
 
 	int getHandle( void );
 	bool isLinked( void );
@@ -125,7 +125,8 @@ namespace GLSLShaderInfo
 }
 
 GLSLProgram::GLSLProgram( void ) : handle( 0 ) , linked( false ) {}
-GLSLProgram::GLSLProgram( const char* vs_filename , const char* fs_filename ) throw( GLSLProgramException ) : handle( 0 ) , linked( false )
+GLSLProgram::GLSLProgram( const char* vs_filename , const char* fs_filename )// throw( GLSLProgramException )
+	: handle( 0 ) , linked( false )
 {
 	// Check that the first shader is a vertex shader and that the file exists. If it does, read in the code.
 	if( getShaderType( vs_filename )!=GLSLShader::VERTEX ) throw GLSLProgramException( std::string( "Expected vertex shader: " ) + std::string( vs_filename ) );
@@ -174,7 +175,7 @@ GLSLProgram::~GLSLProgram( void )
 	delete[] shaderNames;
 }
 
-GLSLShader::GLSLShaderType GLSLProgram::getShaderType( const char* fileName ) throw( GLSLProgramException )
+GLSLShader::GLSLShaderType GLSLProgram::getShaderType( const char* fileName )// throw( GLSLProgramException )
 {
 	int numExts = sizeof( GLSLShaderInfo::extensions ) / sizeof( GLSLShaderInfo::shader_file_extension );
 
@@ -194,7 +195,7 @@ std::string GLSLProgram::getExtension( const std::string & filename )
 	return "";
 }
 
-void GLSLProgram::compileShader( const std::string & source , GLSLShader::GLSLShaderType type ) throw( GLSLProgramException )
+void GLSLProgram::compileShader( const std::string & source , GLSLShader::GLSLShaderType type )// throw( GLSLProgramException )
 {
 	if( handle<=0 )
 	{
@@ -232,7 +233,7 @@ void GLSLProgram::compileShader( const std::string & source , GLSLShader::GLSLSh
 	else glAttachShader( handle , shaderHandle );
 }
 
-void GLSLProgram::link( void ) throw( GLSLProgramException )
+void GLSLProgram::link( void )// throw( GLSLProgramException )
 {
 	if( linked ) return;
 	if( handle<=0 ) throw GLSLProgramException( "Program has not been compiled." );
@@ -262,7 +263,7 @@ void GLSLProgram::link( void ) throw( GLSLProgramException )
 	else linked = true;
 }
 
-void GLSLProgram::use( void ) throw( GLSLProgramException )
+void GLSLProgram::use( void )// throw( GLSLProgramException )
 {
 	if( handle<=0 || (!linked) ) throw GLSLProgramException( "Shader has not been linked" );
 	glUseProgram( handle );
@@ -328,7 +329,7 @@ void GLSLProgram::setUniformMatrix( const char* name , const double* m , bool sh
 	setUniformMatrix< Dim >( name , _m , showWarning );
 }
 
-void GLSLProgram::validate( void ) throw( GLSLProgramException )
+void GLSLProgram::validate( void )// throw( GLSLProgramException )
 {
 	if( !isLinked() ) throw GLSLProgramException("Program is not linked");
 

@@ -29,6 +29,7 @@ DAMAGE.
 #define PRE_PROCESSING_INCLUDED
 
 #define NEW_CODE					// General-purpose experimental code encapsulation
+#define VARIABLE_SIZED_IMAGE_CHANNEL	// Supports images with bit-depth other than 8
 //#define NO_OPEN_GL_VISUALIZATION		// Disable OpenGL visualization
 //#define USE_TEXTURE_TRIANGLES		// Represent textures using a separate triangulation
 

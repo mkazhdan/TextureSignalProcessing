@@ -533,7 +533,11 @@ void GrayScottReactionDiffusion< PreReal , Real >::ExportTextureCallBack( Visual
 	outputImage.resize( textureWidth , textureHeight );
 	for( int i=0 ; i<outputImage.size() ; i++ ) outputImage[i] = Point3D< Real >( outputBuffer[i] , outputBuffer[i] , outputBuffer[i] ) / (Real)255.;
 	padding.unpad( outputImage );
+#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
+	outputImage.template write< 8 >( prompt );
+#else // !VARIABLE_SIZED_IMAGE_CHANNEL
 	outputImage.write( prompt );
+#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 }
 
 template< typename PreReal , typename Real >

@@ -1,9 +1,25 @@
 TARGET= TextureFiltering
 SOURCE= TextureFiltering.cpp
 
+COMPILER ?= gcc
+#COMPILER ?= clang
 
-CFLAGS += -fpermissive -fopenmp -Wno-deprecated -Wno-unused-result -Wno-format -msse2 -std=c++14 
-LFLAGS += -lgomp -lz -lGL -lGLU -lglut -lGLEW -lpng -ljpeg
+ifeq ($(COMPILER),gcc)
+	CFLAGS += -fpermissive -fopenmp -Wno-deprecated -Wno-unused-result -Wno-format -msse2 -std=c++17
+	CC=gcc
+	CXX=g++
+else
+	CFLAGS += -fpermissive -Wno-deprecated -Wno-unused-result -Wno-format -msse2 -std=c++17
+	CC=clang
+	CXX=clang++
+endif
+
+ifeq ($(NO_VISUAL),true)
+	LFLAGS += -lgomp -lz -lpng -ljpeg
+	CFLAGS += -DNO_OPEN_GL_VISUALIZATION
+else
+	LFLAGS += -lgomp -lz -lGL -lGLU -lglut -lGLEW -lpng -ljpeg
+endif
 
 CFLAGS_DEBUG = -DDEBUG -g3
 LFLAGS_DEBUG =

@@ -1,14 +1,25 @@
 TARGET= ReactionDiffusion
 SOURCE= ReactionDiffusion.cpp
 
+COMPILER ?= gcc
+#COMPILER ?= clang
 
-CFLAGS += -fpermissive -fopenmp -Wno-deprecated -Wno-unused-result -Wno-format -msse2 -std=c++14 
-LFLAGS += -lgomp -lz -lGL -lGLU -lglut -lGLEW -lpng -ljpeg
+ifeq ($(COMPILER),gcc)
+	CFLAGS += -fpermissive -fopenmp -Wno-deprecated -Wno-unused-result -Wno-format -msse2 -std=c++17
+	LFLAGS += -lgomp -lz -lGL -lGLU -lglut -lGLEW -lpng -ljpeg
+	CC=gcc
+	CXX=g++
+else
+	CFLAGS += -fpermissive -Wno-deprecated -Wno-unused-result -Wno-format -msse2 -std=c++17
+	LFLAGS += -lgomp -lz -lGL -lGLU -lglut -lGLEW -lpng -ljpeg
+	CC=clang
+	CXX=clang++
+endif
 
 CFLAGS_DEBUG = -DDEBUG -g3
 LFLAGS_DEBUG =
 
-CFLAGS_RELEASE = -O3 -DRELEASE -funroll-loops -ffast-math -DNDEBUG -DNEW_CODE
+CFLAGS_RELEASE = -O3 -DRELEASE -funroll-loops -ffast-math -DNDEBUG
 LFLAGS_RELEASE = -O3 
 
 SRC = ./

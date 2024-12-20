@@ -57,6 +57,13 @@ my_error_exit (j_common_ptr cinfo)
 	longjmp(myerr->setjmp_buffer, 1);
 }
 
+#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
+inline bool JPEGReader::GetInfo( const char* fileName , unsigned int& width , unsigned int& height , unsigned int& channels , unsigned int &bitDepth )
+{
+	bitDepth = 8;
+	return GetInfo( fileName , width , height , channels );
+}
+#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 inline bool JPEGReader::GetInfo( const char* fileName , unsigned int& width , unsigned int& height , unsigned int& channels )
 {
 	FILE* fp = fopen( fileName , "rb" );

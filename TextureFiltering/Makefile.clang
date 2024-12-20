@@ -2,7 +2,7 @@ TARGET= TextureFiltering
 SOURCE= TextureFiltering.cpp
 
 
-CFLAGS += -fpermissive -Wno-deprecated -Wno-unused-result -Wno-format -msse2 -std=c++14 
+CFLAGS += -fpermissive -Wno-deprecated -Wno-unused-result -Wno-format -msse2 -std=c++17
 #LFLAGS += -lgomp -lz -lGL -lGLU -lglut -lGLEW -lpng -ljpeg
 LFLAGS += -lgomp -lz -lpng -ljpeg
 

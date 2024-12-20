@@ -34,12 +34,28 @@ DAMAGE.
 #include <png.h>
 #endif // _WIN32
 
-struct PNGReader : public ImageReader
+
+#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
+template< unsigned int BitDepth=8 >
+struct PNGReader : public ImageReader< BitDepth >
+#else // !VARIABLE_SIZED_IMAGE_CHANNEL
+#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 {
+#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
+	using ChannelType = typename ImageChannel< BitDepth >::Type;
+#endif // VARIABLE_SIZED_IMAGE_CHANNEL
+
 	PNGReader( const char* fileName , unsigned int& width , unsigned int& height , unsigned int& channels );
 	~PNGReader( void );
+#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
+	unsigned int nextRow( ChannelType * row );
+#else // !VARIABLE_SIZED_IMAGE_CHANNEL
 	unsigned int nextRow( unsigned char* row );
+#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 	static bool GetInfo( const char* fileName , unsigned int& width , unsigned int& height , unsigned int& channels );
+#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
+	static bool GetInfo( const char* fileName , unsigned int& width , unsigned int& height , unsigned int& channels , unsigned int &bitDepth );
+#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 protected:
 	png_structp _png_ptr;
 	png_infop _info_ptr;
@@ -48,12 +64,26 @@ protected:
 	unsigned int _currentRow;
 };
 
+#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
+template< unsigned int BitDepth=8 >
+struct PNGWriter : public ImageWriter< BitDepth >
+#else // !VARIABLE_SIZED_IMAGE_CHANNEL
 struct PNGWriter : public ImageWriter
+#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 {
+#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
+	using ChannelType = typename ImageChannel< BitDepth >::Type;
+#endif // VARIABLE_SIZED_IMAGE_CHANNEL
+
 	PNGWriter( const char* fileName , unsigned int width , unsigned int height , unsigned int channels , unsigned int quality=100 );
 	~PNGWriter( void );
+#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
+	unsigned int nextRow( const ChannelType * row );
+	unsigned int nextRows( const ChannelType * rows , unsigned int rowNum );
+#else // !VARIABLE_SIZED_IMAGE_CHANNEL
 	unsigned int nextRow( const unsigned char* row );
 	unsigned int nextRows( const unsigned char* rows , unsigned int rowNum );
+#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 protected:
 	FILE* _fp;
 	png_structp _png_ptr;
@@ -62,4 +92,4 @@ protected:
 };
 
 #include "PNG.inl"
-#endif //PNG_INCLUDED
+#endif // PNG_INCLUDED
