@@ -487,11 +487,7 @@ void LineConvolution< PreReal , Real >::ExportTextureCallBack( Visualization * /
 	outputImage.resize( textureWidth , textureHeight );
 	for( int i=0 ; i<outputImage.size() ; i++ ) outputImage[i] = Point3D< float >( outputBuffer[3*i] , outputBuffer[3*i+1] , outputBuffer[3*i+2] ) / 255.f;
 	padding.unpad( outputImage );
-#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
 	outputImage.template write< 8 >( prompt );
-#else // !VARIABLE_SIZED_IMAGE_CHANNEL
-	outputImage.write( prompt );
-#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 }
 
 template< typename PreReal , typename Real >

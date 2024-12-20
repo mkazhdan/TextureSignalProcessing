@@ -540,11 +540,7 @@ void Visualization::saveFrameBuffer( const char* fileName , int whichBuffer )
 		_pixels[ c + i * 3 + j * screenWidth * 3 ] = (unsigned char)ii;
 	}
 	FreePointer( pixels );
-#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
 	if( !ImageWriter< 8 >::Write( fileName , _pixels , screenWidth , screenHeight , 3 ) ) Miscellany::Warn( "Failed to write image: %s" , fileName );
-#else // !VARIABLE_SIZED_IMAGE_CHANNEL
-	if( !ImageWriter::Write( fileName , _pixels , screenWidth , screenHeight , 3 ) ) Miscellany::Warn( "Failed to write image: %s" , fileName );
-#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 	FreePointer( _pixels );
 }
 

@@ -49,19 +49,13 @@ struct my_error_mgr
 };
 typedef struct my_error_mgr * my_error_ptr;
 
-#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
 struct JPEGReader : public ImageReader< 8 >
-#else // !VARIABLE_SIZED_IMAGE_CHANNEL
-struct JPEGReader : public ImageReader
-#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 {
 	JPEGReader( const char* fileName , unsigned int& width , unsigned int& height , unsigned int& channels );
 	~JPEGReader( void );
 	unsigned int nextRow( unsigned char* row );
 	static bool GetInfo( const char* fileName , unsigned int& width , unsigned int& height , unsigned int& channels );
-#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
 	static bool GetInfo( const char* fileName , unsigned int& width , unsigned int& height , unsigned int& channels , unsigned int &bitDepth );
-#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 protected:
 	FILE* _fp;
 	struct jpeg_decompress_struct _cInfo;
@@ -69,11 +63,7 @@ protected:
 	unsigned int _currentRow;
 };
 
-#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
 struct JPEGWriter : public ImageWriter< 8 >
-#else // !VARIABLE_SIZED_IMAGE_CHANNEL
-struct JPEGWriter : public ImageWriter
-#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 {
 	JPEGWriter( const char* fileName , unsigned int width , unsigned int height , unsigned int channels , unsigned int quality=100 );
 	~JPEGWriter( void );

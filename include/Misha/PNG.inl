@@ -34,12 +34,8 @@ DAMAGE.
 #endif // _WIN32
 #include "Miscellany.h"
 
-#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
 template< unsigned int BitDepth >
 inline PNGReader< BitDepth >::PNGReader( const char* fileName , unsigned int& width , unsigned int& height , unsigned int& channels )
-#else // !VARIABLE_SIZED_IMAGE_CHANNEL
-inline PNGReader::PNGReader( const char* fileName , unsigned int& width , unsigned int& height , unsigned int& channels )
-#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 {
 	_currentRow = 0;
 
@@ -63,11 +59,7 @@ inline PNGReader::PNGReader( const char* fileName , unsigned int& width , unsign
 	channels = png_get_channels( _png_ptr , _info_ptr );
 	int bit_depth=png_get_bit_depth( _png_ptr , _info_ptr );
 	int color_type = png_get_color_type( _png_ptr , _info_ptr );
-#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
 	if( bit_depth!=BitDepth ) Miscellany::ErrorOut( "expected %d bits per channel: %d" , BitDepth , bit_depth );
-#else // !VARIABLE_SIZED_IMAGE_CHANNEL
-	if( bit_depth!=8 ) Miscellany::ErrorOut( "expected 8 bits per channel: %d" , bit_depth );
-#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 	if( color_type==PNG_COLOR_TYPE_PALETTE ) png_set_expand( _png_ptr ) , printf( "Expanding PNG color pallette\n" );
 
 	{
@@ -77,29 +69,16 @@ inline PNGReader::PNGReader( const char* fileName , unsigned int& width , unsign
 	}
 }
 
-#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
 template< unsigned int BitDepth >
 inline unsigned int PNGReader< BitDepth >::nextRow( ChannelType * row )
 {
 	png_read_row( _png_ptr , (png_bytep)row , NULL );
 	return _currentRow++;
 }
-#else // !VARIABLE_SIZED_IMAGE_CHANNEL
-inline unsigned int PNGReader::nextRow( unsigned char* row )
-{
-	png_read_row( _png_ptr , (png_bytep)row , NULL );
-	return _currentRow++;
-}
-#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 
-#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
 template< unsigned int BitDepth >
 PNGReader< BitDepth >::~PNGReader( void ){ }
-#else // !VARIABLE_SIZED_IMAGE_CHANNEL
-PNGReader::~PNGReader( void ){ }
-#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 
-#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
 template< unsigned int BitDepth >
 inline bool PNGReader< BitDepth >::GetInfo( const char* fileName , unsigned int& width , unsigned int& height , unsigned int& channels )
 {
@@ -109,9 +88,6 @@ inline bool PNGReader< BitDepth >::GetInfo( const char* fileName , unsigned int&
 
 template< unsigned int BitDepth >
 inline bool PNGReader< BitDepth >::GetInfo( const char* fileName , unsigned int& width , unsigned int& height , unsigned int& channels , unsigned int &bitDepth )
-#else // !VARIABLE_SIZED_IMAGE_CHANNEL
-inline bool PNGReader::GetInfo( const char* fileName , unsigned int& width , unsigned int& height , unsigned int& channels )
-#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 {
 	png_structp png_ptr;
 	png_infop info_ptr;
@@ -134,21 +110,15 @@ inline bool PNGReader::GetInfo( const char* fileName , unsigned int& width , uns
 	width = png_get_image_width( png_ptr , info_ptr );
 	height = png_get_image_height( png_ptr, info_ptr );
 	channels = png_get_channels( png_ptr , info_ptr );
-#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
 	bitDepth = png_get_bit_depth( png_ptr , info_ptr );
-#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 
 	png_destroy_read_struct( &png_ptr , &info_ptr , &end_info );
 	fclose( fp );
 	return true;
 }
 
-#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
 template< unsigned int BitDepth >
 PNGWriter< BitDepth >::PNGWriter( const char* fileName , unsigned int width , unsigned int height , unsigned int channels , unsigned int /*quality*/ )
-#else // !VARIABLE_SIZED_IMAGE_CHANNEL
-PNGWriter::PNGWriter( const char* fileName , unsigned int width , unsigned int height , unsigned int channels , unsigned int /*quality*/ )
-#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 {
 	_currentRow = 0;
 
@@ -182,41 +152,25 @@ PNGWriter::PNGWriter( const char* fileName , unsigned int width , unsigned int h
 	}
 }
 
-#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
 template< unsigned int BitDepth >
 PNGWriter< BitDepth >::~PNGWriter( void )
-#else // !VARIABLE_SIZED_IMAGE_CHANNEL
-PNGWriter::~PNGWriter( void )
-#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 {
 	png_write_end( _png_ptr , NULL );
 	png_destroy_write_struct( &_png_ptr , &_info_ptr );
 	fclose( _fp );
 }
 
-#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
 template< unsigned int BitDepth >
 unsigned int PNGWriter< BitDepth >::nextRow( const ChannelType * row )
-#else // !VARIABLE_SIZED_IMAGE_CHANNEL
-unsigned int PNGWriter::nextRow( const unsigned char* row )
-#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 {
 	png_write_row( _png_ptr , (png_bytep)row );
 	return _currentRow++;
 }
 
-#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
 template< unsigned int BitDepth >
 unsigned int PNGWriter< BitDepth >::nextRows( const ChannelType * rows , unsigned int rowNum )
-#else // !VARIABLE_SIZED_IMAGE_CHANNEL
-unsigned int PNGWriter::nextRows( const unsigned char* rows , unsigned int rowNum )
-#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 {
-#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
 	for( unsigned int r=0 ; r<rowNum ; r++ ) png_write_row( _png_ptr , (png_bytep)( rows + r * 3 * sizeof( ChannelType ) * png_get_image_width(_png_ptr, _info_ptr) ));
-#else // !VARIABLE_SIZED_IMAGE_CHANNEL
-	for( unsigned int r=0 ; r<rowNum ; r++ ) png_write_row( _png_ptr , (png_bytep)( rows + r * 3 * sizeof( unsigned char ) * png_get_image_width(_png_ptr, _info_ptr) ));
-#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 	return _currentRow += rowNum;
 }
 

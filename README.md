@@ -1,4 +1,4 @@
-<center><h2>Gradient Domain Texture Processing (Version 4.60)</h2></center>
+<center><h2>Gradient Domain Texture Processing (Version 4.75)</h2></center>
 <center>
 <a href="#LINKS">links</a>
 <a href="#EXECUTABLES">executables</a>
@@ -30,6 +30,7 @@ This software supports gradient-domain signal processing within a texture atlas.
 <B>Data:</B>
 <A HREF="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/TSP.Data.zip">ZIP</A><br>
 <b>Older Versions:</b>
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.60/">V4.60</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.50/">V4.50</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.08/">V4.08</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.07/">V4.07</a>,
@@ -497,6 +498,11 @@ Here a "dots" pattern is written out to an image. (Empirically, we have found th
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.60/">Version 4.60</a>:
 <ul>
 <li> Added <B>--mask</B> for specifying mask(s) to support default cross-chart smoothing.
+</ul>
+
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.75/">Version 4.75</a>:
+<ul>
+<li> Added support for 16-bit png files.
 </ul>
 
 </details>

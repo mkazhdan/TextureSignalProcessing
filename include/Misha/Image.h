@@ -43,13 +43,8 @@ struct Image
 	Image(const Image& img);
 	~Image(void);
 	void resize(int w, int h);
-#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
 	template< unsigned int BitDepth > void read( const char* fileName );
 	template< unsigned int BitDepth > void write( const char* fileName ) const;
-#else // !VARIABLE_SIZED_IMAGE_CHANNEL
-	void read(const char* fileName);
-	void write(const char* fileName) const;
-#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 	int width(void) const { return _width; }
 	int height(void) const { return _height; }
 	int size(void) const { return _width * _height; }
@@ -120,14 +115,12 @@ template< class Data > Image< Data >& Image< Data >::operator = (const Image& im
 	return *this;
 }
 
-#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
 template< typename Data >
 template< unsigned int BitDepth >
 void Image< Data >::read( const char* fileName )
 {
 	using CType = typename ImageChannel< BitDepth >::Type;
 	static const CType Scale = ~((CType )0);
-#ifdef NEW_CODE
 	unsigned int width , height;
 	CType * pixels = ImageReader< BitDepth >::ReadColor( fileName , width , height );
 	if( !pixels ) Miscellany::Throw( "Failed to read image: %s\n" , fileName );
@@ -150,15 +143,6 @@ void Image< Data >::read( const char* fileName )
 	else Miscellany::ErrorOut( "Bad data type " );
 
 	delete[] pixels;
-#else // !NEW_CODE
-	unsigned int width , height , channels;
-	unsigned char* pixels = ImageReader::Read( fileName , width , height , channels );
-	if( !pixels ) Miscellany::Throw( "Failed to read image: %s\n" , fileName );
-	if( channels!=3 ) Miscellany::Throw( "Only three channel images are supported: %d\n" , channels );
-	resize( width , height );
-	for( int i=0 ; i<(int)width ; i++ ) for( int j=0 ; j<(int)height ; j++ ) for( int c=0 ; c<(int)channels ; c++ ) (*this)(i,j)[c] = ( (float)pixels[ (j*width+i)*3+c ] ) / 255.f;
-	delete[] pixels;
-#endif // NEW_CODE
 }
 
 
@@ -192,116 +176,5 @@ void Image< Data >::write( const char* fileName ) const
 
 }
 
-#else // !VARIABLE_SIZED_IMAGE_CHANNEL
 
-
-
-
-#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
-template< class Data > template < unsigned int BitDepht > void Image< Data >::read( const char* fileName ) { Miscellany::ErrorOut( "Image read not supported" ); }
-template< class Data > template < unsigned int BitDepht > void Image< Data >::write( const char* fileName ) const { Miscellany::ErrorOut( "Image write not supported" ); }
-#else // !VARIABLE_SIZED_IMAGE_CHANNEL
-template< class Data > void Image< Data >::read( const char* fileName ) { Miscellany::ErrorOut( "Image read not supported" ); }
-template< class Data > void Image< Data >::write( const char* fileName ) const { Miscellany::ErrorOut( "Image write not supported" ); }
-#endif // VARIABLE_SIZED_IMAGE_CHANNEL
-
-template<>
-#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
-template< unsigned int BitDepth >
-#endif // VARIABLE_SIZED_IMAGE_CHANNEL
-void Image< Point3D< float > >::read( const char* fileName )
-{
-#ifdef NEW_CODE
-	unsigned int width , height;
-#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
-	unsigned char* pixels = ImageReader< BitDepth >::ReadColor( fileName , width , height );
-#else // !VARIABLE_SIZED_IMAGE_CHANNEL
-	unsigned char* pixels = ImageReader::ReadColor( fileName , width , height );
-#endif // VARIABLE_SIZED_IMAGE_CHANNEL
-	if( !pixels ) Miscellany::Throw( "Failed to read image: %s\n" , fileName );
-	resize( width , height );
-	for( int i=0 ; i<(int)width ; i++ ) for( int j=0 ; j<(int)height ; j++ ) for( int c=0 ; c<3 ; c++ ) (*this)(i,j)[c] = ( (float)pixels[ (j*width+i)*3+c ] ) / 255.f;
-	delete[] pixels;
-#else // !NEW_CODE
-	unsigned int width , height , channels;
-	unsigned char* pixels = ImageReader::Read( fileName , width , height , channels );
-	if( !pixels ) Miscellany::Throw( "Failed to read image: %s\n" , fileName );
-	if( channels!=3 ) Miscellany::Throw( "Only three channel images are supported: %d\n" , channels );
-	resize( width , height );
-	for( int i=0 ; i<(int)width ; i++ ) for( int j=0 ; j<(int)height ; j++ ) for( int c=0 ; c<(int)channels ; c++ ) (*this)(i,j)[c] = ( (float)pixels[ (j*width+i)*3+c ] ) / 255.f;
-	delete[] pixels;
-#endif // NEW_CODE
-}
-template<>
-#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
-template< unsigned int BitDepth >
-#endif // VARIABLE_SIZED_IMAGE_CHANNEL
-void Image< Point3D< double > >::read( const char* fileName )
-{
-#ifdef NEW_CODE
-	unsigned int width , height;
-#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
-	unsigned char* pixels = ImageReader< BitDepth >::ReadColor( fileName , width , height );
-#else // !VARIABLE_SIZED_IMAGE_CHANNEL
-	unsigned char* pixels = ImageReader::ReadColor( fileName , width , height );
-#endif // VARIABLE_SIZED_IMAGE_CHANNEL
-	if( !pixels ) Miscellany::Throw( "Failed to read image: %s\n" , fileName );
-	resize( width , height );
-	for( int i=0 ; i<(int)width ; i++ ) for( int j=0 ; j<(int)height ; j++ ) for( int c=0 ; c<3 ; c++) (*this)(i,j)[c] = ( (double)pixels[ (j*width+i)*3+c ] ) / 255.;
-	delete[] pixels;
-#else // !NEW_CODE
-	unsigned int width , height , channels;
-	unsigned char* pixels = ImageReader::Read( fileName , width , height , channels );
-	if( !pixels ) Miscellany::Throw( "Failed to read image: %s\n" , fileName );
-	if( channels!=3 ) Miscellany::Throw( "Only three channel images are supported: %d\n" , channels );
-	resize( width , height );
-	for( int i=0 ; i<(int)width ; i++ ) for( int j=0 ; j<(int)height ; j++ ) for( int c=0 ; c<(int)channels ; c++) (*this)(i,j)[c] = ( (double)pixels[ (j*width+i)*3+c ] ) / 255.;
-	delete[] pixels;
-#endif // NEW_CODE
-}
-
-template<>
-#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
-template< unsigned int BitDepth >
-void Image< Point3D< typename ImageChannel< BitDepth >::Type > >::read( const char* fileName )
-#else // !VARIABLE_SIZED_IMAGE_CHANNEL
-void Image< Point3D< unsigned char > >::read( const char* fileName )
-#endif // VARIABLE_SIZED_IMAGE_CHANNEL
-{
-	unsigned int w , h , c;
-#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
-	typename ImageChannel< BitDepth >::Type * pixels = ImageReader< BitDepth >::Read( fileName , w , h , c );
-#else // !VARIABLE_SIZED_IMAGE_CHANNEL
-	unsigned char* pixels = ImageReader::Read( fileName , w , h , c );
-#endif // VARIABLE_SIZED_IMAGE_CHANNEL
-	if( !pixels ) Miscellany::Throw( "Failed to read image: %s\n" , fileName );
-	if( c!=3 ) Miscellany::Throw( "Only three channel images are supported: %d\n" , c );
-	resize( w , h );
-#ifdef VARIABLE_SIZED_IMAGE_CHANNEL
-	memcpy( _pixels , pixels , sizeof( typename ImageChannel< BitDepth >::Type ) * _width * _height*3 );
-#else // !VARIABLE_SIZED_IMAGE_CHANNEL
-	memcpy( _pixels , pixels , sizeof(unsigned char) * _width * _height*3 );
-#endif // VARIABLE_SIZED_IMAGE_CHANNEL
-	delete[] pixels;
-}
-
-template<>
-void Image< Point3D< float > >::write( const char* fileName ) const
-{
-	unsigned char* pixels = new unsigned char[ _width*_height*3 ];
-	for( int i=0 ; i<_width ; i++ ) for( int j=0 ; j<_height ; j++ ) for( int c=0 ; c<3 ; c++ ) pixels[ 3*(j*_width+i)+c ] = (unsigned char)std::min< int >( 255 , std::max< int >( 0 , (int)( (*this)(i,j)[c] * 255.f + 0.5f ) ) );
-	ImageWriter::Write( fileName , pixels , _width , _height , 3 );
-	delete[] pixels;
-}
-template<>
-void Image< Point3D< double > >::write( const char* fileName ) const
-{
-	unsigned char* pixels = new unsigned char[ _width*_height*3 ];
-	for( int i=0 ; i<_width ; i++ ) for( int j=0 ; j<_height ; j++ ) for( int c=0 ; c<3 ; c++ ) pixels[ 3*(j*_width+i)+c ] = (unsigned char)std::min< int >( 255 , std::max< int >( 0 , (int)( (*this)(i,j)[c] * 255.0 + 0.5 ) ) );
-	ImageWriter::Write( fileName , pixels , _width , _height , 3 );
-	delete[] pixels;
-}
-template<>
-void Image< Point3D< unsigned char > >::write( const char *fileName ) const { ImageWriter::Write( fileName , (const unsigned char*)_pixels , _width , _height , 3 ); }
-#endif // VARIABLE_SIZED_IMAGE_CHANNEL
 #endif //IMAGE_INCLUDED
