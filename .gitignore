@@ -32,6 +32,7 @@ ReactionDiffusion/x64/
 TextureFiltering/x64/
 TextureStitching/x64/
 ZLIB/x64/
+ZLIB/Documentation/
 CHOLMOD/*
 */Debug/*
 */Release/*
