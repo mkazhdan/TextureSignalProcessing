@@ -137,12 +137,12 @@ PNGWriter< BitDepth >::PNGWriter( const char* fileName , unsigned int width , un
 	int pngColorType;
 	switch( channels )
 	{
-	case 1: pngColorType = PNG_COLOR_TYPE_GRAY ; break;
-	case 3: pngColorType = PNG_COLOR_TYPE_RGB  ; break;
-	case 4: pngColorType = PNG_COLOR_TYPE_RGBA ; break;
-	default: Miscellany::ErrorOut( "Only 1, 3, or 4 channel PNGs are supported" );
+		case 1: pngColorType = PNG_COLOR_TYPE_GRAY ; break;
+		case 3: pngColorType = PNG_COLOR_TYPE_RGB  ; break;
+		case 4: pngColorType = PNG_COLOR_TYPE_RGBA ; break;
+		default: Miscellany::ErrorOut( "Only 1, 3, or 4 channel PNGs are supported" );
 	};
-	png_set_IHDR( _png_ptr , _info_ptr, width , height, 8 , pngColorType , PNG_INTERLACE_NONE , PNG_COMPRESSION_TYPE_DEFAULT , PNG_FILTER_TYPE_DEFAULT );
+	png_set_IHDR( _png_ptr , _info_ptr, width , height, BitDepth , pngColorType , PNG_INTERLACE_NONE , PNG_COMPRESSION_TYPE_DEFAULT , PNG_FILTER_TYPE_DEFAULT );
 	png_write_info( _png_ptr , _info_ptr );
 
 	{
