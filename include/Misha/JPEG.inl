@@ -40,9 +40,7 @@ DAMAGE.
 #include <jmorecfg.h>
 #endif // _WIN32
 #include "Miscellany.h"
-#ifdef NEW_CODE
 #include "Exceptions.h"
-#endif // NEW_CODE
 
 
 
@@ -69,11 +67,7 @@ inline bool JPEGReader::GetInfo( const char* fileName , unsigned int& width , un
 inline bool JPEGReader::GetInfo( const char* fileName , unsigned int& width , unsigned int& height , unsigned int& channels )
 {
 	FILE* fp = fopen( fileName , "rb" );
-#ifdef NEW_CODE
 	if( !fp ) ERROR_OUT( "Failed to open: " , std::string( fileName ) );
-#else // !NEW_CODE
-	if( !fp ) Miscellany::ErrorOut( "Failed to open: %s" , fileName );
-#endif // NEW_CODE
 
 	struct jpeg_decompress_struct cInfo;
 	struct my_error_mgr jErr;
@@ -83,11 +77,7 @@ inline bool JPEGReader::GetInfo( const char* fileName , unsigned int& width , un
 	if( setjmp( jErr.setjmp_buffer ) )
 	{
 		jpeg_destroy_decompress( &cInfo );
-#ifdef NEW_CODE
 		ERROR_OUT( "JPEG error occured" );
-#else // !NEW_CODE
-		Miscellany::ErrorOut( "JPEG error occured" );
-#endif // NEW_CODE
 	}
 
 	jpeg_create_decompress( &cInfo );
@@ -108,22 +98,14 @@ inline JPEGReader::JPEGReader( const char* fileName , unsigned int& width , unsi
 {
 	_currentRow = 0;
 	_fp = fopen( fileName , "rb" );
-#ifdef NEW_CODE
 	if( !_fp ) ERROR_OUT( "Failed to open: " , std::string( fileName ) );
-#else // !NEW_CODE
-	if( !_fp ) Miscellany::ErrorOut( "Failed to open: %s\n" , fileName );
-#endif // NEW_CODE
 
 	_cInfo.err = jpeg_std_error( &_jErr.pub );
 	_jErr.pub.error_exit = my_error_exit;
 	if( setjmp( _jErr.setjmp_buffer ) )
 	{
 		jpeg_destroy_decompress( &_cInfo );
-#ifdef NEW_CODE
 		ERROR_OUT( "JPEG error occured" );
-#else // !NEW_CODE
-		Miscellany::ErrorOut( "JPEG error occured" );
-#endif // NEW_CODE
 	}
 
 	jpeg_create_decompress( &_cInfo );
@@ -154,11 +136,7 @@ inline JPEGWriter::JPEGWriter( const char* fileName , unsigned int width , unsig
 {
 	_currentRow = 0;
 	_fp = fopen( fileName , "wb" );
-#ifdef NEW_CODE
 	if( !_fp ) ERROR_OUT( "Failed to open: " , std::string( fileName ) );
-#else // !NEW_CODE
-	if( !_fp ) Miscellany::ErrorOut( "Failed to open: %s" , fileName );
-#endif // NEW_CODE
 
 	_cInfo.err = jpeg_std_error( &_jErr.pub );
 	jpeg_create_compress( &_cInfo );

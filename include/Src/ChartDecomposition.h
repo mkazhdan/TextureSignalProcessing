@@ -51,11 +51,7 @@ void AddComponent( std::vector< int > &vertexComponent , int vIndex , int curren
 				visitingQueue.push( vertexNeighbours[i] );
 			}
 			else if( vertexComponent[ vertexNeighbours[i] ]==currentComponent ) ;
-#ifdef NEW_CODE
 			else THROW( "Unexpected Condition on a connected component. Expected " , currentComponent , ". Obtained " , vertexComponent[ vertexNeighbours[i] ] , "." );
-#else // !NEW_CODE
-			else Miscellany::Throw( "Unexpected Condition on a connected component. Expected %d. Obtained %d.\n" , currentComponent , vertexComponent[ vertexNeighbours[i] ] );
-#endif // NEW_CODE
 		}
 	}
 }
@@ -68,11 +64,7 @@ void InitializeTriangleChartIndexing( const OrientedTexturedTriangleMesh< Geomet
 	{
 		unsigned long long  edgeKey = mesh.edgeKey(i,k);
 		if( edgeIndex.find(edgeKey)==edgeIndex.end() ) edgeIndex[edgeKey] = 3*i+k;
-#ifdef NEW_CODE
 		else THROW( "Non manifold mesh" );
-#else // !NEW_CODE
-		else Miscellany::Throw( "Non manifold mesh" );
-#endif // NEW_CODE
 	}
 
 	std::vector< std::vector< int > > neighbours( mesh.triangles.size() );

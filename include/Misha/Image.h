@@ -29,9 +29,7 @@ DAMAGE.
 #define IMAGE_INCLUDED
 
 #include "Miscellany.h"
-#ifdef NEW_CODE
 #include "Exceptions.h"
-#endif // NEW_CODE
 #include "Geometry.h"
 #include "CmdLineParser.h"
 #include "ImageIO.h"
@@ -106,11 +104,7 @@ template< class Data > void Image< Data >::resize(int w, int h)
 		if (_pixels) delete[] _pixels;
 		_pixels = NULL;
 		if (w*h) _pixels = new Data[w*h];
-#ifdef NEW_CODE
 		if( !_pixels ) ERROR_OUT( "Failed to allocate pixels: " , w , " x " , h );
-#else // !NEW_CODE
-		if (!_pixels) Miscellany::ErrorOut( "Failed to allocate pixels: %d x %d" , w , h );
-#endif // NEW_CODE
 	}
 	_width = w, _height = h;
 }
@@ -130,11 +124,7 @@ void Image< Data >::read( const char* fileName )
 	static const CType Scale = ~((CType )0);
 	unsigned int width , height;
 	CType * pixels = ImageReader< BitDepth >::ReadColor( fileName , width , height );
-#ifdef NEW_CODE
 	if( !pixels ) THROW( "Failed to read image: " , std::string( fileName ) );
-#else // !NEW_CODE
-	if( !pixels ) Miscellany::Throw( "Failed to read image: %s\n" , fileName );
-#endif // NEW_CODE
 	resize( width , height );
 
 	if constexpr( std::is_same_v< Data , Point3D< double > > )
@@ -151,11 +141,7 @@ void Image< Data >::read( const char* fileName )
 	{
 		memcpy( _pixels , pixels , sizeof( CType ) * _width * _height * 3 );
 	}
-#ifdef NEW_CODE
 	else ERROR_OUT( "Bad data type " );
-#else // !NEW_CODE
-	else Miscellany::ErrorOut( "Bad data type " );
-#endif // NEW_CODE
 
 	delete[] pixels;
 }
@@ -187,11 +173,7 @@ void Image< Data >::write( const char* fileName ) const
 	{
 		ImageWriter< BitDepth >::Write( fileName , (CType*)_pixels , _width , _height , 3 );
 	}
-#ifdef NEW_CODE
 	else ERROR_OUT( "Bad data type " );
-#else // !NEW_CODE
-	else Miscellany::ErrorOut( "Bad data type " );
-#endif // NEW_CODE
 
 }
 

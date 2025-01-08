@@ -30,13 +30,9 @@ DAMAGE.
 #include <complex>
 #include <unordered_map>
 #include "Miscellany.h"
-#ifdef NEW_CODE
 #include "Exceptions.h"
-#endif // NEW_CODE
-#ifdef NEW_MULTI_THREADING
 #include "Misha/MultiThreading.h"
 #include "Misha/Atomic.h"
-#endif // NEW_MULTI_THREADING
 
 ///////////////////
 //  SparseMatrix //
@@ -284,11 +280,7 @@ void SparseMatrix< T , IndexType >::SetRowSize( size_t row , size_t count )
 		}
 		rowSizes[row] = count;
 	}
-#ifdef NEW_CODE
 	else ERROR_OUT( "Row is out of bounds: 0 <= " , row , " < " , rows );
-#else // !NEW_CODE
-	else Miscellany::ErrorOut( "Row is out of bounds: 0 <= %d < %d" , (int)row , (int)rows );
-#endif // NEW_CODE
 }
 template< class T , class IndexType >
 void SparseMatrix< T , IndexType >::ResetRowSize( size_t row , size_t count )
@@ -300,11 +292,7 @@ void SparseMatrix< T , IndexType >::ResetRowSize( size_t row , size_t count )
 		if( count>oldCount ) memset( _entries[row]+oldCount , 0 , sizeof( MatrixEntry< T , IndexType > ) * ( count - oldCount ) );
 		rowSizes[row] = count;
 	}
-#ifdef NEW_CODE
 	else ERROR_OUT( "Row is out of bounds: 0 <= " , row , " < " , rows );
-#else // !NEW_CODE
-	else Miscellany::ErrorOut( "Row is out of bounds: 0 <= %d < %d" , (int)row , (int)rows );
-#endif // NEW_CODE
 }
 
 /////////////////////
@@ -319,12 +307,7 @@ SparseMatrix< T , IndexType > SparseMatrix< T , IndexType >::Identity( size_t di
 template< class T , class IndexType >
 SparseMatrix< T , IndexType >& SparseMatrix< T , IndexType >::operator *= ( T s )
 {
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor( 0 , rows , [&]( unsigned int , size_t i ){ for( int j=0 ; j<rowSizes[i] ; j++ ) _entries[i][j].Value *= s; } );
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-	for( int i=0 ; i<rows ; i++ ) for( int j=0 ; j<rowSizes[i] ; j++ ) _entries[i][j].Value *= s;
-#endif // NEW_MULTI_THREADING
 	return *this;
 }
 template< class T , class IndexType >
@@ -362,11 +345,7 @@ template< class T , class IndexType >
 Pointer( T ) SparseMatrix< T , IndexType >::operator * ( const Pointer( T ) in ) const
 {
 	Pointer( T ) out = AllocPointer< T >( rows );
-#ifdef NEW_MULTI_THREADING
 	MultiplyParallel( in , out , ThreadPool::NumThreads() , 0 );
-#else // !NEW_MULTI_THREADING
-	MultiplyParallel( in , out , omp_get_max_threads() , 0 );
-#endif // NEW_MULTI_THREADING
 	return out;
 }
 template< class T , class IndexType >
@@ -378,14 +357,9 @@ SparseMatrix< T , IndexType > SparseMatrix< T , IndexType >::operator * ( const 
 	size_t bCols = 0 , bRows = B.rows;
 	for( int i=0 ; i<A.rows ; i++ ) for( int j=0 ; j<A.rowSizes[i] ; j++ ) if( aCols<=A[i][j].N ) aCols = A[i][j].N+1;
 	for( int i=0 ; i<B.rows ; i++ ) for( int j=0 ; j<B.rowSizes[i] ; j++ ) if( bCols<=B[i][j].N ) bCols = B[i][j].N+1;
-#ifdef NEW_CODE
 	if( bRows<aCols ) ERROR_OUT( "Matrix sizes do not support multiplication " , aRows , " x " , aCols , " * " , bRows , " x " , bCols );
-#else // !NEW_CODE
-	if( bRows<aCols ) Miscellany::ErrorOut( "Matrix sizes do not support multiplication %lld x %lld * %lld x %lld" , (unsigned long long)aRows , (unsigned long long)aCols , (unsigned long long)bRows , (unsigned long long)bCols );
-#endif // NEW_CODE
 
 	out.resize( (int)aRows );
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor
 		(
 			0 , aRows ,
@@ -410,29 +384,6 @@ SparseMatrix< T , IndexType > SparseMatrix< T , IndexType >::operator * ( const 
 				for( typename std::unordered_map< IndexType , T >::iterator iter=row.begin() ; iter!=row.end() ; iter++ ) out[i][ out.rowSizes[i]++ ] = MatrixEntry< T , IndexType >( iter->first , iter->second );
 			}
 		);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-	for( int i=0 ; i<aRows ; i++ )
-	{
-		std::unordered_map< IndexType , T > row;
-		for( int j=0 ; j<A.rowSizes[i] ; j++ )
-		{
-			IndexType idx1 = A[i][j].N;
-			T AValue = A[i][j].Value;
-			for( int k=0 ; k<B.rowSizes[idx1] ; k++ )
-			{
-				IndexType idx2 = B[idx1][k].N;
-				T BValue = B[idx1][k].Value;
-				typename std::unordered_map< IndexType , T >::iterator iter = row.find(idx2);
-				if( iter==row.end() ) row[idx2] = AValue * BValue;
-				else iter->second += AValue * BValue;
-			}
-		}
-		out.SetRowSize( i , (int)row.size() );
-		out.rowSizes[i] = 0;
-		for( typename std::unordered_map< IndexType , T >::iterator iter=row.begin() ; iter!=row.end() ; iter++ ) out[i][ out.rowSizes[i]++ ] = MatrixEntry< T , IndexType >( iter->first , iter->second );
-	}
-#endif // NEW_MULTI_THREADING
 	return out;
 }
 template< class T , class IndexType >
@@ -441,7 +392,6 @@ SparseMatrix< T , IndexType > SparseMatrix< T , IndexType >::operator + ( const 
 	const SparseMatrix& A = *this;
 	SparseMatrix out;
 	out.resize( std::max< size_t >( A.rows , B.rows ) );
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor
 		(
 			0 , rows ,
@@ -469,32 +419,6 @@ SparseMatrix< T , IndexType > SparseMatrix< T , IndexType >::operator + ( const 
 				for( typename std::unordered_map< IndexType , T >::iterator iter=row.begin() ; iter!=row.end() ; iter++ ) out[i][ out.rowSizes[i]++ ] = MatrixEntry< T , IndexType >( iter->first , iter->second );
 			}
 		);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-	for( int i=0 ; i<rows ; i++ )
-	{
-		std::unordered_map< IndexType , T > row;
-		if( i<A.rows )
-			for( int j=0 ; j<A.rowSizes[i] ; j++ )
-			{
-				IndexType idx = A[i][j].N;
-				typename std::unordered_map< IndexType , T >::iterator iter = row.find(idx);
-				if( iter==row.end() ) row[idx] = A[i][j].Value;
-				else iter->second += A[i][j].Value;
-			}
-		if( i<B.rows )
-			for( int j=0 ; j<B.rowSizes[i] ; j++ )
-			{
-				IndexType idx = B[i][j].N;
-				typename std::unordered_map< IndexType , T >::iterator iter = row.find(idx);
-				if( iter==row.end() ) row[idx] = B[i][j].Value;
-				else iter->second += B[i][j].Value;
-			}
-		out.SetRowSize( i , row.size() );
-		out.rowSizes[i] = 0;
-		for( typename std::unordered_map< IndexType , T >::iterator iter=row.begin() ; iter!=row.end() ; iter++ ) out[i][ out.rowSizes[i]++ ] = MatrixEntry< T , IndexType >( iter->first , iter->second );
-	}
-#endif // NEW_MULTI_THREADING
 	return out;
 }
 template< class T , class IndexType >
@@ -505,7 +429,6 @@ SparseMatrix< T , IndexType > SparseMatrix< T , IndexType >::operator - ( const 
 	SparseMatrix out;
 
 	out.resize( rows );
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor
 		(
 			0 , rows ,
@@ -531,33 +454,9 @@ SparseMatrix< T , IndexType > SparseMatrix< T , IndexType >::operator - ( const 
 				out.SetRowSize( i , (int)row.size() );
 				out.rowSizes[i] = 0;
 				for( typename std::unordered_map< IndexType , T >::iterator iter=row.begin() ; iter!=row.end() ; iter++ ) out[i][ out.rowSizes[i]++ ] = MatrixEntry< T , IndexType >( iter->first , iter->second );
-			}		);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-	for( int i=0 ; i<rows ; i++ )
-	{
-		std::unordered_map< IndexType , T > row;
-		if( i<A.rows )
-			for( int j=0 ; j<A.rowSizes[i] ; j++ )
-			{
-				IndexType idx = A[i][j].N;
-				typename std::unordered_map< IndexType , T >::iterator iter = row.find(idx);
-				if( iter==row.end() ) row[idx] = A[i][j].Value;
-				else iter->second += A[i][j].Value;
 			}
-		if( i<B.rows )
-			for( int j=0 ; j<B.rowSizes[i] ; j++ )
-			{
-				IndexType idx = B[i][j].N;
-				typename std::unordered_map< IndexType , T >::iterator iter = row.find(idx);
-				if( iter==row.end() ) row[idx] = -B[i][j].Value;
-				else iter->second -= B[i][j].Value;
-			}
-		out.SetRowSize( i , (int)row.size() );
-		out.rowSizes[i] = 0;
-		for( typename std::unordered_map< IndexType , T >::iterator iter=row.begin() ; iter!=row.end() ; iter++ ) out[i][ out.rowSizes[i]++ ] = MatrixEntry< T , IndexType >( iter->first , iter->second );
-	}
-#endif // NEW_MULTI_THREADING
+		);
+
 	return out;
 }
 
@@ -571,16 +470,8 @@ SparseMatrix< T , IndexType > SparseMatrix< T , IndexType >::transpose( T (*Tran
 
 	A.resize( aRows );
 	for( int i=0 ; i<aRows ; i++ ) A.rowSizes[i] = 0;
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor( 0 , At.rows , [&]( unsigned int , size_t i ){ for( int j=0 ; j<At.rowSizes[i] ; j++ ) Misha::AddAtomic< size_t >( A.rowSizes[ At[i][j].N ] , 1 ); } );
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-	for( int i=0 ; i<At.rows ; i++ ) for( int j=0 ; j<At.rowSizes[i] ; j++ )
-#pragma omp atomic
-		A.rowSizes[ At[i][j].N ]++;
-#endif // NEW_MULTI_THREADING
 
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor
 		(
 			0 , A.rows , 
@@ -592,16 +483,6 @@ SparseMatrix< T , IndexType > SparseMatrix< T , IndexType >::transpose( T (*Tran
 				A.rowSizes[i] = 0;
 			}
 		);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-	for( int i=0 ; i<A.rows ; i++ )
-	{
-		size_t t = A.rowSizes[i];
-		A.rowSizes[i] = 0;
-		A.SetRowSize( i , t );
-		A.rowSizes[i] = 0;
-	}
-#endif // NEW_MULTI_THREADING
 	if( TransposeFunction ) for( int i=0 ; i<At.rows ; i++ ) for( int j=0 ; j<At.rowSizes[i] ; j++ )
 	{
 		int ii = At[i][j].N;
@@ -621,15 +502,10 @@ SparseMatrix< T , IndexType > SparseMatrix< T , IndexType >::transpose( size_t a
 	const SparseMatrix& At = *this;
 	size_t _aRows = 0 , aCols = At.rows;
 	for( int i=0 ; i<At.rows ; i++ ) for( int j=0 ; j<At.rowSizes[i] ; j++ ) if( aCols<=At[i][j].N ) _aRows = At[i][j].N+1;
-#ifdef NEW_CODE
 	if( _aRows>aRows ) ERROR_OUT( "prescribed output dimension too low: " , aRows , " < " , _aRows );
-#else // !NEW_CODE
-	if( _aRows>aRows ) Miscellany::ErrorOut( "prescribed output dimension too low: %d < %zu" , aRows , _aRows );
-#endif // NEW_CODE
 
 	A.resize( aRows );
 	for( int i=0 ; i<aRows ; i++ ) A.rowSizes[i] = 0;
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor( 0 , At.rows , [&]( unsigned int , size_t i ){ for( int j=0 ; j<At.rowSizes[i] ; j++ ) Misha::AddAtomic( A.rowSizes[ At[i][j].N ] , 1 ); } );
 	ThreadPool::ParallelFor
 		(
@@ -642,20 +518,7 @@ SparseMatrix< T , IndexType > SparseMatrix< T , IndexType >::transpose( size_t a
 				A.rowSizes[i] = 0;
 			}
 		);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-	for( int i=0 ; i<At.rows ; i++ ) for( int j=0 ; j<At.rowSizes[i] ; j++ )
-#pragma omp atomic
-		A.rowSizes[ At[i][j].N ]++;
-#pragma omp parallel for
-	for( int i=0 ; i<A.rows ; i++ )
-	{
-		size_t t = A.rowSizes[i];
-		A.rowSizes[i] = 0;
-		A.SetRowSize( i , t );
-		A.rowSizes[i] = 0;
-	}
-#endif // NEW_MULTI_THREADING
+
 	if( TransposeFunction )
 		for( int i=0 ; i<At.rows ; i++ ) for( int j=0 ; j<At.rowSizes[i] ; j++ )
 		{
@@ -687,13 +550,8 @@ bool TransposeMultiply( const SparseMatrix< T1 , IndexType >& At , const SparseM
 	int bRows = B.rows , bCols = 0;
 	for( int i=0 ; i<At.rows ; i++ ) for( int j=0 ; j<At.rowSizes[i] ; j++ ) if( _aRows<=At[i][j].N ) _aRows = At[i][j].N+1;
 	for( int i=0 ; i< B.rows ; i++ ) for( int j=0 ; j< B.rowSizes[i] ; j++ ) if(  bCols<= B[i][j].N )  bCols =  B[i][j].N+1;
-#ifdef NEW_CODE
 	if( _aRows>aRows ) ERROR_OUT( "Prescribed output dimension too low: " , aRows , " < " , _aRows );
 	if( bCols>At.rows ) ERROR_OUT( "Matrix sizes do not support multiplication " , aRows , " x " , aCols , " * " , bRows , " x " , bCols );
-#else // !NEW_CODE
-	if( _aRows>aRows ) Miscellany::ErrorOut( "prescribed output dimension too low: %d < %d" , aRows , _aRows );
-	if( bCols>At.rows ) Miscellany::ErrorOut( "Matrix sizes do not support multiplication %d x %d * %d x %d" , aRows , aCols , bRows , bCols );
-#endif // NEW_CODE
 
 	std::vector< std::unordered_map< IndexType , T3 > > rows;
 	rows.resize( _aRows );
@@ -717,7 +575,6 @@ bool TransposeMultiply( const SparseMatrix< T1 , IndexType >& At , const SparseM
 		}
 
 	out.resize( aRows );
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor
 		(
 			0 , rows.size() ,
@@ -729,16 +586,6 @@ bool TransposeMultiply( const SparseMatrix< T1 , IndexType >& At , const SparseM
 					out[i][ out.rowSizes[i]++ ] = MatrixEntry< T3 , IndexType >( iter->first , iter->second );
 			}
 		);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-	for( int i=0 ; i<rows.size() ; i++ )
-	{
-		out.SetRowSize( i , rows[i].size() );
-		out.rowSizes[i] = 0;
-		for( typename std::unordered_map< IndexType , T3 >::iterator iter=rows[i].begin() ; iter!=rows[i].end() ; iter++ )
-			out[i][ out.rowSizes[i]++ ] = MatrixEntry< T3 , IndexType >( iter->first , iter->second );
-	}
-#endif // NEW_MULTI_THREADING
 	return true;
 }
 #if MATRIX_MULTIPLY_INTERFACE
@@ -749,14 +596,9 @@ bool Multiply( const SparseMatrixInterface< A_T , A_const_iterator >& A , const 
 	size_t bCols = 0 , bRows = B.Rows();
 	for( int i=0 ; i<A.Rows() ; i++ ) for( A_const_iterator iter=A.begin(i) ; iter!=A.end(i) ; iter++ ) if( aCols<=iter->N ) aCols = iter->N+1;
 	for( int i=0 ; i<B.Rows() ; i++ ) for( B_const_iterator iter=B.begin(i) ; iter!=B.end(i) ; iter++ ) if( bCols<=iter->N ) bCols = iter->N+1;
-#ifdef NEW_CODE
 	if( bRows<aCols ) ERROR_OUT( "Matrix sizes do not support multiplication " , aRows , " x " , aCols , " * " , bRows , " x " , bCols );
-#else // !NEW_CODE
-	if( bRows<aCols ) Miscellany::ErrorOut( "Matrix sizes do not support multiplication %lld x %lld * %lld x %lld" , (unsigned long long)aRows , (unsigned long long)aCols , (unsigned long long)bRows , (unsigned long long)bCols );
-#endif // NEW_CODE
 
 	out.resize( (int)aRows );
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor
 		(
 			0 , aRows ,
@@ -787,34 +629,6 @@ if( idx2==-1 ) continue;
 			} ,
 			threads
 		);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for num_threads( threads )
-	for( int i=0 ; i<aRows ; i++ )
-	{
-		std::unordered_map< Out_IndexType , Out_T > row;
-		for( A_const_iterator iterA=A.begin(i) ; iterA!=A.end(i) ; iterA++ )
-		{
-			Out_IndexType idx1 = iterA->N;
-if( idx1==-1 ) continue;
-			A_T AValue = iterA->Value;
-			if( idx1<0 ) continue;
-			for( B_const_iterator iterB=B.begin(idx1) ; iterB!=B.end(idx1) ; iterB++ )
-			{
-				Out_IndexType idx2 = iterB->N;
-if( idx2==-1 ) continue;
-				B_T BValue = iterB->Value;
-				Out_T temp = Out_T( BValue * AValue ); // temp = A( i , idx1 ) * B( idx1 , idx2 )
-				typename std::unordered_map< Out_IndexType , Out_T >::iterator iter = row.find(idx2);
-				if( iter==row.end() ) row[idx2] = temp;
-				else iter->second += temp;
-			}
-		}
-		out.SetRowSize( i , (int)row.size() );
-		out.rowSizes[i] = 0;
-		for( typename std::unordered_map< Out_IndexType , Out_T >::iterator iter=row.begin() ; iter!=row.end() ; iter++ )
-			out[i][ out.rowSizes[i]++ ] = MatrixEntry< Out_T , Out_IndexType >( iter->first , iter->second );
-	}
-#endif // NEW_MULTI_THREADING
 	return true;
 }
 template< class T , class In_const_iterator , class Out_IndexType >
@@ -852,11 +666,7 @@ bool Transpose( const SparseMatrixInterface< T , In_const_iterator >& At , Spars
 {
 	size_t _aRows = 0 , aCols = At.Rows();
 	for( int i=0 ; i<At.Rows() ; i++ ) for( In_const_iterator iter=At.begin(i) ; iter!=At.end(i) ; iter++ ) if( aCols<=iter->N ) _aRows = iter->N+1;
-#ifdef NEW_CODE
 	if( _aRows>aRows ) ERROR_OUT( "Prescribed output dimension too low: " , aRows , " < " , _aRows );
-#else // !NEW_CODE
-	if( _aRows>aRows ) Miscellany::ErrorOut( "prescribed output dimension too low: %d < %zu" , aRows , _aRows );
-#endif // NEW_CODE
 
 	A.resize( aRows );
 	for( int i=0 ; i<aRows ; i++ ) A.rowSizes[i] = 0;
@@ -891,14 +701,9 @@ bool Multiply( const SparseMatrix< T1 , IndexType >& A , const SparseMatrix< T2 
 	int bCols = 0 , bRows = B.rows;
 	for( int i=0 ; i<A.rows ; i++ ) for( int j=0 ; j<A.rowSizes[i] ; j++ ) if( aCols<=A[i][j].N ) aCols = A[i][j].N+1;
 	for( int i=0 ; i<B.rows ; i++ ) for( int j=0 ; j<B.rowSizes[i] ; j++ ) if( bCols<=B[i][j].N ) bCols = B[i][j].N+1;
-#ifdef NEW_CODE
 	if( bRows<aCols ) ERROR_OUT( "Matrix sizes do not support multiplication " , aRows , " x " , aCols , " * " , bRows , " x " , bCols );
-#else // !NEW_CODE
-	if( bRows<aCols ) Miscellany::ErrorOut( "Matrix sizes do not support multiplication %d x %d * %d x %d" , aRows , aCols , bRows , bCols );
-#endif // NEW_CODE
 
 	out.resize( aRows );
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor
 		(
 			0 , aRows ,
@@ -927,32 +732,6 @@ bool Multiply( const SparseMatrix< T1 , IndexType >& A , const SparseMatrix< T2 
 			} ,
 			threads
 		);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for num_threads( threads )
-	for( int i=0 ; i<aRows ; i++ )
-	{
-		std::unordered_map< IndexType , T3 > row;
-		for( int j=0 ; j<A.rowSizes[i] ; j++ )
-		{
-			IndexType idx1 = A[i][j].N;
-			T1 AValue = A[i][j].Value;
-			if( idx1<0 ) continue;
-			for( int k=0 ; k<B.rowSizes[idx1] ; k++ )
-			{
-				IndexType idx2 = B[idx1][k].N;
-				T2 BValue = B[idx1][k].Value;
-				T3 temp = T3( BValue * AValue ); // temp = A( i , idx1 ) * B( idx1 , idx2 )
-				typename std::unordered_map< IndexType , T3 >::iterator iter = row.find(idx2);
-				if( iter==row.end() ) row[idx2] = temp;
-				else iter->second += temp;
-			}
-		}
-		out.SetRowSize( i , row.size() );
-		out.rowSizes[i] = 0;
-		for( typename std::unordered_map< IndexType , T3 >::iterator iter=row.begin() ; iter!=row.end() ; iter++ )
-			out[i][ out.rowSizes[i]++ ] = MatrixEntry< T3 , IndexType >( iter->first , iter->second );
-	}
-#endif // NEW_MULTI_THREADING
 	return true;
 }
 template< class T , class IndexType >
@@ -991,11 +770,7 @@ bool Transpose( const SparseMatrix< T , IndexType >& At , SparseMatrix< T , Inde
 {
 	int _aRows = 0 , aCols = At.rows;
 	for( int i=0 ; i<At.rows ; i++ ) for( int j=0 ; j<At.rowSizes[i] ; j++ ) if( _aRows<=At[i][j].N ) _aRows = At[i][j].N+1;
-#ifdef NEW_CODE
 	if( _aRows>aRows ) Miscellany::ErrorOut( "Prescribed output dimension too low: " , aRows , " < " , _aRows );
-#else // !NEW_CODE
-	if( _aRows>aRows ) Miscellany::ErrorOut( "prescribed output dimension too low: %d < %d" , aRows , _aRows );
-#endif // NEW_CODE
 
 	A.resize( aRows );
 	for( int i=0 ; i<aRows ; i++ ) A.rowSizes[i] = 0;
@@ -1086,11 +861,7 @@ template< class T , unsigned int Radius > void BandedMatrix< T , Radius >::resiz
 	{
 		_rows = rows;
 		_entries = AllocPointer< T >( rows * ( 2 * Radius + 1 ) );
-#ifdef NEW_CODE
 		if( !_entries ) ERROR_OUT( "Failed to allocate BandedMatrix::_entries ( " , rows , " x " , 2*Radius+1 , " )" );
-#else // !NEW_CODE
-		if( !_entries ) Miscellany::ErrorOut( "Failed to allocate BandedMatrix::_entries ( %d x %d )" , rows , 2*Radius+1 );
-#endif // NEW_CODE
 	}
 }
 template< class T , unsigned int Radius > void BandedMatrix< T , Radius >::resize( size_t rows , const T& clearValue )
@@ -1112,7 +883,6 @@ void BandedMatrix< T , Radius >::multiply( ConstPointer( T2 ) in , Pointer( T2 )
 	}
 	if( Radius==1 )
 	{
-#ifdef NEW_MULTI_THREADING
 		ThreadPool::ParallelFor
 			(
 				1 , _rows-1 ,
@@ -1124,19 +894,9 @@ void BandedMatrix< T , Radius >::multiply( ConstPointer( T2 ) in , Pointer( T2 )
 				} ,
 				threads
 			);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for num_threads( threads )
-		for( int i=1 ; i<_rows-1 ; i++ )
-		{
-			ConstPointer( T ) __entries = _entries + i * 3;
-			ConstPointer( T2 ) _in = in + i - 1;
-			out[i] = (T2)( _in[0] * __entries[0] + _in[1] * __entries[1] + _in[2] * __entries[2] );
-		}
-#endif // NEW_MULTI_THREADING
 	}
 	else
 	{
-#ifdef NEW_MULTI_THREADING
 		ThreadPool::ParallelFor
 			(
 				Radius , _rows-Radius ,
@@ -1150,17 +910,6 @@ void BandedMatrix< T , Radius >::multiply( ConstPointer( T2 ) in , Pointer( T2 )
 				} ,
 				threads
 			);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for num_threads( threads )
-		for( int i=Radius ; i<_rows-Radius ; i++ )
-		{
-			T2 sum(0);
-			ConstPointer( T ) __entries = _entries + i * ( 2 * Radius + 1 );
-			ConstPointer( T2 ) _in = in + i - Radius;
-			for( int j=0 ; j<=2*Radius ; j++ ) sum += (T2)( _in[j] * __entries[j] );
-			out[i] = sum;
-		}
-#endif // NEW_MULTI_THREADING
 	}
 	for( int i=(int)_rows-Radius ; i<_rows ; i++ )
 	{
@@ -1191,7 +940,6 @@ void BandedMatrix< T , Radius >::multiply2( ConstPointer( T2 ) in , Pointer( T2 
 	}
 	if( Radius==1 )
 	{
-#ifdef NEW_MULTI_THREADING
 		ThreadPool::ParallelFor
 			(
 				1 , _rows-1 ,
@@ -1204,20 +952,9 @@ void BandedMatrix< T , Radius >::multiply2( ConstPointer( T2 ) in , Pointer( T2 
 				} ,
 				threads
 			);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for num_threads( threads )
-		for( int i=1 ; i<_rows-1 ; i++ )
-		{
-			ConstPointer( T ) __entries = _entries + i * 3;
-			ConstPointer( T2 ) _in = in + (i-1)*2;
-			out[ i<<1   ] = (T2)( _in[0] * __entries[0] + _in[2] * __entries[1] + _in[4] * __entries[2] );
-			out[(i<<1)|1] = (T2)( _in[1] * __entries[0] + _in[3] * __entries[1] + _in[5] * __entries[2] );
-		}
-#endif // NEW_MULTI_THREADING
 	}
 	else
 	{
-#ifdef NEW_MULTI_THREADING
 		ThreadPool::ParallelFor
 			(
 				Radius , _rows-Radius ,
@@ -1232,18 +969,6 @@ void BandedMatrix< T , Radius >::multiply2( ConstPointer( T2 ) in , Pointer( T2 
 				} ,
 				threads
 			);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for num_threads( threads )
-		for( int i=Radius ; i<_rows-Radius ; i++ )
-		{
-			T2 sum0(0) , sum1(0);
-			ConstPointer( T ) __entries = _entries + i * ( 2 * Radius + 1 );
-			ConstPointer( T2 ) _in = in + (i-Radius)*2;
-			for( int j=0 ; j<=2*Radius ; j++ ) sum0 += (T2)( _in[j<<1] * __entries[j] ) ,  sum1 += (T2)( _in[(j<<1)|1] * __entries[j] );
-			out[ i<<1   ] = sum0;
-			out[(i<<1)|1] = sum1;
-		}
-#endif // NEW_MULTI_THREADING
 	}
 	for( int i=(int)_rows-Radius ; i<_rows ; i++ )
 	{

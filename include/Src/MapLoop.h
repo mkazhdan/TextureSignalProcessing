@@ -55,19 +55,11 @@ void LoopVertices( std::unordered_map< unsigned long long , unsigned long long >
 						edgeCounter++;
 						currentVertex = nextVertex;
 					}
-#ifdef NEW_CODE
 					else THROW( "Vertex to dead end" );
-#else // !NEW_CODE
-					else Miscellany::Throw( "Vertex to dead end" );
-#endif // NEW_CODE
 				}
 				else
 				{
-#ifdef NEW_CODE
 					if( currentVertex!=sourceVertex ) THROW( "Non-simple loop, node " , currentVertex );
-#else // !NEW_CODE
-					if( currentVertex!=sourceVertex ) Miscellany::Throw( "Non-simple loop, node %llu" , currentVertex );
-#endif // NEW_CODE
 					terminate = true;
 				}
 			} while (!terminate);
@@ -95,19 +87,11 @@ void ListVerticesSimpleLoop( std::unordered_map< int , int > &forwardMap , std::
 				unsigned long long nextVertex = (*mappedVertex).second;
 				currentVertex = (int)nextVertex;
 			}
-#ifdef NEW_CODE
 			else THROW( "Vertex to dead end" );
-#else // !NEW_CODE
-			else Miscellany::Throw( "Vertex to dead end" );
-#endif // NEW_CODE
 		}
 		else
 		{
-#ifdef NEW_CODE
 			if( currentVertex!=sourceVertex ) THROW( "Non-simple loop" );
-#else // !NEW_CODE
-			if( currentVertex!=sourceVertex ) Miscellany::Throw( "Non-simple loop" );
-#endif // NEW_CODE
 			terminate = true;
 		}
 	}

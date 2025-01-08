@@ -36,9 +36,7 @@ DAMAGE.
 #include "PNG.h"
 #include "Array.h"
 #include "Miscellany.h"
-#ifdef NEW_CODE
 #include "Exceptions.h"
-#endif // NEW_CODE
 
 #define KEY_UPARROW		101
 #define KEY_DOWNARROW	103
@@ -545,11 +543,7 @@ void Visualization::saveFrameBuffer( const char* fileName , int whichBuffer )
 		_pixels[ c + i * 3 + j * screenWidth * 3 ] = (unsigned char)ii;
 	}
 	FreePointer( pixels );
-#ifdef NEW_CODE
 	if( !ImageWriter< 8 >::Write( fileName , _pixels , screenWidth , screenHeight , 3 ) ) WARN( "Failed to write image: " , std::string( fileName ) );
-#else // !NEW_CODE
-	if( !ImageWriter< 8 >::Write( fileName , _pixels , screenWidth , screenHeight , 3 ) ) Miscellany::Warn( "Failed to write image: %s" , fileName );
-#endif // NEW_CODE
 	FreePointer( _pixels );
 }
 

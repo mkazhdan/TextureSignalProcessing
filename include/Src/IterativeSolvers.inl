@@ -28,9 +28,7 @@ DAMAGE.
 
 #include <Eigen/SparseLU>
 #include <Misha/Miscellany.h>
-#ifdef NEW_MULTI_THREADING
 #include <Misha/MultiThreading.h>
-#endif // NEW_MULTI_THREADING
 #include "SparseMatrixParser.h"
 
 template< class Real , class Data , class Solver >
@@ -44,14 +42,7 @@ void Relaxation
 {
 	int numBoundaryVariables = boundaryGlobalIndex.size();
 	
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundaryRHS[i] = rhs[ boundaryGlobalIndex[i] ]; } );
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-	for (int i = 0; i < numBoundaryVariables; i++) {
-		boundaryRHS[i] = rhs[boundaryGlobalIndex[i]];
-	}
-#endif // NEW_MULTI_THREADING
 
 	Miscellany::Timer timer;
 
@@ -61,15 +52,7 @@ void Relaxation
 
 			if( verbose ) timer.reset();
 
-#ifdef NEW_MULTI_THREADING
 			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundarySolution[i] = x0[boundaryGlobalIndex[i]] ; variableBoundaryRHS[i] = boundaryRHS[i]; } );
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for 
-			for (int i = 0; i < numBoundaryVariables; i++){
-				boundarySolution[i] = x0[boundaryGlobalIndex[i]];
-				variableBoundaryRHS[i] = boundaryRHS[i];
-			}
-#endif // NEW_MULTI_THREADING
 
 			boundaryDeepMatrix.Multiply((Data*)&x0[0], (Data*)&variableBoundaryRHS[0], MULTIPLY_ADD | MULTIPLY_NEGATE);
 
@@ -79,12 +62,7 @@ void Relaxation
 			solve(boundarySolver,boundarySolution, variableBoundaryRHS);
 			if( verbose ) printf("\t Boundary update =  %.4f \n" , timer.elapsed() );
 
-#ifdef NEW_MULTI_THREADING
 			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ x0[boundaryGlobalIndex[i]] = boundarySolution[i]; } );
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-			for (int i = 0; i < numBoundaryVariables; i++) x0[boundaryGlobalIndex[i]] = boundarySolution[i];
-#endif // NEW_MULTI_THREADING
 		}
 
 
@@ -134,7 +112,6 @@ void Relaxation
 			int totalLines = segmentedLines.size();
 			int numBlocks = ((totalLines - 1) / blockSize) + 1;
 
-#ifdef NEW_MULTI_THREADING
 			ThreadPool::ParallelFor
 				(
 					0 , (numBlocks+1)/2 ,
@@ -157,21 +134,6 @@ void Relaxation
 					UpdateBlock(firstLine, lastLine, 3);
 				}
 			);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-			for (int b = 0; b < numBlocks; b+=2){
-				int firstLine = (totalLines * b)/ numBlocks;
-				int lastLine = (totalLines * (b + 1)) / numBlocks;
-				UpdateBlock(firstLine, lastLine, 3);
-			}
-
-#pragma omp parallel for
-			for (int b = 1; b < numBlocks; b += 2){
-				int firstLine = (totalLines * b) / numBlocks;
-				int lastLine = (totalLines * (b + 1)) / numBlocks;
-				UpdateBlock(firstLine, lastLine, 3);
-			}
-#endif // NEW_MULTI_THREADING
 			if( verbose ) printf( "\t GS Deep update =  %.4f\n" , timer.elapsed() );
 		}
 	}
@@ -193,14 +155,7 @@ void Relaxation
 
 	int numBoundaryVariables = (int)boundaryGlobalIndex.size();
 
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundaryRHS[i] = rhs[boundaryGlobalIndex[i]]; } );
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-	for (int i = 0; i < numBoundaryVariables; i++) {
-		boundaryRHS[i] = rhs[boundaryGlobalIndex[i]];
-	}
-#endif // NEW_MULTI_THREADING
 
 	Miscellany::Timer timer;
 
@@ -210,15 +165,7 @@ void Relaxation
 
 			if( verbose ) timer.reset();
 
-#ifdef NEW_MULTI_THREADING
 			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundarySolution[i] = x0[ boundaryGlobalIndex[i] ] ; variableBoundaryRHS[i] = boundaryRHS[i]; } );
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for 
-			for (int i = 0; i < numBoundaryVariables; i++) {
-				boundarySolution[i] = x0[boundaryGlobalIndex[i]];
-				variableBoundaryRHS[i] = boundaryRHS[i];
-			}
-#endif // NEW_MULTI_THREADING
 
 			boundaryDeepMatrix.Multiply((Data*)&x0[0], (Data*)&variableBoundaryRHS[0], MULTIPLY_ADD | MULTIPLY_NEGATE);
 
@@ -228,12 +175,7 @@ void Relaxation
 			solve(boundarySolver, boundarySolution, variableBoundaryRHS);
 			if( verbose ) printf( "\t Boundary update =  %.4f\n" , timer.elapsed() );
 
-#ifdef NEW_MULTI_THREADING
 			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ x0[boundaryGlobalIndex[i]] = boundarySolution[i]; } );
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-			for (int i = 0; i < numBoundaryVariables; i++) x0[boundaryGlobalIndex[i]] = boundarySolution[i];
-#endif // NEW_MULTI_THREADING
 		}
 
 
@@ -280,7 +222,6 @@ void Relaxation
 			};
 
 			// Update even blocks
-#ifdef NEW_MULTI_THREADING
 			ThreadPool::ParallelFor
 				(
 					0 , (threadTasks.size() + 1) / 2 ,
@@ -291,18 +232,6 @@ void Relaxation
 					0 , threadTasks.size() / 2 ,
 					[&]( unsigned int , size_t t ){ for( int b=0 ; b<threadTasks[2*t+1].blockTasks.size() ; b++ ) UpdateBlock( 2*t+1 , b , 3 ); }
 				);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-			for (int t = 0; t < (threadTasks.size() + 1) / 2; t++){
-				for (int b = 0; b < threadTasks[2 * t].blockTasks.size(); b++) UpdateBlock(2 * t, b, 3);
-			}
-
-			// Update odd blocks
-#pragma omp parallel for
-			for (int t = 0; t < threadTasks.size() / 2; t++){
-				for (int b = 0; b < threadTasks[2 * t + 1].blockTasks.size(); b++) UpdateBlock(2 * t + 1, b ,3);
-			}
-#endif // NEW_MULTI_THREADING
 			if( verbose ) printf( "\t GS Deep update =  %.4f\n" , timer.elapsed() );
 		}
 	}
@@ -321,14 +250,7 @@ void RelaxationAndResidual
 {
 	int numBoundaryVariables = (int)boundaryGlobalIndex.size();
 
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundaryRHS[i] = rhs[boundaryGlobalIndex[i]]; } );
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-	for (int i = 0; i < numBoundaryVariables; i++) {
-		boundaryRHS[i] = rhs[boundaryGlobalIndex[i]];
-	}
-#endif // NEW_MULTI_THREADING
 
 	Miscellany::Timer timer;
 	for (int it = 0; it < numIterations; it++) {
@@ -336,15 +258,7 @@ void RelaxationAndResidual
 
 			if( verbose ) timer.reset();
 
-#ifdef NEW_MULTI_THREADING
 			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundaryValue[i] = x0[ boundaryGlobalIndex[i] ] ; variableBoundaryRHS[i] = boundaryRHS[i]; } );
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-			for (int i = 0; i < numBoundaryVariables; i++) {
-				boundaryValue[i] = x0[boundaryGlobalIndex[i]];
-				variableBoundaryRHS[i] = boundaryRHS[i];
-			}
-#endif // NEW_MULTI_THREADING
 
 			boundaryDeepMatrix.Multiply((Data*)&x0[0], (Data*)&variableBoundaryRHS[0], MULTIPLY_ADD | MULTIPLY_NEGATE);
 			if( verbose ) printf( "\t Boundary initialization =  %.4f\n" , timer.elapsed() );
@@ -354,12 +268,7 @@ void RelaxationAndResidual
 			solve(boundarySolver, boundaryValue, variableBoundaryRHS);
 
 			if( verbose ) printf( "\t Boundary update =  %.4f\n" , timer.elapsed() );
-#ifdef NEW_MULTI_THREADING
 			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ x0[ boundaryGlobalIndex[i] ] = boundaryValue[i]; } );
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-			for (int i = 0; i < numBoundaryVariables; i++) x0[boundaryGlobalIndex[i]] = boundaryValue[i];
-#endif // NEW_MULTI_THREADING
 		}
 
 		if (it % 2 == 1) {//Update Interior
@@ -442,7 +351,6 @@ void RelaxationAndResidual
 			};
 
 			//Update even blocks
-#ifdef NEW_MULTI_THREADING
 			ThreadPool::ParallelFor
 				(
 					0 , (threadTasks.size() + 1) / 2 ,
@@ -453,17 +361,6 @@ void RelaxationAndResidual
 					0 , threadTasks.size() / 2 ,
 					[&]( unsigned int , size_t t ){ for( int b=0 ; b<threadTasks[2*t+1].blockTasks.size() ; b++ ) UpdateBlock( 2*t+1 , b , 3 ); }
 				);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-			for (int t = 0; t < (threadTasks.size() + 1) / 2; t++) {
-				for (int b = 0; b < threadTasks[2 * t].blockTasks.size(); b++) UpdateBlock(2 * t, b, 3);
-			}
-			//Update odd blocks
-#pragma omp parallel for
-			for (int t = 0; t < threadTasks.size() / 2; t++) {
-				for (int b = 0; b < threadTasks[2 * t + 1].blockTasks.size(); b++) UpdateBlock(2 * t + 1, b, 3);
-			}
-#endif // NEW_MULTI_THREADING
 
 			if( verbose ) printf( "\t GS Deep update =  %.4f\n" , timer.elapsed() );
 		}
@@ -491,14 +388,7 @@ void RelaxationAndResidual
 {
 	int numBoundaryVariables = boundaryGlobalIndex.size();
 
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundaryRHS[i] = rhs[ boundaryGlobalIndex[i] ]; } );
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-	for (int i = 0; i < numBoundaryVariables; i++){
-		boundaryRHS[i] = rhs[boundaryGlobalIndex[i]];
-	}
-#endif // NEW_MULTI_THREADING
 
 	Miscellany::Timer timer;
 	for (int it = 0; it < numIterations; it++) {
@@ -506,15 +396,7 @@ void RelaxationAndResidual
 
 			if( verbose ) timer.reset();
 
-#ifdef NEW_MULTI_THREADING
 			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundaryValue[i] = x0[ boundaryGlobalIndex[i] ] ; variableBoundaryRHS[i] = boundaryRHS[i] ; } );
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-			for (int i = 0; i < numBoundaryVariables; i++){
-				boundaryValue[i] = x0[boundaryGlobalIndex[i]];
-				variableBoundaryRHS[i] = boundaryRHS[i];
-			}
-#endif // NEW_MULTI_THREADING
 
 			boundaryDeepMatrix.Multiply((Data*)&x0[0], (Data*)&variableBoundaryRHS[0], MULTIPLY_ADD | MULTIPLY_NEGATE);
 			if( verbose ) printf( "\t Boundary initialization =  %.4f\n" , timer.elapsed() );
@@ -523,12 +405,7 @@ void RelaxationAndResidual
 			solve(boundarySolver, boundaryValue, variableBoundaryRHS);
 
 			if( verbose ) printf( "\t Boundary update =  %.4f\n" , timer.elapsed() );
-#ifdef NEW_MULTI_THREADING
 			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ x0[ boundaryGlobalIndex[i] ] = boundaryValue[i]; } );
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-			for (int i = 0; i < numBoundaryVariables; i++) x0[boundaryGlobalIndex[i]] = boundaryValue[i];
-#endif // NEW_MULTI_THREADING
 		}
 
 		if (it % 2 == 1) {//Update Interior
@@ -633,7 +510,6 @@ void RelaxationAndResidual
 			int numBlocks = ((totalLines - 1) / blockSize) + 1;
 
 			//Even blocks
-#ifdef NEW_MULTI_THREADING
 			ThreadPool::ParallelFor
 				(
 					0 , (numBlocks+1)/2 ,
@@ -647,20 +523,8 @@ void RelaxationAndResidual
 						UpdateSuffixBlock(lastLine, lastLine == totalLines, false);
 					}
 				);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-			for (int b = 0; b < numBlocks; b+=2){
-				int firstLine = (totalLines * b)/ numBlocks;
-				int lastLine = (totalLines * (b + 1)) / numBlocks;
-				UpdateHeaderBlock(firstLine, lastLine, 3, firstLine == 0, false);
-				UpdateMiddleBlock(firstLine, lastLine, 3);
-				UpdateSuffixBlock(lastLine, lastLine == totalLines, false);
-			}
-#endif // NEW_MULTI_THREADING
 
 			//Odd blocks
-
-#ifdef NEW_MULTI_THREADING
 			ThreadPool::ParallelFor
 			(
 				0 , numBlocks/2 ,
@@ -674,17 +538,7 @@ void RelaxationAndResidual
 					UpdateSuffixBlock(lastLine, true, lastLine != totalLines);
 				}
 			);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-			for (int b = 1; b < numBlocks; b += 2) {
-				int firstLine = (totalLines * b) / numBlocks;
-				int lastLine = (totalLines * (b + 1)) / numBlocks;
 
-				UpdateHeaderBlock(firstLine, lastLine, 3, true, firstLine != 0);
-				UpdateMiddleBlock(firstLine, lastLine, 3);
-				UpdateSuffixBlock(lastLine, true, lastLine != totalLines);
-			}
-#endif // NEW_MULTI_THREADING
 			if( verbose ) printf( "\t GS Deep update =  %.4f\n" , timer.elapsed() );
 		}
 	}
@@ -717,12 +571,7 @@ void MultiplyBySystemMatrix( const SystemCoefficients< Real > &systemCoefficient
 	systemCoefficients.boundaryDeepMatrix.Multiply(&in[0], &outBoundaryValues[0], MULTIPLY_ADD);
 	if( verbose ) printf( "\t Multiply boundary =  %.4f\n" , timer.elapsed() );
 
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ out[boundaryGlobalIndex[i]] = outBoundaryValues[i]; } );
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-	for (int i = 0; i < numBoundaryVariables; i++) out[boundaryGlobalIndex[i]] = outBoundaryValues[i];
-#endif // NEW_MULTI_THREADING
 
 	auto UpdateRow = [&](int r)
 	{
@@ -753,16 +602,11 @@ void MultiplyBySystemMatrix( const SystemCoefficients< Real > &systemCoefficient
 
 	if( verbose ) timer.reset();
 
-#ifdef NEW_MULTI_THREADING
 	unsigned int threads = ThreadPool::NumThreads();
-#else // !NEW_MULTI_THREADING
-	int threads = omp_get_max_threads();
-#endif // NEW_MULTI_THREADING
 	std::vector<int> lineRange(threads + 1);
 	int blockSize = rasterLines.size() / threads;
 	for (int t = 0; t < threads; t++) lineRange[t] = t*blockSize;
 	lineRange[threads] = rasterLines.size();
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor
 		(
 			0 , threads ,
@@ -773,15 +617,7 @@ void MultiplyBySystemMatrix( const SystemCoefficients< Real > &systemCoefficient
 				for( int r=firstLine ; r<lastLine ; r++ ) UpdateRow(r);
 			}
 		);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-	for (int t = 0; t < threads; t++) {
-		int tID = omp_get_thread_num();
-		int firstLine = lineRange[tID];
-		int lastLine = lineRange[tID + 1];
-		for (int r = firstLine; r < lastLine; r++) UpdateRow(r);
-	}
-#endif // NEW_MULTI_THREADING
+
 	if( verbose ) printf( "\t Multiply deep %.4f\n" , timer.elapsed() );
 }
 
@@ -813,12 +649,7 @@ void MultiplyBySystemMatrix_NoReciprocals
 	if( verbose ) printf( "\tMultiply boundary = %.4f\n" , timer.elapsed() );
 
 	// Write the boundary values back into the output array
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ out[ boundaryGlobalIndex[i] ] = outBoundaryValues[i]; } );
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-	for( int i=0 ; i<numBoundaryVariables ; i++ ) out[ boundaryGlobalIndex[i] ] = outBoundaryValues[i];
-#endif // NEW_MULTI_THREADING
 
 	// Perform the interior -> interior multiplication
 	auto UpdateRow = [&]( int r )
@@ -853,16 +684,11 @@ void MultiplyBySystemMatrix_NoReciprocals
 
 	timer.reset();
 
-#ifdef NEW_MULTI_THREADING
 	unsigned int threads = ThreadPool::NumThreads();
-#else // !NEW_MULTI_THREADING
-	int threads = omp_get_max_threads();
-#endif // NEW_MULTI_THREADING
 	std::vector< int > lineRange( threads+1 );
 	int blockSize = (int)rasterLines.size() / threads;
 	for( int t=0 ; t<threads ; t++ ) lineRange[t] = t*blockSize;
 	lineRange[threads] = (int)rasterLines.size();
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor
 		(
 			0 , threads ,
@@ -873,16 +699,7 @@ void MultiplyBySystemMatrix_NoReciprocals
 				for( int r=firstLine ; r<lastLine ; r++ ) UpdateRow(r);
 			}
 		);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-	for( int t=0 ; t<threads ; t++ )
-	{
-		int tID = omp_get_thread_num();
-		int firstLine = lineRange[tID];
-		int lastLine = lineRange[tID+1];
-		for( int r=firstLine ; r<lastLine ; r++ ) UpdateRow(r);
-	}
-#endif // NEW_MULTI_THREADING
+
 	if( verbose ) printf( "\tMultiply deep = %.4f \n" , timer.elapsed() );
 }
 
@@ -937,7 +754,6 @@ void ComputeSystemResidual
 
 	if( verbose ) timer.reset();
 
-#ifdef NEW_MULTI_THREADING
 	unsigned int threads = ThreadPool::NumThreads();
 	ThreadPool::ParallelFor
 		(
@@ -949,16 +765,7 @@ void ComputeSystemResidual
 				for( int r=firstLine ; r<lastLine ; r++ ) UpdateResidual(r);
 			}
 		);
-#else // !NEW_MULTI_THREADING
-	int threads = omp_get_max_threads();
-#pragma omp parallel for
-	for (int t = 0; t < threads; t++) {
-		int tID = omp_get_thread_num();
-		int firstLine = (rasterLines.size() *tID) / threads;
-		int lastLine = (rasterLines.size() * (tID + 1)) / threads;
-		for (int r = firstLine; r < lastLine; r++) UpdateResidual(r);
-	}
-#endif // NEW_MULTI_THREADING
+
 	if( verbose ) printf( "\t Residual Deep %.4f\n" , timer.elapsed() );
 }
 
@@ -978,12 +785,7 @@ void MultiplyByRestriction
 	__boundaryRestrictionMatrix.Multiply((Data*)&in[0], (Data*)&boundaryValue[0]);
 	if( verbose ) printf( "\t Restriction boundary  %.4f \n" , timer.elapsed() );
 	
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ out[ boundaryGlobalIndex[i] ] = boundaryValue[i]; } );
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-	for (int i = 0; i < numBoundaryVariables; i++) out[boundaryGlobalIndex[i]] = boundaryValue[i];
-#endif // NEW_MULTI_THREADING
 
 
 	auto UpdateRow = [&](int r)
@@ -1005,16 +807,11 @@ void MultiplyByRestriction
 	};
 
 	if( verbose ) timer.reset();
-#ifdef NEW_MULTI_THREADING
 	unsigned int threads = ThreadPool::NumThreads();
-#else // !NEW_MULTI_THREADING
-	int threads = omp_get_max_threads();
-#endif // NEW_MULTI_THREADING
 	std::vector<int> lineRange(threads + 1);
 	int blockSize = (int)restrictionLines.size() / threads;
 	for (int t = 0; t < threads; t++) lineRange[t] = t*blockSize;
 	lineRange[threads] = (int)restrictionLines.size();
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor
 		(
 			0 , threads ,
@@ -1025,15 +822,6 @@ void MultiplyByRestriction
 				for( int r=firstLine ; r<lastLine ; r++ ) UpdateRow(r);
 			}
 		);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-	for (int t = 0; t < threads; t++) {
-		int tID = omp_get_thread_num();
-		int firstLine = lineRange[tID];
-		int lastLine = lineRange[tID + 1];
-		for (int r = firstLine; r < lastLine; r++) UpdateRow(r);
-	}
-#endif // NEW_MULTI_THREADING
 
 	if( verbose ) printf( "\t Restriction deep %.4f \n" , timer.elapsed() );
 }
@@ -1075,16 +863,11 @@ void MultiplyByProlongation
 	};
 
 	if( verbose ) timer.reset();
-#ifdef NEW_MULTI_THREADING
 	unsigned int threads = ThreadPool::NumThreads();
-#else // !NEW_MULTI_THREADING
-	int threads = omp_get_max_threads();
-#endif // NEW_MULTI_THREADING
 	std::vector<int> lineRange(threads + 1);
 	int blockSize = prolongationLines.size() / threads;
 	for (int t = 0; t < threads; t++) lineRange[t] = t*blockSize;
 	lineRange[threads] = prolongationLines.size();
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor
 		(
 			0 , threads ,
@@ -1095,15 +878,6 @@ void MultiplyByProlongation
 				for( int r=firstLine ; r<lastLine ; r++ ) UpdateRow(r);
 			}
 		);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-	for (int t = 0; t < threads; t++) {
-		int tID = omp_get_thread_num();
-		int firstLine = lineRange[tID];
-		int lastLine = lineRange[tID + 1];
-		for (int r = firstLine; r < lastLine; r++) UpdateRow(r);
-	}
-#endif // NEW_MULTI_THREADING
 	if( verbose ) printf( "\t Prolongation deep %.4f\n" , timer.elapsed() ); 
 }
 
@@ -1139,16 +913,11 @@ void AddProlongation( const std::vector< ProlongationLine > &prolongationLines ,
 	};
 
 	if( verbose ) timer.reset();
-#ifdef NEW_MULTI_THREADING
 	unsigned int threads = ThreadPool::NumThreads();
-#else // !NEW_MULTI_THREADING
-	int threads = omp_get_max_threads();
-#endif // NEW_MULTI_THREADING
 	std::vector<int> lineRange(threads + 1);
 	int blockSize = (int)prolongationLines.size() / threads;
 	for (int t = 0; t < threads; t++) lineRange[t] = t*blockSize;
 	lineRange[threads] = (int)prolongationLines.size();
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor
 		(
 			0 , threads ,
@@ -1159,15 +928,7 @@ void AddProlongation( const std::vector< ProlongationLine > &prolongationLines ,
 				for( int r=firstLine ; r<lastLine ; r++ ) UpdateRow(r);
 			}
 		);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-	for (int t = 0; t < threads; t++) {
-		int tID = omp_get_thread_num();
-		int firstLine = lineRange[tID];
-		int lastLine = lineRange[tID + 1];
-		for (int r = firstLine; r < lastLine; r++) UpdateRow(r);
-	}
-#endif // NEW_MULTI_THREADING
+
 	if( verbose ) printf( "\t Prolongation deep %.4f \n" , timer.elapsed() );
 }
 
@@ -1186,15 +947,8 @@ void CellStiffnessToTexelStiffness
 {
 	//Update Boundary Texels
 	Miscellany::Timer timer;
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor( 0 , Channels , [&]( unsigned int , size_t c ){ boundaryCellBasedStiffnessRHSMatrix[c].Multiply( &cellSharpenningMask[0] , &boundaryTexelValues[c][0] ); } );
 	ThreadPool::ParallelFor( 0 , boundaryGlobalIndex.size() , [&]( unsigned int , size_t i ){ for( int c=0 ; c<Channels ; c++ ) texelModulatedStiffness[ boundaryGlobalIndex[i] ][c] = boundaryTexelValues[c][i]; } );
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-	for( int c=0 ; c<Channels ; c++ ) boundaryCellBasedStiffnessRHSMatrix[c].Multiply( &cellSharpenningMask[0] , &boundaryTexelValues[c][0] );
-#pragma omp parallel for
-	for( int i=0 ; i<boundaryGlobalIndex.size() ; i++ ) for( int c=0 ; c<Channels ; c++ ) texelModulatedStiffness[ boundaryGlobalIndex[i] ][c] = boundaryTexelValues[c][i];
-#endif // NEW_MULTI_THREADING
 	if( verbose ) printf( "\tBoundary updated: %.3f(s) \n" , timer.elapsed() );
 	//Update Interior Texels
 
@@ -1212,7 +966,6 @@ void CellStiffnessToTexelStiffness
 	};
 
 	if( verbose ) timer.reset();
-#ifdef NEW_MULTI_THREADING
 	unsigned int threads = ThreadPool::NumThreads();
 	ThreadPool::ParallelFor
 		(
@@ -1224,16 +977,7 @@ void CellStiffnessToTexelStiffness
 				for( int r=firstLine ; r<lastLine ; r++ ) UpdateRow(r);
 			}
 		);
-#else // !NEW_MULTI_THREADING
-	int threads = omp_get_max_threads();
-#pragma omp parallel for
-	for (int t = 0; t < threads; t++) {
-		int tID = omp_get_thread_num();
-		int firstLine = (int)(interiorTexelToCellLines.size() *tID) / threads;
-		int lastLine = (int)(interiorTexelToCellLines.size() * (tID + 1)) / threads;
-		for (int r = firstLine; r < lastLine; r++) UpdateRow(r);
-	}
-#endif // NEW_MULTI_THREADING
+
 	if( verbose ) printf( "\t Interior update %.4f\n" , timer.elapsed() );
 }
 template< class Real >
@@ -1252,12 +996,7 @@ void CellStiffnessToTexelStiffness
 	//Update Boundary Texels
 	Miscellany::Timer timer;
 	boundaryCellBasedStiffnessRHSMatrix.Multiply( &cellSharpenningMask[0] , &boundaryTexelValues[0] );
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor( 0 , boundaryGlobalIndex.size() , [&]( unsigned int , size_t i ){ texelModulatedStiffness[ boundaryGlobalIndex[i] ] = boundaryTexelValues[i]; } );
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-	for( int i=0 ; i<boundaryGlobalIndex.size() ; i++ ) texelModulatedStiffness[ boundaryGlobalIndex[i] ] = boundaryTexelValues[i];
-#endif // NEW_MULTI_THREADING
 	if( verbose ) printf( "\tBoundary updated: %.3f(s) \n" , timer.elapsed() );
 	//Update Interior Texels
 
@@ -1275,7 +1014,6 @@ void CellStiffnessToTexelStiffness
 	};
 
 	if( verbose ) timer.reset();
-#ifdef NEW_MULTI_THREADING
 	unsigned int threads = ThreadPool::NumThreads();
 	ThreadPool::ParallelFor
 		(
@@ -1287,16 +1025,6 @@ void CellStiffnessToTexelStiffness
 				for( int r=firstLine ; r<lastLine ; r++ ) UpdateRow(r);
 			}
 		);
-#else // !NEW_MULTI_THREADING
-	int threads = omp_get_max_threads();
-#pragma omp parallel for
-	for (int t = 0; t < threads; t++) {
-		int tID = omp_get_thread_num();
-		int firstLine = (int)(interiorTexelToCellLines.size() *tID) / threads;
-		int lastLine = (int)(interiorTexelToCellLines.size() * (tID + 1)) / threads;
-		for (int r = firstLine; r < lastLine; r++) UpdateRow(r);
-	}
-#endif // NEW_MULTI_THREADING
 	if( verbose ) printf( "\t Interior update %.4f\n" , timer.elapsed() );
 }
 

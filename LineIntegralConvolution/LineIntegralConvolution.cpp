@@ -60,10 +60,6 @@ cmdLineParameter< int   > MatrixQuadrature( "mQuadrature" , 6 );
 
 
 cmdLineParameter< char* > CameraConfig("camera");
-#ifdef NEW_MULTI_THREADING
-#else // !NEW_MULTI_THREADING
-cmdLineParameter< int   > Threads("threads", omp_get_num_procs());
-#endif // NEW_MULTI_THREADING
 cmdLineParameter< int   > DisplayMode("display", TWO_REGION_DISPLAY);
 
 
@@ -77,18 +73,12 @@ cmdLineReadable Verbose("verbose");
 cmdLineReadable DetailVerbose("detail");
 cmdLineReadable UseDirectSolver("useDirectSolver");
 cmdLineReadable IntrinsicVectorField( "intrinsicVF" );
-#ifdef NEW_MULTI_THREADING
 cmdLineReadable Serial( "serial" );
-#endif // NEW_MULTI_THREADING
 cmdLineReadable NoHelp( "noHelp" );
 
 cmdLineReadable* params[] =
 {
-#ifdef NEW_MULTI_THREADING
 	&Input , &Output , &MinimalCurvature , &InVectorField , &OutVectorField , &IntrinsicVectorField , &Width,&Height , &LICInterpolationWeight , &SharpeningInterpolationWeight , &SharpeningGradientModulation , &CameraConfig, &Levels,&UseDirectSolver,&Serial,&DisplayMode,&MultigridBlockHeight,&MultigridBlockWidth,&MultigridPaddedHeight,&MultigridPaddedWidth,&Verbose,
-#else // !NEW_MULTI_THREADING
-	&Input , &Output , &MinimalCurvature , &InVectorField , &OutVectorField , &IntrinsicVectorField , &Width,&Height , &LICInterpolationWeight , &SharpeningInterpolationWeight , &SharpeningGradientModulation , &CameraConfig, &Levels,&UseDirectSolver,&Threads,&DisplayMode,&MultigridBlockHeight,&MultigridBlockWidth,&MultigridPaddedHeight,&MultigridPaddedWidth,&Verbose,
-#endif // NEW_MULTI_THREADING
 	&DetailVerbose , &RandomJitter ,
 	&Double ,
 	&MatrixQuadrature ,
@@ -120,10 +110,6 @@ void ShowUsage(const char* ex)
 
 	printf( "\t[--%s <camera configuration file>\n" , CameraConfig.name);
 	printf( "\t[--%s <hierarchy levels>=%d]\n" , Levels.name , Levels.value );
-#ifdef NEW_MULTI_THREADING
-#else // !NEW_MULTI_THREADING
-	printf( "\t[--%s <threads>=%d]\n" , Threads.name , Threads.value );
-#endif // NEW_MULTI_THREADING
 	printf( "\t[--%s]\n" , DetailVerbose.name );
 	printf( "\t[--%s <display mode>=%d]\n" , DisplayMode.name , DisplayMode.value );
 	printf( "\t\t%d] One Region \n", ONE_REGION_DISPLAY);
@@ -136,9 +122,7 @@ void ShowUsage(const char* ex)
 	printf( "\t[--%s <normal smoothing iterations>=%d]\n" , NormalSmoothingIterations.name , NormalSmoothingIterations.value );
 	printf( "\t[--%s <normal smoothing interpolation>=%f]\n" , NormalSmoothingInterpolation.name , NormalSmoothingInterpolation.value );
 	printf( "\t[--%s <anisotropy exponent>=%f]\n" , AnisotropyExponent.name , AnisotropyExponent.value );
-#ifdef NEW_MULTI_THREADING
 	printf( "\t[--%s]\n" , Serial.name );
-#endif // NEW_MULTI_THREADING
 	printf( "\t[--%s]\n" , NoHelp.name );
 	printf( "\t[--%s]\n" , Double.name );
 }
@@ -338,12 +322,7 @@ void LineConvolution< PreReal , Real >::ComputeExactSolution( bool verbose )
 	// (1) Line Convolution	
 	// RHS = Mass * randSignal * licInterpolationWeight
 	MultiplyBySystemMatrix_NoReciprocals( anisoMassCoefficients , hierarchy.gridAtlases[0].boundaryGlobalIndex , hierarchy.gridAtlases[0].rasterLines , randSignal , multigridLineConvolutionVariables[0].rhs );
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor( 0 , textureNodes.size() , [&]( unsigned int , size_t i ){ multigridLineConvolutionVariables[0].rhs[i] *= licInterpolationWeight; } );
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-	for( int i=0 ; i<textureNodes.size() ; i++ ) multigridLineConvolutionVariables[0].rhs[i] *= licInterpolationWeight;
-#endif // NEW_MULTI_THREADING
 
 	timer.reset();
 	solve( fineLineConvolutionSolver , multigridLineConvolutionVariables[0].x , multigridLineConvolutionVariables[0].rhs );
@@ -356,12 +335,7 @@ void LineConvolution< PreReal , Real >::ComputeExactSolution( bool verbose )
 	stiffness_x0.resize( textureNodes.size() );
 	MultiplyBySystemMatrix_NoReciprocals( stiffnessCoefficients , hierarchy.gridAtlases[0].boundaryGlobalIndex , hierarchy.gridAtlases[0].rasterLines , multigridLineConvolutionVariables[0].x , stiffness_x0 );
 
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor( 0 , textureNodes.size() , [&]( unsigned int , size_t i ){ multigridModulationVariables[0].rhs[i] = mass_x0[i] * sharpeningInterpolationWeight + stiffness_x0[i] * sharpeningGradientModulation; } );
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-	for( int i=0 ; i<textureNodes.size() ; i++ ) multigridModulationVariables[0].rhs[i] = mass_x0[i] * sharpeningInterpolationWeight + stiffness_x0[i] * sharpeningGradientModulation;
-#endif // NEW_MULTI_THREADING
 
 	//(3) Modulation
 	if( verbose ) timer.reset();
@@ -372,7 +346,6 @@ void LineConvolution< PreReal , Real >::ComputeExactSolution( bool verbose )
 template< typename PreReal , typename  Real >
 void LineConvolution< PreReal , Real >::SetOutputBuffer( const std::vector< Point3D< Real > >& solution )
 {
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor
 		(
 			0 , textureNodes.size() ,
@@ -386,18 +359,6 @@ void LineConvolution< PreReal , Real >::SetOutputBuffer( const std::vector< Poin
 				outputBuffer[offset+2] = (unsigned char)( std::min< float >( std::max< float >( 0 , solution[i][2] ) , 1.f )*255.f );
 			}
 		);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-	for( int i=0 ; i<textureNodes.size() ; i++ )
-	{
-		int ci = textureNodes[i].ci;
-		int cj = textureNodes[i].cj;
-		int offset = 3 * (textureWidth*cj + ci);
-		outputBuffer[offset+0] = (unsigned char)( std::min< float >( std::max< float >( 0 , solution[i][0] ) , 1.f )*255.f );
-		outputBuffer[offset+1] = (unsigned char)( std::min< float >( std::max< float >( 0 , solution[i][1] ) , 1.f )*255.f );
-		outputBuffer[offset+2] = (unsigned char)( std::min< float >( std::max< float >( 0 , solution[i][2] ) , 1.f )*255.f );
-	}
-#endif // NEW_MULTI_THREADING
 }
 
 template< typename PreReal , typename  Real >
@@ -537,12 +498,7 @@ void LineConvolution< PreReal , Real >::UpdateSolution( bool verbose , bool deta
 
 	// (1) Update smoothed input solution
 	MultiplyBySystemMatrix_NoReciprocals( anisoMassCoefficients , hierarchy.gridAtlases[0].boundaryGlobalIndex , hierarchy.gridAtlases[0].rasterLines , randSignal , multigridLineConvolutionVariables[0].rhs );
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor( 0 , textureNodes.size() , [&]( unsigned int , size_t i ){ multigridLineConvolutionVariables[0].rhs[i] *= licInterpolationWeight; } );
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-	for( int i=0 ; i<textureNodes.size() ; i++ ) multigridLineConvolutionVariables[0].rhs[i] *= licInterpolationWeight;
-#endif // NEW_MULTI_THREADING
 	if( verbose ) timer.reset();
 	VCycle( multigridLineConvolutionVariables , multigridLineConvolutionCoefficients , multigridIndices , lineConvolutionSolvers , detailVerbose , detailVerbose );
 	if( verbose ) printf( "Smoothing impulse %.4f\n" , timer.elapsed() );
@@ -554,12 +510,7 @@ void LineConvolution< PreReal , Real >::UpdateSolution( bool verbose , bool deta
 	stiffness_x0.resize(textureNodes.size());
 	MultiplyBySystemMatrix_NoReciprocals( stiffnessCoefficients , hierarchy.gridAtlases[0].boundaryGlobalIndex , hierarchy.gridAtlases[0].rasterLines , multigridLineConvolutionVariables[0].x , stiffness_x0 );
 
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor( 0 , textureNodes.size() , [&]( unsigned int , size_t i ){ multigridModulationVariables[0].rhs[i] = mass_x0[i] * sharpeningInterpolationWeight + stiffness_x0[i] * sharpeningGradientModulation; } );
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-	for( int i=0 ; i<textureNodes.size() ; i++ ) multigridModulationVariables[0].rhs[i] = mass_x0[i] * sharpeningInterpolationWeight + stiffness_x0[i] * sharpeningGradientModulation;
-#endif // NEW_MULTI_THREADING
 
 	// (3) Update geodesic distance solution	
 	if( verbose ) timer.reset();
@@ -581,11 +532,7 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 	for( int i=0 ; i<textureNodes.size() ; i++ )
 	{
 		if( textureNodes[i].ci<0 || textureNodes[i].ci>textureWidth-1 || textureNodes[i].cj<0 || textureNodes[i].cj>textureHeight-1 )
-#ifdef NEW_CODE
 			THROW( "Invalid node! " , textureNodes[i].ci , " " , textureNodes[i].cj );
-#else // !NEW_CODE
-			Miscellany::Throw( "Invalid node! %d %d\n" , textureNodes[i].ci , textureNodes[i].cj );
-#endif // NEW_CODE
 		nodeIndex(textureNodes[i].ci, textureNodes[i].cj) = i;
 	}
 
@@ -616,23 +563,14 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 			if( IntrinsicVectorField.set )
 			{
 				ReadVector( vectorField , InVectorField.value );
-#ifdef NEW_CODE
 				if( vectorField.size()!=mesh.triangles.size() ) THROW( "Triangle and vector counts don't match: " , mesh.triangles.size() , " != " , vectorField.size() );
-#else // !NEW_CODE
-				if( vectorField.size()!=mesh.triangles.size() ) Miscellany::Throw( "Triangle and vector counts don't match: %d != %d\n" , (int)mesh.triangles.size() , (int)vectorField.size() );
-#endif // NEW_CODE
 			}
 			else
 			{
 				std::vector< Point3D< PreReal > > _vectorField;
 				ReadVector( _vectorField , InVectorField.value );
-#ifdef NEW_CODE
 				if( _vectorField.size()!=mesh.triangles.size() ) THROW( "Triangle and vector counts don't match: " , mesh.triangles.size() , " != " , _vectorField.size() );
-#else // !NEW_CODE
-				if( _vectorField.size()!=mesh.triangles.size() ) Miscellany::Throw( "Triangle and vector counts don't match: %d != %d\n" , (int)mesh.triangles.size() , (int)_vectorField.size() );
-#endif // NEW_CODE
 				vectorField.resize( _vectorField.size() );
-#ifdef NEW_MULTI_THREADING
 				ThreadPool::ParallelFor
 					(
 						0 , mesh.triangles.size() ,
@@ -646,18 +584,6 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 							vectorField[i] = Dot.inverse() * dot;
 						}
 					);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-				for( int i=0 ; i<mesh.triangles.size() ; i++ )
-				{
-					Point3D< PreReal > v[] = { mesh.vertices[ mesh.triangles[i][0] ] , mesh.vertices[ mesh.triangles[i][1] ] , mesh.vertices[ mesh.triangles[i][2] ] };
-					Point3D< PreReal > d[] = { v[1]-v[0] , v[2]-v[0] };
-					SquareMatrix< PreReal , 2 > Dot;
-					for( int j=0 ; j<2 ; j++ ) for( int k=0 ; k<2 ; k++ ) Dot(j,k) = Point3D< PreReal >::Dot( d[j] , d[k] );
-					Point2D< PreReal > dot( Point3D< PreReal >::Dot( d[0] , _vectorField[i] ) , Point3D< PreReal >::Dot( d[1] , _vectorField[i] ) );
-					vectorField[i] = Dot.inverse() * dot;
-				}
-#endif // NEW_MULTI_THREADING
 			}
 		}
 		else
@@ -671,7 +597,6 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 
 				SparseMatrix< PreReal , int > M , _M = rMesh.template massMatrix< FEM::BASIS_0_WHITNEY >() , _S = rMesh.template stiffnessMatrix< FEM::BASIS_0_WHITNEY >();
 				M.resize( 2*mesh.vertices.size() );
-#ifdef NEW_MULTI_THREADING
 				ThreadPool::ParallelFor
 					(
 						0 , mesh.vertices.size() ,
@@ -684,14 +609,6 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 							}
 						}
 					);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-				for( int i=0 ; i<mesh.vertices.size() ; i++ ) for( int ii=0 ; ii<2 ; ii++ )
-				{
-					M.SetRowSize( 2*i+ii , 2*_M.rowSizes[i] );
-					for( int j=0 ; j<_M.rowSizes[i] ; j++ ) for( int jj=0 ; jj<2 ; jj++ ) M[2*i+ii][2*j+jj].N = _M[i][j].N*2+jj;
-				}
-#endif // NEW_MULTI_THREADING
 				std::vector< Point3D< PreReal > > tangents( mesh.vertices.size()*2 );
 				std::vector< PreReal > b( mesh.vertices.size()*2 ) , o( mesh.vertices.size()*2 );
 
@@ -702,7 +619,6 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 				{
 
 					// Set the tangent directions
-#ifdef NEW_MULTI_THREADING
 					ThreadPool::ParallelFor
 					(
 						0 , mesh.vertices.size() ,
@@ -714,16 +630,6 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 							tangents[2*i+1] = Point3D< PreReal >::CrossProduct( mesh.normals[i] , tangents[2*i+0] ) ; tangents[2*i+1] /= Length( tangents[2*i+1] );
 						}
 					);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-					for( int i=0 ; i<mesh.vertices.size() ; i++ )
-					{
-						Point3D< PreReal > v( 1 , 0 , 0 );
-						if( fabs( Point3D< PreReal >::Dot( v , mesh.normals[i] ) )>0.99 ) v = Point3D< PreReal >( 0 , 1 , 0 );
-						tangents[2*i+0] = Point3D< PreReal >::CrossProduct( mesh.normals[i] , v               ) ; tangents[2*i+0] /= Length( tangents[2*i+0] );
-						tangents[2*i+1] = Point3D< PreReal >::CrossProduct( mesh.normals[i] , tangents[2*i+0] ) ; tangents[2*i+1] /= Length( tangents[2*i+1] );
-					}
-#endif // NEW_MULTI_THREADING
 
 					// Solve for the tangent offsets minimizing the dirichlet energy:
 					// E( o1 , o2 ) = || \sum o[i] * T[i] ||^2 + e * || \nabla( \sum n[i] + o[i] * T[i] ) ||^2
@@ -731,7 +637,6 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 					// \nabla E = 0:
 					// 0 = T^t * ( M + e * S ) * T * o + e * T^t * S * n
 					{
-#ifdef NEW_MULTI_THREADING
 						ThreadPool::ParallelFor
 						(
 							0 , mesh.vertices.size() ,
@@ -748,34 +653,16 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 								}
 							}
 						);
-#else // !NEW_MULTI_THREADING
-
-#pragma omp parallel for 
-						for( int i=0 ; i<mesh.vertices.size() ; i++ ) for( int ii=0 ; ii<2 ; ii++ ) 
-						{
-							b[2*i+ii] = 0;
-							for( int j=0 ; j<_M.rowSizes[i] ; j++ )
-							{
-								for( int jj=0 ; jj<2 ; jj++ ) M[2*i+ii][2*j+jj].Value = ( _M[i][j].Value*NormalSmoothingInterpolation.value + _S[i][j].Value ) * Point3D< Real >::Dot( tangents[2*i+ii] , tangents[ 2*_M[i][j].N+jj ] );
-								b[2*i+ii] -= _S[i][j].Value * Point3D< Real >::Dot( mesh.normals[ _S[i][j].N ] , tangents[2*i+ii] );
-							}
-						}
-#endif // NEW_MULTI_THREADING
 					}
 					{
 						solver.update( M );
 						solver.solve( GetPointer( b ) , GetPointer( o ) );
 
-#ifdef NEW_MULTI_THREADING
 						ThreadPool::ParallelFor
 						(
 							0 , mesh.vertices.size() ,
 							[&]( unsigned int , size_t i ){ mesh.normals[i] += tangents[2*i+0] * o[2*i+0] + tangents[2*i+1] * o[2*i+1] , mesh.normals[i] /= Length( mesh.normals[i] ); }
 						);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-						for( int i=0 ; i<mesh.vertices.size() ; i++ ) mesh.normals[i] += tangents[2*i+0] * o[2*i+0] + tangents[2*i+1] * o[2*i+1] , mesh.normals[i] /= Length( mesh.normals[i] );
-#endif // NEW_MULTI_THREADING
 					}
 				}		
 				if( Verbose.set ) printf( "\tSmoothed normals: %.2f(s)\n" , tmr.elapsed() );
@@ -785,16 +672,11 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 
 			// Set the vector-field to the principal curvature direction times the umbilicity
 			vectorField.resize( principalCurvatures.size() );
-#ifdef NEW_MULTI_THREADING
 			ThreadPool::ParallelFor
 				(
 					0 , principalCurvatures.size() ,
 					[&]( unsigned int , size_t t ){  vectorField[t] = principalCurvatures[t].dirs[ MinimalCurvature.set ? 0 : 1 ] * ( principalCurvatures[t].values[1] - principalCurvatures[t].values[0] ); }
 				);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-			for( int t=0 ; t<principalCurvatures.size() ; t++ ) vectorField[t] = principalCurvatures[t].dirs[ MinimalCurvature.set ? 0 : 1 ] * ( principalCurvatures[t].values[1] - principalCurvatures[t].values[0] );
-#endif // NEW_MULTI_THREADING
 		}
 		// Normalize the vector-field to have unit-norm
 		{
@@ -818,7 +700,6 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 #if 1
 			std::cerr << "[WARNING] Forcing extrinsic output" << std::endl;
 			std::vector< Point3D< PreReal > > _vectorField( vectorField.size() );
-#ifdef NEW_MULTI_THREADING
 			ThreadPool::ParallelFor
 				(
 					0 , mesh.triangles.size() ,
@@ -828,21 +709,12 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 						_vectorField[i] = (v[1]-v[0]) * vectorField[i][0] + (v[2]-v[0]) * vectorField[i][1];
 					}
 				);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-			for( int i=0 ; i<mesh.triangles.size() ; i++ )
-			{
-				Point3D< PreReal > v[] = { mesh.vertices[ mesh.triangles[i][0] ] , mesh.vertices[ mesh.triangles[i][1] ] , mesh.vertices[ mesh.triangles[i][2] ] };
-				_vectorField[i] = (v[1]-v[0]) * vectorField[i][0] + (v[2]-v[0]) * vectorField[i][1];
-			}
-#endif // NEW_MULTI_THREADING
 			WriteVector( _vectorField , OutVectorField.value );
 #else
 			if( IntrinsicVectorField.set ) WriteVector( vectorField , OutVectorField.value );
 			else
 			{
 				std::vector< Point3D< PreReal > > _vectorField( vectorField.size() );
-#ifdef NEW_MULTI_THREADING
 				ThreadPool::ParallelFor
 				(
 					0 , mesh.triangles.size() ,
@@ -852,14 +724,6 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 						_vectorField[i] = (v[1]-v[0]) * vectorField[i][0] + (v[2]-v[0]) * vectorField[i][1];
 					}
 				);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-				for( int i=0 ; i<mesh.triangles.size() ; i++ )
-				{
-					Point3D< PreReal > v[] = { mesh.vertices[ mesh.triangles[i][0] ] , mesh.vertices[ mesh.triangles[i][1] ] , mesh.vertices[ mesh.triangles[i][2] ] };
-					_vectorField[i] = (v[1]-v[0]) * vectorField[i][0] + (v[2]-v[0]) * vectorField[i][1];
-				}
-#endif // NEW_MULTI_THREADING
 				WriteVector( _vectorField , OutVectorField.value );
 			}
 #endif
@@ -899,11 +763,7 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 			case 12: InitializeMassAndStiffness<12>( anisoMassCoefficients , anisoStiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
 			case 24: InitializeMassAndStiffness<24>( anisoMassCoefficients , anisoStiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
 			case 32: InitializeMassAndStiffness<32>( anisoMassCoefficients , anisoStiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-#ifdef NEW_CODE
 			default: THROW( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
-#else // !NEW_CODE
-			default: Miscellany::Throw( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
-#endif // NEW_CODE
 			}
 		}
 		if( Verbose.set ) printf( "\tInitialized mass and stiffness: %.2f(s)\n" , timer.elapsed() );
@@ -941,11 +801,7 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 			case 12: InitializeMassAndStiffness<12>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
 			case 24: InitializeMassAndStiffness<24>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
 			case 32: InitializeMassAndStiffness<32>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-#ifdef NEW_CODE
 			default: THROW( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
-#else // !NEW_CODE
-			default: Miscellany::Throw( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
-#endif // NEW_CODE
 			}
 		}
 		if( Verbose.set ) printf( "\tInitialized mass and stiffness: %.2f(s)\n" , timer.elapsed() );
@@ -1149,11 +1005,7 @@ void _main( int argc , char* argv[] )
 		char windowName[1024];
 		sprintf( windowName , "Line Integral Convolution" );
 		glutCreateWindow( windowName );
-#ifdef NEW_CODE
 		if( glewInit()!=GLEW_OK ) THROW( "glewInit failed" );
-#else // !NEW_CODE
-		if( glewInit()!=GLEW_OK ) Miscellany::Throw( "glewInit failed" );
-#endif // NEW_CODE
 		glutDisplayFunc ( LineConvolution< PreReal , Real >::Display );
 		glutReshapeFunc ( LineConvolution< PreReal , Real >::Reshape );
 		glutMouseFunc   ( LineConvolution< PreReal , Real >::MouseFunc );
@@ -1177,11 +1029,7 @@ int main( int argc , char *argv[] )
 {
 	cmdLineParse( argc-1 , argv+1 , params );
 	if( !Input.set ) { ShowUsage(argv[0]); return EXIT_FAILURE; }
-#ifdef NEW_MULTI_THREADING
 	if( Serial.set ) ThreadPool::ParallelizationType = ThreadPool::ParallelType::NONE;
-#else // !NEW_MULTI_THREADING
-	omp_set_num_threads( Threads.value );
-#endif // NEW_MULTI_THREADING
 	if( !NoHelp.set && !Output.set )
 	{
 		printf( "+-----------------------------------------------+\n" );
@@ -1197,11 +1045,7 @@ int main( int argc , char *argv[] )
 		if( Double.set ) _main< double , double >( argc , argv );
 		else             _main< double , float  >( argc , argv );
 	}
-#ifdef NEW_CODE
 	catch( Misha::Exception &e )
-#else // !NEW_CODE
-	catch( Miscellany::Exception &e )
-#endif // NEW_CODE
 	{
 		printf( "%s\n" , e.what() );
 		return EXIT_FAILURE;

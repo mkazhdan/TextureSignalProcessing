@@ -33,9 +33,7 @@ DAMAGE.
 #include <png.h>
 #endif // _WIN32
 #include "Miscellany.h"
-#ifdef NEW_CODE
 #include "Exceptions.h"
-#endif // NEW_CODE
 
 template< unsigned int BitDepth >
 inline PNGReader< BitDepth >::PNGReader( const char* fileName , unsigned int& width , unsigned int& height , unsigned int& channels )
@@ -43,32 +41,16 @@ inline PNGReader< BitDepth >::PNGReader( const char* fileName , unsigned int& wi
 	_currentRow = 0;
 
 	_png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING , 0 , 0 , 0);
-#ifdef NEW_CODE
 	if( !_png_ptr ) ERROR_OUT( "failed to create png pointer" );
-#else // !NEW_CODE
-	if( !_png_ptr ) Miscellany::ErrorOut( "failed to create png pointer" );
-#endif // NEW_CODE
 	_info_ptr = png_create_info_struct( _png_ptr );
-#ifdef NEW_CODE
 	if( !_info_ptr ) ERROR_OUT( "failed to create info pointer" );
-#else // 1NEW_CODE
-	if( !_info_ptr ) Miscellany::ErrorOut( "failed to create info pointer" );
-#endif // NEW_CODE
 
 	_end_info = png_create_info_struct( _png_ptr );
-#ifdef NEW_CODE
 	if( !_end_info ) ERROR_OUT( "failed to create end pointer" );
-#else // !NEW_CODE
-	if( !_end_info ) Miscellany::ErrorOut( "failed to create end pointer" );
-#endif // NEW_CODE
 
 
 	_fp = fopen( fileName , "rb" );
-#ifdef NEW_CODE
 	if( !_fp ) ERROR_OUT( "Failed to open file for reading: " , std::string( fileName ) );
-#else // !NEW_CODE
-	if( !_fp ) Miscellany::ErrorOut( "Failed to open file for reading: %s" , fileName );
-#endif // NEW_CODE
 	png_init_io( _png_ptr , _fp );
 
 	png_read_info( _png_ptr, _info_ptr );
@@ -78,11 +60,7 @@ inline PNGReader< BitDepth >::PNGReader( const char* fileName , unsigned int& wi
 	channels = png_get_channels( _png_ptr , _info_ptr );
 	int bit_depth=png_get_bit_depth( _png_ptr , _info_ptr );
 	int color_type = png_get_color_type( _png_ptr , _info_ptr );
-#ifdef NEW_CODE
 	if( bit_depth!=BitDepth ) ERROR_OUT( "expected " , BitDepth ,  " bits per channel: " , bit_depth );
-#else // !NEW_CODE
-	if( bit_depth!=BitDepth ) Miscellany::ErrorOut( "expected %d bits per channel: %d" , BitDepth , bit_depth );
-#endif // NEW_CODE
 	if( color_type==PNG_COLOR_TYPE_PALETTE ) png_set_expand( _png_ptr ) , printf( "Expanding PNG color pallette\n" );
 
 	{
@@ -118,30 +96,14 @@ inline bool PNGReader< BitDepth >::GetInfo( const char* fileName , unsigned int&
 	FILE* fp;
 
 	png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING , 0 , 0 , 0);
-#ifdef NEW_CODE
 	if( !png_ptr ) ERROR_OUT( "failed to create png pointer" );
-#else // !NEW_CODE
-	if( !png_ptr ) Miscellany::ErrorOut( "failed to create png pointer" );
-#endif // NEW_CODE
 	info_ptr = png_create_info_struct( png_ptr );
-#ifdef NEW_CODE
 	if( !info_ptr ) ERROR_OUT( "failed to create info pointer" );
-#else // !NEW_CODE
-	if( !info_ptr ) Miscellany::ErrorOut( "failed to create info pointer" );
-#endif // NEW_CODE
 	end_info = png_create_info_struct( png_ptr );
-#ifdef NEW_CODE
 	if( !end_info ) ERROR_OUT( "failed to create end pointer" );
-#else // !NEW_CODE
-	if( !end_info ) Miscellany::ErrorOut( "failed to create end pointer" );
-#endif // NEW_CODE
 
 	fp = fopen( fileName , "rb" );
-#ifdef NEW_CODE
 	if( !fp ) ERROR_OUT( "Failed to open file for reading: " , std::string( fileName ) );
-#else // !NEW_CODE
-	if( !fp ) Miscellany::ErrorOut( "Failed to open file for reading: %s" , fileName );
-#endif // NEW_CODE
 	png_init_io( png_ptr , fp );
 
 	png_read_info( png_ptr, info_ptr );
@@ -162,24 +124,12 @@ PNGWriter< BitDepth >::PNGWriter( const char* fileName , unsigned int width , un
 	_currentRow = 0;
 
 	_png_ptr = png_create_write_struct( PNG_LIBPNG_VER_STRING , 0 , 0 , 0 );
-#ifdef NEW_CODE
 	if( !_png_ptr )	ERROR_OUT( "Failed to create png write struct" );
-#else // !NEW_CODE
-	if( !_png_ptr )	Miscellany::ErrorOut( "Failed to create png write struct" );
-#endif // NEW_CODE
 	_info_ptr = png_create_info_struct( _png_ptr );
-#ifdef NEW_CODE
 	if( !_info_ptr ) ERROR_OUT( "Failed to create png info struct" );
-#else // !NEW_CODE
-	if( !_info_ptr ) Miscellany::ErrorOut( "Failed to create png info struct" );
-#endif // NEW_CODE
 
 	_fp = fopen( fileName , "wb" );
-#ifdef NEW_CODE
 	if( !_fp ) ERROR_OUT( "Failed to open file for writing: " , std::string( fileName ) );
-#else // !NEW_CODE
-	if( !_fp ) Miscellany::ErrorOut( "Failed to open file for writing: %s" , fileName );
-#endif // NEW_CODE
 	png_init_io( _png_ptr , _fp );
 
 	const int compression_effort = 0;  // was Z_BEST_SPEED
@@ -191,11 +141,7 @@ PNGWriter< BitDepth >::PNGWriter( const char* fileName , unsigned int width , un
 		case 1: pngColorType = PNG_COLOR_TYPE_GRAY ; break;
 		case 3: pngColorType = PNG_COLOR_TYPE_RGB  ; break;
 		case 4: pngColorType = PNG_COLOR_TYPE_RGBA ; break;
-#ifdef NEW_CODE
 		default: ERROR_OUT( "Only 1, 3, or 4 channel PNGs are supported" );
-#else // !NEW_CODE
-		default: Miscellany::ErrorOut( "Only 1, 3, or 4 channel PNGs are supported" );
-#endif // NEW_CODE
 	};
 	png_set_IHDR( _png_ptr , _info_ptr, width , height, BitDepth , pngColorType , PNG_INTERLACE_NONE , PNG_COMPRESSION_TYPE_DEFAULT , PNG_FILTER_TYPE_DEFAULT );
 	png_write_info( _png_ptr , _info_ptr );

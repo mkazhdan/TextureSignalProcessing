@@ -30,9 +30,7 @@ DAMAGE.
 #define DIVERGENCE_INCLUDED
 
 #include <Misha/Miscellany.h>
-#ifdef NEW_MULTI_THREADING
 #include <Misha/MultiThreading.h>
-#endif // NEW_MULTI_THREADING
 #include "EdgeIndexing.h"
 
 class DivegenceRasterLine
@@ -56,27 +54,15 @@ void InitializeDivergenceRasteLines( std::unordered_map< unsigned long long , in
 		divLine.texelEnd = line.lineEndIndex;
 		divLine.deepCoefficientsStart = line.coeffStartIndex;
 		unsigned long long prevEdgeKey = SetMeshEdgeKey(line.prevLineIndex - 1, line.prevLineIndex);
-#ifdef NEW_CODE
 		if( coarseEdgeIndex.find(prevEdgeKey)==coarseEdgeIndex.end() ) THROW( "Edge not found" );
-#else // !NEW_CODE
-		if( coarseEdgeIndex.find(prevEdgeKey)==coarseEdgeIndex.end() ) Miscellany::Throw( "Edge not found" );
-#endif // NEW_CODE
 		divLine.prevEdgeRowStart = coarseEdgeIndex[prevEdgeKey];
 
 		unsigned long long currEdgeKey = SetMeshEdgeKey(line.lineStartIndex - 1, line.lineStartIndex);
-#ifdef NEW_CODE
 		if( coarseEdgeIndex.find(currEdgeKey)==coarseEdgeIndex.end() ) THROW( "Edge not found" );
-#else // !NEW_CODE
-		if( coarseEdgeIndex.find(currEdgeKey)==coarseEdgeIndex.end() ) Miscellany::Throw( "Edge not found" );
-#endif // NEW_CODE
 		divLine.currEdgeRowStart = coarseEdgeIndex[currEdgeKey];
 
 		unsigned long long nextEdgeKey = SetMeshEdgeKey(line.nextLineIndex - 1, line.nextLineIndex);
-#ifdef NEW_CODE
 		if( coarseEdgeIndex.find(nextEdgeKey)==coarseEdgeIndex.end() ) THROW( "Edge not found" );
-#else // !NEW_CODE
-		if( coarseEdgeIndex.find(nextEdgeKey)==coarseEdgeIndex.end() ) Miscellany::Throw( "Edge not found" );
-#endif // NEW_CODE
 		divLine.nextEdgeRowStart = coarseEdgeIndex[nextEdgeKey];
 	}
 }
@@ -131,12 +117,7 @@ void ComputeDivergence( const std::vector< Data > &edgeValues , std::vector< Dat
 	};
 
 
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor( 0 , divergenceRasterLines.size() , [&]( unsigned int , size_t r ){ UpdateRow(r); } );
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-	for (int r = 0; r < divergenceRasterLines.size(); r++) UpdateRow(r);
-#endif // NEW_MULTI_THREADING
 }
 
 #endif // DIVERGENCE_INCLUDED

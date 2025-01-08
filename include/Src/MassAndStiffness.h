@@ -28,9 +28,7 @@ DAMAGE.
 #pragma once
 
 #include <Misha/Miscellany.h>
-#ifdef NEW_CODE
 #include <Misha/Exceptions.h>
-#endif // NEW_CODE
 #include "Hierarchy.h"
 #include "Divergence.h"
 #include "PolygonClipping.h"
@@ -215,11 +213,7 @@ void InitializeChartMassAndStiffness
 			auto TextureToCell = [&]( Point2D< GeometryReal > p ){ return Point2D< GeometryReal >( (GeometryReal)( p[0] / gridChart.cellSizeW ) - i , (GeometryReal)( p[1] / gridChart.cellSizeH ) - j ); };
 
 			int localInteriorIndex = gridChart.localInteriorCellIndex(i,j) , localBoundaryIndex = gridChart.localBoundaryCellIndex(i,j);
-#ifdef NEW_CODE
 			if( localInteriorIndex!=-1 && localBoundaryIndex!=-1 ) THROW( "Cell simultaneosly interior and boundary" );
-#else // !NEW_CODE
-			if( localInteriorIndex!=-1 && localBoundaryIndex!=-1 ) Miscellany::Throw( "Cell simultaneosly interior and boundary" );
-#endif // NEW_CODE
 
 			// If the cell is entirely within the triangle...
 			if( CellInTriangle( i , j , parametricVertices ) && localInteriorIndex!=-1 )
@@ -277,11 +271,7 @@ void InitializeChartMassAndStiffness
 						for( int s=0 ; s<Samples ; s++ )
 						{
 							fragment_samples[s] = polygon[0] + dm[0] * (GeometryReal)TriangleIntegrator<Samples>::Positions[s][0] + dm[1] * (GeometryReal)TriangleIntegrator<Samples>::Positions[s][1];
-#ifdef NEW_CODE
 							if( !InUnitSquare( fragment_samples[s] ) ) THROW( "Interior sample out of unit box! (" , fragment_samples[s][0] , " " , fragment_samples[s][1] , ")" );
-#else // !NEW_CODE
-							if( !InUnitSquare( fragment_samples[s] ) ) Miscellany::Throw( "Interior sample out of unit box! (%f %f)\n" , fragment_samples[s][0] , fragment_samples[s][1] );
-#endif // NEW_CODE
 						}
 
 						// Integrate scalar product and gradient field
@@ -388,11 +378,7 @@ void InitializeChartMassAndStiffness
 								for( int s=0 ; s<Samples ; s++ )
 								{
 									fragment_samples[s] = polygon.vertices[0] + d[0] * (GeometryReal)TriangleIntegrator<Samples>::Positions[s][0] + d[1] * (GeometryReal)TriangleIntegrator<Samples>::Positions[s][1];
-#ifdef NEW_CODE
 									if( !InUnitTriangle( fragment_samples[s] ) ) THROW( "Boundary sample out of unit right triangle! (" , fragment_samples[s][0] , " " , fragment_samples[s][1] , ")" );
-#else // !NEW_CODE
-									if( !InUnitTriangle( fragment_samples[s] ) ) Miscellany::Throw( "Boundary sample out of unit right triangle! (%f %f)\n" , fragment_samples[s][0] , fragment_samples[s][1] );
-#endif // NEW_CODE
 									else
 									{
 										fragment_samples[s][0] = std::max< GeometryReal >( fragment_samples[s][0] , 0 );
@@ -450,21 +436,13 @@ void InitializeChartMassAndStiffness
 							else
 							{
 								zeroAreaElementCount++;
-#ifdef NEW_CODE
 								WARN( "Zero area polygon at cell " , gridChart.cornerCoords[0] + i , " " , gridChart.cornerCoords[1] + j);
-#else // !NEW_CODE
-								Miscellany::Warn( "Zero area polygon at cell %d %d", gridChart.cornerCoords[0] + i, gridChart.cornerCoords[1] + j);
-#endif // NEW_CODE
 							}
 						}
 
 						GeometryReal integratedPolygonMass = 0;
 						for( int k=0 ; k<6 ; k++ ) for( int l=0 ; l<6 ; l++ ) integratedPolygonMass += polygonMass(k,l);
-#ifdef NEW_CODE
 						if( fabs( integratedPolygonMass - polygonArea )>PRECISION_ERROR ) WARN( "Out of precision" );
-#else // !NEW_CODE
-						if( fabs( integratedPolygonMass - polygonArea )>PRECISION_ERROR ) Miscellany::Warn( "Out of precision" );
-#endif // NEW_CODE
 						{
 							for (int dk = 0; dk < 6; dk++)for (int dl = 0; dl < 6; dl++) {
 								triangleElementStiffness[boundaryTriangleId](dk, dl) += (polygonStiffness(dk, dl) + polygonStiffness(dl, dk)) / 2;
@@ -478,11 +456,7 @@ void InitializeChartMassAndStiffness
 		}
 	}
 
-#ifdef NEW_CODE
 	if( zeroAreaElementCount ) WARN( "Element with zero area = " , zeroAreaElementCount );
-#else // !NEW_CODE
-	if( zeroAreaElementCount ) Miscellany::Warn( "Element with zero area = %d" , zeroAreaElementCount );
-#endif // NEW_CODE
 
 	int offset_i[4] = { 0, 1 , 1 ,0 };
 	int offset_j[4] = { 0, 0 , 1 ,1 };
@@ -621,11 +595,7 @@ void InitializeChartMassAndStiffness
 							int edgeSourceCoarseIndex = indicesGlobal[reducedCellCornerPairs[2 * l]];
 							int edgeTargetCoarseIndex = indicesGlobal[reducedCellCornerPairs[2 * l + 1]];
 							unsigned long long coarseEdgeKey = SetMeshEdgeKey(edgeSourceCoarseIndex, edgeTargetCoarseIndex);
-#ifdef NEW_CODE
 							if( coarseEdgeIndex.find(coarseEdgeKey)==coarseEdgeIndex.end() ) THROW( "Fine edge not found" );
-#else // !NEW_CODE
-							if( coarseEdgeIndex.find(coarseEdgeKey)==coarseEdgeIndex.end() ) Miscellany::Throw( "Fine edge not found" );
-#endif // NEW_CODE
 							cellCoarseEdgeIndex[l] = coarseEdgeIndex[coarseEdgeKey];
 						}
 						coarseEdgeIndexInitialized = true;
@@ -693,11 +663,7 @@ void InitializeChartMassAndStiffness
 					unsigned long long fineEdgeKey = SetMeshEdgeKey(edgeSourceFineIndex, edgeTargetFineIndex);
 					int _fineEdgeIndex = -1;
 					if( fineBoundaryEdgeIndex.find( fineEdgeKey )!=fineBoundaryEdgeIndex.end() ) _fineEdgeIndex = fineBoundaryEdgeIndex[fineEdgeKey];
-#ifdef NEW_CODE
 					else THROW( "Fine edge not found" );
-#else // !NEW_CODE
-					else Miscellany::Throw( "Fine edge not found" );
-#endif // NEW_CODE
 					for( int n=0 ; n<6 ; n++ )
 					{
 						int fineNodeIndex = fineTriangleElementIndices[n];
@@ -754,7 +720,6 @@ void InitializeMassAndStiffness
 	std::vector< Eigen::Triplet< MatrixReal > > boundaryDeepMassTriplets;
 	std::vector< Eigen::Triplet< MatrixReal > > boundaryDeepStiffnessTriplets;
 
-#ifdef NEW_MULTI_THREADING
 	std::vector< std::vector< Eigen::Triplet< MatrixReal > > > _boundaryBoundaryMassTriplets              ( ThreadPool::NumThreads() );
 	std::vector< std::vector< Eigen::Triplet< MatrixReal > > > _boundaryBoundaryStiffnessTriplets         ( ThreadPool::NumThreads() );
 	std::vector< std::vector< Eigen::Triplet< MatrixReal > > > _boundaryDeepMassTriplets                  ( ThreadPool::NumThreads() );
@@ -762,17 +727,7 @@ void InitializeMassAndStiffness
 	std::vector< std::vector< Eigen::Triplet< MatrixReal > > > _boundaryDeepDivergenceTriplets            ( ThreadPool::NumThreads() );
 	std::vector< std::vector< Eigen::Triplet< MatrixReal > > > _boundaryBoundaryDivergenceTriplets        ( ThreadPool::NumThreads() );
 	std::vector< std::vector< Eigen::Triplet< Point3D< MatrixReal > > > > _boundaryCellStiffnessTriplets  ( ThreadPool::NumThreads() );
-#else // !NEW_MULTI_THREADING
-	std::vector< std::vector< Eigen::Triplet< MatrixReal > > > _boundaryBoundaryMassTriplets              ( omp_get_max_threads() );
-	std::vector< std::vector< Eigen::Triplet< MatrixReal > > > _boundaryBoundaryStiffnessTriplets         ( omp_get_max_threads() );
-	std::vector< std::vector< Eigen::Triplet< MatrixReal > > > _boundaryDeepMassTriplets                  ( omp_get_max_threads() );
-	std::vector< std::vector< Eigen::Triplet< MatrixReal > > > _boundaryDeepStiffnessTriplets             ( omp_get_max_threads() );
-	std::vector< std::vector< Eigen::Triplet< MatrixReal > > > _boundaryDeepDivergenceTriplets            ( omp_get_max_threads() );
-	std::vector< std::vector< Eigen::Triplet< MatrixReal > > > _boundaryBoundaryDivergenceTriplets        ( omp_get_max_threads() );
-	std::vector< std::vector< Eigen::Triplet< Point3D< MatrixReal > > > > _boundaryCellStiffnessTriplets  ( omp_get_max_threads() );
-#endif // NEW_MULTI_THREADING
 
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor
 		(
 			0 , gridCharts.size() ,
@@ -790,24 +745,6 @@ void InitializeMassAndStiffness
 						deepDivergenceCoefficients
 					);			}
 		);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-	for( int i=0 ; i<gridCharts.size() ; i++ )
-	{
-		int thread = omp_get_thread_num();
-		InitializeChartMassAndStiffness< Samples >
-		(
-			parameterMetric[i] , atlasCharts[i] , gridCharts[i] , boundaryAndDeepIndex , fineBoundaryIndex , deepMassCoefficients , deepStiffnessCoefficients , 
-			_boundaryBoundaryMassTriplets[thread] , _boundaryBoundaryStiffnessTriplets[thread] ,
-			_boundaryDeepMassTriplets[thread] , _boundaryDeepStiffnessTriplets[thread] ,
-			computeCellBasedStiffness , inputSignal , boundarySignal , texelToCellCoeffs ,
-			_boundaryCellStiffnessTriplets[thread] ,
-			computeDivergence , fineBoundaryEdgeIndex , coarseEdgeIndex ,
-			_boundaryDeepDivergenceTriplets[thread] , _boundaryBoundaryDivergenceTriplets[thread] ,
-			deepDivergenceCoefficients
-		);
-	}
-#endif // NEW_MULTI_THREADING
 
 	MergeTriplets( _boundaryBoundaryMassTriplets , boundaryBoundaryMassTriplets );
 	MergeTriplets( _boundaryBoundaryStiffnessTriplets , boundaryBoundaryStiffnessTriplets );
@@ -904,11 +841,7 @@ void InitializeMassAndStiffness
 		std::vector< MatrixReal > in ( mass.boundaryBoundaryMatrix.Rows() , (MatrixReal)1. );
 		std::vector< MatrixReal > out( mass.boundaryBoundaryMatrix.Rows() , (MatrixReal)0. );
 		mass.boundaryBoundaryMatrix.Multiply( GetPointer(in) , GetPointer(out) );
-#ifdef NEW_CODE
 		for( int i=0 ; i<out.size() ; i++ ) if( out[i]==0 ) WARN( "Zero row at index " , i , ". Try running with jittering." );
-#else // !NEW_CODE
-		for( int i=0 ; i<out.size() ; i++ ) if( out[i]==0 ) Miscellany::Warn( "Zero row at index %d. Try running with jittering." , i );
-#endif // NEW_CODE
 	}
 
 	if( computeCellBasedStiffness ) for( int c=0 ; c<3 ; c++ ) boundaryCellBasedStiffnessRHSMatrix[c] = boundaryProlongation.fineBoundaryCoarseBoundaryRestriction * fineBoundaryCellStiffnessRHSMatrix[c];

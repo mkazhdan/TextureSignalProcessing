@@ -28,9 +28,7 @@ DAMAGE.
 #pragma once
 
 #include <Misha/Miscellany.h>
-#ifdef NEW_MULTI_THREADING
 #include <Misha/MultiThreading.h>
-#endif // NEW_MULTI_THREADING
 
 template< typename GeometryReal , typename MatrixReal >
 void InitializeProlongation( int numInteriorTexels , int numFineNodes , int numCoarseNodes , const std::vector< GridChart< GeometryReal > > &gridCharts , const std::vector< GridNodeInfo > &nodeInfo , Eigen::SparseMatrix< MatrixReal > &prolongation )
@@ -53,11 +51,7 @@ void InitializeProlongation( int numInteriorTexels , int numFineNodes , int numC
 	{
 		if( interiorTexelIndices[i]!=-1 )
 		{
-#ifdef NEW_CODE
 			if( interiorTexelIndices[i]<0 || interiorTexelIndices[i]>numFineNodes ) THROW( "Out of bound index" );
-#else // !NEW_CODE
-			if( interiorTexelIndices[i]<0 || interiorTexelIndices[i]>numFineNodes ) Miscellany::Throw( "Out of bound index" );
-#endif // NEW_CODE
 			prolongationTriplets.push_back( Eigen::Triplet< MatrixReal >( interiorTexelIndices[i] , i , (MatrixReal)1. ) );
 			coveredNodes.insert(i);
 		}
@@ -93,11 +87,7 @@ void InitializeProlongation( int numInteriorTexels , int numFineNodes , int numC
 			nodePosition[0] -= (GeometryReal)corner[0];
 			nodePosition[1] -= (GeometryReal)corner[1];
 			if( nodePosition[0] < 0-precision_error || nodePosition[0] > 1+precision_error || nodePosition[1] < 0-precision_error || nodePosition[1] > 1+precision_error )
-#ifdef NEW_CODE
 				THROW( "Sample out of unit box: (" , nodePosition[0] , " " , nodePosition[1] , ")" );
-#else // !NEW_CODE
-				Miscellany::Throw( "Sample out of unit box: (%f %f)" , nodePosition[0] , nodePosition[1] );
-#endif // NEW_CODE
 			for (int k = 0; k < 4; k++)
 			{
 				GeometryReal texelWeight = BilinearElementValue( k , nodePosition ) / nodeDegree;
@@ -105,35 +95,19 @@ void InitializeProlongation( int numInteriorTexels , int numFineNodes , int numC
 				{
 					auxiliaryNodesCumWeight[auxiliaryID] += texelWeight;
 					int texelIndex = gridChart.bilinearElementIndices[cellId][k];
-#ifdef NEW_CODE
 					if( nodeInfo[texelIndex].nodeType==2 ) THROW( "Deep texel cannot be in the support of an auxiliary node. Weight " , texelWeight , " (B)" );
-#else // !NEW_CODE
-					if( nodeInfo[texelIndex].nodeType==2 ) Miscellany::Throw( "Deep texel cannot be in the support of an auxiliary node. Weight %g (B)" , texelWeight );
-#endif // NEW_CODE
 					coveredNodes.insert(texelIndex);
 					if( gridChart.auxiliaryNodes[j].index<numInteriorTexels || gridChart.auxiliaryNodes[j].index>numFineNodes || texelIndex<0 || texelIndex>numCoarseNodes )
-#ifdef NEW_CODE
 						THROW( "Out of bounds index" );
-#else // !NEW_CODE
-						Miscellany::Throw( "Out of bounds index" );
-#endif // NEW_CODE
 					prolongationTriplets.push_back( Eigen::Triplet< MatrixReal >( gridChart.auxiliaryNodes[j].index , texelIndex , (MatrixReal)texelWeight ) );
 				}
 			}
 		}
 	}
 
-#ifdef NEW_CODE
 	for( int i=0 ; i<numAuxiliaryNodes ; i++ ) if( fabs( auxiliaryNodesCumWeight[i]-1.0 )>precision_error ) THROW( "Cum weight out of precision " , auxiliaryNodesCumWeight[i] );
-#else // !NEW_CODE
-	for( int i=0 ; i<numAuxiliaryNodes ; i++ ) if( fabs( auxiliaryNodesCumWeight[i]-1.0 )>precision_error ) Miscellany::Throw( "Cum weight out of precision %g" , auxiliaryNodesCumWeight[i] );
-#endif // NEW_CODE
 
-#ifdef NEW_CODE
 	if( coveredNodes.size()!=numCoarseNodes ) THROW( "Total active texels does not match total texels" );
-#else // !NEW_CODE
-	if( coveredNodes.size()!=numCoarseNodes ) Miscellany::Throw( "Total active texels does not match total texels" );
-#endif // NEW_CODE
 
 	printf("Prolongation operator dimensions %d x %d \n", numFineNodes, numCoarseNodes);
 	prolongation.resize(numFineNodes, numCoarseNodes);
@@ -180,11 +154,7 @@ void InitializeAtlasHierachicalProlongation( GridAtlas< GeometryReal , MatrixRea
 						newLine.prevLineIndex = -1;
 						newLine.nextLineIndex = -1;
 						int globalIndex = coarseChart.globalTexelIndex(ci, cj);
-#ifdef NEW_CODE
 						if( globalIndex==-1 ) THROW( "Coarse texel is inactive!(A)" );
-#else // !NEW_CODE
-						if( globalIndex==-1 ) Miscellany::Throw( "Coarse texel is inactive!(A)" );
-#endif // NEW_CODE
 						else newLine.centerLineIndex = globalIndex;
 					}
 					else
@@ -192,20 +162,12 @@ void InitializeAtlasHierachicalProlongation( GridAtlas< GeometryReal , MatrixRea
 						newLine.centerLineIndex = -1;
 
 						int globalIndex = coarseChart.globalTexelIndex(ci, cj);
-#ifdef NEW_CODE
 						if( globalIndex==-1 ) THROW( "Coarse texel is inactive!(B)" );
-#else // !NEW_CODE
-						if( globalIndex==-1 ) Miscellany::Throw( "Coarse texel is inactive!(B)" );
-#endif // NEW_CODE
 						else newLine.prevLineIndex = globalIndex;
 
 						globalIndex = coarseChart.globalTexelIndex(ci, cj + 1);
 
-#ifdef NEW_CODE
 						if( globalIndex==-1 ) THROW( "Coarse texel is inactive!(C)" );
-#else // !NEW_CODE
-						if( globalIndex==-1 ) Miscellany::Throw( "Coarse texel is inactive!(C)" );
-#endif // NEW_CODE
 						else newLine.nextLineIndex = globalIndex;
 					}
 					prolongationLines.push_back(newLine);
@@ -251,11 +213,7 @@ void InitializeAtlasHierachicalProlongation( GridAtlas< GeometryReal , MatrixRea
 		typedef Eigen::Matrix< MatrixReal , Eigen::Dynamic , 1 > EVector;
 		EVector ones = EVector::Ones( coarseAtlas.numTexels );
 		EVector prolongedOnes = prolongation*ones;
-#ifdef NEW_CODE
 		for( int i=0 ; i<fineAtlas.numTexels ; i++ ) if( fabs( prolongedOnes[i]-1.0 )>1e-10 ) THROW( "Prolongation does not add up to one! " , i , " -> " , prolongedOnes[i] );
-#else // !NEW_CODE
-		for( int i=0 ; i<fineAtlas.numTexels ; i++ ) if( fabs( prolongedOnes[i]-1.0 )>1e-10 ) Miscellany::Throw( "Prolongation does not add up to one! %d -> %g \n" , i , prolongedOnes[i] );
-#endif // NEW_CODE
 	}
 }
 
@@ -292,7 +250,6 @@ void InitializeProlongationMatrix( const GridAtlas< GeometryReal , MatrixReal > 
 	}
 
 	__prolongation = SetSparseMatrix( prolongationTriplets , fineAtlas.numTexels , coarseAtlas.numTexels , false );
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor
 		(
 			0 , __prolongation.rows ,
@@ -300,26 +257,9 @@ void InitializeProlongationMatrix( const GridAtlas< GeometryReal , MatrixReal > 
 			{
 				MatrixReal sum = 0;
 				for( int j=0 ; j<__prolongation.rowSizes[i] ; j++ ) sum += __prolongation[i][j].Value;
-#ifdef NEW_CODE
 				if( fabs(sum-1.0)>1e-10 ) THROW( "Prolongation does not add up to one! " , i , " -> " , sum );
-#else // !NEW_CODE
-				if( fabs(sum-1.0)>1e-10 ) Miscellany::Throw( "Prolongation does not add up to one! %d -> %g" , i , sum );
-#endif // NEW_CODE
 			}
 		);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-	for( int i=0 ; i<__prolongation.rows ; i++ )
-	{
-		MatrixReal sum = 0;
-		for( int j=0 ; j<__prolongation.rowSizes[i] ; j++ ) sum += __prolongation[i][j].Value;
-#ifdef NEW_CODE
-		if( fabs(sum-1.0)>1e-10 ) THROW( "Prolongation does not add up to one! " , i , " -> " , sum );
-#else // !NEW_CODE
-		if( fabs(sum-1.0)>1e-10 ) Miscellany::Throw( "Prolongation does not add up to one! %d -> %g" , i , sum );
-#endif // NEW_CODE
-	}
-#endif // NEW_MULTI_THREADING
 }
 
 //Coarse restriction
@@ -340,7 +280,6 @@ void InitializeAtlasHierachicalRestriction(const GridAtlas< GeometryReal , Matri
 	restrictionLines.resize(coarseRasterLines.size());
 	deepLines.resize(coarseRasterLines.size());
 
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor
 		(
 			0 , coarseRasterLines.size() ,
@@ -355,11 +294,7 @@ void InitializeAtlasHierachicalRestriction(const GridAtlas< GeometryReal , Matri
 				deepLines[i].coarseLineEndIndex = coarseRasterLines[i].coeffStartIndex + lineCoarseLength - 1;
 
 				GridNodeInfo startNodeInfo = coarseNodeInfo[lineCoarseStartIndex];
-#ifdef NEW_CODE
 				if( startNodeInfo.nodeType!=2 ) THROW( "Not a deep node" );
-#else // !NEW_CODE
-				if( startNodeInfo.nodeType!=2 ) Miscellany::Throw( "Not a deep node" );
-#endif // NEW_CODE
 
 				int ci = startNodeInfo.ci;
 				int cj = startNodeInfo.cj;
@@ -370,11 +305,7 @@ void InitializeAtlasHierachicalRestriction(const GridAtlas< GeometryReal , Matri
 
 				int fi = (int)( fineChart.centerOffset[0] + 2.0 *(ci - coarseChart.centerOffset[0]) );
 				int fj = (int)( fineChart.centerOffset[1] + 2.0 *(cj - coarseChart.centerOffset[1]) );
-#ifdef NEW_CODE
 				if( fi-1 < 0 || fi+1> fineChart.width-1 || fj-1 < 0 || fj+1 > fineChart.height-1 ) THROW( "Out of bounds node position" );
-#else // !NEW_CODE
-				if( fi-1 < 0 || fi+1> fineChart.width-1 || fj-1 < 0 || fj+1 > fineChart.height-1 ) Miscellany::Throw( "Out of bounds node position" );
-#endif // NEW_CODE
 
 				int fineCurrentLineStart = fineChart.globalTexelIndex(fi, fj);
 				if (fineCurrentLineStart != -1) {
@@ -385,17 +316,9 @@ void InitializeAtlasHierachicalRestriction(const GridAtlas< GeometryReal , Matri
 					if (fineCurrentDeep != -1) {
 						deepLines[i].fineCurrentLineIndex = fineCurrentDeep;
 					}
-#ifdef NEW_CODE
 					else THROW( "Invalid fine line start index" );
-#else // !NEW_CODE
-					else Miscellany::Throw( "Invalid fine line start index" );
-#endif // NEW_CODE
 				}
-#ifdef NEW_CODE
 				else THROW( "Invalid fine line start index" );
-#else // !NEW_CODE
-				else Miscellany::Throw( "Invalid fine line start index" );
-#endif // NEW_CODE
 
 				int finePreviousLineStart = fineChart.globalTexelIndex(fi, fj - 1);
 				if (finePreviousLineStart != -1) {
@@ -405,17 +328,9 @@ void InitializeAtlasHierachicalRestriction(const GridAtlas< GeometryReal , Matri
 					if (finePreviousDeep != -1) {
 						deepLines[i].finePrevLineIndex = finePreviousDeep;
 					}
-#ifdef NEW_CODE
 					else THROW( "Invalid fine line start index" );
-#else // !NEW_CODE
-					else Miscellany::Throw( "Invalid fine line start index" );
-#endif // NEW_CODE
 				}
-#ifdef NEW_CODE
 				else THROW( "Invalid fine previous line start index" );
-#else // !NEW_CODE
-				else Miscellany::Throw( "Invalid fine previous line start index" );
-#endif // NEW_CODE
 
 
 				int fineNextLineStart = fineChart.globalTexelIndex(fi, fj + 1);
@@ -426,116 +341,11 @@ void InitializeAtlasHierachicalRestriction(const GridAtlas< GeometryReal , Matri
 					if (fineNextDeep != -1) {
 						deepLines[i].fineNextLineIndex = fineNextDeep;
 					}
-#ifdef NEW_CODE
 					else THROW( "Invalid fine line start index" );
-#else // !NEW_CODE
-					else Miscellany::Throw( "Invalid fine line start index" );
-#endif // NEW_CODE
 				}
-#ifdef NEW_CODE
 				else THROW( "Invalid fine next line start index" );
-#else // !NEW_CODE
-				else Miscellany::Throw( "Invalid fine next line start index" );
-#endif // NEW_CODE
 			}
 		);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-	for( int i=0 ; i<coarseRasterLines.size() ; i++ )
-	{
-		int lineCoarseStartIndex = coarseRasterLines[i].lineStartIndex;
-		int lineCoarseLength = coarseRasterLines[i].lineEndIndex - lineCoarseStartIndex + 1;
-
-		restrictionLines[i].coeffStartIndex = lineCoarseStartIndex; //global (NOT DEEP) variable index in the current level
-
-		deepLines[i].coarseLineStartIndex = coarseRasterLines[i].coeffStartIndex;
-		deepLines[i].coarseLineEndIndex = coarseRasterLines[i].coeffStartIndex + lineCoarseLength - 1;
-
-		GridNodeInfo startNodeInfo = coarseNodeInfo[lineCoarseStartIndex];
-#ifdef NEW_CODE
-		if( startNodeInfo.nodeType!=2 ) THROW( "Not a deep node" );
-#else // !NEW_CODE
-		if( startNodeInfo.nodeType!=2 ) Miscellany::Throw( "Not a deep node" );
-#endif // NEW_CODE
-
-		int ci = startNodeInfo.ci;
-		int cj = startNodeInfo.cj;
-		int chartID = startNodeInfo.chartID;
-
-		const GridChart< GeometryReal > &fineChart = fineAtlas.gridCharts[chartID];
-		const GridChart< GeometryReal > &coarseChart = coarseAtlas.gridCharts[chartID];
-
-		int fi = (int)( fineChart.centerOffset[0] + 2.0 *(ci - coarseChart.centerOffset[0]) );
-		int fj = (int)( fineChart.centerOffset[1] + 2.0 *(cj - coarseChart.centerOffset[1]) );
-#ifdef NEW_CODE
-		if( fi-1 < 0 || fi+1> fineChart.width-1 || fj-1 < 0 || fj+1 > fineChart.height-1 ) THROW( "Out of bounds node position" );
-#else // !NEW_CODE
-		if( fi-1 < 0 || fi+1> fineChart.width-1 || fj-1 < 0 || fj+1 > fineChart.height-1 ) Miscellany::Throw( "Out of bounds node position" );
-#endif // NEW_CODE
-
-		int fineCurrentLineStart = fineChart.globalTexelIndex(fi, fj);
-		if (fineCurrentLineStart != -1) {
-			restrictionLines[i].lineStartIndex = fineCurrentLineStart;
-			restrictionLines[i].lineEndIndex = fineCurrentLineStart + 2 * (coarseRasterLines[i].lineEndIndex - lineCoarseStartIndex);
-
-			int fineCurrentDeep = fineChart.globalTexelDeepIndex(fi, fj);
-			if (fineCurrentDeep != -1) {
-				deepLines[i].fineCurrentLineIndex = fineCurrentDeep;
-			}
-#ifdef NEW_CODE
-			else THROW( "Invalid fine line start index" );
-#else // !NEW_CODE
-			else Miscellany::Throw( "Invalid fine line start index" );
-#endif // NEW_CODE
-		}
-#ifdef NEW_CODE
-		else THROW( "Invalid fine line start index" );
-#else // !NEW_CODE
-		else Miscellany::Throw( "Invalid fine line start index" );
-#endif // NEW_CODE
-
-		int finePreviousLineStart = fineChart.globalTexelIndex(fi, fj - 1);
-		if (finePreviousLineStart != -1) {
-			restrictionLines[i].prevLineIndex = finePreviousLineStart;
-
-			int finePreviousDeep = fineChart.globalTexelDeepIndex(fi, fj - 1);
-			if (finePreviousDeep != -1) {
-				deepLines[i].finePrevLineIndex = finePreviousDeep;
-			}
-#ifdef NEW_CODE
-			else THROW( "Invalid fine line start index" );
-#else // !NEW_CODE
-			else Miscellany::Throw( "Invalid fine line start index" );
-#endif // NEW_CODE
-		}
-#ifdef NEW_CODE
-		else THROW( "Invalid fine previous line start index" );
-#else // !NEW_CODE
-		else Miscellany::Throw( "Invalid fine previous line start index" );
-#endif // NEW_CODE
-
-
-		int fineNextLineStart = fineChart.globalTexelIndex(fi, fj + 1);
-		if (fineNextLineStart != -1) {
-			restrictionLines[i].nextLineIndex = fineNextLineStart;
-
-			int fineNextDeep = fineChart.globalTexelDeepIndex(fi, fj + 1);
-			if (fineNextDeep != -1) {
-				deepLines[i].fineNextLineIndex = fineNextDeep;
-			}
-#ifdef NEW_CODE
-			else THROW( "Invalid fine line start index" );
-#else // !NEW_CODE
-			else Miscellany::Throw( "Invalid fine line start index" );
-#endif // NEW_CODE
-		}
-#ifdef NEW_CODE
-		else THROW( "Invalid fine next line start index" );
-#else // !NEW_CODE
-		else Miscellany::Throw( "Invalid fine next line start index" );
-#endif // NEW_CODE
-	}
-#endif // NEW_MULTI_THREADING
 
 	//Initialize boundary nodes prolongation
 
@@ -584,11 +394,7 @@ void InitializeAtlasHierachicalRestriction(const GridAtlas< GeometryReal , Matri
 				for (int di = 0; di < 2; di++)for (int dj = 0; dj < 2; dj++) {
 					if (ci[di] != -1 && cj[dj] != -1) {
 						int coarseNodeGlobalIndex = coarseChart.globalTexelIndex(ci[di], cj[dj]);
-#ifdef NEW_CODE
 						if( coarseNodeGlobalIndex==-1 ) THROW( "Coarse texel is unactive! (D)" );
-#else // !NEW_CODE
-						if( coarseNodeGlobalIndex==-1 ) Miscellany::Throw( "Coarse texel is unactive! (D)" );
-#endif // NEW_CODE
 						else
 						{
 							int coarseNodeBoundaryIndex = coarseBoundaryDeepIndexing[coarseNodeGlobalIndex] - 1;

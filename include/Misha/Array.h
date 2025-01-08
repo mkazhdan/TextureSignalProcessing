@@ -31,9 +31,7 @@ DAMAGE.
 
 #include <vector>
 #include "Miscellany.h"
-#ifdef NEW_CODE
 #include "Exceptions.h"
-#endif // NEW_CODE
 
 #ifdef _WIN64
 #include <io.h>
@@ -152,11 +150,7 @@ class OOCArray
 		mktemp ( _fileName );
 		_fp = fopen( _fileName , "w+b" );
 #endif // _WIN32
-#ifdef NEW_CODE
 		if( !_fp ) ERROR_OUT( "Failed to open file for writing: " , std::string( _fileName ) );
-#else // !NEW_CODE
-		if( !_fp ) Miscellany::ErrorOut( "Failed to open file for writing: %s\n" , _fileName );
-#endif // NEW_CODE
 		_currentBufferIndex = 0;
 	}
 public:

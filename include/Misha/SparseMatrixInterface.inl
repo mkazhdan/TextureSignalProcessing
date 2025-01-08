@@ -26,9 +26,7 @@ ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF S
 DAMAGE.
 */
 
-#ifdef NEW_MULTI_THREADING
 #include "Misha/MultiThreading.h"
-#endif // NEW_MULTI_THREADING
 
 template< class T , class const_iterator > size_t SparseMatrixInterface< T , const_iterator >::Entries( void ) const
 {
@@ -97,7 +95,6 @@ template< class T2 , class T2Real >
 void SparseMatrixInterface< T , const_iterator >::Multiply( ConstPointer( T2 ) In , Pointer( T2 ) Out , int multiplyFlag ) const
 {
 	ConstPointer( T2 ) in = In;
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor
 		(
 			0 , Rows() ,
@@ -113,27 +110,12 @@ void SparseMatrixInterface< T , const_iterator >::Multiply( ConstPointer( T2 ) I
 				else                              Out[i]  = temp;
 			}
 		);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-	for( int i=0 ; i<Rows() ; i++ )
-	{
-		T2 temp;
-		memset( &temp , 0 , sizeof(T2) );
-		ConstPointer( T2 ) _in = in;
-		const_iterator e = end( i );
-		for( const_iterator iter = begin( i ) ; iter!=e ; iter++ ) temp += _in[ iter->N ] * (T2Real)iter->Value;
-		if( multiplyFlag & MULTIPLY_NEGATE ) temp = -temp;
-		if( multiplyFlag & MULTIPLY_ADD ) Out[i] += temp;
-		else                              Out[i]  = temp;
-	}
-#endif // NEW_MULTI_THREADING
 }
 template< class T , class const_iterator >
 template< class T2 , class T2Real >
 void SparseMatrixInterface< T , const_iterator >::MultiplyScaled( T scale , ConstPointer( T2 ) In , Pointer( T2 ) Out , int multiplyFlag ) const
 {
 	ConstPointer( T2 ) in = In;
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor
 		(
 			0 , Rows() ,
@@ -150,28 +132,12 @@ void SparseMatrixInterface< T , const_iterator >::MultiplyScaled( T scale , Cons
 				else                              Out[i]  = temp;
 			}
 		);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-	for( int i=0 ; i<Rows() ; i++ )
-	{
-		T2 temp;
-		memset( &temp , 0 , sizeof(T2) );
-		ConstPointer( T2 ) _in = in;
-		const_iterator e = end( i );
-		for( const_iterator iter = begin( i ) ; iter!=e ; iter++ ) temp += _in[ iter->N ] * (T2Real)iter->Value;
-		temp *= scale;
-		if( multiplyFlag & MULTIPLY_NEGATE ) temp = -temp;
-		if( multiplyFlag & MULTIPLY_ADD ) Out[i] += temp;
-		else                              Out[i]  = temp;
-	}
-#endif // NEW_MULTI_THREADING
 }
 
 template< class T , class const_iterator >
 template< class T2 >
 void SparseMatrixInterface< T , const_iterator >::SetDiagonal( Pointer( T2 ) diagonal ) const
 {
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor
 		(
 			0 , Rows() , 
@@ -182,27 +148,13 @@ void SparseMatrixInterface< T , const_iterator >::SetDiagonal( Pointer( T2 ) dia
 				for( const_iterator iter = begin( i ) ; iter!=e ; iter++ ) if( iter->N==i ) diagonal[i] += iter->Value;
 			}
 		);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-	for( int i=0 ; i<Rows() ; i++ )
-	{
-		diagonal[i] = (T2)0;
-		const_iterator e = end( i );
-		for( const_iterator iter = begin( i ) ; iter!=e ; iter++ ) if( iter->N==i ) diagonal[i] += iter->Value;
-	}
-#endif // NEW_MULTI_THREADING
 }
 template< class T , class const_iterator >
 template< class T2 >
 void SparseMatrixInterface< T , const_iterator >::JacobiIteration( ConstPointer( T2 ) diagonal , ConstPointer( T2 ) b , Pointer( T2 ) x , Pointer( T2 ) Mx , T2 sor ) const
 {
 	Multiply( x , Mx );
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor( 0 , Rows() , [&]( unsigned int , size_t i ){ x[i] += ( b[i] - Mx[i] ) * sor / diagonal[i]; } );
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-	for( int i=0 ; i<Rows() ; i++ ) x[i] += ( b[i] - Mx[i] ) * sor / diagonal[i];
-#endif // NEW_MULTI_THREADING
 }
 template< class T , class const_iterator >
 template< class T2 >
@@ -261,26 +213,16 @@ template< class SPDOperator , class T > int SolveCG( const SPDOperator& M , Cons
 	if( solveNormal )
 	{
 		M.Multiply( ( ConstPointer( T ) )x , temp ) , M.Multiply( ( ConstPointer( T ) )temp , r ) , M.Multiply( ( ConstPointer( T ) )b , temp );
-#ifdef NEW_MULTI_THREADING
 		std::vector< double > _delta_news( ThreadPool::NumThreads() , 0 );
 		ThreadPool::ParallelFor( 0 , dim , [&]( unsigned int t , size_t i ){ d[i] = r[i] = temp[i] - r[i] ; _delta_news[t] += r[i] * r[i]; } );
 		for( unsigned int t=0 ; t<_delta_news.size() ; t++ ) delta_new += _delta_news[t];
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for reduction( + : delta_new )
-		for( int i=0 ; i<dim ; i++ ) d[i] = r[i] = temp[i] - r[i] , delta_new += r[i] * r[i];
-#endif // NEW_MULTI_THREADING
 	}
 	else
 	{
 		M.Multiply( ( ConstPointer( T ) )x , r );
-#ifdef NEW_MULTI_THREADING
 		std::vector< double > _delta_news( ThreadPool::NumThreads() , 0 );
 		ThreadPool::ParallelFor( 0 , dim , [&]( unsigned int t , size_t i ){ d[i] = r[i] = b[i] - r[i] , _delta_news[t] += r[i] * r[i]; } );
 		for( unsigned int t=0 ; t<_delta_news.size() ; t++ ) delta_new += _delta_news[t];
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for reduction ( + : delta_new )
-		for( int i=0 ; i<dim ; i++ ) d[i] = r[i] = b[i] - r[i] , delta_new += r[i] * r[i];
-#endif // NEW_MULTI_THREADING
 	}
 	delta_0 = delta_new;
 	if( delta_new<eps )
@@ -297,55 +239,30 @@ template< class SPDOperator , class T > int SolveCG( const SPDOperator& M , Cons
 		if( solveNormal ) M.Multiply( ( ConstPointer( T ) )d , temp ) , M.Multiply( ( ConstPointer( T ) )temp , q );
 		else              M.Multiply( ( ConstPointer( T ) )d , q );
         double dDotQ = 0;
-#ifdef NEW_MULTI_THREADING
 		std::vector< double > _dDotQs( ThreadPool::NumThreads() , 0 );
 		ThreadPool::ParallelFor( 0 , dim , [&]( unsigned int t , size_t i ){ _dDotQs[t] += d[i] * q[i]; } );
 		for( unsigned int t=0 ; t<_dDotQs.size() ; t++ ) dDotQ += _dDotQs[t];
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for reduction( + : dDotQ )
-		for( int i=0 ; i<dim ; i++ ) dDotQ += d[i] * q[i];
-#endif // NEW_MULTI_THREADING
 		T alpha = T( delta_new / dDotQ );
 		double delta_old = delta_new;
 		delta_new = 0;
 		if( (ii%50)==(50-1) )
 		{
-#ifdef NEW_MULTI_THREADING
 			ThreadPool::ParallelFor( 0 , dim , [&]( unsigned int , size_t i ){ x[i] += d[i] * alpha; } );
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-			for( int i=0 ; i<dim ; i++ ) x[i] += d[i] * alpha;
-#endif // NEW_MULTI_THREADING
 			if( solveNormal ) M.Multiply( ( ConstPointer( T ) )x , temp ) , M.Multiply( ( ConstPointer( T ) )temp , r );
 			else              M.Multiply( ( ConstPointer( T ) )x , r );
-#ifdef NEW_MULTI_THREADING
 			std::vector< double > _delta_news( ThreadPool::NumThreads() , 0 );
 			ThreadPool::ParallelFor( 0 , dim , [&]( unsigned int t , size_t i ){ r[i] = b[i] - r[i] ; _delta_news[t] += r[i] * r[i] , x[i] += d[i] * alpha; } );
 			for( unsigned int t=0 ; t<_delta_news.size() ; t++ ) delta_new += _delta_news[t];
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for reduction( + : delta_new )
-			for( int i=0 ; i<dim ; i++ ) r[i] = b[i] - r[i] , delta_new += r[i] * r[i] , x[i] += d[i] * alpha;
-#endif // NEW_MULTI_THREADING
 		}
 		else
-#ifdef NEW_MULTI_THREADING
 		{
 			std::vector< double > _delta_news( ThreadPool::NumThreads() , 0 );
 			ThreadPool::ParallelFor( 0 , dim , [&]( unsigned int t , size_t i ){ r[i] -= q[i] * alpha ; _delta_news[t] += r[i] * r[i] , x[i] += d[i] * alpha; } );
 			for( unsigned int t=0 ; t<_delta_news.size() ; t++ ) delta_new += _delta_news[t];
 		}
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for reduction( + : delta_new )
-			for( int i=0 ; i<dim ; i++ ) r[i] -= q[i] * alpha , delta_new += r[i] * r[i] , x[i] += d[i] * alpha;
-#endif // NEW_MULTI_THREADING
 
 		T beta = T( delta_new / delta_old );
-#ifdef NEW_MULTI_THREADING
 		ThreadPool::ParallelFor( 0 , dim , [&]( unsigned int , size_t i ){  d[i] = r[i] + d[i] * beta; } );
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-		for( int i=0 ; i<dim ; i++ ) d[i] = r[i] + d[i] * beta;
-#endif // NEW_MULTI_THREADING
 	}
 	FreePointer( r );
 	FreePointer( d );

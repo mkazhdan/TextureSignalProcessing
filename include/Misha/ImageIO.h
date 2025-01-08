@@ -5,9 +5,7 @@
 #include <string.h>
 #endif // NEW_CMD_LINE_PARSER
 #include "Miscellany.h"
-#ifdef NEW_CODE
 #include "Exceptions.h"
-#endif // NEW_CODE
 
 template< unsigned int BitDepth > struct ImageChannel;
 
@@ -35,11 +33,7 @@ struct ImageReader
 	{
 		unsigned int channels;
 		ImageReader* reader = Get( fileName , width , height , channels );
-#ifdef NEW_CODE
 		if( channels!=1 && channels!=3 && channels!=4 ) ERROR_OUT( "Requires one-, three-, or four-channel input: " , channels );
-#else // !NEW_CODE
-		if( channels!=1 && channels!=3 && channels!=4 ) Miscellany::ErrorOut( "Requires one-, three-, or four-channel input: %d" , channels );
-#endif // NEW_CODE
 		ChannelType * pixels = new ChannelType[ width*height*3 ];
 		ChannelType * pixelRow = new ChannelType[ width*channels ];
 		for( unsigned int j=0 ; j<height ; j++ )

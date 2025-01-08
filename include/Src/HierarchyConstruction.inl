@@ -28,9 +28,7 @@ DAMAGE.
 #pragma once
 
 #include <Misha/Miscellany.h>
-#ifdef NEW_CODE
 #include <Misha/Exceptions.h>
-#endif // NEW_CODE
 
 template< typename GeometryReal >
 void InitializeBoundaryAndDeepTexelIndexing( const std::vector< GridChart< GeometryReal > > &gridCharts , const int numTexels , std::vector< int > &boundaryAndDeepIndex , std::vector< int > &boundaryGlobalIndex , std::vector< int > &deepGlobalIndex ) 
@@ -48,22 +46,14 @@ void InitializeBoundaryAndDeepTexelIndexing( const std::vector< GridChart< Geome
 				boundaryGlobalIndex.push_back(lastGlobalIndex);
 				boundaryAndDeepIndex[lastGlobalIndex] = lastBoundaryIndex;
 				lastBoundaryIndex++;
-#ifdef NEW_CODE
 				if( gridChart.globalTexelIndex(i,j)!=lastGlobalIndex ) THROW( "Unexpected global index: actual " , gridChart.globalTexelIndex(i,j) , " , expected " , lastGlobalIndex );
-#else // !NEW_CODE
-				if( gridChart.globalTexelIndex(i,j)!=lastGlobalIndex ) Miscellany::Throw( "Unexpected global index: actual %d, expected %d" , gridChart.globalTexelIndex(i,j) , lastGlobalIndex );
-#endif // NEW_CODE
 				lastGlobalIndex++;
 			}
 			else if (gridChart.nodeType(i, j) == 2) {
 				deepGlobalIndex.push_back(lastGlobalIndex);
 				boundaryAndDeepIndex[lastGlobalIndex] = lastDeepIndex;
 				lastDeepIndex--;
-#ifdef NEW_CODE
 				if( gridChart.globalTexelIndex(i,j)!=lastGlobalIndex ) THROW( "Unexpected global index: actual " , gridChart.globalTexelIndex(i,j) , " , expected " , lastGlobalIndex );
-#else // !NEW_CODE
-				if( gridChart.globalTexelIndex(i,j)!=lastGlobalIndex ) Miscellany::Throw( "Unexpected global index: actual %d, expected %d" , gridChart.globalTexelIndex(i,j) , lastGlobalIndex );
-#endif // NEW_CODE
 				lastGlobalIndex++;
 			}
 		}
@@ -115,17 +105,9 @@ void InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geome
 			if( barycentricCoord[0]>=0 && barycentricCoord[1]>=0 && ( barycentricCoord[0]+barycentricCoord[1] )<=1 )
 			{
 #ifdef DEBUG_ATLAS
-#ifdef NEW_CODE
 				if( nodeType(i,j)!=-1 ) WARN( "Node ( " , i , " , " , j , " ) covered by two triangles: " , atlasChart.triangles[t]() , " " , nodeOwner(i,j) );
-#else // !NEW_CODE
-				if( nodeType(i,j)!=-1 ) Miscellany::Warn( "Node ( %d , %d ) covered by two triangles: %d %d" , i , j , atlasChart.triangles[t]() , nodeOwner(i,j) );
-#endif // NEW_CODE
 #else // !DEBUG_ATLAS
-#ifdef NEW_CODE
 				if( nodeType(i,j)!=-1 ) WARN( "Node ( " , i , " , " , j , " ) in chart " , chartID , " already covered [" , t , "]" );
-#else // !NEW_CODE
-				if( nodeType(i,j)!=-1 ) Miscellany::Warn( "Node ( %d , %d ) in chart %d already covered [%d]" , i , j , chartID , t );
-#endif // NEW_CODE
 #endif // DEBUG_ATLAS
 				nodeType(i,j) = 1;
 #ifdef DEBUG_ATLAS
@@ -368,11 +350,7 @@ void InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geome
 			if (globalTexelIndices[0] != -1 && globalTexelIndices[1] != -1 && globalTexelIndices[2] != -1 && globalTexelIndices[3] != -1) {
 				bilinearElementIndices.push_back( BilinearElementIndex( globalTexelIndices[0] , globalTexelIndices[1] , globalTexelIndices[2] , globalTexelIndices[3] ) );
 			}
-#ifdef NEW_CODE
 			else THROW( "Active cell adjacent to unactive node" );
-#else // !NEW_CODE
-			else Miscellany::Throw( "Active cell adjacent to unactive node" );
-#endif // NEW_CODE
 
 			if (gridChart.cellType(i, j) == 0) {
 				localBoundaryCellIndex(i, j) = lastLocalBoundaryCellIndex;
@@ -388,11 +366,7 @@ void InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geome
 					interiorCellCorners.push_back( BilinearElementIndex( globalTexelInteriorIndices[0] , globalTexelInteriorIndices[1] , globalTexelInteriorIndices[2] , globalTexelInteriorIndices[3] ) );
 					interiorCellGlobalCorners.push_back( BilinearElementIndex( globalTexelIndices[0] , globalTexelIndices[1] , globalTexelIndices[2] , globalTexelIndices[3] ) );
 				}
-#ifdef NEW_CODE
 				else THROW( "Interior cell adjacent to non interior node" );
-#else // !NEW_CODE
-				else Miscellany::Throw( "Interior cell adjacent to non interior node" );
-#endif // NEW_CODE
 				lastLocalInteriorCellIndex++;
 			}
 		}
@@ -429,11 +403,7 @@ void InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geome
 				newLine.nextLineIndex = globalTexelIndex(rasterStart, j + 1);
 				newLine.coeffStartIndex = globalTexelDeepIndex(rasterStart, j);
 
-#ifdef NEW_CODE
 				if( newLine.lineStartIndex==-1 || newLine.lineEndIndex==-1 || newLine.prevLineIndex==-1 || newLine.nextLineIndex==-1 ) THROW( "Inavlid Indexing" );
-#else // !NEW_CODE
-				if( newLine.lineStartIndex==-1 || newLine.lineEndIndex==-1 || newLine.prevLineIndex==-1 || newLine.nextLineIndex==-1 ) Miscellany::Throw( "Inavlid Indexing" );
-#endif // NEW_CODE
 				rasterLines.push_back(newLine);
 
 				SegmentedRasterLine & newSegmentLine = segmentedLines.back();
@@ -773,11 +743,7 @@ void InitializeHierarchy( const int width , const int height , HierarchicalSyste
 		InitializeGridCharts( atlasCharts , cellSizeW , cellSizeH , gridAtlases[i].nodeInfo , gridAtlases[i].gridCharts , gridAtlases[i].rasterLines , gridAtlases[i].segmentedLines , gridAtlases[i].threadTasks , gridAtlases[i].numTexels , gridAtlases[i].numInteriorTexels , gridAtlases[i].numDeepTexels , gridAtlases[i].numBoundaryTexels , gridAtlases[i].numCells , gridAtlases[i].numBoundaryCells , gridAtlases[i].numInteriorCells , multigridBlockInfo );
 
 		if( gridAtlases[i].numTexels!=gridAtlases[i].numBoundaryTexels+gridAtlases[i].numDeepTexels )
-#ifdef NEW_CODE
 			THROW( "Boundary and deep texels does not form a partition: " , gridAtlases[i].numTexels , " != " , gridAtlases[i].numBoundaryTexels , " + " , gridAtlases[i].numDeepTexels );
-#else // !NEW_CODE
-			Miscellany::Throw( "Boundary and deep texels does not form a partition: %d != %d + %d" , gridAtlases[i].numTexels , gridAtlases[i].numBoundaryTexels , gridAtlases[i].numDeepTexels );
-#endif // NEW_CODE
 
 		InitializeBoundaryAndDeepTexelIndexing( gridAtlases[i].gridCharts , gridAtlases[i].numTexels , gridAtlases[i].boundaryAndDeepIndex , gridAtlases[i].boundaryGlobalIndex , gridAtlases[i].deepGlobalIndex );
 

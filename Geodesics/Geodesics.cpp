@@ -30,13 +30,9 @@ DAMAGE.
 
 #include <Misha/CmdLineParser.h> 
 #include <Misha/Miscellany.h>
-#ifdef NEW_CODE
 #include <Misha/Exceptions.h>
-#endif // NEW_CODE
 #include <Misha/FEM.h>
-#ifdef NEW_MULTI_THREADING
 #include <Misha/MultiThreading.h>
-#endif // NEW_MULTI_THREADING
 #include <Src/Hierarchy.h>
 #include <Src/SimpleTriangleMesh.h>
 #include <Src/Basis.h>
@@ -52,11 +48,7 @@ cmdLineParameter< int   > Height( "height" , 1024 );
 cmdLineParameter< float > DiffusionInterpolationWeight( "interpolation" , 1e3 );
 cmdLineParameter< int   > Levels( "levels" , 4 );
 cmdLineParameter< char* > CameraConfig( "camera" );
-#ifdef NEW_MULTI_THREADING
 cmdLineReadable Serial( "serial" );
-#else // !NEW_MULTI_THREADING
-cmdLineParameter< int   > Threads( "threads" , omp_get_num_procs() );
-#endif // NEW_MULTI_THREADING
 cmdLineParameter< int   > DisplayMode( "display" , TWO_REGION_DISPLAY );
 cmdLineParameter< int   > MatrixQuadrature( "mQuadrature" , 6 );
 cmdLineParameter< int   > VectorFieldQuadrature( "vfQuadrature" , 6 );
@@ -76,11 +68,7 @@ cmdLineReadable PreciseIntegration( "preciseIntegration" );
 
 cmdLineReadable* params[] =
 {
-#ifdef NEW_MULTI_THREADING
 	&Input , &Width , &Height , &DiffusionInterpolationWeight , &CameraConfig , &Levels , &UseDirectSolver , &Serial , &DisplayMode , &MultigridBlockHeight , &MultigridBlockWidth , &MultigridPaddedHeight , &MultigridPaddedWidth ,
-#else // !NEW_MULTI_THREADING
-	&Input , &Width , &Height , &DiffusionInterpolationWeight , &CameraConfig , &Levels , &UseDirectSolver , &Threads , &DisplayMode , &MultigridBlockHeight , &MultigridBlockWidth , &MultigridPaddedHeight , &MultigridPaddedWidth ,
-#endif // NEW_MULTI_THREADING
 	&Verbose , &DetailVerbose ,
 	&RandomJitter ,
 	&Double ,
@@ -106,10 +94,6 @@ void ShowUsage( const char* ex )
 
 	printf( "\t[--%s <camera configuration file>]\n" , CameraConfig.name );
 	printf( "\t[--%s <hierarchy levels>=%d]\n" , Levels.name , Levels.value );
-#ifdef NEW_MULTI_THREADING
-#else // !NEW_MULTI_THREADING
-	printf( "\t[--%s <threads>=%d]\n" , Threads.name , Threads.value );
-#endif // NEW_MULTI_THREADING
 	printf( "\t[--%s]\n" , DetailVerbose.name );
 	printf( "\t[--%s <display mode>=%d]\n" , DisplayMode.name , DisplayMode.value );
 	printf( "\t\t%d] One Region \n" , ONE_REGION_DISPLAY );
@@ -118,9 +102,7 @@ void ShowUsage( const char* ex )
 	printf( "\t[--%s <multigrid block height>=%d]\n"  , MultigridBlockHeight.name  , MultigridBlockHeight.value  );
 	printf( "\t[--%s <multigrid padded width>=%d]\n"  , MultigridPaddedWidth.name  , MultigridPaddedWidth.value  );
 	printf( "\t[--%s <multigrid padded height>=%d]\n" , MultigridPaddedHeight.name , MultigridPaddedHeight.value );
-#ifdef NEW_MULTI_THREADING
 	printf( "\t[--%s]\n" , Serial.name );
-#endif // NEW_MULTI_THREADING
 	printf( "\t[--%s]\n" , NoHelp.name );
 }
 
@@ -310,16 +292,11 @@ void Geodesics< PreReal , Real >::ComputeExactSolution( bool verbose )
 	const std::vector<int> & boundaryGlobalIndex = hierarchy.gridAtlases[0].boundaryGlobalIndex;
 
 	if( verbose ) timer.reset();
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor
 	(
 		0 , boundaryGlobalIndex.size() ,
 		[&]( unsigned int , size_t i ){ coarseBoundaryValues[i] = multigridSmoothImpulseVariables[0].x[boundaryGlobalIndex[i]]; }
 	);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-	for (int i = 0; i < boundaryGlobalIndex.size(); i++) coarseBoundaryValues[i] = multigridSmoothImpulseVariables[0].x[boundaryGlobalIndex[i]];
-#endif // NEW_MULTI_THREADING
 	coarseBoundaryFineBoundaryProlongation.Multiply(&coarseBoundaryValues[0], &fineBoundaryValues[0]);
 	if( verbose ) printf("Coarse to fine %.4f \n" , timer.elapsed() );
 
@@ -340,16 +317,11 @@ void Geodesics< PreReal , Real >::ComputeExactSolution( bool verbose )
 
 	if( verbose ) timer.reset();
 	fineBoundaryCoarseBoundaryRestriction.Multiply( &fineBoundaryRHS[0] , &coarseBoundaryRHS[0] );
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor
 		(
 			0 , boundaryGlobalIndex.size() ,
 			[&]( unsigned int , size_t i ){ fineGeodesicDistanceRHS[ boundaryGlobalIndex[i] ] += coarseBoundaryRHS[i]; }
 		);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-	for( int i=0 ; i<boundaryGlobalIndex.size() ; i++ ) fineGeodesicDistanceRHS[ boundaryGlobalIndex[i] ] += coarseBoundaryRHS[i];
-#endif // NEW_MULTI_THREADING
 	if( verbose ) printf( "Fine to coarse %.4f\n" , timer.elapsed() );
 
 
@@ -360,16 +332,11 @@ void Geodesics< PreReal , Real >::ComputeExactSolution( bool verbose )
 
 	Real expectedMinDistance = multigridGeodesicDistanceVariables[0].x[impulseTexel];
 
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor
 		(
 			0 , multigridGeodesicDistanceVariables[0].x.size() ,
 			[&]( unsigned int , size_t i ){ multigridGeodesicDistanceVariables[0].x[i] -= expectedMinDistance; }
 		);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-	for( int i=0 ; i<multigridGeodesicDistanceVariables[0].x.size() ; i++ ) multigridGeodesicDistanceVariables[0].x[i] -= expectedMinDistance;
-#endif // NEW_MULTI_THREADING
 }
 
 template< typename PreReal , typename Real >
@@ -379,7 +346,6 @@ void Geodesics< PreReal , Real >::UpdateOutputBuffer( const std::vector< Real > 
 
 	Real attenuationRadius = (Real)0.2; //value within 0 and 0.5
 	Real attenuationStart  = (Real)0.8 - attenuationRadius;
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor
 		(
 			0 , textureNodes.size() ,
@@ -406,30 +372,6 @@ void Geodesics< PreReal , Real >::UpdateOutputBuffer( const std::vector< Real > 
 				outputBuffer[offset + 2] = (unsigned char)(color[2]);
 			}
 		);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-	for (int i = 0; i < textureNodes.size(); i++) {
-		int ci = textureNodes[i].ci;
-		int cj = textureNodes[i].cj;
-		int offset = 3 * (textureWidth*cj + ci);
-		Real value = solution[i];
-		Point3D< float > red( 255.f , 64.f , 64.f ) , blue( 64.f , 64.f , 255.f ) , green( 64.f , 255.f , 64.f ); ;
-		Point3D< float > color = value < 1.f ? red * (1.f - value) + blue * value : blue * (2.f - value) + green * ( value-1.f );
-		float scaledDistance = value * 60.f;
-		int closestInteger = floor(scaledDistance);
-
-		float residual = scaledDistance - float(closestInteger);
-		if( closestInteger%2!=0 ) residual = 1.f - residual;
-		float attenuationWeight = ( residual-attenuationStart ) / ( 2.f * attenuationRadius );
-		attenuationWeight = std::min< float >( std::max< float >( 0 , attenuationWeight ), 1.f );
-		attenuationWeight = attenuationWeight*attenuationWeight*(3.f - 2.f * attenuationWeight );
-		color = color * ( 1.f-attenuationWeight );
-
-		outputBuffer[offset + 0] = (unsigned char)(color[0]);
-		outputBuffer[offset + 1] = (unsigned char)(color[1]);
-		outputBuffer[offset + 2] = (unsigned char)(color[2]);
-	}
-#endif // NEW_MULTI_THREADING
 
 	glBindTexture(GL_TEXTURE_2D, visualization.textureBuffer);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, textureWidth, textureHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, (GLvoid*)&outputBuffer[0]);
@@ -624,16 +566,11 @@ void Geodesics< PreReal , Real >::UpdateSolution( bool verbose , bool detailVerb
 	const std::vector<int> & boundaryGlobalIndex = hierarchy.gridAtlases[0].boundaryGlobalIndex;
 
 	if( verbose ) timer.reset();
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor
 		(
 			0 , boundaryGlobalIndex.size() ,
 			[&]( unsigned int , size_t i ){ coarseBoundaryValues[i] = multigridSmoothImpulseVariables[0].x[boundaryGlobalIndex[i]]; }
 		);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-	for (int i = 0; i < boundaryGlobalIndex.size(); i++) coarseBoundaryValues[i] = multigridSmoothImpulseVariables[0].x[boundaryGlobalIndex[i]];
-#endif // NEW_MULTI_THREADING
 	coarseBoundaryFineBoundaryProlongation.Multiply(&coarseBoundaryValues[0], &fineBoundaryValues[0]);
 	if( verbose ) printf( "Coarse to fine %.4f\n" , timer.elapsed() );
 
@@ -653,16 +590,11 @@ void Geodesics< PreReal , Real >::UpdateSolution( bool verbose , bool detailVerb
 
 	if( verbose ) timer.reset();
 	fineBoundaryCoarseBoundaryRestriction.Multiply(&fineBoundaryRHS[0], &coarseBoundaryRHS[0]);
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor
 		(
 			0 , boundaryGlobalIndex.size() ,
 			[&]( unsigned int , size_t i ){ multigridGeodesicDistanceVariables[0].rhs[boundaryGlobalIndex[i]] += coarseBoundaryRHS[i]; }
 		);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-	for (int i = 0; i < boundaryGlobalIndex.size(); i++) multigridGeodesicDistanceVariables[0].rhs[boundaryGlobalIndex[i]] += coarseBoundaryRHS[i];
-#endif // NEW_MULTI_THREADING
 	if( verbose ) printf( "Fine to coarse %.4f\n" , timer.elapsed() );
 
 
@@ -673,16 +605,11 @@ void Geodesics< PreReal , Real >::UpdateSolution( bool verbose , bool detailVerb
 
 	Real expectedMinDistance = multigridGeodesicDistanceVariables[0].x[impulseTexel];
 
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor
 	(
 		0 , multigridGeodesicDistanceVariables[0].x.size() ,
 		[&]( unsigned int , size_t i ){  multigridGeodesicDistanceVariables[0].x[i] -= expectedMinDistance; }
 	);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-	for (int i = 0; i < multigridGeodesicDistanceVariables[0].x.size(); i++) multigridGeodesicDistanceVariables[0].x[i] -= expectedMinDistance;
-#endif // NEW_MULTI_THREADING
 }
 
 template< typename PreReal , typename Real >
@@ -720,11 +647,7 @@ void Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 		case 12: InitializeMassAndStiffness<12>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
 		case 24: InitializeMassAndStiffness<24>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
 		case 32: InitializeMassAndStiffness<32>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-#ifdef NEW_CODE
 		default: THROW( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
-#else // !NEW_CODE
-		default: Miscellany::Throw( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
-#endif // NEW_CODE
 		}
 	}
 	if( Verbose.set ) printf( "\tInitialized mass and stiffness: %.2f(s)\n" , timer.elapsed() );
@@ -791,11 +714,7 @@ void Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 
 	InitializeGridAtlasInteriorCellLines( hierarchy.gridAtlases[0].gridCharts , interiorCellLines , interiorCellLineIndex );
 	if( interiorCellLineIndex.size()!=hierarchy.gridAtlases[0].numInteriorCells )
-#ifdef NEW_CODE
 		THROW( "Inconsistent number of interior cells: " , hierarchy.gridAtlases[0].numInteriorCells , " != " , interiorCellLineIndex.size() );
-#else // !NEW_CODE
-		Miscellany::Throw( "Inconsistent number of interior cells: %d!=%d" , hierarchy.gridAtlases[0].numInteriorCells , (int)interiorCellLineIndex.size() );
-#endif // NEW_CODE
 
 	coarseBoundaryFineBoundaryProlongation = boundaryProlongation.coarseBoundaryFineBoundaryProlongation;
 	fineBoundaryCoarseBoundaryRestriction = boundaryProlongation.fineBoundaryCoarseBoundaryRestriction;
@@ -814,11 +733,7 @@ void Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 		case 12: InitializeIntegration< 12 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , gradientSamples , !PreciseIntegration.set ) ; break;
 		case 24: InitializeIntegration< 24 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , gradientSamples , !PreciseIntegration.set ) ; break;
 		case 32: InitializeIntegration< 32 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , gradientSamples , !PreciseIntegration.set ) ; break;
-#ifdef NEW_CODE
 		default: THROW( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
-#else // !NEW_CODE
-		Miscellany::Throw( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
-#endif // NEW_CODE
 		}
 	}
 	if( Verbose.set ) printf( "\tInitialized vector field integration: %.2f(s)\n" , timer.elapsed() );
@@ -998,11 +913,7 @@ void _main( int argc, char *argv[] )
 	char windowName[1024];
 	sprintf( windowName , "Goedsics" );
 	glutCreateWindow( windowName );
-#ifdef NEW_CODE
 	if( glewInit()!=GLEW_OK ) THROW( "glewInit failed" );
-#else // !NEW_CODE
-	if( glewInit()!=GLEW_OK ) Miscellany::Throw( "glewInit failed" );
-#endif // NEW_CODE
 	glutDisplayFunc ( Geodesics< PreReal , Real >::Display );
 	glutReshapeFunc ( Geodesics< PreReal , Real >::Reshape );
 	glutMouseFunc   ( Geodesics< PreReal , Real >::MouseFunc );
@@ -1018,11 +929,7 @@ int main( int argc , char* argv[] )
 {
 	cmdLineParse( argc-1 , argv+1 , params );
 	if( !Input.set ){ ShowUsage( argv[0] ) ; return EXIT_FAILURE; }
-#ifdef NEW_MULTI_THREADING
 	if( Serial.set ) ThreadPool::ParallelizationType = ThreadPool::ParallelType::NONE;
-#else // !NEW_MULTI_THREADING
-	omp_set_num_threads( Threads.value );
-#endif // NEW_MULTI_THREADING
 	if( !NoHelp.set )
 	{
 		printf( "+---------------------------------------------+\n" );
@@ -1038,11 +945,7 @@ int main( int argc , char* argv[] )
 		if( Double.set ) _main< double , double >( argc , argv );
 		else             _main< double , float  >( argc , argv );
 	}
-#ifdef NEW_CODE
 	catch( Misha::Exception &e )
-#else // !NEW_CODE
-	catch( Miscellany::Exception &e )
-#endif // NEW_CODE
 	{
 		printf( "%s\n" , e.what() );
 		return EXIT_FAILURE;

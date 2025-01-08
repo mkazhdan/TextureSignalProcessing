@@ -30,9 +30,7 @@ DAMAGE.
 
 #include <Misha/CmdLineParser.h> 
 #include <Misha/Miscellany.h>
-#ifdef NEW_CODE
 #include <Misha/Exceptions.h>
-#endif // NEW_CODE
 #include <Misha/FEM.h>
 #include <Src/Hierarchy.h>
 #include <Src/SimpleTriangleMesh.h>
@@ -59,10 +57,6 @@ cmdLineParameter< float > DiffusionScale( "diff" , 1.f );
 cmdLineParameter< float > SamplesFraction( "samples" );
 cmdLineParameter< int   > Levels( "levels" , 4 );
 cmdLineParameter< char* > CameraConfig( "camera" );
-#ifdef NEW_MULTI_THREADING
-#else // !NEW_MULTI_THREADING
-cmdLineParameter< int   > Threads( "threads" , omp_get_num_procs() );
-#endif // NEW_MULTI_THREADING
 cmdLineParameter< int   > DisplayMode( "display" , TWO_REGION_DISPLAY );
 cmdLineParameter< int   > MatrixQuadrature( "mQuadrature" , 6 );
 cmdLineParameter< int   > RHSQuadrature( "rhsQuadrature" , 3 );
@@ -80,9 +74,7 @@ cmdLineReadable UseDirectSolver( "useDirectSolver" );
 cmdLineReadable Double( "double" );
 cmdLineReadable ApproximateIntegration( "approximateIntegration" );
 cmdLineReadable Dots( "dots" );
-#ifdef NEW_MULTI_THREADING
 cmdLineReadable Serial( "serial" );
-#endif // NEW_MULTI_THREADING
 
 cmdLineParameter< char* > VectorField( "inVF" );
 cmdLineParameter< float > AnisotropyScale( "aScl" , 1.f );
@@ -91,11 +83,7 @@ cmdLineReadable IntrinsicVectorField( "intrinsicVF" );
 
 cmdLineReadable* params[] =
 {
-#ifdef NEW_MULTI_THREADING
 	&Input , &Output , &OutputSteps , &Width , &Height , &Speed , &FeedKillRates , &DiffusionScale , &SamplesFraction , &CameraConfig , &Levels , &UseDirectSolver , &Serial , &DisplayMode , &MultigridBlockHeight , &MultigridBlockWidth , &MultigridPaddedHeight , &MultigridPaddedWidth ,
-#else // !NEW_MULTI_THREADING
-	&Input , &Output , &OutputSteps , &Width , &Height , &Speed , &FeedKillRates , &DiffusionScale , &SamplesFraction , &CameraConfig , &Levels , &UseDirectSolver , &Threads , &DisplayMode , &MultigridBlockHeight , &MultigridBlockWidth , &MultigridPaddedHeight , &MultigridPaddedWidth ,
-#endif // NEW_MULTI_THREADING
 	&Verbose , &DetailVerbose ,
 	&RandomJitter ,
 	&Double ,
@@ -128,10 +116,6 @@ void ShowUsage( const char* ex )
 
 	printf( "\t[--%s <camera configuration file>]\n" , CameraConfig.name );
 	printf( "\t[--%s <hierarchy levels>=%d]\n" , Levels.name , Levels.value );
-#ifdef NEW_MULTI_THREADING
-#else // !NEW_MULTI_THREADING
-	printf( "\t[--%s <threads>=%d]\n" , Threads.name , Threads.value );
-#endif // NEW_MULTI_THREADING
 	printf( "\t[--%s]\n" , DetailVerbose.name );
 	printf( "\t[--%s <display mode>=%d]\n" , DisplayMode.name , DisplayMode.value );
 	printf( "\t\t%d] One Region \n" , ONE_REGION_DISPLAY );
@@ -145,9 +129,7 @@ void ShowUsage( const char* ex )
 	printf( "\t[--%s <anisotropy scale>=%f]\n" , AnisotropyScale.name , AnisotropyScale.value );
 	printf( "\t[--%s <anisotropy exponent>=%f]\n" , AnisotropyExponent.name , AnisotropyExponent.value );
 	printf( "\t[--%s]\n" , IntrinsicVectorField.name );
-#ifdef NEW_MULTI_THREADING
 	printf( "\t[--%s]\n" , Serial.name );
-#endif // NEW_MULTI_THREADING
 
 	printf( "\t[--%s]\n" , NoHelp.name );
 }
@@ -333,21 +315,10 @@ void GrayScottReactionDiffusion< PreReal , Real >::SetRightHandSide( void )
 	// [MK] Should pull this out and initialize it once
 	static std::vector< Point2D< Real > > ab_x( multigridVariables[0][0].x.size() );
 	static std::vector< Point2D< Real > > ab_rhs( multigridVariables[0][0].rhs.size() );
-#ifdef NEW_MULTI_THREADING
 	for( int ab=0 ; ab<2 ; ab++ ) ThreadPool::ParallelFor( 0 , ab_x.size() , [&]( unsigned int , size_t i ){ ab_x[i][ab] = multigridVariables[ab][0].x[i]; } );
-#else // !NEW_MULTI_THREADING
-	for( int ab=0 ; ab<2 ; ab++ )
-#pragma omp parallel for
-		for( int i=0 ; i<ab_x.size() ; i++ ) ab_x[i][ab] = multigridVariables[ab][0].x[i];
-#endif // NEW_MULTI_THREADING
 	const std::vector< int >& boundaryGlobalIndex = hierarchy.gridAtlases[0].boundaryGlobalIndex;
 
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor( 0 , boundaryGlobalIndex.size() , [&]( unsigned int , size_t i ){coarseBoundaryValues[i] = ab_x[ boundaryGlobalIndex[i] ]; } );
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-	for( int i=0 ; i<boundaryGlobalIndex.size() ; i++ ) coarseBoundaryValues[i] = ab_x[ boundaryGlobalIndex[i] ];
-#endif // NEW_MULTI_THREADING
 	coarseBoundaryFineBoundaryProlongation.Multiply( &coarseBoundaryValues[0] , &fineBoundaryValues[0] );
 
 	for( int ab=0 ; ab<2 ; ab++ ) MultiplyBySystemMatrix_NoReciprocals( massCoefficients , hierarchy.gridAtlases[0].boundaryGlobalIndex , hierarchy.gridAtlases[0].rasterLines , multigridVariables[ab][0].x , multigridVariables[ab][0].rhs );
@@ -365,15 +336,8 @@ void GrayScottReactionDiffusion< PreReal , Real >::SetRightHandSide( void )
 	fineBoundaryCoarseBoundaryRestriction.Multiply( &fineBoundaryRHS[0] , &coarseBoundaryRHS[0] );
 	for( int ab=0 ; ab<2 ; ab++ )
 	{
-#ifdef NEW_MULTI_THREADING
 		ThreadPool::ParallelFor( 0 , ab_rhs.size() , [&]( unsigned int , size_t i ){ multigridVariables[ab][0].rhs[i] += ab_rhs[i][ab]; } );
 		ThreadPool::ParallelFor( 0 , boundaryGlobalIndex.size() , [&]( unsigned int , size_t i ){ multigridVariables[ab][0].rhs[ boundaryGlobalIndex[i] ] += coarseBoundaryRHS[i][ab]; } );
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-		for( int i=0 ; i<ab_rhs.size() ; i++ ) multigridVariables[ab][0].rhs[i] += ab_rhs[i][ab];
-#pragma omp parallel for
-		for( int i=0 ; i<boundaryGlobalIndex.size() ; i++ ) multigridVariables[ab][0].rhs[ boundaryGlobalIndex[i] ] += coarseBoundaryRHS[i][ab];
-#endif // NEW_MULTI_THREADING
 	}
 }
 
@@ -416,12 +380,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::UpdateApproximateSolution( bo
 		for( int ab=0 ; ab<2 ; ab++ )
 		{
 			VCycle( multigridVariables[ab] , multigridCoefficients[ab] , multigridIndices , vCycleSolvers[ab] , detailVerbose , detailVerbose );
-#ifdef NEW_MULTI_THREADING
 			ThreadPool::ParallelFor( 0 , multigridVariables[ab][0].x.size() , [&]( unsigned int , size_t i ){ multigridVariables[ab][0].x[i] = std::max< Real >( multigridVariables[ab][0].x[i] , 0 ); } );
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-			for( int i=0 ; i<multigridVariables[ab][0].x.size() ; i++ ) multigridVariables[ab][0].x[i] = std::max< Real >( multigridVariables[ab][0].x[i] , 0 );
-#endif // NEW_MULTI_THREADING
 		}
 		vCycleTime = timer.elapsed();
 	}
@@ -431,7 +390,6 @@ void GrayScottReactionDiffusion< PreReal , Real >::UpdateApproximateSolution( bo
 template< typename PreReal , typename Real >
 void GrayScottReactionDiffusion< PreReal , Real >::SetOutputBuffer( const std::vector< Real > & solution )
 {
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor
 		(
 			0 , textureNodes.size() ,
@@ -449,22 +407,6 @@ void GrayScottReactionDiffusion< PreReal , Real >::SetOutputBuffer( const std::v
 				outputBuffer[offset] = color;
 			}
 		);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-	for( int i=0 ; i<textureNodes.size() ; i++ )
-	{
-		int ci = textureNodes[i].ci;
-		int cj = textureNodes[i].cj;
-		int offset = textureWidth*cj + ci;
-		float value = (float)solution[i];
-		value = std::max< float >( 0.f , std::min< Real >( 1.f , value*2.f ) );
-		value = 1.f - value;
-		value *= 0.75f;
-
-		unsigned char color = (unsigned char)( value*255.f );
-		outputBuffer[offset] = color;
-	}
-#endif // NEW_MULTI_THREADING
 }
 
 template< typename PreReal , typename Real >
@@ -613,11 +555,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeConcentrations( voi
 			t[0] *= nodeIndex.width() , t[1] *= nodeIndex.height();
 			int idx = nodeIndex( (int)floor( t[0] +0.5 ) , (int)floor( t[1] +0.5 ) );
 			if( idx>=0 && idx<multigridVariables[1][0].x.size() ) multigridVariables[1][0].x[idx] = 1;
-#ifdef NEW_CODE
 			else WARN( "Bad random texel: " , t[0] , " " , t[1] , ": " , idx );
-#else // !NEW_CODE
-			else Miscellany::Warn( "Bad random texel: %f %f: %d\n" , t[0] , t[1] , idx );
-#endif // NEW_CODE
 		}
 	}
 }
@@ -636,11 +574,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 	for( int i=0 ; i<nodeIndex.size() ; i++ ) nodeIndex[i] = -1;
 	for( int i=0 ; i<textureNodes.size() ; i++ )
 	{
-#ifdef NEW_CODE
 		if( nodeIndex( textureNodes[i].ci , textureNodes[i].cj )!=-1 ) if( false ) WARN( "Multiple nodes mapped to pixel " , textureNodes[i].ci , " " , textureNodes[i].cj );
-#else // !NEW_CODE
-		if( nodeIndex( textureNodes[i].ci , textureNodes[i].cj )!=-1 ) if( false ) Miscellany::Warn( "Multiple nodes mapped to pixel %d %d!\n" , textureNodes[i].ci , textureNodes[i].cj );
-#endif // NEW_CODE
 		nodeIndex( textureNodes[i].ci , textureNodes[i].cj ) = i;
 	}
 
@@ -658,23 +592,14 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 		if( IntrinsicVectorField.set )
 		{
 			ReadVector( vectorField , VectorField.value );
-#ifdef NEW_CODE
 			if( vectorField.size()!=mesh.triangles.size() ) THROW( "Triangle and vector counts don't match: " , mesh.triangles.size() , " != " , vectorField.size() );
-#else // !NEW_CODE
-			if( vectorField.size()!=mesh.triangles.size() ) Miscellany::Throw( "Triangle and vector counts don't match: %d != %d" , (int)mesh.triangles.size() , (int)vectorField.size() );
-#endif // NEW_CODE
 		}
 		else
 		{
 			std::vector< Point3D< PreReal > > _vectorField;
 			ReadVector( _vectorField , VectorField.value );
-#ifdef NEW_CODE
 			if( _vectorField.size()!=mesh.triangles.size() ) THROW( "Triangle and vector counts don't match: " , mesh.triangles.size() , " != " , _vectorField.size() );
-#else // !NEW_CODE
-			if( _vectorField.size()!=mesh.triangles.size() ) Miscellany::Throw( "Triangle and vector counts don't match: %d != %d" , (int)mesh.triangles.size() , (int)_vectorField.size() );
-#endif // NEW_CODE
 			vectorField.resize( _vectorField.size() );
-#ifdef NEW_MULTI_THREADING
 			ThreadPool::ParallelFor
 				(
 					0 , mesh.triangles.size() ,
@@ -688,18 +613,6 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 						vectorField[i] = Dot.inverse() * dot;
 					}
 				);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-			for( int i=0 ; i<mesh.triangles.size() ; i++ )
-			{
-				Point3D< PreReal > v[] = { mesh.vertices[ mesh.triangles[i][0] ] , mesh.vertices[ mesh.triangles[i][1] ] , mesh.vertices[ mesh.triangles[i][2] ] };
-				Point3D< PreReal > d[] = { v[1]-v[0] , v[2]-v[0] };
-				SquareMatrix< PreReal , 2 > Dot;
-				for( int j=0 ; j<2 ; j++ ) for( int k=0 ; k<2 ; k++ ) Dot(j,k) = Point3D< PreReal >::Dot( d[j] , d[k] );
-				Point2D< PreReal > dot( Point3D< PreReal >::Dot( d[0] , _vectorField[i] ) , Point3D< PreReal >::Dot( d[1] , _vectorField[i] ) );
-				vectorField[i] = Dot.inverse() * dot;
-			}
-#endif // NEW_MULTI_THREADING
 		}
 		// Normalize the vector-field to have unit-norm
 		{
@@ -747,11 +660,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 		case 12: InitializeMassAndStiffness<12>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
 		case 24: InitializeMassAndStiffness<24>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
 		case 32: InitializeMassAndStiffness<32>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-#ifdef NEW_CODE
 		default: THROW( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
-#else // !NEW_CODE
-		default: Miscellany::Throw( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
-#endif // NEW_CODE
 		}
 	}
 
@@ -809,11 +718,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 	//////////////////////////////////// Initialize cell samples
 
 	InitializeGridAtlasInteriorCellLines( hierarchy.gridAtlases[0].gridCharts , interiorCellLines , interiorCellLineIndex );
-#ifdef NEW_CODE
 	if( interiorCellLineIndex.size()!=hierarchy.gridAtlases[0].numInteriorCells ) THROW( "Inconsistent number of interior cells! Expected " , hierarchy.gridAtlases[0].numInteriorCells , " . Result " , interiorCellLineIndex.size() , "." );
-#else // !NEW_CODE
-	if( interiorCellLineIndex.size()!=hierarchy.gridAtlases[0].numInteriorCells ) Miscellany::Throw( "Inconsistent number of interior cells! Expected %d . Result %d." , hierarchy.gridAtlases[0].numInteriorCells , (int)interiorCellLineIndex.size() );
-#endif // NEW_CODE
 
 	coarseBoundaryFineBoundaryProlongation = boundaryProlongation.coarseBoundaryFineBoundaryProlongation;
 	fineBoundaryCoarseBoundaryRestriction = boundaryProlongation.fineBoundaryCoarseBoundaryRestriction;
@@ -832,11 +737,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 		case 12: InitializeIntegration< 12 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , scalarSamples , ApproximateIntegration.set ) ; break;
 		case 24: InitializeIntegration< 24 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , scalarSamples , ApproximateIntegration.set ) ; break;
 		case 32: InitializeIntegration< 32 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , scalarSamples , ApproximateIntegration.set ) ; break;
-#ifdef NEW_CODE
 		default: THROW( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
-#else // !NEW_CODE
-		default: Miscellany::Throw( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
-#endif // NEW_CODE
 		}
 	}
 	if( Verbose.set ) printf( "\tInitialized vector field integration: %.2f(s)\n" , timer.elapsed() );
@@ -1039,11 +940,7 @@ void _main( int argc , char* argv[] )
 		char windowName[1024];
 		sprintf( windowName , "Gray-Scott Reaction Diffusion");
 		glutCreateWindow( windowName );
-#ifdef NEW_CODE
 		if( glewInit()!=GLEW_OK ) THROW( "glewInit failed" );
-#else // !NEW_CODE
-		if( glewInit()!=GLEW_OK ) Miscellany::Throw( "glewInit failed" );
-#endif // NEW_CODE
 		glutDisplayFunc ( GrayScottReactionDiffusion< PreReal , Real >::Display );
 		glutReshapeFunc ( GrayScottReactionDiffusion< PreReal , Real >::Reshape );
 		glutMouseFunc   ( GrayScottReactionDiffusion< PreReal , Real >::MouseFunc );
@@ -1084,11 +981,7 @@ int main( int argc , char* argv[] )
 		else           SamplesFraction.value = DefaultStripesSamplesFraction;
 	}
 	if( Dots.set && !FeedKillRates.set ) FeedKillRates.values[0] = DotRates[0] , FeedKillRates.values[1] = DotRates[1];
-#ifdef NEW_MULTI_THREADING
 	if( Serial.set ) ThreadPool::ParallelizationType = ThreadPool::ParallelType::NONE;
-#else // !NEW_MULTI_THREADING
-	omp_set_num_threads( Threads.value );
-#endif // NEW_MULTI_THREADING
 	if( !NoHelp.set && !Output.set )
 	{
 		printf( "+------------------------------------------------+\n" );
@@ -1105,11 +998,7 @@ int main( int argc , char* argv[] )
 		if( Double.set ) _main< double , double >( argc , argv );
 		else             _main< double , float  >( argc , argv );
 	}
-#ifdef NEW_CODE
 	catch( Misha::Exception &e )
-#else // !NEW_CODE
-	catch( Miscellany::Exception &e )
-#endif // NEW_CODE
 	{
 		printf( "%s\n" , e.what() );
 		return EXIT_FAILURE;

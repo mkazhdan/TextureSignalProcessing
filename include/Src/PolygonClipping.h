@@ -298,20 +298,12 @@ void ClipPartiallyIndexedPolygonToIndexedEdge( AtlasIndexedPolygon< GeometryReal
 		polygon.atlasVertexParentEdge = outputParentVertexEdgeIndices;
 
 		if( polygon.vertices.size()!=polygon.atlasVertexIndices.size() || polygon.vertices.size()!=polygon.atlasEdgeIndices.size() || polygon.vertices.size()!=polygon.atlasVertexParentEdge.size() )
-#ifdef NEW_CODE
 			THROW( "Polygon array size does not match" );
-#else // !NEW_CODE
-			Miscellany::Throw( "Polygon array size does not match" );
-#endif // NEW_CODE
 
 		//Check for non consecutive colinear edges
 		for (int i = 0; i < polygon.atlasEdgeIndices.size(); i++){
 			if( polygon.atlasEdgeIndices[i]!=-1 && polygon.atlasEdgeIndices[i]==polygon.atlasEdgeIndices[ (i+1)%polygon.atlasEdgeIndices.size() ] )
-#ifdef NEW_CODE
 				THROW( "Unexpected consecutive colinear edges" );
-#else // !NEW_CODE
-				Miscellany::Throw( "Unexpected consecutive colinear edges" );
-#endif // NEW_CODE
 		}
 	}
 }

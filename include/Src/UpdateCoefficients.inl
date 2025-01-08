@@ -27,9 +27,7 @@ DAMAGE.
 */
 
 #include <Misha/Miscellany.h>
-#ifdef NEW_MULTI_THREADING
 #include <Misha/MultiThreading.h>
-#endif // NEW_MULTI_THREADING
 
 
 
@@ -111,7 +109,6 @@ void DeepCoefficientRestriction( const std::vector< Real >& fineDeepCoefficients
 		};
 		for (int i = 0; i < lineLength;i++)UpdateNode(i);
 	};
-#ifdef NEW_MULTI_THREADING
 	unsigned int threads = ThreadPool::NumThreads();
 	ThreadPool::ParallelFor
 		(
@@ -123,16 +120,6 @@ void DeepCoefficientRestriction( const std::vector< Real >& fineDeepCoefficients
 				for( int r=firstLine ; r<lastLine ; r++ ) UpdateRow(r);
 			}
 		);
-#else // !NEW_MULTI_THREADING
-	int threads = omp_get_max_threads();
-#pragma omp parallel for
-	for (int t = 0; t < threads; t++) {
-		int tID = omp_get_thread_num();
-		int firstLine = ((int)deepLines.size() * tID) / threads;
-		int lastLine = ((int)deepLines.size() * (tID + 1)) / threads;
-		for (int r = firstLine; r < lastLine; r++) UpdateRow(r);
-	}
-#endif // NEW_MULTI_THREADING
 }
 
 template< typename MatrixReal >
@@ -306,7 +293,6 @@ void UpdateMultigridCoefficients( const HierarchicalSystem< GeometryReal , Matri
 		{
 			std::vector< MatrixReal > &deepCoefficients = multigridCoefficients[i].deepCoefficients;
 			int numDeepTexels = hierarchy.gridAtlases[i].numDeepTexels;
-#ifdef NEW_MULTI_THREADING
 			ThreadPool::ParallelFor
 				(
 					0 , numDeepTexels ,
@@ -326,24 +312,6 @@ void UpdateMultigridCoefficients( const HierarchicalSystem< GeometryReal , Matri
 						deepCoefficients[10 * ii + 9]  = centerValue;
 					}
 				);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-			for (int ii=0 ; ii<numDeepTexels ; ii++ )
-			{
-				MatrixReal centerValue = deepCoefficients[10 * ii + 4];
-				MatrixReal reciprocal = (MatrixReal)1. / centerValue;
-				deepCoefficients[10 * ii + 0] *= reciprocal;
-				deepCoefficients[10 * ii + 1] *= reciprocal;
-				deepCoefficients[10 * ii + 2] *= reciprocal;
-				deepCoefficients[10 * ii + 3] *= reciprocal;
-				deepCoefficients[10 * ii + 4]  = reciprocal;
-				deepCoefficients[10 * ii + 5] *= reciprocal;
-				deepCoefficients[10 * ii + 6] *= reciprocal;
-				deepCoefficients[10 * ii + 7] *= reciprocal;
-				deepCoefficients[10 * ii + 8] *= reciprocal;
-				deepCoefficients[10 * ii + 9]  = centerValue;
-			}
-#endif // NEW_MULTI_THREADING
 		}
 		if( verbose ) printf( "Deep coeff inversion =  %.4f\n" , timer.elapsed() );
 	}
@@ -417,12 +385,7 @@ void UpdateLinearSystem
 	int numDeepCoefficients = (int)mass.deepCoefficients.size();
 	fineCoefficients.deepCoefficients.resize( numDeepCoefficients );
 
-#ifdef NEW_MULTI_THREADING
 	ThreadPool::ParallelFor( 0 , numDeepCoefficients , [&]( unsigned int , size_t i ){ fineCoefficients.deepCoefficients[i] = mass.deepCoefficients[i] * screenWeight + stiffness.deepCoefficients[i] * stiffnessWeight; } );
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-	for( int i=0 ; i<numDeepCoefficients ; i++ ) fineCoefficients.deepCoefficients[i] = mass.deepCoefficients[i] * screenWeight + stiffness.deepCoefficients[i] * stiffnessWeight;
-#endif // NEW_MULTI_THREADING
 
 	const SparseMatrix< MatrixReal , int >* in[][2] = { { &mass.boundaryBoundaryMatrix , &stiffness.boundaryBoundaryMatrix } , { &mass.boundaryDeepMatrix , &stiffness.boundaryDeepMatrix } };
 	SparseMatrix< MatrixReal , int >* out[] = { &fineCoefficients.boundaryBoundaryMatrix , &fineCoefficients.boundaryDeepMatrix };
@@ -432,7 +395,6 @@ void UpdateLinearSystem
 		const SparseMatrix< MatrixReal , int >& _in2 = *(in[ii][1]);
 		SparseMatrix< MatrixReal , int >& _out = *(out[ii]);
 		_out.resize( _in1.rows );
-#ifdef NEW_MULTI_THREADING
 		ThreadPool::ParallelFor
 			(
 				0 , _out.rows ,
@@ -442,14 +404,6 @@ void UpdateLinearSystem
 					for( int j=0 ; j<_out.rowSizes[i] ; j++ ) _out[i][j] = MatrixEntry< MatrixReal , int >( _in1[i][j].N , _in1[i][j].Value * screenWeight + _in2[i][j].Value * stiffnessWeight );
 				}
 			);
-#else // !NEW_MULTI_THREADING
-#pragma omp parallel for
-		for( int i=0 ; i<_out.rows ; i++ )
-		{
-			_out.SetRowSize( i , _in1.rowSizes[i] );
-			for( int j=0 ; j<_out.rowSizes[i] ; j++ ) _out[i][j] = MatrixEntry< MatrixReal , int >( _in1[i][j].N , _in1[i][j].Value * screenWeight + _in2[i][j].Value * stiffnessWeight );
-		}
-#endif // NEW_MULTI_THREADING
 	}
 	UpdateMultigridCoefficientsAndSolvers( hierarchy , multigridCoefficients , fineCoefficients , vCycleSolvers , detailVerbose , initSolvers );
 	if( updateFineSolver )

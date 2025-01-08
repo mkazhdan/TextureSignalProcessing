@@ -77,11 +77,7 @@ public:
 		int file_type;
 		std::vector< PlyVertex< GeometryReal > > ply_vertices;
 		if ( !PlyReadTriangles( fileName , ply_vertices , triangles , PlyVertex< GeometryReal >::ReadProperties , NULL , PlyVertex< GeometryReal >::ReadComponents, file_type ) )
-#ifdef NEW_CODE
 			THROW( "Failed to read ply file: " , fileName );
-#else // !NEW_CODE
-			Miscellany::Throw( "Failed to read ply file: %s" , fileName );
-#endif // NEW_CODE
 		vertices.resize( ply_vertices.size() );
 		for( int i=0 ; i<ply_vertices.size() ; i++ ) vertices[i] = ply_vertices[i].point;
 	}
@@ -184,11 +180,7 @@ public:
 		{
 			unsigned long long edgeKey = this->edgeKey(i,k);
 			if( edgeIndex.find(edgeKey)==edgeIndex.end() ) edgeIndex[edgeKey] = 3*i+k;
-#ifdef NEW_CODE
 			else THROW( "Non manifold mesh" );
-#else // !NEW_CODE
-			else Miscellany::Throw( "Non manifold mesh" );
-#endif // NEW_CODE
 		}
 
 		for( int i=0 ; i<triangles.size() ; i++ ) for( int k=0 ; k<3 ; k++ )
@@ -362,11 +354,7 @@ public:
 			std::vector< PlyVertex< GeometryReal > > ply_vertices;
 			std::vector< PlyTexturedFace< GeometryReal > > ply_faces;
 			if( !PlyReadPolygons( meshName , ply_vertices , ply_faces , PlyVertex< GeometryReal >::ReadProperties , NULL , PlyVertex< GeometryReal >::ReadComponents , PlyTexturedFace< GeometryReal >::ReadProperties , NULL , PlyTexturedFace< GeometryReal >::ReadComponents , file_type ) )
-#ifdef NEW_CODE
 				THROW( "Failed to read ply file: " , meshName );
-#else // !NEW_CODE
-				Miscellany::Throw( "Failed to read ply file: %s" , meshName );
-#endif // NEW_CODE
 
 			vertices.resize( ply_vertices.size() );
 			for( int i=0 ; i<ply_vertices.size() ; i++ ) vertices[i] = ply_vertices[i].point;
@@ -423,11 +411,7 @@ public:
 			{
 				IndexedTextureCoordinate itc( ply_faces[i].texture(j) , -1 , ply_faces[i][j] );
 				auto iter = indexedTextureCoordinateSet.find( itc );
-#ifdef NEW_CODE
 				if( iter==indexedTextureCoordinateSet.end() ) ERROR_OUT( "Could not find texture in texture set" );
-#else // !NEW_CODE
-				if( iter==indexedTextureCoordinateSet.end() ) Miscellany::ErrorOut( "Could not find texture in texture set" );
-#endif // NEW_CODE
 				else textureMesh.triangles[i][j] = iter->index;
 			}
 
@@ -448,11 +432,7 @@ public:
 			std::vector< Point2D< GeometryReal > > obj_textures;
 			std::vector< std::vector< ObjFaceIndex > > obj_faces;
 			std::ifstream in( meshName );
-#ifdef NEW_CODE
 			if( !in.is_open() ) ERROR_OUT( "Could not open file for reading: " , std::string( meshName ) );
-#else // !NEW_CODE
-			if( !in.is_open() ) Miscellany::ErrorOut( "Could not open file for reading: %s" , meshName );
-#endif // NEW_CODE
 
 			std::string( line );
 			unsigned int count = 0;
@@ -499,11 +479,7 @@ public:
 						}
 						face.push_back( idx );
 					}
-#ifdef NEW_CODE
 					if( face.size()!=3 ) ERROR_OUT( "Expectred triangular face " , face.size() );
-#else // !NEW_CODE
-					if( face.size()!=3 ) Miscellany::ErrorOut( "Expectred triangular face: " , face.size() );
-#endif // NEW_CODE
 					obj_faces.push_back( face );
 				}
 				count++;
@@ -526,11 +502,7 @@ public:
 			{
 				if     ( obj_faces[i][j].vIndex>0 ) triangles[i][j] = obj_faces[i][j].vIndex-1;
 				else if( obj_faces[i][j].vIndex<0 ) triangles[i][j] = (int)obj_vertices.size() + obj_faces[i][j].vIndex;
-#ifdef NEW_CODE
 				else ERROR_OUT( "Zero vertex index unexpected in .obj file" );
-#else // !NEW_CODE
-				else Miscellany::ErrorOut( "Zero vertex index unexpected in .obj file" );
-#endif // NEW_CODE
 
 #ifdef USE_TEXTURE_TRIANGLES
 				if     ( obj_faces[i][j].tIndex>0 ) textureMesh.triangles[i][j] = obj_faces[i][j].tIndex-1;
@@ -539,18 +511,10 @@ public:
 				if     ( obj_faces[i][j].tIndex>0 ) textureCoordinates[3*i+j] = obj_textures[ obj_faces[i][j].tIndex-1 ];
 				else if( obj_faces[i][j].tIndex<0 ) textureCoordinates[3*i+j] = obj_textures[ (int)obj_textures.size() + obj_faces[i][j].tIndex ];
 #endif // USE_TEXTURE_TRIANGLES
-#ifdef NEW_CODE
 				else ERROR_OUT( "Zero texture index unexpected in .obj file" );
-#else // !NEW_CODE
-				else Miscellany::ErrorOut( "Zero texture index unexpected in .obj file" );
-#endif // NEW_CODE
 			}
 		}
-#ifdef NEW_CODE
 		else ERROR_OUT( "Unrecognized file extension: " , std::string( meshName ) );
-#else // !NEW_CODE
-		else Miscellany::ErrorOut( "Unrecognized file extension: %s" , meshName );
-#endif // NEW_CODE
 		delete[] ext;
 
 		// Flip the vertical axis
@@ -572,11 +536,7 @@ public:
 		{
 			unsigned long long edgeKey = this->edgeKey(i,k);
 			if( edgeIndex.find(edgeKey)==edgeIndex.end() ) edgeIndex[edgeKey] = 3*i+k;
-#ifdef NEW_CODE
 			else THROW( "Non manifold mesh" );
-#else // !NEW_CODE
-			else Miscellany::Throw( "Non manifold mesh" );
-#endif // NEW_CODE
 		}
 
 		for( int i=0 ; i<triangles.size() ; i++ ) for( int k=0 ; k<3 ; k++ )
