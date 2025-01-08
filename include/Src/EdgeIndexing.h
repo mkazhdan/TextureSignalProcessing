@@ -30,6 +30,9 @@ DAMAGE.
 #define EDGE_INDEXING_INCLUDED
 
 #include <Misha/Miscellany.h>
+#ifdef NEW_MULTI_THREADING
+#include <Misha/MultiThreading.h>
+#endif // NEW_MULTI_THREADING
 
 template< typename GeometryReal >
 void InitializeIntraChartEdgeIndexing( std::unordered_map< unsigned long long , int > &boundaryCoarseEdgeIndex , const GridChart< GeometryReal > &gridChart , int &lastAddedEdgeIndex )
@@ -57,7 +60,11 @@ void InitializeIntraChartEdgeIndexing( std::unordered_map< unsigned long long , 
 				boundaryCoarseEdgeIndex[edgeKey] = lastAddedEdgeIndex;
 				lastAddedEdgeIndex++;
 			}
+#ifdef NEW_CODE
+			else THROW( "Edge already added" );
+#else // !NEW_CODE
 			else Miscellany::Throw( "Edge already added" );
+#endif // NEW_CODE
 		}
 	}
 }
@@ -144,13 +151,72 @@ template< typename MatrixReal >
 void InitializeBoundaryCoarseToFineBoundaryOneFormProlongation( const SparseMatrix< MatrixReal , int > &boundaryCoarseToFineNodeProlongation , std::unordered_map< unsigned long long , int > &boundaryCoarseEdgeIndex , std::unordered_map< unsigned long long , int > &boundaryFineEdgeIndex , SparseMatrix< MatrixReal , int > &boundaryFineToBoundaryCoarseOneFormProlongation )
 {
 	std::vector< Eigen::Triplet< MatrixReal > > coarseToFineOneFormProlongation;
+#ifdef NEW_MULTI_THREADING
+	std::vector< std::vector< Eigen::Triplet< MatrixReal > > > _coarseToFineOneFormProlongation( ThreadPool::NumThreads() );
+#else // !NEW_MULTI_THREADING
 	std::vector< std::vector< Eigen::Triplet< MatrixReal > > > _coarseToFineOneFormProlongation( omp_get_max_threads() );
+#endif // NEW_MULTI_THREADING
 	std::vector< std::pair< unsigned long long , int > > _boundaryFineEdgeIndex;
 
 	// Transform the unordered_map into a vector of pairs for parallelization
 	_boundaryFineEdgeIndex.reserve( boundaryFineEdgeIndex.size() );
 	for( auto iter=boundaryFineEdgeIndex.begin() ; iter!=boundaryFineEdgeIndex.end() ; iter++ ) _boundaryFineEdgeIndex.push_back( std::pair< unsigned long long , int >( iter->first , iter->second ) );
 
+#ifdef NEW_MULTI_THREADING
+	ThreadPool::ParallelFor
+		(
+			0 , _boundaryFineEdgeIndex.size() ,
+			[&]( unsigned int thread , size_t i )
+			{
+				unsigned long long fineEdgeKey = _boundaryFineEdgeIndex[i].first;
+				int fineEdgeId = _boundaryFineEdgeIndex[i].second;
+
+				unsigned long fineEdgeCorners[2];
+				GetMeshEdgeIndices( fineEdgeKey , fineEdgeCorners[0] , fineEdgeCorners[1] );
+
+				for( int k=0 ; k<boundaryCoarseToFineNodeProlongation.RowSize( fineEdgeCorners[0] ) ; k++ )
+				{
+					int coarseIndex1 = boundaryCoarseToFineNodeProlongation[ fineEdgeCorners[0] ][k].N;
+					MatrixReal coarseValue1 = boundaryCoarseToFineNodeProlongation[ fineEdgeCorners[0] ][k].Value;
+
+					for( int l=0 ; l<boundaryCoarseToFineNodeProlongation.RowSize( fineEdgeCorners[1] ) ; l++ )
+					{
+						int coarseIndex2 = boundaryCoarseToFineNodeProlongation[ fineEdgeCorners[1] ][l].N;
+						MatrixReal coarseValue2 = boundaryCoarseToFineNodeProlongation[ fineEdgeCorners[1] ][l].Value;
+
+						if( coarseIndex1!=coarseIndex2 )
+						{
+							bool foundEdge = false;
+							unsigned long long coarseEdgeKey = SetMeshEdgeKey( coarseIndex1 , coarseIndex2 );
+							auto coarseEdgePtr = boundaryCoarseEdgeIndex.find( coarseEdgeKey );
+							if( coarseEdgePtr!=boundaryCoarseEdgeIndex.end() )
+							{
+								foundEdge = true;
+								int coarseEdgeId = coarseEdgePtr->second;
+								_coarseToFineOneFormProlongation[thread].push_back( Eigen::Triplet< MatrixReal >( fineEdgeId , coarseEdgeId , coarseValue1 * coarseValue2 ) );
+							}
+							else
+							{
+								coarseEdgeKey = SetMeshEdgeKey(coarseIndex2, coarseIndex1);
+								coarseEdgePtr = boundaryCoarseEdgeIndex.find(coarseEdgeKey);
+								if( coarseEdgePtr!=boundaryCoarseEdgeIndex.end() )
+								{
+									foundEdge = true;
+									int coarseEdgeId = coarseEdgePtr->second;
+									_coarseToFineOneFormProlongation[thread].push_back( Eigen::Triplet< MatrixReal >( fineEdgeId , coarseEdgeId , -coarseValue1 *coarseValue2 ) );
+								}
+							}
+#ifdef NEW_CODE
+							if( !foundEdge ) THROW( "Edge (" , coarseIndex1 , "," , coarseIndex2 , ") not found" );
+#else // !NEW_CODE
+							if( !foundEdge ) Miscellany::Throw( "Edge (%d,%d) not found" , coarseIndex1 , coarseIndex2 );
+#endif // NEW_CODE
+						}
+					}
+				}
+			}
+		);
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 	for( int i=0 ; i<_boundaryFineEdgeIndex.size() ; i++ )
 	{
@@ -193,11 +259,16 @@ void InitializeBoundaryCoarseToFineBoundaryOneFormProlongation( const SparseMatr
 							_coarseToFineOneFormProlongation[thread].push_back( Eigen::Triplet< MatrixReal >( fineEdgeId , coarseEdgeId , -coarseValue1 *coarseValue2 ) );
 						}
 					}
+#ifdef NEW_CODE
+					if( !foundEdge ) THROW( "Edge (" , coarseIndex1 , "," , coarseIndex2 , ") not found" );
+#else // !NEW_CODE
 					if( !foundEdge ) Miscellany::Throw( "Edge (%d,%d) not found" , coarseIndex1 , coarseIndex2 );
+#endif // NEW_CODE
 				}
 			}
 		}
 	}
+#endif // NEW_MULTI_THREADING
 
 	// Merge the prolongation entries
 	{
@@ -212,4 +283,5 @@ void InitializeBoundaryCoarseToFineBoundaryOneFormProlongation( const SparseMatr
 
 	boundaryFineToBoundaryCoarseOneFormProlongation = SetSparseMatrix( coarseToFineOneFormProlongation , numFineOneForms , numCoarseOneForms , false );
 }
+
 #endif // EDGE_INDEXING_INCLUDED

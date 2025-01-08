@@ -46,10 +46,18 @@ void InitializeInteriorTexelToCellLines( std::vector< InteriorTexelToCellLine > 
 		interiorTexeltoCellLine[i].texelEndIndex = rasterLines[i].lineEndIndex;
 		interiorTexeltoCellLine[i].coeffOffset = rasterLines[i].coeffStartIndex;
 
+#ifdef NEW_CODE
+		if( gridCharts[chartID].cellType( ci-1 , cj-1)!=1 ) THROW( "Non interior cell" );
+#else // !NEW_CODE
 		if( gridCharts[chartID].cellType( ci-1 , cj-1)!=1 ) Miscellany::Throw( "Non interior cell" );
+#endif // NEW_CODE
 		interiorTexeltoCellLine[i].previousCellStartIndex = gridCharts[chartID].localCellIndex(ci - 1, cj - 1) + gridCharts[chartID].globalIndexCellOffset;
 
+#ifdef NEW_CODE
+		if( gridCharts[chartID].cellType( ci-1 , cj )!=1 ) THROW( "Non interior cell" );
+#else // !NEW_CODE
 		if( gridCharts[chartID].cellType( ci-1 , cj )!=1 ) Miscellany::Throw( "Non interior cell" );
+#endif // NEW_CODE
 		interiorTexeltoCellLine[i].nextCellStartIndex = gridCharts[chartID].localCellIndex(ci - 1, cj) + gridCharts[chartID].globalIndexCellOffset;
 	}
 }

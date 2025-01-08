@@ -28,8 +28,6 @@ DAMAGE.
 #ifndef MISCELLANY_INCLUDED
 #define MISCELLANY_INCLUDED
 
-#undef VERBOSE_MESSAGING
-
 #ifdef _OPENMP
 #include <omp.h>
 #endif // _OPENMP
@@ -74,6 +72,8 @@ DAMAGE.
 #endif
 #endif
 
+#ifdef NEW_MULTI_THREADING
+#else // !NEW_MULTI_THREADING
 //////////////////
 // OpenMP Stuff //
 //////////////////
@@ -90,6 +90,7 @@ inline void omp_set_lock( omp_lock_t* ){}
 inline void omp_unset_lock( omp_lock_t* ){}
 inline void omp_destroy_lock( omp_lock_t* ){}
 #endif // _OPENMP
+#endif // NEW_MULTI_THREADING
 
 namespace Miscellany
 {
@@ -200,6 +201,8 @@ namespace Miscellany
 		}
 	};
 
+#ifdef NEW_CODE
+#else // !NEW_CODE
 	///////////////
 	// Exception //
 	///////////////
@@ -367,6 +370,7 @@ namespace Miscellany
 #define ErrorOut( ... ) _ErrorOut( __FUNCTION__ , __VA_ARGS__ )
 #endif // ErrorOut
 #endif // VERBOSE_MESSAGING
+#endif // NEW_CODE
 
 	//////////////////
 	// Memory Stuff //

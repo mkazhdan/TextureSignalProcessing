@@ -75,8 +75,10 @@ struct Padding
 		}
 
 		if( verbose )
+		{
 			if( padding.width() || padding.height() ) printf( "Padding applied : Left %d. Right %d. Bottom %d. Top %d.\n" , padding.left , padding.right , padding.bottom , padding.top );
 			else                                      printf( "No padding required!\n" );
+		}
 
 		return padding;
 	}

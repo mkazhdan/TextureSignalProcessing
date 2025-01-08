@@ -28,6 +28,9 @@ DAMAGE.
 #include <cassert>
 #include <string.h>
 #include "Miscellany.h"
+#ifdef NEW_CODE
+#include "Exceptions.h"
+#endif // NEW_CODE
 
 #ifdef WIN32
 inline int strcasecmp( char* c1 , char* c2 ){ return _stricmp( c1 , c2 ); }
@@ -252,11 +255,19 @@ inline void cmdLineParse( int argc , char **argv , cmdLineReadable** params )
 			}
 			else
 			{
+#ifdef NEW_CODE
+				WARN( "Invalid option: " , std::string( argv[0] ) );
+#else // !NEW_CODE
 				Miscellany::Warn( "Invalid option: %s" , argv[0] );
+#endif // NEW_CODE
 				for( int i=0 ; params[i]!=NULL ; i++ ) printf( "\t--%s\n" , params[i]->name );
 			}
 		}
+#ifdef NEW_CODE
+		else WARN( "Parameter name should be of the form --<name>: " , std::string( argv[0] ) );
+#else // !NEW_CODE
 		else Miscellany::Warn( "Parameter name should be of the form --<name>: %s" , argv[0] );
+#endif // NEW_CODE
 		++argv , --argc;
 	}
 }

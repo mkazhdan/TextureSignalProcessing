@@ -27,6 +27,9 @@ DAMAGE.
 */
 #include <unordered_map>
 #include "Miscellany.h"
+#ifdef NEW_CODE
+#include "Exceptions.h"
+#endif // NEW_CODE
 
 static char *full_elem_names[] = { "vertex", "edge" , "face" };
 static char *elem_names[] = { "vertex", "face" };
@@ -1037,7 +1040,11 @@ int MReadTriangles( const char* fileName , std::vector<Vertex>& vertices , std::
 			tri[0] = vMap[v1] , tri[1] = vMap[v2] , tri[2] = vMap[v3];
 			triangles.push_back( tri );
 		}
+#ifdef NEW_CODE
+		else WARN( "Couldn't parse line: " , std::string( line ) );
+#else // !NEW_CODE
 		else Miscellany::Warn( "Couldn't parse line: %s" , line );
+#endif // NEW_CODE
 	}
 	fclose( fp );
 	return 1;

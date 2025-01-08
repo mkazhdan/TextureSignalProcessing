@@ -36,6 +36,9 @@ DAMAGE.
 #include "PNG.h"
 #include "Array.h"
 #include "Miscellany.h"
+#ifdef NEW_CODE
+#include "Exceptions.h"
+#endif // NEW_CODE
 
 #define KEY_UPARROW		101
 #define KEY_DOWNARROW	103
@@ -56,7 +59,7 @@ protected:
 	int _lastFPSCount;
 	double _fps;
 	int _currentFrame , _frameStride , _totalFrames;
-	bool _exitAfterVideo;
+	bool _exitAfterVideo , _exitAfterSnapshot;
 public:
 	int screenWidth , screenHeight;
 	void *font , *promptFont;
@@ -96,7 +99,7 @@ public:
 
 	std::vector< KeyboardCallBack > callBacks;
 	std::vector< char* > info;
-	Visualization( void )
+	Visualization( void ) : _exitAfterSnapshot(false) , _exitAfterVideo(false)
 	{
 		callBacks.push_back( KeyboardCallBack( this , KEY_ESC    , "" , QuitCallBack ) );
 		callBacks.push_back( KeyboardCallBack( this , KEY_CTRL_C , "" , QuitCallBack ) );
@@ -171,6 +174,7 @@ public:
 	int stringWidth( const char* format , ... ) const;
 
 	void saveFrameBuffer( const char* fileName , int whichBuffer=GL_BACK );
+	void setSnapshot( const char *fileName , bool exitAfter ){ SetFrameBufferCallBack( this , fileName ) , _exitAfterSnapshot = exitAfter; }
 };
 struct VisualizationViewer
 {
@@ -217,6 +221,7 @@ void Visualization::Idle( void )
 			delete[] snapshotName;
 			snapshotName = NULL;
 		}
+		if( _exitAfterSnapshot ) exit(0);
 	}
 	else if( strlen(videoHeader) && _currentFrame<_totalFrames )
 	{
@@ -540,7 +545,11 @@ void Visualization::saveFrameBuffer( const char* fileName , int whichBuffer )
 		_pixels[ c + i * 3 + j * screenWidth * 3 ] = (unsigned char)ii;
 	}
 	FreePointer( pixels );
+#ifdef NEW_CODE
+	if( !ImageWriter< 8 >::Write( fileName , _pixels , screenWidth , screenHeight , 3 ) ) WARN( "Failed to write image: " , std::string( fileName ) );
+#else // !NEW_CODE
 	if( !ImageWriter< 8 >::Write( fileName , _pixels , screenWidth , screenHeight , 3 ) ) Miscellany::Warn( "Failed to write image: %s" , fileName );
+#endif // NEW_CODE
 	FreePointer( _pixels );
 }
 

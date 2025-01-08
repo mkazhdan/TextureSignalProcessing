@@ -27,6 +27,9 @@ DAMAGE.
 */
 
 #include <Misha/Miscellany.h>
+#ifdef NEW_CODE
+#include <Misha/Exceptions.h>
+#endif // NEW_CODE
 #include "PolygonClipping.h"
 #include "MapLoop.h"
 
@@ -158,7 +161,11 @@ void InitializeChartBoundaryEdgeGridIntersections
 				GetIntersectionKey(edgeIntersectionsInfo[i].intersectionKey, tElement, vElement);
 				if (vElement == 4294967295) {//boundary vertex
 					int vertexIndex = atlasChart.meshVertexIndices[tElement];
+#ifdef NEW_CODE
+					if( boundaryVerticesIndices.find(vertexIndex)==boundaryVerticesIndices.end() ) THROW( "Boundary vertex not found" );
+#else // !NEW_CODE
 					if( boundaryVerticesIndices.find(vertexIndex)==boundaryVerticesIndices.end() ) Miscellany::Throw( "Boundary vertex not found" );
+#endif // NEW_CODE
 					localBoundaryNodeIndices[edgeIntersectionsInfo[i].intersectionKey] = boundaryVerticesIndices[vertexIndex];
 
 					AuxiliaryNode< GeometryReal > auxNode;
@@ -188,7 +195,11 @@ void InitializeChartBoundaryEdgeGridIntersections
 			segmentInfo.endTime = edgeIntersectionsInfo[i + 1].time;
 			segmentInfo.halfEdge = halfEdgeIndex;
 
+#ifdef NEW_CODE
+			if( localBoundarySegmentsInfo.find(segmentKey)!=localBoundarySegmentsInfo.end() ) THROW( "Replicated segment key" );
+#else // !NEW_CODE
 			if( localBoundarySegmentsInfo.find(segmentKey)!=localBoundarySegmentsInfo.end() ) Miscellany::Throw( "Replicated segment key" );
+#endif // NEW_CODE
 			localBoundarySegmentsInfo[segmentKey] = segmentInfo;
 		}
 		boundaryEdgeIntersections[halfEdgeIndex] = edgeIntersectionsInfo;
@@ -263,7 +274,11 @@ void InitializeChartBoundaryPolygons
 		for (int j = minCorner[1]; j < maxCorner[1]; j++) for (int i = minCorner[0]; i < maxCorner[0]; i++) {
 			if (gridChart.cellType(i, j) == 0) {
 				int cellID = gridChart.localBoundaryCellIndex(i,j);
+#ifdef NEW_CODE
+				if( cellID==-1 ) THROW( "Boundary cell invalid ID" );
+#else // !NEW_CODE
 				if( cellID==-1 ) Miscellany::Throw( "Boundary cell invalid ID" );
+#endif // NEW_CODE
 				IndexedIntersectionPolygon< GeometryReal > cellPolygon;
 				IndexedPolygonFromCell(i, j, gridChart, cellPolygon);
 				if (ClipIndexedIntersectionPolygonToIndexedIntersectionTriangle(cellPolygon, indexedTriangle)) {
@@ -336,7 +351,11 @@ void InitializeChartBoundaryPolygons
 					int pi = vElement % gridChart.width;
 					int pj = vElement / gridChart.width;
 					int interiorTexelIndex = gridChart.globalInteriorTexelIndex(pi, pj);
+#ifdef NEW_CODE
+					if( interiorTexelIndex==-1 ) THROW( "Invalid texel" );
+#else // !NEW_CODE
 					if( interiorTexelIndex==-1 ) Miscellany::Throw( "Invalid texel" );
+#endif // NEW_CODE
 					reduceLoop.push_back( currentVertexKey );
 					currentLoopPositions.push_back( Point2D< GeometryReal >( (GeometryReal)pi*gridChart.cellSizeW , (GeometryReal)pj*gridChart.cellSizeH ) );
 					currentLoopIndices.push_back( interiorTexelIndex );
@@ -351,7 +370,11 @@ void InitializeChartBoundaryPolygons
 					else currentAtlasVertexIndices.push_back(-1);
 				}
 			}
+#ifdef NEW_CODE
+			if( reduceLoop.size()==0 ) THROW( "Reduced loop cannot be empty. Original loop size " , loopKeys[i].size() );
+#else // !NEW_CODE
 			if( reduceLoop.size()==0 ) Miscellany::Throw( "Reduced loop cannot be empty. Original loop size %d" , (int)loopKeys[i].size() );
+#endif // NEW_CODE
 			loopKeys[i] = reduceLoop;
 			loopPositions[i] = currentLoopPositions;
 			loopIndices[i] = currentLoopIndices;
@@ -393,7 +416,11 @@ void InitializeChartBoundaryPolygons
 
 
 							if( boundaryEdgeIntersections.find(oppHalfEdge)==boundaryEdgeIntersections.end() )
+#ifdef NEW_CODE
+								THROW( "Opposite edge intersections not found. Current  edge " , segmentInfo.halfEdge , ". Opposite " , oppHalfEdge );
+#else // !NEW_CODE
 								Miscellany::Throw( "Opposite edge intersections not found. Current  edge %d. Opposite %d" , segmentInfo.halfEdge , oppHalfEdge );
+#endif // NEW_CODE
 
 							std::vector< int > segmentIndicesToInsert;
 							std::vector< GeometryReal > segmentTimesToInsert;
@@ -450,7 +477,11 @@ void InitializeChartBoundaryPolygons
 					Point2D< GeometryReal > currentPos = loopPositions[i][j];
 					Point2D< GeometryReal > nextPos = loopPositions[i][ (j+1)%loopKeys[i].size() ];
 
+#ifdef NEW_CODE
+					if( currentSegmentAtlasEdgeIndex==-1 ) THROW( "Invalid atlas edge index" );
+#else // !NEW_CODE
 					if( currentSegmentAtlasEdgeIndex==-1 ) Miscellany::Throw( "Invalid atlas edge index" );
+#endif // NEW_CODE
 					for( int k=0 ; k<_indices.size() ; k++ )
 					{
 						GeometryReal alpha = _times[k];
@@ -460,7 +491,11 @@ void InitializeChartBoundaryPolygons
 							Point2D< GeometryReal > segmentDir = nextPos - currentPos;
 							interpolatedPos += Point2D< GeometryReal >( -segmentDir[1] , segmentDir[0] ) * (GeometryReal)( ( Random< GeometryReal >()*2 - 1. ) * 1e-10 );
 						}
+#ifdef NEW_CODE
+						if( _indices[k]<numBoundaryVertices || _indices[k]>numBoundaryNodes ) THROW( "Out of bounds index: " , _indices[k] , " not in " , numBoundaryVertices , " " , numBoundaryNodes );
+#else // !NEW_CODE
 						if( _indices[k]<numBoundaryVertices || _indices[k]>numBoundaryNodes ) Miscellany::Throw( "Out of bounds index: %d not in %d %d" , _indices[k] , numBoundaryVertices , numBoundaryNodes );
+#endif // NEW_CODE
 						coveredOppositeBoundaryNode[_indices[k] - numBoundaryVertices] += 1;
 
 						AuxiliaryNode< GeometryReal > auxNode;
@@ -477,7 +512,11 @@ void InitializeChartBoundaryPolygons
 					insertionCount++;
 				}
 			}
+#ifdef NEW_CODE
+			if( insertionCount!=indicesToInsert.size() ) THROW( "Intersection chains count does not match" );
+#else // !NEW_CODE
 			if( insertionCount!=indicesToInsert.size() ) Miscellany::Throw( "Intersection chains count does not match" );
+#endif // NEW_CODE
 			loopPositions[i] = expandedLoopPositions;
 			loopIndices[i] = expandedLoopIndices;
 			loopAtlasVertexIndices[i] = expandedLoopAtlasVertexIndices;
@@ -530,7 +569,11 @@ void InitializeBoundaryPolygons
 		InitializeChartBoundaryPolygons( halfEdgeToEdgeIndex , oppositeHalfEdge , atlasCharts[i] , gridCharts[i] , numInteriorNodes , numBoundaryVertices , numBoundaryNodes , boundaryEdgeIntersections , localBoundarySegmentsInfo[i] , localBoundaryNodeIndices[i] , localBoundaryNodePosition[i] , coveredOppositeBoundaryNode );
 
 	if( isClosedMesh ) for ( int i=0 ; i<coveredOppositeBoundaryNode.size() ; i++ ) if( coveredOppositeBoundaryNode[i]!=1 )
+#ifdef NEW_CODE
+		WARN( "Non-opposite boundary node at node " , i );
+#else // !NEW_CODE
 		Miscellany::Warn( "Non-opposite boundary node at node %d" , i );
+#endif // NEW_CODE
 }
 
 #include "ConstrainedTriangulation.h"
@@ -553,7 +596,11 @@ void InitializeChartQuadraticElements( GridChart< GeometryReal > &gridChart , st
 			{
 				int localCellPos[2] = { -1,-1 };
 				for( int li=0 ; li<gridChart.localBoundaryCellIndex.width() ; li++ ) for( int lj=0 ; lj<gridChart.localBoundaryCellIndex.height() ; lj++ ) if( gridChart.localBoundaryCellIndex(li,lj) == i ) localCellPos[0] = li , localCellPos[1] = lj;
+#ifdef NEW_CODE
+				WARN( "Unexpected number of triangles produced by delaunay triangulation at global cell ( " , gridChart.cornerCoords[0] + localCellPos[0] , " , " , gridChart.cornerCoords[1] + localCellPos[1] , " ). Polygon may self intersect! " , delanauyTriangles.size() , " != " , currentPolygon.vertices.size()-2 );
+#else // !NEW_CODE
 				Miscellany::Warn( "Unexpected number of triangles produced by delaunay triangulation at global cell (%d,%d). Polygon may self intersect! %d != %d" , gridChart.cornerCoords[0] + localCellPos[0] , gridChart.cornerCoords[1] + localCellPos[1] , delanauyTriangles.size() , currentPolygon.vertices.size()-2 );
+#endif // NEW_CODE
 			}
 
 			for (int k = 0; k < delanauyTriangles.size(); k++) {
@@ -670,7 +717,11 @@ void InitializeCoarseBoundaryToFineBoundaryProlongation( const GridAtlas< Geomet
 				int coarseBondaryIndex = boundaryAndDeepIndex[coarseGlobalIndex] - 1;
 
 				if( coarseBondaryIndex>=0 ) prolongationTriplets.push_back( Eigen::Triplet< MatrixReal >( lastFineBoundaryIndex , coarseBondaryIndex , (MatrixReal)1. ) );
+#ifdef NEW_CODE
+				else THROW( "Coarse node is not boundary. Global index " , coarseGlobalIndex , ". Boundary index " , coarseBondaryIndex );
+#else // !NEW_CODE
 				else Miscellany::Throw( "Coarse node is not boundary. Global index %d. Boundary index %d" , coarseGlobalIndex , coarseBondaryIndex );
+#endif // NEW_CODE
 				fineBoundaryIndex[gridChart.globalInteriorTexelIndex[j]] = lastFineBoundaryIndex;
 				lastFineBoundaryIndex++;
 				boundaryFineToFullFine.push_back(gridChart.globalInteriorTexelIndex[j]);
@@ -718,25 +769,42 @@ void InitializeCoarseBoundaryToFineBoundaryProlongation( const GridAtlas< Geomet
 			Point2D< GeometryReal >nodePosition = gridChart.auxiliaryNodes[j].position;
 			int corner[2] = { (int)floor(nodePosition[0] / gridChart.cellSizeW), (int)floor(nodePosition[1] / gridChart.cellSizeH) };
 			int cellID = gridChart.localCellIndex(corner[0], corner[1]);
+#ifdef NEW_CODE
+			if( cellID==-1 ) THROW( "Invalid cell index. Node position " , nodePosition[0] / gridChart.cellSizeW , " " , nodePosition[1] / gridChart.cellSizeH );
+#else // !NEW_CODE
 			if( cellID==-1 ) Miscellany::Throw( "Invalid cell index. Node position %f %f" , nodePosition[0] / gridChart.cellSizeW , nodePosition[1] / gridChart.cellSizeH );
+#endif // NEW_CODE
 			nodePosition[0] /= gridChart.cellSizeW;
 			nodePosition[1] /= gridChart.cellSizeH;
 			nodePosition[0] -= (GeometryReal)corner[0];
 			nodePosition[1] -= (GeometryReal)corner[1];
 			if( nodePosition[0] < 0-precision_error || nodePosition[0] > 1+precision_error || nodePosition[1] < 0-precision_error || nodePosition[1] > 1+precision_error )
+#ifdef NEW_CODE
+				THROW( "Sample out of unit box! (" , nodePosition[0] , " " , nodePosition[0] , ")" );
+#else // !NEW_CODE
 				Miscellany::Throw( "Sample out of unit box! (%f %f)" , nodePosition[0] , nodePosition[1] );
+#endif // NEW_CODE
 			for (int k = 0; k < 4; k++)
 			{
 				MatrixReal texelWeight = (MatrixReal)BilinearElementValue(k, nodePosition) / nodeDegree;
 				if (fabs(texelWeight) > 1e-11) {
 					auxiliaryNodesCumWeight[auxiliaryID] += texelWeight;
 					int texelIndex = gridChart.bilinearElementIndices[cellID][k];
+#ifdef NEW_CODE
+					if( nodeInfo[texelIndex].nodeType==2 ) THROW( "Deep texel cannot be in the support of an auxiliary node. Weight " , texelWeight , " (A)" );
+					if( gridChart.auxiliaryNodes[j].index<numInteriorTexels || gridChart.auxiliaryNodes[j].index>numFineNodes || texelIndex<0 || texelIndex>numCoarseNodes ) THROW( "Out of bounds index" );
+#else // !NEW_CODE
 					if( nodeInfo[texelIndex].nodeType==2 ) Miscellany::Throw( "Deep texel cannot be in the support of an auxiliary node. Weight %g (A)" , texelWeight );
 					if( gridChart.auxiliaryNodes[j].index<numInteriorTexels || gridChart.auxiliaryNodes[j].index>numFineNodes || texelIndex<0 || texelIndex>numCoarseNodes ) Miscellany::Throw( "Out of bounds index" );
+#endif // NEW_CODE
 
 					int coarseBoundaryID = boundaryAndDeepIndex[texelIndex] - 1;
 
+#ifdef NEW_CODE
+					if( coarseBoundaryID<0 ) THROW( "Coarse node is not boundary" );
+#else // !NEW_CODE
 					if( coarseBoundaryID<0 ) Miscellany::Throw( "Coarse node is not boundary" );
+#endif // NEW_CODE
 					prolongationTriplets.push_back( Eigen::Triplet< MatrixReal >( fineBoundaryID , coarseBoundaryID , texelWeight ) );
 				}
 			}

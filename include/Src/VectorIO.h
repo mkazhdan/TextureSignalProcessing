@@ -38,7 +38,11 @@ void ReadVector( std::vector<T> & vec , const char * fileName )
 {
 	FILE * file;
 	file = fopen( fileName , "rb" );
+#ifdef NEW_CODE
+	if( !file ) THROW( "Unable to read " , fileName );
+#else // !NEW_CODE
 	if( !file ) Miscellany::Throw( "Unable to read %s" , fileName );
+#endif // NEW_CODE
 	int vecSize;
 	fread( &vecSize , sizeof(int) , 1 , file );
 	vec.resize( vecSize );
@@ -75,7 +79,11 @@ void ReadBinaryImage( Image< T > &image , const char *fileName )
 {
 	FILE * file;
 	file = fopen(fileName, "rb");
+#ifdef NEW_CODE
+	if( !file ) THROW( "Unable to read " , fileName );
+#else // !NEW_CODE
 	if( !file ) Miscellany::Throw( "Unable to read %s" , fileName );
+#endif // NEW_CODE
 	int width, height;
 	fread(&width, sizeof(int), 1, file);
 	fread(&height, sizeof(int), 1, file);

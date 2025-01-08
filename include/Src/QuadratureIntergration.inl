@@ -28,7 +28,13 @@ DAMAGE.
 #pragma once
 
 #include <functional>
+#ifdef NEW_MULTI_THREADING
+#include <mutex>
+#endif // NEW_MULTI_THREADING
 #include <Misha/Miscellany.h>
+#ifdef NEW_CODE
+#include <Misha/Exceptions.h>
+#endif // NEW_CODE
 #include "Hierarchy.h"
 
 class InteriorCellLine
@@ -63,7 +69,11 @@ void InitializeGridChartInteriorCellLines
 		while( offset<width )
 		{
 			bool currentIsInterior = cellType(offset, j) == 1;
+#ifdef NEW_CODE
+			if( ( offset==0 || offset==width-1 ) && currentIsInterior ) THROW( "Unexpected interior cell" );
+#else // !NEW_CODE
 			if( ( offset==0 || offset==width-1 ) && currentIsInterior ) Miscellany::Throw( "Unexpected interior cell" );
+#endif // NEW_CODE
 			if(  currentIsInterior && !previousIsInterior ) rasterStart = offset; //Start raster line
 			if( !currentIsInterior &&  previousIsInterior ) //Terminate raster line
 			{ 
@@ -72,12 +82,20 @@ void InitializeGridChartInteriorCellLines
 				newLine.nextLineIndex = globalTexelIndex( rasterStart , j+1 );
 				newLine.length = offset - rasterStart;
 
+#ifdef NEW_CODE
+				if( newLine.prevLineIndex==-1 || newLine.nextLineIndex==-1 ) THROW( "Invalid indexing" );
+#else // !NEW_CODE
 				if( newLine.prevLineIndex==-1 || newLine.nextLineIndex==-1 ) Miscellany::Throw( "Invalid indexing" );
+#endif // NEW_CODE
 				int currentLine = (int)interiorCellLines.size();
 
 				for( int k=0 ; k<offset-rasterStart ; k++ )
 				{
+#ifdef NEW_CODE
+					if( (int)gridChart.interiorCellCorners[localInteriorCellIndex][0]!=globalTexelInteriorIndex( rasterStart+k , j ) ) THROW( "Unexpected corner ID" );
+#else // !NEW_CODE
 					if( (int)gridChart.interiorCellCorners[localInteriorCellIndex][0]!=globalTexelInteriorIndex( rasterStart+k , j ) ) Miscellany::Throw( "Unexpected corner ID" );
+#endif // NEW_CODE
 
 					interiorCellLineIndex.push_back( std::pair< int , int >( currentLine , k ) );
 					localInteriorCellIndex++;
@@ -224,6 +242,10 @@ void InitializeIntegration
 	const std::vector< std::pair< int , int > >& interiorCellLineIndex ,
 	const std::vector< int >& fineBoundaryIndex ,
 	ElementSamples &elementSamples ,
+#ifdef NEW_MULTI_THREADING
+	std::mutex &element_samples_bilinear_mutex ,
+	std::mutex &element_samples_quadratic_mutex ,
+#endif // NEW_MULTI_THREADING
 	bool fastIntegration
 )
 {
@@ -326,7 +348,11 @@ void InitializeIntegration
 			auto TextureToCell = [&]( Point2D< GeometryReal > p ){ return Point2D< GeometryReal >( ( p[0] / gridChart.cellSizeW ) - i , ( p[1] / gridChart.cellSizeH ) - j ); };
 
 			int localInteriorIndex = gridChart.localInteriorCellIndex(i,j) , localBoundaryIndex = gridChart.localBoundaryCellIndex(i,j);
+#ifdef NEW_CODE
+			if( localInteriorIndex!=-1 && localBoundaryIndex!=-1 ) THROW( "Cell simultaneosly interior and boundary" );
+#else // !NEW_CODE
 			if( localInteriorIndex!=-1 && localBoundaryIndex!=-1 ) Miscellany::Throw( "Cell simultaneosly interior and boundary" );
+#endif // NEW_CODE
 
 			// Interior cells
 			// If the cell is entirely interior to the triangle
@@ -360,8 +386,15 @@ void InitializeIntegration
 						SetCellInTriangleDuals< Samples >( bilinearElementSample[s] , bilinearElementSample , interior_cell_samples[s] , (typename ElementSamples::Real)element_area/2 );
 					}
 				}
+#ifdef NEW_MULTI_THREADING
+				{
+					std::lock_guard< std::mutex > lock( element_samples_bilinear_mutex );
+					elementSamples.bilinear[ cellLineId ].push_back( bilinearElementSample );
+				}
+#else // !NEW_MULTI_THREADING
 #pragma omp critical
 				elementSamples.bilinear[ cellLineId ].push_back( bilinearElementSample );
+#endif // NEW_MULTI_THREADING
 			}
 			else if( localInteriorIndex!=-1 )
 			{
@@ -399,7 +432,11 @@ void InitializeIntegration
 						for( int s=0 ; s<Samples ; s++ )
 						{
 							Point2D< typename ElementSamples::Real > pos = polygon[0] + dm[0] * (typename ElementSamples::Real)TriangleIntegrator< Samples >::Positions[s][0] + dm[1] * (typename ElementSamples::Real)TriangleIntegrator< Samples >::Positions[s][1];
+#ifdef NEW_CODE
+							if( !InUnitSquare( pos ) ) THROW( "Sample position out of unit square! (" , pos[0] , " " , pos[1] , ")" );
+#else // !NEW_CODE
 							if( !InUnitSquare( pos ) ) Miscellany::Throw( "Sample position out of unit square! (%f %f)\n" , pos[0] , pos[1] );
+#endif // NEW_CODE
 
 							typename ElementSamples::Bilinear::SampleData& sampleData = bilinearElementSample[ fastIntegration ? 0 : (p-2)*Samples+s ];
 							SetInteriorDuals< Samples >( sampleData , bilinearElementSample , pos , (typename ElementSamples::Real)( TriangleIntegrator< Samples >::Weights[s] * fragment_area ) );
@@ -407,8 +444,15 @@ void InitializeIntegration
 						}
 					}
 					if( fastIntegration ) bilinearElementSample[0].pos = Point2D< GeometryReal >( PolygonCenter( &polygon[0] , (unsigned int)polygon.size() ) );
+#ifdef NEW_MULTI_THREADING
+					{
+						std::lock_guard< std::mutex > lock( element_samples_bilinear_mutex );
+						elementSamples.bilinear[ cellLineId ].push_back( bilinearElementSample );
+					}
+#else // !NEW_MULTI_THREADING
 #pragma omp critical
 					elementSamples.bilinear[ cellLineId ].push_back( bilinearElementSample );
+#endif // NEW_MULTI_THREADING
 				}
 			}
 			// Boundary cell
@@ -452,7 +496,11 @@ void InitializeIntegration
 						{
 							int _fineBoundaryIndex = fineBoundaryIndex[ triangleElementIndices[k] ];
 							if( _fineBoundaryIndex!=-1 ) quadraticElementSample.fineNodes[k] = _fineBoundaryIndex;
+#ifdef NEW_CODE
+							else THROW( "Invalid fine boundary index" );
+#else // !NEW_CODE
 							else Miscellany::Throw( "Invalid fine boundary index" );
+#endif // NEW_CODE
 						}
 
 						for( int p=2 ; p<polygon.size() ; p++ )
@@ -468,7 +516,11 @@ void InitializeIntegration
 								for( int s=0 ; s<Samples ; s++ )
 								{
 									Point2D< GeometryReal > pos = polygon[0] + d[0] * (GeometryReal)TriangleIntegrator< Samples >::Positions[s][0] + d[1] * (GeometryReal)TriangleIntegrator< Samples >::Positions[s][1];
+#ifdef NEW_CODE
+									if( !InUnitTriangle( pos ) ) THROW( "Sample out of unit right triangle! (" , pos[0] , " " , pos[1] , ")" );
+#else // !NEW_CODE
 									if( !InUnitTriangle( pos ) ) Miscellany::Throw( "Sample out of unit right triangle! (%f %f)\n", pos[0] , pos[1] );
+#endif // NEW_CODE
 									else
 									{
 										pos[0] = std::max< GeometryReal >( pos[0] , 0 );
@@ -484,7 +536,11 @@ void InitializeIntegration
 							}
 							else
 							{
+#ifdef NEW_CODE
+								WARN( "Element discarded due to zero mass. Triangle " , t , ". Boundary cell " , localBoundaryIndex , ". Element " , bt , ". Sub triangle " , p-2 );
+#else // !NEW_CODE
 								Miscellany::Warn( "Element discarded due to zero mass. Triangle %d. Boundary cell %d . Element %d. Sub triangle %d" , t , localBoundaryIndex , bt , p-2 );
+#endif // NEW_CODE
 
 								printf( "Atlas triangle\n" );
 								printf( "%d \n" , 3 );
@@ -510,10 +566,21 @@ void InitializeIntegration
 							}
 						}
 						if( fastIntegration ) quadraticElementSample[0].pos = Point2D< GeometryReal >( PolygonCenter( &polygon[0] , (unsigned int)polygon.size() ) );
+#ifdef NEW_MULTI_THREADING
+						{
+							std::lock_guard< std::mutex > lock( element_samples_quadratic_mutex );
+							elementSamples.quadratic.push_back( quadraticElementSample );
+					}
+#else // !NEW_MULTI_THREADING
 #pragma omp critical
 						elementSamples.quadratic.push_back( quadraticElementSample );
+#endif //NEW_MULTI_THREADING
 					}
+#ifdef NEW_CODE
+					else if( clippingResult<0 ) THROW( "Bad clipping result: " , clippingResult );
+#else // !NEW_CODE
 					else if( clippingResult<0 ) Miscellany::Throw( "Bad clipping result: %g" , clippingResult );
+#endif // NEW_CODE
 				}
 			}
 		}
@@ -532,8 +599,20 @@ void InitializeIntegration
 	bool fastIntegration
 )
 {
+#ifdef NEW_MULTI_THREADING
+	std::mutex element_samples_bilinear_mutex , element_samples_quadratic_mutex;
+	ThreadPool::ParallelFor
+		(
+			0 , gridCharts.size() ,
+			[&]( unsigned int , size_t i )
+			{
+				InitializeIntegration< Samples >( parameterMetric[i] , atlasCharts[i] , gridCharts[i] , interiorCellLineIndex , fineBoundaryIndex , elementSamples , element_samples_bilinear_mutex , element_samples_quadratic_mutex , fastIntegration );
+			}
+		);
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 	for( int i=0 ; i<gridCharts.size() ; i++ ) InitializeIntegration< Samples >( parameterMetric[i] , atlasCharts[i] , gridCharts[i] , interiorCellLineIndex , fineBoundaryIndex , elementSamples , fastIntegration );
+#endif // NEW_MULTI_THREADING
 }
 
 ///////////////////////////
@@ -675,11 +754,27 @@ void Integrate
 		*_outNext += rhsValues[2];
 	};
 
+#ifdef NEW_MULTI_THREADING
+	unsigned int threads = ThreadPool::NumThreads();
+#else // !NEW_MULTI_THREADING
 	int threads = omp_get_max_threads();
+#endif // NEW_MULTI_THREADING
 	std::vector< int > lineRange( threads+1 );
 	int blockSize = (int)interiorCellLines.size() / threads;
 	for( int t=0 ; t<threads ; t++ ) lineRange[t] = t*blockSize;
 	lineRange[threads] = (int)interiorCellLines.size();
+#ifdef NEW_MULTI_THREADING
+	ThreadPool::ParallelFor
+		(
+			0 , threads ,
+			[&]( unsigned int , size_t t )
+			{
+				int firstLine = lineRange[t];
+				int lastLine = lineRange[t+1];
+				for( int r=firstLine ; r<lastLine ; r++ ) UpdateRow(r);
+			}
+		);
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 	for( int t=0 ; t<threads ; t++ )
 	{
@@ -688,6 +783,7 @@ void Integrate
 		int lastLine = lineRange[tID+1];
 		for( int r=firstLine ; r<lastLine ; r++ ) UpdateRow(r);
 	}
+#endif // NEW_MULTI_THREADING
 
 	if( verbose ) printf( "Integrated bilinear: %.2f(s)\n" , timer.elapsed() );
 

@@ -27,12 +27,20 @@ DAMAGE.
 */
 #pragma once
 #include <set>
+#ifdef NEW_MULTI_THREADING
+#include <Misha/MultiThreading.h>
+#include <Misha/Atomic.h>
+#endif // NEW_MULTI_THREADING
 
 template< class Real , class RealOut=Real >
 SparseMatrix< RealOut , int > SetSparseMatrix( const std::vector< Eigen::Triplet< Real > >& triplets , int cols , int /*rows*/ , bool rowMajor )
 {
 	SparseMatrix< RealOut , int > M;
 	M.resize( cols );
+#ifdef NEW_MULTI_THREADING
+	if( rowMajor ) ThreadPool::ParallelFor( 0 , triplets.size() , [&]( unsigned int , size_t i ){ Misha::AddAtomic< size_t >( M.rowSizes[ triplets[i].col() ] , 1 ); } );
+	else           ThreadPool::ParallelFor( 0 , triplets.size() , [&]( unsigned int , size_t i ){ Misha::AddAtomic< size_t >( M.rowSizes[ triplets[i].row() ] , 1 ); } );
+#else // !NEW_MULTI_THREADING
 	if( rowMajor )
 #pragma omp parallel for
 		for( int i=0 ; i<triplets.size() ; i++ )
@@ -43,6 +51,23 @@ SparseMatrix< RealOut , int > SetSparseMatrix( const std::vector< Eigen::Triplet
 		for( int i=0 ; i<triplets.size() ; i++ )
 #pragma omp atomic
 			M.rowSizes[ triplets[i].row() ]++;
+#endif // NEW_MULTI_THREADING
+
+#ifdef NEW_MULTI_THREADING
+	ThreadPool::ParallelFor
+		(
+			0 , cols ,
+			[&]( unsigned int , size_t i )
+			{
+				if( M.rowSizes[i] )
+				{
+					int s = (int)M.rowSizes[i];
+					M.SetRowSize(i,s);
+					M.rowSizes[i] = 0;
+				}
+			}
+		);
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 	for( int i=0 ; i<cols ; i++ ) if( M.rowSizes[i] )
 	{
@@ -50,11 +75,27 @@ SparseMatrix< RealOut , int > SetSparseMatrix( const std::vector< Eigen::Triplet
 		M.SetRowSize(i,s);
 		M.rowSizes[i] = 0;
 	}
+#endif // NEW_MULTI_THREADING
 	for( int i=0 ; i<triplets.size() ; i++ )
 	{
 		int col = rowMajor ? triplets[i].row() : triplets[i].col() , row = rowMajor ? triplets[i].col() : triplets[i].row();
 		M[row][M.rowSizes[row]++] = MatrixEntry< RealOut , int >( col , (RealOut)triplets[i].value() );
 	}
+
+#ifdef NEW_MULTI_THREADING
+	ThreadPool::ParallelFor
+	(
+		0 , M.rows ,
+		[&]( unsigned int , size_t i )
+		{
+			std::map< int , RealOut > rowMap;
+			for( int j=0 ; j<M.rowSizes[i] ; j++ ) rowMap[M[i][j].N] += M[i][j].Value;
+			M.SetRowSize( i , rowMap.size() );
+			int count = 0;
+			for( auto it=rowMap.begin() ; it!=rowMap.end() ; it++ ) M[i][count++] = MatrixEntry< RealOut , int >( it->first , it->second );
+		}
+	);
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 	for( int i=0 ; i<M.rows ; i++ )
 	{
@@ -64,6 +105,7 @@ SparseMatrix< RealOut , int > SetSparseMatrix( const std::vector< Eigen::Triplet
 		int count = 0;
 		for( auto it=rowMap.begin() ; it!=rowMap.end() ; it++ ) M[i][count++] = MatrixEntry< RealOut , int >( it->first , it->second );
 	}
+#endif // NEW_MULTI_THREADING
 	return M;
 }
 template< typename Real >
@@ -97,4 +139,3 @@ void SparseMatrixParser(const SparseMatrix< RealIn, int > & _M, Eigen::SparseMat
 	M.resize(rows, cols + 1);
 	M.setFromTriplets(triplets.begin(), triplets.end());
 }
-

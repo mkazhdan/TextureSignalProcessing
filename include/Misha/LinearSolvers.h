@@ -33,6 +33,12 @@ DAMAGE.
 #endif // USE_EIGEN
 
 #include "Miscellany.h"
+#ifdef NEW_MULTI_THREADING
+#include "Misha/MultiThreading.h"
+#endif // NEW_MULTI_THREADING
+#ifdef NEW_CODE
+#include "Misha/Exceptions.h"
+#endif // NEW_CODE
 
 #ifdef USE_CHOLMOD
 #include <Cholmod/cholmod.h>
@@ -44,6 +50,14 @@ DAMAGE.
 #pragma comment( lib , "mkl_blas95_lp64.lib" )
 #pragma comment( lib , "libiomp5md.lib" )
 #endif // USE_CHOLMOD
+
+#ifdef USE_EIGEN
+#ifdef EIGEN_USE_MKL_ALL
+#include <Eigen/PardisoSupport>
+#else // !EIGEN_USE_MKL_ALL
+#include <Eigen/Sparse>
+#endif // EIGEN_USE_MKL_ALL
+#endif // USE_EIGEN
 
 #include <Misha/SparseMatrixInterface.h>
 
@@ -112,17 +126,33 @@ struct DiagonalPreconditioner
 			if (_dim>0) iDiagonal = new Real[_dim];
 		}
 		memset(iDiagonal, 0, sizeof(Real)*_dim);
+#ifdef NEW_MULTI_THREADING
+		ThreadPool::ParallelFor
+			(
+				0 , M.Rows() ,
+				[&]( unsigned int , size_t i )
+				{
+					for (MatrixRowIterator iter = M.begin(i); iter != M.end(i); iter++) if (iter->N == i) iDiagonal[i] += iter->Value;
+					iDiagonal[i] = (Real)1. / iDiagonal[i];
+				}
+			);
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 		for (int i = 0; i<M.Rows(); i++)
 		{
 			for (MatrixRowIterator iter = M.begin(i); iter != M.end(i); iter++) if (iter->N == i) iDiagonal[i] += iter->Value;
 			iDiagonal[i] = (Real)1. / iDiagonal[i];
 		}
+#endif // NEW_MULTI_THREADING
 	}
 	void operator()(const T* in, T* out) const
 	{
+#ifdef NEW_MULTI_THREADING
+		ThreadPool::ParallelFor( 0 , _dim , [&]( unsigned int , size_t i ){ out[i] = in[i] * iDiagonal[i]; } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 		for (int i = 0; i<_dim; i++) out[i] = in[i] * iDiagonal[i];
+#endif // NEW_MULTI_THREADING
 	}
 protected:
 	int _dim;
@@ -139,8 +169,14 @@ int SolveCG(SPDOperator& L, int iters, int dim, const T* b, T* x, TDotT dot, CGS
 	double delta_new = 0, delta_0;
 
 	L(x, r);
+#ifdef NEW_MULTI_THREADING
+	std::vector< double > _delta_news( ThreadPool::NumThreads() , 0 );
+	ThreadPool::ParallelFor( 0 , dim , [&]( unsigned int t , size_t i ){ d[i] = r[i] = b[i] - r[i] ; _delta_news[t] += dot(r[i], r[i]); } );
+	for( unsigned int t=0 ; t<_delta_news.size() ; t++ ) delta_new += _delta_news[t];
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for reduction( + : delta_new )
 	for( int i=0 ; i<dim ; i++ ){ d[i] = r[i] = b[i] - r[i] ; delta_new += dot(r[i], r[i]); }
+#endif // NEW_MULTI_THREADING
 
 	delta_0 = delta_new;
 	if (delta_new<eps)
@@ -154,8 +190,14 @@ int SolveCG(SPDOperator& L, int iters, int dim, const T* b, T* x, TDotT dot, CGS
 	{
 		L(d, q);
 		double dDotQ = 0;
+#ifdef NEW_MULTI_THREADING
+		std::vector< double > _dDotQs( ThreadPool::NumThreads() , 0 );
+		ThreadPool::ParallelFor( 0 , dim , [&]( unsigned int t , size_t i ){ _dDotQs[t] += dot(d[i], q[i]); } );
+		for( unsigned int t=0 ; t<_dDotQs.size() ; t++ ) dDotQ += _dDotQs[t];
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for reduction( + : dDotQ )
 		for (int i = 0; i<dim; i++) dDotQ += dot(d[i], q[i]);
+#endif // NEW_MULTI_THREADING
 		Real alpha = Real(delta_new / dDotQ);
 
 		double delta_old = delta_new;
@@ -164,25 +206,51 @@ int SolveCG(SPDOperator& L, int iters, int dim, const T* b, T* x, TDotT dot, CGS
 		const int RESET_COUNT = 50;
 		if ((ii%RESET_COUNT) == (RESET_COUNT - 1))
 		{
+#ifdef NEW_MULTI_THREADING
+			ThreadPool::ParallelFor( 0 , dim , [&]( unsigned int , size_t i ){ x[i] += d[i] * alpha; } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 			for (int i = 0; i<dim; i++) x[i] += d[i] * alpha;
+#endif // NEW_MULTI_THREADING
 			L(x, r);
+#ifdef NEW_MULTI_THREADING
+			std::vector< double > _delta_news( ThreadPool::NumThreads() , 0 );
+			ThreadPool::ParallelFor( 0 , dim , [&]( unsigned int t , size_t i ){ r[i] = b[i] - r[i] ; _delta_news[t] += dot( r[i] , r[i] ); } );
+			for( unsigned int t=0 ; t<_delta_news.size() ; t++ ) delta_new += _delta_news[t];
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for reduction ( + : delta_new )
 			for (int i = 0; i<dim; i++) r[i] = b[i] - r[i], delta_new += dot(r[i], r[i]);
+#endif // NEW_MULTI_THREADING
 		}
 		else
+#ifdef NEW_MULTI_THREADING
+		{
+			std::vector< double > _delta_news( ThreadPool::NumThreads() , 0 );
+			ThreadPool::ParallelFor( 0 , dim , [&]( unsigned int t , size_t i ){ r[i] -= q[i] * alpha ; _delta_news[t] += dot(r[i], r[i]), x[i] += d[i] * alpha; } );
+			for( unsigned int t=0 ; t<_delta_news.size() ; t++ ) delta_new += _delta_news[t];
+		}
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for reduction( + : delta_new )
 			for (int i = 0; i<dim; i++) r[i] -= q[i] * alpha, delta_new += dot(r[i], r[i]), x[i] += d[i] * alpha;
+#endif // NEW_MULTI_THREADING
 
 		Real beta = Real(delta_new / delta_old);
+#ifdef NEW_MULTI_THREADING
+		ThreadPool::ParallelFor( 0 , dim , [&]( unsigned int , size_t i ){ d[i] = r[i] + d[i] * beta; } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 		for (int i = 0; i<dim; i++) d[i] = r[i] + d[i] * beta;
+#endif // NEW_MULTI_THREADING
 	}
 	if (verbose)
 	{
 		L(x, r);
+#ifdef NEW_MULTI_THREADING
+		ThreadPool::ParallelFor( 0 , dim , [&]( unsigned int , size_t i ){ r[i] -= b[i]; } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 		for (int i = 0; i<dim; i++) r[i] -= b[i];
+#endif // NEW_MULTI_THREADING
 		printf("CG: %d %g -> %g\n", ii, SquareNorm(b, dim), SquareNorm(r, dim));
 	}
 	if (!scratch) delete[] r, delete[] d, delete[] q;
@@ -201,12 +269,22 @@ int SolvePreconditionedCG(SPDOperator& L, SPDPreconditioner& Pinverse, int iters
 	double delta_new = 0, delta_0;
 
 	L(x, r);
+#ifdef NEW_MULTI_THREADING
+	ThreadPool::ParallelFor( 0 , dim , [&]( unsigned int , size_t i ){ r[i] = b[i] - r[i]; } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 	for (int i = 0; i<dim; i++) r[i] = b[i] - r[i];
+#endif // NEW_MULTI_THREADING
 	Pinverse(r, d);
 
+#ifdef NEW_MULTI_THREADING
+	std::vector< double > _delta_news( ThreadPool::NumThreads() , 0 );
+	ThreadPool::ParallelFor( 0 , dim , [&]( unsigned int t , size_t i ){ double _delta_new = DotData( r[i] , d[i] ) ; _delta_news[t] += _delta_new; } );
+	for( unsigned int t=0 ; t<_delta_news.size() ; t++ ) delta_new += _delta_news[t];
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for reduction( + : delta_new )
 	for (int i = 0; i<dim; i++) { double _delta_new = DotData(r[i], d[i]); delta_new += _delta_new; }
+#endif // NEW_MULTI_THREADING
 
 	delta_0 = delta_new;
 	if (delta_new<eps)
@@ -220,23 +298,41 @@ int SolvePreconditionedCG(SPDOperator& L, SPDPreconditioner& Pinverse, int iters
 		L(d, q);
 		double dDotQ = 0;
 
+#ifdef NEW_MULTI_THREADING
+		std::vector< double > _dDotQs( ThreadPool::NumThreads() , 0 );
+		ThreadPool::ParallelFor( 0 , dim , [&]( unsigned int t , size_t i ){ double _dDotQ = DotData( d[i] , q[i] ) ; _dDotQs[t] += _dDotQ; } );
+		for( unsigned int t=0 ; t<_dDotQs.size() ; t++ ) dDotQ += _dDotQs[t];
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for reduction( + : dDotQ )
 		for (int i = 0; i<dim; i++) { double _dDotQ = DotData(d[i], q[i]); dDotQ += _dDotQ; }
+#endif // NEW_MULTI_THREADING
 
 		Real alpha = Real(delta_new / dDotQ);
 
 		const int RESET_COUNT = 50;
+#ifdef NEW_MULTI_THREADING
+		ThreadPool::ParallelFor( 0 , dim , [&]( unsigned int , size_t i ){ x[i] += d[i] * alpha; } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 		for (int i = 0; i<dim; i++) x[i] += d[i] * alpha;
+#endif // NEW_MULTI_THREADING
 		if ((ii%RESET_COUNT) == (RESET_COUNT - 1))
 		{
 			L(x, r);
+#ifdef NEW_MULTI_THREADING
+			ThreadPool::ParallelFor( 0 , dim , [&]( unsigned int , size_t i ){ r[i] = b[i] - r[i]; } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 			for (int i = 0; i<dim; i++) r[i] = b[i] - r[i];
+#endif // NEW_MULTI_THREADING
 		}
 		else
+#ifdef NEW_MULTI_THREADING
+			ThreadPool::ParallelFor( 0 , dim , [&]( unsigned int , size_t i ){ r[i] -= q[i] * alpha; } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 			for (int i = 0; i<dim; i++) r[i] -= q[i] * alpha;
+#endif // NEW_MULTI_THREADING
 		Pinverse(r, s);
 
 		double delta_old = delta_new;
@@ -245,17 +341,31 @@ int SolvePreconditionedCG(SPDOperator& L, SPDPreconditioner& Pinverse, int iters
 #if 0
 		Vec4f deltas[8];
 		for (int t = 0; t<8; t++) deltas[t] = Vec4f(0);
+#ifdef NEW_MULTI_THREADING
+		ThreadPool::ParallelFor( 0 , dim , [&]( unsigned int t , size_t i ){ Vec4f _delta_new = r[i] * s[i]; deltas[t] += _delta_new; } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 		for (int i = 0; i<dim; i++) { Vec4f _delta_new = r[i] * s[i]; deltas[omp_get_thread_num()] += _delta_new; }
+#endif // NEW_MULTI_THREADING
 		for (int t = 0; t<8; t++) delta_new += horizontal_add(deltas[t]);
 #else
+#ifdef NEW_MULTI_THREADING
+		std::vector< double > _delta_news( ThreadPool::NumThreads() , 0 );
+		ThreadPool::ParallelFor( 0 , dim , [&]( unsigned int t , size_t i ){ double _delta_new = DotData( r[i] , s[i] ); _delta_news[t] += _delta_new; } );
+		for( unsigned int t=0 ; t<_delta_news.size() ; t++ ) delta_new += _delta_news[t];
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for reduction( + : delta_new )
 		for (int i = 0; i<dim; i++) { double _delta_new = DotData(r[i], s[i]); delta_new += _delta_new; }
+#endif // NEW_MULTI_THREADING
 #endif
 
 		Real beta = Real(delta_new / delta_old);
+#ifdef NEW_MULTI_THREADING
+		ThreadPool::ParallelFor( 0 , dim , [&]( unsigned int , size_t i ){ d[i] = s[i] + d[i] * beta; } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 		for (int i = 0; i<dim; i++) d[i] = s[i] + d[i] * beta;
+#endif // NEW_MULTI_THREADING
 	}
 	if (!scratch) delete[] r, delete[] d, delete[] q, delete[] s;
 	return ii;
@@ -264,11 +374,6 @@ int SolvePreconditionedCG(SPDOperator& L, SPDPreconditioner& Pinverse, int iters
 
 #if USE_EIGEN
 #define STORE_EIGEN_MATRIX
-#ifdef EIGEN_USE_MKL_ALL
-#include <Eigen/PardisoSupport>
-#else // !EIGEN_USE_MKL_ALL
-#include <Eigen/Sparse>
-#endif // EIGEN_USE_MKL_ALL
 
 #ifdef NEW_EIGEN
 template< class Real, class MatrixRowIterator >
@@ -318,15 +423,27 @@ public:
 #else // !STORE_EIGEN_MATRIX
 			_solver.factorize( eigenM );
 #endif // STORE_EIGEN_MATRIX
+#ifdef NEW_CODE
+			if( _solver.info()!=Eigen::Success ) ERROR_OUT( "Failed to factorize matrix" );
+#else // !NEW_CODE
 			if( _solver.info()!=Eigen::Success ) Miscellany::ErrorOut( "Failed to factorize matrix" );
+#endif // NEW_CODE
 		}
 		_eigenB.resize( M.Rows() );
 	}
 	void update( const SparseMatrixInterface< Real, MatrixRowIterator >& M )
 	{
 #ifdef STORE_EIGEN_MATRIX
+#ifdef NEW_MULTI_THREADING
+		ThreadPool::ParallelFor
+		(
+			0 , M.Rows() ,
+			[&]( unsigned int , size_t i ){ for( MatrixRowIterator iter=M.begin(i) ; iter!=M.end(i) ; iter++ ) _eigenM.coeffRef( i , iter->N ) = iter->Value; }
+		);
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 		for( int i=0; i<M.Rows() ; i++) for( MatrixRowIterator iter=M.begin(i) ; iter!=M.end(i) ; iter++ ) _eigenM.coeffRef( i , iter->N ) = iter->Value;
+#endif // NEW_MULTI_THREADING
 		_solver.factorize( _eigenM );
 #else // !STORE_EIGEN_MATRIX
 		Eigen::SparseMatrix< InternalReal > eigenM( (int)M.Rows() , (int)M.Rows() );
@@ -339,20 +456,35 @@ public:
 		switch( _solver.info() )
 		{
 		case Eigen::Success: break;
+#ifdef NEW_CODE
+		case Eigen::NumericalIssue: ERROR_OUT( "Failed to factorize matrix (numerical issue)" );
+		case Eigen::NoConvergence:  ERROR_OUT( "Failed to factorize matrix (no convergence)" );
+		case Eigen::InvalidInput:   ERROR_OUT( "Failed to factorize matrix (invalid input)" );
+		default:                    ERROR_OUT( "Failed to factorize matrix" );
+#else // !NEW_CODE
 		case Eigen::NumericalIssue: Miscellany::ErrorOut( "Failed to factorize matrix (numerical issue)" );
 		case Eigen::NoConvergence:  Miscellany::ErrorOut( "Failed to factorize matrix (no convergence)" );
 		case Eigen::InvalidInput:   Miscellany::ErrorOut( "Failed to factorize matrix (invalid input)" );
 		default:                    Miscellany::ErrorOut( "Failed to factorize matrix" );
+#endif // NEW_CODE
 		}
 	}
 	void solve( const Eigen_Vector& b , Eigen_Vector& x ){ x = _solver.solve(b); }
 	void solve( ConstPointer(Real) b , Pointer(Real) x )
 	{
+#ifdef NEW_MULTI_THREADING
+		ThreadPool::ParallelFor( 0 , _eigenB.size() , [&]( unsigned int , size_t i ){ _eigenB[i] = b[i]; } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 		for( int i=0 ; i<_eigenB.size() ; i++ ) _eigenB[i] = b[i];
+#endif // NEW_MULTI_THREADING
 		Eigen_Vector eigenX = _solver.solve( _eigenB );
+#ifdef NEW_MULTI_THREADING
+		ThreadPool::ParallelFor( 0 , eigenX.size() , [&]( unsigned int , size_t i ){ x[i] = (Real)eigenX[i]; } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 		for( int i=0 ; i<eigenX.size() ; i++ ) x[i] = (Real)eigenX[i];
+#endif // NEW_MULTI_THREADING
 	}
 	size_t dimension( void ) const { return _eigenB.size(); }
 	static void Solve( const SparseMatrixInterface< Real, MatrixRowIterator >& M , ConstPointer(Real) b , Pointer(Real) x ) { EigenSolverCholeskyLLt solver(M) ; solver.solve(b,x); }
@@ -370,6 +502,7 @@ class EigenSolverCholeskyLDLt : public EigenSolver< Real, MatrixRowIterator >
 	Eigen_Vector _eigenB;
 	Eigen_Vector _eigenX;
 public:
+
 	EigenSolverCholeskyLDLt( const SparseMatrixInterface< Real , MatrixRowIterator >& M , bool analyzeOnly=false )
 	{
 		Eigen::SparseMatrix< InternalReal > eigenM( (int)M.Rows() , (int)M.Rows() );
@@ -381,11 +514,16 @@ public:
 		if( !analyzeOnly )
 		{
 			_solver.factorize( eigenM );
+#ifdef NEW_CODE
+			if( _solver.info()!=Eigen::Success ) ERROR_OUT( "Failed to factorize matrix" );
+#else // !NEW_CODE
 			if( _solver.info()!=Eigen::Success ) Miscellany::ErrorOut( "Failed to factorize matrix" );
+#endif // NEW_CODE
 		}
 		_eigenB.resize( M.Rows() );
 		_eigenX.resize( M.Rows() );
 	}
+
 	void update( const SparseMatrixInterface< Real , MatrixRowIterator >& M )
 	{
 		Eigen::SparseMatrix< InternalReal > eigenM( (int)M.Rows() , (int)M.Rows() );
@@ -394,16 +532,28 @@ public:
 		for( int i=0 ; i<M.Rows() ; i++ ) for( MatrixRowIterator iter=M.begin(i) ; iter!=M.end(i) ; iter++ ) triplets.push_back( Eigen::Triplet< InternalReal >( i , iter->N , iter->Value ) );
 		eigenM.setFromTriplets( triplets.begin() , triplets.end() );
 		_solver.factorize( eigenM );
+#ifdef NEW_CODE
+		if( _solver.info()!=Eigen::Success ) ERROR_OUT( "Failed to factorize matrix" );
+#else // !NEW_CODE
 		if( _solver.info()!=Eigen::Success ) Miscellany::ErrorOut( "Failed to factorize matrix" );
+#endif // NEW_CODE
 	}
 	void solve( const Eigen_Vector& b , Eigen_Vector& x ){ x = _solver.solve(b); }
 	void solve( ConstPointer(Real) b , Pointer(Real) x )
 	{
+#ifdef NEW_MULTI_THREADING
+		ThreadPool::ParallelFor( 0 , _eigenB.size() , [&]( unsigned int , size_t i ){ _eigenB[i] = b[i]; } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 		for( int i=0 ; i<_eigenB.size() ; i++ ) _eigenB[i] = b[i];
+#endif // NEW_MULTI_THREADING
 		_eigenX = _solver.solve(_eigenB);
+#ifdef NEW_MULTI_THREADING
+		ThreadPool::ParallelFor( 0 , _eigenX.size() , [&]( unsigned int , size_t i ){ x[i] = (Real)_eigenX[i]; } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 		for( int i=0 ; i<_eigenX.size() ; i++ ) x[i] = (Real)_eigenX[i];
+#endif // NEW_MULTI_THREADING
 	}
 	size_t dimension( void ) const { return _eigenB.size(); }
 	static void Solve( const SparseMatrixInterface< Real , MatrixRowIterator >& M , ConstPointer(Real) b , Pointer(Real) x ){ EigenSolverCholeskyLDLt solver(M) ; solver.solve(b,x); }
@@ -429,27 +579,52 @@ public:
 		_eigenM.setFromTriplets(triplets.begin(), triplets.end());
 		_solver.compute(_eigenM);
 		_solver.analyzePattern(_eigenM);
+#ifdef NEW_CODE
+		if (_solver.info() != Eigen::Success) ERROR_OUT( "Failed to factorize matrix" );
+#else // !NEW_CODE
 		if (_solver.info() != Eigen::Success) Miscellany::ErrorOut( "Failed to factorize matrix" );
+#endif // NEW_CODE
 		_eigenB.resize(M.Rows()), _eigenX.resize(M.Rows());
 		_solver.setMaxIterations(iters);
 	}
 	void update(const SparseMatrixInterface< Real, MatrixRowIterator >& M)
 	{
+#ifdef NEW_MULTI_THREADING
+		ThreadPool::ParallelFor
+		(
+			0 ,
+			M.Rows() ,
+			[&]( unsigned int , size_t i ){ for (MatrixRowIterator iter = M.begin(i); iter != M.end(i); iter++) _eigenM.coeffRef(i, iter->N) = iter->Value; }
+		);
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 		for (int i = 0; i<M.Rows(); i++) for (MatrixRowIterator iter = M.begin(i); iter != M.end(i); iter++) _eigenM.coeffRef(i, iter->N) = iter->Value;
+#endif // NEW_MULTI_THREADING
 		_solver.compute(_eigenM);
 		_solver.analyzePattern(_eigenM);
+#ifdef NEW_CODE
+		if( _solver.info() != Eigen::Success ) ERROR_OUT( "Failed to factorize matrix" );
+#else // !NEW_CODE
 		if( _solver.info() != Eigen::Success ) Miscellany::ErrorOut( "Failed to factorize matrix" );
+#endif // NEW_CODE
 	}
 
 	void setIters(int iters) { _solver.setMaxIterations(iters); }
 	void solve(const Real* b, Real* x)
 	{
+#ifdef NEW_MULTI_THREADING
+		ThreadPool::ParallelFor( 0 , _eigenB.size() , [&]( unsigned int , size_t i ){ _eigenB[i] = b[i], _eigenX[i] = x[i]; } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 		for (int i = 0; i<_eigenB.size(); i++) _eigenB[i] = b[i], _eigenX[i] = x[i];
+#endif // NEW_MULTI_THREADING
 		_eigenX = _solver.solveWithGuess(_eigenB, _eigenX);
+#ifdef NEW_MULTI_THREADING
+		ThreadPool::ParallelFor( 0 , _eigenX.size() , [&]( unsigned int , size_t i ){ x[i] = _eigenX[i]; } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 		for (int i = 0; i<_eigenX.size(); i++) x[i] = _eigenX[i];
+#endif // NEW_MULTI_THREADING
 	}
 	size_t dimension(void) const { return _eigenB.size(); }
 	static void Solve(const SparseMatrixInterface< Real, MatrixRowIterator >& M, const Real* b, Real* x, int iters) { EigenSolverCG solver(M, iters); solver.solve(b, x); }
@@ -496,7 +671,11 @@ public:
 #else // !STORE_EIGEN_MATRIX
 			_solver.factorize(eigenM);
 #endif // STORE_EIGEN_MATRIX
+#ifdef NEW_CODE
+			if( _solver.info()!=Eigen::Success ) ERROR_OUT( "Failed to factorize matrix" );
+#else // !NEW_CODE
 			if( _solver.info()!=Eigen::Success ) Miscellany::ErrorOut( "Failed to factorize matrix" );
+#endif // NEW_CODE
 		}
 		_eigenB.resize(M.Rows());
 	}
@@ -504,8 +683,16 @@ public:
 	void update(const SparseMatrixInterface< Real, MatrixRowIterator >& M)
 	{
 #ifdef STORE_EIGEN_MATRIX
+#ifdef NEW_MULTI_THREADING
+		ThreadPool::ParallelFor
+		(
+			0 , M.rows() ,
+			[&]( unsigned int , size_t i ){  for (MatrixRowIterator iter = M.begin(i); iter != M.end(i); iter++) _eigenM.coeffRef(i, iter->N) = iter->Value; }
+		);
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 		for (int i = 0; i<M.Rows(); i++) for (MatrixRowIterator iter = M.begin(i); iter != M.end(i); iter++) _eigenM.coeffRef(i, iter->N) = iter->Value;
+#endif // NEW_MULTI_THREADING
 		_solver.factorize(_eigenM);
 #else // !STORE_EIGEN_MATRIX
 		Eigen::SparseMatrix< double > eigenM(int(M.Rows()), int(M.Rows()));
@@ -518,20 +705,35 @@ public:
 		switch (_solver.info())
 		{
 		case Eigen::Success: break;
+#ifdef NEW_CODE
+		case Eigen::NumericalIssue: ERROR_OUT( "Failed to factorize matrix (numerical issue)" );
+		case Eigen::NoConvergence:  ERROR_OUT( "Failed to factorize matrix (no convergence)" );
+		case Eigen::InvalidInput:   ERROR_OUT( "Failed to factorize matrix (invalid input)" );
+		default:                    ERROR_OUT( "Failed to factorize matrix" );
+#else // !NEW_CODE
 		case Eigen::NumericalIssue: Miscellany::ErrorOut( "Failed to factorize matrix (numerical issue)" );
 		case Eigen::NoConvergence:  Miscellany::ErrorOut( "Failed to factorize matrix (no convergence)" );
 		case Eigen::InvalidInput:   Miscellany::ErrorOut( "Failed to factorize matrix (invalid input)" );
 		default: Miscellany::ErrorOut( "Failed to factorize matrix" );
+#endif // NEW_CODE
 		}
 	}
 	template< class Real >
 	void solve(ConstPointer(Real) b, Pointer(Real) x)
 	{
+#ifdef NEW_MULTI_THREADING
+		ThreadPool::ParallelFor( 0 , _eigenB.size() , [&]( unsigned int , size_t i ){ _eigenB[i] = b[i]; } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 		for (int i = 0; i<_eigenB.size(); i++) _eigenB[i] = b[i];
+#endif // NEW_MULTI_THREADING
 		Eigen_Vector eigenX = _solver.solve(_eigenB);
+#ifdef NEW_MULTI_THREADING
+		ThreadPool::ParallelFor( 0 , eigenX.size() , [&]( unsigned int , size_t i ){ x[i] = (Real)eigenX[i]; } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 		for (int i = 0; i<eigenX.size(); i++) x[i] = (Real)eigenX[i];
+#endif // NEW_MULTI_THREADING
 	}
 	size_t dimension(void) const { return _eigenB.size(); }
 	template< class Real, class MatrixRowIterator >
@@ -561,7 +763,11 @@ public:
 		if (!analyzeOnly)
 		{
 			_solver.factorize(eigenM);
+#ifdef NEW_CODE
+			if( _solver.info()!=Eigen::Success ) ERROR_OUT( "Failed to factorize matrix" );
+#else // !NEW_CODE
 			if( _solver.info()!=Eigen::Success ) Miscellany::ErrorOut( "Failed to factorize matrix" );
+#endif // NEW_CODE
 		}
 		_eigenB.resize(M.Rows());
 	}
@@ -574,16 +780,28 @@ public:
 		for (int i = 0; i<M.Rows(); i++) for (MatrixRowIterator iter = M.begin(i); iter != M.end(i); iter++) triplets.push_back(Eigen::Triplet< double >(i, iter->N, iter->Value));
 		eigenM.setFromTriplets(triplets.begin(), triplets.end());
 		_solver.factorize(eigenM);
+#ifdef NEW_CODE
+		if( _solver.info()!=Eigen::Success ) ERROR_OUT( "Failed to factorize matrix" );
+#else // !NEW_CODE
 		if (_solver.info() != Eigen::Success) Miscellany::ErrorOut( "Failed to factorize matrix" );
+#endif // NEW_CODE
 	}
 	template< class Real >
 	void solve(ConstPointer(Real) b, Pointer(Real) x)
 	{
+#ifdef NEW_MULTI_THREADING
+		ThreadPool::ParallelFor( 0 , _eigenB.size() , [&]( unsigned int , size_t i ){ _eigenB[i] = b[i]; } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 		for (int i = 0; i<_eigenB.size(); i++) _eigenB[i] = b[i];
+#endif // NEW_MULTI_THREADING
 		Eigen_Vector eigenX = _solver.solve(_eigenB);
+#ifdef NEW_MULTI_THREADING
+		ThreadPool::ParallelFor( 0 , eigenX.size() , [&]( unsigned int , size_t i ){ x[i] = (Real)eigenX[i]; } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 		for (int i = 0; i<eigenX.size(); i++) x[i] = (Real)eigenX[i];
+#endif // NEW_MULTI_THREADING
 	}
 	size_t dimension(void) const { return _eigenB.size(); }
 	template< class Real, class MatrixRowIterator >
@@ -610,28 +828,52 @@ public:
 		_eigenM.setFromTriplets(triplets.begin(), triplets.end());
 		_solver.compute(_eigenM);
 		_solver.analyzePattern(_eigenM);
+#ifdef NEW_CODE
+		if( _solver.info()!=Eigen::Success ) ERROR_OUT( "Failed to factorize matrix" );
+#else // !NEW_CODE
 		if (_solver.info() != Eigen::Success) Miscellany::ErrorOut( "Failed to factorize matrix" );
+#endif // NEW_CODE
 		_eigenB.resize(M.Rows()), _eigenX.resize(M.Rows());
 	}
 	template< class Real, class MatrixRowIterator >
 	void update(const SparseMatrixInterface< Real, MatrixRowIterator >& M)
 	{
+#ifdef NEW_MULTI_THREADING
+		ThreadPool::ParallelFor
+			(
+				0 , M.Rows() ,
+				[&]( unsigned int , size_t i ){ for (MatrixRowIterator iter = M.begin(i); iter != M.end(i); iter++) _eigenM.coeffRef(i, iter->N) = iter->Value; }
+			);
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 		for (int i = 0; i<M.Rows(); i++) for (MatrixRowIterator iter = M.begin(i); iter != M.end(i); iter++) _eigenM.coeffRef(i, iter->N) = iter->Value;
+#endif // NEW_MULTI_THREADING
 		_solver.compute(_eigenM);
 		_solver.analyzePattern(_eigenM);
+#ifdef NEW_CODE
+		if( _solver.info()!=Eigen::Success ) ERROR_OUT( "Failed to factorize matrix" );
+#else // !NEW_CODE
 		if (_solver.info() != Eigen::Success) Miscellany::ErrorOut( "Failed to factorize matrix" );
+#endif // NEW_CODE
 	}
 
 	template< class Real >
 	void solve(const Real* b, Real* x, int iters = 20)
 	{
 		_solver.setMaxIterations(iters);
+#ifdef NEW_MULTI_THREADING
+		ThreadPool::ParallelFor( 0 , _eigenB.size() , [&]( unsigned int , size_t i ){ _eigenB[i] = b[i], _eigenX[i] = x[i]; } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 		for (int i = 0; i<_eigenB.size(); i++) _eigenB[i] = b[i], _eigenX[i] = x[i];
+#endif // NEW_MULTI_THREADING
 		_eigenX = _solver.solveWithGuess(_eigenB, _eigenX);
+#ifdef NEW_MULTI_THREADING
+		ThreadPool::ParallelFor( 0 , _eigenX.size() , [&]( unsigned int , size_t i ){ x[i] = _eigenX[i]; } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 		for (int i = 0; i<_eigenX.size(); i++) x[i] = _eigenX[i];
+#endif // NEW_MULTI_THREADING
 	}
 	size_t dimension(void) const { return _eigenB.size(); }
 	template< class Real, class MatrixRowIterator >
@@ -718,12 +960,24 @@ bool CholmodSolver< channels >::_update(const SparseMatrixInterface< Real, Matri
 	int off = 0;
 
 	int *_p = (int*)cholmod_M->p;
+#ifdef NEW_MULTI_THREADING
+	ThreadPool::ParallelFor
+		(
+			0 , M.Rows() ,
+			[&]( unsigned int , size_t i )
+			{
+				int off = (int)_p[i];
+				for (MatrixRowIterator iter = M.begin(i); iter != M.end(i); iter++)if (!LOWER_TRIANGULAR || iter->N >= i) _x[off++] = double(iter->Value);
+			}
+		);
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 	for (int i = 0; i<M.Rows(); i++)
 	{
 		int off = (int)_p[i];
 		for (MatrixRowIterator iter = M.begin(i); iter != M.end(i); iter++)if (!LOWER_TRIANGULAR || iter->N >= i) _x[off++] = double(iter->Value);
 	}
+#endif // NEW_MULTI_THREADING
 
 	cholmod_C.print = 0;
 
@@ -731,17 +985,29 @@ bool CholmodSolver< channels >::_update(const SparseMatrixInterface< Real, Matri
 
 	if (cholmod_C.status == CHOLMOD_NOT_POSDEF)
 	{
+#ifdef NEW_CODE
+		WARN( "Matrix not positive-definite" );
+#else // !NEW_CODE
 		Miscellany::Warn( "Matrix not positive-definite" );
+#endif // NEW_CODE
 		return false;
 	}
 	else if (cholmod_C.status == CHOLMOD_OUT_OF_MEMORY)
 	{
+#ifdef NEW_CODE
+		WARN( "CHOLMOD ran out of memory" );
+#else // !NEW_CODE
 		Miscellany::Warn( "CHOLMOD ran out of memory" );
+#endif // NEW_CODE
 		return false;
 	}
 	else if (cholmod_C.status != CHOLMOD_OK)
 	{
+#ifdef NEW_CODE
+		WARN( "CHOLMOD status not OK: " , cholmod_C.status );
+#else // !NEW_CODE
 		Miscellany::Warn( "CHOLMOD status not OK: %d" , cholmod_C.status );
+#endif // NEW_CODE
 		return false;
 	}
 	return true;
@@ -762,14 +1028,22 @@ void CholmodSolver< channels >::solve(ConstPointer(Real) b, Pointer(Real) x)
 	size_t numEntries = dim*channels;
 	double* _b = (double*)cholmod_b->x;
 
+#ifdef NEW_MULTI_THREADING
+	ThreadPool::ParallelFor( 0 , numEntries , [&]( unsigned int , size_t i ){ _b[i] = (double)b[i]; } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 	for (int i = 0; i<numEntries; i++) _b[i] = (double)b[i];
+#endif // NEW_MULTI_THREADING
 
 	cholmod_dense* cholmod_x = cholmod_solve(CHOLMOD_A, cholmod_L, cholmod_b, &cholmod_C);
 	double* _x = (double*)cholmod_x->x;
 
+#ifdef NEW_MULTI_THREADING
+	ThreadPool::ParallelFor( 0 , numEntries , [&]( unsigned int , size_t i ){ x[i] = (Real)_x[i]; } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 	for (int i = 0; i<numEntries; i++) x[i] = (Real)_x[i];
+#endif // NEW_MULTI_THREADING
 
 	cholmod_free_dense(&cholmod_x, &cholmod_C);
 }
@@ -800,4 +1074,5 @@ int CholmodSolver< channels >::nonZeros(void) const
 }
 
 #endif // USE_CHOLMOD
+
 #endif // LINEAR_SOLVERS_INCLUDE

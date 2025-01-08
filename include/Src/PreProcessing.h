@@ -29,6 +29,10 @@ DAMAGE.
 #define PRE_PROCESSING_INCLUDED
 
 #define NEW_CODE					// General-purpose experimental code encapsulation
+#define VERBOSE_MESSAGING			// Specifies how big error/warning messages are
+
+
+#define NEW_MULTI_THREADING			// Replacing OpenMP pararallelization
 //#define NO_OPEN_GL_VISUALIZATION		// Disable OpenGL visualization
 //#define USE_TEXTURE_TRIANGLES		// Represent textures using a separate triangulation
 

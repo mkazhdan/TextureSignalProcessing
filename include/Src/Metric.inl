@@ -132,7 +132,11 @@ void InitializePrincipalCurvatureDirection( const OrientedTexturedTriangleMesh< 
 		GeometryReal c = S.determinant();
 		GeometryReal discriminant = (GeometryReal)( b*b - 4.0*a*c );
 
+#ifdef NEW_CODE
+		if( discriminant<0 ) THROW( "Negative discriminant: " , discriminant );
+#else // !NEW_CODE
 		if( discriminant<0 ) Miscellany::Throw( "Negative discriminant" );
+#endif // NEW_CODE
 
 		discriminant = (GeometryReal)sqrt(discriminant);
 		GeometryReal roots[] = { (-b-discriminant) / (2.0*a) , (-b+discriminant) / (2.0*a) };
@@ -247,7 +251,11 @@ void InitializeMetric( OrientedTexturedTriangleMesh< GeometryReal > &mesh , int 
 
 	if     ( metricMode==EMBEDDING_METRIC ) surfaceMetric = embeddingMetric;
 	else if( metricMode==UNIFORM_METRIC   ) InitializeUniformMetric( mesh , true , surfaceMetric );
+#ifdef NEW_CODE
+	else THROW( "Unrecognized  metric: " , metricMode );
+#else // !NEW_CODE
 	else Miscellany::Throw( "Unrecognized  metric: %d" , metricMode );
+#endif // NEW_CODE
 	InitializeParameterMetric( mesh , surfaceMetric , atlasCharts , parameterMetric );
 }
 

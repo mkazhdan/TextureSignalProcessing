@@ -37,7 +37,13 @@ enum
 
 #include <Misha/CmdLineParser.h> 
 #include <Misha/Miscellany.h>
+#ifdef NEW_CODE
+#include <Misha/Exceptions.h>
+#endif // NEW_CODE
 #include <Misha/FEM.h>
+#ifdef NEW_MULTI_THREADING
+#include <Misha/MultiThreading.h>
+#endif // NEW_MULTI_THREADING
 #include <Src/Hierarchy.h>
 #include <Src/SimpleTriangleMesh.h>
 #include <Src/Basis.h>
@@ -57,7 +63,10 @@ cmdLineParameter< char * > InputLowFrequency( "inLow" );
 cmdLineParameter< char* > Output( "out" );
 cmdLineParameter< int   > OutputVCycles( "outVCycles" , 6 );
 cmdLineParameter< float > InterpolationWeight( "interpolation" , 1e2 );
+#ifdef NEW_MULTI_THREADING
+#else // !NEW_MULTI_THREADING
 cmdLineParameter< int   > Threads( "threads", omp_get_num_procs() );
+#endif // NEW_MULTI_THREADING
 cmdLineParameter< int   > Levels( "levels" , 4 );
 cmdLineParameter< int   > MatrixQuadrature( "mQuadrature" , 6 );
 cmdLineParameter< int   > BoundaryDilationRadius( "dilateBoundaries" , -1 );
@@ -79,9 +88,22 @@ cmdLineReadable NoHelp( "noHelp" );
 cmdLineReadable DetailVerbose( "detail" );
 cmdLineReadable Double( "double" );
 cmdLineReadable MultiInput( "multi" );
+#ifdef NEW_MULTI_THREADING
+cmdLineReadable Serial( "serial" );
+#endif // NEW_MULTI_THREADING
+#ifdef NEW_CODE
+#ifdef NO_OPEN_GL_VISUALIZATION
+#else // !NO_OPEN_GL_VISUALIZATION
+cmdLineReadable Nearest( "nearest" );
+#endif // NO_OPEN_GL_VISUALIZATION
+#endif // NEW_CODE
 cmdLineReadable* params[] =
 {
+#ifdef NEW_MULTI_THREADING
+	&In , &InMask , &Output , &InterpolationWeight , &Levels , &UseDirectSolver , &Serial, &Verbose ,
+#else // !NEW_MULTI_THREADING
 	&In , &InMask , &Output , &InterpolationWeight , &Levels , &UseDirectSolver , &Threads, &Verbose ,
+#endif // NEW_MULTI_THREADING
 #ifdef USE_LOW_FREQUENCY
 	&InputLowFrequency ,
 #endif // USE_LOW_FREQUENCY
@@ -93,6 +115,12 @@ cmdLineReadable* params[] =
 #endif // NO_OPEN_GL_VISUALIZATION
 	&BoundaryDilationRadius ,
 	&ChartMaskErode ,
+#ifdef NEW_CODE
+#ifdef NO_OPEN_GL_VISUALIZATION
+#else // !NO_OPEN_GL_VISUALIZATION
+	&Nearest ,
+#endif // NO_OPEN_GL_VISUALIZATION
+#endif // NEW_CODE
 	NULL
 };
 
@@ -118,6 +146,12 @@ void ShowUsage( const char *ex )
 	printf( "\t[--%s]\n" , UseDirectSolver.name );
 	printf( "\t[--%s]\n" , MultiInput.name );
 	printf( "\t[--%s <jittering seed>]\n" , RandomJitter.name );
+#ifdef NEW_CODE
+#ifdef NO_OPEN_GL_VISUALIZATION
+#else // !NO_OPEN_GL_VISUALIZATION
+	printf( "\t[--%s]\n" , Nearest.name );
+#endif // NO_OPEN_GL_VISUALIZATION
+#endif // NEW_CODE
 	printf( "\t[--%s]\n" , Verbose.name );
 
 #ifdef NO_OPEN_GL_VISUALIZATION
@@ -125,11 +159,17 @@ void ShowUsage( const char *ex )
 	printf( "\t[--%s <camera configuration file>]\n" , CameraConfig.name );
 #endif // NO_OPEN_GL_VISUALIZATION
 	printf( "\t[--%s <hierarchy levels>=%d]\n" , Levels.name, Levels.value );
+#ifdef NEW_MULTI_THREADING
+#else // !NEW_MULTI_THREADING
 	printf( "\t[--%s <threads>=%d]\n", Threads.name , Threads.value );
+#endif // NEW_MULTI_THREADING
 	printf( "\t[--%s <multigrid block width>=%d]\n" , MultigridBlockWidth.name , MultigridBlockWidth.value );
 	printf( "\t[--%s <multigrid block height>=%d]\n" , MultigridBlockHeight.name , MultigridBlockHeight.value );
 	printf( "\t[--%s <multigrid padded width>=%d]\n" , MultigridPaddedWidth.name , MultigridPaddedWidth.value );
 	printf( "\t[--%s <multigrid padded height>=%d]\n" , MultigridPaddedHeight.name , MultigridPaddedHeight.value );
+#ifdef NEW_MULTI_THREADING
+	printf( "\t[--%s]\n", Serial.name );
+#endif // NEW_MULTI_THREADING
 	printf( "\t[--%s]\n", DetailVerbose.name );
 	printf( "\t[--%s]\n" , NoHelp.name );
 }
@@ -365,6 +405,23 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth > int	
 template< typename PreReal , typename Real , unsigned int TextureBitDepth >
 void Stitching< PreReal , Real , TextureBitDepth >::UpdateFilteredColorTexture( const std::vector< Point3D< Real > > &solution )
 {
+#ifdef NEW_MULTI_THREADING
+	ThreadPool::ParallelFor
+		(
+			0 , textureNodes.size() ,
+			[&]( unsigned int , size_t i )
+			{
+				int ci = textureNodes[i].ci;
+				int cj = textureNodes[i].cj;
+				int offset = 3 * ( textureWidth*cj + ci );
+				for( int c=0 ; c<3 ; c++ )
+				{
+					Real value = std::min< Real >( (Real)1 , std::max< Real >( (Real)0. , solution[i][c] ) );
+					visualization.colorTextureBuffer[offset + c] = (unsigned char)(value*255.0);
+				}
+			}
+		);
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 	for( int i=0 ; i<textureNodes.size() ; i++ )
 	{
@@ -377,18 +434,31 @@ void Stitching< PreReal , Real , TextureBitDepth >::UpdateFilteredColorTexture( 
 			visualization.colorTextureBuffer[offset + c] = (unsigned char)(value*255.0);
 		}
 	}
+#endif // NEW_MULTI_THREADING
 }
 #endif // NO_OPEN_GL_VISUALIZATION
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth >
 void Stitching< PreReal , Real , TextureBitDepth >::UpdateFilteredTexture( const std::vector< Point3D< Real > > &solution )
 {
+#ifdef NEW_MULTI_THREADING
+	ThreadPool::ParallelFor
+		(
+			0 , textureNodes.size() ,
+			[&]( unsigned int , size_t i )
+			{
+				int ci = textureNodes[i].ci , cj = textureNodes[i].cj;
+				filteredTexture(ci,cj) = solution[i];
+			}
+		);
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 	for( int i=0 ; i<textureNodes.size() ; i++ )
 	{
 		int ci = textureNodes[i].ci , cj = textureNodes[i].cj;
 		filteredTexture(ci,cj) = solution[i];
 	}
+#endif // NEW_MULTI_THREADING
 }
 
 #ifdef NO_OPEN_GL_VISUALIZATION
@@ -418,10 +488,15 @@ void Stitching< PreReal , Real , TextureBitDepth >::Idle( void )
 			if( visualization.showMesh ) validSelection = visualization.select( visualization.diskX , visualization.diskY , selectedPoint );
 			if( validSelection )
 			{
+#ifdef NEW_MULTI_THREADING
+				ThreadPool::ParallelFor( 0 , textureNodePositions.size() , [&]( unsigned int , size_t i ){ if( Point3D< float >::SquareNorm( textureNodePositions[i]-selectedPoint )<radiusSquared ) texelValues[i] = partialTexelValues[ textureIndex ][i]; } );
+				ThreadPool::ParallelFor( 0 , textureNodePositions.size() , [&]( unsigned int , size_t i ){ if( Point3D< float >::SquareNorm( textureEdgePositions[i]-selectedPoint )<radiusSquared )  edgeValues[i] =  partialEdgeValues[ textureIndex ][i]; } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 				for( int i=0 ; i<textureNodePositions.size() ; i++ ) if( Point3D< float >::SquareNorm( textureNodePositions[i]-selectedPoint )<radiusSquared ) texelValues[i] = partialTexelValues[ textureIndex ][i];
 #pragma omp parallel for
 				for( int i=0 ; i<textureEdgePositions.size() ; i++ ) if( Point3D< float >::SquareNorm( textureEdgePositions[i]-selectedPoint )<radiusSquared ) edgeValues[i] = partialEdgeValues[ textureIndex ][i];
+#endif // NEW_MULTI_THREADING
 				rhsUpdated = false;
 			}
 		}
@@ -564,8 +639,12 @@ void  Stitching< PreReal , Real , TextureBitDepth >::InterpolationWeightCallBack
 	UpdateLinearSystem( interpolationWeight , (Real)1. , hierarchy , multigridStitchingCoefficients , massCoefficients , stiffnessCoefficients , vCycleSolvers , directSolver , stitchingMatrix , DetailVerbose.set , false , UseDirectSolver.set );
 	if( Verbose.set ) printf( "\tInitialized multigrid coefficients: %.2f(s)\n" , timer.elapsed() );
 
+#ifdef NEW_MULTI_THREADING
+	ThreadPool::ParallelFor( 0 , multigridStitchingVariables[0].rhs.size() , [&]( unsigned int , size_t i ){ multigridStitchingVariables[0].rhs[i] = texelMass[i] * interpolationWeight + texelDivergence[i]; } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 	for( int i=0 ; i<multigridStitchingVariables[0].rhs.size() ; i++ ) multigridStitchingVariables[0].rhs[i] = texelMass[i] * interpolationWeight + texelDivergence[i];
+#endif // NEW_MULTI_THREADING
 
 	if( UseDirectSolver.set ) ComputeExactSolution(Verbose.set);
 	else for( int i=0 ; i<OutputVCycles.value ; i++ ) VCycle( multigridStitchingVariables , multigridStitchingCoefficients , multigridIndices , vCycleSolvers , false , false );
@@ -595,8 +674,12 @@ void Stitching< PreReal , Real , TextureBitDepth >::UpdateSolution( bool verbose
 		MultiplyBySystemMatrix_NoReciprocals( massCoefficients , hierarchy.gridAtlases[0].boundaryGlobalIndex , hierarchy.gridAtlases[0].rasterLines , texelValues , texelMass );
 		ComputeDivergence( edgeValues , texelDivergence , deepDivergenceCoefficients , boundaryDivergenceMatrix , divergenceRasterLines );
 
+#ifdef NEW_MULTI_THREADING
+		ThreadPool::ParallelFor( 0 , textureNodes.size() , [&]( unsigned int , size_t i ){ multigridStitchingVariables[0].rhs[i] = texelMass[i] * interpolationWeight + texelDivergence[i]; } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 		for( int i=0 ; i<textureNodes.size() ; i++ ) multigridStitchingVariables[0].rhs[i] = texelMass[i] * interpolationWeight + texelDivergence[i];
+#endif // NEW_MULTI_THREADING
 
 		if( verbose ) printf( "RHS update time %.4f\n" , timer.elapsed() );
 		rhsUpdated = true;
@@ -622,7 +705,11 @@ void Stitching< PreReal , Real , TextureBitDepth >::_InitializeSystem( std::vect
 		case 12: InitializeMassAndStiffness<12>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
 		case 24: InitializeMassAndStiffness<24>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
 		case 32: InitializeMassAndStiffness<32>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
+#ifdef NEW_CODE
+		default: THROW( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
+#else // !NEW_CODE
 		default: Miscellany::Throw( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
+#endif // NEW_CODE
 		}
 	}
 }
@@ -710,12 +797,24 @@ void Stitching< PreReal , Real , TextureBitDepth >::SetUpSystem( void )
 
 	ComputeDivergence( edgeValues , texelDivergence , deepDivergenceCoefficients , boundaryDivergenceMatrix , divergenceRasterLines );
 
+#ifdef NEW_MULTI_THREADING
+	ThreadPool::ParallelFor
+		(
+			0 , texelValues.size() ,
+			[&]( unsigned int , size_t i )
+			{
+				multigridStitchingVariables[0].x[i] = texelValues[i];
+				multigridStitchingVariables[0].rhs[i] = texelMass[i] * interpolationWeight + texelDivergence[i];
+			}
+		);
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 	for( int i=0 ; i<texelValues.size() ; i++ )
 	{
 		multigridStitchingVariables[0].x[i] = texelValues[i];
 		multigridStitchingVariables[0].rhs[i] = texelMass[i] * interpolationWeight + texelDivergence[i];
 	}
+#endif // NEW_MULTI_THREADING
 
 	filteredTexture.resize( textureWidth , textureHeight );
 	for( int i=0 ; i<filteredTexture.size() ; i++ ) filteredTexture[i] = Point3D< Real >( (Real)0.5 , (Real)0.5 , (Real)0.5 );
@@ -783,6 +882,18 @@ void Stitching< PreReal , Real , TextureBitDepth >::LoadTextures( void )
 		}
 
 		inputTextures.resize( numTextures );
+#ifdef NEW_MULTI_THREADING
+		ThreadPool::ParallelFor
+			(
+				0 , numTextures ,
+				[&]( unsigned int , size_t i )
+				{
+					char textureName[256];
+					sprintf( textureName , In.values[1] , i );
+					inputTextures[i].template read< TextureBitDepth >( textureName );
+				}
+			);
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 		for( int i=0 ; i<numTextures ; i++ )
 		{
@@ -790,6 +901,7 @@ void Stitching< PreReal , Real , TextureBitDepth >::LoadTextures( void )
 			sprintf( textureName , In.values[1] , i );
 			inputTextures[i].template read< TextureBitDepth >( textureName );
 		}
+#endif // NEW_MULTI_THREADING
 
 		textureWidth = inputTextures[0].width();
 		textureHeight = inputTextures[0].height();
@@ -810,6 +922,21 @@ void Stitching< PreReal , Real , TextureBitDepth >::LoadMasks( void )
 	if( inputMode==MULTIPLE_INPUT_MODE )
 	{
 		inputConfidence.resize( numTextures );
+#ifdef NEW_MULTI_THREADING
+		ThreadPool::ParallelFor
+			(
+				0 , numTextures ,
+				[&]( unsigned int , size_t i )
+				{
+					char confidenceName[256];
+					sprintf( confidenceName , InMask.value , i );
+					Image< Point3D< Real > > textureConfidence;
+					textureConfidence.template read< 8 >( confidenceName );
+					inputConfidence[i].resize( textureWidth , textureHeight );
+					for( int p=0 ; p<textureConfidence.size() ; p++ ) inputConfidence[i][p] = Point3D< Real >::Dot( textureConfidence[p] , Point3D< Real >( (Real)1./3 , (Real)1./3 , (Real)1./3 ) );
+				}
+			);
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 		for( int i=0 ; i<numTextures ; i++ )
 		{
@@ -820,6 +947,7 @@ void Stitching< PreReal , Real , TextureBitDepth >::LoadMasks( void )
 			inputConfidence[i].resize( textureWidth , textureHeight );
 			for( int p=0 ; p<textureConfidence.size() ; p++ ) inputConfidence[i][p] = Point3D< Real >::Dot( textureConfidence[p] , Point3D< Real >( (Real)1./3 , (Real)1./3 , (Real)1./3 ) );
 		}
+#endif // NEW_MULTI_THREADING
 	}
 	else
 	{
@@ -844,6 +972,34 @@ void Stitching< PreReal , Real , TextureBitDepth >::LoadMasks( void )
 
 			unsigned int r = BoundaryDilationRadius.value;
 
+#ifdef NEW_MULTI_THREADING
+			ThreadPool::ParallelFor
+				(
+					0 , textureConfidence.width() ,
+					[&]( unsigned int , size_t i )
+					{
+						for( int j=0 ; j<textureConfidence.height() ; j++ )
+						{
+							size_t idx = ToIndex( old(i,j) );
+							if( idx==0 ) textureConfidence(i,j) = Point3D< unsigned char >(0,0,0);
+							else
+							{
+								std::set< size_t > indices;
+								for( int x=(int)i-r ; x<=(int)(i+r) ; x++ )
+									if( x>=0 && x<textureConfidence.width() )
+										for( int y=(int)j-r ; y<=(int)(j+r) ; y++ )
+											if( y>=0 && y<textureConfidence.height() )
+												if( (x-i)*(x-i) + (y-j)*(y-j)<=(int)(r*r) )
+												{
+													idx = ToIndex( old(x,y) );
+													if( idx ) indices.insert( idx );
+												}
+								if( indices.size()>=2 ) for( int c=0 ; c<3 ; c++ ) textureConfidence(i,j)[c] = rand()%256;
+							}
+						}
+					}
+				);
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 			for( int i=0 ; i<textureConfidence.width() ; i++ ) for( int j=0 ; j<textureConfidence.height() ; j++ )
 			{
@@ -864,6 +1020,7 @@ void Stitching< PreReal , Real , TextureBitDepth >::LoadMasks( void )
 					if( indices.size()>=2 ) for( int c=0 ; c<3 ; c++ ) textureConfidence(i,j)[c] = rand()%256;
 				}
 			}
+#endif // NEW_MULTI_THREADING
 		}
 
 		inputColorMask.resize( textureConfidence.width() , textureConfidence.height() );
@@ -981,8 +1138,12 @@ void Stitching< PreReal , Real , TextureBitDepth >::ParseImages( void )
 	avgObservedTexel /= (Real)observedTexelCount;
 	for( int i=0 ; i<unobservedTexel.size() ; i++ ) if( unobservedTexel[i] ) texelValues[i] = avgObservedTexel;
 
+#ifdef NEW_MULTI_THREADING
+	ThreadPool::ParallelFor( 0 , textureNodes.size() , [&]( unsigned int , size_t i ){ multigridStitchingVariables[0].x[i] = texelValues[i]; } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 	for( int i=0 ; i<textureNodes.size() ; i++ ) multigridStitchingVariables[0].x[i] = texelValues[i];
+#endif // NEW_MULTI_THREADING
 }
 
 #ifdef NO_OPEN_GL_VISUALIZATION
@@ -1159,7 +1320,11 @@ void Stitching< PreReal , Real , TextureBitDepth >::Init( void )
 			if( texelId(ci,cj)!=-1 ) multiChartTexelCount++;
 			texelId(ci,cj) = i;
 		}
+#ifdef NEW_CODE
+		if( multiChartTexelCount ) WARN( "Non-zero multi-chart texels: " , multiChartTexelCount );
+#else // !NEW_CODE
 		if( multiChartTexelCount ) Miscellany::Warn( "%d texels belong to multiple charts" , multiChartTexelCount );
+#endif // NEW_CODE
 	}
 }
 
@@ -1186,13 +1351,20 @@ void _main( int argc , char *argv[] )
 		Stitching< PreReal , Real , TextureBitDepth >::visualization.displayMode = TWO_REGION_DISPLAY;
 		Stitching< PreReal , Real , TextureBitDepth >::visualization.screenWidth = 1600;
 		Stitching< PreReal , Real , TextureBitDepth >::visualization.screenHeight = 800;
+#ifdef NEW_CODE
+		Stitching< PreReal , Real , TextureBitDepth >::visualization.useNearestSampling = Nearest.set;
+#endif // NEW_CODE
 
 		glutInitWindowSize( Stitching< PreReal , Real , TextureBitDepth >::visualization.screenWidth , Stitching< PreReal , Real , TextureBitDepth >::visualization.screenHeight );
 		glutInit( &argc , argv );
 		char windowName[1024];
 		sprintf( windowName , "Stitching" );
 		glutCreateWindow( windowName );
+#ifdef NEW_CODE
+		if( glewInit()!=GLEW_OK ) THROW( "glewInit failed" );
+#else // !NEW_CODE
 		if( glewInit()!=GLEW_OK ) Miscellany::Throw( "glewInit failed" );
+#endif // NEW_CODE
 		glutDisplayFunc ( Stitching< PreReal , Real , TextureBitDepth >::Display );
 		glutReshapeFunc ( Stitching< PreReal , Real , TextureBitDepth >::Reshape );
 		glutMouseFunc   ( Stitching< PreReal , Real , TextureBitDepth >::MouseFunc );
@@ -1220,7 +1392,11 @@ void _main( int argc , char *argv[] , unsigned int bitDepth )
 	case 16: return _main< PreReal , Real , 16 >( argc , argv );
 	case 32: return _main< PreReal , Real , 32 >( argc , argv );
 	case 64: return _main< PreReal , Real , 64 >( argc , argv );
+#ifdef NEW_CODE
+	default: ERROR_OUT( "Only bit depths of 8, 16, 32, and 64 supported: " , bitDepth );
+#else // !NEW_CODE
 	default: Miscellany::ErrorOut( "Only bit depths of 8, 16, 32, and 64 supported: %d" , bitDepth );
+#endif // NEW_CODE
 	}
 }
 
@@ -1241,7 +1417,11 @@ int main( int argc , char* argv[] )
 		return EXIT_FAILURE;
 	}
 #endif // NO_OPEN_GL_VISUALIZATION
+#ifdef NEW_CODE
+	if( MultiInput.set && !InMask.set ) ERROR_OUT( "Input mask required for multi-input" );
+#else // !NEW_CODE
 	if( MultiInput.set && !InMask.set ) Miscellany::ErrorOut( "Input mask required for multi-input" );
+#endif // NEW_CODE
 
 
 	unsigned int bitDepth;
@@ -1257,12 +1437,16 @@ int main( int argc , char* argv[] )
 				FILE * file = fopen( textureName , "r" );
 				if( file )
 				{
+					fclose( file );
 					unsigned int _width , _height , _channels , _bitDepth;
-					ImageReader< 8 >::GetInfo( In.values[1] , _width , _height , _channels , _bitDepth );
+					ImageReader< 8 >::GetInfo( textureName , _width , _height , _channels , _bitDepth );
 					if( !numTextures ) width = _width , height = _height , channels = _channels , bitDepth = _bitDepth;
 					else if( width!=_width || height!=_height || channels!=_channels || bitDepth!=_bitDepth )
+#ifdef NEW_CODE
+						ERROR_OUT( "Image properties don't match: (" , width , " " , height , " " , channels , " " , bitDepth , ") != (" , _width , " " , _height , " " , _channels , " " , _bitDepth , ")" );
+#else // !NEW_CODE
 						Miscellany::ErrorOut( "Image properties don't match: (%d %d %d %d) != (%d %d %d %d)\n" , width , height , channels , bitDepth , _width , _height , _channels , _bitDepth );
-					fclose( file );
+#endif // NEW_CODE
 					numTextures++;
 				}
 				else break;
@@ -1271,7 +1455,11 @@ int main( int argc , char* argv[] )
 		else ImageReader< 8 >::GetInfo( In.values[1] , width , height , channels , bitDepth );
 	}
 
+#ifdef NEW_MULTI_THREADING
+	if( Serial.set ) ThreadPool::ParallelizationType = ThreadPool::ParallelType::NONE;
+#else // !NEW_MULTI_THREADING
 	omp_set_num_threads( Threads.value );
+#endif // NEW_MULTI_THREADING
 	if( !NoHelp.set && !Output.set )
 	{
 		printf( "+----------------------------------------------------------------------------+\n" );
@@ -1294,7 +1482,11 @@ int main( int argc , char* argv[] )
 		if( Double.set ) _main< double , double >( argc , argv , bitDepth );
 		else             _main< double , float  >( argc , argv , bitDepth );
 	}
+#ifdef NEW_CODE
+	catch( Misha::Exception &e )
+#else // !NEW_CODE
 	catch( Miscellany::Exception &e )
+#endif // NEW_CODE
 	{
 		printf( "%s\n" , e.what() );
 		return EXIT_FAILURE;

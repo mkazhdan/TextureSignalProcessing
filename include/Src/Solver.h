@@ -33,8 +33,18 @@ DAMAGE.
 #define USE_EIGEN_SIMPLICIAL
 #undef USE_EIGEN_PARDISO
 
-#ifdef USE_CHOLMOD
+#if defined( USE_EIGEN_SIMPLICIAL ) || defined( USE_EIGEN_PARDISO )
+#include <Eigen/Sparse>
+#include <Eigen/Dense>
+#endif // USE_EIGEN_SIMPLICIAL || USE_EIGEN_PARDISO
+#ifdef USE_EIGEN_PARDISO
+#include <Eigen/PardisoSupport>
+#endif // USE_EIGEN_PARDISO
+#if defined( USE_CHOLMOD ) || defined( USE_EIGEN_SIMPLICIAL )
 #include <Misha/LinearSolvers.h>
+#endif // USE_CHOLMOD
+
+#ifdef USE_CHOLMOD
 
 #define CHOLMOD_CHANNELS_IN_PARALLEL
 
@@ -49,8 +59,12 @@ public:
 	template< typename _Real >
 	void init( const SparseMatrix< _Real , int > & M )
 	{
+#ifdef NEW_MULTI_THREADING
+		ThreadPool::ParallelFor( 0 , Channels , [&]( unsigned int , size_t c ){ solver[c]._init(M); } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 		for( int c=0 ; c<Channels ; c++ ) solver[c]._init(M);
+#endif // NEW_MULTI_THREADING
 
 		size_t numVariables = M.Rows();
 		for( int c=0 ; c<Channels ; c++ ) out[c].resize( numVariables ) , in[c].resize( numVariables );
@@ -59,8 +73,12 @@ public:
 	template< typename _Real >
 	void update( const SparseMatrix< _Real , int >& M )
 	{
+#ifdef NEW_MULTI_THREADING
+		ThreadPool::ParallelFor( 0 , Channels , [&]( unsigned int , size_t c ){ solver[c]._update(M); } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 		for( int c=0 ; c<Channels ; c++ ) solver[c]._update(M);
+#endif // NEW_MULTI_THREADING
 	}
 };
 
@@ -68,6 +86,18 @@ template< class Real , unsigned int Channels , class DataType >
 void solve( CholmodCholeskySolver< Real , Channels >& chol , std::vector< DataType >& x0 , const std::vector< DataType >& rhs )
 {
 	int numVariables = x0.size();
+#ifdef NEW_MULTI_THREADING
+	ThreadPool::ParallelFor
+		(
+			0 , Channels ,
+			[&]( unsigned int , size_t c )
+			{
+				for( int n=0 ; n<numVariables ; n++ ) chol.in[c][n] = rhs[n][c];
+				chol.solver[c].solve( &chol.in[c][0] , &chol.out[c][0] );
+			}
+		);
+	ThreadPool::ParallelFor( 0 , numVariables , [&]( unsigned int , size_t n ){ for( int c=0 ; c<Channels ; c++ ) x0[n][c] = chol.out[c][n]; } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 	for( int c=0 ; c<Channels ; c++ )
 	{
@@ -76,16 +106,25 @@ void solve( CholmodCholeskySolver< Real , Channels >& chol , std::vector< DataTy
 	}
 #pragma omp parallel for
 	for( int n=0 ; n<numVariables ; n++ ) for( int c=0 ; c<Channels ; c++ ) x0[n][c] = chol.out[c][n];
+#endif // NEW_MULTI_THREADING
 }
 template< class Real >
 void solve( CholmodCholeskySolver< Real , 1 >& chol , std::vector< Real >& x0 , const std::vector< Real >& rhs )
 {
 	size_t numVariables = x0.size();
+#ifdef NEW_MULTI_THREADING
+	ThreadPool::ParallelFor( 0 , numVariables , [&]( unsigned int , size_t n ){ chol.in[0][n] = rhs[n]; } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 	for( int n=0 ; n<numVariables ; n++ ) chol.in[0][n] = rhs[n];
+#endif // NEW_MULTI_THREADING
 	chol.solver[0].solve( &chol.in[0][0] , &chol.out[0][0] );
+#ifdef NEW_MULTI_THREADING
+	ThreadPool::ParallelFor( 0 , numVariables , [&]( unsigned int , size_t n ){ x0[n] = chol.out[0][n]; } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 	for( int n=0 ; n<numVariables ; n++ ) x0[n] = chol.out[0][n];
+#endif // NEW_MULTI_THREADING
 }
 #else // !CHOLMOD_CHANNELS_IN_PARALLEL
 
@@ -117,18 +156,30 @@ void solve( CholmodCholeskySolver< Real , Channels > & chol , std::vector< DataT
 	int numVariables = x0.size();
 	for( int n=0 ; n<numVariables ; n++ ) for( int c=0 ; c<Channels ; c++ ) chol.in[ c*numVariables+n ] = rhs[n][c];
 	chol.solver.solve( &chol.in[0] , &chol.out[0] );
+#ifdef NEW_MULTI_THREADING
+	ThreadPool::ParallelForm( 0 , numVariables , [&]( unsigned int , size_t n ){ x0[n][c] = chol.out[ c*numVariables+n ]; } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 	for( int n=0 ; n<numVariables ; n++ ) for( int c=0 ; c<Channels ; c++ ) x0[n][c] = chol.out[ c*numVariables+n ];
+#endif // NEW_MULTI_THREADING
 }
 template< class Real >
 void solve( CholmodCholeskySolver< Real , 1 >& chol , std::vector< Real >& x0 , const std::vector< Real >& rhs )
 {
 	int numVariables = x0.size();
+#ifdef NEW_MULTI_THREADING
+	ThreadPool::ParallelForm( 0 , numVariables , [&]( unsigned int , size_t n ){ chol.in[n] = rhs[n]; } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 	for( int n=0 ; n<numVariables ; n++ ) chol.in[n] = rhs[n];
+#endif // NEW_MULTI_THREADING
 	chol.solver.solve( &chol.in[0] , &chol.out[0] );
+#ifdef NEW_MULTI_THREADING
+	ThreadPool::ParallelForm( 0 , numVariables , [&]( unsigned int , size_t n ){ x0[n] = chol.out[n]; } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 	for( int n=0 ; n<numVariables ; n++ ) x0[n] = chol.out[n];
+#endif // NEW_MULTI_THREADING
 }
 #else // !CHOLMOD_CHANNELS_IN_BLOCK
 template< class Real , unsigned int Channels >
@@ -155,34 +206,45 @@ void solve( CholmodCholeskySolver< Real , Channels >& chol , std::vector< DataTy
 	int numVariables = x0.size();
 	for( int c=0 ; c<Channels ; c++ )
 	{
+#ifdef NEW_MULTI_THREADING
+		ThreadPool::ParallelFor( 0 , numVariables , [&]( unsigned int , size_t n ){ chol.in[c][n] = rhs[n][c]; } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 		for( int n=0 ; n<numVariables ; n++ ) chol.in[c][n] = rhs[n][c];
+#endif // NEW_MULTI_THREADING
 		chol.solver.solve( &chol.in[c][0] , &chol.out[c][0] );
 	}
+#ifdef NEW_MULTI_THREADING
+	ThreadPool::ParallelFor( 0 , numVariables , [&]( unsigned int , size_t n ){ for( int c=0 ; c<Channels ; c++ ) x0[n][c] = chol.out[c][n]; } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 	for( int n=0 ; n<numVariables ; n++ ) for( int c=0 ; c<Channels ; c++ ) x0[n][c] = chol.out[c][n];
+#endif // NEW_MULTI_THREADING
 }
 template< class Real >
 void solve( CholmodCholeskySolver< Real , 1 >& chol , std::vector< Real >& x0 , const std::vector< Real >& rhs )
 {
 	int numVariables = x0.size();
+#ifdef NEW_MULTI_THREADING
+	ThreadPool::ParallelFor( 0 , numVariables , [&]( unsigned int , size_t n ){ chol.in[0][n] = rhs[n]; } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 	for( int n=0 ; n<numVariables ; n++ ) chol.in[0][n] = rhs[n];
+#endif // NEW_MULTI_THREADING
 	chol.solver.solve( &chol.in[0][0] , &chol.out[0][0] );
+#ifdef NEW_MULTI_THREADING
+	ThreadPool::ParallelFor( 0 , numVariables , [&]( unsigned int , size_t n ){ x0[n] = chol.out[0][n]; } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 	for( int n=0 ; n<numVariables ; n++ ) x0[n] = chol.out[0][n];
+#endif // NEW_MULTI_THREADING
 }
 #endif // CHOLMOD_CHANNELS_IN_BLOCK
 #endif // CHOLMOD_CHANNELS_IN_PARALLEL
 #endif // USE_CHOLMOD
 
-#if defined( USE_EIGEN_SIMPLICIAL ) || defined( USE_EIGEN_PARDISO )
-#include <Eigen/Sparse>
-#include <Eigen/Dense>
-#endif // USE_EIGEN_SIMPLICIAL || USE_EIGEN_PARDISO
 
 #ifdef USE_EIGEN_SIMPLICIAL
-#include <Misha/LinearSolvers.h>
 template< typename Real , unsigned int Channels >
 class EigenCholeskySolver
 {
@@ -209,12 +271,18 @@ template< class Real , unsigned int Channels , class DataType >
 void solve( EigenCholeskySolver< Real , Channels >& chol , std::vector< DataType >& x , const std::vector< DataType >& b )
 {
 	int numVariables = (int)x.size();
+#ifdef NEW_MULTI_THREADING
+	ThreadPool::ParallelFor( 0 , numVariables , [&]( unsigned int , size_t n ){ for( int c=0 ; c<Channels ; c++ ) chol.b[c][n] = b[n][c]; } );
+	ThreadPool::ParallelFor( 0 , Channels     , [&]( unsigned int , size_t c ){ chol.solver->solve( chol.b[c] , chol.x[c] ); } );
+	ThreadPool::ParallelFor( 0 , numVariables , [&]( unsigned int , size_t n ){ for( int c=0 ; c<Channels ; c++ ) x[n][c] = (Real)chol.x[c][n];} );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 	for( int n=0 ; n<numVariables ; n++ ) for( int c=0 ; c<Channels ; c++ ) chol.b[c][n] = b[n][c];
 #pragma omp parallel for
 	for( int c=0 ; c<Channels ; c++ ) chol.solver->solve( chol.b[c] , chol.x[c] );
 #pragma omp parallel for
 	for( int n=0 ; n<numVariables ; n++ ) for( int c=0 ; c<Channels ; c++ ) x[n][c] = (Real)chol.x[c][n];
+#endif // NEW_MULTI_THREADING
 }
 
 template< class Real >
@@ -228,7 +296,6 @@ void solve( EigenCholeskySolver< Real , 1 >& chol , std::vector< Real >& x0 , co
 #pragma comment( lib , "mkl_core.lib" )
 #pragma comment( lib , "libiomp5md.lib" )
 
-#include <Eigen/PardisoSupport>
 //Pardiso Solver
 
 template< class Real , unsigned int Channels >
@@ -278,20 +345,36 @@ template< class Real , unsigned int Channels , class DataType >
 void solve( EigenPardisoSolver< Real , Channels >& chol , std::vector< DataType >& x0 , const std::vector< DataType >& rhs )
 {
 	int numVariables = x0.size();
+#ifdef NEW_MULTI_THREADING
+	ThreadPool::ParallelFor( 0 , numVariables , [&]( unsigned int , size_t n ){ for( int c=0 ; c<Channels ; c++ ) chol.x0_vectors[c][n] = x0[n][c] , chol.rhs_vectors[c][n] = rhs[n][c]; } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 	for( int n=0 ; n<numVariables ; n++ ) for( int c=0 ; c<Channels ; c++ ) chol.x0_vectors[c][n] = x0[n][c] , chol.rhs_vectors[c][n] = rhs[n][c];
+#endif // NEW_MULTI_THREADING
 	for( int c=0 ; c<3 ; c++ ) chol.solution_vectors[c] = chol.solver->solve( chol.rhs_vectors[c] );
+#ifdef NEW_MULTI_THREADING
+	ThreadPool::ParallelFor( 0 , numVariables , [&]( unsigned int , size_t n ){ for( int c=0 ; c<Channels ; c++ ) x0[n][c] = chol.solution_vectors[c][n]; } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 	for( int n=0 ; n<numVariables ; n++ ) for( int c=0 ; c<Channels ; c++ ) x0[n][c] = chol.solution_vectors[c][n];
+#endif // NEW_MULTI_THREADING
 }
 template< class Real >
 void solve( EigenPardisoSolver< Real , 1 >& chol , std::vector< Real >& x0 , const std::vector< Real >& rhs )
 {
 	int numVariables = x0.size();
+#ifdef NEW_MULTI_THREADING
+	ThreadPool::ParallelFor( 0 , numVariables , [&]( unsigned int , size_t n ){ chol.x0_vectors[0][n] = x0[n] , chol.rhs_vectors[0][n] = rhs[n]; } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 	for( int n=0 ; n<numVariables ; n++ ) chol.x0_vectors[0][n] = x0[n] , chol.rhs_vectors[0][n] = rhs[n];
+#endif // NEW_MULTI_THREADING
 	chol.solution_vectors[0] = chol.solver->solve( chol.rhs_vectors[0] );
+#ifdef NEW_MULTI_THREADING
+	ThreadPool::ParallelFor( 0 , numVariables , [&]( unsigned int , size_t n ){ x0[n] = chol.solution_vectors[0][n]; } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 	for( int n=0 ; n<numVariables ; n++ ) x0[n] = chol.solution_vectors[0][n];
+#endif // NEW_MULTI_THREADING
 }
 #endif // USE_EIGEN_PARDISO

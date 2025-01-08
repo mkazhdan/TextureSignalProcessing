@@ -30,7 +30,13 @@ DAMAGE.
 
 #include <Misha/CmdLineParser.h> 
 #include <Misha/Miscellany.h>
+#ifdef NEW_CODE
+#include <Misha/Exceptions.h>
+#endif // NEW_CODE
 #include <Misha/FEM.h>
+#ifdef NEW_MULTI_THREADING
+#include <Misha/MultiThreading.h>
+#endif // NEW_MULTI_THREADING
 #include <Src/Hierarchy.h>
 #include <Src/SimpleTriangleMesh.h>
 #include <Src/Basis.h>
@@ -55,14 +61,21 @@ cmdLineParameterArray< char* , 2 > Input( "in" );
 cmdLineParameter< char * > InputLowFrequency( "inLow" );
 #endif // USE_LOW_FREQUENCY
 cmdLineParameter< char* > Output( "out" );
+#ifdef NO_OPEN_GL_VISUALIZATION
+#else // !NO_OPEN_GL_VISUALIZATION
+cmdLineParameter< char* > Snapshot( "snapshot" );
+#endif // NO_OPEN_GL_VISUALIZATION
 cmdLineParameter< int   > OutputVCycles( "outVCycles" , 6 );
 cmdLineParameter< float > InterpolationWeight( "interpolation" , 1e3 );
 cmdLineParameter< float > GradientModulation( "modulation" , 1.0 );
 #ifdef NO_OPEN_GL_VISUALIZATION
 #else // !NO_OPEN_GL_VISUALIZATION
 cmdLineParameter< int   > DisplayMode( "display" , FOUR_REGION_DISPLAY );
-#endif // NO_OPEN_GL_VISUALIZATION
+#endif // 
+#ifdef NEW_MULTI_THREADING
+#else // !NEW_MULTI_THREADING
 cmdLineParameter< int   > Threads("threads", omp_get_num_procs());
+#endif // NEW_MULTI_THREADING
 cmdLineParameter< int   > Levels("levels", 4);
 cmdLineParameter< int   > MatrixQuadrature( "mQuadrature" , 6 );
 
@@ -80,9 +93,27 @@ cmdLineReadable NoHelp( "noHelp" );
 cmdLineReadable DetailVerbose( "detail" );
 cmdLineReadable Double( "double" );
 cmdLineReadable Seamless( "seamless" );
+#ifdef NEW_MULTI_THREADING
+cmdLineReadable Serial( "serial" );
+#endif // NEW_MULTI_THREADING
+#ifdef NEW_CODE
+cmdLineReadable ColorAsNormal( "colorAsNormal" );
+#ifdef NO_OPEN_GL_VISUALIZATION
+#else // !NO_OPEN_GL_VISUALIZATION
+cmdLineReadable Nearest( "nearest" );
+#endif // NO_OPEN_GL_VISUALIZATION
+#endif // NEW_CODE
 cmdLineReadable* params[] =
 {
+#ifdef NEW_MULTI_THREADING
+	&Input , &Output , &InterpolationWeight , &GradientModulation , &CameraConfig , &Levels , &UseDirectSolver , &Serial  , &Verbose ,
+#else // !NEW_MULTI_THREADING
 	&Input , &Output , &InterpolationWeight , &GradientModulation , &CameraConfig , &Levels , &UseDirectSolver , &Threads  , &Verbose ,
+#endif // NEW_MULTI_THREADING
+#ifdef NO_OPEN_GL_VISUALIZATION
+#else // !NO_OPEN_GL_VISUALIZATION
+	&Snapshot ,
+#endif // NO_OPEN_GL_VISUALIZATION
 #ifdef USE_LOW_FREQUENCY
 	&InputLowFrequency ,
 #endif // USE_LOW_FREQUENCY
@@ -96,6 +127,13 @@ cmdLineReadable* params[] =
 	&MatrixQuadrature ,
 	&OutputVCycles ,
 	&Seamless ,
+#ifdef NEW_CODE
+	&ColorAsNormal ,
+#ifdef NO_OPEN_GL_VISUALIZATION
+#else // !NO_OPEN_GL_VISUALIZATION
+	&Nearest ,
+#endif // NO_OPEN_GL_VISUALIZATION
+#endif // NEW_CODE
 	&NoHelp ,
 	NULL
 };
@@ -112,6 +150,7 @@ void ShowUsage( const char* ex )
 	printf( "\t --%s <output texture>\n" , Output.name );
 #else // !NO_OPEN_GL_VISUALIZATION
 	printf( "\t[--%s <output texture>]\n" , Output.name );
+	printf( "\t[--%s <snapshot name>]\n" , Snapshot.name );
 #endif // NO_OPEN_GL_VISUALIZATION
 	printf( "\t[--%s <output v-cycles>=%d]\n" , OutputVCycles.name , OutputVCycles.value );
 	printf( "\t[--%s <interpolation weight>=%f]\n" , InterpolationWeight.name , InterpolationWeight.value );
@@ -120,11 +159,21 @@ void ShowUsage( const char* ex )
 	printf( "\t[--%s]\n" , Seamless.name );
 	printf( "\t[--%s]\n" , UseDirectSolver.name );
 	printf( "\t[--%s <jittering seed>]\n" , RandomJitter.name );
+#ifdef NEW_CODE
+	printf( "\t[--%s]\n" , ColorAsNormal.name );
+#ifdef NO_OPEN_GL_VISUALIZATION
+#else // !NO_OPEN_GL_VISUALIZATION
+	printf( "\t[--%s]\n" , Nearest.name );
+#endif // NO_OPEN_GL_VISUALIZATION
+#endif // NEW_CODE
 	printf( "\t[--%s]\n" , Verbose.name );
 
 	printf( "\t[--%s <camera configuration file>]\n" , CameraConfig.name );
 	printf( "\t[--%s <hierarchy levels>=%d]\n" , Levels.name , Levels.value );
+#ifdef NEW_MULTI_THREADING
+#else // !NEW_MULTI_THREADING
 	printf( "\t[--%s <threads>=%d]\n" , Threads.name , Threads.value );
+#endif // NEW_MULTI_THREADING
 	printf( "\t[--%s]\n" , DetailVerbose.name );
 #ifdef NO_OPEN_GL_VISUALIZATION
 #else // !NO_OPEN_GL_VISUALIZATION
@@ -138,6 +187,9 @@ void ShowUsage( const char* ex )
 	printf( "\t[--%s <multigrid block height>=%d]\n"   , MultigridBlockHeight.name   , MultigridBlockHeight.value   );
 	printf( "\t[--%s <multigrid padded width>=%d]\n"   , MultigridPaddedWidth.name   , MultigridPaddedWidth.value   );
 	printf( "\t[--%s <multigrid padded height>=%d]\n"  , MultigridPaddedHeight.name  , MultigridPaddedHeight.value  );
+#ifdef NEW_MULTI_THREADING
+	printf( "\t[--%s]\n" , Serial.name );
+#endif // NEW_MULTI_THREADING
 	printf( "\t[--%s]\n" , NoHelp.name );
 	printf( "\t[--%s]\n" , Paused.name );
 }
@@ -359,6 +411,35 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth > int	
 template< typename PreReal , typename Real , unsigned int TextureBitDepth >
 void TextureFilter< PreReal , Real , TextureBitDepth >::UpdateMaskTexture( void )
 {
+#ifdef NEW_MULTI_THREADING
+	ThreadPool::ParallelFor
+		(
+			0 , textureNodes.size() ,
+			[&]( unsigned int , size_t i )
+			{
+				Real texelModulationValue = uniformTexelModulationMask[i];
+				if (texelModulationValue != 0.5){
+					Point3D< Real > newColor;
+					if( texelModulationValue>0.5 )
+					{
+						texelModulationValue = 2.0 * texelModulationValue - 1.0;
+						newColor = Point3D< Real >( (Real)1. , (Real)0. , (Real)0. ) * texelModulationValue + Point3D< Real >( (Real)0.8 , (Real)0.8 , (Real)0.8 ) * ( (Real)1.0 - texelModulationValue);
+					}
+					else
+					{
+						texelModulationValue = 2.0 *texelModulationValue;
+						newColor = Point3D< Real >( (Real)0. , (Real)0. , (Real)1. ) * ( (Real)1. - texelModulationValue ) + Point3D< Real >( (Real)0.8 , (Real)0.8 , (Real)0.8 ) * texelModulationValue;
+					}
+					int ci = textureNodes[i].ci;
+					int cj = textureNodes[i].cj;
+					int offset = 3 * (textureWidth*cj + ci);
+					visualization.maskBufferValues[offset + 0] = (unsigned char)(newColor[0] * 255.0);
+					visualization.maskBufferValues[offset + 1] = (unsigned char)(newColor[1] * 255.0);
+					visualization.maskBufferValues[offset + 2] = (unsigned char)(newColor[2] * 255.0);
+				}
+			}
+		);
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 	for (int i = 0; i < textureNodes.size(); i++){
 		Real texelModulationValue = uniformTexelModulationMask[i];
@@ -382,13 +463,47 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::UpdateMaskTexture( void 
 			visualization.maskBufferValues[offset + 2] = (unsigned char)(newColor[2] * 255.0);
 		}
 	}
+#endif // NEW_MULTI_THREADING
 
 	visualization.UpdateMaskTextureBuffer();
 }
 
+#ifdef NEW_CODE
+Image< Point3D< float > > ColorToNormal( const Image< Point3D< float > > &color )
+{
+	Image< Point3D< float > > normal( color.width() , color.height() );
+	for( unsigned int y=0 ; y<(unsigned int)color.height() ; y++ ) for( unsigned int x=0 ; x<(unsigned int)color.width() ; x++ ) normal(x,y) = color(x,y) * 2.f - Point3D< float >(1.f,1.f,1.f);
+	return normal;
+}
+Image< Point3D< float > > NormalToColor( const Image< Point3D< float > > &normal )
+{
+	Image< Point3D< float > > color( normal.width() , normal.height() );
+	for( unsigned int y=0 ; y<(unsigned int)normal.height() ; y++ ) for( unsigned int x=0 ; x<(unsigned int)normal.width() ; x++ ) color(x,y) = ( normal(x,y) + Point3D< float >(1.f,1.f,1.f) ) / 2.f;
+	return color;
+}
+#endif // NEW_CODE
+
+
 template< typename PreReal , typename Real , unsigned int TextureBitDepth >
 void TextureFilter< PreReal , Real , TextureBitDepth >::UpdateFilteredColorTexture( const std::vector< Point3D< Real > > & solution )
 {
+#ifdef NEW_MULTI_THREADING
+	ThreadPool::ParallelFor
+		(
+			0 , textureNodes.size() ,
+			[&]( unsigned int , size_t i )
+			{
+				int ci = textureNodes[i].ci;
+				int cj = textureNodes[i].cj;
+				int offset = 3 * (textureWidth*cj + ci);
+				for (int c = 0; c < 3; c++)
+				{
+					Real value = std::min< Real >( (Real)1. , std::max< Real >( 0 , solution[i][c] ) );
+					visualization.colorTextureBuffer[offset + c] = (unsigned char)(value*255.0);
+				}
+			}
+		);
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 	for (int i = 0; i < textureNodes.size(); i++) {
 		int ci = textureNodes[i].ci;
@@ -400,18 +515,31 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::UpdateFilteredColorTextu
 			visualization.colorTextureBuffer[offset + c] = (unsigned char)(value*255.0);
 		}
 	}
+#endif // NEW_MULTI_THREADING
 }
 #endif // NO_OPEN_GL_VISUALIZATION
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth >
 void TextureFilter< PreReal , Real , TextureBitDepth >::UpdateFilteredTexture( const std::vector< Point3D< Real > >& solution )
 {
+#ifdef NEW_MULTI_THREADING
+	ThreadPool::ParallelFor
+		(
+			0 , textureNodes.size() ,
+			[&]( unsigned int , size_t i )
+			{
+				int ci = textureNodes[i].ci , cj = textureNodes[i].cj;
+				filteredTexture(ci,cj) = Point3D< Real >( solution[i][0] , solution[i][1] , solution[i][2] );
+			}
+		);
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 	for( int i=0 ; i<textureNodes.size() ; i++ )
 	{
 		int ci = textureNodes[i].ci , cj = textureNodes[i].cj;
 		filteredTexture(ci,cj) = Point3D< Real >( solution[i][0] , solution[i][1] , solution[i][2] );
 	}
+#endif // NEW_MULTI_THREADING
 }
 
 #ifdef NO_OPEN_GL_VISUALIZATION
@@ -424,15 +552,23 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::WriteTexture( const char
 
 	char* ext = GetFileExtension( fileName );
 	if( !strcasecmp( ext , "normap" ) ) WriteBinaryImage( outputTexture , fileName );
+#ifdef NEW_CODE
+	else
+	{
+		if( ColorAsNormal ) outputTexture = NormalToColor( outputTexture );
+		outputTexture.template write< TextureBitDepth >( fileName );
+	}
+#else // !NEW_CODE
 	else outputTexture.template write< TextureBitDepth >( fileName );
+#endif // NEW_CODE
 	delete[] ext;
 }
 #else // !NO_OPEN_GL_VISUALIZATION
 template< typename PreReal , typename Real , unsigned int TextureBitDepth >
 void TextureFilter< PreReal , Real , TextureBitDepth >::Idle( void )
 {
-	if( visualization.promptCallBack ) visualization.showSlideBar = false;
-	else                               visualization.showSlideBar = true;
+	if( visualization.promptCallBack || visualization.snapshotName ) visualization.showHelp = visualization.showInfo = visualization.showSlideBar = false;
+	else                                                             visualization.showSlideBar = true;
 
 	auto RescaleFunction = []( float x ){ return x*2.f; };
 
@@ -518,6 +654,7 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::Idle( void )
 		sprintf( stepsString , "Steps: %d" , steps );
 	}
 
+	visualization.Idle();
 	glutPostRedisplay();
 }
 
@@ -528,8 +665,12 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::MouseFunc( int button , 
 	{
 		CellStiffnessToTexelStiffness< Real , 3 >( cellModulationMask , interiorTexelToCellLines , interiorTexelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , boundaryTexelStiffness , hierarchy.gridAtlases[0].boundaryGlobalIndex , texelModulatedStiffness );
 		int numTexels = (int)multigridFilteringVariables[0].rhs.size();
+#ifdef NEW_MULTI_THREADING
+		ThreadPool::ParallelFor( 0 , numTexels , [&]( unsigned int , size_t i ){ multigridFilteringVariables[0].rhs[i] = mass_x0[i]*interpolationWeight + texelModulatedStiffness[i]; } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 		for( int i=0 ; i<numTexels ; i++ ) multigridFilteringVariables[0].rhs[i] = mass_x0[i]*interpolationWeight + texelModulatedStiffness[i];
+#endif // NEW_MULTI_THREADING
 		ComputeExactSolution( DetailVerbose.set );
 		if( visualization.textureType==COLOR_TEXTURE )
 		{
@@ -673,8 +814,12 @@ template< typename PreReal , class Real , unsigned int TextureBitDepth >
 void  TextureFilter< PreReal , Real , TextureBitDepth >::GradientModulationCallBack( Visualization * /*v*/ , const char* prompt )
 {
 	gradientModulation = atof( prompt );
+#ifdef NEW_MULTI_THREADING
+	ThreadPool::ParallelFor( 0 , multigridFilteringVariables[0].rhs.size() , [&]( unsigned int , size_t i ){ multigridFilteringVariables[0].rhs[i] = mass_x0[i] * interpolationWeight + stiffness_x0[i] * gradientModulation; } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 	for( int i=0 ; i<multigridFilteringVariables[0].rhs.size() ; i++ ) multigridFilteringVariables[0].rhs[i] = mass_x0[i] * interpolationWeight + stiffness_x0[i] * gradientModulation;
+#endif // NEW_MULTI_THREADING
 
 	if( UseDirectSolver.set )
 	{
@@ -702,8 +847,12 @@ void  TextureFilter< PreReal , Real , TextureBitDepth >::InterpolationWeightCall
 	UpdateLinearSystem( interpolationWeight , (Real)1. , hierarchy , multigridFilteringCoefficients , massCoefficients , stiffnessCoefficients , vCycleSolvers , directSolver , filteringMatrix , DetailVerbose.set , false , UseDirectSolver.set );
 	if( Verbose.set ) printf( "\tInitialized multigrid coefficients: %.2f(s)\n" , timer.elapsed() );
 
+#ifdef NEW_MULTI_THREADING
+	ThreadPool::ParallelFor( 0 ,multigridFilteringVariables[0].rhs.size() , [&]( unsigned int , size_t i ){ multigridFilteringVariables[0].rhs[i] = mass_x0[i]*interpolationWeight + stiffness_x0[i] * gradientModulation; } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 	for( int i=0 ; i<multigridFilteringVariables[0].rhs.size() ; i++ ) multigridFilteringVariables[0].rhs[i] = mass_x0[i]*interpolationWeight + stiffness_x0[i] * gradientModulation;
+#endif // NEW_MULTI_THREADING
 
 	if( UseDirectSolver.set )
 	{
@@ -740,8 +889,12 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::UpdateSolution( bool ver
 
 		Miscellany::Timer timer;
 		CellStiffnessToTexelStiffness< Real , 3 >(cellModulationMask, interiorTexelToCellLines, interiorTexelToCellCoeffs, boundaryCellBasedStiffnessRHSMatrix, boundaryTexelStiffness, hierarchy.gridAtlases[0].boundaryGlobalIndex, texelModulatedStiffness);
+#ifdef NEW_MULTI_THREADING
+		ThreadPool::ParallelFor( 0 , numTexels , [&]( unsigned int , size_t i ){ multigridFilteringVariables[0].rhs[i] = mass_x0[i]*interpolationWeight + texelModulatedStiffness[i]; } );
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 		for( int i=0 ; i<numTexels ; i++ ) multigridFilteringVariables[0].rhs[i] = mass_x0[i]*interpolationWeight + texelModulatedStiffness[i];
+#endif // NEW_MULTI_THREADING
 
 		if( verbose ) printf( "RHS update time %.4f\n" , timer.elapsed() );	
 		gradientModulationUpdated = true;
@@ -763,7 +916,11 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::_InitializeSystem( std::
 		case 12: InitializeMassAndStiffness<12>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , true , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix ) ; break;
 		case 24: InitializeMassAndStiffness<24>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , true , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix ) ; break;
 		case 32: InitializeMassAndStiffness<32>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , true , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix ) ; break;
+#ifdef NEW_CODE
+		default: THROW( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
+#else // !NEW_CODE
 		default: Miscellany::Throw( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
+#endif // NEW_CODE
 		}
 	}
 	if( Verbose.set ) printf( "\tInitialized mass and stiffness: %.2f(s)\n" , timer.elapsed() );
@@ -862,19 +1019,43 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::InitializeSystem( int wi
 #endif // USE_LOW_FREQUENCY
 
 #ifdef USE_LOW_FREQUENCY
+#ifdef NEW_MULTI_THREADING
+	ThreadPool::ParallelFor
+		(
+			0 , low_x0.size() ,
+			[&]( unsigned int , size_t i )
+			{
+				multigridFilteringVariables[0].x[i] = low_x0[i];
+				multigridFilteringVariables[0].rhs[i] = mass_x0[i] * interpolationWeight + stiffness_x0[i] * gradientModulation;
+			}
+		);
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 	for( int i=0 ; i<low_x0.size() ; i++ )
 	{
 		multigridFilteringVariables[0].x[i] = low_x0[i];
 		multigridFilteringVariables[0].rhs[i] = mass_x0[i] * interpolationWeight + stiffness_x0[i] * gradientModulation;
 	}
+#endif // NEW_MULTI_THREADING
 #else // !USE_LOW_FREQUENCY
+#ifdef NEW_MULTI_THREADING
+	ThreadPool::ParallelFor
+	(
+		0 , _x0.size() ,
+		[&]( unsigned int , size_t i )
+		{
+			multigridFilteringVariables[0].x[i] = _x0[i];
+			multigridFilteringVariables[0].rhs[i] = mass_x0[i] * interpolationWeight + stiffness_x0[i] * gradientModulation;
+		}
+	);
+#else // !NEW_MULTI_THREADING
 #pragma omp parallel for
 	for( int i=0 ; i<_x0.size() ; i++ )
 	{
 		multigridFilteringVariables[0].x[i] = _x0[i];
 		multigridFilteringVariables[0].rhs[i] = mass_x0[i] * interpolationWeight + stiffness_x0[i] * gradientModulation;
 	}
+#endif // NEW_MULTI_THREADING
 #endif // USE_LOW_FREQUENCY
 
 	filteredTexture.resize(width, height);
@@ -944,7 +1125,12 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::InitializeVisualization(
 	visualization.info.push_back( interpolationStr );
 
 	char *ext = GetFileExtension( Input.values[1] );
+printf( "%s -> %s\n" , Input.values[1] , ext );
+#ifdef NEW_CODE
+	if( !strcasecmp( ext , "normap" ) || ColorAsNormal.set )
+#else // !NEW_CODE
 	if( !strcasecmp( ext , "normap" ) )
+#endif // NEW_CODE
 	{
 		visualization.textureType = NORMAL_TEXTURE;
 		visualization.normalProgram = new GLSLProgram( vertex_shader_src , fragment_shader_src );
@@ -983,15 +1169,32 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::Init( void )
 	interpolationWeight = InterpolationWeight.value;
 	gradientModulation = GradientModulation.value;
 
+
 	mesh.read( Input.values[0] , DetailVerbose.set );
 	{
 		char *ext = GetFileExtension( Input.values[1] );
 #ifdef USE_LOW_FREQUENCY
 		if( !strcasecmp( ext , "normap" ) ) ReadBinaryImage( highFrequencyTexture , Input.values[1] );
+#ifdef NEW_CODE
+		else
+		{
+			highFrequencyTexture.template read< TextureBitDepth >( Input.values[1] );
+			if( ColorAsNormal.set ) highFrequencyTexture = ColorToNormal( highFrequencyTexture );
+		}
+#else // !NEW_CODE
 		else highFrequencyTexture.template read< TextureBitDepth >( Input.values[1] );
+#endif // NEW_CODE
 #else // !USE_LOW_FREQUENCY
 		if( !strcasecmp( ext , "normap" ) ) ReadBinaryImage( texture , Input.values[1] );
+#ifdef NEW_CODE
+		else
+		{
+			texture.template read< TextureBitDepth >( Input.values[1] );
+			if( ColorAsNormal.set ) texture = ColorToNormal( texture );
+		}
+#else // !NEW_CODE
 		else texture.template read< TextureBitDepth >( Input.values[1] );
+#endif // NEW_CODE
 #endif // USE_LOW_FREQUENCY
 		delete[] ext;
 	}
@@ -1000,12 +1203,24 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::Init( void )
 	{
 		char *ext = GetFileExtension( InputLowFrequency.value );
 		if( !strcasecmp( ext , "normap" ) ) ReadBinaryImage( lowFrequencyTexture , InputLowFrequency.value );
+#ifdef NEW_CODE
+		else
+		{
+			lowFrequencyTexture.template read< TextureBitDepth >( InputLowFrequency.value );
+			if( ColorAsNormal.set ) lowFrequencyTexture = ColorToNormal( lowFrequencyTexture );
+		}
+#else // !NEW_CODE
 		else lowFrequencyTexture.template read< TextureBitDepth >( InputLowFrequency.value );
+#endif // NEW_CODE
 		delete[] ext;
 	}
 	else lowFrequencyTexture = highFrequencyTexture;
 	if( lowFrequencyTexture.width()!=highFrequencyTexture.width() || lowFrequencyTexture.height()!=highFrequencyTexture.height() )
+#ifdef NEW_CODE
+		ERROR_OUT( "Low/high texture resolutions don't match: " , lowFrequencyTexture.width() , " x " , lowFrequencyTexture.height() , " != " , highFrequencyTexture.width() , " x " , highFrequencyTexture.height() );
+#else // !NEW_CODE
 		Miscellany::ErrorOut( "Low/high texture resolutions don't match: " , lowFrequencyTexture.width() , " x " , lowFrequencyTexture.height() , " != " , highFrequencyTexture.width() , " x " , highFrequencyTexture.height() );
+#endif // NEW_CODE
 
 	textureWidth = highFrequencyTexture.width();
 	textureHeight = highFrequencyTexture.height();
@@ -1120,7 +1335,11 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::Init( void )
 			if( texelId(ci,cj)!=-1 ) multiChartTexelCount++;
 			texelId(ci,cj) = i;
 		}
+#ifdef NEW_CODE
+		if( multiChartTexelCount ) WARN( "Non-zero multi-chart texels: " , multiChartTexelCount );
+#else // !NEW_CODE
 		if( multiChartTexelCount ) Miscellany::Warn( "%d texels belong to multiple charts!\n" , multiChartTexelCount );
+#endif // NEW_CODE
 	}
 }
 
@@ -1144,12 +1363,20 @@ void _main( int argc , char *argv[] )
 		else if( DisplayMode.value==TWO_REGION_DISPLAY   ) TextureFilter< PreReal , Real , TextureBitDepth >::visualization.screenWidth = 1600 , TextureFilter< PreReal , Real , TextureBitDepth >::visualization.screenHeight = 800;
 		else if( DisplayMode.value==THREE_REGION_DISPLAY ) TextureFilter< PreReal , Real , TextureBitDepth >::visualization.screenWidth = 1200 , TextureFilter< PreReal , Real , TextureBitDepth >::visualization.screenHeight = 800;
 		else if( DisplayMode.value==FOUR_REGION_DISPLAY  ) TextureFilter< PreReal , Real , TextureBitDepth >::visualization.screenWidth = 1500 , TextureFilter< PreReal , Real , TextureBitDepth >::visualization.screenHeight = 600;
+#ifdef NEW_CODE
+		TextureFilter< PreReal , Real , TextureBitDepth >::visualization.useNearestSampling = Nearest.set;
+		if( Snapshot.set ) TextureFilter< PreReal , Real , TextureBitDepth >::visualization.setSnapshot( Snapshot.value , true );
+#endif // NEW_CODE
 		glutInitWindowSize( TextureFilter< PreReal , Real , TextureBitDepth >::visualization.screenWidth , TextureFilter< PreReal , Real , TextureBitDepth >::visualization.screenHeight );
 		glutInit( &argc , argv );
 		char windowName[1024];
 		sprintf( windowName , "Texture Filtering" );
 		glutCreateWindow( windowName );
+#ifdef NEW_CODE
+		if( glewInit()!=GLEW_OK ) THROW( "glewInit failed" );
+#else // !NEW_CODE
 		if( glewInit()!=GLEW_OK ) Miscellany::Throw( "glewInit failed" );
+#endif // NEW_CODE
 		glutDisplayFunc ( TextureFilter< PreReal , Real , TextureBitDepth >::Display );
 		glutReshapeFunc ( TextureFilter< PreReal , Real , TextureBitDepth >::Reshape );
 		glutMouseFunc   ( TextureFilter< PreReal , Real , TextureBitDepth >::MouseFunc );
@@ -1176,11 +1403,16 @@ void _main( int argc , char *argv[] , unsigned int bitDepth )
 {
 	switch( bitDepth )
 	{
+	case (unsigned int)-1:
 	case  8: return _main< PreReal , Real ,  8 >( argc , argv );
 	case 16: return _main< PreReal , Real , 16 >( argc , argv );
 	case 32: return _main< PreReal , Real , 32 >( argc , argv );
 	case 64: return _main< PreReal , Real , 64 >( argc , argv );
+#ifdef NEW_CODE
+	default: ERROR_OUT( "Only bit depths of 8, 16, 32, and 64 supported: " , bitDepth );
+#else // !NEW_CODE
 	default: Miscellany::ErrorOut( "Only bit depths of 8, 16, 32, and 64 supported: %d" , bitDepth );
+#endif // NEW_CODE
 	}
 }
 
@@ -1193,13 +1425,20 @@ int main(int argc, char* argv[])
 	if( !Input.set ) { ShowUsage( argv[0] ) ; return EXIT_FAILURE; }
 #endif // NO_OPEN_GL_VISUALIZATION
 
-	unsigned int bitDepth;
+	unsigned int bitDepth = -1;
+	char *ext = GetFileExtension( Input.values[1] );
+	if( strcasecmp( ext , "normap" ) )
 	{
 		unsigned int width , height , channels;
 		ImageReader< 8 >::GetInfo( Input.values[1] , width , height , channels , bitDepth );
 	}
+	delete[] ext;
 
+#ifdef NEW_MULTI_THREADING
+	if( Serial.set ) ThreadPool::ParallelizationType = ThreadPool::ParallelType::NONE;
+#else // !NEW_MULTI_THREADING
 	omp_set_num_threads( Threads.value );
+#endif // NEW_MULTI_THREADING
 	if( !NoHelp.set && !Output.set )
 	{
 		printf( "+----------------------------------------------------------------------+\n" );
@@ -1218,7 +1457,11 @@ int main(int argc, char* argv[])
 		if( Double.set ) _main< double , double >( argc , argv , bitDepth );
 		else             _main< double , float  >( argc , argv , bitDepth );
 	}
+#ifdef NEW_CODE
+	catch( Misha::Exception &e )
+#else // !NEW_CODE
 	catch( Miscellany::Exception &e )
+#endif // NEW_CODE
 	{
 		printf( "%s\n" , e.what() );
 		return EXIT_FAILURE;
