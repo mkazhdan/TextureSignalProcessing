@@ -33,6 +33,7 @@ DAMAGE.
 #include <Misha/Ply.h>
 #include <Misha/Image.h>
 #include <Misha/Miscellany.h>
+#include <Misha/Geometry.h>
 #include <Src/VectorIO.h>
 
 template< typename GeometryReal >
@@ -359,6 +360,35 @@ public:
 			vertices.resize( ply_vertices.size() );
 			for( int i=0 ; i<ply_vertices.size() ; i++ ) vertices[i] = ply_vertices[i].point;
 
+			{
+				MinimalAreaTriangulation< GeometryReal > mat;
+
+				for( unsigned int i=ply_faces.size() ; i!=0 ; i-- )
+				{
+					PlyTexturedFace< GeometryReal > &face = ply_faces[i-1];
+					PlyTexturedFace< GeometryReal > oldFace = face;
+					if( face.size()>3 )
+					{
+						std::vector< Point3D< GeometryReal > > _vertices( face.size() );
+						std::vector< TriangleIndex > _triangles;
+						for( unsigned int j=0 ; j<face.size() ; j++ ) _vertices[j] = ply_vertices[ face[j] ].point;
+						mat.GetTriangulation( _vertices , _triangles );
+
+						auto TriangleToPLYFace = [&]( TriangleIndex tri )
+							{
+								PlyTexturedFace< GeometryReal > plyFace;
+								plyFace.resize(3);
+								for( unsigned int i=0 ; i<3 ; i++ ) plyFace[i] = oldFace[ tri[i] ] , plyFace.texture(i) = oldFace.texture( tri[i] );
+								return plyFace;
+							};
+
+						face = TriangleToPLYFace( _triangles[0] );
+						for( unsigned int j=1 ; j<_triangles.size() ; j++ ) ply_faces.push_back( TriangleToPLYFace( _triangles[j] ) );
+					}
+				}
+
+			}
+
 			triangles.resize( ply_faces.size() );
 #ifdef USE_TEXTURE_TRIANGLES
 			textureMesh.triangles.resize( ply_faces.size() );
@@ -462,7 +492,8 @@ public:
 				else if( line[0]=='f' && line[1]==' ' )
 				{
 					std::vector< ObjFaceIndex > face;
-					line = line.substr(2);
+					line = line.substr(1);
+					while( line.size() && line[0]==' ' ) line = line.substr(1);
 					std::stringstream ss( line );
 					std::string token;
 					while( std::getline( ss , token , ' ' ) )
@@ -479,7 +510,6 @@ public:
 						}
 						face.push_back( idx );
 					}
-					if( face.size()!=3 ) ERROR_OUT( "Expectred triangular face " , face.size() );
 					obj_faces.push_back( face );
 				}
 				count++;
@@ -492,6 +522,48 @@ public:
 			for( int i=0 ; i<obj_textures.size() ; i++ ) textureMesh.vertices[i] = obj_textures[i];
 #endif // USE_TEXTURE_TRIANGLES
 
+			auto ObjIndexToArrayIndex = [&]( size_t sz , int index )
+				{
+					if( index>0 ) return index-1;
+					else          return (int)sz + index;
+				};
+
+			// Triangulating polygonal faces
+			{
+				unsigned int tCount = 0;
+				for( unsigned int i=0 ; i<obj_faces.size() ; i++ )
+					if( obj_faces[i].size()<3 ) ERROR_OUT( "Expected at least three vertices" );
+					else tCount += obj_faces[i].size()-2;
+				if( tCount>obj_faces.size() )
+				{
+					MinimalAreaTriangulation< GeometryReal > mat;
+
+					obj_faces.reserve( tCount );
+					for( unsigned int i=obj_faces.size() ; i!=0 ; i-- )
+					{
+						std::vector< ObjFaceIndex > &face = obj_faces[i-1];
+						std::vector< ObjFaceIndex > oldFace = face;
+						if( face.size()>3 )
+						{
+							std::vector< Point3D< GeometryReal > > _vertices( face.size() );
+							std::vector< TriangleIndex > triangles;
+							for( unsigned int j=0 ; j<face.size() ; j++ ) _vertices[j] = vertices[ ObjIndexToArrayIndex( obj_vertices.size() , face[j].vIndex ) ];
+							mat.GetTriangulation( _vertices , triangles );
+
+							auto TriangleToOBJFace = [&]( TriangleIndex tri )
+								{
+									std::vector< ObjFaceIndex > objFace(3);
+									for( unsigned int i=0 ; i<3 ; i++ ) objFace[i] = oldFace[ tri[i] ];
+									return objFace;
+								};
+
+							face = TriangleToOBJFace( triangles[0] );
+							for( unsigned int j=1 ; j<triangles.size() ; j++ ) obj_faces.push_back( TriangleToOBJFace( triangles[j] ) );
+						}
+					}
+				}
+			}
+
 			triangles.resize( obj_faces.size() );
 #ifdef USE_TEXTURE_TRIANGLES
 			textureMesh.triangles.resize( obj_faces.size() );
@@ -502,7 +574,7 @@ public:
 			{
 				if     ( obj_faces[i][j].vIndex>0 ) triangles[i][j] = obj_faces[i][j].vIndex-1;
 				else if( obj_faces[i][j].vIndex<0 ) triangles[i][j] = (int)obj_vertices.size() + obj_faces[i][j].vIndex;
-				else ERROR_OUT( "Zero vertex index unexpected in .obj file" );
+				else ERROR_OUT( "Zero vertex index unexpected in .obj file: " , i );
 
 #ifdef USE_TEXTURE_TRIANGLES
 				if     ( obj_faces[i][j].tIndex>0 ) textureMesh.triangles[i][j] = obj_faces[i][j].tIndex-1;
@@ -511,7 +583,7 @@ public:
 				if     ( obj_faces[i][j].tIndex>0 ) textureCoordinates[3*i+j] = obj_textures[ obj_faces[i][j].tIndex-1 ];
 				else if( obj_faces[i][j].tIndex<0 ) textureCoordinates[3*i+j] = obj_textures[ (int)obj_textures.size() + obj_faces[i][j].tIndex ];
 #endif // USE_TEXTURE_TRIANGLES
-				else ERROR_OUT( "Zero texture index unexpected in .obj file" );
+				else ERROR_OUT( "Zero texture index unexpected in .obj file: " , i );
 			}
 		}
 		else ERROR_OUT( "Unrecognized file extension: " , std::string( meshName ) );
