@@ -1,4 +1,4 @@
-<center><h2>Gradient Domain Texture Processing (Version 5.00)</h2></center>
+<center><h2>Gradient Domain Texture Processing (Version 5.01)</h2></center>
 <center>
 <a href="#LINKS">links</a>
 <a href="#EXECUTABLES">executables</a>
@@ -30,6 +30,7 @@ This software supports gradient-domain signal processing within a texture atlas.
 <B>Data:</B>
 <A HREF="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/TSP.Data.zip">ZIP</A><br>
 <b>Older Versions:</b>
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version5.00/">V5.00</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.75/">V4.75</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.60/">V4.60</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.50/">V4.50</a>,
@@ -509,6 +510,11 @@ Here a "dots" pattern is written out to an image. (Empirically, we have found th
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version5.00/">Version 5.00</a>:
 <ul>
 <li> Separated out OpenMP depeendency.
+</ul>
+
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version5.01/">Version 5.01</a>:
+<ul>
+<li> Add support for processing polygonal (i.e. not necessarily triangular) faces.
 </ul>
 
 </details>
