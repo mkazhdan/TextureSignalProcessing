@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2011, Michael Kazhdan and Ming Chuang
+Copyright (c) 2023, Michael Kazhdan
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -29,8 +29,9 @@ DAMAGE.
 #define JPEG_INCLUDED
 //#include "Image.h"
 
+#include <stdio.h>
+#include <stdlib.h>
 #include <setjmp.h>
-
 #ifdef _WIN32
 #include <windows.h>
 #include "JPEG/jpeglib.h"
@@ -42,39 +43,42 @@ DAMAGE.
 #include <jmorecfg.h>
 #endif // _WIN32
 
-struct my_error_mgr
+namespace MishaK
 {
-	jpeg_error_mgr pub;    // "public" fields
-	jmp_buf setjmp_buffer;        // for return to caller
-};
-typedef struct my_error_mgr * my_error_ptr;
+	struct my_error_mgr
+	{
+		struct jpeg_error_mgr pub;    // "public" fields
+		jmp_buf setjmp_buffer;        // for return to caller
+	};
+	typedef struct my_error_mgr * my_error_ptr;
 
-struct JPEGReader : public ImageReader< 8 >
-{
-	JPEGReader( const char* fileName , unsigned int& width , unsigned int& height , unsigned int& channels );
-	~JPEGReader( void );
-	unsigned int nextRow( unsigned char* row );
-	static bool GetInfo( const char* fileName , unsigned int& width , unsigned int& height , unsigned int& channels );
-	static bool GetInfo( const char* fileName , unsigned int& width , unsigned int& height , unsigned int& channels , unsigned int &bitDepth );
-protected:
-	FILE* _fp;
-	struct jpeg_decompress_struct _cInfo;
-	struct my_error_mgr _jErr;
-	unsigned int _currentRow;
-};
+	struct JPEGReader : public ImageReader< 8 >
+	{
+		JPEGReader( std::string fileName , unsigned int& width , unsigned int& height , unsigned int& channels );
+		~JPEGReader( void );
+		unsigned int nextRow( unsigned char* row );
+		static bool GetInfo( std::string fileName , unsigned int& width , unsigned int& height , unsigned int& channels );
+		static bool GetInfo( std::string fileName , unsigned int& width , unsigned int& height , unsigned int& channels , unsigned int &bitDepth );
+	protected:
+		FILE* _fp;
+		struct jpeg_decompress_struct _cInfo;
+		struct my_error_mgr _jErr;
+		unsigned int _currentRow;
+	};
 
-struct JPEGWriter : public ImageWriter< 8 >
-{
-	JPEGWriter( const char* fileName , unsigned int width , unsigned int height , unsigned int channels , unsigned int quality=100 );
-	~JPEGWriter( void );
-	unsigned int nextRow( const unsigned char* row );
-	unsigned int nextRows( const unsigned char* rows , unsigned int rowNum );
-protected:
-	FILE* _fp;
-	struct jpeg_compress_struct _cInfo;
-	struct my_error_mgr _jErr;
-	unsigned int _currentRow;
-};
+	struct JPEGWriter : public ImageWriter< 8 >
+	{
+		JPEGWriter( std::string fileName , unsigned int width , unsigned int height , unsigned int channels , unsigned int quality=100 );
+		~JPEGWriter( void );
+		unsigned int nextRow( const unsigned char* row );
+		unsigned int nextRows( const unsigned char* rows , unsigned int rowNum );
+	protected:
+		FILE* _fp;
+		struct jpeg_compress_struct _cInfo;
+		struct my_error_mgr _jErr;
+		unsigned int _currentRow;
+	};
 
 #include "JPEG.inl"
+}
 #endif //JPEG_INCLUDED

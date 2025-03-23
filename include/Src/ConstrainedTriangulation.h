@@ -32,62 +32,64 @@ DAMAGE.
 
 #include "Triangle.h"
 
-template< typename GeometryReal >
-void TriangulatePolygon( const std::vector< Point2D< GeometryReal > > &vertices , std::vector< TriangleIndex > &outputTriangles )
+namespace MishaK
 {
+	template< typename GeometryReal >
+	void TriangulatePolygon( const std::vector< Point2D< GeometryReal > > &vertices , std::vector< SimplexIndex< 2 > > &outputTriangles )
+	{
+		struct JonathanShewchuk::triangulateio< GeometryReal > in, out;
 
-	struct triangulateio< GeometryReal > in, out;
+		/* Define input points. */
 
-	/* Define input points. */
+		in.numberofpoints = (int)vertices.size();
 
-	in.numberofpoints = (int)vertices.size();
+		in.pointlist = (REAL *)malloc(in.numberofpoints * 2 * sizeof(REAL));
+		in.pointmarkerlist = (int *)malloc(in.numberofpoints * sizeof(int));
+		for (int i = 0; i < in.numberofpoints; i++) {
+			in.pointlist[2 * i] = vertices[i][0];
+			in.pointlist[2 * i + 1] = vertices[i][1];
+			in.pointmarkerlist[i] = 1; //Check boundary markers documentation
+		}
 
-	in.pointlist = (REAL *)malloc(in.numberofpoints * 2 * sizeof(REAL));
-	in.pointmarkerlist = (int *)malloc(in.numberofpoints * sizeof(int));
-	for (int i = 0; i < in.numberofpoints; i++) {
-		in.pointlist[2 * i] = vertices[i][0];
-		in.pointlist[2 * i + 1] = vertices[i][1];
-		in.pointmarkerlist[i] = 1; //Check boundary markers documentation
+		in.numberofsegments = (int)vertices.size();
+		in.segmentlist = (int *)malloc(in.numberofsegments * 2 * sizeof(int));
+		in.segmentmarkerlist = (int *)malloc(in.numberofsegments * sizeof(int));
+		for (int i = 0; i < in.numberofsegments; i++) {
+			in.segmentlist[2 * i] = i + 1;
+			in.segmentlist[2 * i + 1] = i < (in.numberofsegments - 1) ? (i + 2) : 1;
+			in.segmentmarkerlist[i] = 1;
+		}
+		in.numberofholes = 0;
+		in.numberofregions = 0;
+		in.numberofpointattributes = 0;
+
+		out.pointlist = (REAL *)NULL;
+		out.trianglelist = (int *)NULL;
+		out.segmentlist = (int *)NULL;
+		out.pointmarkerlist = (int *)NULL;
+		out.triangleattributelist = (REAL *)NULL;
+		out.segmentmarkerlist = (int *)NULL;
+		/* Refine the triangulation according to the attached */
+		/*   triangle area constraints.                       */
+
+		char triSwitches[] = "pQ";
+		triangulate( triSwitches , &in , &out , (struct JonathanShewchuk::triangulateio< GeometryReal > *) NULL );
+
+		outputTriangles.resize(out.numberoftriangles);
+		for (int i = 0; i < out.numberoftriangles; i++) outputTriangles[i] = SimplexIndex< 2 >(out.trianglelist[3 * i] - 1, out.trianglelist[3 * i + 1] - 1, out.trianglelist[3 * i + 2] - 1);
+
+		free(in.pointlist);
+		free(in.pointmarkerlist);
+		free(in.segmentlist);
+		free(in.segmentmarkerlist);
+
+
+		free(out.pointlist);
+		free(out.trianglelist);
+		free(out.segmentlist);
+		free(out.pointmarkerlist);
+		free(out.triangleattributelist);
+		free(out.segmentmarkerlist);
 	}
-
-	in.numberofsegments = (int)vertices.size();
-	in.segmentlist = (int *)malloc(in.numberofsegments * 2 * sizeof(int));
-	in.segmentmarkerlist = (int *)malloc(in.numberofsegments * sizeof(int));
-	for (int i = 0; i < in.numberofsegments; i++) {
-		in.segmentlist[2 * i] = i + 1;
-		in.segmentlist[2 * i + 1] = i < (in.numberofsegments - 1) ? (i + 2) : 1;
-		in.segmentmarkerlist[i] = 1;
-	}
-	in.numberofholes = 0;
-	in.numberofregions = 0;
-	in.numberofpointattributes = 0;
-
-	out.pointlist = (REAL *)NULL;
-	out.trianglelist = (int *)NULL;
-	out.segmentlist = (int *)NULL;
-	out.pointmarkerlist = (int *)NULL;
-	out.triangleattributelist = (REAL *)NULL;
-	out.segmentmarkerlist = (int *)NULL;
-	/* Refine the triangulation according to the attached */
-	/*   triangle area constraints.                       */
-
-	triangulate( "pQ" , &in , &out , (struct triangulateio< GeometryReal > *) NULL );
-
-	outputTriangles.resize(out.numberoftriangles);
-	for (int i = 0; i < out.numberoftriangles; i++) outputTriangles[i] = TriangleIndex(out.trianglelist[3 * i] - 1, out.trianglelist[3 * i + 1] - 1, out.trianglelist[3 * i + 2] - 1);
-
-	free(in.pointlist);
-	free(in.pointmarkerlist);
-	free(in.segmentlist);
-	free(in.segmentmarkerlist);
-
-
-	free(out.pointlist);
-	free(out.trianglelist);
-	free(out.segmentlist);
-	free(out.pointmarkerlist);
-	free(out.triangleattributelist);
-	free(out.segmentmarkerlist);
 }
-
 #endif //CONSTRAINED_TRIANGULATION_INCLUDED

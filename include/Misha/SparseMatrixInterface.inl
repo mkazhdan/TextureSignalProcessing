@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2010, Michael Kazhdan
+Copyright (c) 2023, Michael Kazhdan
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -25,8 +25,6 @@ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING 
 ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
 DAMAGE.
 */
-
-#include "Misha/MultiThreading.h"
 
 template< class T , class const_iterator > size_t SparseMatrixInterface< T , const_iterator >::Entries( void ) const
 {
@@ -104,7 +102,11 @@ void SparseMatrixInterface< T , const_iterator >::Multiply( ConstPointer( T2 ) I
 				memset( &temp , 0 , sizeof(T2) );
 				ConstPointer( T2 ) _in = in;
 				const_iterator e = end( i );
-				for( const_iterator iter = begin( i ) ; iter!=e ; iter++ ) temp += _in[ iter->N ] * (T2Real)iter->Value;
+#if 1
+				for( const_iterator iter = begin( i ) ; iter!=e ; iter++ ) temp += _in[ iter->N ] * static_cast< T2Real >( iter->Value );
+#else
+				for( const_iterator iter = begin( i ) ; iter!=e ; iter++ ) temp += (T2)( _in[ iter->N ] * iter->Value );
+#endif
 				if( multiplyFlag & MULTIPLY_NEGATE ) temp = -temp;
 				if( multiplyFlag & MULTIPLY_ADD ) Out[i] += temp;
 				else                              Out[i]  = temp;
@@ -125,7 +127,7 @@ void SparseMatrixInterface< T , const_iterator >::MultiplyScaled( T scale , Cons
 				memset( &temp , 0 , sizeof(T2) );
 				ConstPointer( T2 ) _in = in;
 				const_iterator e = end( i );
-				for( const_iterator iter = begin( i ) ; iter!=e ; iter++ ) temp += _in[ iter->N ] * (T2Real)iter->Value;
+				for( const_iterator iter = begin( i ) ; iter!=e ; iter++ ) temp += _in[ iter->N ] * static_cast< T2Real >( iter->Value );
 				temp *= scale;
 				if( multiplyFlag & MULTIPLY_NEGATE ) temp = -temp;
 				if( multiplyFlag & MULTIPLY_ADD ) Out[i] += temp;
@@ -140,7 +142,7 @@ void SparseMatrixInterface< T , const_iterator >::SetDiagonal( Pointer( T2 ) dia
 {
 	ThreadPool::ParallelFor
 		(
-			0 , Rows() , 
+			0 , Rows() ,
 			[&]( unsigned int , size_t i )
 			{
 				diagonal[i] = (T2)0;
@@ -156,6 +158,89 @@ void SparseMatrixInterface< T , const_iterator >::JacobiIteration( ConstPointer(
 	Multiply( x , Mx );
 	ThreadPool::ParallelFor( 0 , Rows() , [&]( unsigned int , size_t i ){ x[i] += ( b[i] - Mx[i] ) * sor / diagonal[i]; } );
 }
+#if 1
+template< class T , class const_iterator >
+template< class T2 , bool StripDiagonal >
+void SparseMatrixInterface< T , const_iterator >::GSIteration( ConstPointer( T2 ) diagonal , ConstPointer( T2 ) b , Pointer( T2 ) x , bool forward ) const
+{
+	if( StripDiagonal )
+	{
+#define ITERATE( j )                                                                                    \
+		{                                                                                               \
+			T2 _b = b[j];                                                                               \
+			const_iterator e = end( j );                                                                \
+			for( const_iterator iter = begin( j ) ; iter!=e ; iter++ ) _b -= x[iter->N] * iter->Value;  \
+			x[j] = _b / diagonal[j];                                                                    \
+		}
+
+		if( forward ) for( int j=0 ; j<int( Rows() ) ; j++ ){ ITERATE( j ); }
+		else          for( int j=int( Rows() )-1 ; j>=0 ; j-- ){ ITERATE( j ); }
+#undef ITERATE
+	}
+	else
+	{
+#define ITERATE( j )                                                                                    \
+		{                                                                                               \
+			T2 _b = b[j];                                                                               \
+			const_iterator e = end( j );                                                                \
+			for( const_iterator iter = begin( j ) ; iter!=e ; iter++ ) _b -= x[iter->N] * iter->Value;  \
+			x[j] += _b / diagonal[j];                                                                   \
+		}
+
+		if( forward ) for( int j=0 ; j<int( Rows() ) ; j++ ){ ITERATE( j ); }
+		else          for( int j=int( Rows() )-1 ; j>=0 ; j-- ){ ITERATE( j ); }
+#undef ITERATE
+	}
+}
+template< class T , class const_iterator >
+template< class T2 , bool StripDiagonal >
+void SparseMatrixInterface< T , const_iterator >::GSIteration( std::vector< std::vector< int > >& multiColorIndices , ConstPointer( T2 ) diagonal , ConstPointer( T2 ) b , Pointer( T2 ) x , bool forward ) const
+{
+#ifdef _WIN32
+#define SetOMPParallel __pragma( omp parallel for )
+#else // !_WIN32
+#define SetOMPParallel _Pragma( "omp parallel for" )
+#endif // _WIN32
+
+	if( StripDiagonal )
+	{
+#define ITERATE( indices )                                                                                   \
+		{                                                                                                    \
+SetOMPParallel                                                                                               \
+			for( int k=0 ; k<int( indices.size() ) ; k++ )                                                   \
+			{                                                                                                \
+				int jj = indices[k];                                                                         \
+				T2 _b = b[jj];                                                                               \
+				const_iterator e = end( jj );                                                                \
+				for( const_iterator iter = begin( jj ) ; iter!=e ; iter++ ) _b -= x[iter->N] * iter->Value;  \
+				x[jj] = _b / diagonal[jj];                                                                   \
+			}                                                                                                \
+		}
+		if( forward ) for( int j=0 ; j<multiColorIndices.size()  ; j++ ){ ITERATE( multiColorIndices[j] ); }
+		else for( int j=int( multiColorIndices.size() )-1 ; j>=0 ; j-- ){ ITERATE( multiColorIndices[j] ); }
+#undef ITERATE
+	}
+	else
+	{
+#define ITERATE( indices )                                                                                   \
+		{                                                                                                    \
+SetOMPParallel                                                                                               \
+			for( int k=0 ; k<int( indices.size() ) ; k++ )                                                   \
+			{                                                                                                \
+				int jj = indices[k];                                                                         \
+				T2 _b = b[jj];                                                                               \
+				const_iterator e = end( jj );                                                                \
+				for( const_iterator iter = begin( jj ) ; iter!=e ; iter++ ) _b -= x[iter->N] * iter->Value;  \
+				x[jj] += _b / diagonal[jj];                                                                  \
+			}                                                                                                \
+		}
+		if( forward ) for( int j=0 ; j<multiColorIndices.size()  ; j++ ){ ITERATE( multiColorIndices[j] ); }
+		else for( int j=int( multiColorIndices.size() )-1 ; j>=0 ; j-- ){ ITERATE( multiColorIndices[j] ); }
+#undef ITERATE
+	}
+#undef SetOMPParallel
+}
+#else
 template< class T , class const_iterator >
 template< class T2 >
 void SparseMatrixInterface< T , const_iterator >::GSIteration( ConstPointer( T2 ) diagonal , ConstPointer( T2 ) b , Pointer( T2 ) x , bool forward ) const
@@ -198,6 +283,7 @@ SetOMPParallel                                                                  
 #undef ITERATE
 #undef SetOMPParallel
 }
+#endif
 template< class SPDOperator , class T > int SolveCG( const SPDOperator& M , ConstPointer( T ) b , int iters , Pointer( T ) x , T eps , bool solveNormal )
 {
 	eps *= eps;
@@ -221,7 +307,7 @@ template< class SPDOperator , class T > int SolveCG( const SPDOperator& M , Cons
 	{
 		M.Multiply( ( ConstPointer( T ) )x , r );
 		std::vector< double > _delta_news( ThreadPool::NumThreads() , 0 );
-		ThreadPool::ParallelFor( 0 , dim , [&]( unsigned int t , size_t i ){ d[i] = r[i] = b[i] - r[i] , _delta_news[t] += r[i] * r[i]; } );
+		ThreadPool::ParallelFor( 0 , dim , [&]( unsigned int t , size_t i ){ d[i] = r[i] = b[i] - r[i] ; _delta_news[t] += r[i] * r[i]; } );
 		for( unsigned int t=0 ; t<_delta_news.size() ; t++ ) delta_new += _delta_news[t];
 	}
 	delta_0 = delta_new;
@@ -240,7 +326,7 @@ template< class SPDOperator , class T > int SolveCG( const SPDOperator& M , Cons
 		else              M.Multiply( ( ConstPointer( T ) )d , q );
         double dDotQ = 0;
 		std::vector< double > _dDotQs( ThreadPool::NumThreads() , 0 );
-		ThreadPool::ParallelFor( 0 , dim , [&]( unsigned int t , size_t i ){ _dDotQs[t] += d[i] * q[i]; } );
+		ThreadPool::ParallelFor( 0 , dim , [&]( unsigned int t , size_t i ){ _dDotQs[t] += _dDotQs[t];} );
 		for( unsigned int t=0 ; t<_dDotQs.size() ; t++ ) dDotQ += _dDotQs[t];
 		T alpha = T( delta_new / dDotQ );
 		double delta_old = delta_new;
@@ -251,18 +337,18 @@ template< class SPDOperator , class T > int SolveCG( const SPDOperator& M , Cons
 			if( solveNormal ) M.Multiply( ( ConstPointer( T ) )x , temp ) , M.Multiply( ( ConstPointer( T ) )temp , r );
 			else              M.Multiply( ( ConstPointer( T ) )x , r );
 			std::vector< double > _delta_news( ThreadPool::NumThreads() , 0 );
-			ThreadPool::ParallelFor( 0 , dim , [&]( unsigned int t , size_t i ){ r[i] = b[i] - r[i] ; _delta_news[t] += r[i] * r[i] , x[i] += d[i] * alpha; } );
+			ThreadPool::ParallelFor( 0 , dim , [&]( unsigned int t , size_t i ){ r[i] = b[i] - r[i] ; _delta_news[t] += r[i] * r[i] ; x[i] += d[i] * alpha; } );
 			for( unsigned int t=0 ; t<_delta_news.size() ; t++ ) delta_new += _delta_news[t];
 		}
 		else
 		{
 			std::vector< double > _delta_news( ThreadPool::NumThreads() , 0 );
-			ThreadPool::ParallelFor( 0 , dim , [&]( unsigned int t , size_t i ){ r[i] -= q[i] * alpha ; _delta_news[t] += r[i] * r[i] , x[i] += d[i] * alpha; } );
+			ThreadPool::ParallelFor( 0 , dim , [&]( unsigned int t , size_t i ){ r[i] -= q[i] * alpha ; _delta_news[t] += r[i] * r[i] ;  x[i] += d[i] * alpha; } );
 			for( unsigned int t=0 ; t<_delta_news.size() ; t++ ) delta_new += _delta_news[t];
 		}
 
 		T beta = T( delta_new / delta_old );
-		ThreadPool::ParallelFor( 0 , dim , [&]( unsigned int , size_t i ){  d[i] = r[i] + d[i] * beta; } );
+		ThreadPool::ParallelFor( 0 , dim , [&]( unsigned int , size_t i ){ d[i] = r[i] + d[i] * beta; } );
 	}
 	FreePointer( r );
 	FreePointer( d );

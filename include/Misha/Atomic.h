@@ -39,8 +39,33 @@ DAMAGE.
 #endif // _WIN32 || _WIN64
 #include <mutex>
 
-namespace Misha
+namespace MishaK
 {
+	template< typename Value >
+	Value SetAtomic( volatile Value & value , Value newValue );
+
+	template< typename Value >
+	bool SetAtomic( volatile Value & value , Value newValue , Value oldValue );
+
+	template< typename Value >
+	void AddAtomic( volatile Value & a , Value b );
+
+	template< typename Value >
+	Value ReadAtomic( const volatile Value & value );
+
+	template< typename Value >
+	struct Atomic
+	{
+		static void Add( volatile Value &a , const Value &b );
+		static Value Set( volatile Value & value , Value newValue );
+		static bool Set( volatile Value & value , Value newValue , Value oldValue );
+		static Value Read( const volatile Value & value );
+	};
+
+	////////////////////
+	// Implementation //
+	////////////////////
+
 	template< typename Value > Value ReadAtomic8_( const volatile Value * value );
 	template< typename Value > Value ReadAtomic32_( const volatile Value * value );
 	template< typename Value > Value ReadAtomic64_( const volatile Value * value );
@@ -65,7 +90,7 @@ namespace Misha
 		else if constexpr( sizeof(Value)==8 ) return SetAtomic64_( &value , newValue );
 		else
 		{
-			WARN_ONCE( "should not use this function: " , typeid(Value).name() , " , " , sizeof(Value) );
+			MK_WARN_ONCE( "should not use this function: " , typeid(Value).name() , " , " , sizeof(Value) );
 			static std::mutex setAtomicMutex;
 			std::lock_guard< std::mutex > lock( setAtomicMutex );
 			Value oldValue = *(Value*)&value;
@@ -82,7 +107,7 @@ namespace Misha
 		else if constexpr( sizeof(Value)==8 ) return SetAtomic64_( &value , newValue , oldValue );
 		else
 		{
-			WARN_ONCE( "should not use this function: " , typeid(Value).name() , " , " , sizeof(Value) );
+			MK_WARN_ONCE( "should not use this function: " , typeid(Value).name() , " , " , sizeof(Value) );
 			static std::mutex setAtomicMutex;
 			std::lock_guard< std::mutex > lock( setAtomicMutex );
 			if( value==oldValue ){ value = newValue ; return true; }
@@ -98,7 +123,7 @@ namespace Misha
 		else if constexpr( sizeof(Value)==8 ) return AddAtomic64_( &a , b );
 		else
 		{
-			WARN_ONCE( "should not use this function: " , typeid(Value).name() , " , " , sizeof(Value) );
+			MK_WARN_ONCE( "should not use this function: " , typeid(Value).name() , " , " , sizeof(Value) );
 			static std::mutex addAtomicMutex;
 			std::lock_guard< std::mutex > lock( addAtomicMutex );
 			*(Value*)&a += b;
@@ -113,7 +138,7 @@ namespace Misha
 		else if constexpr( sizeof(Value)==8 ) return ReadAtomic64_( &value );
 		else
 		{
-			WARN_ONCE( "should not use this function: " , typeid(Value).name() , " , " , sizeof(Value) );
+			MK_WARN_ONCE( "should not use this function: " , typeid(Value).name() , " , " , sizeof(Value) );
 			static std::mutex readAtomicMutex;
 			std::lock_guard< std::mutex > lock( readAtomicMutex );
 			return *(Value*)&value;
@@ -121,59 +146,60 @@ namespace Misha
 	}
 
 	template< typename Value >
-	struct Atomic
+	void Atomic< Value >::Add( volatile Value &a , const Value &b )
 	{
-		static void Add( volatile Value &a , const Value &b )
+		if constexpr( std::is_trivial_v< Value > ) AddAtomic( a , b );
+		else
 		{
-			if constexpr( std::is_pod_v< Value > ) AddAtomic( a , b );
-			else
-			{
-				WARN_ONCE( "should not use this function: " , typeid(Value).name() );
-				static std::mutex addAtomicMutex;
-				std::lock_guard< std::mutex > lock( addAtomicMutex );
-				*(Value*)&a += b;
-			}
+			MK_WARN_ONCE( "should not use this function: " , typeid(Value).name() );
+			static std::mutex addAtomicMutex;
+			std::lock_guard< std::mutex > lock( addAtomicMutex );
+			*(Value*)&a += b;
 		}
+	}
 
-		static Value Set( volatile Value & value , Value newValue )
+	template< typename Value >
+	Value Atomic< Value >::Set( volatile Value & value , Value newValue )
+	{
+		if constexpr( std::is_trivial_v< Value > ) return SetAtomic( value , newValue );
+		else
 		{
-			if constexpr( std::is_pod_v< Value > ) return SetAtomic( value , newValue );
-			else
-			{
-				WARN_ONCE( "should not use this function: " , typeid(Value).name() );
-				static std::mutex setAtomicMutex;
-				std::lock_guard< std::mutex > lock( setAtomicMutex );
-				Value oldValue = *(Value*)&value;
-				*(Value*)&value = newValue;
-				return oldValue;
-			}
+			MK_WARN_ONCE( "should not use this function: " , typeid(Value).name() );
+			static std::mutex setAtomicMutex;
+			std::lock_guard< std::mutex > lock( setAtomicMutex );
+			Value oldValue = *(Value*)&value;
+			*(Value*)&value = newValue;
+			return oldValue;
 		}
+	}
 
-		static bool Set( volatile Value & value , Value newValue , Value oldValue )
+	template< typename Value >
+	bool Atomic< Value >::Set( volatile Value & value , Value newValue , Value oldValue )
+	{
+		if constexpr( std::is_trivial_v< Value > ) return SetAtomic( value , newValue , oldValue );
+		else
 		{
-			if constexpr( std::is_pod_v< Value > ) return SetAtomic( value , newValue , oldValue );
-			else
-			{
-				WARN_ONCE( "should not use this function: " , typeid(Value).name() , " , " , sizeof(Value) );
-				static std::mutex setAtomicMutex;
-				std::lock_guard< std::mutex > lock( setAtomicMutex );
-				if( value==oldValue ){ value = newValue ; return true; }
-				else return false;
-			}
+			MK_WARN_ONCE( "should not use this function: " , typeid(Value).name() , " , " , sizeof(Value) );
+			static std::mutex setAtomicMutex;
+			std::lock_guard< std::mutex > lock( setAtomicMutex );
+			if( value==oldValue ){ value = newValue ; return true; }
+			else return false;
 		}
+	}
 
-		static Value Read( const volatile Value & value )
+	template< typename Value >
+	Value Atomic< Value >::Read( const volatile Value & value )
+	{
+		if constexpr( std::is_trivial_v< Value > ) return ReadAtomic( value );
+		else
 		{
-			if constexpr( std::is_pod_v< Value > ) return ReadAtomic( value );
-			else
-			{
-				WARN_ONCE( "should not use this function: " , typeid(Value).name() , " , " , sizeof(Value) );
-				static std::mutex readAtomicMutex;
-				std::lock_guard< std::mutex > lock( readAtomicMutex );
-				return *(Value*)&value;
-			}
+			MK_WARN_ONCE( "should not use this function: " , typeid(Value).name() , " , " , sizeof(Value) );
+			static std::mutex readAtomicMutex;
+			std::lock_guard< std::mutex > lock( readAtomicMutex );
+			return *(Value*)&value;
 		}
-	};
+	}
+
 
 	///////////////////////////////////////////////
 	///////////////////////////////////////////////
@@ -219,7 +245,7 @@ namespace Misha
 	{
 #if defined( _WIN32 ) || defined( _WIN64 )
 		char *_newValue = (char *)&newValue;
-		char oldValue = InterlockedExchange( (char*)value , *_newValue );
+		char oldValue = InterlockedExchange8( (char*)value , *_newValue );
 #else // !_WIN32 && !_WIN64
 		uint8_t *_newValue = (uint8_t *)&newValue;
 		uint8_t oldValue = __atomic_exchange_n( (uint8_t *)value , *_newValue , __ATOMIC_SEQ_CST );

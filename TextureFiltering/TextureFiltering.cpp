@@ -38,7 +38,7 @@ DAMAGE.
 #include <Src/Basis.h>
 #include <Src/Solver.h>
 #include <Src/MassAndStiffness.h>
-#include <Src/InteriorTexelToCellLines.inl>
+#include <Src/InteriorTexelToCellLines.h>
 #include <Src/Padding.h>
 #ifdef NO_OPEN_GL_VISUALIZATION
 #else // !NO_OPEN_GL_VISUALIZATION
@@ -52,44 +52,46 @@ const std::string fragment_shader_src =
 ;
 #endif // NO_OPEN_GL_VISUALIZATION
 
-cmdLineParameterArray< char* , 2 > Input( "in" );
-cmdLineParameter< char * > InputLowFrequency( "inLow" );
-cmdLineParameter< char* > Output( "out" );
+using namespace MishaK;
+
+CmdLineParameterArray< std::string , 2 > Input( "in" );
+CmdLineParameter< std::string > InputLowFrequency( "inLow" );
+CmdLineParameter< std::string > Output( "out" );
 #ifdef NO_OPEN_GL_VISUALIZATION
 #else // !NO_OPEN_GL_VISUALIZATION
-cmdLineParameter< char* > Snapshot( "snapshot" );
+CmdLineParameter< std::string > Snapshot( "snapshot" );
 #endif // NO_OPEN_GL_VISUALIZATION
-cmdLineParameter< int   > OutputVCycles( "outVCycles" , 6 );
-cmdLineParameter< float > InterpolationWeight( "interpolation" , 1e3 );
-cmdLineParameter< float > GradientModulation( "modulation" , 1.0 );
+CmdLineParameter< int   > OutputVCycles( "outVCycles" , 6 );
+CmdLineParameter< float > InterpolationWeight( "interpolation" , 1e3 );
+CmdLineParameter< float > GradientModulation( "modulation" , 1.0 );
 #ifdef NO_OPEN_GL_VISUALIZATION
 #else // !NO_OPEN_GL_VISUALIZATION
-cmdLineParameter< int   > DisplayMode( "display" , FOUR_REGION_DISPLAY );
+CmdLineParameter< int   > DisplayMode( "display" , FOUR_REGION_DISPLAY );
 #endif // 
-cmdLineParameter< int   > Levels("levels", 4);
-cmdLineParameter< int   > MatrixQuadrature( "mQuadrature" , 6 );
+CmdLineParameter< int   > Levels("levels", 4);
+CmdLineParameter< int   > MatrixQuadrature( "mQuadrature" , 6 );
 
-cmdLineParameter< int   > MultigridBlockHeight ( "mBlockH" , 16 );
-cmdLineParameter< int   > MultigridBlockWidth  ( "mBlockW" , 128 );
-cmdLineParameter< int   > MultigridPaddedHeight( "mPadH" , 0 );
-cmdLineParameter< int   > MultigridPaddedWidth ( "mPadW" , 2 );
+CmdLineParameter< int   > MultigridBlockHeight ( "mBlockH" , 16 );
+CmdLineParameter< int   > MultigridBlockWidth  ( "mBlockW" , 128 );
+CmdLineParameter< int   > MultigridPaddedHeight( "mPadH" , 0 );
+CmdLineParameter< int   > MultigridPaddedWidth ( "mPadW" , 2 );
 
-cmdLineParameter< int   > RandomJitter( "jitter" , 0 );
-cmdLineReadable Paused( "paused" );
-cmdLineParameter< char* > CameraConfig( "camera" );
-cmdLineReadable UseDirectSolver( "useDirectSolver" );
-cmdLineReadable Verbose( "verbose" );
-cmdLineReadable NoHelp( "noHelp" );
-cmdLineReadable DetailVerbose( "detail" );
-cmdLineReadable Double( "double" );
-cmdLineReadable Seamless( "seamless" );
-cmdLineReadable Serial( "serial" );
-cmdLineReadable ColorAsNormal( "colorAsNormal" );
+CmdLineParameter< int   > RandomJitter( "jitter" , 0 );
+CmdLineReadable Paused( "paused" );
+CmdLineParameter< std::string > CameraConfig( "camera" );
+CmdLineReadable UseDirectSolver( "useDirectSolver" );
+CmdLineReadable Verbose( "verbose" );
+CmdLineReadable NoHelp( "noHelp" );
+CmdLineReadable DetailVerbose( "detail" );
+CmdLineReadable Double( "double" );
+CmdLineReadable Seamless( "seamless" );
+CmdLineReadable Serial( "serial" );
+CmdLineReadable ColorAsNormal( "colorAsNormal" );
 #ifdef NO_OPEN_GL_VISUALIZATION
 #else // !NO_OPEN_GL_VISUALIZATION
-cmdLineReadable Nearest( "nearest" );
+CmdLineReadable Nearest( "nearest" );
 #endif // NO_OPEN_GL_VISUALIZATION
-cmdLineReadable* params[] =
+CmdLineReadable* params[] =
 {
 	&Input , &Output , &InterpolationWeight , &GradientModulation , &CameraConfig , &Levels , &UseDirectSolver , &Serial  , &Verbose ,
 #ifdef NO_OPEN_GL_VISUALIZATION
@@ -120,46 +122,46 @@ void ShowUsage( const char* ex )
 {
 	printf( "Usage %s:\n" , ex );
 
-	printf( "\t --%s <input mesh and texture>\n" , Input.name );
-	printf( "\t[--%s <input low-frequency texture>\n" , InputLowFrequency.name );
+	printf( "\t --%s <input mesh and texture>\n" , Input.name.c_str() );
+	printf( "\t[--%s <input low-frequency texture>\n" , InputLowFrequency.name.c_str() );
 #ifdef NO_OPEN_GL_VISUALIZATION
-	printf( "\t --%s <output texture>\n" , Output.name );
+	printf( "\t --%s <output texture>\n" , Output.name.c_str() );
 #else // !NO_OPEN_GL_VISUALIZATION
-	printf( "\t[--%s <output texture>]\n" , Output.name );
-	printf( "\t[--%s <snapshot name>]\n" , Snapshot.name );
+	printf( "\t[--%s <output texture>]\n" , Output.name.c_str() );
+	printf( "\t[--%s <snapshot name>]\n" , Snapshot.name.c_str() );
 #endif // NO_OPEN_GL_VISUALIZATION
-	printf( "\t[--%s <output v-cycles>=%d]\n" , OutputVCycles.name , OutputVCycles.value );
-	printf( "\t[--%s <interpolation weight>=%f]\n" , InterpolationWeight.name , InterpolationWeight.value );
-	printf( "\t[--%s <gradient modulation>=%f]\n" , GradientModulation.name , GradientModulation.value );
-	printf( "\t[--%s <system matrix quadrature points per triangle>=%d]\n" , MatrixQuadrature.name , MatrixQuadrature.value );
-	printf( "\t[--%s]\n" , Seamless.name );
-	printf( "\t[--%s]\n" , UseDirectSolver.name );
-	printf( "\t[--%s <jittering seed>]\n" , RandomJitter.name );
-	printf( "\t[--%s]\n" , ColorAsNormal.name );
+	printf( "\t[--%s <output v-cycles>=%d]\n" , OutputVCycles.name.c_str() , OutputVCycles.value );
+	printf( "\t[--%s <interpolation weight>=%f]\n" , InterpolationWeight.name.c_str() , InterpolationWeight.value );
+	printf( "\t[--%s <gradient modulation>=%f]\n" , GradientModulation.name.c_str() , GradientModulation.value );
+	printf( "\t[--%s <system matrix quadrature points per triangle>=%d]\n" , MatrixQuadrature.name.c_str() , MatrixQuadrature.value );
+	printf( "\t[--%s]\n" , Seamless.name.c_str() );
+	printf( "\t[--%s]\n" , UseDirectSolver.name.c_str() );
+	printf( "\t[--%s <jittering seed>]\n" , RandomJitter.name.c_str() );
+	printf( "\t[--%s]\n" , ColorAsNormal.name.c_str() );
 #ifdef NO_OPEN_GL_VISUALIZATION
 #else // !NO_OPEN_GL_VISUALIZATION
-	printf( "\t[--%s]\n" , Nearest.name );
+	printf( "\t[--%s]\n" , Nearest.name.c_str() );
 #endif // NO_OPEN_GL_VISUALIZATION
-	printf( "\t[--%s]\n" , Verbose.name );
+	printf( "\t[--%s]\n" , Verbose.name.c_str() );
 
-	printf( "\t[--%s <camera configuration file>]\n" , CameraConfig.name );
-	printf( "\t[--%s <hierarchy levels>=%d]\n" , Levels.name , Levels.value );
-	printf( "\t[--%s]\n" , DetailVerbose.name );
+	printf( "\t[--%s <camera configuration file>]\n" , CameraConfig.name.c_str() );
+	printf( "\t[--%s <hierarchy levels>=%d]\n" , Levels.name.c_str() , Levels.value );
+	printf( "\t[--%s]\n" , DetailVerbose.name.c_str() );
 #ifdef NO_OPEN_GL_VISUALIZATION
 #else // !NO_OPEN_GL_VISUALIZATION
-	printf( "\t[--%s <display mode>=%d]\n" , DisplayMode.name , DisplayMode.value );
+	printf( "\t[--%s <display mode>=%d]\n" , DisplayMode.name.c_str() , DisplayMode.value );
 	printf( "\t\t%d] One Region \n"   , ONE_REGION_DISPLAY   );
 	printf( "\t\t%d] Two Region \n"   , TWO_REGION_DISPLAY   );
 	printf( "\t\t%d] Three Region \n" , THREE_REGION_DISPLAY );
 	printf( "\t\t%d] Four Region \n"  , FOUR_REGION_DISPLAY  );
 #endif // NO_OPEN_GL_VISUALIZATION
-	printf( "\t[--%s <multigrid block width>=%d]\n"    , MultigridBlockWidth.name    , MultigridBlockWidth.value    );
-	printf( "\t[--%s <multigrid block height>=%d]\n"   , MultigridBlockHeight.name   , MultigridBlockHeight.value   );
-	printf( "\t[--%s <multigrid padded width>=%d]\n"   , MultigridPaddedWidth.name   , MultigridPaddedWidth.value   );
-	printf( "\t[--%s <multigrid padded height>=%d]\n"  , MultigridPaddedHeight.name  , MultigridPaddedHeight.value  );
-	printf( "\t[--%s]\n" , Serial.name );
-	printf( "\t[--%s]\n" , NoHelp.name );
-	printf( "\t[--%s]\n" , Paused.name );
+	printf( "\t[--%s <multigrid block width>=%d]\n"    , MultigridBlockWidth.name.c_str()    , MultigridBlockWidth.value    );
+	printf( "\t[--%s <multigrid block height>=%d]\n"   , MultigridBlockHeight.name.c_str()   , MultigridBlockHeight.value   );
+	printf( "\t[--%s <multigrid padded width>=%d]\n"   , MultigridPaddedWidth.name.c_str()   , MultigridPaddedWidth.value   );
+	printf( "\t[--%s <multigrid padded height>=%d]\n"  , MultigridPaddedHeight.name.c_str()  , MultigridPaddedHeight.value  );
+	printf( "\t[--%s]\n" , Serial.name.c_str() );
+	printf( "\t[--%s]\n" , NoHelp.name.c_str() );
+	printf( "\t[--%s]\n" , Paused.name.c_str() );
 }
 
 enum
@@ -229,7 +231,7 @@ public:
 
 #if defined( USE_CHOLMOD )
 	typedef CholmodCholeskySolver< Real , 3 > DirectSolver;
-#elif defined( USE_EIGEN_SIMPLICIAL )
+#elif defined( USE_EIGEN )
 	typedef EigenCholeskySolver< Real , 3 > DirectSolver;
 #elif defined( USE_EIGEN_PARDISO )
 	typedef EigenPardisoSolver< Real , 3 > DirectSolver;
@@ -364,6 +366,23 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth > Syst
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > SystemCoefficients< Real >											TextureFilter< PreReal , Real , TextureBitDepth >::stiffnessCoefficients;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > int																	TextureFilter< PreReal , Real , TextureBitDepth >::updateCount = -1;
 
+template< typename Real >
+Image< Point3D< Real > > ColorToNormal( const Image< Point3D< Real > > &color )
+{
+	Image< Point3D< Real > > normal( color.res() );
+	for( unsigned int y=0 ; y<(unsigned int)color.res(1) ; y++ ) for( unsigned int x=0 ; x<(unsigned int)color.res(0) ; x++ )
+		normal(x,y) = color(x,y) * static_cast< Real >( 2 ) - Point3D< Real >(1.f,1.f,1.f);
+	return normal;
+}
+
+template< typename Real >
+Image< Point3D< Real > > NormalToColor( const Image< Point3D< Real > > &normal )
+{
+	Image< Point3D< Real > > color( normal.res() );
+	for( unsigned int y=0 ; y<(unsigned int)normal.res(1) ; y++ ) for( unsigned int x=0 ; x<(unsigned int)normal.res(0) ; x++ )
+		color(x,y) = ( normal(x,y) + Point3D< Real >( static_cast< Real >( 1. ) , static_cast< Real >( 1. ) , static_cast< Real >( 1. ) ) ) / static_cast< Real >( 2 );
+	return color;
+}
 
 #ifdef NO_OPEN_GL_VISUALIZATION
 #else // !NO_OPEN_GL_VISUALIZATION
@@ -400,19 +419,6 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::UpdateMaskTexture( void 
 		);
 
 	visualization.UpdateMaskTextureBuffer();
-}
-
-Image< Point3D< float > > ColorToNormal( const Image< Point3D< float > > &color )
-{
-	Image< Point3D< float > > normal( color.width() , color.height() );
-	for( unsigned int y=0 ; y<(unsigned int)color.height() ; y++ ) for( unsigned int x=0 ; x<(unsigned int)color.width() ; x++ ) normal(x,y) = color(x,y) * 2.f - Point3D< float >(1.f,1.f,1.f);
-	return normal;
-}
-Image< Point3D< float > > NormalToColor( const Image< Point3D< float > > &normal )
-{
-	Image< Point3D< float > > color( normal.width() , normal.height() );
-	for( unsigned int y=0 ; y<(unsigned int)normal.height() ; y++ ) for( unsigned int x=0 ; x<(unsigned int)normal.width() ; x++ ) color(x,y) = ( normal(x,y) + Point3D< float >(1.f,1.f,1.f) ) / 2.f;
-	return color;
 }
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth >
@@ -458,14 +464,13 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::WriteTexture( const char
 	Image< Point3D< Real > > outputTexture = filteredTexture;
 	padding.unpad( outputTexture );
 
-	char* ext = GetFileExtension( fileName );
-	if( !strcasecmp( ext , "normap" ) ) WriteBinaryImage( outputTexture , fileName );
+	std::string ext = ToLower( GetFileExtension( fileName ) );
+	if( ext==std::string( "normap" ) ) WriteBinaryImage( outputTexture , fileName );
 	else
 	{
-		if( ColorAsNormal ) outputTexture = NormalToColor( outputTexture );
-		outputTexture.template write< TextureBitDepth >( fileName );
+		if( ColorAsNormal.set ) outputTexture = NormalToColor( outputTexture );
+		WriteImage< TextureBitDepth >( outputTexture , fileName );
 	}
-	delete[] ext;
 }
 #else // !NO_OPEN_GL_VISUALIZATION
 template< typename PreReal , typename Real , unsigned int TextureBitDepth >
@@ -692,8 +697,8 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::ExportTextureCallBack( V
 	Image< Point3D< Real > > outputTexture = filteredTexture;
 	padding.unpad( outputTexture );
 
-	char* ext = GetFileExtension( prompt );
-	if( !strcasecmp( ext , "normap" ) ) WriteBinaryImage( outputTexture , prompt );
+	std::string ext = ToLower( GetFileExtension( prompt ) );
+	if( ext==std::string( "normap" ) ) WriteBinaryImage( outputTexture , prompt );
 	else
 	{
 		if( visualization.textureType==NORMAL_TEXTURE )
@@ -704,9 +709,8 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::ExportTextureCallBack( V
 				outputTexture[i] = outputTexture[i] * 0.5f + Point3D< Real >( (Real)0.5 , (Real)0.5 , (Real)0.5 );
 			}
 		}
-		outputTexture.template write< TextureBitDepth >( prompt );
+		WriteImage< 8 >( outputTexture , prompt );
 	}
-	delete[] ext;
 }
 
 template< typename PreReal , class Real , unsigned int TextureBitDepth >
@@ -800,7 +804,7 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::_InitializeSystem( std::
 		case 12: InitializeMassAndStiffness<12>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , true , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix ) ; break;
 		case 24: InitializeMassAndStiffness<24>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , true , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix ) ; break;
 		case 32: InitializeMassAndStiffness<32>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , true , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		default: THROW( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
+		default: MK_THROW( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
 		}
 	}
 	if( Verbose.set ) printf( "\tInitialized mass and stiffness: %.2f(s)\n" , timer.elapsed() );
@@ -957,8 +961,8 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::InitializeVisualization(
 	visualization.info.push_back( gradientModulationStr );
 	visualization.info.push_back( interpolationStr );
 
-	char *ext = GetFileExtension( Input.values[1] );
-	if( !strcasecmp( ext , "normap" ) || ColorAsNormal.set )
+	std::string ext = ToLower( GetFileExtension( Input.values[1] ) );
+	if( ext==std::string( "normap" ) || ColorAsNormal.set )
 	{
 		visualization.textureType = NORMAL_TEXTURE;
 		visualization.normalProgram = new GLSLProgram( vertex_shader_src , fragment_shader_src );
@@ -969,7 +973,6 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::InitializeVisualization(
 		visualization.normalProgram->setup();
 	}
 	else visualization.textureType = COLOR_TEXTURE;
-	delete[] ext;
 
 	visualization.UpdateVertexBuffer();
 	visualization.UpdateFaceBuffer();
@@ -998,34 +1001,32 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::Init( void )
 	gradientModulation = GradientModulation.value;
 
 
-	mesh.read( Input.values[0] , DetailVerbose.set );
+	mesh.read( Input.values[0].c_str() , DetailVerbose.set );
 	{
-		char *ext = GetFileExtension( Input.values[1] );
-		if( !strcasecmp( ext , "normap" ) ) ReadBinaryImage( highFrequencyTexture , Input.values[1] );
+		std::string ext = ToLower( GetFileExtension( Input.values[1] ) );
+		if( ext==std::string( "normap" ) ) ReadBinaryImage( highFrequencyTexture , Input.values[1] );
 		else
 		{
-			highFrequencyTexture.template read< TextureBitDepth >( Input.values[1] );
+			ReadImage< TextureBitDepth >( highFrequencyTexture , Input.values[1] );
 			if( ColorAsNormal.set ) highFrequencyTexture = ColorToNormal( highFrequencyTexture );
 		}
-		delete[] ext;
 	}
 	if( InputLowFrequency.set )
 	{
-		char *ext = GetFileExtension( InputLowFrequency.value );
-		if( !strcasecmp( ext , "normap" ) ) ReadBinaryImage( lowFrequencyTexture , InputLowFrequency.value );
+		std::string ext = ToLower( GetFileExtension( InputLowFrequency.value.c_str() ) );
+		if( ext==std::string( "normap" ) ) ReadBinaryImage( lowFrequencyTexture , InputLowFrequency.value );
 		else
 		{
-			lowFrequencyTexture.template read< TextureBitDepth >( InputLowFrequency.value );
+			ReadImage< TextureBitDepth >( lowFrequencyTexture , InputLowFrequency.value );
 			if( ColorAsNormal.set ) lowFrequencyTexture = ColorToNormal( lowFrequencyTexture );
 		}
-		delete[] ext;
 	}
 	else lowFrequencyTexture = highFrequencyTexture;
-	if( lowFrequencyTexture.width()!=highFrequencyTexture.width() || lowFrequencyTexture.height()!=highFrequencyTexture.height() )
-		ERROR_OUT( "Low/high texture resolutions don't match: " , lowFrequencyTexture.width() , " x " , lowFrequencyTexture.height() , " != " , highFrequencyTexture.width() , " x " , highFrequencyTexture.height() );
+	if( lowFrequencyTexture.res(0)!=highFrequencyTexture.res(0) || lowFrequencyTexture.res(1)!=highFrequencyTexture.res(1) )
+		MK_ERROR_OUT( "Low/high texture resolutions don't match: " , lowFrequencyTexture.res(0) , " x " , lowFrequencyTexture.res(1) , " != " , highFrequencyTexture.res(0) , " x " , highFrequencyTexture.res(1) );
 
-	textureWidth = highFrequencyTexture.width();
-	textureHeight = highFrequencyTexture.height();
+	textureWidth = highFrequencyTexture.res(0);
+	textureHeight = highFrequencyTexture.res(1);
 
 	// Define centroid and scale for visualization
 	{
@@ -1069,7 +1070,7 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::Init( void )
 
 	// Assign position to exterior nodes using barycentric-exponential map
 	{
-		FEM::RiemannianMesh< PreReal > rMesh( GetPointer( mesh.triangles ) , mesh.triangles.size() );
+		FEM::RiemannianMesh< PreReal , unsigned int > rMesh( GetPointer( mesh.triangles ) , mesh.triangles.size() );
 		rMesh.setMetricFromEmbedding( GetPointer( mesh.vertices ) );
 		rMesh.makeUnitArea();
 		Pointer( FEM::CoordinateXForm< PreReal > ) xForms = rMesh.getCoordinateXForms();
@@ -1129,7 +1130,7 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::Init( void )
 			if( texelId(ci,cj)!=-1 ) multiChartTexelCount++;
 			texelId(ci,cj) = i;
 		}
-		if( multiChartTexelCount ) WARN( "Non-zero multi-chart texels: " , multiChartTexelCount );
+		if( multiChartTexelCount ) MK_WARN( "Non-zero multi-chart texels: " , multiChartTexelCount );
 	}
 }
 
@@ -1143,7 +1144,7 @@ void _main( int argc , char *argv[] )
 #ifdef NO_OPEN_GL_VISUALIZATION
 	if( UseDirectSolver.set ) TextureFilter< PreReal , Real , TextureBitDepth >::ComputeExactSolution( Verbose.set );
 	else for ( int i=0 ; i<OutputVCycles.value ; i++ ) TextureFilter< PreReal , Real , TextureBitDepth >::UpdateSolution();
-	TextureFilter< PreReal , Real , TextureBitDepth >::WriteTexture( Output.value );
+	TextureFilter< PreReal , Real , TextureBitDepth >::WriteTexture( Output.value.c_str() );
 #else // !NO_OPEN_GL_VISUALIZATION
 	if( !Output.set )
 	{
@@ -1154,20 +1155,20 @@ void _main( int argc , char *argv[] )
 		else if( DisplayMode.value==THREE_REGION_DISPLAY ) TextureFilter< PreReal , Real , TextureBitDepth >::visualization.screenWidth = 1200 , TextureFilter< PreReal , Real , TextureBitDepth >::visualization.screenHeight = 800;
 		else if( DisplayMode.value==FOUR_REGION_DISPLAY  ) TextureFilter< PreReal , Real , TextureBitDepth >::visualization.screenWidth = 1500 , TextureFilter< PreReal , Real , TextureBitDepth >::visualization.screenHeight = 600;
 		TextureFilter< PreReal , Real , TextureBitDepth >::visualization.useNearestSampling = Nearest.set;
-		if( Snapshot.set ) TextureFilter< PreReal , Real , TextureBitDepth >::visualization.setSnapshot( Snapshot.value , true );
+		if( Snapshot.set ) TextureFilter< PreReal , Real , TextureBitDepth >::visualization.setSnapshot( Snapshot.value.c_str() , true );
 		glutInitWindowSize( TextureFilter< PreReal , Real , TextureBitDepth >::visualization.screenWidth , TextureFilter< PreReal , Real , TextureBitDepth >::visualization.screenHeight );
 		glutInit( &argc , argv );
 		char windowName[1024];
 		sprintf( windowName , "Texture Filtering" );
 		glutCreateWindow( windowName );
-		if( glewInit()!=GLEW_OK ) THROW( "glewInit failed" );
+		if( glewInit()!=GLEW_OK ) MK_THROW( "glewInit failed" );
 		glutDisplayFunc ( TextureFilter< PreReal , Real , TextureBitDepth >::Display );
 		glutReshapeFunc ( TextureFilter< PreReal , Real , TextureBitDepth >::Reshape );
 		glutMouseFunc   ( TextureFilter< PreReal , Real , TextureBitDepth >::MouseFunc );
 		glutMotionFunc  ( TextureFilter< PreReal , Real , TextureBitDepth >::MotionFunc );
 		glutKeyboardFunc( TextureFilter< PreReal , Real , TextureBitDepth >::KeyboardFunc) ;
 		glutIdleFunc    ( TextureFilter< PreReal , Real , TextureBitDepth >::Idle );
-		if( CameraConfig.set ) TextureFilter< PreReal , Real , TextureBitDepth >::visualization.ReadSceneConfigurationCallBack( &TextureFilter< PreReal , Real , TextureBitDepth >::visualization , CameraConfig.value );
+		if( CameraConfig.set ) TextureFilter< PreReal , Real , TextureBitDepth >::visualization.ReadSceneConfigurationCallBack( &TextureFilter< PreReal , Real , TextureBitDepth >::visualization , CameraConfig.value.c_str() );
 		TextureFilter< PreReal , Real , TextureBitDepth >::InitializeVisualization();
 		TextureFilter< PreReal , Real , TextureBitDepth >::visualization.showSlideBar = true;
 		glutMainLoop(); 
@@ -1176,7 +1177,7 @@ void _main( int argc , char *argv[] )
 	{
 		if( UseDirectSolver.set ) TextureFilter< PreReal , Real , TextureBitDepth >::ComputeExactSolution( Verbose.set );
 		else for ( int i=0 ; i<OutputVCycles.value ; i++ ) TextureFilter< PreReal , Real , TextureBitDepth >::UpdateSolution();
-		TextureFilter< PreReal , Real , TextureBitDepth >::ExportTextureCallBack( &TextureFilter< PreReal , Real , TextureBitDepth >::visualization , Output.value );
+		TextureFilter< PreReal , Real , TextureBitDepth >::ExportTextureCallBack( &TextureFilter< PreReal , Real , TextureBitDepth >::visualization , Output.value.c_str() );
 	}
 #endif // NO_OPEN_GL_VISUALIZATION
 
@@ -1192,13 +1193,13 @@ void _main( int argc , char *argv[] , unsigned int bitDepth )
 	case 16: return _main< PreReal , Real , 16 >( argc , argv );
 	case 32: return _main< PreReal , Real , 32 >( argc , argv );
 	case 64: return _main< PreReal , Real , 64 >( argc , argv );
-	default: ERROR_OUT( "Only bit depths of 8, 16, 32, and 64 supported: " , bitDepth );
+	default: MK_ERROR_OUT( "Only bit depths of 8, 16, 32, and 64 supported: " , bitDepth );
 	}
 }
 
 int main(int argc, char* argv[])
 {
-	cmdLineParse( argc-1 , argv+1 , params );
+	CmdLineParse( argc-1 , argv+1 , params );
 #ifdef NO_OPEN_GL_VISUALIZATION
 	if( !Input.set || !Output.set ) { ShowUsage( argv[0] ) ; return EXIT_FAILURE; }
 #else // !NO_OPEN_GL_VISUALIZATION
@@ -1206,13 +1207,12 @@ int main(int argc, char* argv[])
 #endif // NO_OPEN_GL_VISUALIZATION
 
 	unsigned int bitDepth = -1;
-	char *ext = GetFileExtension( Input.values[1] );
-	if( strcasecmp( ext , "normap" ) )
+	std::string ext = ToLower( GetFileExtension( Input.values[1] ) );
+	if( ext!=std::string( "normap" ) )
 	{
 		unsigned int width , height , channels;
-		ImageReader< 8 >::GetInfo( Input.values[1] , width , height , channels , bitDepth );
+		ImageReader< 8 >::GetInfo( Input.values[1].c_str() , width , height , channels , bitDepth );
 	}
-	delete[] ext;
 
 	if( Serial.set ) ThreadPool::ParallelizationType = ThreadPool::ParallelType::NONE;
 	if( !NoHelp.set && !Output.set )
@@ -1233,7 +1233,7 @@ int main(int argc, char* argv[])
 		if( Double.set ) _main< double , double >( argc , argv , bitDepth );
 		else             _main< double , float  >( argc , argv , bitDepth );
 	}
-	catch( Misha::Exception &e )
+	catch( Exception &e )
 	{
 		printf( "%s\n" , e.what() );
 		return EXIT_FAILURE;

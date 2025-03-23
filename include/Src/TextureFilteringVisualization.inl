@@ -242,7 +242,7 @@ void TextureFilteringVisualization::UpdateTextureBuffer( const Image< Point3D< R
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, image.width(), image.height(), 0, GL_RGB, GL_FLOAT, (GLvoid*)&image[0]);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, image.res(0), image.res(1), 0, GL_RGB, GL_FLOAT, (GLvoid*)&image[0]);
 
 	// Unbind the texture
 	glBindTexture(GL_TEXTURE_2D, 0);

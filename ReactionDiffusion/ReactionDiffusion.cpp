@@ -26,6 +26,7 @@ ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF S
 DAMAGE.
 */
 
+
 #include <Src/PreProcessing.h>
 
 #include <Misha/CmdLineParser.h> 
@@ -36,52 +37,54 @@ DAMAGE.
 #include <Src/SimpleTriangleMesh.h>
 #include <Src/Basis.h>
 #include <Src/Solver.h>
-#include <Src/QuadratureIntergration.inl>
+#include <Src/QuadratureIntergration.h>
 #include <Src/MassAndStiffness.h>
 #include <Src/Padding.h>
 #include <Src/TexturedMeshVisualization.h>
+
+using namespace MishaK;
 
 const float StripeRates[] = { 0.062f , 0.062f };
 const float    DotRates[] = { 0.0367f , 0.0649f };
 const float DefaultStripesSamplesFraction = 0.01f;
 const float DefaultDotsSamplesFraction = 0.001f;
 
-cmdLineParameter< char* > Input( "in" );
-cmdLineParameter< char* > Output( "out" );
-cmdLineParameter< int   > OutputSteps( "outSteps" , 1000 );
-cmdLineParameter< int   > Width( "width" , 512 );
-cmdLineParameter< int   > Height( "height" , 512 );
-cmdLineParameter< float > Speed( "speed" , 10.f );
-cmdLineParameterArray< float , 2 > FeedKillRates( "fk" , StripeRates );
-cmdLineParameter< float > DiffusionScale( "diff" , 1.f );
-cmdLineParameter< float > SamplesFraction( "samples" );
-cmdLineParameter< int   > Levels( "levels" , 4 );
-cmdLineParameter< char* > CameraConfig( "camera" );
-cmdLineParameter< int   > DisplayMode( "display" , TWO_REGION_DISPLAY );
-cmdLineParameter< int   > MatrixQuadrature( "mQuadrature" , 6 );
-cmdLineParameter< int   > RHSQuadrature( "rhsQuadrature" , 3 );
+CmdLineParameter< std::string > Input( "in" );
+CmdLineParameter< std::string > Output( "out" );
+CmdLineParameter< int   > OutputSteps( "outSteps" , 1000 );
+CmdLineParameter< int   > Width( "width" , 512 );
+CmdLineParameter< int   > Height( "height" , 512 );
+CmdLineParameter< float > Speed( "speed" , 10.f );
+CmdLineParameterArray< float , 2 > FeedKillRates( "fk" , StripeRates );
+CmdLineParameter< float > DiffusionScale( "diff" , 1.f );
+CmdLineParameter< float > SamplesFraction( "samples" );
+CmdLineParameter< int   > Levels( "levels" , 4 );
+CmdLineParameter< std::string > CameraConfig( "camera" );
+CmdLineParameter< int   > DisplayMode( "display" , TWO_REGION_DISPLAY );
+CmdLineParameter< int   > MatrixQuadrature( "mQuadrature" , 6 );
+CmdLineParameter< int   > RHSQuadrature( "rhsQuadrature" , 3 );
 
-cmdLineParameter< int   > MultigridBlockHeight ( "mBlockH" ,  16 );
-cmdLineParameter< int   > MultigridBlockWidth  ( "mBlockW" , 128 );
-cmdLineParameter< int   > MultigridPaddedHeight( "mPadH"   ,   0 );
-cmdLineParameter< int   > MultigridPaddedWidth ( "mPadW"   ,   2 );
+CmdLineParameter< int   > MultigridBlockHeight ( "mBlockH" ,  16 );
+CmdLineParameter< int   > MultigridBlockWidth  ( "mBlockW" , 128 );
+CmdLineParameter< int   > MultigridPaddedHeight( "mPadH"   ,   0 );
+CmdLineParameter< int   > MultigridPaddedWidth ( "mPadW"   ,   2 );
 
-cmdLineParameter< int   > RandomJitter( "jitter" , 0 );
-cmdLineReadable Verbose( "verbose" );
-cmdLineReadable NoHelp( "noHelp" );
-cmdLineReadable DetailVerbose( "detail" );
-cmdLineReadable UseDirectSolver( "useDirectSolver" );
-cmdLineReadable Double( "double" );
-cmdLineReadable ApproximateIntegration( "approximateIntegration" );
-cmdLineReadable Dots( "dots" );
-cmdLineReadable Serial( "serial" );
+CmdLineParameter< int   > RandomJitter( "jitter" , 0 );
+CmdLineReadable Verbose( "verbose" );
+CmdLineReadable NoHelp( "noHelp" );
+CmdLineReadable DetailVerbose( "detail" );
+CmdLineReadable UseDirectSolver( "useDirectSolver" );
+CmdLineReadable Double( "double" );
+CmdLineReadable ApproximateIntegration( "approximateIntegration" );
+CmdLineReadable Dots( "dots" );
+CmdLineReadable Serial( "serial" );
 
-cmdLineParameter< char* > VectorField( "inVF" );
-cmdLineParameter< float > AnisotropyScale( "aScl" , 1.f );
-cmdLineParameter< float > AnisotropyExponent( "aExp" , 0.f );
-cmdLineReadable IntrinsicVectorField( "intrinsicVF" );
+CmdLineParameter< std::string > VectorField( "inVF" );
+CmdLineParameter< float > AnisotropyScale( "aScl" , 1.f );
+CmdLineParameter< float > AnisotropyExponent( "aExp" , 0.f );
+CmdLineReadable IntrinsicVectorField( "intrinsicVF" );
 
-cmdLineReadable* params[] =
+CmdLineReadable* params[] =
 {
 	&Input , &Output , &OutputSteps , &Width , &Height , &Speed , &FeedKillRates , &DiffusionScale , &SamplesFraction , &CameraConfig , &Levels , &UseDirectSolver , &Serial , &DisplayMode , &MultigridBlockHeight , &MultigridBlockWidth , &MultigridPaddedHeight , &MultigridPaddedWidth ,
 	&Verbose , &DetailVerbose ,
@@ -97,41 +100,41 @@ cmdLineReadable* params[] =
 void ShowUsage( const char* ex )
 {
 	printf( "Usage %s:\n", ex );
-	printf( "\t --%s <input mesh>\n" , Input.name );
-	printf( "\t[--%s <output texture>\n" , Output.name );
-	printf( "\t[--%s <output steps>=%d]\n" , OutputSteps.name , OutputSteps.value );
-	printf( "\t[--%s <texture width>=%d]\n" , Width.name , Width.value );
-	printf( "\t[--%s <texture height>=%d]\n" , Height.name , Height.value );
-	printf( "\t[--%s <time-step>=%f]\n" , Speed.name , Speed.value );
-	printf( "\t[--%s <feed/kill rates>=%f %f]\n" , FeedKillRates.name , FeedKillRates.values[0] , FeedKillRates.values[1] );
-	printf( "\t[--%s <diffusion scale>=%f]\n" , DiffusionScale.name , DiffusionScale.value );
-	printf( "\t[--%s <samples fraction>=%f / %f]\n" , SamplesFraction.name , DefaultStripesSamplesFraction , DefaultDotsSamplesFraction );
-	printf( "\t[--%s <system matrix quadrature points per triangle>=%d]\n" , MatrixQuadrature.name , MatrixQuadrature.value );
-	printf( "\t[--%s <right-hand-side quadrature points per triangle>=%d]\n" , RHSQuadrature.name , RHSQuadrature.value );
-	printf( "\t[--%s]\n" , ApproximateIntegration.name );
-	printf( "\t[--%s]\n" , UseDirectSolver.name );
-	printf( "\t[--%s <jittering seed>]\n" , RandomJitter.name );
-	printf( "\t[--%s]\n" , Dots.name );
-	printf( "\t[--%s]\n" , Verbose.name );
+	printf( "\t --%s <input mesh>\n" , Input.name.c_str() );
+	printf( "\t[--%s <output texture>\n" , Output.name.c_str() );
+	printf( "\t[--%s <output steps>=%d]\n" , OutputSteps.name.c_str() , OutputSteps.value );
+	printf( "\t[--%s <texture width>=%d]\n" , Width.name.c_str() , Width.value );
+	printf( "\t[--%s <texture height>=%d]\n" , Height.name.c_str() , Height.value );
+	printf( "\t[--%s <time-step>=%f]\n" , Speed.name.c_str() , Speed.value );
+	printf( "\t[--%s <feed/kill rates>=%f %f]\n" , FeedKillRates.name.c_str() , FeedKillRates.values[0] , FeedKillRates.values[1] );
+	printf( "\t[--%s <diffusion scale>=%f]\n" , DiffusionScale.name.c_str() , DiffusionScale.value );
+	printf( "\t[--%s <samples fraction>=%f / %f]\n" , SamplesFraction.name.c_str() , DefaultStripesSamplesFraction , DefaultDotsSamplesFraction );
+	printf( "\t[--%s <system matrix quadrature points per triangle>=%d]\n" , MatrixQuadrature.name.c_str() , MatrixQuadrature.value );
+	printf( "\t[--%s <right-hand-side quadrature points per triangle>=%d]\n" , RHSQuadrature.name.c_str() , RHSQuadrature.value );
+	printf( "\t[--%s]\n" , ApproximateIntegration.name.c_str() );
+	printf( "\t[--%s]\n" , UseDirectSolver.name.c_str() );
+	printf( "\t[--%s <jittering seed>]\n" , RandomJitter.name.c_str() );
+	printf( "\t[--%s]\n" , Dots.name.c_str() );
+	printf( "\t[--%s]\n" , Verbose.name.c_str() );
 
-	printf( "\t[--%s <camera configuration file>]\n" , CameraConfig.name );
-	printf( "\t[--%s <hierarchy levels>=%d]\n" , Levels.name , Levels.value );
-	printf( "\t[--%s]\n" , DetailVerbose.name );
-	printf( "\t[--%s <display mode>=%d]\n" , DisplayMode.name , DisplayMode.value );
+	printf( "\t[--%s <camera configuration file>]\n" , CameraConfig.name.c_str() );
+	printf( "\t[--%s <hierarchy levels>=%d]\n" , Levels.name.c_str() , Levels.value );
+	printf( "\t[--%s]\n" , DetailVerbose.name.c_str() );
+	printf( "\t[--%s <display mode>=%d]\n" , DisplayMode.name.c_str() , DisplayMode.value );
 	printf( "\t\t%d] One Region \n" , ONE_REGION_DISPLAY );
 	printf( "\t\t%d] Two Region \n" , TWO_REGION_DISPLAY );
-	printf( "\t[--%s <multigrid block width>=%d]\n"   , MultigridBlockWidth.name   , MultigridBlockWidth.value   );
-	printf( "\t[--%s <multigrid block height>=%d]\n"  , MultigridBlockHeight.name  , MultigridBlockHeight.value  );
-	printf( "\t[--%s <multigrid padded width>=%d]\n"  , MultigridPaddedWidth.name  , MultigridPaddedWidth.value  );
-	printf( "\t[--%s <multigrid padded height>=%d]\n" , MultigridPaddedHeight.name , MultigridPaddedHeight.value );
+	printf( "\t[--%s <multigrid block width>=%d]\n"   , MultigridBlockWidth.name.c_str()   , MultigridBlockWidth.value   );
+	printf( "\t[--%s <multigrid block height>=%d]\n"  , MultigridBlockHeight.name.c_str()  , MultigridBlockHeight.value  );
+	printf( "\t[--%s <multigrid padded width>=%d]\n"  , MultigridPaddedWidth.name.c_str()  , MultigridPaddedWidth.value  );
+	printf( "\t[--%s <multigrid padded height>=%d]\n" , MultigridPaddedHeight.name.c_str() , MultigridPaddedHeight.value );
 
-	printf( "\t[--%s <input vector field>]\n" , VectorField.name );
-	printf( "\t[--%s <anisotropy scale>=%f]\n" , AnisotropyScale.name , AnisotropyScale.value );
-	printf( "\t[--%s <anisotropy exponent>=%f]\n" , AnisotropyExponent.name , AnisotropyExponent.value );
-	printf( "\t[--%s]\n" , IntrinsicVectorField.name );
-	printf( "\t[--%s]\n" , Serial.name );
+	printf( "\t[--%s <input vector field>]\n" , VectorField.name.c_str() );
+	printf( "\t[--%s <anisotropy scale>=%f]\n" , AnisotropyScale.name.c_str() , AnisotropyScale.value );
+	printf( "\t[--%s <anisotropy exponent>=%f]\n" , AnisotropyExponent.name.c_str() , AnisotropyExponent.value );
+	printf( "\t[--%s]\n" , IntrinsicVectorField.name.c_str() );
+	printf( "\t[--%s]\n" , Serial.name.c_str() );
 
-	printf( "\t[--%s]\n" , NoHelp.name );
+	printf( "\t[--%s]\n" , NoHelp.name.c_str() );
 }
 
 template< typename PreReal , typename Real >
@@ -176,7 +179,7 @@ public:
 
 #if defined( USE_CHOLMOD )
 	typedef CholmodCholeskySolver< Real , 1 > DirectSolver;
-#elif defined( USE_EIGEN_SIMPLICIAL )
+#elif defined( USE_EIGEN )
 	typedef EigenCholeskySolver< Real , 1 > DirectSolver;
 #elif defined( USE_EIGEN_PARDISO )
 	typedef EigenPardisoSolver< Real , 1 > DirectSolver;
@@ -471,9 +474,9 @@ void GrayScottReactionDiffusion< PreReal , Real >::MouseFunc( int button , int s
 		else
 		{
 			Point2D< float > ip = visualization.selectImagePos( x , y );
-			int i = floor( ip[0] * float( nodeIndex.width()) - 0.5f );
-			int j = floor( (1.0-ip[1])*float( nodeIndex.height() ) - 0.5f );
-			if( i>=0 && i<nodeIndex.width() && j>=0 && j<nodeIndex.height() ) mouseSelectionActive = true , seedTexel = nodeIndex(i,j);
+			int i = floor( ip[0] * float( nodeIndex.res(0)) - 0.5f );
+			int j = floor( (1.0-ip[1])*float( nodeIndex.res(1) ) - 0.5f );
+			if( i>=0 && i<(int)nodeIndex.res(0) && j>=0 && j<(int)nodeIndex.res(1) ) mouseSelectionActive = true , seedTexel = nodeIndex(i,j);
 		}
 		InitializeConcentrations();
 	}
@@ -532,7 +535,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::ExportTextureCallBack( Visual
 	outputImage.resize( textureWidth , textureHeight );
 	for( int i=0 ; i<outputImage.size() ; i++ ) outputImage[i] = Point3D< Real >( outputBuffer[i] , outputBuffer[i] , outputBuffer[i] ) / (Real)255.;
 	padding.unpad( outputImage );
-	outputImage.template write< 8 >( prompt );
+	WriteImage< 8 >( outputImage , prompt );
 }
 
 template< typename PreReal , typename Real >
@@ -552,10 +555,10 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeConcentrations( voi
 				mesh.textureCoordinates[ tIdx*3 + 0 ] * (Real)( 1. - p[0] - p[1] ) +
 				mesh.textureCoordinates[ tIdx*3 + 1 ] * (Real)(      p[0]        ) +
 				mesh.textureCoordinates[ tIdx*3 + 2 ] * (Real)(             p[1] );
-			t[0] *= nodeIndex.width() , t[1] *= nodeIndex.height();
+			t[0] *= nodeIndex.res(0) , t[1] *= nodeIndex.res(1);
 			int idx = nodeIndex( (int)floor( t[0] +0.5 ) , (int)floor( t[1] +0.5 ) );
 			if( idx>=0 && idx<multigridVariables[1][0].x.size() ) multigridVariables[1][0].x[idx] = 1;
-			else WARN( "Bad random texel: " , t[0] , " " , t[1] , ": " , idx );
+			else MK_WARN( "Bad random texel: " , t[0] , " " , t[1] , ": " , idx );
 		}
 	}
 }
@@ -574,7 +577,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 	for( int i=0 ; i<nodeIndex.size() ; i++ ) nodeIndex[i] = -1;
 	for( int i=0 ; i<textureNodes.size() ; i++ )
 	{
-		if( nodeIndex( textureNodes[i].ci , textureNodes[i].cj )!=-1 ) if( false ) WARN( "Multiple nodes mapped to pixel " , textureNodes[i].ci , " " , textureNodes[i].cj );
+		if( nodeIndex( textureNodes[i].ci , textureNodes[i].cj )!=-1 ) if( false ) MK_WARN( "Multiple nodes mapped to pixel " , textureNodes[i].ci , " " , textureNodes[i].cj );
 		nodeIndex( textureNodes[i].ci , textureNodes[i].cj ) = i;
 	}
 
@@ -592,13 +595,13 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 		if( IntrinsicVectorField.set )
 		{
 			ReadVector( vectorField , VectorField.value );
-			if( vectorField.size()!=mesh.triangles.size() ) THROW( "Triangle and vector counts don't match: " , mesh.triangles.size() , " != " , vectorField.size() );
+			if( vectorField.size()!=mesh.triangles.size() ) MK_THROW( "Triangle and vector counts don't match: " , mesh.triangles.size() , " != " , vectorField.size() );
 		}
 		else
 		{
 			std::vector< Point3D< PreReal > > _vectorField;
 			ReadVector( _vectorField , VectorField.value );
-			if( _vectorField.size()!=mesh.triangles.size() ) THROW( "Triangle and vector counts don't match: " , mesh.triangles.size() , " != " , _vectorField.size() );
+			if( _vectorField.size()!=mesh.triangles.size() ) MK_THROW( "Triangle and vector counts don't match: " , mesh.triangles.size() , " != " , _vectorField.size() );
 			vectorField.resize( _vectorField.size() );
 			ThreadPool::ParallelFor
 				(
@@ -660,7 +663,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 		case 12: InitializeMassAndStiffness<12>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
 		case 24: InitializeMassAndStiffness<24>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
 		case 32: InitializeMassAndStiffness<32>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		default: THROW( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
+		default: MK_THROW( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
 		}
 	}
 
@@ -718,7 +721,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 	//////////////////////////////////// Initialize cell samples
 
 	InitializeGridAtlasInteriorCellLines( hierarchy.gridAtlases[0].gridCharts , interiorCellLines , interiorCellLineIndex );
-	if( interiorCellLineIndex.size()!=hierarchy.gridAtlases[0].numInteriorCells ) THROW( "Inconsistent number of interior cells! Expected " , hierarchy.gridAtlases[0].numInteriorCells , " . Result " , interiorCellLineIndex.size() , "." );
+	if( interiorCellLineIndex.size()!=hierarchy.gridAtlases[0].numInteriorCells ) MK_THROW( "Inconsistent number of interior cells! Expected " , hierarchy.gridAtlases[0].numInteriorCells , " . Result " , interiorCellLineIndex.size() , "." );
 
 	coarseBoundaryFineBoundaryProlongation = boundaryProlongation.coarseBoundaryFineBoundaryProlongation;
 	fineBoundaryCoarseBoundaryRestriction = boundaryProlongation.fineBoundaryCoarseBoundaryRestriction;
@@ -737,7 +740,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 		case 12: InitializeIntegration< 12 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , scalarSamples , ApproximateIntegration.set ) ; break;
 		case 24: InitializeIntegration< 24 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , scalarSamples , ApproximateIntegration.set ) ; break;
 		case 32: InitializeIntegration< 32 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , scalarSamples , ApproximateIntegration.set ) ; break;
-		default: THROW( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
+		default: MK_THROW( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
 		}
 	}
 	if( Verbose.set ) printf( "\tInitialized vector field integration: %.2f(s)\n" , timer.elapsed() );
@@ -883,7 +886,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::Init( void )
 
 	//Assign position to exterior nodes using barycentric-exponential map
 	{
-		FEM::RiemannianMesh< PreReal > rMesh( GetPointer( mesh.triangles ) , mesh.triangles.size() );
+		FEM::RiemannianMesh< PreReal , unsigned int > rMesh( GetPointer( mesh.triangles ) , mesh.triangles.size() );
 
 		rMesh.setMetricFromEmbedding( GetPointer( mesh.vertices ) );
 		rMesh.makeUnitArea();
@@ -940,14 +943,14 @@ void _main( int argc , char* argv[] )
 		char windowName[1024];
 		sprintf( windowName , "Gray-Scott Reaction Diffusion");
 		glutCreateWindow( windowName );
-		if( glewInit()!=GLEW_OK ) THROW( "glewInit failed" );
+		if( glewInit()!=GLEW_OK ) MK_THROW( "glewInit failed" );
 		glutDisplayFunc ( GrayScottReactionDiffusion< PreReal , Real >::Display );
 		glutReshapeFunc ( GrayScottReactionDiffusion< PreReal , Real >::Reshape );
 		glutMouseFunc   ( GrayScottReactionDiffusion< PreReal , Real >::MouseFunc );
 		glutMotionFunc  ( GrayScottReactionDiffusion< PreReal , Real >::MotionFunc );
 		glutKeyboardFunc( GrayScottReactionDiffusion< PreReal , Real >::KeyboardFunc );
 		glutIdleFunc    ( GrayScottReactionDiffusion< PreReal , Real >::Idle );
-		if( CameraConfig.set ) GrayScottReactionDiffusion< PreReal , Real >::visualization.ReadSceneConfigurationCallBack( &GrayScottReactionDiffusion< PreReal , Real >::visualization , CameraConfig.value );
+		if( CameraConfig.set ) GrayScottReactionDiffusion< PreReal , Real >::visualization.ReadSceneConfigurationCallBack( &GrayScottReactionDiffusion< PreReal , Real >::visualization , CameraConfig.value.c_str() );
 		GrayScottReactionDiffusion< PreReal , Real >::InitializeVisualization();
 		glutMainLoop();
 	}
@@ -967,13 +970,13 @@ void _main( int argc , char* argv[] )
 			printf( "Reaction-diffusion total time / time per iteration: %.2f(s) / %.4f(s)\n" , total_time , total_time / OutputSteps.value );
 		}
 		GrayScottReactionDiffusion< PreReal , Real >::SetOutputBuffer( GrayScottReactionDiffusion< PreReal , Real >::multigridVariables[1][0].x );
-		GrayScottReactionDiffusion< PreReal , Real >::ExportTextureCallBack( &GrayScottReactionDiffusion< PreReal , Real >::visualization , Output.value );
+		GrayScottReactionDiffusion< PreReal , Real >::ExportTextureCallBack( &GrayScottReactionDiffusion< PreReal , Real >::visualization , Output.value.c_str() );
 	}
 }
 
 int main( int argc , char* argv[] )
 {
-	cmdLineParse( argc-1 , argv+1 , params );
+	CmdLineParse( argc-1 , argv+1 , params );
 	if( !Input.set ){ ShowUsage( argv[0] ) ; return EXIT_FAILURE; }
 	if( !SamplesFraction.set )
 	{
@@ -998,7 +1001,7 @@ int main( int argc , char* argv[] )
 		if( Double.set ) _main< double , double >( argc , argv );
 		else             _main< double , float  >( argc , argv );
 	}
-	catch( Misha::Exception &e )
+	catch( Exception &e )
 	{
 		printf( "%s\n" , e.what() );
 		return EXIT_FAILURE;

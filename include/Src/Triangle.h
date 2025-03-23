@@ -257,52 +257,55 @@
 #endif /* not SINGLE */
 
 
-
-template< typename Real >
-struct triangulateio
+namespace JonathanShewchuk
 {
-	Real *pointlist;                                               /* In / out */
-	Real *pointattributelist;                                      /* In / out */
-	int *pointmarkerlist;                                          /* In / out */
-	int numberofpoints;                                            /* In / out */
-	int numberofpointattributes;                                   /* In / out */
 
-	int *trianglelist;                                             /* In / out */
-	Real *triangleattributelist;                                   /* In / out */
-	Real *trianglearealist;                                         /* In only */
-	int *neighborlist;                                             /* Out only */
-	int numberoftriangles;                                         /* In / out */
-	int numberofcorners;                                           /* In / out */
-	int numberoftriangleattributes;                                /* In / out */
+	template< typename Real >
+	struct triangulateio
+	{
+		Real *pointlist;                                               /* In / out */
+		Real *pointattributelist;                                      /* In / out */
+		int *pointmarkerlist;                                          /* In / out */
+		int numberofpoints;                                            /* In / out */
+		int numberofpointattributes;                                   /* In / out */
 
-	int *segmentlist;                                              /* In / out */
-	int *segmentmarkerlist;                                        /* In / out */
-	int numberofsegments;                                          /* In / out */
+		int *trianglelist;                                             /* In / out */
+		Real *triangleattributelist;                                   /* In / out */
+		Real *trianglearealist;                                         /* In only */
+		int *neighborlist;                                             /* Out only */
+		int numberoftriangles;                                         /* In / out */
+		int numberofcorners;                                           /* In / out */
+		int numberoftriangleattributes;                                /* In / out */
 
-	Real *holelist;                        /* In / pointer to array copied out */
-	int numberofholes;                                      /* In / copied out */
+		int *segmentlist;                                              /* In / out */
+		int *segmentmarkerlist;                                        /* In / out */
+		int numberofsegments;                                          /* In / out */
 
-	Real *regionlist;                      /* In / pointer to array copied out */
-	int numberofregions;                                    /* In / copied out */
+		Real *holelist;                        /* In / pointer to array copied out */
+		int numberofholes;                                      /* In / copied out */
 
-	int *edgelist;                                                 /* Out only */
-	int *edgemarkerlist;            /* Not used with Voronoi diagram; out only */
-	Real *normlist;                /* Used only with Voronoi diagram; out only */
-	int numberofedges;                                             /* Out only */
-};
+		Real *regionlist;                      /* In / pointer to array copied out */
+		int numberofregions;                                    /* In / copied out */
+
+		int *edgelist;                                                 /* Out only */
+		int *edgemarkerlist;            /* Not used with Voronoi diagram; out only */
+		Real *normlist;                /* Used only with Voronoi diagram; out only */
+		int numberofedges;                                             /* Out only */
+	};
 
 #include "Triangle.inl"
 
-template< typename Real >
-void triangulate
-(
-	char *triswitches,
-	struct triangulateio< Real > *in,
-	struct triangulateio< Real > *out,
-	struct triangulateio< Real > *vorout
-)
-{
-	return Shewchuk< Real >::triangulate( triswitches , in , out , vorout );
+	template< typename Real >
+	void triangulate
+	(
+		char *triswitches,
+		struct triangulateio< Real > *in,
+		struct triangulateio< Real > *out,
+		struct triangulateio< Real > *vorout
+	)
+	{
+		return Shewchuk< Real >::triangulate( triswitches , in , out , vorout );
+	}
+	template< typename Real > void trifree( int *memptr ){ return Shewchuk< Real >::trifree(memptr); }
 }
-template< typename Real > void trifree( int *memptr ){ return Shewchuk< Real >::trifree(memptr); }
 #endif // TRIANGLE_INCLUDED

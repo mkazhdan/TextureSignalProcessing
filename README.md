@@ -1,4 +1,4 @@
-<center><h2>Gradient Domain Texture Processing (Version 5.01)</h2></center>
+<center><h2>Gradient Domain Texture Processing (Version 6.00)</h2></center>
 <center>
 <a href="#LINKS">links</a>
 <a href="#EXECUTABLES">executables</a>
@@ -14,6 +14,8 @@ This software supports gradient-domain signal processing within a texture atlas.
 <LI>vector-field visualization akin to line-integral convolution,</LI>
 <LI>computation of single-source geodesics, and</LI>
 <LI>simulation of reaction-diffusion following the Gray-Scott model.</LI>
+<LI>masking of gutter/interior/boundary texels
+<LI>dilation of texture into the gutter
 </UL>
 <hr>
 <a name="LINKS"><b>LINKS</b></a><br>
@@ -30,6 +32,7 @@ This software supports gradient-domain signal processing within a texture atlas.
 <B>Data:</B>
 <A HREF="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/TSP.Data.zip">ZIP</A><br>
 <b>Older Versions:</b>
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version5.01/">V5.01</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version5.00/">V5.00</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.75/">V4.75</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.60/">V4.60</a>,
@@ -48,8 +51,15 @@ This software supports gradient-domain signal processing within a texture atlas.
 </ul>
 <hr>
 <a name="EXECUTABLES"><b>EXECUTABLES</b></a><br>
-
 <ul>
+These applications support reading in textures meshes in one of two formats:
+<UL>
+<LI><A href="http://www.cc.gatech.edu/projects/large_models/ply.html">PLY</A> (to support multiple charts, texture is assumed to be encoded at wedges/corners rather than vertices.)
+<LI><A HREF="https://www.fileformat.info/format/wavefrontobj/egff.htm">Wavefront OBJ</A>
+</UL>
+Input textures are assumed to be images in <I>png</I>, <I>jpg</I>, or <I>jpeg</I> format.
+
+
 <dl>
 <details>
 <summary>
@@ -59,9 +69,7 @@ In the interactive viewer the modulation can be set globally by dragging the sli
 The modulation can be set locally by holding the [SHIFT] key down and either dragging with the left mouse button (to smooth) or the right mouse button (to sharpen).
 </summary>
 <dt><b>--in</b> &lt;<i>input mesh and texture names</i>&gt;</dt>
-<dd> These two strings specify the the names of the mesh and the texture image.<br>
-The input mesh is assumed to be in <a href="http://www.cc.gatech.edu/projects/large_models/ply.html">PLY</a> format, giving the set of vertices with the x-, y-, and z-coordinates of the positions encoded by the properties <i>x</i>, <i>y</i>, and <i>z</i> the set of polygons encoded by two lists. The first gives the indices of the vertices in the polygon (integers). The second gives the texture coordinates at each polygon corner (pairs of floats).<br>
-The input texture is assumed to be an image if the file extension is <I>png</I>, <I>jpg</I>, or <I>jpeg</I>, and a normal map if the extension is <I>normap</I>.
+<dd> These two strings specify the the names of the mesh and the texture image.
 </dd>
 
 <dt>[<b>--out</b> &lt;<i>output texture</i>&gt;]</dt>
@@ -114,14 +122,12 @@ The viewer shows the stitched texture on the left and a partial texture on the r
 </OL>
 </summary>
 <dt><b>--in</b> &lt;<i>input mesh and composite texture</i>&gt;</dt>
-<dd> These two strings specify the names of the mesh and the texture image.<br>
-The input mesh is assumed to be in <a href="http://www.cc.gatech.edu/projects/large_models/ply.html">PLY</a> format, giving the set of vertices with the x-, y-, and z-coordinates of the positions encoded by the properties <i>x</i>, <i>y</i>, and <i>z</i> the set of polygons encoded by two lists. The first gives the indices of the vertices in the polygon (integers). The second gives the texture coordinates at each polygon corner (pairs of floats).<br>
-The input texture is assumed to be an image in <I>png</I>, <I>jpg</I>, or <I>jpeg</I> format.
+<dd> These two strings specify the names of the mesh and the texture image.
 </dd>
 
 <dt>[<b>--mask</b> &lt;<i>input mask</i>&gt;]</dt>
 <dd> This string specifies the name of the mask image.<br>
-The input mask is assumed to be an image in <I>png</I>, <I>jpg</I>, or <I>jpeg</I> format (though results may be unpredictable if it is encoded using lossy compression). Black pixels in the mask file should be used to denote regions where the texel value is unkown.
+Black pixels in the mask file should be used to denote regions where the texel value is unkown. (Results may be unpredictable if it is encoded using lossy compression.)
 </dd>
 
 <dt>[<b>--out</b> &lt;<i>output texture</i>&gt;]</dt>
@@ -172,8 +178,7 @@ If no output texture is specified, the executable will launch an interactive vie
 Hit [SPACE] to start the iterative solver or hit "+" to advance one iteration at a time.
 </summary>
 <dt><b>--in</b> &lt;<i>input mesh name</i>&gt;</dt>
-<dd> This string specifies the name of the mesh.<br>
-The input mesh is assumed to be in <a href="http://www.cc.gatech.edu/projects/large_models/ply.html">PLY</a> format, giving the set of vertices with the x-, y-, and z-coordinates of the positions encoded by the properties <i>x</i>, <i>y</i>, and <i>z</i> the set of polygons encoded by two lists. The first gives the indices of the vertices in the polygon (integers). The second gives the texture coordinates at each polygon corner (pairs of floats).<br>
+<dd> This string specifies the name of the mesh.
 </dd>
 
 <dt>[<b>--inVF</b> &lt;<i>vector-field file</i>&gt;]</dt>
@@ -246,8 +251,7 @@ An interactive tool for visualization of single-source geodesics using the <A HR
 In the interactive viewer the source can be set by holding the [SHIFT] key down and clicking/dragging with either mouse button.
 </summary>
 <dt><b>--in</b> &lt;<i>input mesh name</i>&gt;</dt>
-<dd> This string specifies the the name of the mesh.<br>
-The input mesh is assumed to be in <a href="http://www.cc.gatech.edu/projects/large_models/ply.html">PLY</a> format, giving the set of vertices with the x-, y-, and z-coordinates of the positions encoded by the properties <i>x</i>, <i>y</i>, and <i>z</i> the set of polygons encoded by two lists. The first gives the indices of the vertices in the polygon (integers). The second gives the texture coordinates at each polygon corner (pairs of floats).<br>
+<dd> This string specifies the the name of the mesh.
 </dd>
 
 <dt>[<b>--interpolation</b> &lt;<i>diffusion interpolation weight</i>&gt;]</dt>
@@ -288,8 +292,7 @@ If no output texture is specified, the executable will launch an interactive vie
 Hit [SPACE] to start the reaction-diffusion process or hit "+" to advance one step at a time.
 </summary>
 <dt><b>--in</b> &lt;<i>input mesh name</i>&gt;</dt>
-<dd> This string specifies the the name of the mesh.<br>
-The input mesh is assumed to be in <a href="http://www.cc.gatech.edu/projects/large_models/ply.html">PLY</a> format, giving the set of vertices with the x-, y-, and z-coordinates of the positions encoded by the properties <i>x</i>, <i>y</i>, and <i>z</i> the set of polygons encoded by two lists. The first gives the indices of the vertices in the polygon (integers). The second gives the texture coordinates at each polygon corner (pairs of floats).<br>
+<dd> This string specifies the the name of the mesh.
 </dd>
 
 <dt>[<b>--out</b> &lt;<i>output texture</i>&gt;]</dt>
@@ -326,6 +329,59 @@ The default value for this parameter is 512.
 </details>
 </dl>
 </ul>
+
+
+<ul>
+<dl>
+<details>
+<summary>
+<font size="+1"><b>TextureMasking</b></font>:
+Identifies the active texels within a texture mask of prescribed resolution, with gutter texels rendered in red, texels whose center are covered by a triangle in blue, and boundary texels in green.
+</summary>
+<dt><b>--in</b> &lt;<i>input mesh name</i>&gt;</dt>
+<dd> This string specifies the the name of the mesh.
+</dd>
+
+<dt><b>--res</b> &lt;<i>texture width and texture height</i>&gt;</dt>
+<dd> These two integers specify the width and height of the mask.
+
+<dt>[<b>--out</b> &lt;<i>output texture mask</i>&gt;]</dt>
+<dd> This string is the name of the file to which the texture mask will be written.</B>
+</dd>
+
+</details>
+</dl>
+</ul>
+
+<ul>
+<dl>
+<details>
+<summary>
+<font size="+1"><b>TextureDilation</b></font>:
+Dilates the texture by sampling across the chart seam and pulling interpolated texture values into the gutter texels.
+</summary>
+<dt><b>--in</b> &lt;<i>input mesh and texture names</i>&gt;</dt>
+<dd> These two strings specify the the names of the mesh and the texture image.
+</dd>
+
+<dt>[<b>--out</b> &lt;<i>output texture mask</i>&gt;]</dt>
+<dd> This string is the name of the file to which the dilated texture will be written.</B>
+</dd>
+
+<dt>[<b>--radius</b> &lt;<i>dilation radius</i>&gt;]</dt>
+<dd> This integer values gives the radius by which the texture should be dilated.<BR>
+The default value for this parameter is 0, indicating no dilation.
+</dd>
+
+<dt>[<b>--verbose</b>]</dt>
+<dd> If this flag is enabled, performance information is ptrinted to stdout.
+</dd>
+
+
+</details>
+</dl>
+</ul>
+
 
 <hr>
 <a name="USAGE"><b>USAGE EXAMPLES (WITH SAMPLE DATA)</b></a><br>
@@ -517,9 +573,17 @@ Here a "dots" pattern is written out to an image. (Empirically, we have found th
 <li> Add support for processing polygonal (i.e. not necessarily triangular) faces.
 </ul>
 
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version5.01/">Version 6.00</a>:
+<ul>
+<li> Add funcionality for dilating the texture map and masking out active texels.
+</ul>
+
 </details>
 
 
 <hr>
 <a name="SUPPORT"><b>SUPPORT</b></a><br>
 This work genersouly supported by NSF grant #1422325.
+
+<hr>
+<a href="http://www.cs.jhu.edu/~misha">HOME</a>

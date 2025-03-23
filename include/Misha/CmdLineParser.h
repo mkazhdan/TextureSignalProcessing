@@ -28,78 +28,132 @@ DAMAGE.
 
 #ifndef CMD_LINE_PARSER_INCLUDED
 #define CMD_LINE_PARSER_INCLUDED
-#include <stdarg.h>
+#include <cstdarg>
 #include <cstring>
 #include <cstdlib>
 #include <string>
 #include <vector>
+#include <iostream>
+#include <sstream>
+#include <fstream>
+#include <algorithm>
+#include <cassert>
+#include <string.h>
+#include "Exceptions.h"
 
-#ifdef WIN32
-int strcasecmp( char* c1 , char* c2 );
-#endif // WIN32
 
-class cmdLineReadable
+namespace MishaK
 {
-public:
-	bool set;
-	char *name;
-	cmdLineReadable( const char *name );
-	virtual ~cmdLineReadable( void );
-	virtual int read( char** argv , int argc );
-	virtual void writeValue( char* str ) const;
-};
+	/** This class represents a named argument that can be read from the command line */
+	class CmdLineReadable
+	{
+	public:
+		/** Has the argument been set */
+		bool set;
 
-template< class Type > void cmdLineWriteValue( Type t , char* str );
-template< class Type > void cmdLineCleanUp( Type* t );
-template< class Type > Type cmdLineInitialize( void );
-template< class Type > Type cmdLineCopy( Type t );
-template< class Type > Type cmdLineStringToType( const char* str );
+		/** The argument's name */
+		std::string name;
 
-template< class Type >
-class cmdLineParameter : public cmdLineReadable
-{
-public:
-	Type value;
-	cmdLineParameter( const char *name );
-	cmdLineParameter( const char *name , Type v );
-	~cmdLineParameter( void );
-	int read( char** argv , int argc );
-	void writeValue( char* str ) const;
-	bool expectsArg( void ) const { return true; }
-};
+		/** Constructor with the name of the argument */
+		CmdLineReadable( const std::string &name );
 
-template< class Type , int Dim >
-class cmdLineParameterArray : public cmdLineReadable
-{
-public:
-	Type values[Dim];
-	cmdLineParameterArray( const char *name, const Type* v=NULL );
-	~cmdLineParameterArray( void );
-	int read( char** argv , int argc );
-	void writeValue( char* str ) const;
-	bool expectsArg( void ) const { return true; }
-};
+		/** Destructor */
+		virtual ~CmdLineReadable( void );
 
-template< class Type >
-class cmdLineParameters : public cmdLineReadable
-{
-public:
-	int count;
-	Type *values;
-	cmdLineParameters( const char* name );
-	~cmdLineParameters( void );
-	int read( char** argv , int argc );
-	void writeValue( char* str ) const;
-	bool expectsArg( void ) const { return true; }
-};
+		/** Try to set the argument from the list of command line arguments.
+		*** Returns thenumber of arguments ingested.*/ 
+		virtual int read( char **argv , int argc );
 
-void cmdLineParse( int argc , char **argv, cmdLineReadable** params );
-char* FileExtension( char* fileName );
-char* LocalFileName( char* fileName );
-char* DirectoryName( char* fileName );
-char* GetFileExtension( const char* fileName );
-char* GetLocalFileName( const char* fileName );
-char** ReadWords( const char* fileName , int& cnt );
+		/** Transforms a string into the prescribed type */
+		template< typename Type >
+		static Type ToType( const std::string &str );
+	};
+
+	/** This templated class represents a named argument of the prescribed type */
+	template< class Type >
+	class CmdLineParameter : public CmdLineReadable
+	{
+	public:
+		/** The value the parameter has been set to */
+		Type value;
+
+		/** Constructor with the name of the argument */
+		CmdLineParameter( const std::string &name );
+
+		/** Constructor with the name of the argument and the default value */
+		CmdLineParameter( const std::string &name , Type v );
+
+		/** Try to set the argument from the list of command line arguments.
+		*** Returns thenumber of arguments ingested.*/ 
+		int read( char **argv , int argc );
+	};
+
+	/** This templated class represents a named argument taking a fixed number of values of the prescribed type */
+	template< class Type , int Dim >
+	class CmdLineParameterArray : public CmdLineReadable
+	{
+	public:
+		/** The values the parameter has been set to */
+		Type values[Dim];
+
+		/** Constructor with the name of the argument and the default values */
+		CmdLineParameterArray( const std::string &name, const Type* v=NULL );
+
+		/** Try to set the argument from the list of command line arguments.
+		*** Returns thenumber of arguments ingested.*/ 
+		int read( char **argv , int argc );
+	};
+
+	/** This templated class represents a named argument taking a variable number of values of of the prescribed type */
+	template< class Type >
+	class CmdLineParameters : public CmdLineReadable
+	{
+	public:
+		/** The number of values the argument takes */
+		unsigned int count;
+
+		/** The values the parameter has been set to */
+		Type *values;
+
+		/** Constructor with the name of the argument */
+		CmdLineParameters( const std::string &name );
+
+		/** Destructor deallocating the array of values */
+		~CmdLineParameters( void );
+
+		/** Try to set the argument from the list of command line arguments.
+		*** Returns thenumber of arguments ingested.*/ 
+		int read( char **argv , int argc );
+
+		/** Method for resizing the contents */
+		void resize( unsigned int sz );
+	};
+
+	/** This function takes a list of arguments and tries to set the parameters.
+	*** The last parameter must be a NULL pointer. */
+	void CmdLineParse( int argc , char **argv, CmdLineReadable **params );
+
+	/** This function takes a vectros of arguments and tries to set the parameters. */
+	void CmdLineParse( int argc , char **argv, const std::vector< CmdLineReadable * > &params );
+
+	/** Converts a string to upper case*/
+	std::string ToUpper( const std::string &str );
+
+	/** Converts a string to lower case*/
+	std::string ToLower( const std::string &str );
+
+	/** Returns the file extension */
+	std::string GetFileExtension( const std::string &fileName );
+
+	/** Returns and array of individual lines read from a file */
+	std::vector< std::string > ReadLines( const std::string &fileName );
+
+	/** Returns and array of individual words pulled from a string */
+	std::vector< std::string > GetWords( const std::string &str );
+
+	/** Returns and array of individual words read from a file */
+	std::vector< std::string > ReadWords( const std::string &fileName );
 
 #include "CmdLineParser.inl"
+}
 #endif // CMD_LINE_PARSER_INCLUDED

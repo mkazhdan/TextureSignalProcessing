@@ -37,155 +37,165 @@ DAMAGE.
 #include <omp.h>
 #endif // _OPENMP
 
-struct ThreadPool
+namespace MishaK
 {
-	enum ParallelType
+	struct ThreadPool
 	{
+		enum ParallelType
+		{
 #ifdef _OPENMP
-		OPEN_MP ,
+			OPEN_MP ,
 #endif // _OPENMP
-		ASYNC ,
-		NONE
-	};
-	static const std::vector< std::string > ParallelNames;
+			ASYNC ,
+			NONE
+		};
+		static const std::vector< std::string > ParallelNames;
 
-	enum ScheduleType
-	{
-		STATIC ,
-		DYNAMIC
-	};
-	static const std::vector< std::string > ScheduleNames;
-
-	static unsigned int NumThreads( void ){ return _NumThreads; }
-	static ParallelType ParallelizationType;
-	static size_t ChunkSize;
-	static ScheduleType Schedule;
-
-	template< typename Function , typename ... Functions >
-	static void ParallelSections( const Function &function , const Functions & ... functions )
-	{
-		std::vector< std::future< void > > futures;
-		if constexpr( sizeof ... (Functions) )
+		enum ScheduleType
 		{
-			futures.reserve( sizeof...(Functions) );
-			_ParallelSections( futures , functions... );
-		}
-		function();
-		for( unsigned int i=0 ; i<futures.size() ; i++ ) futures[i].get();
-	}
+			STATIC ,
+			DYNAMIC
+		};
+		static const std::vector< std::string > ScheduleNames;
 
-	template< typename Function , typename ... Functions >
-	static void ParallelSections( const Function &&function , const Functions && ... functions )
-	{
-		std::vector< std::future< void > > futures;
-		if constexpr( sizeof ... (Functions) )
+		static unsigned int NumThreads( void ){ return _NumThreads; }
+		static ParallelType ParallelizationType;
+		static size_t ChunkSize;
+		static ScheduleType Schedule;
+
+		template< typename Function , typename ... Functions >
+		static void ParallelSections( const Function &function , const Functions & ... functions )
 		{
-			futures.reserve( sizeof...(Functions) );
-			_ParallelSections( futures , std::move(functions)... );
-		}
-		function();
-		for( unsigned int i=0 ; i<futures.size() ; i++ ) futures[i].get();
-	}
-
-	static void ParallelFor( size_t begin , size_t end , const std::function< void ( unsigned int , size_t ) > &iterationFunction , unsigned int numThreads=_NumThreads , ParallelType pType=ParallelizationType , ScheduleType schedule=Schedule , size_t chunkSize=ChunkSize )
-	{
-		if( begin>=end ) return;
-		size_t range = end - begin;
-		size_t chunks = ( range + chunkSize - 1 ) / chunkSize;
-		std::atomic< size_t > index;
-		index.store( 0 );
-
-		// If the computation is serial, go ahead and run it
-		if( pType==ParallelType::NONE || numThreads<=1 )
-		{
-			for( size_t i=begin ; i<end ; i++ ) iterationFunction( 0 , i );
-			return;
-		}
-
-		// If the chunkSize is too large to satisfy all the threads, lower it
-		if( range<=chunkSize*(numThreads-1) )
-		{
-			chunkSize = ( range + numThreads - 1 ) / numThreads;
-			chunks = numThreads = (unsigned int)( ( range + chunkSize - 1 ) / chunkSize );
-		}
-
-		std::function< void (unsigned int , size_t ) > _ChunkFunction = [ &iterationFunction , begin , end , chunkSize ]( unsigned int thread , size_t chunk )
+			std::vector< std::future< void > > futures;
+			if constexpr( sizeof ... (Functions) )
 			{
-				const size_t _begin = begin + chunkSize*chunk;
-				const size_t _end = std::min< size_t >( end , _begin+chunkSize );
-				for( size_t i=_begin ; i<_end ; i++ ) iterationFunction( thread , i );
-			};
+				futures.reserve( sizeof...(Functions) );
+				_ParallelSections( futures , functions... );
+			}
+			function();
+			for( unsigned int i=0 ; i<futures.size() ; i++ ) futures[i].get();
+		}
 
-		std::function< void (unsigned int ) > _StaticThreadFunction = [ &_ChunkFunction , chunks , numThreads ]( unsigned int thread )
+		template< typename Function , typename ... Functions >
+		static void ParallelSections( const Function &&function , const Functions && ... functions )
+		{
+			std::vector< std::future< void > > futures;
+			if constexpr( sizeof ... (Functions) )
 			{
-				for( size_t chunk=thread ; chunk<chunks ; chunk+=numThreads ) _ChunkFunction( thread , chunk );
-			};
+				futures.reserve( sizeof...(Functions) );
+				_ParallelSections( futures , std::move(functions)... );
+			}
+			function();
+			for( unsigned int i=0 ; i<futures.size() ; i++ ) futures[i].get();
+		}
 
-		std::function< void (unsigned int ) > _DynamicThreadFunction = [ &_ChunkFunction , chunks , &index ]( unsigned int thread )
+		template< typename Kernel /* = std::function< void  ( unsigned int , size_t ) >*/ >
+		static void ParallelFor( size_t begin , size_t end , Kernel && kernel , unsigned int numThreads=_NumThreads , ParallelType pType=ParallelizationType , ScheduleType schedule=Schedule , size_t chunkSize=ChunkSize )
+		{
+			static_assert( std::is_convertible_v< Kernel , std::function< void ( unsigned int , size_t  ) > > || std::is_convertible_v< Kernel , std::function< void ( size_t  ) > > , "[ERROR] Kernel poorly formed" );
+			static const bool NeedsThread = std::is_convertible_v< Kernel , std::function< void ( unsigned int , size_t  ) > >;
+			if( begin>=end ) return;
+			size_t range = end - begin;
+			size_t chunks = ( range + chunkSize - 1 ) / chunkSize;
+			std::atomic< size_t > index;
+			index.store( 0 );
+
+			// If the computation is serial, go ahead and run it
+			if( pType==ParallelType::NONE || numThreads<=1 )
 			{
-				size_t chunk;
-				while( ( chunk=index.fetch_add(1) )<chunks ) _ChunkFunction( thread , chunk );
-			};
+				for( size_t i=begin ; i<end ; i++ )
+					if constexpr( NeedsThread ) kernel( 0 , i );
+					else                        kernel( i );
+				return;
+			}
 
-		std::function< void (unsigned int ) > ThreadFunction;
-		if     ( schedule==ScheduleType::STATIC  ) ThreadFunction = _StaticThreadFunction;
-		else if( schedule==ScheduleType::DYNAMIC ) ThreadFunction = _DynamicThreadFunction;
+			// If the chunkSize is too large to satisfy all the threads, lower it
+			if( range<=chunkSize*(numThreads-1) )
+			{
+				chunkSize = ( range + numThreads - 1 ) / numThreads;
+				chunks = numThreads = (unsigned int)( ( range + chunkSize - 1 ) / chunkSize );
+			}
 
-		if( false ){}
+			std::function< void (unsigned int , size_t ) > _ChunkFunction = [ &kernel , begin , end , chunkSize ]( unsigned int thread , size_t chunk )
+				{
+					const size_t _begin = begin + chunkSize*chunk;
+					const size_t _end = std::min< size_t >( end , _begin+chunkSize );
+					for( size_t i=_begin ; i<_end ; i++ )
+						if constexpr( NeedsThread ) kernel( thread , i );
+						else                        kernel( i );
+				};
+
+			std::function< void (unsigned int ) > _StaticThreadFunction = [ &_ChunkFunction , chunks , numThreads ]( unsigned int thread )
+				{
+					for( size_t chunk=thread ; chunk<chunks ; chunk+=numThreads ) _ChunkFunction( thread , chunk );
+				};
+
+			std::function< void (unsigned int ) > _DynamicThreadFunction = [ &_ChunkFunction , chunks , &index ]( unsigned int thread )
+				{
+					size_t chunk;
+					while( ( chunk=index.fetch_add(1) )<chunks ) _ChunkFunction( thread , chunk );
+				};
+
+			std::function< void (unsigned int ) > ThreadFunction;
+			if     ( schedule==ScheduleType::STATIC  ) ThreadFunction = _StaticThreadFunction;
+			else if( schedule==ScheduleType::DYNAMIC ) ThreadFunction = _DynamicThreadFunction;
+
+			if( false ){}
 #ifdef _OPENMP
-		else if( pType==ParallelType::OPEN_MP )
-		{
-			if( schedule==ScheduleType::STATIC )
+			else if( pType==ParallelType::OPEN_MP )
+			{
+				if( schedule==ScheduleType::STATIC )
 #pragma omp parallel for num_threads( numThreads ) schedule( static , 1 )
-				for( int c=0 ; c<chunks ; c++ ) _ChunkFunction( omp_get_thread_num() , c );
-			else if( schedule==ScheduleType::DYNAMIC )
+					for( int c=0 ; c<chunks ; c++ ) _ChunkFunction( omp_get_thread_num() , c );
+				else if( schedule==ScheduleType::DYNAMIC )
 #pragma omp parallel for num_threads( numThreads ) schedule( dynamic , 1 )
-				for( int c=0 ; c<chunks ; c++ ) _ChunkFunction( omp_get_thread_num() , c );
-		}
+					for( int c=0 ; c<chunks ; c++ ) _ChunkFunction( omp_get_thread_num() , c );
+			}
 #endif // _OPENMP
-		else if( pType==ParallelType::ASYNC )
+			else if( pType==ParallelType::ASYNC )
+			{
+				// [WARNING] Why static?
+				static std::vector< std::future< void > > futures;
+				futures.resize( numThreads-1 );
+				for( unsigned int t=1 ; t<numThreads ; t++ ) futures[t-1] = std::async( std::launch::async , ThreadFunction , t );
+				ThreadFunction( 0 );
+				for( unsigned int t=1 ; t<numThreads ; t++ ) futures[t-1].get();
+			}
+		}
+
+
+	private:
+		static unsigned int _NumThreads;
+
+		template< typename Function , typename ... Functions >
+		static void _ParallelSections( std::vector< std::future< void > > &futures , const Function &function , const Functions & ... functions )
 		{
-			// [WARNING] Why static?
-			static std::vector< std::future< void > > futures;
-			futures.resize( numThreads-1 );
-			for( unsigned int t=1 ; t<numThreads ; t++ ) futures[t-1] = std::async( std::launch::async , ThreadFunction , t );
-			ThreadFunction( 0 );
-			for( unsigned int t=1 ; t<numThreads ; t++ ) futures[t-1].get();
+			futures.push_back( std::async( std::launch::async , function ) );
+			if constexpr( sizeof...(Functions) ) _ParallelSections( futures , functions... );
 		}
-	}
 
+		template< typename Function , typename ... Functions >
+		static void _ParallelSections( std::vector< std::future< void > > &futures , const Function &&function , const Functions && ... functions )
+		{
+			futures.push_back( std::async( std::launch::async , function ) );
+			if constexpr( sizeof...(Functions) ) _ParallelSections( futures , std::move(functions)... );
+		}
+		};
 
-private:
-	static unsigned int _NumThreads;
+	//inline ThreadPool::ParallelType ThreadPool::ParallelizationType = ThreadPool::ParallelType::NONE; // Default is threading disabled
+	inline ThreadPool::ParallelType ThreadPool::ParallelizationType = (ThreadPool::ParallelType)0; // Default is threading enable
+	inline unsigned int ThreadPool::_NumThreads = std::thread::hardware_concurrency();
+	inline ThreadPool::ScheduleType ThreadPool::Schedule = ThreadPool::DYNAMIC;
+	inline size_t ThreadPool::ChunkSize = 128;
 
-	template< typename Function , typename ... Functions >
-	static void _ParallelSections( std::vector< std::future< void > > &futures , const Function &function , const Functions & ... functions )
+	const inline std::vector< std::string > ThreadPool::ParallelNames =
 	{
-		futures.push_back( std::async( std::launch::async , function ) );
-		if constexpr( sizeof...(Functions) ) _ParallelSections( futures , functions... );
-	}
-
-	template< typename Function , typename ... Functions >
-	static void _ParallelSections( std::vector< std::future< void > > &futures , const Function &&function , const Functions && ... functions )
-	{
-		futures.push_back( std::async( std::launch::async , function ) );
-		if constexpr( sizeof...(Functions) ) _ParallelSections( futures , std::move(functions)... );
-	}
-};
-
-//inline ThreadPool::ParallelType ThreadPool::ParallelizationType = ThreadPool::ParallelType::NONE; // Default is threading disabled
-inline ThreadPool::ParallelType ThreadPool::ParallelizationType = (ThreadPool::ParallelType)0; // Default is threading enable
-inline unsigned int ThreadPool::_NumThreads = std::thread::hardware_concurrency();
-inline ThreadPool::ScheduleType ThreadPool::Schedule = ThreadPool::DYNAMIC;
-inline size_t ThreadPool::ChunkSize = 128;
-
-const inline std::vector< std::string > ThreadPool::ParallelNames =
-{
 #ifdef _OPENMP
-	"open mp" ,
+		"open mp" ,
 #endif // _OPENMP
-	"async" ,
-	"none"
-};
-const inline std::vector< std::string > ThreadPool::ScheduleNames = { "static" , "dynamic" };
+		"async" ,
+		"none"
+	};
+	const inline std::vector< std::string > ThreadPool::ScheduleNames = { "static" , "dynamic" };
+}
 #endif // MULTI_THREADING_INCLUDED

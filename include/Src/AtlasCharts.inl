@@ -75,9 +75,9 @@ void InitializeAtlasCharts( AtlasMesh< GeometryReal > &atlasMesh , const std::ve
 		}
 
 #ifdef DEBUG_ATLAS
-		atlasCharts[chartID].triangles.push_back( _TriangleIndex( TriangleIndex( vertexID[0] , vertexID[1] , vertexID[2] ) , t ) );
+		atlasCharts[chartID].triangles.push_back( _TriangleIndex( SimplexIndex< 2 >( vertexID[0] , vertexID[1] , vertexID[2] ) , t ) );
 #else // !DEBUG_ATLAS
-		atlasCharts[chartID].triangles.push_back( TriangleIndex( vertexID[0] , vertexID[1] , vertexID[2] ) );
+		atlasCharts[chartID].triangles.push_back( SimplexIndex< 2 >( vertexID[0] , vertexID[1] , vertexID[2] ) );
 #endif // DEBUG_ATLAS
 	}
 

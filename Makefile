@@ -3,9 +3,9 @@ COMPILER ?= gcc
 NO_VISUAL ?= false
 
 ifeq ($(NO_VISUAL),true)
-	programs = TextureFiltering TextureStitching
+	programs = TextureFiltering TextureStitching TextureMasking TextureDilation
 else
-	programs = Geodesics LineIntegralConvolution TextureFiltering TextureStitching ReactionDiffusion
+	programs = Geodesics LineIntegralConvolution TextureFiltering TextureStitching ReactionDiffusion  TextureMasking TextureDilation
 endif
 
 # Allow "make -j" to operate in parallel over the programs.

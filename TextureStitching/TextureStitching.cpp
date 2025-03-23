@@ -51,40 +51,49 @@ enum
 #include <Src/StitchingVisualization.h>
 #endif // NO_OPEN_GL_VISUALIZATION
 
-cmdLineParameterArray< char * , 2 > In( "in" );
-cmdLineParameter< char * > InMask( "mask" );
-cmdLineParameter< char * > InputLowFrequency( "inLow" );
-cmdLineParameter< char* > Output( "out" );
-cmdLineParameter< int   > OutputVCycles( "outVCycles" , 6 );
-cmdLineParameter< float > InterpolationWeight( "interpolation" , 1e2 );
-cmdLineParameter< int   > Levels( "levels" , 4 );
-cmdLineParameter< int   > MatrixQuadrature( "mQuadrature" , 6 );
-cmdLineParameter< int   > BoundaryDilationRadius( "dilateBoundaries" , -1 );
+using namespace MishaK;
 
-cmdLineParameter< int   > MultigridBlockHeight ( "mBlockH" ,  16 );
-cmdLineParameter< int   > MultigridBlockWidth  ( "mBlockW" , 128 );
-cmdLineParameter< int   > MultigridPaddedHeight( "mPadH"   ,   0 );
-cmdLineParameter< int   > MultigridPaddedWidth ( "mPadW"   ,   2 );
+CmdLineParameterArray< std::string , 2 > In( "in" );
+CmdLineParameter< std::string > InMask( "mask" );
+CmdLineParameter< std::string > InputLowFrequency( "inLow" );
+CmdLineParameter< std::string > Output( "out" );
+CmdLineParameter< int   > OutputVCycles( "outVCycles" , 6 );
+CmdLineParameter< float > InterpolationWeight( "interpolation" , 1e2 );
+CmdLineParameter< int   > Levels( "levels" , 4 );
+CmdLineParameter< int   > MatrixQuadrature( "mQuadrature" , 6 );
+CmdLineParameter< int   > BoundaryDilationRadius( "dilateBoundaries" , -1 );
 
-cmdLineParameter< int    > RandomJitter( "jitter" , 0 );
-cmdLineParameter< int    > ChartMaskErode( "erode" , 0 );
+CmdLineParameter< int   > MultigridBlockHeight ( "mBlockH" ,  16 );
+CmdLineParameter< int   > MultigridBlockWidth  ( "mBlockW" , 128 );
+CmdLineParameter< int   > MultigridPaddedHeight( "mPadH"   ,   0 );
+CmdLineParameter< int   > MultigridPaddedWidth ( "mPadW"   ,   2 );
+
+CmdLineParameter< int    > RandomJitter( "jitter" , 0 );
+CmdLineParameter< int    > ChartMaskErode( "erode" , 0 );
 #ifdef NO_OPEN_GL_VISUALIZATION
 #else // !NO_OPEN_GL_VISUALIZATION
-cmdLineParameter< char* > CameraConfig( "camera" );
+CmdLineParameter< std::string > CameraConfig( "camera" );
 #endif // NO_OPEN_GL_VISUALIZATION
-cmdLineReadable UseDirectSolver( "useDirectSolver" );
-cmdLineReadable Verbose( "verbose" );
-cmdLineReadable NoHelp( "noHelp" );
-cmdLineReadable DetailVerbose( "detail" );
-cmdLineReadable Double( "double" );
-cmdLineReadable MultiInput( "multi" );
-cmdLineReadable Serial( "serial" );
+CmdLineReadable UseDirectSolver( "useDirectSolver" );
+CmdLineReadable Verbose( "verbose" );
+CmdLineReadable NoHelp( "noHelp" );
+CmdLineReadable DetailVerbose( "detail" );
+CmdLineReadable Double( "double" );
+CmdLineReadable MultiInput( "multi" );
+CmdLineReadable Serial( "serial" );
 #ifdef NO_OPEN_GL_VISUALIZATION
 #else // !NO_OPEN_GL_VISUALIZATION
-cmdLineReadable Nearest( "nearest" );
+CmdLineReadable Nearest( "nearest" );
 #endif // NO_OPEN_GL_VISUALIZATION
-cmdLineReadable* params[] =
+
+#ifdef DEBUG_BAD_LOOP
+CmdLineParameterArray< int , 2 > DebugChartCell( "debugChartCell" );
+#endif // DEBUG_BAD_LOOP
+CmdLineReadable* params[] =
 {
+#ifdef DEBUG_BAD_LOOP
+	&DebugChartCell ,
+#endif // DEBUG_BAD_LOOP
 	&In , &InMask , &Output , &InterpolationWeight , &Levels , &UseDirectSolver , &Serial, &Verbose ,
 	&InputLowFrequency ,
 	&DetailVerbose , &MultigridBlockHeight , &MultigridBlockWidth , &MultigridPaddedHeight , &MultigridPaddedWidth , &RandomJitter ,
@@ -106,40 +115,43 @@ void ShowUsage( const char *ex )
 {
 	printf( "Usage %s:\n" , ex );
 
-	printf( "\t --%s <input mesh and texels>\n" , In.name );
-	printf( "\t[--%s <input mask>]\n" , InMask.name );
-	printf( "\t[--%s <input low-frequency texture>\n" , InputLowFrequency.name );
+	printf( "\t --%s <input mesh and texels>\n" , In.name.c_str() );
+	printf( "\t[--%s <input mask>]\n" , InMask.name.c_str() );
+	printf( "\t[--%s <input low-frequency texture>\n" , InputLowFrequency.name.c_str() );
 #ifdef NO_OPEN_GL_VISUALIZATION
-	printf( "\t --%s <output texture>\n" , Output.name );
+	printf( "\t --%s <output texture>\n" , Output.name.c_str() );
 #else // !NO_OPEN_GL_VISUALIZATION
-	printf( "\t[--%s <output texture>]\n" , Output.name );
+	printf( "\t[--%s <output texture>]\n" , Output.name.c_str() );
 #endif // NO_OPEN_GL_VISUALIZATION
-	printf( "\t[--%s <chart mask erosion radius>=%d]\n" , ChartMaskErode.name , ChartMaskErode.value );
-	printf( "\t[--%s <output v-cycles>=%d]\n" , OutputVCycles.name , OutputVCycles.value );
-	printf( "\t[--%s <interpolation weight>=%f]\n" , InterpolationWeight.name , InterpolationWeight.value );
-	printf( "\t[--%s <system matrix quadrature points per triangle>=%d]\n" , MatrixQuadrature.name, MatrixQuadrature.value );
-	printf( "\t[--%s <boundary dilation radius>=%d]\n" , BoundaryDilationRadius.name , BoundaryDilationRadius.value );
-	printf( "\t[--%s]\n" , UseDirectSolver.name );
-	printf( "\t[--%s]\n" , MultiInput.name );
-	printf( "\t[--%s <jittering seed>]\n" , RandomJitter.name );
+	printf( "\t[--%s <chart mask erosion radius>=%d]\n" , ChartMaskErode.name.c_str() , ChartMaskErode.value );
+	printf( "\t[--%s <output v-cycles>=%d]\n" , OutputVCycles.name.c_str() , OutputVCycles.value );
+	printf( "\t[--%s <interpolation weight>=%f]\n" , InterpolationWeight.name.c_str() , InterpolationWeight.value );
+	printf( "\t[--%s <system matrix quadrature points per triangle>=%d]\n" , MatrixQuadrature.name.c_str(), MatrixQuadrature.value );
+	printf( "\t[--%s <boundary dilation radius>=%d]\n" , BoundaryDilationRadius.name.c_str() , BoundaryDilationRadius.value );
+	printf( "\t[--%s]\n" , UseDirectSolver.name.c_str() );
+	printf( "\t[--%s]\n" , MultiInput.name.c_str() );
+	printf( "\t[--%s <jittering seed>]\n" , RandomJitter.name.c_str() );
 #ifdef NO_OPEN_GL_VISUALIZATION
 #else // !NO_OPEN_GL_VISUALIZATION
-	printf( "\t[--%s]\n" , Nearest.name );
+	printf( "\t[--%s]\n" , Nearest.name.c_str() );
 #endif // NO_OPEN_GL_VISUALIZATION
-	printf( "\t[--%s]\n" , Verbose.name );
+	printf( "\t[--%s]\n" , Verbose.name.c_str() );
 
 #ifdef NO_OPEN_GL_VISUALIZATION
 #else // !NO_OPEN_GL_VISUALIZATION
-	printf( "\t[--%s <camera configuration file>]\n" , CameraConfig.name );
+	printf( "\t[--%s <camera configuration file>]\n" , CameraConfig.name.c_str() );
 #endif // NO_OPEN_GL_VISUALIZATION
-	printf( "\t[--%s <hierarchy levels>=%d]\n" , Levels.name, Levels.value );
-	printf( "\t[--%s <multigrid block width>=%d]\n" , MultigridBlockWidth.name , MultigridBlockWidth.value );
-	printf( "\t[--%s <multigrid block height>=%d]\n" , MultigridBlockHeight.name , MultigridBlockHeight.value );
-	printf( "\t[--%s <multigrid padded width>=%d]\n" , MultigridPaddedWidth.name , MultigridPaddedWidth.value );
-	printf( "\t[--%s <multigrid padded height>=%d]\n" , MultigridPaddedHeight.name , MultigridPaddedHeight.value );
-	printf( "\t[--%s]\n", Serial.name );
-	printf( "\t[--%s]\n", DetailVerbose.name );
-	printf( "\t[--%s]\n" , NoHelp.name );
+	printf( "\t[--%s <hierarchy levels>=%d]\n" , Levels.name.c_str(), Levels.value );
+	printf( "\t[--%s <multigrid block width>=%d]\n" , MultigridBlockWidth.name.c_str() , MultigridBlockWidth.value );
+	printf( "\t[--%s <multigrid block height>=%d]\n" , MultigridBlockHeight.name.c_str() , MultigridBlockHeight.value );
+	printf( "\t[--%s <multigrid padded width>=%d]\n" , MultigridPaddedWidth.name.c_str() , MultigridPaddedWidth.value );
+	printf( "\t[--%s <multigrid padded height>=%d]\n" , MultigridPaddedHeight.name.c_str() , MultigridPaddedHeight.value );
+	printf( "\t[--%s]\n", Serial.name.c_str() );
+	printf( "\t[--%s]\n", DetailVerbose.name.c_str() );
+	printf( "\t[--%s]\n" , NoHelp.name.c_str() );
+#ifdef DEBUG_BAD_LOOP
+	printf( "\t[--%s < chart index , cell index >]\n" , DebugChartCell.name.c_str() );
+#endif // DEBUG_BAD_LOOP
 }
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth >
@@ -201,7 +213,7 @@ public:
 
 #if defined( USE_CHOLMOD )
 	typedef CholmodCholeskySolver< Real , 3 > DirectSolver;
-#elif defined( USE_EIGEN_SIMPLICIAL )
+#elif defined( USE_EIGEN )
 	typedef EigenCholeskySolver< Real , 3 > DirectSolver;
 #elif defined( USE_EIGEN_PARDISO )
 	typedef EigenPardisoSolver< Real , 3 > DirectSolver;
@@ -408,7 +420,7 @@ void Stitching< PreReal , Real , TextureBitDepth >::WriteTexture( const char *fi
 	UpdateFilteredTexture( multigridStitchingVariables[0].x );
 	Image< Point3D< Real > > outputTexture = filteredTexture;
 	padding.unpad( outputTexture );
-	outputTexture.template write< TextureBitDepth >( fileName );
+	WriteImage< TextureBitDepth >( outputTexture , fileName );
 }
 
 #else // !NO_OPEN_GL_VISUALIZATION
@@ -475,6 +487,12 @@ void Stitching< PreReal , Real , TextureBitDepth >::MouseFunc( int button , int 
 			else if( button==GLUT_LEFT_BUTTON  ) visualization.rotating = true;
 			else if( button==GLUT_RIGHT_BUTTON ) visualization.scaling  = true;
 		}
+		else
+		{
+			if( button==GLUT_LEFT_BUTTON  ) visualization.panning = true;
+			else if( button==GLUT_RIGHT_BUTTON ) visualization.scaling  = true;
+		}
+
 	}
 
 	glutPostRedisplay();
@@ -508,8 +526,8 @@ void Stitching< PreReal , Real , TextureBitDepth >::MotionFunc( int x , int y )
 		else
 		{
 			visualization.oldX = visualization.newX , visualization.oldY = visualization.newY , visualization.newX = x , visualization.newY = y;
-			if( visualization.panning ) visualization.xForm.offset[0] -= ( visualization.newX - visualization.oldX ) / visualization.imageToScreenScale() , visualization.xForm.offset[1] += ( visualization.newY - visualization.oldY ) / visualization.imageToScreenScale();
-			else
+			if( visualization.panning ) visualization.xForm.offset[0] += ( visualization.newX - visualization.oldX ) , visualization.xForm.offset[1] -= ( visualization.newY - visualization.oldY );
+			else if( visualization.scaling )
 			{
 				float dz = (float) pow( 1.1 , (double)( visualization.newY - visualization.oldY)/8 );
 				visualization.xForm.zoom *= dz;
@@ -560,7 +578,7 @@ void Stitching< PreReal , Real , TextureBitDepth >::ExportTextureCallBack( Visua
 	UpdateFilteredTexture( multigridStitchingVariables[0].x );
 	Image< Point3D< Real > > outputTexture = filteredTexture;
 	padding.unpad( outputTexture );
-	outputTexture.template write< TextureBitDepth >( prompt );
+	WriteImage< TextureBitDepth >( outputTexture , prompt );
 }
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth >
@@ -628,7 +646,7 @@ void Stitching< PreReal , Real , TextureBitDepth >::_InitializeSystem( std::vect
 		case 12: InitializeMassAndStiffness<12>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
 		case 24: InitializeMassAndStiffness<24>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
 		case 32: InitializeMassAndStiffness<32>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
-		default: THROW( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
+		default: MK_THROW( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
 		}
 	}
 }
@@ -785,7 +803,7 @@ void Stitching< PreReal , Real , TextureBitDepth >::LoadTextures( void )
 		while( countingTextures )
 		{
 			char textureName[256];
-			sprintf( textureName , In.values[1] , numTextures );
+			sprintf( textureName , In.values[1].c_str() , numTextures );
 			FILE * file = fopen( textureName , "r" );
 			if( file ) numTextures++;
 			else countingTextures = false;
@@ -798,21 +816,21 @@ void Stitching< PreReal , Real , TextureBitDepth >::LoadTextures( void )
 				[&]( unsigned int , size_t i )
 				{
 					char textureName[256];
-					sprintf( textureName , In.values[1] , i );
-					inputTextures[i].template read< TextureBitDepth >( textureName );
+					sprintf( textureName , In.values[1].c_str() , i );
+					ReadImage< TextureBitDepth >( inputTextures[i] , textureName );
 				}
 			);
 
-		textureWidth = inputTextures[0].width();
-		textureHeight = inputTextures[0].height();
+		textureWidth = inputTextures[0].res(0);
+		textureHeight = inputTextures[0].res(1);
 
 		if( Verbose.set ) printf( "Texture count: %d\n" , numTextures );
 	}
 	else
 	{
-		inputComposition.template read< TextureBitDepth >( In.values[1] );
-		textureWidth = inputComposition.width();
-		textureHeight = inputComposition.height();
+		ReadImage< TextureBitDepth >( inputComposition , In.values[1] );
+		textureWidth = inputComposition.res(0);
+		textureHeight = inputComposition.res(1);
 	}
 }
 
@@ -828,9 +846,9 @@ void Stitching< PreReal , Real , TextureBitDepth >::LoadMasks( void )
 				[&]( unsigned int , size_t i )
 				{
 					char confidenceName[256];
-					sprintf( confidenceName , InMask.value , i );
+					sprintf( confidenceName , InMask.value.c_str() , i );
 					Image< Point3D< Real > > textureConfidence;
-					textureConfidence.template read< 8 >( confidenceName );
+					ReadImage< 8 >( textureConfidence , confidenceName );
 					inputConfidence[i].resize( textureWidth , textureHeight );
 					for( int p=0 ; p<textureConfidence.size() ; p++ ) inputConfidence[i][p] = Point3D< Real >::Dot( textureConfidence[p] , Point3D< Real >( (Real)1./3 , (Real)1./3 , (Real)1./3 ) );
 				}
@@ -839,7 +857,7 @@ void Stitching< PreReal , Real , TextureBitDepth >::LoadMasks( void )
 	else
 	{
 		Image< Point3D< unsigned char > > textureConfidence;
-		if( InMask.set ) textureConfidence.template read< 8 >( InMask.value );
+		if( InMask.set ) ReadImage< 8 >( textureConfidence , InMask.value );
 		else textureConfidence = GetChartMask();
 
 		if( BoundaryDilationRadius.value>=0 )
@@ -861,34 +879,34 @@ void Stitching< PreReal , Real , TextureBitDepth >::LoadMasks( void )
 
 			ThreadPool::ParallelFor
 				(
-					0 , textureConfidence.width() ,
+					0 , textureConfidence.res(0) ,
 					[&]( unsigned int , size_t i )
 					{
-						for( int j=0 ; j<textureConfidence.height() ; j++ )
+						for( unsigned int j=0 ; j<textureConfidence.res(1) ; j++ )
 						{
-							size_t idx = ToIndex( old(i,j) );
-							if( idx==0 ) textureConfidence(i,j) = Point3D< unsigned char >(0,0,0);
+							size_t idx = static_cast< size_t >( ToIndex( old((unsigned int)i,j) ) );
+							if( idx==0 ) textureConfidence((unsigned int)i,j) = Point3D< unsigned char >(0,0,0);
 							else
 							{
 								std::set< size_t > indices;
 								for( int x=(int)i-r ; x<=(int)(i+r) ; x++ )
-									if( x>=0 && x<textureConfidence.width() )
+									if( x>=0 && x<(int)textureConfidence.res(0) )
 										for( int y=(int)j-r ; y<=(int)(j+r) ; y++ )
-											if( y>=0 && y<textureConfidence.height() )
+											if( y>=0 && y<(int)textureConfidence.res(1) )
 												if( (x-i)*(x-i) + (y-j)*(y-j)<=(int)(r*r) )
 												{
 													idx = ToIndex( old(x,y) );
-													if( idx ) indices.insert( idx );
+													indices.insert( idx );
 												}
-								if( indices.size()>=2 ) for( int c=0 ; c<3 ; c++ ) textureConfidence(i,j)[c] = rand()%256;
+								if( indices.size()>=2 ) for( int c=0 ; c<3 ; c++ ) textureConfidence((unsigned int)i,j)[c] = rand()%256;
 							}
 						}
 					}
 				);
 		}
 
-		inputColorMask.resize( textureConfidence.width() , textureConfidence.height() );
-		for( unsigned int i=0 ; i<(unsigned int)textureConfidence.width() ; i++ ) for( unsigned int j=0 ; j<(unsigned int)textureConfidence.height() ; j++ ) for( unsigned int c=0 ; c<3 ; c++ )
+		inputColorMask.resize( textureConfidence.res() );
+		for( unsigned int i=0 ; i<textureConfidence.res(0) ; i++ ) for( unsigned int j=0 ; j<textureConfidence.res(1) ; j++ ) for( unsigned int c=0 ; c<3 ; c++ )
 			inputColorMask(i,j)[c] = ( (Real)textureConfidence(i,j)[c] )/255;
 
 		inputMask.resize( textureWidth , textureHeight );
@@ -1083,7 +1101,7 @@ void Stitching< PreReal , Real , TextureBitDepth >::Init( void )
 	interpolationWeight = InterpolationWeight.value;
 
 	mesh.read( In.values[0] , DetailVerbose.set );
-	if( InputLowFrequency.set ) lowFrequencyTexture.template read< TextureBitDepth >( InputLowFrequency.value );
+	if( InputLowFrequency.set ) ReadImage< TextureBitDepth >( lowFrequencyTexture , InputLowFrequency.value );
 
 	// Define centroid and scale for visualization
 	Point3D< PreReal > centroid;
@@ -1124,7 +1142,7 @@ void Stitching< PreReal , Real , TextureBitDepth >::Init( void )
 
 	// Assign position to exterior nodes using barycentric-exponential map
 	{
-		FEM::RiemannianMesh< PreReal > rMesh( GetPointer( mesh.triangles) , mesh.triangles.size() );
+		FEM::RiemannianMesh< PreReal , unsigned int > rMesh( GetPointer( mesh.triangles) , mesh.triangles.size() );
 		rMesh.setMetricFromEmbedding( GetPointer(mesh.vertices) );
 		rMesh.makeUnitArea();
 		Pointer( FEM::CoordinateXForm< PreReal > ) xForms = rMesh.getCoordinateXForms();
@@ -1169,7 +1187,7 @@ void Stitching< PreReal , Real , TextureBitDepth >::Init( void )
 			if( texelId(ci,cj)!=-1 ) multiChartTexelCount++;
 			texelId(ci,cj) = i;
 		}
-		if( multiChartTexelCount ) WARN( "Non-zero multi-chart texels: " , multiChartTexelCount );
+		if( multiChartTexelCount ) MK_WARN( "Non-zero multi-chart texels: " , multiChartTexelCount );
 	}
 }
 
@@ -1187,7 +1205,7 @@ void _main( int argc , char *argv[] )
 
 #ifdef NO_OPEN_GL_VISUALIZATION
 	Stitching< PreReal , Real , TextureBitDepth >::SolveSystem();
-	Stitching< PreReal , Real , TextureBitDepth >::WriteTexture( Output.value );
+	Stitching< PreReal , Real , TextureBitDepth >::WriteTexture( Output.value.c_str() );
 #else // !NO_OPEN_GL_VISUALIZATION
 	if( !Output.set )
 	{
@@ -1203,21 +1221,21 @@ void _main( int argc , char *argv[] )
 		char windowName[1024];
 		sprintf( windowName , "Stitching" );
 		glutCreateWindow( windowName );
-		if( glewInit()!=GLEW_OK ) THROW( "glewInit failed" );
+		if( glewInit()!=GLEW_OK ) MK_THROW( "glewInit failed" );
 		glutDisplayFunc ( Stitching< PreReal , Real , TextureBitDepth >::Display );
 		glutReshapeFunc ( Stitching< PreReal , Real , TextureBitDepth >::Reshape );
 		glutMouseFunc   ( Stitching< PreReal , Real , TextureBitDepth >::MouseFunc );
 		glutMotionFunc  ( Stitching< PreReal , Real , TextureBitDepth >::MotionFunc );
 		glutKeyboardFunc( Stitching< PreReal , Real , TextureBitDepth >::KeyboardFunc );
 		glutIdleFunc    ( Stitching< PreReal , Real , TextureBitDepth >::Idle );
-		if( CameraConfig.set ) Stitching< PreReal , Real , TextureBitDepth >::visualization.ReadSceneConfigurationCallBack( &Stitching< PreReal , Real , TextureBitDepth >::visualization , CameraConfig.value );
+		if( CameraConfig.set ) Stitching< PreReal , Real , TextureBitDepth >::visualization.ReadSceneConfigurationCallBack( &Stitching< PreReal , Real , TextureBitDepth >::visualization , CameraConfig.value.c_str() );
 		Stitching< PreReal , Real , TextureBitDepth >::InitializeVisualization();
 		glutMainLoop();
 	}
 	else
 	{
 		Stitching< PreReal , Real , TextureBitDepth >::SolveSystem();
-		Stitching< PreReal , Real , TextureBitDepth >::ExportTextureCallBack( &Stitching< PreReal , Real , TextureBitDepth >::visualization , Output.value );
+		Stitching< PreReal , Real , TextureBitDepth >::ExportTextureCallBack( &Stitching< PreReal , Real , TextureBitDepth >::visualization , Output.value.c_str() );
 	}
 #endif // NO_OPEN_GL_VISUALIZATION
 }
@@ -1231,14 +1249,14 @@ void _main( int argc , char *argv[] , unsigned int bitDepth )
 	case 16: return _main< PreReal , Real , 16 >( argc , argv );
 	case 32: return _main< PreReal , Real , 32 >( argc , argv );
 	case 64: return _main< PreReal , Real , 64 >( argc , argv );
-	default: ERROR_OUT( "Only bit depths of 8, 16, 32, and 64 supported: " , bitDepth );
+	default: MK_ERROR_OUT( "Only bit depths of 8, 16, 32, and 64 supported: " , bitDepth );
 	}
 }
 
 
 int main( int argc , char* argv[] )
 {
-	cmdLineParse( argc-1 , argv+1 , params );
+	CmdLineParse( argc-1 , argv+1 , params );
 #ifdef NO_OPEN_GL_VISUALIZATION
 	if( !In.set || !Output.set )
 	{
@@ -1252,8 +1270,15 @@ int main( int argc , char* argv[] )
 		return EXIT_FAILURE;
 	}
 #endif // NO_OPEN_GL_VISUALIZATION
-	if( MultiInput.set && !InMask.set ) ERROR_OUT( "Input mask required for multi-input" );
+	if( MultiInput.set && !InMask.set ) MK_ERROR_OUT( "Input mask required for multi-input" );
 
+#ifdef DEBUG_BAD_LOOP
+	if( DebugChartCell.set )
+	{
+		DebugChartFunctor = [&]( unsigned int idx ){ return idx==DebugChartCell.values[0]; };
+		DebugCellFunctor = [&]( unsigned int idx ){ return idx==DebugChartCell.values[1]; };
+	}
+#endif // DEBUG_BAD_LOOP
 
 	unsigned int bitDepth;
 	{
@@ -1264,7 +1289,7 @@ int main( int argc , char* argv[] )
 			while( true )
 			{
 				char textureName[256];
-				sprintf( textureName , In.values[1] , numTextures );
+				sprintf( textureName , In.values[1].c_str() , numTextures );
 				FILE * file = fopen( textureName , "r" );
 				if( file )
 				{
@@ -1273,13 +1298,13 @@ int main( int argc , char* argv[] )
 					ImageReader< 8 >::GetInfo( textureName , _width , _height , _channels , _bitDepth );
 					if( !numTextures ) width = _width , height = _height , channels = _channels , bitDepth = _bitDepth;
 					else if( width!=_width || height!=_height || channels!=_channels || bitDepth!=_bitDepth )
-						ERROR_OUT( "Image properties don't match: (" , width , " " , height , " " , channels , " " , bitDepth , ") != (" , _width , " " , _height , " " , _channels , " " , _bitDepth , ")" );
+						MK_ERROR_OUT( "Image properties don't match: (" , width , " " , height , " " , channels , " " , bitDepth , ") != (" , _width , " " , _height , " " , _channels , " " , _bitDepth , ")" );
 					numTextures++;
 				}
 				else break;
 			}
 		}
-		else ImageReader< 8 >::GetInfo( In.values[1] , width , height , channels , bitDepth );
+		else ImageReader< 8 >::GetInfo( In.values[1].c_str() , width , height , channels , bitDepth );
 	}
 
 	if( Serial.set ) ThreadPool::ParallelizationType = ThreadPool::ParallelType::NONE;
@@ -1305,7 +1330,7 @@ int main( int argc , char* argv[] )
 		if( Double.set ) _main< double , double >( argc , argv , bitDepth );
 		else             _main< double , float  >( argc , argv , bitDepth );
 	}
-	catch( Misha::Exception &e )
+	catch( Exception &e )
 	{
 		printf( "%s\n" , e.what() );
 		return EXIT_FAILURE;

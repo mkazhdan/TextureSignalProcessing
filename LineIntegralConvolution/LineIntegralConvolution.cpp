@@ -40,43 +40,45 @@ DAMAGE.
 #include <Src/Padding.h>
 #include <Src/TexturedMeshVisualization.h>
 
-cmdLineParameter< char* > Input( "in" );
-cmdLineParameter< char* > Output( "out" );
-cmdLineParameter< int   > OutputVCycles( "outVCycles" , 10 );
-cmdLineReadable MinimalCurvature( "minimal" );
-cmdLineReadable Double( "double" );
-cmdLineParameter< char* > InVectorField( "inVF" );
-cmdLineParameter< char* > OutVectorField( "outVF" );
-cmdLineParameter< int   > Width( "width" , 2048 );
-cmdLineParameter< int   > Height( "height" , 2048 );
-cmdLineParameter< float > LICInterpolationWeight( "licInterpolation" , 1e4 );
-cmdLineParameter< float > SharpeningInterpolationWeight( "sharpInterpolation" , 1e4 );
-cmdLineParameter< float > SharpeningGradientModulation( "sharpModulation" , 100 );
-cmdLineParameter< float > AnisotropyExponent( "aExp" , 0.f );
-cmdLineParameter< int   > NormalSmoothingIterations( "nIters" , 2 );
-cmdLineParameter< float > NormalSmoothingInterpolation( "nInterpolation" , 1e3f );
-cmdLineParameter< int   > Levels( "levels" , 4 );
-cmdLineParameter< int   > MatrixQuadrature( "mQuadrature" , 6 );
+using namespace MishaK;
+
+CmdLineParameter< std::string > Input( "in" );
+CmdLineParameter< std::string > Output( "out" );
+CmdLineParameter< int   > OutputVCycles( "outVCycles" , 10 );
+CmdLineReadable MinimalCurvature( "minimal" );
+CmdLineReadable Double( "double" );
+CmdLineParameter< std::string > InVectorField( "inVF" );
+CmdLineParameter< std::string > OutVectorField( "outVF" );
+CmdLineParameter< int   > Width( "width" , 2048 );
+CmdLineParameter< int   > Height( "height" , 2048 );
+CmdLineParameter< float > LICInterpolationWeight( "licInterpolation" , 1e4 );
+CmdLineParameter< float > SharpeningInterpolationWeight( "sharpInterpolation" , 1e4 );
+CmdLineParameter< float > SharpeningGradientModulation( "sharpModulation" , 100 );
+CmdLineParameter< float > AnisotropyExponent( "aExp" , 0.f );
+CmdLineParameter< int   > NormalSmoothingIterations( "nIters" , 2 );
+CmdLineParameter< float > NormalSmoothingInterpolation( "nInterpolation" , 1e3f );
+CmdLineParameter< int   > Levels( "levels" , 4 );
+CmdLineParameter< int   > MatrixQuadrature( "mQuadrature" , 6 );
 
 
-cmdLineParameter< char* > CameraConfig("camera");
-cmdLineParameter< int   > DisplayMode("display", TWO_REGION_DISPLAY);
+CmdLineParameter< std::string > CameraConfig("camera");
+CmdLineParameter< int   > DisplayMode("display", TWO_REGION_DISPLAY);
 
 
-cmdLineParameter< int   > MultigridBlockHeight("mBlockH", 16);
-cmdLineParameter< int   > MultigridBlockWidth("mBlockW", 128);
-cmdLineParameter< int   > MultigridPaddedHeight("mPadH", 0);
-cmdLineParameter< int   > MultigridPaddedWidth("mPadW", 2);
+CmdLineParameter< int   > MultigridBlockHeight("mBlockH", 16);
+CmdLineParameter< int   > MultigridBlockWidth("mBlockW", 128);
+CmdLineParameter< int   > MultigridPaddedHeight("mPadH", 0);
+CmdLineParameter< int   > MultigridPaddedWidth("mPadW", 2);
 
-cmdLineParameter< int   > RandomJitter( "jitter" , 0 );
-cmdLineReadable Verbose("verbose");
-cmdLineReadable DetailVerbose("detail");
-cmdLineReadable UseDirectSolver("useDirectSolver");
-cmdLineReadable IntrinsicVectorField( "intrinsicVF" );
-cmdLineReadable Serial( "serial" );
-cmdLineReadable NoHelp( "noHelp" );
+CmdLineParameter< int   > RandomJitter( "jitter" , 0 );
+CmdLineReadable Verbose("verbose");
+CmdLineReadable DetailVerbose("detail");
+CmdLineReadable UseDirectSolver("useDirectSolver");
+CmdLineReadable IntrinsicVectorField( "intrinsicVF" );
+CmdLineReadable Serial( "serial" );
+CmdLineReadable NoHelp( "noHelp" );
 
-cmdLineReadable* params[] =
+CmdLineReadable* params[] =
 {
 	&Input , &Output , &MinimalCurvature , &InVectorField , &OutVectorField , &IntrinsicVectorField , &Width,&Height , &LICInterpolationWeight , &SharpeningInterpolationWeight , &SharpeningGradientModulation , &CameraConfig, &Levels,&UseDirectSolver,&Serial,&DisplayMode,&MultigridBlockHeight,&MultigridBlockWidth,&MultigridPaddedHeight,&MultigridPaddedWidth,&Verbose,
 	&DetailVerbose , &RandomJitter ,
@@ -91,40 +93,40 @@ cmdLineReadable* params[] =
 void ShowUsage(const char* ex)
 {
 	printf( "Usage %s:\n" , ex );
-	printf( "\t --%s <input mesh>\n" , Input.name );
-	printf( "\t[--%s <output texture>\n" , Output.name );
-	printf( "\t[--%s <output v-cycles>=%d]\n" , OutputVCycles.name , OutputVCycles.value );
-	printf( "\t[--%s <input vector field file>\n" , InVectorField.name );
-	printf( "\t[--%s <output vector field file>\n" , OutVectorField.name );
-	printf( "\t[--%s <LIC interpolation weight>=%f]\n" , LICInterpolationWeight.name , LICInterpolationWeight.value );
-	printf( "\t[--%s <sharpening interpolation weight>=%f]\n" , SharpeningInterpolationWeight.name , SharpeningInterpolationWeight.value   );
-	printf( "\t[--%s <sharpening gradient modulation>=%f]\n" , SharpeningGradientModulation.name , SharpeningGradientModulation.value );
-	printf( "\t[--%s <texture width>=%d]\n" , Width.name  , Width.value  );
-	printf( "\t[--%s <texture height>=%d]\n", Height.name , Height.value );
-	printf( "\t[--%s <system matrix quadrature points per triangle>=%d]\n" , MatrixQuadrature.name , MatrixQuadrature.value );
-	printf( "\t[--%s]\n" , IntrinsicVectorField.name );
-	printf( "\t[--%s]\n" , MinimalCurvature.name );
-	printf( "\t[--%s]\n" , UseDirectSolver.name );
-	printf( "\t[--%s <jittering seed>]\n" , RandomJitter.name );
-	printf( "\t[--%s]\n" , Verbose.name );
+	printf( "\t --%s <input mesh>\n" , Input.name.c_str() );
+	printf( "\t[--%s <output texture>\n" , Output.name.c_str() );
+	printf( "\t[--%s <output v-cycles>=%d]\n" , OutputVCycles.name.c_str() , OutputVCycles.value );
+	printf( "\t[--%s <input vector field file>\n" , InVectorField.name.c_str() );
+	printf( "\t[--%s <output vector field file>\n" , OutVectorField.name.c_str() );
+	printf( "\t[--%s <LIC interpolation weight>=%f]\n" , LICInterpolationWeight.name.c_str() , LICInterpolationWeight.value );
+	printf( "\t[--%s <sharpening interpolation weight>=%f]\n" , SharpeningInterpolationWeight.name.c_str() , SharpeningInterpolationWeight.value   );
+	printf( "\t[--%s <sharpening gradient modulation>=%f]\n" , SharpeningGradientModulation.name.c_str() , SharpeningGradientModulation.value );
+	printf( "\t[--%s <texture width>=%d]\n" , Width.name.c_str()  , Width.value  );
+	printf( "\t[--%s <texture height>=%d]\n", Height.name.c_str() , Height.value );
+	printf( "\t[--%s <system matrix quadrature points per triangle>=%d]\n" , MatrixQuadrature.name.c_str() , MatrixQuadrature.value );
+	printf( "\t[--%s]\n" , IntrinsicVectorField.name.c_str() );
+	printf( "\t[--%s]\n" , MinimalCurvature.name.c_str() );
+	printf( "\t[--%s]\n" , UseDirectSolver.name.c_str() );
+	printf( "\t[--%s <jittering seed>]\n" , RandomJitter.name.c_str() );
+	printf( "\t[--%s]\n" , Verbose.name.c_str() );
 
-	printf( "\t[--%s <camera configuration file>\n" , CameraConfig.name);
-	printf( "\t[--%s <hierarchy levels>=%d]\n" , Levels.name , Levels.value );
-	printf( "\t[--%s]\n" , DetailVerbose.name );
-	printf( "\t[--%s <display mode>=%d]\n" , DisplayMode.name , DisplayMode.value );
+	printf( "\t[--%s <camera configuration file>\n" , CameraConfig.name.c_str());
+	printf( "\t[--%s <hierarchy levels>=%d]\n" , Levels.name.c_str() , Levels.value );
+	printf( "\t[--%s]\n" , DetailVerbose.name.c_str() );
+	printf( "\t[--%s <display mode>=%d]\n" , DisplayMode.name.c_str() , DisplayMode.value );
 	printf( "\t\t%d] One Region \n", ONE_REGION_DISPLAY);
 	printf( "\t\t%d] Two Region \n", TWO_REGION_DISPLAY);
 
-	printf( "\t[--%s <multigrid block width>=%d]\n"   , MultigridBlockWidth.name   , MultigridBlockWidth.value   );
-	printf( "\t[--%s <multigrid block height>=%d]\n"  , MultigridBlockHeight.name  , MultigridBlockHeight.value  );
-	printf( "\t[--%s <multigrid padded width>=%d]\n"  , MultigridPaddedWidth.name  , MultigridPaddedWidth.value  );
-	printf( "\t[--%s <multigrid padded height>=%d]\n" , MultigridPaddedHeight.name , MultigridPaddedHeight.value );
-	printf( "\t[--%s <normal smoothing iterations>=%d]\n" , NormalSmoothingIterations.name , NormalSmoothingIterations.value );
-	printf( "\t[--%s <normal smoothing interpolation>=%f]\n" , NormalSmoothingInterpolation.name , NormalSmoothingInterpolation.value );
-	printf( "\t[--%s <anisotropy exponent>=%f]\n" , AnisotropyExponent.name , AnisotropyExponent.value );
-	printf( "\t[--%s]\n" , Serial.name );
-	printf( "\t[--%s]\n" , NoHelp.name );
-	printf( "\t[--%s]\n" , Double.name );
+	printf( "\t[--%s <multigrid block width>=%d]\n"   , MultigridBlockWidth.name.c_str()   , MultigridBlockWidth.value   );
+	printf( "\t[--%s <multigrid block height>=%d]\n"  , MultigridBlockHeight.name.c_str()  , MultigridBlockHeight.value  );
+	printf( "\t[--%s <multigrid padded width>=%d]\n"  , MultigridPaddedWidth.name.c_str()  , MultigridPaddedWidth.value  );
+	printf( "\t[--%s <multigrid padded height>=%d]\n" , MultigridPaddedHeight.name.c_str() , MultigridPaddedHeight.value );
+	printf( "\t[--%s <normal smoothing iterations>=%d]\n" , NormalSmoothingIterations.name.c_str() , NormalSmoothingIterations.value );
+	printf( "\t[--%s <normal smoothing interpolation>=%f]\n" , NormalSmoothingInterpolation.name.c_str() , NormalSmoothingInterpolation.value );
+	printf( "\t[--%s <anisotropy exponent>=%f]\n" , AnisotropyExponent.name.c_str() , AnisotropyExponent.value );
+	printf( "\t[--%s]\n" , Serial.name.c_str() );
+	printf( "\t[--%s]\n" , NoHelp.name.c_str() );
+	printf( "\t[--%s]\n" , Double.name.c_str() );
 }
 
 template< typename PreReal , typename Real >
@@ -181,7 +183,7 @@ public:
 
 #if defined( USE_CHOLMOD )
 	typedef CholmodCholeskySolver< Real , 3 > DirectSolver;
-#elif defined( USE_EIGEN_SIMPLICIAL )
+#elif defined( USE_EIGEN )
 	typedef EigenCholeskySolver< Real , 3 > DirectSolver;
 #elif defined( USE_EIGEN_PARDISO )
 	typedef EigenPardisoSolver< Real , 3 > DirectSolver;
@@ -234,7 +236,7 @@ public:
 	static void InitializeVisualization( void );
 	static void ComputeExactSolution( bool verbose= false );
 	static void UpdateSolution( bool verbose=false , bool detailVerbose=false );
-	static void InitializeSystem( const FEM::RiemannianMesh< PreReal >& rMesh , int width , int height );
+	static void InitializeSystem( const FEM::RiemannianMesh< PreReal , unsigned int >& rMesh , int width , int height );
 	static void Reset( void );
 
 	static void Display(void) { visualization.Display(); }
@@ -488,7 +490,7 @@ void LineConvolution< PreReal , Real >::ExportTextureCallBack( Visualization * /
 	outputImage.resize( textureWidth , textureHeight );
 	for( int i=0 ; i<outputImage.size() ; i++ ) outputImage[i] = Point3D< float >( outputBuffer[3*i] , outputBuffer[3*i+1] , outputBuffer[3*i+2] ) / 255.f;
 	padding.unpad( outputImage );
-	outputImage.template write< 8 >( prompt );
+	WriteImage< 8 >( outputImage , prompt );
 }
 
 template< typename PreReal , typename Real >
@@ -519,7 +521,7 @@ void LineConvolution< PreReal , Real >::UpdateSolution( bool verbose , bool deta
 }
 
 template< typename PreReal , typename Real >
-void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianMesh< PreReal >& rMesh , int width , int height )
+void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianMesh< PreReal , unsigned int >& rMesh , int width , int height )
 {
 	Miscellany::Timer timer;
 	MultigridBlockInfo multigridBlockInfo(MultigridBlockWidth.value, MultigridBlockHeight.value, MultigridPaddedWidth.value, MultigridPaddedHeight.value, 0);
@@ -532,7 +534,7 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 	for( int i=0 ; i<textureNodes.size() ; i++ )
 	{
 		if( textureNodes[i].ci<0 || textureNodes[i].ci>textureWidth-1 || textureNodes[i].cj<0 || textureNodes[i].cj>textureHeight-1 )
-			THROW( "Invalid node! " , textureNodes[i].ci , " " , textureNodes[i].cj );
+			MK_THROW( "Invalid node! " , textureNodes[i].ci , " " , textureNodes[i].cj );
 		nodeIndex(textureNodes[i].ci, textureNodes[i].cj) = i;
 	}
 
@@ -563,13 +565,13 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 			if( IntrinsicVectorField.set )
 			{
 				ReadVector( vectorField , InVectorField.value );
-				if( vectorField.size()!=mesh.triangles.size() ) THROW( "Triangle and vector counts don't match: " , mesh.triangles.size() , " != " , vectorField.size() );
+				if( vectorField.size()!=mesh.triangles.size() ) MK_THROW( "Triangle and vector counts don't match: " , mesh.triangles.size() , " != " , vectorField.size() );
 			}
 			else
 			{
 				std::vector< Point3D< PreReal > > _vectorField;
 				ReadVector( _vectorField , InVectorField.value );
-				if( _vectorField.size()!=mesh.triangles.size() ) THROW( "Triangle and vector counts don't match: " , mesh.triangles.size() , " != " , _vectorField.size() );
+				if( _vectorField.size()!=mesh.triangles.size() ) MK_THROW( "Triangle and vector counts don't match: " , mesh.triangles.size() , " != " , _vectorField.size() );
 				vectorField.resize( _vectorField.size() );
 				ThreadPool::ParallelFor
 					(
@@ -626,8 +628,8 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 						{
 							Point3D< PreReal > v( 1 , 0 , 0 );
 							if( fabs( Point3D< PreReal >::Dot( v , mesh.normals[i] ) )>0.99 ) v = Point3D< PreReal >( 0 , 1 , 0 );
-							tangents[2*i+0] = Point3D< PreReal >::CrossProduct( mesh.normals[i] , v               ) ; tangents[2*i+0] /= Length( tangents[2*i+0] );
-							tangents[2*i+1] = Point3D< PreReal >::CrossProduct( mesh.normals[i] , tangents[2*i+0] ) ; tangents[2*i+1] /= Length( tangents[2*i+1] );
+							tangents[2*i+0] = Point3D< PreReal >::CrossProduct( mesh.normals[i] , v               ) ; tangents[2*i+0] /= Point3D< PreReal >::Length( tangents[2*i+0] );
+							tangents[2*i+1] = Point3D< PreReal >::CrossProduct( mesh.normals[i] , tangents[2*i+0] ) ; tangents[2*i+1] /= Point3D< PreReal >::Length( tangents[2*i+1] );
 						}
 					);
 
@@ -661,7 +663,10 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 						ThreadPool::ParallelFor
 						(
 							0 , mesh.vertices.size() ,
-							[&]( unsigned int , size_t i ){ mesh.normals[i] += tangents[2*i+0] * o[2*i+0] + tangents[2*i+1] * o[2*i+1] , mesh.normals[i] /= Length( mesh.normals[i] ); }
+							[&]( unsigned int , size_t i )
+							{
+								mesh.normals[i] += tangents[2*i+0] * o[2*i+0] + tangents[2*i+1] * o[2*i+1] , mesh.normals[i] /= Point3D< PreReal >::Length( mesh.normals[i] );
+							}
 						);
 					}
 				}		
@@ -763,7 +768,7 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 			case 12: InitializeMassAndStiffness<12>( anisoMassCoefficients , anisoStiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
 			case 24: InitializeMassAndStiffness<24>( anisoMassCoefficients , anisoStiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
 			case 32: InitializeMassAndStiffness<32>( anisoMassCoefficients , anisoStiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-			default: THROW( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
+			default: MK_THROW( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
 			}
 		}
 		if( Verbose.set ) printf( "\tInitialized mass and stiffness: %.2f(s)\n" , timer.elapsed() );
@@ -801,7 +806,7 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 			case 12: InitializeMassAndStiffness<12>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
 			case 24: InitializeMassAndStiffness<24>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
 			case 32: InitializeMassAndStiffness<32>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-			default: THROW( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
+			default: MK_THROW( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
 			}
 		}
 		if( Verbose.set ) printf( "\tInitialized mass and stiffness: %.2f(s)\n" , timer.elapsed() );
@@ -955,7 +960,7 @@ void LineConvolution< PreReal , Real >::Init( void )
 	for( int i=0 ; i<mesh.vertices.size() ; i++ ) mesh.vertices[i] = ( mesh.vertices[i]-centroid ) / radius;
 
 	Miscellany::Timer timer;
-	FEM::RiemannianMesh< PreReal > rMesh( GetPointer( mesh.triangles ) , mesh.triangles.size() );
+	FEM::RiemannianMesh< PreReal , unsigned int > rMesh( GetPointer( mesh.triangles ) , mesh.triangles.size() );
 	rMesh.setMetricFromEmbedding( GetPointer( mesh.vertices ) );
 	rMesh.makeUnitArea();
 
@@ -1005,14 +1010,14 @@ void _main( int argc , char* argv[] )
 		char windowName[1024];
 		sprintf( windowName , "Line Integral Convolution" );
 		glutCreateWindow( windowName );
-		if( glewInit()!=GLEW_OK ) THROW( "glewInit failed" );
+		if( glewInit()!=GLEW_OK ) MK_THROW( "glewInit failed" );
 		glutDisplayFunc ( LineConvolution< PreReal , Real >::Display );
 		glutReshapeFunc ( LineConvolution< PreReal , Real >::Reshape );
 		glutMouseFunc   ( LineConvolution< PreReal , Real >::MouseFunc );
 		glutMotionFunc  ( LineConvolution< PreReal , Real >::MotionFunc );
 		glutKeyboardFunc( LineConvolution< PreReal , Real >::KeyboardFunc );
 		if( !UseDirectSolver.set ) glutIdleFunc( LineConvolution< PreReal , Real >::Idle );
-		if( CameraConfig.set ) LineConvolution< PreReal , Real >::visualization.ReadSceneConfigurationCallBack( &LineConvolution< PreReal , Real >::visualization , CameraConfig.value );
+		if( CameraConfig.set ) LineConvolution< PreReal , Real >::visualization.ReadSceneConfigurationCallBack( &LineConvolution< PreReal , Real >::visualization , CameraConfig.value.c_str() );
 		LineConvolution< PreReal , Real >::InitializeVisualization();
 		glutMainLoop();
 	}
@@ -1021,13 +1026,13 @@ void _main( int argc , char* argv[] )
 		if( UseDirectSolver.set ) LineConvolution< PreReal , Real >::ComputeExactSolution();
 		else for( int i=0 ; i<OutputVCycles.value ; i++ ) LineConvolution< PreReal , Real >::UpdateSolution();
 		LineConvolution< PreReal , Real >::SetOutputBuffer( LineConvolution< PreReal , Real >::multigridModulationVariables[0].x );
-		LineConvolution< PreReal , Real >::ExportTextureCallBack( &LineConvolution< PreReal , Real >::visualization , Output.value );
+		LineConvolution< PreReal , Real >::ExportTextureCallBack( &LineConvolution< PreReal , Real >::visualization , Output.value.c_str() );
 	}
 }
 
 int main( int argc , char *argv[] )
 {
-	cmdLineParse( argc-1 , argv+1 , params );
+	CmdLineParse( argc-1 , argv+1 , params );
 	if( !Input.set ) { ShowUsage(argv[0]); return EXIT_FAILURE; }
 	if( Serial.set ) ThreadPool::ParallelizationType = ThreadPool::ParallelType::NONE;
 	if( !NoHelp.set && !Output.set )
@@ -1045,7 +1050,7 @@ int main( int argc , char *argv[] )
 		if( Double.set ) _main< double , double >( argc , argv );
 		else             _main< double , float  >( argc , argv );
 	}
-	catch( Misha::Exception &e )
+	catch( Exception &e )
 	{
 		printf( "%s\n" , e.what() );
 		return EXIT_FAILURE;

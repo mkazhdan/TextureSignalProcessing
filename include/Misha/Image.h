@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2018, Fabian Prada and Michael Kazhdan
+Copyright (c) 2025, Michael Kazhdan
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -25,157 +25,155 @@ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING 
 ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
 DAMAGE.
 */
+
 #ifndef IMAGE_INCLUDED
 #define IMAGE_INCLUDED
 
+#if defined( NEW_CMD_LINE_PARSER ) || 1
+#include <string.h>
+#endif // NEW_CMD_LINE_PARSER
 #include "Miscellany.h"
-#include "Exceptions.h"
-#include "Geometry.h"
 #include "CmdLineParser.h"
-#include "ImageIO.h"
-#include "SparseMatrix.h"
+#include "Exceptions.h"
 
-
-template< class Data >
-struct Image
+namespace MishaK
 {
-	Image(void);
-	Image(int w, int h);
-	Image(const Image& img);
-	~Image(void);
-	void resize(int w, int h);
-	template< unsigned int BitDepth > void read( const char* fileName );
-	template< unsigned int BitDepth > void write( const char* fileName ) const;
-	int width(void) const { return _width; }
-	int height(void) const { return _height; }
-	int size(void) const { return _width * _height; }
-	const Data& operator()(int x, int y) const { return _pixels[y*_width + x]; }
-	Data& operator()(int x, int y) { return _pixels[y*_width + x]; }
-	const Data& operator[](int i) const { return _pixels[i]; }
-	Data& operator[](int i) { return _pixels[i]; }
-	template< class Real > Data sample(Real x, Real y) const;
-	Image& operator = (const Image& img);
-protected:
-	int _width, _height;
-	Data* _pixels;
-};
+	template< unsigned int BitDepth > struct ImageChannel;
 
+	template<> struct ImageChannel< 8>{ using Type = uint8_t; };
+	template<> struct ImageChannel<16>{ using Type = uint16_t; };
+	template<> struct ImageChannel<32>{ using Type = uint32_t; };
+	template<> struct ImageChannel<64>{ using Type = uint64_t; };
 
-template< class Data > Image< Data >::Image(void) : _width(0), _height(0), _pixels(NULL){ ; }
-template< class Data > Image< Data >::Image(int w, int h) : _width(0), _height(0), _pixels(NULL){ resize(w, h); }
-template< class Data > Image< Data >::Image(const Image& img) : _width(0), _height(0), _pixels(NULL)
-{
-	resize(img.width(), img.height());
-	memcpy(_pixels, img._pixels, sizeof(Data) * img.size());
-}
-template< class Data > Image< Data >::~Image(void){ if (_pixels) delete[] _pixels; _pixels = NULL, _width = _height = 0; }
-template< class Data >
-template< class Real >
-Data Image< Data >::sample(Real x, Real y) const
-{
-#if 1
-	int ix1 = (int)floor(x), iy1 = (int)floor(y);
-	Real dx = x - ix1, dy = y - iy1;
-	ix1 = std::max< int >(0, std::min< int >(ix1, _width - 1));
-	iy1 = std::max< int >(0, std::min< int >(iy1, _height - 1));
-	int ix2 = std::min< int >(ix1 + 1, _width - 1), iy2 = std::min< int >(iy1 + 1, _height - 1);
-	return
-		((*this)(ix1, iy1) * (Real)(1. - dy) + (*this)(ix1, iy2) * (Real)(dy)) * (Real)(1. - dx) +
-		((*this)(ix2, iy1) * (Real)(1. - dy) + (*this)(ix2, iy2) * (Real)(dy)) * (Real)(dx);
-#else
-	int ix1 = (int)floor(x), ix2 = ix1 + 1, iy1 = (int)floor(y), iy2 = iy1 + 1;
-	float dx = x - ix1, dy = y - iy1;
-	ix1 = std::max< int >(0, std::min< int >(ix1, _width - 1));
-	ix2 = std::max< int >(0, std::min< int >(ix2, _width - 1));
-	iy1 = std::max< int >(0, std::min< int >(iy1, _height - 1));
-	iy2 = std::max< int >(0, std::min< int >(iy2, _height - 1));
-	return
-		(*this)(ix1, iy1) * (Real)((1. - dx) * (1. - dy)) +
-		(*this)(ix1, iy2) * (Real)((1. - dx) * (dy)) +
-		(*this)(ix2, iy1) * (Real)((dx)* (1. - dy)) +
-		(*this)(ix2, iy2) * (Real)((dx)* (dy));
-#endif
-}
-
-template< class Data > void Image< Data >::resize(int w, int h)
-{
-	if (_width*_height != w*h)
+	template< unsigned int BitDepth=8 >
+	struct ImageReader
 	{
-		if (_pixels) delete[] _pixels;
-		_pixels = NULL;
-		if (w*h) _pixels = new Data[w*h];
-		if( !_pixels ) ERROR_OUT( "Failed to allocate pixels: " , w , " x " , h );
-	}
-	_width = w, _height = h;
+		using ChannelType = typename ImageChannel< BitDepth >::Type;
+		virtual unsigned int nextRow( ChannelType * row ) = 0;
+
+		static ChannelType * Read( std::string fileName , unsigned int& width , unsigned int& height , unsigned int& channels )
+		{
+			ImageReader* reader = Get( fileName , width , height , channels );
+			ChannelType * pixels = new ChannelType[ width*height*channels ];
+			for( unsigned int j=0 ; j<height ; j++ ) reader->nextRow( pixels + j*width*channels );
+			delete reader;
+			return pixels;
+		}
+
+		static ChannelType * ReadColor( std::string fileName , unsigned int& width , unsigned int& height )
+		{
+			unsigned int channels;
+			ImageReader* reader = Get( fileName , width , height , channels );
+			if( channels!=1 && channels!=3 && channels!=4 ) MK_ERROR_OUT( "Requires one-, three-, or four-channel input: " , channels );
+			ChannelType * pixels = new ChannelType[ width*height*3 ];
+			ChannelType * pixelRow = new ChannelType[ width*channels ];
+			for( unsigned int j=0 ; j<height ; j++ )
+			{
+				reader->nextRow( pixelRow );
+				if     ( channels==3 ) memcpy( pixels+j*width*3 , pixelRow , sizeof(ChannelType)*width*3 );
+				else if( channels==4 ) for( unsigned int i=0 ; i<width ; i++ ) for( unsigned int c=0 ; c<3 ; c++ ) pixels[j*width*3+i*3+c] = pixelRow[i*channels+c];
+				else if( channels==1 ) for( unsigned int i=0 ; i<width ; i++ ) for( unsigned int c=0 ; c<3 ; c++ ) pixels[j*width*3+i*3+c] = pixelRow[i];
+			}
+			delete[] pixelRow;
+			delete reader;
+			return pixels;
+		}
+
+		static bool ValidExtension( std::string ext );
+
+		static ImageReader* Get( std::string fileName , unsigned int& width , unsigned int& height , unsigned int& channels );
+		static void GetInfo( std::string fileName , unsigned int& width , unsigned int& height , unsigned int& channels , unsigned int &bitDepth );
+		static void GetInfo( std::string fileName , unsigned int& width , unsigned int& height , unsigned int& channels );
+		virtual ~ImageReader( void ){ }
+	};
+
+	template< unsigned int BitDepth=8 >
+	struct ImageWriter
+	{
+		using ChannelType = typename ImageChannel< BitDepth >::Type;
+
+		virtual unsigned int nextRow( const ChannelType * row ) = 0;
+		virtual unsigned int nextRows( const ChannelType * rows , unsigned int rowNum ) = 0;
+		static bool Write( std::string fileName , const ChannelType * pixels , unsigned int width , unsigned int height , int channels , int quality=100 )
+		{
+			ImageWriter* writer = Get( fileName , width , height , channels , quality );
+			if( !writer ) return false;
+			for( unsigned int j=0 ; j<height ; j++ ) writer->nextRow( pixels + j*width*channels );
+			delete writer;
+			return true;
+		}
+		static ImageWriter* Get( std::string fileName , unsigned int width , unsigned int height , unsigned int channels , unsigned int quality=100 );
+		virtual ~ImageWriter( void ){ }
+	};
 }
 
-template< class Data > Image< Data >& Image< Data >::operator = (const Image& img)
+#include "PNG.h"
+#include "JPEG.h"
+#include "BMP.h"
+#include "PBM.h"
+
+
+namespace MishaK
 {
-	resize(img.width(), img.height());
-	memcpy(_pixels, img._pixels, sizeof(Data) * img.size());
-	return *this;
+
+	template< unsigned int BitDepth >
+	bool ImageReader< BitDepth >::ValidExtension( std::string ext )
+	{
+		for( unsigned int i=0 ; i<ext.size() ; i++ ) ext[i] = std::tolower( ext[i] );
+
+		if     ( ext==std::string( "jpeg" ) || ext==std::string( "jpg" ) ) return true;
+		else if( ext==std::string( "png" )                               ) return true;
+		else if( ext==std::string( "igrid" )                             ) return true;
+		return false;
+	}
+
+	template< unsigned int BitDepth >
+	ImageReader< BitDepth >* ImageReader< BitDepth >::Get( std::string fileName , unsigned int& width , unsigned int& height , unsigned int& channels )
+	{
+		ImageReader< BitDepth > *reader = NULL;
+		std::string ext = ToLower( GetFileExtension( fileName ) );
+		if( ext==std::string( "png" ) ) reader = new  PNGReader< BitDepth >( fileName , width , height , channels );
+		else if constexpr( BitDepth==8 )
+		{
+			if     ( ext==std::string( "jpeg" ) || ext==std::string( "jpg" ) ) reader = new JPEGReader( fileName , width , height , channels );
+			else if( ext==std::string( "bmp" )                               ) reader = new  BMPReader( fileName , width , height , channels );
+			else if( ext==std::string( "pbm" )                               ) reader = new  PBMReader( fileName , width , height , channels );
+		}
+
+		return reader;
+	}
+
+	template< unsigned int BitDepth >
+	void ImageReader< BitDepth >::GetInfo( std::string fileName , unsigned int& width , unsigned int& height , unsigned int& channels )
+	{
+		unsigned int bitDepth;
+		GetInfo( fileName , width , height , channels , bitDepth );
+	}
+
+	template< unsigned int BitDepth >
+	void ImageReader< BitDepth >::GetInfo( std::string fileName , unsigned int& width , unsigned int& height , unsigned int& channels , unsigned int &bitDepth )
+	{
+		std::string ext = ToLower( GetFileExtension( fileName ) );
+		if     ( ext==std::string( "jpeg" ) || ext==std::string( "jpg" ) ) JPEGReader            ::GetInfo( fileName , width , height , channels , bitDepth );
+		else if( ext==std::string( "png" )                               )  PNGReader< BitDepth >::GetInfo( fileName , width , height , channels , bitDepth );
+		else if( ext==std::string( "bmp" )                               )  BMPReader            ::GetInfo( fileName , width , height , channels , bitDepth );
+		else if( ext==std::string( "pbm" )                               )  PBMReader            ::GetInfo( fileName , width , height , channels , bitDepth );
+	}
+
+	template< unsigned int BitDepth >
+	ImageWriter< BitDepth >* ImageWriter< BitDepth >::Get( std::string fileName , unsigned int width , unsigned int height , unsigned int channels , unsigned int quality )
+	{
+		ImageWriter< BitDepth >* writer = nullptr;
+		std::string ext = ToLower( GetFileExtension( fileName ) );
+		if( ext==std::string( "png" )                               ) writer = new  PNGWriter< BitDepth >( fileName , width , height , channels , quality );
+		else if constexpr( BitDepth== 8 )
+		{
+			if     ( ext==std::string( "jpeg" ) || ext==std::string( "jpg" ) ) writer = new JPEGWriter( fileName , width , height , channels , quality );
+			else if( ext==std::string( "bmp" )                               ) writer = new  BMPWriter( fileName , width , height , channels , quality );
+			else if( ext==std::string( "pbm" )                               ) writer = new  PBMWriter( fileName , width , height , channels , quality );
+		}
+
+		return writer;
+	}
 }
-
-template< typename Data >
-template< unsigned int BitDepth >
-void Image< Data >::read( const char* fileName )
-{
-	using CType = typename ImageChannel< BitDepth >::Type;
-	static const CType Scale = ~((CType )0);
-	unsigned int width , height;
-	CType * pixels = ImageReader< BitDepth >::ReadColor( fileName , width , height );
-	if( !pixels ) THROW( "Failed to read image: " , std::string( fileName ) );
-	resize( width , height );
-
-	if constexpr( std::is_same_v< Data , Point3D< double > > )
-	{
-		double scale = (double)Scale;
-		for( int i=0 ; i<(int)width ; i++ ) for( int j=0 ; j<(int)height ; j++ ) for( int c=0 ; c<3 ; c++ ) (*this)(i,j)[c] = ( pixels[ (j*width+i)*3+c ] ) / scale;
-	}
-	else if constexpr( std::is_same_v< Data , Point3D< float > > )
-	{
-		float scale = (float)Scale;
-		for( int i=0 ; i<(int)width ; i++ ) for( int j=0 ; j<(int)height ; j++ ) for( int c=0 ; c<3 ; c++ ) (*this)(i,j)[c] = ( pixels[ (j*width+i)*3+c ] ) / scale;
-	}
-	else if constexpr( std::is_same_v< Data , Point3D< CType > > )
-	{
-		memcpy( _pixels , pixels , sizeof( CType ) * _width * _height * 3 );
-	}
-	else ERROR_OUT( "Bad data type " );
-
-	delete[] pixels;
-}
-
-
-template< typename Data >
-template< unsigned int BitDepth >
-void Image< Data >::write( const char* fileName ) const
-{
-	using CType = typename ImageChannel< BitDepth >::Type;
-	static const CType Scale = ~((CType )0);
-	if constexpr( std::is_same_v< Data , Point3D< double > > )
-	{
-		double scale = (double)Scale;
-		CType * pixels = new CType[ _width*_height*3 ];
-		for( int i=0 ; i<_width ; i++ ) for( int j=0 ; j<_height ; j++ ) for( int c=0 ; c<3 ; c++ ) pixels[ 3*(j*_width+i)+c ] = (CType)std::min< unsigned long long >( Scale , std::max< unsigned long long >( 0 , (unsigned long long)( (*this)(i,j)[c] * scale + 0.5 ) ) );
-		ImageWriter< BitDepth >::Write( fileName , pixels , _width , _height , 3 );
-		delete[] pixels;
-	}
-	else if constexpr( std::is_same_v< Data , Point3D< float > > )
-	{
-		float scale = (float)Scale;
-		CType * pixels = new CType[ _width * _height * 3 ];
-		for( int i=0 ; i<_width ; i++ ) for( int j=0 ; j<_height ; j++ ) for( int c=0 ; c<3 ; c++ ) pixels[ 3*(j*_width+i)+c ] = (CType)std::min< unsigned long long >( Scale , std::max< unsigned long long >( 0 , (unsigned long long)( (*this)(i,j)[c] * scale + 0.5f ) ) );
-		ImageWriter< BitDepth >::Write( fileName , pixels , _width , _height , 3 );
-		delete[] pixels;
-	}
-	else if constexpr( std::is_same_v< Data , Point3D< CType > > )
-	{
-		ImageWriter< BitDepth >::Write( fileName , (CType*)_pixels , _width , _height , 3 );
-	}
-	else ERROR_OUT( "Bad data type " );
-
-}
-
-
-#endif //IMAGE_INCLUDED
+#endif // IMAGE_INCLUDED

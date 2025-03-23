@@ -26,11 +26,6 @@ ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF S
 DAMAGE.
 */
 
-#include <Eigen/SparseLU>
-#include <Misha/Miscellany.h>
-#include <Misha/MultiThreading.h>
-#include "SparseMatrixParser.h"
-
 template< class Real , class Data , class Solver >
 void Relaxation
 (
@@ -225,12 +220,12 @@ void Relaxation
 			ThreadPool::ParallelFor
 				(
 					0 , (threadTasks.size() + 1) / 2 ,
-					[&]( unsigned int , size_t t ){ for( int b=0 ; b<threadTasks[2*t+0].blockTasks.size() ; b++ ) UpdateBlock( 2*t+0 , b , 3 ); }
+					[&]( unsigned int , size_t t ){ for( int b=0 ; b<threadTasks[2*t+0].blockTasks.size() ; b++ ) UpdateBlock( (int)(2*t+0) , b , 3 ); }
 				);
 			ThreadPool::ParallelFor
 				(
 					0 , threadTasks.size() / 2 ,
-					[&]( unsigned int , size_t t ){ for( int b=0 ; b<threadTasks[2*t+1].blockTasks.size() ; b++ ) UpdateBlock( 2*t+1 , b , 3 ); }
+					[&]( unsigned int , size_t t ){ for( int b=0 ; b<threadTasks[2*t+1].blockTasks.size() ; b++ ) UpdateBlock( (int)(2*t+1) , b , 3 ); }
 				);
 			if( verbose ) printf( "\t GS Deep update =  %.4f\n" , timer.elapsed() );
 		}
@@ -354,12 +349,12 @@ void RelaxationAndResidual
 			ThreadPool::ParallelFor
 				(
 					0 , (threadTasks.size() + 1) / 2 ,
-					[&]( unsigned int , size_t t ){ for( int b=0 ; b<threadTasks[2*t+0].blockTasks.size() ; b++ ) UpdateBlock( 2*t+0 , b , 3 ); }
+					[&]( unsigned int , size_t t ){ for( int b=0 ; b<threadTasks[2*t+0].blockTasks.size() ; b++ ) UpdateBlock( (int)(2*t+0) , b , 3 ); }
 				);
 			ThreadPool::ParallelFor
 				(
 					0 , threadTasks.size() / 2 ,
-					[&]( unsigned int , size_t t ){ for( int b=0 ; b<threadTasks[2*t+1].blockTasks.size() ; b++ ) UpdateBlock( 2*t+1 , b , 3 ); }
+					[&]( unsigned int , size_t t ){ for( int b=0 ; b<threadTasks[2*t+1].blockTasks.size() ; b++ ) UpdateBlock( (int)(2*t+1) , b , 3 ); }
 				);
 
 			if( verbose ) printf( "\t GS Deep update =  %.4f\n" , timer.elapsed() );
@@ -687,7 +682,7 @@ void MultiplyBySystemMatrix_NoReciprocals
 	unsigned int threads = ThreadPool::NumThreads();
 	std::vector< int > lineRange( threads+1 );
 	int blockSize = (int)rasterLines.size() / threads;
-	for( int t=0 ; t<threads ; t++ ) lineRange[t] = t*blockSize;
+	for( unsigned int t=0 ; t<threads ; t++ ) lineRange[t] = t*blockSize;
 	lineRange[threads] = (int)rasterLines.size();
 	ThreadPool::ParallelFor
 		(
@@ -810,7 +805,7 @@ void MultiplyByRestriction
 	unsigned int threads = ThreadPool::NumThreads();
 	std::vector<int> lineRange(threads + 1);
 	int blockSize = (int)restrictionLines.size() / threads;
-	for (int t = 0; t < threads; t++) lineRange[t] = t*blockSize;
+	for( unsigned int t=0 ; t<threads ; t++ ) lineRange[t] = t*blockSize;
 	lineRange[threads] = (int)restrictionLines.size();
 	ThreadPool::ParallelFor
 		(
@@ -916,7 +911,7 @@ void AddProlongation( const std::vector< ProlongationLine > &prolongationLines ,
 	unsigned int threads = ThreadPool::NumThreads();
 	std::vector<int> lineRange(threads + 1);
 	int blockSize = (int)prolongationLines.size() / threads;
-	for (int t = 0; t < threads; t++) lineRange[t] = t*blockSize;
+	for( unsigned int t=0 ; t<threads ; t++ ) lineRange[t] = t*blockSize;
 	lineRange[threads] = (int)prolongationLines.size();
 	ThreadPool::ParallelFor
 		(

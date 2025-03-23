@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2011, Michael Kazhdan and Ming Chuang
+Copyright (c) 2023, Michael Kazhdan
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -25,24 +25,6 @@ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING 
 ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
 DAMAGE.
 */
-#include <stdio.h>
-#include <stdlib.h>
-#include <setjmp.h>
-
-#ifdef _WIN32
-#include <windows.h>
-#include "JPEG/jpeglib.h"
-#include "JPEG/jerror.h"
-#include "JPEG/jmorecfg.h"
-#else // !_WIN32
-#include <jpeglib.h>
-#include <jerror.h>
-#include <jmorecfg.h>
-#endif // _WIN32
-#include "Miscellany.h"
-#include "Exceptions.h"
-
-
 
 inline METHODDEF( void )
 my_error_exit (j_common_ptr cinfo)
@@ -58,16 +40,21 @@ my_error_exit (j_common_ptr cinfo)
 	longjmp(myerr->setjmp_buffer, 1);
 }
 
-inline bool JPEGReader::GetInfo( const char* fileName , unsigned int& width , unsigned int& height , unsigned int& channels , unsigned int &bitDepth )
+inline bool JPEGReader::GetInfo( std::string fileName , unsigned int& width , unsigned int& height , unsigned int& channels , unsigned int &bitDepth )
 {
 	bitDepth = 8;
 	return GetInfo( fileName , width , height , channels );
 }
 
-inline bool JPEGReader::GetInfo( const char* fileName , unsigned int& width , unsigned int& height , unsigned int& channels )
+inline bool JPEGReader::GetInfo( std::string fileName , unsigned int& width , unsigned int& height , unsigned int& channels )
 {
-	FILE* fp = fopen( fileName , "rb" );
-	if( !fp ) ERROR_OUT( "Failed to open: " , std::string( fileName ) );
+#if _WIN32 || _WIN64
+	FILE *fp;
+	if( fopen_s( &fp , fileName.c_str() , "rb" ) ) fprintf( stderr , "[ERROR] JPEGReader: Failed to open: %s\n" , fileName.c_str() ) , exit(0);
+#else // !_WIN32 && |_WIN64
+	FILE* fp = fopen( fileName.c_str() , "rb" );
+	if( !fp ) fprintf( stderr , "[ERROR] JPEGReader: Failed to open: %s\n" , fileName.c_str() ) , exit(0);
+#endif // _WIN32 || _WIN64
 
 	struct jpeg_decompress_struct cInfo;
 	struct my_error_mgr jErr;
@@ -77,7 +64,8 @@ inline bool JPEGReader::GetInfo( const char* fileName , unsigned int& width , un
 	if( setjmp( jErr.setjmp_buffer ) )
 	{
 		jpeg_destroy_decompress( &cInfo );
-		ERROR_OUT( "JPEG error occured" );
+		fprintf( stderr , "[ERROR] JPEGReader: JPEG error occured\n" );
+		exit( 0 );
 	}
 
 	jpeg_create_decompress( &cInfo );
@@ -94,18 +82,23 @@ inline bool JPEGReader::GetInfo( const char* fileName , unsigned int& width , un
 	return true;
 }
 
-inline JPEGReader::JPEGReader( const char* fileName , unsigned int& width , unsigned int& height , unsigned int& channels )
+inline JPEGReader::JPEGReader( std::string fileName , unsigned int& width , unsigned int& height , unsigned int& channels )
 {
 	_currentRow = 0;
-	_fp = fopen( fileName , "rb" );
-	if( !_fp ) ERROR_OUT( "Failed to open: " , std::string( fileName ) );
+#if _WIN32 || _WIN64
+	if( fopen_s( &_fp , fileName.c_str() , "rb" ) ) fprintf( stderr , "[ERROR] JPEGReader: Failed to open: %s\n" , fileName.c_str() ) , exit(0);
+#else // !_WIN32 && !_WIN64
+	_fp = fopen( fileName.c_str() , "rb" );
+	if( !_fp ) fprintf( stderr , "[ERROR] JPEGReader: Failed to open: %s\n" , fileName.c_str() ) , exit(0);
+#endif // _WIN32 || _WIN64
 
 	_cInfo.err = jpeg_std_error( &_jErr.pub );
 	_jErr.pub.error_exit = my_error_exit;
 	if( setjmp( _jErr.setjmp_buffer ) )
 	{
 		jpeg_destroy_decompress( &_cInfo );
-		ERROR_OUT( "JPEG error occured" );
+		fprintf( stderr , "[ERROR] JPEGReader: JPEG error occured\n" );
+		exit( 0 );
 	}
 
 	jpeg_create_decompress( &_cInfo );
@@ -132,11 +125,15 @@ inline unsigned int JPEGReader::nextRow( unsigned char* row )
 	return _currentRow++;
 }
 
-inline JPEGWriter::JPEGWriter( const char* fileName , unsigned int width , unsigned int height , unsigned int channels , unsigned int quality )
+inline JPEGWriter::JPEGWriter( std::string fileName , unsigned int width , unsigned int height , unsigned int channels , unsigned int quality )
 {
 	_currentRow = 0;
-	_fp = fopen( fileName , "wb" );
-	if( !_fp ) ERROR_OUT( "Failed to open: " , std::string( fileName ) );
+#if _WIN32 || _WIN64
+	if( fopen_s( &_fp , fileName.c_str() , "wb" ) ) fprintf( stderr , "[ERROR] JPEGWriter: Failed to open: %s\n" , fileName.c_str() ) , exit(0);
+#else // !_WIN32 && !_WIN64
+	_fp = fopen( fileName.c_str() , "wb" );
+	if( !_fp ) fprintf( stderr , "[ERROR] JPEGWriter: Failed to open: %s\n" , fileName.c_str() ) , exit(0);
+#endif // _WIN32 || _WIN64
 
 	_cInfo.err = jpeg_std_error( &_jErr.pub );
 	jpeg_create_compress( &_cInfo );

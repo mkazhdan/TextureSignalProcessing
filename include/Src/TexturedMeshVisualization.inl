@@ -28,11 +28,11 @@ DAMAGE.
 
 float TexturedMeshVisualization::imageToScreenScale( void ) const
 {
-	return std::min< float >(float(screenWidth) / float(textureImage.width()), float(screenHeight) / float(textureImage.height())) * xForm.zoom;
+	return std::min< float >(float(screenWidth) / float(textureImage.res(0)), float(screenHeight) / float(textureImage.res(1))) * xForm.zoom;
 }
 Point< float , 2 > TexturedMeshVisualization::imageToScreen( float px , float py ) const
 {
-	float ip[] = { px, py }, ic[] = { float(textureImage.width()) / 2 + xForm.offset[0], float(textureImage.height()) / 2 - xForm.offset[1] }, sc[] = { float(screenWidth) / 2, float(screenHeight) / 2 };
+	float ip[] = { px, py }, ic[] = { float(textureImage.res(0)) / 2 + xForm.offset[0], float(textureImage.res(1)) / 2 - xForm.offset[1] }, sc[] = { float(screenWidth) / 2, float(screenHeight) / 2 };
 	float scale = imageToScreenScale();
 	Point< float, 2 > sp;
 	sp[0] = sc[0] + (ip[0] - ic[0])*scale;
@@ -109,7 +109,7 @@ void TexturedMeshVisualization::ReadSceneConfigurationCallBack( Visualization *v
 	TexturedMeshVisualization* av = (TexturedMeshVisualization*)v;
 	FILE * file;
 	file = fopen( prompt , "rb" );
-	if( !file ) THROW( "Camera Configuration File Not Valid: " , prompt );
+	if( !file ) MK_THROW( "Camera Configuration File Not Valid: " , prompt );
 	else
 	{
 		fread( &av->screenWidth  , sizeof(int) , 1 , file );
@@ -128,7 +128,7 @@ void TexturedMeshVisualization::ScreenshotCallBack(Visualization* v, const char*
 	Image< Point3D< float > > image;
 	TexturedMeshVisualization* av = (TexturedMeshVisualization*)v;
 	av->RenderOffScreenBuffer( image );
-	image.template write< 8 >( prompt );
+	WriteImage< 8 >( image , prompt );
 }
 
 void TexturedMeshVisualization::UpdateVertexBuffer() {
@@ -199,10 +199,9 @@ void TexturedMeshVisualization::UpdateTextureBuffer( void )
 {
 	if( !glIsBuffer( textureBuffer ) ) glGenTextures( 1 , &textureBuffer );
 
-	int height = textureImage.height();
-	int width = textureImage.width();
+	unsigned int width = textureImage.res(0) , height = textureImage.res(1);
 	unsigned char *clrs = new unsigned char[height*width * 3];
-	for( int j=0 ; j<height ; j++ ) for( int i=0 ; i<width ; i++ ) for( int c=0 ; c<3 ; c++ )
+	for( unsigned int j=0 ; j<height ; j++ ) for( unsigned int i=0 ; i<width ; i++ ) for( int c=0 ; c<3 ; c++ )
 		clrs[ 3*(width*j + i)+c ] = (unsigned char)( std::min< float >( (float)textureImage(i,j)[c]*255.f , 255.f ) );
 	glBindTexture( GL_TEXTURE_2D , textureBuffer );
 	glTexImage2D( GL_TEXTURE_2D , 0 , GL_RGBA , width , height , 0 , GL_RGB , GL_UNSIGNED_BYTE , (GLvoid*)&clrs[0] );
@@ -371,7 +370,7 @@ void TexturedMeshVisualization::DrawGeometry( GLuint& textureBufferId , bool pho
 			Point3D< float > center = v[0] + (v[1]-v[0])*vectorField[i].p[0] + (v[2]-v[0])*vectorField[i].p[1];
 			Point3D< float > v1 = (v[1]-v[0])*vectorField[i].v[0] + (v[2]-v[0])*vectorField[i].v[1];
 			Point3D< float > v2 = Point3D< float >::CrossProduct( v1 , n );
-			v2 /= (float)Length(v2);
+			v2 /= Point3D< float >::Length(v2);
 
 			glColor3f( 0.35f , 0.35f , 0.35f );
 			t = center - v2*WidthScale ; glVertex3f( t[0] , t[1] , t[2] );
@@ -711,7 +710,7 @@ void TexturedMeshVisualization::takeScreenshot( const char* fileName )
 {
 	Image< Point3D< float > > image;
 	RenderOffScreenBuffer( image );
-	image.template write< 8 >( fileName );
+	WriteImage< 8 >( image , fileName );
 }
 
 void TexturedMeshVisualization::motionFunc(int x, int y)
@@ -765,7 +764,7 @@ TexturedMeshVisualization::TexturedMeshVisualization( bool hasVectorField )
 
 	radius = 1.f;
 
-	camera = Camera< float >( Point3D< float >( 0.f , 0.f , 2.f ) , Point3D< float >( 0.f , 0.f , -1.f ) , Point3D< float >( 0.f , 1.f , 0.f ) );
+	camera = Camera( Point3D< float >( 0.f , 0.f , 2.f ) , Point3D< float >( 0.f , 0.f , -1.f ) , Point3D< float >( 0.f , 1.f , 0.f ) );
 
 	callBacks.push_back(KeyboardCallBack(this, 'C', "read camera", "File Name", ReadSceneConfigurationCallBack));
 	callBacks.push_back(KeyboardCallBack(this, 'c', "save camera", "File Name", WriteSceneConfigurationCallBack));
@@ -792,7 +791,7 @@ TexturedMeshVisualization::TexturedMeshVisualization( bool hasVectorField )
 //(i,j) in [0,textureImage.width() -1] x [0,textureImage.height() - 1]
 
 Point< float, 2 > TexturedMeshVisualization::screenToImage(int x, int  y) {
-	float ic[2] = { float(textureImage.width()) / 2 + xForm.offset[0], float(textureImage.height()) / 2 - xForm.offset[1] };
+	float ic[2] = { float(textureImage.res(0)) / 2 + xForm.offset[0], float(textureImage.res(1)) / 2 - xForm.offset[1] };
 	float sc[2] = { float(screenWidth) / 2, float(screenHeight) / 2 };
 	float scale = imageToScreenScale();
 	Point< float, 2 > ip;

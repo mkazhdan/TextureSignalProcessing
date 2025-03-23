@@ -115,9 +115,9 @@ void DeepCoefficientRestriction( const std::vector< Real >& fineDeepCoefficients
 			0 , threads ,
 			[&]( unsigned int , size_t t )
 			{
-				int firstLine = ((int)deepLines.size() * t) / threads;
-				int lastLine = ((int)deepLines.size() * (t + 1)) / threads;
-				for( int r=firstLine ; r<lastLine ; r++ ) UpdateRow(r);
+				unsigned int firstLine = static_cast< unsigned int >( (deepLines.size() * t) / threads );
+				unsigned int lastLine = static_cast< unsigned int >( (deepLines.size() * (t + 1)) / threads );
+				for( unsigned int r=firstLine ; r<lastLine ; r++ ) UpdateRow(r);
 			}
 		);
 }

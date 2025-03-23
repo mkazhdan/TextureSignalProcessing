@@ -27,9 +27,6 @@ DAMAGE.
 */
 #pragma once
 
-#include <Misha/Miscellany.h>
-#include <Misha/Exceptions.h>
-
 template< typename GeometryReal >
 void InitializeAtlasMesh( const OrientedTexturedTriangleMesh< GeometryReal > &inputMesh , AtlasMesh< GeometryReal > &outputMesh , const int width , const int height , bool verbose )
 {
@@ -66,7 +63,7 @@ void InitializeAtlasMesh( const OrientedTexturedTriangleMesh< GeometryReal > &in
 				}
 				cornerIndices[k] = currentCorner;
 			}
-			outputMesh.triangles.push_back( TriangleIndex( cornerIndices[0] , cornerIndices[1] , cornerIndices[2] ) );
+			outputMesh.triangles.push_back( SimplexIndex< 2 >( cornerIndices[0] , cornerIndices[1] , cornerIndices[2] ) );
 		}
 	}
 
@@ -95,7 +92,7 @@ void InitializeAtlasMesh( const OrientedTexturedTriangleMesh< GeometryReal > &in
 		{
 			unsigned long long edgeKey = outputMesh.edgeKey(i,k);
 			if( halfEdgeIndex.find(edgeKey)==halfEdgeIndex.end() ) halfEdgeIndex[edgeKey] = 3*i+k;
-			else THROW( "Non oriented manifold mesh" );	// If the same half-edge appears twice
+			else MK_THROW( "Non oriented manifold mesh" );	// If the same half-edge appears twice
 		}
 
 		int lastEdgeIndex = 0;
@@ -114,7 +111,7 @@ void InitializeAtlasMesh( const OrientedTexturedTriangleMesh< GeometryReal > &in
 			}
 			else halfEdgeToEdgeIndex[currentHalfEdgeIndex] = lastEdgeIndex++;
 		}
-		for( int i=0 ; i<outputMesh.triangles.size() ; i++ ) for( int k=0 ; k<3 ; k++ ) if( halfEdgeToEdgeIndex[3*i+k]==-1 ) THROW( "Non indexed half edge" );
+		for( int i=0 ; i<outputMesh.triangles.size() ; i++ ) for( int k=0 ; k<3 ; k++ ) if( halfEdgeToEdgeIndex[3*i+k]==-1 ) MK_THROW( "Non indexed half edge" );
 
 		outputMesh.halfEdgeToEdgeIndex = halfEdgeToEdgeIndex;
 	}

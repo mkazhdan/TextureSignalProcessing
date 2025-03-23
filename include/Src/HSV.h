@@ -28,47 +28,51 @@ DAMAGE.
 #ifndef HSV_INCLUDED
 #define HSV_INCLUDED
 
-#include <Misha/Geometry.h>
-// h [0,1) ,s [0,1], v [0,1]
-// Hue is mapped to [0,240) deg to avoid circularity
-template< typename Real >
-Point3D< Real > HSV2RGB( Real h,  Real s , Real v )
-{
-	const Real c = s*v;
-	// use next line for full [0,360) hue
-	const Real _h = h * (Real)6.0;
-	// use next line for partial [0,240) hue
-	//const Real _h = h * 4.0;
-	const Real _h_mod_2 = (Real)( _h - floor( _h/2 ) * 2 );
-	Real x = (Real)( c*(1 - fabs( _h_mod_2 - 1 ) ) );
-	Real r, g, b;
-	r = g = b = 0.0;
-	if (_h <= 1){
-		r = c;
-		g = x;
-	}
-	else if (_h <= 2){
-		r = x;
-		g = c;
-	}
-	else if (_h <= 3){
-		g = c;
-		b = x;
-	}
-	else if (_h <= 4){
-		g = x;
-		b = c;
-	}
-	else if (_h <= 5){
-		r = x;
-		b = c;
-	}
-	else{
-		r = c;
-		b = x;
-	}
-	Real m = v - c;
-	return Point3D< Real >( r+m , g+m , b+m );
-}
 
+#include <Misha/Geometry.h>
+
+namespace MishaK
+{
+	// h [0,1) ,s [0,1], v [0,1]
+	// Hue is mapped to [0,240) deg to avoid circularity
+	template< typename Real >
+	Point3D< Real > HSV2RGB( Real h,  Real s , Real v )
+	{
+		const Real c = s*v;
+		// use next line for full [0,360) hue
+		const Real _h = h * (Real)6.0;
+		// use next line for partial [0,240) hue
+		//const Real _h = h * 4.0;
+		const Real _h_mod_2 = (Real)( _h - floor( _h/2 ) * 2 );
+		Real x = (Real)( c*(1 - fabs( _h_mod_2 - 1 ) ) );
+		Real r, g, b;
+		r = g = b = 0.0;
+		if (_h <= 1){
+			r = c;
+			g = x;
+		}
+		else if (_h <= 2){
+			r = x;
+			g = c;
+		}
+		else if (_h <= 3){
+			g = c;
+			b = x;
+		}
+		else if (_h <= 4){
+			g = x;
+			b = c;
+		}
+		else if (_h <= 5){
+			r = x;
+			b = c;
+		}
+		else{
+			r = c;
+			b = x;
+		}
+		Real m = v - c;
+		return Point3D< Real >( r+m , g+m , b+m );
+	}
+}
 #endif //HSV_INCLUDED

@@ -25,14 +25,8 @@ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING 
 ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
 DAMAGE.
 */
+#define FULL_ARRAY_DEBUG    0	// Note that this is not thread-safe
 
-#include <stdio.h>
-#include <emmintrin.h>
-#include <vector>
-#ifdef _WIN32
-#include <windows.h>
-#endif // _WIN32
-#include <stddef.h>
 
 inline bool isfinitef( float fp ){ float f=fp; return ((*(unsigned *)&f)&0x7f800000)!=0x7f800000; }
 
@@ -52,6 +46,16 @@ template< >         inline bool IsValid< __m128 >( const __m128& m )
 template< class C > inline bool IsValid( const C& c ){ return true; }
 
 
+#if FULL_ARRAY_DEBUG
+class DebugMemoryInfo
+{
+public:
+	const void* address;
+	char name[512];
+};
+static std::vector< DebugMemoryInfo > memoryInfo;
+#endif // FULL_ARRAY_DEBUG
+
 template< class C >
 class Array
 {
@@ -66,28 +70,60 @@ protected:
 	{
 		if( idx<min || idx>=max )
 		{
-			if( message ) ERROR_OUT( "Array index out-of-bounds: " , min , " <= " , idx , " < " , max , " [" , std::string(message) , "]" );
-			else          ERROR_OUT( "Array index out-of-bounds: " , min , " <= " , idx , " < " , max );
+			if( message ) fprintf( stderr , "Array index out-of-bounds: %lld <= %lld < %lld [%s]\n" , min , idx , max , message );
+			else fprintf( stderr , "Array index out-of-bounds: %lld <= %lld < %lld\n" , min , idx , max );
+			ASSERT( 0 );
+			exit( 0 );
 		}
 	}
 	C *data , *_data;
 	difference_type min , max;
+#if FULL_ARRAY_DEBUG
+	static void _AddMemoryInfo( const void* ptr , const char* name )
+	{
+		size_t sz = memoryInfo.size();
+		memoryInfo.resize( sz + 1 );
+		memoryInfo[sz].address = ptr;
+		if( name ) strcpy( memoryInfo[sz].name , name );
+		else memoryInfo[sz].name[0] = 0;
+	}
+	static void _RemoveMemoryInfo( const void* ptr )
+	{
+		{
+			size_t idx;
+			for( idx=0 ; idx<memoryInfo.size( ) ; idx++ ) if( memoryInfo[idx].address==ptr ) break;
+			if( idx==memoryInfo.size() )
+			{
+				fprintf( stderr , "Could not find memory in address table\n" );
+				ASSERT( 0 );
+			}
+			else
+			{
+				memoryInfo[idx] = memoryInfo[memoryInfo.size()-1];
+				memoryInfo.pop_back( );
+			}
+		}
+	}
+#endif // FULL_ARRAY_DEBUG
 
 public:
 	difference_type minimum( void ) const { return min; }
 	difference_type maximum( void ) const { return max; }
 
 	operator C*() { return data; }
-	static inline Array New( size_t size )
+	static inline Array New( size_t size , const char* name=NULL )
 	{
 		Array a;
 		a._data = a.data = new C[size];
 		a.min = 0;
 #pragma message( "[WARNING] Casting unsigned to signed" )
 		a.max = ( difference_type ) size;
+#if FULL_ARRAY_DEBUG
+		_AddMemoryInfo( a._data , name );
+#endif // FULL_ARRAY_DEBUG
 		return a;
 	}
-	static inline Array Alloc( size_t size , bool clear )
+	static inline Array Alloc( size_t size , bool clear , const char* name=NULL )
 	{
 		Array a;
 		a._data = a.data = ( C* ) malloc( size * sizeof( C ) );
@@ -96,9 +132,12 @@ public:
 		a.min = 0;
 #pragma message( "[WARNING] Casting unsigned to signed" )
 		a.max = ( difference_type ) size;
+#if FULL_ARRAY_DEBUG
+		_AddMemoryInfo( a._data , name );
+#endif // FULL_ARRAY_DEBUG
 		return a;
 	}
-	static inline Array AlignedAlloc( size_t size , size_t alignment , bool clear )
+	static inline Array AlignedAlloc( size_t size , size_t alignment , bool clear , const char* name=NULL )
 	{
 		Array a;
 		a.data = ( C* ) aligned_malloc( sizeof(C) * size , alignment );
@@ -108,17 +147,26 @@ public:
 		a.min = 0;
 #pragma message( "[WARNING] Casting unsigned to signed" )
 		a.max = ( difference_type ) size;
+#if FULL_ARRAY_DEBUG
+		_AddMemoryInfo( a._data , name );
+#endif // FULL_ARRAY_DEBUG
 		return a;
 	}
-	static inline Array ReAlloc( Array& a , size_t size , bool clear )
+	static inline Array ReAlloc( Array& a , size_t size , bool clear , const char* name=NULL )
 	{
 		Array _a;
 		_a._data = _a.data = ( C* ) realloc( a.data , size * sizeof( C ) );
 		if( clear ) memset( _a.data ,  0 , size * sizeof( C ) );
+#if FULL_ARRAY_DEBUG
+		_RemoveMemoryInfo( a._data );
+#endif // FULL_ARRAY_DEBUG
 		a._data = NULL;
 		_a.min = 0;
 #pragma message( "[WARNING] Casting unsigned to signed" )
 		_a.max = ( difference_type ) size;
+#if FULL_ARRAY_DEBUG
+		_AddMemoryInfo( _a._data , name );
+#endif // FULL_ARRAY_DEBUG
 		return _a;
 	}
 
@@ -141,15 +189,16 @@ public:
 			// [WARNING] Changing szC and szD to size_t causes some really strange behavior.
 			difference_type szC = sizeof( C );
 			difference_type szD = sizeof( D );
-#if 1
 			// Since we are not actually accessing the values, we should not be bounds testing
 			data = (C*)a.ptr();
-#else
-			data = (C*)&a[0];
-#endif
 			min = ( a.minimum() * szD ) / szC;
 			max = ( a.maximum() * szD ) / szC;
-			if( min*szC!=a.minimum()*szD || max*szC!=a.maximum()*szD ) ERROR_OUT( "Could not convert array [ " , a.minimum() , " , " , a.maximum() , " ] * " , szD , " => [ " , min , " , " , max , " ] * " szC );
+			if( min*szC!=a.minimum()*szD || max*szC!=a.maximum()*szD )
+			{
+				fprintf( stderr , "Could not convert array [ %lld , %lld ] * %lld => [ %lld , %lld ] * %lld\n" , a.minimum() , a.maximum() , szD , min , max , szC );
+				ASSERT( 0 );
+				exit( 0 );
+			}
 		}
 	}
 	static Array FromPointer( C* data , difference_type max )
@@ -217,6 +266,9 @@ public:
 		if( _data )
 		{
 			free( _data );
+#if FULL_ARRAY_DEBUG
+			_RemoveMemoryInfo( _data );
+#endif // FULL_ARRAY_DEBUG
 		}
 		(*this) = Array( );
 	}
@@ -225,6 +277,9 @@ public:
 		if( _data )
 		{
 			delete[] _data;
+#if FULL_ARRAY_DEBUG
+			_RemoveMemoryInfo( _data );
+#endif // FULL_ARRAY_DEBUG
 		}
 		(*this) = Array( );
 	}
@@ -243,7 +298,12 @@ public:
 protected:
 	void _assertBounds( difference_type idx ) const
 	{
-		if( idx<min || idx>=max ) ERROR_OUT( "ConstArray index out-of-bounds: " , min , " <= " , idx , " < " , max );
+		if( idx<min || idx>=max )
+		{
+			fprintf( stderr , "ConstArray index out-of-bounds: %lld <= %lld < %lld\n" , min , idx , max );
+			ASSERT( 0 );
+			exit( 0 );
+		}
 	}
 protected:
 	const C *data;
@@ -275,7 +335,12 @@ public:
 		min = ( a.minimum() * szD ) / szC;
 		max = ( a.maximum() * szD ) / szC;
 		if( min*szC!=a.minimum()*szD || max*szC!=a.maximum()*szD )
-			ERROR_OUT( "Could not convert const array [ " , a.minimum() , " , " , a.maximum() , " ] * " , szD , " => [ " , min , " , " , max , " ] * " , szC , " " , a.minimum() , " " , a.minimum()*szD , " " , (a.minimum()*szD)/szC );
+		{
+			//			fprintf( stderr , "Could not convert const array [ %lld , %lld ] * %lld => [ %lld , %lld ] * %lld\n" , a.minimum() , a.maximum() , szD , min , max , szC );
+			fprintf( stderr , "Could not convert const array [ %lld , %lld ] * %lld => [ %lld , %lld ] * %lld\n %lld %lld %lld\n" , a.minimum() , a.maximum() , szD , min , max , szC , a.minimum() , a.minimum()*szD , (a.minimum()*szD)/szC );
+			ASSERT( 0 );
+			exit( 0 );
+		}
 	}
 	template< class D >
 	inline ConstArray( const ConstArray< D >& a )
@@ -286,7 +351,12 @@ public:
 		data = ( const C*)a.ptr( );
 		min = ( a.minimum() * szD ) / szC;
 		max = ( a.maximum() * szD ) / szC;
-		if( min*szC!=a.minimum()*szD || max*szC!=a.maximum()*szD ) ERROR_OUT( "Could not convert array [ " , a.minimum() , " , " , a.maximum() , " ] * " , szD , " => [ " , min , " , " , max , " ] * " , szC );
+		if( min*szC!=a.minimum()*szD || max*szC!=a.maximum()*szD )
+		{
+			fprintf( stderr , "Could not convert array [ %lld , %lld ] * %lld => [ %lld , %lld ] * %lld\n" , a.minimum() , a.maximum() , szD , min , max , szC );
+			ASSERT( 0 );
+			exit( 0 );
+		}
 	}
 	static ConstArray FromPointer( const C* data , difference_type max )
 	{
@@ -335,6 +405,7 @@ public:
 		return (*this);
 	}
 	inline ConstArray& operator ++ ( void ) { return (*this) += 1; }
+	inline ConstArray  operator ++ ( int ) { ConstArray tmp = (*this) ; (*this) +=1 ; return tmp; }
 	template< class Offset > ConstArray  operator -  ( Offset idx ) const { return (*this) +  (-idx); }
 	template< class Offset > ConstArray& operator -= ( Offset idx )       { return (*this) += (-idx); }
 	ConstArray& operator -- ( void ) { return (*this) -= 1; }
@@ -347,48 +418,90 @@ public:
 };
 template< class C , class Offset > ConstArray< C > operator + ( Offset idx , const ConstArray< C >& a ){ return (a+idx); }
 
-
+#if FULL_ARRAY_DEBUG
+inline void PrintMemoryInfo( void ){ for( size_t i=0 ; i<memoryInfo.size() ; i++ ) printf( "%d] %s\n" , i , memoryInfo[i].name ); }
+#endif // FULL_ARRAY_DEBUG
 template< class C >
 Array< C > memcpy( Array< C > destination , const void* source , size_t size )
 {
-	if( size>destination.maximum()*sizeof(C) ) ERROR_OUT( "Size of copy exceeds destination maximum: " , size , " > " , destination.maximum()*sizeof( C ) );
+	if( size>destination.maximum()*sizeof(C) )
+	{
+		fprintf( stderr , "Size of copy exceeds destination maximum: %lld > %lld\n" , ( long long )( size ) , ( long long )( destination.maximum()*sizeof( C ) ) );
+		ASSERT( 0 );
+		exit( 0 );
+	}
 	if( size ) memcpy( &destination[0] , source , size );
 	return destination;
 }
 template< class C , class D >
 Array< C > memcpy( Array< C > destination , Array< D > source , size_t size )
 {
-	if( size>destination.maximum()*sizeof( C ) ) ERROR_OUT( "Size of copy exceeds destination maximum: " , size , " > " , destination.maximum()*sizeof( C ) );
-	if( size>source.maximum()*sizeof( D ) ) ERROR_OUT( "Size of copy exceeds source maximum: " , size , " > " , source.maximum()*sizeof( D ) );
+	if( size>destination.maximum()*sizeof( C ) )
+	{
+		fprintf( stderr , "Size of copy exceeds destination maximum: %lld > %lld\n" , ( long long )( size ) , ( long long )( destination.maximum()*sizeof( C ) ) );
+		ASSERT( 0 );
+		exit( 0 );
+	}
+	if( size>source.maximum()*sizeof( D ) )
+	{
+		fprintf( stderr , "Size of copy exceeds source maximum: %lld > %lld\n" , ( long long )( size ) , ( long long )( source.maximum()*sizeof( D ) ) );
+		ASSERT( 0 );
+		exit( 0 );
+	}
 	if( size ) memcpy( &destination[0] , &source[0] , size );
 	return destination;
 }
 template< class C , class D >
 Array< C > memcpy( Array< C > destination , ConstArray< D > source , size_t size )
 {
-	if( size>destination.maximum()*sizeof( C ) ) ERROR_OUT( "Size of copy exceeds destination maximum: " , size , " > " , destination.maximum()*sizeof( C ) );
-	if( size>source.maximum()*sizeof( D ) ) ERROR_OUT( "Size of copy exceeds source maximum: " , size , " > " , source.maximum()*sizeof( D ) );
+	if( size>destination.maximum()*sizeof( C ) )
+	{
+		fprintf( stderr , "Size of copy exceeds destination maximum: %lld > %lld\n" , ( long long )( size ) , ( long  long )( destination.maximum()*sizeof( C ) ) );
+		ASSERT( 0 );
+		exit( 0 );
+	}
+	if( size>source.maximum()*sizeof( D ) )
+	{
+		fprintf( stderr , "Size of copy exceeds source maximum: %lld > %lld\n" , ( long long )( size ) , ( long long )( source.maximum()*sizeof( D ) ) );
+		ASSERT( 0 );
+		exit( 0 );
+	}
 	if( size ) memcpy( &destination[0] , &source[0] , size );
 	return destination;
 }
 template< class D >
 void* memcpy( void* destination , Array< D > source , size_t size )
 {
-	if( size>source.maximum()*sizeof( D ) ) ERROR_OUT( "Size of copy exceeds source maximum: " , size , " > " , source.maximum()*sizeof( D ) );
+	if( size>source.maximum()*sizeof( D ) )
+	{
+		fprintf( stderr , "Size of copy exceeds source maximum: %lld > %lld\n" , ( long long )( size ) , ( long long )( source.maximum()*sizeof( D ) ) );
+		ASSERT( 0 );
+		exit( 0 );
+	}
 	if( size ) memcpy( destination , &source[0] , size );
 	return destination;
 }
 template< class D >
 void* memcpy( void* destination , ConstArray< D > source , size_t size )
 {
-	if( size>source.maximum()*sizeof( D ) ) ERROR_OUT( "Size of copy exceeds source maximum: " , size , " > " , source.maximum()*sizeof( D ) );
+	if( size>source.maximum()*sizeof( D ) )
+	{
+		fprintf( stderr , "Size of copy exceeds source maximum: %lld > %lld\n" , ( long long )( size ) , ( long long )( source.maximum()*sizeof( D ) ) );
+		ASSERT( 0 );
+		exit( 0 );
+	}
 	if( size ) memcpy( destination , &source[0] , size );
 	return destination;
 }
 template< class C >
 Array< C > memset( Array< C > destination , int value , size_t size )
 {
-	if( size>destination.maximum()*sizeof( C ) ) ERROR_OUT( "Size of set exceeds destination maximum: " , size , " > " , destination.maximum()*sizeof( C ) );
+	if( size>destination.maximum()*sizeof( C ) )
+	{
+		fprintf( stderr , "Size of set exceeds destination maximum: %lld > %lld\n" , ( long long )( size ) , ( long long )( destination.maximum()*sizeof( C ) ) );
+		ASSERT( 0 );
+		exit( 0 );
+	}
 	if( size ) memset( &destination[0] , value , size );
 	return destination;
 }
@@ -396,25 +509,50 @@ Array< C > memset( Array< C > destination , int value , size_t size )
 template< class C >
 size_t fread( Array< C > destination , size_t eSize , size_t count , FILE* fp )
 {
-	if( count*eSize>destination.maximum()*sizeof( C ) ) ERROR_OUT( "Size of read exceeds source maximum: " , count*eSize , " > " , destination.maximum()*sizeof( C ) );
+	if( count*eSize>destination.maximum()*sizeof( C ) )
+	{
+		fprintf( stderr , "Size of read exceeds source maximum: %lld > %lld\n" , ( long long )( count*eSize ) , ( long long )( destination.maximum()*sizeof( C ) ) );
+		ASSERT( 0 );
+		exit( 0 );
+	}
 	return fread( &destination[0] , eSize , count , fp );
 }
 template< class C >
 size_t fwrite( Array< C > source , size_t eSize , size_t count , FILE* fp )
 {
-	if( count*eSize>source.maximum()*sizeof( C ) ) ERROR_OUT( "Size of write exceeds source maximum: , count*eSize , > " , source.maximum()*sizeof( C ) );
+	if( count*eSize>source.maximum()*sizeof( C ) )
+	{
+		fprintf( stderr , "Size of write exceeds source maximum: %lld > %lld\n" , ( long long )( count*eSize ) , ( long long )( source.maximum()*sizeof( C ) ) );
+		ASSERT( 0 );
+		exit( 0 );
+	}
 	return fwrite( &source[0] , eSize , count , fp );
 }
 template< class C >
 size_t fwrite( ConstArray< C > source , size_t eSize , size_t count , FILE* fp )
 {
-	if( count*eSize>source.maximum()*sizeof( C ) ) ERROR_OUT( "Size of write exceeds source maximum: , count*eSize , > " , source.maximum()*sizeof( C ) );
+	if( count*eSize>source.maximum()*sizeof( C ) )
+	{
+		fprintf( stderr , "Size of write exceeds source maximum: %lld > %lld\n" , ( long long )( count*eSize ) , ( long long )( source.maximum()*sizeof( C ) ) );
+		ASSERT( 0 );
+		exit( 0 );
+	}
 	return fwrite( &source[0] , eSize , count , fp );
 }
 template< class C >
 void qsort( Array< C > base , size_t numElements , size_t elementSize , int (*compareFunction)( const void* , const void* ) )
 {
-	if( sizeof(C)!=elementSize ) ERROR_OUT( "Element sizes differ: " , sizeof(C) , " != " , elementSize );
-	if( base.minimum()>0 || base.maximum()<numElements ) ERROR_OUT( "Array access out of bounds: " , base.minimum() , " <= 0 <= " , base.maximum() , " <= " , numElements );
+	if( sizeof(C)!=elementSize )
+	{
+		fprintf( stderr , "Element sizes differ: %lld != %lld\n" , ( long long )( sizeof(C) ) , ( long long )( elementSize ) );
+		ASSERT( 0 );
+		exit( 0 );
+	}
+	if( base.minimum()>0 || base.maximum()<numElements )
+	{
+		fprintf( stderr , "Array access out of bounds: %lld <= 0 <= %lld <= %lld\n" , base.minimum() , base.maximum() , ( long long )( numElements ) );
+		ASSERT( 0 );
+		exit( 0 );
+	}
 	qsort( base.ptr() , numElements , elementSize , compareFunction );
 }

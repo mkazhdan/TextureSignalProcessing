@@ -1,4 +1,4 @@
-/* -*- C++ -*-
+/*
 Copyright (c) 2006, Michael Kazhdan and Matthew Bolitho
 All rights reserved.
 
@@ -30,14 +30,6 @@ DAMAGE.
 #define M_PI		3.14159265358979323846
 #endif // M_PI
 
-#ifndef _WIN32
-#include <stdlib.h>
-#include <string.h>
-#endif
-#include <float.h>
-#include <unordered_map>
-#include "Miscellany.h"
-#include "Exceptions.h"
 
 inline long long HalfEdgeKey( int i1 , int i2 )
 {
@@ -50,30 +42,38 @@ inline long long EdgeKey( int i1 , int i2 )
 }
 inline void FactorEdgeKey( long long key , int& idx1 , int& idx2 )
 {
-    long long i1 , i2;
-    i1 = key>>32;
-    i2 = (key<<32)>>32;
-    idx1 = int( i1 );
-    idx2 = int( i2 );
+	long long i1 , i2;
+	i1 = key>>32;
+	i2 = (key<<32)>>32;
+	idx1 = int( i1 );
+	idx2 = int( i2 );
+}
+inline long long OppositeHalfEdgeKey( long long key )
+{
+	int i1 , i2;
+	FactorEdgeKey( key , i1 , i2 );
+	return HalfEdgeKey( i2 , i1 );
 }
 
-
+#ifdef NEW_GEOMETRY_CODE
+#else // !NEW_GEOMETRY_CODE
 ///////////
 // Point //
 ///////////
-template<class Real,int Dim>
-void Point<Real,Dim>::Add		(const Point<Real,Dim>& p)	{	for(int d=0;d<Dim;d++)	coords[d]+=p.coords[d];	}
-template<class Real,int Dim>
+template< class Real , unsigned int Dim >
+void Point< Real , Dim >::Add		(const Point< Real , Dim >& p)	{	for(int d=0;d<Dim;d++)	coords[d]+=p.coords[d];	}
+template<class Real,unsigned int Dim>
 void Point<Real,Dim>::Scale		(Real s)					{	for(int d=0;d<Dim;d++)	coords[d]*=s;	}
-template<class Real,int Dim>
+template<class Real,unsigned int Dim>
 Real Point<Real,Dim>::InnerProduct(const Point<Real,Dim>& p)	const
 {
 	Real dot=0;
 	for(int i=0;i<Dim;i++)	dot+=p.coords[i]*coords[i];
 	return dot;
 }
+#endif // NEW_GEOMETRY_CODE
 
-
+#if 0
 #if !FAST_POINT
 /////////////
 // Point3D //
@@ -88,6 +88,7 @@ Point3D<Real> Point3D<Real>::CrossProduct( const Point3D<Real>& p1 , const Point
 	return p;
 }
 #endif // FAST_POINT
+#endif
 
 ////////////
 // Matrix //
@@ -122,28 +123,54 @@ Matrix<Real,Cols1,Rows> Matrix<Real,Cols,Rows>::operator * (const Matrix<Real,Co
 				n.coords[i][j]+=m.coords[i][k]*coords[k][j];
 	return n;
 }
-template<class Real,int Cols,int Rows>
-template<class Real2>
-Point<Real2,Rows> Matrix<Real,Cols,Rows>::operator () (const Point<Real2,Cols>& v) const	{	return (*this)*v;	}
+
+#ifdef NEW_GEOMETRY_CODE
+template< typename Real , int Cols , int Rows >
+template< typename T >
+Point< T , Rows , Real > Matrix< Real , Cols , Rows >::operator * ( const Point< T , Cols , Real >& v ) const
+{
+	Point< T , Rows , Real > out;
+	for( int j=0 ; j<Cols ; j++ )
+	{
+		const Real* _coords = coords[j];
+		T _v = v.coords[j];
+		for( int i=0 ; i<Rows ; i++ ) out.coords[i] += _v * _coords[i];
+	}
+	return out;
+}
+
+template< typename Real , int Cols , int Rows >
+template< typename T >
+Point< T , Rows , Real > Matrix< Real , Cols , Rows >::operator () ( const Point< T , Cols , Real >& v) const { return (*this)*v; }
+
+template< class Real , int Cols , int Rows >
+template< typename T >
+Real Matrix< Real , Cols , Rows >::operator () ( const Point< T , Rows , Real >& v1 , const Point< T , Cols , Real > &v2 ) const { return Point< T , Rows , Real >::Dot( v1 , (*this)*v2 ); }
+
+#else // !NEW_GEOMETRY_CODE
+template< class Real , int Cols , int Rows >
+Real Matrix<Real,Cols,Rows>::operator () ( const Point< Real , Rows >& v1 , const Point< Real , Cols > &v2 ) const { return Point< Real , Rows >::Dot( v1 , (*this)*v2 ); }
+
 template<class Real,int Cols,int Rows>
 template<class Real2>
 Point< Real2 , Rows > Matrix< Real , Cols , Rows >::operator * ( const Point< Real2 , Cols >& v ) const
 {
 	Point< Real2 , Rows > out;
-#if 1
 	for( int j=0 ; j<Cols ; j++ )
 	{
 		const Real* _coords = coords[j];
 		Real2 _v = v.coords[j];
 		for( int i=0 ; i<Rows ; i++ ) out.coords[i] += Real2( _coords[i] ) * _v;
 	}
-#else
-	for(int i=0;i<Rows;i++)
-		for(int j=0;j<Cols;j++)
-			out.coords[i] += Real2( coords[j][i] ) * v.coords[j];
-#endif
 	return out;
 }
+
+template<class Real,int Cols,int Rows>
+template<class Real2>
+Point<Real2,Rows> Matrix<Real,Cols,Rows>::operator () (const Point<Real2,Cols>& v) const { return (*this)*v; }
+#endif // NEW_GEOMETRY_CODE
+
+
 template<class Real,int Cols,int Rows>
 Matrix<Real,Rows,Cols> Matrix<Real,Cols,Rows>::transpose(void) const
 {
@@ -157,19 +184,20 @@ Matrix<Real,Rows,Cols> Matrix<Real,Cols,Rows>::transpose(void) const
 //////////////////
 // SquareMatrix //
 //////////////////
-template<> inline double SquareMatrix< double , 1 >::determinant( void ) const { return coords[0][0];}
-template<> inline double SquareMatrix< double , 2 >::determinant( void ) const { return coords[0][0]*coords[1][1] - coords[0][1]*coords[1][0]; }
-template<> inline double SquareMatrix< double , 3 >::determinant( void ) const
+#ifdef NEW_GEOMETRY_CODE
+template<> inline double Matrix< double , 1 , 1 >::determinant( void ) const { return coords[0][0];}
+template<> inline double Matrix< double , 2 , 2 >::determinant( void ) const { return coords[0][0]*coords[1][1] - coords[0][1]*coords[1][0]; }
+template<> inline double Matrix< double , 3 , 3 >::determinant( void ) const
 {
 	return
 		coords[0][0]*( coords[1][1]*coords[2][2] - coords[2][1]*coords[1][2] ) +
 		coords[1][0]*( coords[2][1]*coords[0][2] - coords[0][1]*coords[2][2] ) +
 		coords[2][0]*( coords[0][1]*coords[1][2] - coords[0][2]*coords[1][1] ) ;
 }
-template<class Real,int Dim>
-Real SquareMatrix<Real,Dim>::subDeterminant( int c , int r ) const
+template< class Real , int Dim >
+Real Matrix< Real , Dim , Dim >::subDeterminant( int c , int r ) const
 {
-	SquareMatrix<double,Dim-1> temp;
+	Matrix< Real , Dim-1 , Dim-1 > temp;
 	for( int i=0 , ii=0 ; i<Dim ; i++ )
 	{
 		if( i==c ) continue;
@@ -184,12 +212,112 @@ Real SquareMatrix<Real,Dim>::subDeterminant( int c , int r ) const
 	return Real( temp.determinant() );
 }
 
+template< class Real , int Dim >
+Real Matrix< Real , Dim , Dim >::operator () ( const Point< Real , Dim >& v1 , const Point< Real , Dim > &v2 ) const { return Point< Real , Dim >::Dot( v1 , (*this)*v2 ); }
+
+template< class Real , int Dim >
+template< class Real2 >
+Point< Real2 , Dim > Matrix< Real , Dim , Dim >::operator () ( const Point< Real2 , Dim >& v ) const { return (*this)*v; }
+
+template< class Real , int Dim >
+template< class Real2 >
+Point< Real2 , Dim > Matrix< Real , Dim , Dim >::operator * ( const Point< Real2 , Dim >& v ) const
+{
+	Point< Real2 , Dim > out;
+	for( int j=0 ; j<Dim ; j++ )
+	{
+		const Real* _coords = coords[j];
+		Real2 _v = v.coords[j];
+		for( int i=0 ; i<Dim ; i++ ) out.coords[i] += Real2( _coords[i] ) * _v;
+	}
+	return out;
+}
+
+template< class Real , int Dim >
+void Matrix< Real , Dim , Dim >::Add(const Matrix< Real , Dim , Dim >& m)
+{
+	for(int i=0;i<Dim;i++)	for(int j=0;j<Dim;j++)	coords[i][j]+=m.coords[i][j];
+}
+
+template< class Real , int Dim >
+void Matrix< Real , Dim , Dim >::Scale(Real s)
+{
+	for(int i=0;i<Dim;i++)	for(int j=0;j<Dim;j++)	coords[i][j]*=s;
+}
+
+template< class Real , int Dim >
+Real Matrix< Real , Dim , Dim >::InnerProduct(const Matrix< Real , Dim , Dim >& m) const
+{
+	Real dot=0;
+	for(int i=0;i<Dim;i++)
+		for(int j=0;j<Dim;j++)
+			dot+=m.coords[i][j]*coords[i][j];
+	return dot;
+}
+
+template< class Real , int Dim >
+template< int Cols1 >
+Matrix< Real , Cols1 , Dim > Matrix< Real , Dim , Dim >::operator * ( const Matrix< Real , Cols1 , Dim > &m ) const
+{
+	Matrix< Real , Cols1 , Dim > n;
+	for(int i=0;i<Cols1;i++)
+		for(int j=0;j<Dim;j++)
+			for(int k=0;k<Dim;k++)
+				n.coords[i][j]+=m.coords[i][k]*coords[k][j];
+	return n;
+}
+
+template< class Real , int Dim >
+Matrix< Real , Dim , Dim > Matrix< Real , Dim , Dim >::transpose(void) const
+{
+	Matrix< Real , Dim , Dim > out;
+	for( int i=0 ; i<Dim ; i++ ) for( int j=0 ; j<Dim ; j++ ) out.coords[j][i] = coords[i][j];
+	return out;
+}
+
+#else // !NEW_GEOMETRY_CODE
+template<> inline double SquareMatrix< double , 1 >::determinant( void ) const { return coords[0][0];}
+template<> inline double SquareMatrix< double , 2 >::determinant( void ) const { return coords[0][0]*coords[1][1] - coords[0][1]*coords[1][0]; }
+template<> inline double SquareMatrix< double , 3 >::determinant( void ) const
+{
+	return
+		coords[0][0]*( coords[1][1]*coords[2][2] - coords[2][1]*coords[1][2] ) +
+		coords[1][0]*( coords[2][1]*coords[0][2] - coords[0][1]*coords[2][2] ) +
+		coords[2][0]*( coords[0][1]*coords[1][2] - coords[0][2]*coords[1][1] ) ;
+}
 template<class Real,int Dim>
+Real SquareMatrix<Real,Dim>::subDeterminant( int c , int r ) const
+{
+	SquareMatrix< Real , Dim-1 > temp;
+	for( int i=0 , ii=0 ; i<Dim ; i++ )
+	{
+		if( i==c ) continue;
+		for( int j=0 , jj=0 ; j<Dim ; j++ )
+		{
+			if( j==r ) continue;
+			temp.coords[ii][jj] = coords[i][j];
+			jj++;
+		}
+		ii++;
+	}
+	return Real( temp.determinant() );
+}
+#endif // NEW_GEOMETRY_CODE
+
+template< class Real , int Dim >
+#ifdef NEW_GEOMETRY_CODE
+Real Matrix< Real , Dim , Dim >::determinant( void ) const
+#else // !NEW_GEOMETRY_CODE
 Real SquareMatrix<Real,Dim>::determinant( void ) const
+#endif // NEW_GEOMETRY_CODE
 {
 	Real det = Real(1);
 	// Gaussian Elimination
+#ifdef NEW_GEOMETRY_CODE
+	Matrix xForm , temp;
+#else // !NEW_GEOMETRY_CODE
 	SquareMatrix xForm , temp;
+#endif // NEW_GEOMETRY_CODE
 	xForm = (*this);
 	for( int i=0 ; i<Dim ; i++ )
 	{
@@ -210,34 +338,60 @@ Real SquareMatrix<Real,Dim>::determinant( void ) const
 	return det;
 }
 template< class Real , int Dim >
+#ifdef NEW_GEOMETRY_CODE
+Real Matrix< Real , Dim , Dim >::trace( void ) const
+#else // !NEW_GEOMETRY_CODE
 Real SquareMatrix< Real , Dim >::trace( void ) const
+#endif // NEW_GEOMETRY_CODE
 {
 	Real tr = (Real)0;
 	for( int i=0 ; i<Dim ; i++ ) tr += coords[i][i];
 	return tr;
 }
 template< class Real , int Dim >
+#ifdef NEW_GEOMETRY_CODE
+Matrix< Real , Dim , Dim > Matrix< Real , Dim , Dim >::inverse( void ) const
+#else // !NEW_GEOMETRY_CODE
 SquareMatrix< Real , Dim > SquareMatrix< Real , Dim >::inverse( void ) const
+#endif // NEW_GEOMETRY_CODE
 {
 	bool success;
-	return inverse( success );
+#ifdef NEW_GEOMETRY_CODE
+	Matrix inv = inverse( success );
+#else // !NEW_GEOMETRY_CODE
+	SquareMatrix< Real , Dim > inv = inverse( success );
+#endif // NEW_GEOMETRY_CODE
+	if( !success ) fprintf( stderr , "[WARNING] Failed to invert matrix\n" );
+	return inv;
 }
+
 template< class Real , int Dim >
+#ifdef NEW_GEOMETRY_CODE
+Matrix< Real , Dim , Dim > Matrix< Real , Dim , Dim >::inverse( bool& success ) const
+#else // NEW_GEOMETRY_CODE
 SquareMatrix< Real , Dim > SquareMatrix< Real , Dim >::inverse( bool& success ) const
+#endif // NEW_GEOMETRY_CODE
 {
-#if 1
 	// Gaussian Elimination
+#ifdef NEW_GEOMETRY_CODE
+	Matrix xForm , iXForm , temp;
+#else // !NEW_GEOMETRY_CODE
 	SquareMatrix xForm , iXForm , temp;
+#endif // NEW_GEOMETRY_CODE
 	iXForm.SetIdentity() , xForm = (*this);
 	for( int i=0 ; i<Dim ; i++ )
 	{
 		int p = i ; Real v = (Real)fabs( xForm(i,i) );
 		for( int j=i+1 ; j<Dim ; j++ ) if( fabs( xForm(i,j) )>v ) p = j , v = (Real)fabs( xForm(i,j) );
-		if( !v )
+		if( v==(Real)0. )
 		{
-			WARN( "Failed to invert matrix" );
+//			fprintf( stderr , "[WARNING] Failed to invert matrix\n" );
 			success = false;
+#ifdef NEW_GEOMETRY_CODE
+			return Matrix();
+#else // !NEW_GEOMETRY_CODE
 			return SquareMatrix();
+#endif // NEW_GEOMETRY_CODE
 		}
 		// temp(i,j): mapping of the i-th row to the j-th row
 		temp.SetIdentity();
@@ -251,20 +405,19 @@ SquareMatrix< Real , Dim > SquareMatrix< Real , Dim >::inverse( bool& success ) 
 	}
 	success = true;
 	return iXForm;
-#else
-	SquareMatrix iXForm;
-	Real d=determinant();
-	for(int i=0;i<Dim;i++)
-		for(int j=0;j<Dim;j++)
-			if(((i+j)&1)==0)	iXForm.coords[j][i]= subDeterminant(i,j)/d;
-			else				iXForm.coords[i][j]=-subDeterminant(j,i)/d;
-	return iXForm;
-#endif
 }
 template< >
-SquareMatrix< float , 2 > SquareMatrix< float , 2 >::inverse( bool& success ) const
+#ifdef NEW_GEOMETRY_CODE
+inline Matrix< float , 2 , 2 > Matrix< float , 2 , 2 >::inverse( bool& success ) const
+#else // !NEW_GEOMETRY_CODE
+inline SquareMatrix< float , 2 > SquareMatrix< float , 2 >::inverse( bool& success ) const
+#endif // NEW_GEOMETRY_CODE
 {
+#ifdef NEW_GEOMETRY_CODE
+	Matrix iXForm;
+#else // !NEW_GEOMETRY_CODE
 	SquareMatrix iXForm;
+#endif // NEW_GEOMETRY_CODE
 	float det = ( coords[0][0]*coords[1][1]-coords[0][1]*coords[1][0] );
 	if( !det ) success = false;
 	float d = 1.f / det;
@@ -276,9 +429,17 @@ SquareMatrix< float , 2 > SquareMatrix< float , 2 >::inverse( bool& success ) co
 	return iXForm;
 }
 template< >
-SquareMatrix< double , 2 > SquareMatrix< double , 2 >::inverse( bool& success ) const
+#ifdef NEW_GEOMETRY_CODE
+inline Matrix< double , 2 , 2 > Matrix< double , 2 , 2 >::inverse( bool& success ) const
+#else // !NEW_GEOMETRY_CODE
+inline SquareMatrix< double , 2 > SquareMatrix< double , 2 >::inverse( bool& success ) const
+#endif // NEW_GEOMETRY_CODE
 {
+#ifdef NEW_GEOMETRY_CODE
+	Matrix iXForm;
+#else // !NEW_GEOMETRY_CODE
 	SquareMatrix iXForm;
+#endif // NEW_GEOMETRY_CODE
 	double det = ( coords[0][0]*coords[1][1]-coords[0][1]*coords[1][0] );
 	if( !det ) success = false;
 	double d = 1. / det;
@@ -289,10 +450,98 @@ SquareMatrix< double , 2 > SquareMatrix< double , 2 >::inverse( bool& success ) 
 	success = true;
 	return iXForm;
 }
-template<class Real,int Dim>
-void SquareMatrix<Real,Dim>::Multiply (const SquareMatrix<Real,Dim>& m)
+
+template< class Real , int Dim >
+#ifdef NEW_GEOMETRY_CODE
+Polynomial::Polynomial< 1 , Dim , Real > Matrix< Real , Dim , Dim >::_characteristicPolynomial( Matrix< char , Dim , Dim > mask ) const
+#else // !NEW_GEOMETRY_CODE
+Polynomial::Polynomial< 1 , Dim , Real > SquareMatrix< Real , Dim >::_characteristicPolynomial( SquareMatrix< char , Dim > mask ) const
+#endif // NEW_GEOMETRY_CODE
 {
+	if constexpr( Dim==1 )
+	{
+		if( mask.coords[0][0] ) return Polynomial::Polynomial< 1 , 1 , Real >( Point< Real , 2 >( coords[0][0] , (Real)-1 ) );
+		else                    return Polynomial::Polynomial< 1 , 1 , Real >( Point< Real , 2 >( coords[0][0] , (Real) 0 ) );
+	}
+	else if constexpr( Dim==2 )
+	{
+		Polynomial::Polynomial< 1 , 1 , Real > c[2][2];
+		for( unsigned int i=0 ; i<2 ; i++ ) for( unsigned int j=0 ; j<2 ; j++ )
+			if( mask.coords[i][j] ) c[i][j] = Polynomial::Polynomial< 1 , 1 , Real >( Point< Real , 2 >( coords[i][j] , (Real)-1 ) );
+			else                    c[i][j] = Polynomial::Polynomial< 1 , 1 , Real >( Point< Real , 2 >( coords[i][j] , (Real) 0 ) );
+		return c[0][0] * c[1][1] - c[0][1] * c[1][0];
+	}
+	else if constexpr( Dim==3 )
+	{
+		Polynomial::Polynomial< 1 , 1 , Real > c[3][3];
+		for( unsigned int i=0 ; i<3 ; i++ ) for( unsigned int j=0 ; j<3 ; j++ )
+			if( mask.coords[i][j] ) c[i][j] = Polynomial::Polynomial< 1 , 1 , Real >( Point< Real , 2 >( coords[i][j] , (Real)-1 ) );
+			else                    c[i][j] = Polynomial::Polynomial< 1 , 1 , Real >( Point< Real , 2 >( coords[i][j] , (Real) 0 ) );
+		return
+			c[0][0]*( c[1][1]*c[2][2] - c[2][1]*c[1][2] ) +
+			c[1][0]*( c[2][1]*c[0][2] - c[0][1]*c[2][2] ) +
+			c[2][0]*( c[0][1]*c[1][2] - c[0][2]*c[1][1] ) ;
+	}
+	else
+	{
+		Polynomial::Polynomial< 1 , Dim , Real > cPoly;
+
+#ifdef NEW_GEOMETRY_CODE
+		Matrix< Real , Dim-1 , Dim-1 > temp;
+		Matrix< char , Dim-1 , Dim-1 > _mask;
+#else // !NEW_GEOMETRY_CODE
+		SquareMatrix< Real , Dim-1 > temp;
+		SquareMatrix< char , Dim-1 > _mask;
+#endif // NEW_GEOMETRY_CODE
+		for( int c=0 ; c<Dim ; c++ )
+		{
+			for( int i=0 , ii=0 ; i<Dim ; i++ )
+			{
+				if( i==c ) continue;
+				for( int j=1 ; j<Dim ; j++ )
+				{
+					temp.coords[ii][j-1] = coords[i][j];
+					_mask.coords[ii][j-1] = mask.coords[i][j];
+				}
+				ii++;
+			}
+			Real sign = c&1 ? (Real)-1 : (Real)1;
+			if( mask.coords[c][0] ) cPoly += temp._characteristicPolynomial( _mask ) * Polynomial::Polynomial< 1 , 1 , Real >( Point< Real , 2 >( coords[c][0] , (Real)-1) ) * sign;
+			else                    cPoly += temp._characteristicPolynomial( _mask ) * Polynomial::Polynomial< 1 , 1 , Real >( Point< Real , 2 >( coords[c][0] , (Real) 0) ) * sign;
+		}
+		return cPoly;
+	}
+}
+
+template< class Real , int Dim >
+#ifdef NEW_GEOMETRY_CODE
+Polynomial::Polynomial< 1 , Dim , Real > Matrix< Real , Dim , Dim >::characteristicPolynomial( void ) const
+#else // !NEW_GEOMETRY_CODE
+Polynomial::Polynomial< 1 , Dim , Real > SquareMatrix< Real , Dim >::characteristicPolynomial( void ) const
+#endif // NEW_GEOMETRY_CODE
+{
+#ifdef NEW_GEOMETRY_CODE
+	Matrix< char , Dim , Dim > mask;
+#else // !NEW_GEOMETRY_CODE
+	SquareMatrix< char , Dim > mask;
+#endif // NEW_GEOMETRY_CODE
+	for( int i=0 ; i<Dim ; i++ ) for( int j=0 ; j<Dim ; j++ ) mask.coords[i][j] = i==j ? 1 : 0;
+	return _characteristicPolynomial( mask );
+}
+
+
+template<class Real,int Dim>
+#ifdef NEW_GEOMETRY_CODE
+void Matrix< Real , Dim , Dim >::Multiply( const Matrix< Real , Dim , Dim > &m )
+#else // !NEW_GEOMETRY_CODE
+void SquareMatrix<Real,Dim>::Multiply (const SquareMatrix<Real,Dim>& m)
+#endif // NEW_GEOMETRY_CODE
+{
+#ifdef NEW_GEOMETRY_CODE
+	Matrix temp=*this;
+#else // !NEW_GEOMETRY_CODE
 	SquareMatrix temp=*this;
+#endif // NEW_GEOMETRY_CODE
 	for(int i=0;i<Dim;i++)
 		for(int j=0;j<Dim;j++)
 		{
@@ -301,14 +550,22 @@ void SquareMatrix<Real,Dim>::Multiply (const SquareMatrix<Real,Dim>& m)
 		}
 }
 template<class Real,int Dim>
+#ifdef NEW_GEOMETRY_CODE
+void Matrix< Real , Dim , Dim >::SetIdentity(void)
+#else // !NEW_GEOMETRY_CODE
 void SquareMatrix<Real,Dim>::SetIdentity(void)
+#endif // NEW_GEOMETRY_CODE
 {
 	memset(this->coords,0,sizeof(Real)*Dim*Dim);
 	for(int i=0;i<Dim;i++)	this->coords[i][i]=1;
 }
 template<class Real,int Dim>
 template<class Real2>
+#ifdef NEW_GEOMETRY_CODE
+Point<Real2,Dim-1> Matrix< Real , Dim , Dim >::operator () (const Point<Real2,Dim-1>& v) const
+#else // !NEW_GEOMETRY_CODE
 Point<Real2,Dim-1> SquareMatrix<Real,Dim>::operator () (const Point<Real2,Dim-1>& v) const
+#endif // NEW_GEOMETRY_CODE
 {
 	Real2 scale=1;
 	Point<Real2,Dim-1> out;
@@ -337,58 +594,59 @@ template<class Real>
 Real Random2( void )
 {
 	long long temp= (long long) ( rand() )*RAND_MAX+rand();
-	return Real( (double(temp)/(RAND_MAX+1))/(RAND_MAX+1) );
+	return Real( (double(temp)/((size_t)RAND_MAX+1))/((size_t)RAND_MAX+1) );
 }
 
-template<class Real>
-Point2D<Real> RandomDiskPoint(void){
-	Point2D<Real> p;
-	while(1)
+template< typename Real , unsigned int Dim >
+Point< Real , Dim > RandomBallPoint( void )
+{
+	Point< Real , Dim > p;
+	while( true )
 	{
-		p.coords[0]=Real(1.0-2.0*Random2<Real>());
-		p.coords[1]=Real(1.0-2.0*Random2<Real>());
-		double l=SquareLength(p);
+		for( unsigned int d=0 ; d<Dim ; d++ ) p[d] = (Real)( 1.0 - 2.0*Random2< Real >() );
+		double l = p.squareNorm();
 		if( l<=1 ) return p;
 	}
 }
-template<class Real>
-Point3D<Real> RandomBallPoint(void){
-	Point3D<Real> p;
-	while(1)
+
+template< typename Real , unsigned int Dim >
+Point< Real , Dim > RandomSpherePoint( void )
+{
+	Point< Real , Dim > p = RandomBallPoint< Real , Dim >();
+	Real l = (Real)sqrt( p.squareNorm() );
+	return p / l;
+}
+
+template< typename Real , unsigned int Dim >
+SquareMatrix< double , Dim > RandomRotationMatrix( void )
+{
+	Point< double , Dim > frame[Dim];
+	for( unsigned int d=0 ; d<Dim-1 ; d++ )
 	{
-		p.coords[0]=Real(1.0-2.0*Random2<Real>());
-		p.coords[1]=Real(1.0-2.0*Random2<Real>());
-		p.coords[2]=Real(1.0-2.0*Random2<Real>());
-		double l=SquareLength(p);
-		if( l<=1 ){return p;}
+		frame[d] = RandomSpherePoint< double , Dim >();
+		while( true )
+		{
+			for( unsigned int dd=0 ; dd<d ; dd++ ) frame[d] -= Point< double , Dim >::Dot( frame[dd] , frame[d] ) * frame[dd];
+			if( frame[d].squareNorm()>1e-10 )
+			{
+				frame[d] /= sqrt( frame[d].squareNorm() );
+				break;
+			}
+		}
 	}
+	frame[Dim-1] = Point< double , Dim >::CrossProduct( frame );
+	SquareMatrix< double , Dim > R;
+	for( unsigned int i=0 ; i<Dim ; i++ ) for( unsigned int j=0 ; j<Dim ; j++ ) R(i,j) = frame[i][j];
+	return R;
 }
-template<class Real>
-Point2D<Real> RandomCirclePoint(void)
-{
-	Point2D<Real> p = RandomDiskPoint<Real>();
-	Real l = Real(Length(p));
-	p.coords[0] /= l;
-	p.coords[1] /= l;
-	return p;
-}
-template<class Real>
-Point3D<Real> RandomSpherePoint(void)
-{
-	Point3D<Real> p = RandomBallPoint<Real>();
-	Real l = Real(Length(p));
-	p.coords[0] /= l;
-	p.coords[1] /= l;
-	p.coords[2] /= l;
-	return p;
-}
+
 
 template<class Real>
 XForm3x3<Real> RotationMatrix( const Point3D<Real>& axis , const Real& angle )
 {
 	double a = cos( angle / 2 );
 	double b , c , d;
-	Point3D< Real > ax = axis * Real(sin( angle / 2 ) / Length( axis ));
+	Point3D< Real > ax = axis * Real(sin( angle / 2 ) / Point3D< Real >::Length( axis ));
 	b = ax[0] , c = ax[1] , d = ax[2];
 	return RotationMatrix< Real >( Real( a ) , Real( b ) , Real( c ) , Real( d ) );
 }
@@ -408,1063 +666,6 @@ XForm3x3<Real> RotationMatrix( Real a , Real b , Real c , Real d )
 	return rot;
 }
 
-template<class Real>
-XForm3x3<Real> RandomRotationMatrix( void )
-{
-	Point3D< Real > axis = RandomSpherePoint< Real > ( );
-	Real angle = Real( 2.0 * M_PI * Random< Real > ( ) );
-	return RotationMatrix( axis , angle );
-}
-
-
-template<class Real>
-double SquareLength(const Point2D<Real>& p){return p.coords[0]*p.coords[0]+p.coords[1]*p.coords[1];}
-
-template<class Real>
-double SquareLength(const Point3D<Real>& p){return p.coords[0]*p.coords[0]+p.coords[1]*p.coords[1]+p.coords[2]*p.coords[2];}
-
-template<class Real>
-double Length(const Point2D<Real>& p){return sqrt(SquareLength(p));}
-
-template<class Real>
-double Length(const Point3D<Real>& p){return sqrt(SquareLength(p));}
-
-template<class Real>
-double SquareDistance(const Point3D<Real>& p1,const Point3D<Real>& p2){
-	return (p1.coords[0]-p2.coords[0])*(p1.coords[0]-p2.coords[0])+(p1.coords[1]-p2.coords[1])*(p1.coords[1]-p2.coords[1])+(p1.coords[2]-p2.coords[2])*(p1.coords[2]-p2.coords[2]);
-}
-
-template<class Real>
-double DotProduct(const Point3D<Real>& p1,const Point3D<Real>& p2){
-	return p1.coords[0]*p2.coords[0]+p1.coords[1]*p2.coords[1]+p1.coords[2]*p2.coords[2];
-}
-
-template<class Real>
-double Distance(const Point3D<Real>& p1,const Point3D<Real>& p2){return sqrt(SquareDistance(p1,p2));}
-
-template <class Real>
-void CrossProduct(const Point3D<Real>& p1,const Point3D<Real>& p2,Point3D<Real>& p){
-	p.coords[0]= p1.coords[1]*p2.coords[2]-p1.coords[2]*p2.coords[1];
-	p.coords[1]=-p1.coords[0]*p2.coords[2]+p1.coords[2]*p2.coords[0];
-	p.coords[2]= p1.coords[0]*p2.coords[1]-p1.coords[1]*p2.coords[0];
-}
-
-template<class Real>
-void Transform(const XForm4x4<Real>& xForm,const Point3D<Real>& p,Point3D<Real>& q)
-{
-	q.coords[0]=xForm.coords[0][0]*p.coords[0]+xForm.coords[1][0]*p.coords[1]+xForm.coords[2][0]*p.coords[2]+xForm.coords[3][0];
-	q.coords[1]=xForm.coords[0][1]*p.coords[0]+xForm.coords[1][1]*p.coords[1]+xForm.coords[2][1]*p.coords[2]+xForm.coords[3][1];
-	q.coords[2]=xForm.coords[0][2]*p.coords[0]+xForm.coords[1][2]*p.coords[1]+xForm.coords[2][2]*p.coords[2]+xForm.coords[3][2];
-	Real scl   =xForm.coords[0][3]*p.coords[0]+xForm.coords[1][3]*p.coords[1]+xForm.coords[2][3]*p.coords[2]+xForm.coords[3][3];
-	q.coords[0]/=scl;
-	q.coords[1]/=scl;
-	q.coords[2]/=scl;
-}
-template<class Real>
-void TransformNoTranslate(const XForm4x4<Real>& xForm,const Point3D<Real>& p,Point3D<Real>& q)
-{
-	q.coords[0]=xForm.coords[0][0]*p.coords[0]+xForm.coords[1][0]*p.coords[1]+xForm.coords[2][0]*p.coords[2];
-	q.coords[1]=xForm.coords[0][1]*p.coords[0]+xForm.coords[1][1]*p.coords[1]+xForm.coords[2][1]*p.coords[2];
-	q.coords[2]=xForm.coords[0][2]*p.coords[0]+xForm.coords[1][2]*p.coords[1]+xForm.coords[2][2]*p.coords[2];
-}
-
-template<class Real>
-Real SubDeterminant(const XForm4x4<Real>& xForm,int c1,int r1,int c2,int r2)
-{
-	return xForm.coords[c1][r1]*xForm.coords[c2][r2]-xForm.coords[c1][r2]*xForm.coords[c2][r1];
-}
-template<class Real>
-Real SubDeterminant(const XForm4x4<Real>& xForm,int c,int r)
-{
-	int c1,r1,c2,r2,row;
-	Real d=0,sgn=1.0;
-	row=0;
-	if(row==r){row++;}
-	for(int i=0;i<4;i++)
-	{
-		if(i==c){continue;}
-		c1=0;
-		while(c1==i || c1==c){c1++;}
-		c2=c1+1;
-		while(c2==i || c2==c){c2++;}
-		r1=0;
-		while(r1==row || r1==r){r1++;}
-		r2=r1+1;
-		while(r2==row || r2==r){r2++;}
-		
-		d+=sgn*xForm.coords[i][row]*SubDeterminant(xForm,c1,r1,c2,r2);
-		sgn*=-1.0;
-	}
-	return d;
-}
-
-
-template<class Real>
-Real Determinant(const XForm4x4<Real>& xForm)
-{
-	Real d=Real(0);
-	for(int i=0;i<4;i++)
-		if((i&1)==0)	d+=SubDeterminant(xForm,i,0)*xForm.coords[i][0];
-		else			d-=SubDeterminant(xForm,i,0)*xForm.coords[i][0];
-	return d;
-}
-
-#if 0
-template<class Real>
-void InvertTransform(const XForm4x4<Real>& xForm,XForm4x4<Real>& iXForm)
-{
-	Real d=Determinant(xForm);
-	for(int i=0;i<4;i++)
-		for(int j=0;j<4;j++)
-			if(((i+j)&1)==0)	iXForm.coords[j][i]= SubDeterminant(xForm,i,j)/d;
-			else				iXForm.coords[j][i]=-SubDeterminant(xForm,j,i)/d;
-	return m;
-}
-#endif
-
-//////////////////////////////
-// MinimalAreaTriangulation //
-//////////////////////////////
-template <class Real>
-MinimalAreaTriangulation<Real>::MinimalAreaTriangulation(void)
-{
-	bestTriangulation=NULL;
-	midPoint=NULL;
-}
-template <class Real>
-MinimalAreaTriangulation<Real>::~MinimalAreaTriangulation(void)
-{
-	if(bestTriangulation)
-		delete[] bestTriangulation;
-	bestTriangulation=NULL;
-	if(midPoint)
-		delete[] midPoint;
-	midPoint=NULL;
-}
-template <class Real>
-void MinimalAreaTriangulation<Real>::GetTriangulation( const std::vector<Point3D<Real> >& vertices , std::vector<TriangleIndex>& triangles )
-{
-	triangles.resize( vertices.size() - 2 );
-	if( vertices.size()==3 )
-	{
-		triangles[0][0]=0;
-		triangles[0][1]=1;
-		triangles[0][2]=2;
-		return;
-	}
-	else if( vertices.size()==4 )
-	{
-		TriangleIndex tIndex[2][2];
-		Real area[2];
-
-		area[0]=area[1]=0;
-
-		tIndex[0][0][0]=0;
-		tIndex[0][0][1]=1;
-		tIndex[0][0][2]=2;
-		tIndex[0][1][0]=2;
-		tIndex[0][1][1]=3;
-		tIndex[0][1][2]=0;
-
-		tIndex[1][0][0]=0;
-		tIndex[1][0][1]=1;
-		tIndex[1][0][2]=3;
-		tIndex[1][1][0]=3;
-		tIndex[1][1][1]=1;
-		tIndex[1][1][2]=2;
-
-		Point3D<Real> n,p1,p2;
-		for(int i=0;i<2;i++)
-			for(int j=0;j<2;j++)
-				for(int k=0;k<3;k++)
-				{
-					p1.coords[k]=vertices[tIndex[i][j][1]].coords[k]-vertices[tIndex[i][j][0]].coords[k];
-					p2.coords[k]=vertices[tIndex[i][j][2]].coords[k]-vertices[tIndex[i][j][0]].coords[k];
-					CrossProduct(p1,p2,n);
-					area[i] += Real( Length(n) );
-				}
-		if(area[0]>area[1])
-		{
-			triangles[0]=tIndex[1][0];
-			triangles[1]=tIndex[1][1];
-		}
-		else
-		{
-			triangles[0]=tIndex[0][0];
-			triangles[1]=tIndex[0][1];
-		}
-		return;
-	}
-
-	if(bestTriangulation) delete[] bestTriangulation;
-	if(midPoint) delete[] midPoint;
-	bestTriangulation=NULL;
-	midPoint=NULL;
-	size_t eCount=vertices.size();
-	bestTriangulation=new double[eCount*eCount];
-	midPoint=new int[eCount*eCount];
-	for (unsigned int i = 0; i < eCount * eCount; i++)
-        bestTriangulation[i] = -1;
-	memset(midPoint,-1,sizeof(int)*eCount*eCount);
-	GetArea(0,1,vertices);
-//	triangles.clear();
-	int idx = 0;
-//	GetTriangulation(0,1,vertices,triangles);
-	GetTriangulation( 0 , 1 , vertices , triangles , idx );
-}
-template <class Real>
-double MinimalAreaTriangulation<Real>::GetArea(const std::vector<Point3D<Real> >& vertices)
-{
-	if(bestTriangulation)
-		delete[] bestTriangulation;
-	if(midPoint)
-		delete[] midPoint;
-	bestTriangulation=NULL;
-	midPoint=NULL;
-	size_t eCount=vertices.size();
-	bestTriangulation=new double[eCount*eCount];
-	midPoint=new int[eCount*eCount];
-	for(int i=0;i<eCount*eCount;i++)
-		bestTriangulation[i]=-1;
-	memset(midPoint,-1,sizeof(int)*eCount*eCount);
-	return GetArea(0,1,vertices);
-}
-template<class Real>
-void MinimalAreaTriangulation<Real>::GetTriangulation( int i , int j , const std::vector<Point3D<Real> >& vertices , std::vector<TriangleIndex>& triangles , int& idx )
-{
-	TriangleIndex tIndex;
-	size_t eCount=vertices.size();
-	int ii=i;
-	if( i<j ) ii+=(int)eCount;
-	if( j+1>=ii ) return;
-	ii=midPoint[i*eCount+j];
-	if(ii>=0)
-	{
-		tIndex[0]=i;
-		tIndex[1]=j;
-		tIndex[2]=ii;
-		triangles[idx++] = tIndex;
-		GetTriangulation( i , ii , vertices , triangles , idx );
-		GetTriangulation( ii , j , vertices , triangles , idx );
-	}
-}
-
-template<class Real>
-double MinimalAreaTriangulation<Real>::GetArea(int i,int j,const std::vector<Point3D<Real> >& vertices)
-{
-	double a=FLT_MAX,temp;
-	size_t eCount=vertices.size();
-	size_t idx=i*eCount+j;
-	size_t ii=i;
-	if(i<j) ii+=eCount;
-	if(j+1>=(int) ii)
-	{
-		bestTriangulation[idx]=0;
-		return 0;
-	}
-	int mid=-1;
-	for(unsigned int r=j+1;r<ii;r++)
-	{
-		int rr=r%eCount;
-		size_t idx1=i*eCount+rr,idx2=rr*eCount+j;
-		Point3D<Real> p,p1,p2;
-		for(int k=0;k<3;k++)
-		{
-			p1.coords[k]=vertices[i].coords[k]-vertices[rr].coords[k];
-			p2.coords[k]=vertices[j].coords[k]-vertices[rr].coords[k];
-		}
-		CrossProduct(p1,p2,p);
-		temp=Length(p);
-
-		if(bestTriangulation[idx1]>0)
-		{
-			temp+=bestTriangulation[idx1];
-			if(temp>a)
-				continue;
-			if(bestTriangulation[idx2]>0)
-				temp+=bestTriangulation[idx2];
-			else
-				temp+=GetArea(rr,j,vertices);
-		}
-		else
-		{
-			if(bestTriangulation[idx2]>0)
-				temp+=bestTriangulation[idx2];
-			else
-				temp+=GetArea(rr,j,vertices);
-			if(temp>a)
-				continue;
-			temp+=GetArea(i,rr,vertices);
-		}
-
-		if(temp<a)
-		{
-			a=temp;
-			mid=rr;
-		}
-	}
-	bestTriangulation[idx]=a;
-	midPoint[idx]=mid;
-
-	return a;
-}
-
-template< class Real >
-void SplitTriangle( std::vector< Point3D< Real > >& vertices , TriangleIndex triangle , Point3D< Real > pNormal , Real pOffset ,
-				    std::vector< TriangleIndex >& backTriangles , std::vector< TriangleIndex >& frontTriangles )
-{
-	int bVerts[4] , fVerts[4] , bCount = 0 , fCount = 0;
-	Real values[3];
-	for( int i=0 ; i<3 ; i++ ) values[i] = Point3D< Real >::Dot( vertices[ triangle[i] ] , pNormal ) - pOffset;
-	for( int i=0 ; i<3 ; i++ )
-	{
-		int i1 = (i+2)%3;
-		int i2 = (i+1)%3;
-		if( values[i]*values[i1]<0 )
-		{
-			Real t = values[i] / ( values[i] - values[i1] );
-			Point3D< Real > newVert = vertices[ triangle[i1] ]*t + vertices[ triangle[ i ] ]*Real(1.0-t);
-			vertices.push_back( newVert );
-			bVerts[ bCount++ ] = vertices.size()-1;
-			fVerts[ fCount++ ] = vertices.size()-1;
-		}
-		if( values[i]==0 )
-		{
-			if( values[i1]<0 || values[i2]<0 ) bVerts[ bCount++ ] = triangle[i];
-			if( values[i1]>0 || values[i2]>0 ) fVerts[ fCount++ ] = triangle[i];
-		}
-		else
-			if( values[i]<0 ) bVerts[ bCount++ ] = triangle[i];
-			else			  fVerts[ fCount++ ] = triangle[i];
-	}
-	if( bCount==3 )
-	{
-		backTriangles.resize( 1 );
-		backTriangles[0][0] = bVerts[0];
-		backTriangles[0][1] = bVerts[1];
-		backTriangles[0][2] = bVerts[2];
-	}
-	if( bCount==4 )
-	{
-		backTriangles.resize( 2 );
-		backTriangles[0][0] = bVerts[0];
-		backTriangles[0][1] = bVerts[1];
-		backTriangles[0][2] = bVerts[2];
-		backTriangles[1][0] = bVerts[2];
-		backTriangles[1][1] = bVerts[3];
-		backTriangles[1][2] = bVerts[0];
-	}
-	if( fCount==3 )
-	{
-		frontTriangles.resize( 1 );
-		frontTriangles[0][0] = fVerts[0];
-		frontTriangles[0][1] = fVerts[1];
-		frontTriangles[0][2] = fVerts[2];
-	}
-	if( fCount==4 )
-	{
-		frontTriangles.resize( 2 );
-		frontTriangles[0][0] = fVerts[0];
-		frontTriangles[0][1] = fVerts[1];
-		frontTriangles[0][2] = fVerts[2];
-		frontTriangles[1][0] = fVerts[2];
-		frontTriangles[1][1] = fVerts[3];
-		frontTriangles[1][2] = fVerts[0];
-	}
-}
-template< class Real >
-void SplitTriangle( std::vector< Point3D< Real > >& vertices , TriangleIndex triangle , int direction , Real offset ,
-				    std::vector< TriangleIndex >& backTriangles , std::vector< TriangleIndex >& frontTriangles )
-{
-	int bVerts[4] , fVerts[4] , bCount = 0 , fCount = 0;
-	Real values[3];
-	for( int i=0 ; i<3 ; i++ ) values[i] = vertices[ triangle[i] ][ direction ] - offset;
-	for( int i=0 ; i<3 ; i++ )
-	{
-		int i1 = (i+2)%3;
-		int i2 = (i+1)%3;
-		if( values[i]*values[i1]<0 )
-		{
-			Real t = values[i] / ( values[i] - values[i1] );
-			Point3D< Real > newVert = vertices[ triangle[i1] ]*t + vertices[ triangle[ i ] ]*Real(1.0-t);
-			vertices.push_back( newVert );
-			bVerts[ bCount++ ] = vertices.size()-1;
-			fVerts[ fCount++ ] = vertices.size()-1;
-		}
-		if( values[i]==0 )
-		{
-			if( values[i1]<0 || values[i2]<0 ) bVerts[ bCount++ ] = triangle[i];
-			if( values[i1]>0 || values[i2]>0 ) fVerts[ fCount++ ] = triangle[i];
-		}
-		else
-			if( values[i]<0 ) bVerts[ bCount++ ] = triangle[i];
-			else			  fVerts[ fCount++ ] = triangle[i];
-	}
-	if( bCount==3 )
-	{
-		backTriangles.resize( 1 );
-		backTriangles[0][0] = bVerts[0];
-		backTriangles[0][1] = bVerts[1];
-		backTriangles[0][2] = bVerts[2];
-	}
-	if( bCount==4 )
-	{
-		backTriangles.resize( 2 );
-		backTriangles[0][0] = bVerts[0];
-		backTriangles[0][1] = bVerts[1];
-		backTriangles[0][2] = bVerts[2];
-		backTriangles[1][0] = bVerts[2];
-		backTriangles[1][1] = bVerts[3];
-		backTriangles[1][2] = bVerts[0];
-	}
-	if( fCount==3 )
-	{
-		frontTriangles.resize( 1 );
-		frontTriangles[0][0] = fVerts[0];
-		frontTriangles[0][1] = fVerts[1];
-		frontTriangles[0][2] = fVerts[2];
-	}
-	if( fCount==4 )
-	{
-		frontTriangles.resize( 2 );
-		frontTriangles[0][0] = fVerts[0];
-		frontTriangles[0][1] = fVerts[1];
-		frontTriangles[0][2] = fVerts[2];
-		frontTriangles[1][0] = fVerts[2];
-		frontTriangles[1][1] = fVerts[3];
-		frontTriangles[1][2] = fVerts[0];
-	}
-}
-
-template< class Real >
-int SplitEdge( Point3D< Real > v1 , Point3D< Real > v2 , Point3D< Real > pNormal , Real pOffset , Point3D< Real >& out1 , Point3D< Real >& out2 , Point3D< Real >& out3 )
-{
-	Real values[2];
-	bool frontSet , backSet;
-	frontSet = backSet = false;
-	bool swap = false;
-
-	values[0] = Point3D< Real >::Dot( v1 , pNormal ) - pOffset;
-	values[1] = Point3D< Real >::Dot( v2 , pNormal ) - pOffset;
-	if( values[1]<values[0] )
-	{
-		Real value = values[0];
-		values[0] = values[1];
-		values[1] = value;
-		Point3D< Real > v = v1;
-		v1 = v2;
-		v2 = v;
-		swap = true;
-	}
-	for( int i=0 ; i<2 ; i++ )
-	{
-		if( values[i]<0 ) backSet  = true;
-		if( values[i]>0 ) frontSet = true;
-	}
-	if( !frontSet )
-	{
-		out1 = v1 , out2 = v2;
-		return -1;
-	}
-	if( !backSet )
-	{
-		out2 = v1 , out3 = v2;
-		return 1;
-	}
-	Real t = values[0] / ( values[0] - values[1] );
-	out1 = v1 , out3 = v2;
-	out2 = v2*t + v1*Real(1.0-t);
-	return 0;
-}
-
-inline void PrintLoop( std::vector< std::pair< int , int > >& polyLoop , int start )
-{
-	int i = start;
-	do
-	{
-		printf( " -> %d" , polyLoop[i].first );
-		i = polyLoop[i].second;
-	}
-	while( i!=start );
-	printf( "\n" );
-}
-// This method will perform a flood-fill on the facets and construct polygons corresponding to the boundaries
-// of the connected components.
-// The assumption is that the "Facet" class supports "int operator[]( int )" to return the vertex at the specified
-// index.
-struct VertexList : public std::pair< unsigned int , int* >
-{
-	VertexList( unsigned int sz=0 , int* list=NULL ) { first = sz , second = list; }
-	int  operator[] ( int idx ) const { return second[idx]; }
-	int& operator[] ( int idx )       { return second[idx]; }
-	int size( void ) const { return first; }
-	static unsigned int Size( const VertexList& l ){ return l.first; }
-};
-
-template< class Facet >
-void MergeFacets
-( const Facet* facets , int facetCount , unsigned int (*FacetSize)( const Facet& ) ,
- std::vector< VertexList >& polygons ,
- std::vector< VertexList >& parents ,
- bool (*IsLockedEdge)( int , int )=NULL ,
- bool (*IsLockedVertex)( int )=NULL
-)
-{
-	std::vector< int > _parents , _polygon;
-	std::unordered_map< long long , int > eMap;
-	std::vector< std::pair< int , int > > polyLoop;
-
-	// Track the triangles adjacent to the half-edges
-	for( int i=0 ; i<facetCount ; i++ )
-	{
-		int fSize = FacetSize( facets[i] );
-		for( int j=0 ; j<fSize ; j++ ) eMap[ HalfEdgeKey( facets[i][j] , facets[i][(j+1)%fSize] ) ] = i;
-	}
-	std::vector< bool > processed( facetCount , false );
-	while( 1 )
-	{
-		_parents.clear();
-		_polygon.clear();
-
-		// Get a triangle that has not been processed
-		int seed;
-		for( seed=0 ; seed<facetCount ; seed++ ) if( !processed[seed] ) break;
-		if( seed==facetCount ) break;
-
-		processed[seed] = true;
-		_parents.push_back( seed );
-
-		// A linked list to represent the polygon.
-		// First: the vertex label.
-		// Second: pointer to the next vertex in the list
-		int loopStart = 0;
-		int fSize = FacetSize( facets[seed] );
-		polyLoop.resize( fSize );
-		for( int j=0 ; j<fSize ; j++ ) polyLoop[j] = std::pair< int , int >( facets[seed][j] , (j+1)%fSize );
-		int i1 = loopStart;
-		do
-		{
-			int i2 = polyLoop[i1].second;
-			int v1 = polyLoop[i1].first;
-			int v2 = polyLoop[i2].first;
-			// If this is a valid edge to flood-fill across
-			std::unordered_map< long long , int >::iterator iter = eMap.find( HalfEdgeKey( v2 , v1 ) );
-			// Try to grow across the current edge
-			while( (!IsLockedEdge || !IsLockedEdge( v1 , v2 ) ) && iter!=eMap.end() && !processed[iter->second] )
-			{
-				int f = iter->second;
-				int fSize = FacetSize( facets[f] );
-				int v;
-				for( v=0 ; v<fSize ; v++ ) if( facets[f][v]==v2 && facets[f][(v+1)%fSize]==v1 ) break;
-				if( v==fSize ) ERROR_OUT( "Couldn't find opposite edge in facet" );
-				// Add in the chain of vertices into the current loop.
-				polyLoop[i1].second = polyLoop.size();
-				for( int i=(v+2)%fSize ; i!=v ; i=( (i+1)%fSize ) )
-					polyLoop.push_back( std::pair< int , int >( facets[f][i] , polyLoop.size()+1 ) );
-				polyLoop.back().second = i2;
-				_parents.push_back( f );
-				processed[f] = true;
-				i2 = polyLoop[i1].second;
-				v2 = polyLoop[i2].first;
-				iter = eMap.find( HalfEdgeKey( v2 , v1 ) );
-			}
-			// If that fails, advance to the next edge
-			i1 = i2;
-		}
-		while( i1!=loopStart );
-		// Trim dangling vertices
-		bool done;
-		do
-		{
-			done = true;
-			int i = loopStart;
-			do
-			{
-				if( polyLoop[i].first==polyLoop[ polyLoop[ polyLoop[i].second ].second ].first )
-					if( !IsLockedVertex || !IsLockedVertex( polyLoop[polyLoop[i].second].first ) )
-					{
-						polyLoop[i].second = polyLoop[ polyLoop[ polyLoop[i].second ].second ].second;
-						loopStart = polyLoop[i].second;
-						done = false;
-					}
-				i = polyLoop[i].second;
-			}
-			while( i!=loopStart );
-		}
-		while( !done );
-		// Now add the polygon to the list
-		int i = loopStart;
-		do
-		{
-			_polygon.push_back( polyLoop[i].first );
-			i = polyLoop[i].second;
-		}
-		while( i!=loopStart );
-		int pSize;
-
-		polygons.push_back( VertexList( _polygon.size() , new int[_polygon.size()] ) );
-		parents.push_back ( VertexList( _parents.size() , new int[_parents.size()] ) );
-		memcpy( polygons.back().second , &_polygon[0] , sizeof( int ) * _polygon.size() );
-		memcpy(  parents.back().second , &_parents[0] , sizeof( int ) * _parents.size() );
-	}
-}
-
-/* BROKEN (NOT CALLED)
- * \todo fix backIndex
- template< class Real >
-int SplitEdge( std::vector< Point3D< Real > >& vertices , const int* edge , Point3D< Real > pNormal , Real pOffset , int* backEdge , int* frontEdge )
-{
-	Real values[2];
-	bool frontSet , backSet;
-	frontSet = backSet = false;
-	bool swap = false;
-
-	int i1 = edge[0] , i2 = edge[1];
-	Point3D< Real >& v1 = vertices[ i1 ];
-	Point3D< Real >& v2 = vertices[ i2 ];
-	values[0] = Point3D< Real >::Dot( v1 , pNormal ) - pOffset;
-	values[1] = Point3D< Real >::Dot( v2 , pNormal ) - pOffset;
-	if( values[1]<values[0] )
-	{
-		Real value = values[0];
-		values[0] = values[1];
-		values[1] = value;
-		Point3D< Real > v = v1;
-		v1 = v2;
-		v2 = v;
-		int i = i1;
-		i1 = i2;
-		i2 = i;
-		swap = true;
-	}
-	for( int i=0 ; i<2 ; i++ )
-	{
-		if( values[i]<0 ) backSet  = true;
-		if( values[i]>0 ) frontSet = true;
-	}
-	if( !frontSet )
-	{
-		if( swap ) backEdge[0] = i2 , backEdge[1] = i1;
-		else       backEdge[0] = i1 , backEdge[1] = i2;
-		return -1;
-	}
-	if( !backSet )
-	{
-		if( swap ) frontEdge[0] = i2 , frontEdge[1] = i1;
-		else       frontEdge[0] = i1 , frontEdge[1] = i2;
-		return 1;
-	}
-	Real t = values[0] / ( values[0] - values[1] );
-	int vIndex = vertices.size();
-	vertices.push_back( v2*t + v1*Real(1.0-t) );
-	backIndex[1] = frontIndex[0] = vIndex;
-	if( swap ) backIndex[0] = i2 , frontIndex[1] = i1;
-	else       backIndex[0] = i1 , frontIndex[1] = i2;
-	return 0;
-}
-*/
-
-// The assumption here is that the polygon can be split at most into two parts.
-template< class Real >
-void SplitPolygon(std::vector< Point3D< Real > >& vertices,
-			const std::vector< int >& polygon, Point3D< Real > pNormal,
-			Real pOffset, std::vector< int >& backPolygon,
-			std::vector< int >& frontPolygon )
-{
-	std::vector< Real > values;
-	values.resize( polygon.size() );
-	backPolygon.clear();
-	frontPolygon.clear();
-	bool frontSet , backSet;
-	frontSet = backSet = false;
-
-
-	for( int i=0 ; i<polygon.size() ; i++ )
-	{
-		values[i] = Point3D< Real >::Dot( vertices[ polygon[i] ] , pNormal ) - pOffset;
-		if( values[i]<0 ) backSet  = true;
-		if( values[i]>0 ) frontSet = true;
-	}
-	if( !frontSet )
-	{
-		backPolygon.resize( polygon.size() );
-		for( int i=0 ; i<polygon.size() ; i++ ) backPolygon[i] = polygon[i];
-		return;
-	}
-	if( !backSet )
-	{
-		frontPolygon.resize( polygon.size() );
-		for( int i=0 ; i<polygon.size() ; i++ ) frontPolygon[i] = polygon[i];
-		return;
-	}
-	frontSet = backSet = false;
-	for( int i=0 ; i<polygon.size() ; i++ )
-	{
-		int i1 = ( i-1+(int)polygon.size() )%polygon.size();
-		int i2 = ( i+1                     )%polygon.size();
-		if( values[i]*values[i1]<0 )
-		{
-			Real t = values[i] / ( values[i] - values[i1] );
-			Point3D< Real > newVert = vertices[ polygon[i1] ]*t + vertices[ polygon[ i ] ]*Real(1.0-t);
-			vertices.push_back( newVert );
-			backPolygon.push_back( vertices.size()-1 );
-			frontPolygon.push_back( vertices.size()-1 );
-			frontSet = backSet = true;
-		}
-		if( values[i]==0 )
-		{
-			backPolygon.push_back( polygon[i] );
-			frontPolygon.push_back( polygon[i] );
-		}
-		else
-			if( values[i]<0 ) backPolygon.push_back( polygon[i] ) , backSet = true;
-			else			  frontPolygon.push_back( polygon[i] ) , frontSet = true;
-	}
-	if( !backSet ) backPolygon.clear();
-	if( !frontSet ) frontPolygon.clear();
-}
-template< class Real >
-void SplitPolygon( std::vector< Point3D< Real > >& vertices , const int* polygon , Real* values , int count , Point3D< Real > pNormal , Real pOffset ,
-				   int* backPolygon , int& backCount , int* frontPolygon , int& frontCount )
-{
-	backCount = frontCount = 0;
-	bool frontSet = false , backSet = false;
-
-	for( int i=0 ; i<count ; i++ )
-	{
-		values[i] = Point3D< Real >::Dot( vertices[ polygon[i] ] , pNormal ) - pOffset;
-		if( values[i]<0 ) backSet  = true;
-		if( values[i]>0 ) frontSet = true;
-	}
-	if( !frontSet )
-	{
-		for( int i=0 ; i<count ; i++ ) backPolygon[i] = polygon[i];
-		backCount = count;
-		return;
-	}
-	if( !backSet )
-	{
-		for( int i=0 ; i<count ; i++ ) frontPolygon[i] = polygon[i];
-		frontCount = count;
-		return;
-	}
-	frontSet = backSet = false;
-	for( int i=0 ; i<count ; i++ )
-	{
-		int i1 = ( i-1+(int)count )%count;
-		int i2 = ( i+1            )%count;
-		if( values[i]*values[i1]<0 )
-		{
-			Real t = values[i] / ( values[i] - values[i1] );
-			Point3D< Real > newVert = vertices[ polygon[i1] ]*t + vertices[ polygon[ i ] ]*Real(1.0-t);
-			vertices.push_back( newVert );
-			backPolygon[backCount++] = frontPolygon[frontCount++] = vertices.size()-1;
-			frontSet = backSet = true;
-		}
-		if( values[i]==0 ) backPolygon[backCount++] = frontPolygon[frontCount++] = polygon[i];
-		else
-			if( values[i]<0 ) backPolygon [ backCount++] = polygon[i] ,  backSet = true;
-			else			  frontPolygon[frontCount++] = polygon[i] , frontSet = true;
-	}
-	if( !backSet  )  backCount = 0;
-	if( !frontSet ) frontCount = 0;
-}
-
-template< class Real >
-void SplitPolygon( std::vector< Point3D< Real > >& vertices , std::unordered_map< long long , int >* vTable , const std::vector< int >& polygon , Point3D< Real > pNormal , Real pOffset ,
-				   std::vector< int >& backPolygon , std::vector< int >& frontPolygon )
-{
-	std::vector< Real > values;
-	values.resize( polygon.size() );
-	backPolygon.clear();
-	frontPolygon.clear();
-	bool frontSet , backSet;
-	frontSet = backSet = false;
-
-
-	for( int i=0 ; i<polygon.size() ; i++ )
-	{
-		values[i] = Point3D< Real >::Dot( vertices[ polygon[i] ] , pNormal ) - pOffset;
-		if( values[i]<0 ) backSet  = true;
-		if( values[i]>0 ) frontSet = true;
-	}
-	if( !frontSet )
-	{
-		backPolygon.resize( polygon.size() );
-		for( int i=0 ; i<polygon.size() ; i++ ) backPolygon[i] = polygon[i];
-		return;
-	}
-	if( !backSet )
-	{
-		frontPolygon.resize( polygon.size() );
-		for( int i=0 ; i<polygon.size() ; i++ ) frontPolygon[i] = polygon[i];
-		return;
-	}
-	frontSet = backSet = false;
-	for( int i=0 ; i<polygon.size() ; i++ )
-	{
-		int i1 = ( i-1+(int)polygon.size() )%polygon.size();
-		int i2 = ( i+1                     )%polygon.size();
-		if( values[i]*values[i1]<0 )
-		{
-			int vIndex;
-			Real t = values[i] / ( values[i] - values[i1] );
-			if( vTable )
-			{
-				long long key = EdgeKey( polygon[i1] , polygon[i] );
-				if( vTable->find( key ) == vTable->end() )
-				{
-					Point3D< Real > newVert = vertices[ polygon[i1] ]*t + vertices[ polygon[ i ] ]*Real(1.0-t);
-					vertices.push_back( newVert );
-					(*vTable)[key] = ( (int)vertices.size() ) - 1;
-				}
-				vIndex = (*vTable)[key];
-			}
-			else
-			{
-				Point3D< Real > newVert = vertices[ polygon[i1] ]*t + vertices[ polygon[ i ] ]*Real(1.0-t);
-				vIndex = vertices.size();
-				vertices.push_back( newVert );
-			}
-			backPolygon.push_back ( vIndex );
-			frontPolygon.push_back( vIndex );
-			frontSet = backSet = true;
-		}
-		if( values[i]==0 )
-		{
-			backPolygon.push_back( polygon[i] );
-			frontPolygon.push_back( polygon[i] );
-		}
-		else
-			if( values[i]<0 ) backPolygon.push_back( polygon[i] ) , backSet = true;
-			else			  frontPolygon.push_back( polygon[i] ) , frontSet = true;
-	}
-	if( !backSet ) backPolygon.clear();
-	if( !frontSet ) frontPolygon.clear();
-}
-#if 1
-template< class Real >
-void SplitPolygon( std::vector< Point3D< Real > >& vertices , std::unordered_map< long long , int >* vTable , std::unordered_map< long long , int >* heTable ,
-				   const int* polygon , Real* values , int count , Point3D< Real > pNormal , Real pOffset ,
-				   int* backPolygon , int& backCount , int* frontPolygon , int& frontCount )
-{
-	backCount = frontCount = 0;
-	bool frontSet = false , backSet = false;
-
-	for( int i=0 ; i<count ; i++ )
-	{
-		values[i] = Point3D< Real >::Dot( vertices[ polygon[i] ] , pNormal ) - pOffset;
-		if( values[i]<0 ) backSet  = true;
-		if( values[i]>0 ) frontSet = true;
-	}
-	if( !frontSet )
-	{
-		for( int i=0 ; i<count ; i++ ) backPolygon[i] = polygon[i];
-		backCount = count;
-		return;
-	}
-	if( !backSet )
-	{
-		for( int i=0 ; i<count ; i++ ) frontPolygon[i] = polygon[i];
-		frontCount = count;
-		return;
-	}
-	frontSet = backSet = false;
-	for( int i=0 ; i<count ; i++ )
-	{
-		int i1 = ( i-1+(int)count )%count;
-		if( values[i]*values[i1]<0 )
-		{
-			int vIndex;
-			if( vTable )
-			{
-				long long key = EdgeKey( polygon[i1] , polygon[i] );
-				if( vTable->find( key ) == vTable->end() )
-				{
-					Real t = values[i] / ( values[i] - values[i1] );
-					Point3D< Real > newVert = vertices[ polygon[i1] ]*t + vertices[ polygon[ i ] ]*Real(1.0-t);
-					vertices.push_back( newVert );
-					(*vTable)[key] = ( (int)vertices.size() ) - 1;
-				}
-				vIndex = (*vTable)[key];
-
-				if( heTable )
-				{
-					long long key  = HalfEdgeKey( polygon[i1] , polygon[i] );
-					long long key1 = HalfEdgeKey( polygon[i1] , vIndex     );
-					long long key2 = HalfEdgeKey( vIndex      , polygon[i] );
-					if( heTable->find( key ) != heTable->end() ) (*heTable)[key1] = (*heTable)[key2] = (*heTable)[key];
-				}
-			}
-			else
-			{
-				Real t = values[i] / ( values[i] - values[i1] );
-				Point3D< Real > newVert = vertices[ polygon[i1] ]*t + vertices[ polygon[ i ] ]*Real(1.0-t);
-				vIndex = vertices.size();
-				vertices.push_back( newVert );
-			}
-			backPolygon[backCount++] = frontPolygon[frontCount++] = vIndex;
-			frontSet = backSet = true;
-		}
-		if( values[i]==0 ) backPolygon[backCount++] = frontPolygon[frontCount++] = polygon[i];
-		else
-			if( values[i]<0 ) backPolygon [ backCount++] = polygon[i] ,  backSet = true;
-			else			  frontPolygon[frontCount++] = polygon[i] , frontSet = true;
-	}
-	if(  !backSet )  backCount = 0;
-	if( !frontSet ) frontCount = 0;
-}
-#else
-template< class Real >
-void SplitPolygon( std::vector< Point3D< Real > >& vertices , std::unordered_map< long long , int >* vTable ,
-				   const int* polygon , Real* values , int count , Point3D< Real > pNormal , Real pOffset ,
-				   int* backPolygon , int& backCount , int* frontPolygon , int& frontCount )
-{
-	backCount = frontCount = 0;
-	bool frontSet = false , backSet = false;
-
-	for( int i=0 ; i<count ; i++ )
-	{
-		values[i] = Point3D< Real >::Dot( vertices[ polygon[i] ] , pNormal ) - pOffset;
-		if( values[i]<0 ) backSet  = true;
-		if( values[i]>0 ) frontSet = true;
-	}
-	if( !frontSet )
-	{
-		for( int i=0 ; i<count ; i++ ) backPolygon[i] = polygon[i];
-		backCount = count;
-		return;
-	}
-	if( !backSet )
-	{
-		for( int i=0 ; i<count ; i++ ) frontPolygon[i] = polygon[i];
-		frontCount = count;
-		return;
-	}
-	frontSet = backSet = false;
-	for( int i=0 ; i<count ; i++ )
-	{
-		int i1 = ( i-1+(int)count )%count;
-		if( values[i]*values[i1]<0 )
-		{
-			int vIndex;
-			if( vTable )
-			{
-				long long key;
-				if( polygon[i1]>polygon[i] ) key = ( ( (long long) polygon[i1] )<<32 ) | ( (long long) polygon[i ] );
-				else						 key = ( ( (long long) polygon[i ] )<<32 ) | ( (long long) polygon[i1] );
-				if( vTable->find( key ) == vTable->end() )
-				{
-					Real t = values[i] / ( values[i] - values[i1] );
-					Point3D< Real > newVert = vertices[ polygon[i1] ]*t + vertices[ polygon[ i ] ]*Real(1.0-t);
-					vertices.push_back( newVert );
-					(*vTable)[key] = ( (int)vertices.size() ) - 1;
-				}
-				vIndex = (*vTable)[key];
-			}
-			else
-			{
-				Real t = values[i] / ( values[i] - values[i1] );
-				Point3D< Real > newVert = vertices[ polygon[i1] ]*t + vertices[ polygon[ i ] ]*Real(1.0-t);
-				vIndex = vertices.size();
-				vertices.push_back( newVert );
-			}
-			backPolygon[backCount++] = frontPolygon[frontCount++] = vIndex;
-			frontSet = backSet = true;
-		}
-		if( values[i]==0 ) backPolygon[backCount++] = frontPolygon[frontCount++] = polygon[i];
-		else
-			if( values[i]<0 ) backPolygon [ backCount++] = polygon[i] ,  backSet = true;
-			else			  frontPolygon[frontCount++] = polygon[i] , frontSet = true;
-	}
-	if(  !backSet )  backCount = 0;
-	if( !frontSet ) frontCount = 0;
-}
-#endif
-template< class Real >
-void SplitPolygon( const std::vector< Point3D< Real > >& vertices ,
-				   const int* polygon , Real* values , int count , Point3D< Real > pNormal , Real pOffset ,
-				   int* backPolygon , int& backCount , int* frontPolygon , int& frontCount , std::vector< Point3D< Real > >& newVertices )
-{
-	backCount = frontCount = 0;
-	bool frontSet = false , backSet = false;
-
-	for( int i=0 ; i<count ; i++ )
-	{
-		if( polygon[i]<0 ) values[i] = Point3D< Real >::Dot( newVertices[ -1-polygon[i] ] , pNormal ) - pOffset;
-		else               values[i] = Point3D< Real >::Dot(    vertices[    polygon[i] ] , pNormal ) - pOffset;
-		if( values[i]<0 ) backSet  = true;
-		if( values[i]>0 ) frontSet = true;
-	}
-	if( !frontSet )
-	{
-		for( int i=0 ; i<count ; i++ ) backPolygon[i] = polygon[i];
-		backCount = count;
-		return;
-	}
-	if( !backSet )
-	{
-		for( int i=0 ; i<count ; i++ ) frontPolygon[i] = polygon[i];
-		frontCount = count;
-		return;
-	}
-	frontSet = backSet = false;
-	for( int i=0 ; i<count ; i++ )
-	{
-		int j = ( i-1+(int)count )%count;
-		if( values[i]*values[j]<0 )
-		{
-			int vIndex;
-			Real t = values[i] / ( values[i] - values[j] );
-			int _i = polygon[i] , _j = polygon[j];
-			Point3D< Real > newVert;
-			if( _j<0 ) newVert  = newVertices[ -1-_j ]*t;
-			else       newVert  =    vertices[    _j ]*t;
-			if( _i<0 ) newVert += newVertices[ -1-_i ]*Real(1.-t);
-			else       newVert +=    vertices[    _i ]*Real(1.-t);
-
-			newVertices.push_back( newVert );
-			vIndex = -newVertices.size();
-
-			backPolygon[backCount++] = frontPolygon[frontCount++] = vIndex;
-			frontSet = backSet = true;
-		}
-		if( values[i]==0 ) backPolygon[backCount++] = frontPolygon[frontCount++] = polygon[i];
-		else
-			if( values[i]<0 ) backPolygon [ backCount++] = polygon[i] ,  backSet = true;
-			else			  frontPolygon[frontCount++] = polygon[i] , frontSet = true;
-	}
-	if(  !backSet )  backCount = 0;
-	if( !frontSet ) frontCount = 0;
-}
-template< class Real , int Count >
-template< class Vertex , int Dim >
-void BarycentricCoordinatesImplementation< Real , Count >::_BarycentricCoordinates( const Vertex& p , const Vertex v[Count] , Real a[Count] , bool inside )
-{
-	SquareMatrix< Real , Count-1 > D;
-	Vertex q = p - v[0] , dirs[Count-1];
-	for( int i=0 ; i<Count-1 ; i++ ) dirs[i] = v[i+1]-v[0];
-	for( int i=0 ; i<Count-1 ; i++ ) for( int j=0 ; j<Count-1 ; j++ ) D(i,j) = Vertex::Dot( dirs[i] , dirs[j] );
-	Point< Real , Count-1 > coeffs;
-	for( int i=0 ; i<Count-1 ; i++ ) coeffs[i] = Vertex::Dot( q , dirs[i] );
-	coeffs = D.inverse() * coeffs;
-	a[0] = (Real)1.;
-	for( int i=0 ; i<Count-1 ; i++ ) a[0] -= coeffs[i] , a[i+1] = coeffs[i];
-	if( inside )
-	{
-		int idx = -1;
-		for( int i=0 ; i<Count ; i++ ) if( a[i]<0 ) idx = i;
-		if( idx!=-1 )
-		{
-			Vertex _v[Count-1];
-			Real _a[Count-1];
-			a[idx] = 0;
-			for( int i=0 , j=0 ; i<Count ; i++ ) if( i!=idx ) _v[j++] = v[i];
-			BarycentricCoordinatesImplementation< Real , Count-1 >::template _BarycentricCoordinates< Vertex , Dim >( p , _v , _a  , inside );
-			for( int i=0 , j=0 ; i<Count ; i++ ) if( i!=idx ) a[i] = _a[j++];
-		}
-	}
-}
 template< class Real >
 Point3D< Real > RandomTrianglePoint( const Point3D< Real >& v1 , const Point3D< Real >& v2 , const Point3D< Real >& v3 )
 {
@@ -1547,3 +748,770 @@ inline void Incircle(const PointType &p0, const PointType &p1
     center = BarycentricInterpolate(centerBaryCoords, p0, p1, p2);
 }
 
+template< class Real >
+Point3D< Real > NearestPointOnEdge( Point3D< Real > point , const Point3D< Real > edge[2] , Real& b0 , Real& b1 )
+{
+	Point3D< Real > d = edge[1] - edge[0] , p = point - edge[0];
+	Real dot = Point3D< Real >::Dot( p , d );
+	if( dot<0 ) 
+	{
+		b0 = 1.;
+		return edge[0];
+	}
+	else if( dot>Point3D< Real >::SquareNorm( d ) ) { 
+		b1 = 1.; 
+		return edge[1];
+	}
+	else
+	{
+		// Solve for the minimizer of:
+		//                            E(t) = || p - t*d ||^2
+		//                                 = || p ||^2 - 2 t < p , d > + t^2 || d ||^2
+		//            =>             0 = -< p , d > + t || d ||^2
+		//            <=>    t = < p , d > / || d ||^2
+		Real t = dot / Point3D< Real >::SquareNorm( d );
+		b0 = (Real)( 1.-t ) , b1 = t;
+		return edge[0] + d * t;
+	}
+}
+
+template< class Real >
+Point3D< Real > NearestPointOnTriangle( Point3D< Real > point , const Point3D< Real > triangle[3] , Real* b )
+{
+
+	b[0] = b[1] = b[2] = 0;
+	Point3D< Real > d[] = { triangle[1]-triangle[0] , triangle[2]-triangle[0] } , p = point - triangle[0] , n = CrossProduct( d[0] , d[1] );
+
+	if( !Length(n) ) return ( triangle[0] + triangle[1] + triangle[2] ) / (Real)3.;
+
+
+	if     ( Point3D< Real >::Dot( point-triangle[0] , CrossProduct( n , triangle[1]-triangle[0] ) )<0 ){ Point3D< Real > edge[] = { triangle[0] , triangle[1] } ; return NearestPointOnEdge( point , edge , b[0] , b[1] ); }
+	else if( Point3D< Real >::Dot( point-triangle[1] , CrossProduct( n , triangle[2]-triangle[1] ) )<0 ){ Point3D< Real > edge[] = { triangle[1] , triangle[2] } ; return NearestPointOnEdge( point , edge , b[1] , b[2] ); }
+	else if( Point3D< Real >::Dot( point-triangle[2] , CrossProduct( n , triangle[0]-triangle[2] ) )<0 ){ Point3D< Real > edge[] = { triangle[2] , triangle[0] } ; return NearestPointOnEdge( point , edge , b[2] , b[0] ); }
+	else
+	{
+		// Solve for the minimizer of:
+		//                            E(s,t) = || p - s*d[0]-t*d[1] ||^2
+		//                                   = || p ||^2 - 2 s < p , d[0] > - 2 t < p , d[1] > + 2 s t < d[0] , d[1] > + s^2 || d[0] ||^2 + t^2 || d[1] ||^2
+		//   =>  (0,0) = ( -< p , d[0] > + t < d[0] , d[1] > + s || d[0] ||^2 , -< p , d[1] > + s < d[0] , d[1] > + t || d[1] ||^2
+		//            <=> | < p , d[0] > | = | < d[0] , d[0] >   < d[0] , d[1] > | | s |
+		//                | < p , d[1] > |   | < d[0] , d[1] >   < d[1] , d[1] > | | t |
+		SquareMatrix< Real , 2 > M , M_inverse;
+		M(0,0) = Point3D< Real >::SquareNorm( d[0] ) , M(1,0) = M(0,1) = Point3D< Real >::Dot( d[0] , d[1] ) , M(1,1) = Point3D< Real >::SquareNorm( d[1] );
+		Real det = M(0,0)*M(1,1) - M(0,1)*M(1,0);
+		M_inverse(0,0) = M(1,1) , M_inverse(0,1) = -M(0,1) , M_inverse(1,0) = -M(1,0) , M_inverse(1,1) = M(0,0);
+		M_inverse /= det;
+		Point2D< Real > st = M_inverse * Point2D< Real >( Point3D< Real >::Dot( p , d[0] ) , Point3D< Real >::Dot( p , d[1] ) );
+		b[0] = (Real)( 1. - st[0] - st[1] ) , b[1] = (Real)( st[0] , b[2] = st[1] );
+		Point3D< Real > ret = triangle[0] * ( Real )( 1. - st[0] - st[1] ) + d[0] * st[0] + d[1] * st[1];
+
+		return triangle[0] * ( Real )( 1. - st[0] - st[1] ) + d[0] * st[0] + d[1] * st[1];
+	}
+}
+
+/////////////
+// Simplex //
+/////////////
+template< class Real , unsigned int Dim , unsigned int K >
+void Simplex< Real , Dim , K >::split( Point< Real , Dim > pNormal , Real pOffset , std::vector< Simplex >& back , std::vector< Simplex >& front ) const
+{
+	Real values[K+1];
+	for( unsigned int k=0 ; k<=K ; k++ ) values[k] = Point< Real , Dim >::Dot( p[k] , pNormal ) - pOffset;
+	return split( values , back , front );
+}
+template< class Real , unsigned int Dim , unsigned int K >
+void Simplex< Real , Dim , K >::split( const Real values[K+1] , std::vector< Simplex >& back , std::vector< Simplex >& front ) const
+{
+	bool frontSet = false , backSet = false;
+
+	// Evaluate the hyper-plane's function at the vertices and mark if strictly front/back vertices have been found
+	for( unsigned int k=0 ; k<=K ; k++ ) backSet |= ( values[k]<0 ) , frontSet |= ( values[k]>0 );
+
+	// If all the vertices are behind or on, or all the vertices are in front or on, we are done.
+	if( !frontSet ){ back.push_back( *this ) ; return; }
+	if( !backSet ){ front.push_back( *this ) ; return; }
+
+	// Pick some intersection of the hyper-plane with a simplex edge
+	unsigned int v1 , v2;
+	Point< Real , Dim > midPoint;
+	{
+		for( unsigned int i=0 ; i<K ; i++ ) for( unsigned int j=i+1 ; j<=K ; j++ ) if( values[i]*values[j]<0 )
+		{
+			v1 = i , v2 = j;
+			Real t1 = values[i] / ( values[i] - values[j] ) , t2 = (Real)( 1. - t1 );
+			midPoint = p[j]*t1 + p[i]*t2;
+		}
+	}
+	// Iterate over each face of the simplex, split it with the hyper-plane and connect the sub-simplices to the mid-point
+	for( unsigned int i=0 ; i<=K ; i++ )
+	{
+		if( i!=v1 && i!=v2 ) continue;
+		Simplex< Real , Dim , K-1 > f;		// The face
+		Simplex< Real , Dim , K > s;		// The sub-simplex
+		Real v[K];
+		for( unsigned int j=0 , idx=0 ; j<=K ; j++ ) if( j!=i ){ f[idx] = p[j] , v[idx] = values[j] ; idx++ ; }
+		std::vector< Simplex< Real , Dim , K-1 > > _back , _front;
+		f.split( v , _back , _front );
+		s[i] = midPoint;
+
+		for( unsigned int j=0 ; j<_back.size() ; j++ ) 
+		{
+			for( unsigned int k=0 ; k<K ; k++ ) s[ k<i ? k : k+1 ] = _back[j][k];
+			back.push_back( s );
+		}
+
+		for( unsigned int j=0 ; j<_front.size() ; j++ ) 
+		{
+			for( unsigned int k=0 ; k<K ; k++ ) s[ k<i ? k : k+1 ] = _front[j][k];
+			front.push_back( s );
+		}
+	}
+}
+
+template< class Real , unsigned int Dim , unsigned int K >
+void Simplex< Real , Dim , K >::_nearest( Point< Real , Dim > point , Real barycentricCoordinates[K+1] ) const
+{
+	// Compute the projection of the point onto the plane containing the simplex
+	{
+		Point< Real , K > x;
+		SquareMatrix< Real , K > D;
+		Point< Real , Dim > q = point - p[0] , dirs[K];
+		for( int i=0 ; i<K ; i++ ) dirs[i] = p[i+1] - p[0];
+		for( int i=0 ; i<K ; i++ ) for( int j=0 ; j<K ; j++ ) D(i,j) = Point< Real , Dim >::Dot( dirs[i] , dirs[j] );
+		for( int i=0 ; i<K ; i++ ) x[i] = Point< Real , Dim >::Dot( q , dirs[i] );
+		x = D.inverse() * x;
+		barycentricCoordinates[0] = (Real)1.;
+		for( int i=0 ; i<K ; i++ ) barycentricCoordinates[0] -= x[i] , barycentricCoordinates[i+1] = x[i];
+	}
+
+	for( int k=0 ; k<=K ; k++ ) if( barycentricCoordinates[k]<0 )
+	{
+		Simplex< Real , Dim , K-1 > s;
+		for( int i=0 ; i<=K ; i++ )
+			if     ( i<k ) s[i  ] = p[i];
+			else if( i>k ) s[i-1] = p[i];
+		Real _barycentricCoordinates[K];
+		s._nearest( point , _barycentricCoordinates );
+		for( int i=0 ; i<=K ; i++ )
+			if     ( i<k ) barycentricCoordinates[i] = _barycentricCoordinates[i  ];
+			else if( i>k ) barycentricCoordinates[i] = _barycentricCoordinates[i-1];
+		barycentricCoordinates[k] = 0;
+		break;
+	}
+}
+
+template< class Real , unsigned int Dim , unsigned int K >
+void Simplex< Real , Dim , K >::NearestKey::init( Simplex< Real , Dim , K > simplex )
+{
+	SquareMatrix< Real , K > D;
+
+	_base = simplex[0];
+	for( int k=0 ; k<K ; k++ ) _dirs[k] = simplex[k+1] - simplex[0];
+	for( int i=0 ; i<K ; i++ ) for( int j=0 ; j<K ; j++ ) D(i,j) = Point< Real , Dim >::Dot( _dirs[i] , _dirs[j] );
+	_Dinv = D.inverse();
+
+	Simplex< Real , Dim , K-1 > s;
+	for( int k=0 ; k<=K ; k++ )
+	{
+		for( int i=0 ; i<=K ; i++ )
+			if     ( i<k ) s[i  ] = simplex[i];
+			else if( i>k ) s[i-1] = simplex[i];
+		_faceKeys[k].init( s );
+	}
+}
+
+template< class Real , unsigned int Dim , unsigned int K >
+void Simplex< Real , Dim , K >::NearestKey::_nearest( Point< Real , Dim > point , Real barycentricCoordinates[K+1] ) const
+{
+	// Compute the projection of the point onto the plane containing the simplex
+	{
+		Point< Real , K > x;
+		Point< Real , Dim > q = point - _base;
+		for( unsigned int k=0 ; k<K ; k++ ) x[k] = Point< Real , Dim >::Dot( q , _dirs[k] );
+		x = _Dinv * x;
+		barycentricCoordinates[0] = (Real)1.;
+		for( int i=0 ; i<K ; i++ ) barycentricCoordinates[0] -= x[i] , barycentricCoordinates[i+1] = x[i];
+	}
+
+	for( int k=0 ; k<=K ; k++ ) if( barycentricCoordinates[k]<0 )
+	{
+		Real _barycentricCoordinates[K];
+		_faceKeys[k]._nearest( point , _barycentricCoordinates );
+		for( int i=0 ; i<=K ; i++ )
+			if     ( i<k ) barycentricCoordinates[i] = _barycentricCoordinates[i  ];
+			else if( i>k ) barycentricCoordinates[i] = _barycentricCoordinates[i-1];
+		barycentricCoordinates[k] = 0;
+		break;
+	}
+}
+
+//////////////////
+// SimplexIndex //
+//////////////////
+
+#ifdef NEW_GEOMETRY_CODE
+template< unsigned int K , typename Index >
+template< unsigned int _K , typename FaceFunctor /* = std::function< void ( SimplexIndex< _K , Index > )*/ >
+void SimplexIndex< K , Index >::ProcessFaces( FaceFunctor F )
+{
+	SimplexIndex< K , Index > si;
+	for( unsigned int k=0 ; k<=K ; k++ ) si[k] = k;
+	si.template processFaces< _K >( F );
+}
+
+template< unsigned int K , typename Index >
+template< unsigned int _K , typename FaceFunctor /* = std::function< void ( SimplexIndex< _K , Index > )*/ >
+void SimplexIndex< K , Index >::processFaces( FaceFunctor F ) const
+{
+	static_assert( _K<=K , "[ERROR] Face dimension too high" );
+	if constexpr( K==_K ) F( *this );
+	else for( unsigned int k=0 ; k<=K ; k++ ) _processFaces< _K >( F , k );
+}
+
+template< unsigned int K , typename Index >
+template< unsigned int _K , typename ... UInts , typename FaceFunctor /* = std::function< void ( SimplexIndex< _K , Index > )*/ >
+void SimplexIndex< K , Index >::_processFaces( FaceFunctor F , unsigned int faceIndex , UInts ... faceIndices ) const
+{
+	if constexpr( K-_K==sizeof...(UInts)+1 ) F( face( faceIndex , faceIndices... ) );
+	else for( unsigned int f=0 ; f<faceIndex ; f++ ) _processFaces< _K >( F , f , faceIndex , faceIndices ... );
+}
+
+template< unsigned int K , typename Index >
+template< typename ... UInts >
+#ifdef NEW_GEOMETRY_CODE
+SimplexIndex< K - (unsigned int)sizeof...( UInts ) - 1 , Index > SimplexIndex< K , Index >::Face( unsigned int faceIndex , UInts ... faceIndices )
+#else // !NEW_GEOMETRY_CODE
+SimplexIndex< K - (unsigned int)sizeof...( UInts ) - 1 , Index > SimplexIndex< K , Index >::Face( bool &oriented , unsigned int faceIndex , UInts ... faceIndices )
+#endif // NEW_GEOMETRY_CODE
+{
+#ifdef NEW_GEOMETRY_CODE
+	SimplexIndex< K , Index > si;
+	for( unsigned int k=0 ; k<=K ; k++ ) si[k] = k;
+	return si.face( faceIndex , faceIndices ...  );
+#else // !NEW_GEOMETRY_CODE
+	static_assert( sizeof...(UInts)<K , "[ERROR] Too many indices" );
+#ifdef NEW_GEOMETRY_CODE
+	SimplexIndex< K-1 > f = _Face( oriented , faceIndex );
+#else // !NEW_GEOMETRY_CODE
+	SimplexIndex< K-1 > f = _Face( faceIndex , oriented );
+#endif // NEW_GEOMETRY_CODE
+
+	if constexpr( sizeof...(UInts)==0 ){ return f; }
+	else
+	{
+		bool _oriented;
+		SimplexIndex< K - sizeof...(UInts) - 1 > _f = f.face( _oriented , faceIndices... );
+		oriented ^= _oriented;
+		return _f;
+	}
+#endif // NEW_GEOMETRY_CODE
+}
+
+template< unsigned int K , typename Index >
+template< typename ... UInts >
+#ifdef NEW_GEOMETRY_CODE
+SimplexIndex< K - (unsigned int)sizeof...( UInts ) - 1 > SimplexIndex< K , Index >::face( unsigned int faceIndex , UInts ... faceIndices ) const
+#else // !NEW_GEOMETRY_CODE
+SimplexIndex< K - (unsigned int)sizeof...( UInts ) - 1 > SimplexIndex< K , Index >::face( bool &oriented , unsigned int faceIndex , UInts ... faceIndices ) const
+#endif // NEW_GEOMETRY_CODE
+{
+	static_assert( sizeof...(UInts)<K , "[ERROR] Too many indices" );
+#ifdef NEW_GEOMETRY_CODE
+	bool flagged[K+1];
+	{
+		const unsigned int idx[] = { faceIndex , faceIndices ... };
+		for( unsigned int k=0 ; k<=K ; k++ ) flagged[k] = false;
+		for( unsigned int i=0 ; i<=sizeof...(faceIndices) ; i++ ) flagged[ idx[i] ] = true;
+	}
+	SimplexIndex< K - sizeof...( UInts ) - 1 > si;
+
+	unsigned int idx=0;
+	for( unsigned int k=0 ; k<=K ; k++ ) if( !flagged[k] ) si[idx++] = operator[]( k );
+
+	return si;
+#else // !NEW_GEOMETRY_CODE
+	SimplexIndex< K-1 > f = _face( oriented , faceIndex );
+	if constexpr( sizeof...(UInts)==0 ){ return f; }
+	else
+	{
+		bool _oriented;
+		SimplexIndex< K - sizeof...(UInts) - 1 > _f = f.face( _oriented , faceIndices... );
+		oriented ^= _oriented;
+		return _f;
+	}
+#endif // NEW_GEOMETRY_CODE
+}
+template< unsigned int K , typename Index >
+SimplexIndex< K-1 , Index > SimplexIndex< K , Index >::_Face( bool &oriented , unsigned int f )
+{
+	SimplexIndex< K-1 , Index > fi;
+	unsigned int i=0;
+	// Generate the face:
+	//		(-1)^f * { 0 , 1 , ... , f-1 , f+1 , ... , K }
+	for( unsigned int k=0 ; k<=K ; k++ ) if( k!=f ) fi[i++] = k;
+	oriented = (f%2)==0;
+	return fi;
+}
+template< unsigned int K , typename Index >
+SimplexIndex< K-1 , Index > SimplexIndex< K , Index >::_face( bool &oriented , unsigned int f ) const
+{
+	SimplexIndex< K-1 , Index > s;
+	unsigned int i=0;
+	// Generate the face:
+	//		(-1)^f * { 0 , 1 , ... , f-1 , f+1 , ... , K }
+	for( unsigned int k=0 ; k<=K ; k++ ) if( k!=f ) s[i++] = idx[k];
+	oriented = (f%2)==0;
+	return s;
+}
+#else // !NEW_GEOMETRY_CODE
+template< unsigned int K , typename Index >
+SimplexIndex< K-1 , Index > SimplexIndex< K , Index >::Face( unsigned int f , bool &oriented )
+{
+	SimplexIndex< K-1 , Index > fi;
+	unsigned int i=0;
+	// Generate the face:
+	//		(-1)^f * { 0 , 1 , ... , f-1 , f+1 , ... , K }
+	for( unsigned int k=0 ; k<=K ; k++ ) if( k!=f ) fi[i++] = k;
+	oriented = (f%2)==0;
+	return fi;
+}
+template< unsigned int K , typename Index >
+SimplexIndex< K-1 , Index > SimplexIndex< K , Index >::face( unsigned int f , bool &oriented ) const
+{
+	SimplexIndex< K-1 , Index > s;
+	unsigned int i=0;
+	// Generate the face:
+	//		(-1)^f * { 0 , 1 , ... , f-1 , f+1 , ... , K }
+	for( unsigned int k=0 ; k<=K ; k++ ) if( k!=f ) s[i++] = idx[k];
+	oriented = (f%2)==0;
+	return s;
+}
+#if 0
+template< unsigned int K , typename Index >
+SimplexIndex< K-1 , Index > SimplexIndex< K , Index >::face( unsigned int f ) const
+{
+	bool oriented;
+	return face( f , oriented );
+}
+#endif
+
+#endif // NEW_GEOMETRY_CODE
+
+
+template< unsigned int K , typename Index >
+template< typename Real , typename Vertex >
+void SimplexIndex< K , Index >::split( const Real values[K+1] , std::vector< Vertex > &vertices , EdgeTable< Index > &edgeTable , std::vector< SimplexIndex >& back , std::vector< SimplexIndex >& front ) const
+{
+	bool frontSet = false , backSet = false;
+
+	// Evaluate the hyper-plane's function at the vertices and mark if strictly front/back vertices have been found
+	for( unsigned int k=0 ; k<=K ; k++ ) backSet |= ( values[k]<0 ) , frontSet |= ( values[k]>0 );
+	// If all the vertices are behind or on, or all the vertices are in front or on, we are done.
+	if( !frontSet ){ back.push_back( *this ) ; return; }
+	if( !backSet ){ front.push_back( *this ) ; return; }
+
+	// Pick some intersection of the hyper-plane with a simplex edge
+	unsigned int v1=-1 , v2=-1;
+	auto InitializationFunction = [&]( void )
+	{
+		Real t1 = values[v1] / ( values[v1] - values[v2] ) , t2 = (Real)( 1. - t1 );
+		vertices.push_back( vertices[ idx[v2] ]*t1 + vertices[ idx[v1] ]*t2 );
+		return (Index)( vertices.size()-1 );
+	};
+	for( unsigned int i=0 ; i<K ; i++ ) for( unsigned int j=i+1 ; j<=K ; j++ ) if( values[i]*values[j]<0 ) v1 = i , v2 = j;
+	Index midPointIndex = edgeTable( idx[v1] , idx[v2] , InitializationFunction ); 
+
+	// Iterate over each face of the simplex, split it with the hyper-plane and connect the sub-simplices to the mid-point
+	for( unsigned int i=0 ; i<=K ; i++ )
+	{
+		if( i!=v1 && i!=v2 ) continue;
+		Real _values[K];
+		SimplexIndex< K-1 , Index > f;		// The face
+		SimplexIndex< K , Index > s;		// The sub-simplex
+		for( unsigned int j=0 , _idx=0 ; j<=K ; j++ ) if( j!=i ){ f[_idx] = idx[j] ; _values[_idx] = values[j] ; _idx++; }
+		std::vector< SimplexIndex< K-1 , Index > > _back , _front;
+		f.split( _values , vertices , edgeTable , _back , _front );
+		s[i] = midPointIndex;
+
+		for( unsigned int j=0 ; j<_back.size() ; j++ ) 
+		{
+			for( unsigned int k=0 ; k<K ; k++ ) s[ k<i ? k : k+1 ] = _back[j][k];
+			back.push_back( s );
+		}
+
+		for( unsigned int j=0 ; j<_front.size() ; j++ ) 
+		{
+			for( unsigned int k=0 ; k<K ; k++ ) s[ k<i ? k : k+1 ] = _front[j][k];
+			front.push_back( s );
+		}
+	}
+}
+
+template< unsigned int K , typename Index >
+bool SimplexIndex< K , Index >::sort( void )
+{
+	unsigned int indices[K+1];
+	for( unsigned int k=0 ; k<=K ; k++ ) indices[k] = k;
+	return sort( indices );
+}
+
+template< unsigned int K , typename Index >
+bool SimplexIndex< K , Index >::sort( const Index indices[] )
+{
+	// Find the permutation that orders the face indices from smallest to largest
+	unsigned int permutation[ K+1 ] , temp[ K+1 ];
+	for( unsigned int k=0 ; k<=K ; k++ ) permutation[k] = k;
+	std::sort( permutation , permutation+K+1 , [&]( unsigned int i1 , unsigned int i2 ){ return indices[ idx[i1] ]<indices[ idx[i2] ]; } );
+
+	for( int k=0 ; k<=K ; k++ ) temp[k] = idx[ permutation[k] ];
+	for( int k=0 ; k<=K ; k++ ) idx[k] = temp[k];
+
+	unsigned int count = 0;
+	for( unsigned int i=0 ; i<=K ; i++ ) for( unsigned int j=0 ; j<i ; j++ ) if( permutation[i]>permutation[j] ) count++;
+
+	return (count&1)==0;
+}
+
+//////////////////////////////
+// MinimalAreaTriangulation //
+//////////////////////////////
+template< typename Real , unsigned int Dim >
+double MinimalAreaTriangulation< Real , Dim >::_Area( Point< Real , Dim > v0 , Point< Real , Dim > v1 , Point< Real , Dim > v2 )
+{
+	Point< Real , Dim > d[] = { v1-v0 , v2-v0 };
+	SquareMatrix< double , 2 > M;
+	for( int i=0 ; i<2 ; i++ ) for( int j=0 ; j<2 ; j++ ) M(i,j) = Point< Real , Dim >::Dot( d[i] , d[j] );
+	return sqrt( std::max< double >( 0 , M.determinant() ) ) / 2.;
+}
+template< class Real , unsigned int Dim >
+MinimalAreaTriangulation< Real , Dim >::MinimalAreaTriangulation( void ) : _bestTriangulation(NULL) , _midPoint(NULL) {}
+template< class Real , unsigned int Dim >
+MinimalAreaTriangulation< Real , Dim >::~MinimalAreaTriangulation( void )
+{
+	if( _bestTriangulation ) delete[] _bestTriangulation;
+	if( _midPoint ) delete[] _midPoint;
+	_bestTriangulation=NULL;
+	_midPoint=NULL;
+}
+template< class Real , unsigned int Dim >
+template< typename Index >
+void MinimalAreaTriangulation< Real , Dim >::GetTriangulation( const std::vector< Point< Real , Dim > >& vertices , std::vector< SimplexIndex< 2 , Index > >& triangles )
+{
+	triangles.resize( vertices.size() - 2 );
+	if( vertices.size()==3 )
+	{
+		triangles[0][0]=0;
+		triangles[0][1]=1;
+		triangles[0][2]=2;
+		return;
+	}
+	else if( vertices.size()==4 )
+	{
+		SimplexIndex< 2 , Index > tIndex[2][2];
+		double area[] = { 0 , 0 };
+
+		tIndex[0][0][0]=0;
+		tIndex[0][0][1]=1;
+		tIndex[0][0][2]=2;
+		tIndex[0][1][0]=2;
+		tIndex[0][1][1]=3;
+		tIndex[0][1][2]=0;
+
+		tIndex[1][0][0]=0;
+		tIndex[1][0][1]=1;
+		tIndex[1][0][2]=3;
+		tIndex[1][1][0]=3;
+		tIndex[1][1][1]=1;
+		tIndex[1][1][2]=2;
+
+		for( int i=0 ; i<2 ; i++ ) for( int j=0 ; j<2 ; j++ ) area[i] += _Area( vertices[ tIndex[i][j][0] ] , vertices[ tIndex[i][j][1] ] , vertices[ tIndex[i][j][2] ] );
+
+		if( area[0]>area[1] ) triangles[0] = tIndex[1][0] , triangles[1] = tIndex[1][1];
+		else                  triangles[0] = tIndex[0][0] , triangles[1] = tIndex[0][1];
+		return;
+	}
+
+	if( _bestTriangulation ) delete[] _bestTriangulation;
+	if( _midPoint ) delete[] _midPoint;
+	_bestTriangulation = NULL;
+	_midPoint = NULL;
+	size_t eCount=vertices.size();
+	_bestTriangulation = new double[eCount*eCount];
+	_midPoint = new size_t[eCount*eCount];
+	for( unsigned int i=0 ; i<eCount*eCount ; i++ ) _bestTriangulation[i] = -1 , _midPoint[i] = -1;
+	_GetArea( 0 , 1 , vertices );
+	//	triangles.clear();
+	size_t idx = 0;
+	//	GetTriangulation(0,1,vertices,triangles);
+	_GetTriangulation( 0 , 1 , vertices , triangles , idx );
+}
+
+template< class Real , unsigned int Dim >
+double MinimalAreaTriangulation< Real , Dim >::GetArea( const std::vector< Point< Real , Dim > > &vertices)
+{
+	if( _bestTriangulation ) delete[] _bestTriangulation;
+	if( _midPoint ) delete[] _midPoint;
+	_bestTriangulation = NULL;
+	_midPoint = NULL;
+	size_t eCount = vertices.size();
+	_bestTriangulation = new double[eCount*eCount];
+	_midPoint = new size_t[eCount*eCount];
+	for( int i=0 ; i<eCount*eCount ; i++ ) _bestTriangulation[i]=-1 , _midPoint[i] = -1;
+	return _GetArea( 0 , 1 , vertices );
+}
+template< typename Real , unsigned int Dim >
+template< typename Index >
+void MinimalAreaTriangulation< Real , Dim >::_GetTriangulation( size_t i , size_t j , const std::vector< Point< Real , Dim > > &vertices , std::vector< SimplexIndex< 2 , Index > > &triangles , size_t &idx )
+{
+	SimplexIndex< 2 , Index > tIndex;
+	size_t eCount = vertices.size();
+	size_t ii = i;
+	if( i<j ) ii += eCount;
+	if( j+1>=ii ) return;
+	ii = _midPoint[i*eCount+j];
+	if( ii>=0 )
+	{
+		tIndex[0] = (Index)i;
+		tIndex[1] = (Index)j;
+		tIndex[2] = (Index)ii;
+		triangles[idx++] = tIndex;
+		_GetTriangulation( i , ii , vertices , triangles , idx );
+		_GetTriangulation( ii , j , vertices , triangles , idx );
+	}
+}
+
+template< class Real , unsigned int Dim >
+double MinimalAreaTriangulation< Real , Dim >::_GetArea( size_t i , size_t j , const std::vector< Point< Real , Dim > > &vertices)
+{
+	double a=FLT_MAX , temp;
+	size_t eCount = vertices.size();
+	size_t idx = i*eCount+j;
+	size_t ii = i;
+	if( i<j ) ii += eCount;
+	if( j+1>=ii)
+	{
+		_bestTriangulation[idx]=0;
+		return 0;
+	}
+	size_t mid=-1;
+	for( size_t r=j+1 ; r<ii ; r++ )
+	{
+		size_t rr=r%eCount;
+		size_t idx1=i*eCount+rr,idx2=rr*eCount+j;
+		temp = _Area( vertices[rr] , vertices[i] , vertices[j] );
+
+		if( _bestTriangulation[idx1]>0 )
+		{
+			temp += _bestTriangulation[idx1];
+			if( temp>a ) continue;
+			if( _bestTriangulation[idx2]>0 ) temp += _bestTriangulation[idx2];
+			else temp += _GetArea( rr , j , vertices );
+		}
+		else
+		{
+			if( _bestTriangulation[idx2]>0 ) temp += _bestTriangulation[idx2];
+			else temp += _GetArea( rr , j , vertices );
+			if( temp>a ) continue;
+			temp += _GetArea( i , rr , vertices );
+		}
+
+		if( temp<a ) a = temp , mid = rr;
+	}
+	_bestTriangulation[idx]=a;
+	_midPoint[idx]=mid;
+
+	return a;
+}
+
+//////////////////////
+// EarTriangulation //
+//////////////////////
+
+template< typename Index , typename Real >
+void EarTriangulation::GetTriangulation( const std::vector< Point< Real , 2 > > &vertices , std::vector< SimplexIndex< 2 , Index > > &triangles )
+{
+	struct PolygonVertex
+	{
+		unsigned int idx;
+		bool isEar;
+		PolygonVertex *prev , *next;
+
+		PolygonVertex( void ) : idx(-1) , isEar(false) , prev(NULL) , next(NULL) {}
+	};
+
+	std::vector< PolygonVertex > polygonVertices( vertices.size() );
+	for( unsigned int i=0 ; i<vertices.size() ; i++ )
+	{
+		polygonVertices[i].idx = i;
+		polygonVertices[i].prev = &polygonVertices[( i+vertices.size()-1 ) % vertices.size() ];
+		polygonVertices[i].next = &polygonVertices[( i+vertices.size()+1 ) % vertices.size() ];
+	}
+	PolygonVertex *polygon = &polygonVertices[0];
+
+	auto ProcessPolygon =[&]< typename F /*=std::function< void ( PolygonVertex * ) >*/ >( F f )
+	{
+		PolygonVertex *v = polygon;
+		do
+		{
+			f(v);
+			v = v->next;
+		}
+		while( v!=polygon );
+	};
+
+	auto PolygonSize = [&]( void )
+		{
+			unsigned int sz = 0;
+			ProcessPolygon( [&]( PolygonVertex * ){ sz++; } );
+			return sz;
+		};
+
+	// From [O'Rourke]
+
+	auto RotateCCW90 = []( Point< double , 2 > v )
+		{
+			return Point< Real , 2 >( -v[1] , v[0] );
+		};
+
+	auto TotalArea2 = [&]( void )
+		{
+			Point< Real , 2 > center;
+			ProcessPolygon( [&]( PolygonVertex *v ){ center += vertices[v->idx]; } );
+			center /= PolygonSize();
+
+			Real area = 0;
+			auto A = [&]( PolygonVertex *v )
+				{
+					Point< Real , 2 > v1 = vertices[v->idx] - center , v2 = vertices[v->next->idx ] - center;
+					area += Point< Real , 2 >::Dot( RotateCCW90( v1 ) , v2 );
+				};
+			ProcessPolygon( A );
+			return area;
+		};
+
+	auto Area2 = [&]( unsigned int i0 , unsigned int i1 , unsigned int i2 )
+		{
+			Point< Real , 2 > v1 = vertices[i1] - vertices[i0];
+			Point< Real , 2 > v2 = vertices[i2] - vertices[i0];
+			return Point< Real , 2 >::Dot( RotateCCW90(v1) , v2 );
+		};
+
+
+	auto Left = [&]( unsigned int i0 , unsigned int i1 , unsigned int i2 )
+		{
+			return Area2(i0,i1,i2)>0;
+		};
+
+	auto LeftOn = [&]( unsigned int i0 , unsigned int i1 , unsigned int i2 )
+		{
+			return Area2(i0,i1,i2)>=0;
+		};
+
+	auto Collinear = [&]( unsigned int i0 , unsigned int i1 , unsigned int i2 )
+		{
+			return Area2(i0,i1,i2)==0;
+		};
+
+	auto IntersectProp = [&]( unsigned int a , unsigned int b , unsigned int c , unsigned int d )
+		{
+			if( Collinear(a,b,c) || Collinear(a,b,d) || Collinear(c,d,a) || Collinear(c,d,b) ) return false;
+			else return ( Left(a,b,c) ^ Left(a,b,d) ) && ( Left(c,d,a) ^ Left(c,d,b) );
+		};
+
+	auto Between = [&]( unsigned int a , unsigned int b , unsigned int c )
+		{
+			if( !Collinear(a,b,c) ) return false;
+			Point< double , 2 > _a = vertices[a] , _b = vertices[b] , _c = vertices[c];
+			if( _a[0]!=_b[0] ) return ( _a[0]<=_c[0] && _c[0]<=_b[0] ) || ( _a[0]>=_c[0] && _c[0]>=_b[0] );
+			else               return ( _a[1]<=_c[1] && _c[1]<=_b[1] ) || ( _a[1]>=_c[1] && _c[1]>=_b[1] );
+		};
+
+	auto Intersect = [&]( unsigned int a , unsigned int b , unsigned int c , unsigned int d )
+		{
+			return IntersectProp(a,b,c,d) || Between(a,b,c) || Between(a,b,d) || Between(c,d,a) || Between(c,d,b);
+		};
+
+	auto InCone = [&]( const PolygonVertex *a , const PolygonVertex *b )
+		{
+			const PolygonVertex *a0 = a->prev , *a2 = a->next;
+			if( LeftOn( a->idx , a2->idx , a0->idx ) ) return    Left  ( a->idx , b->idx , a0->idx ) && Left  ( b->idx , a->idx , a2->idx );
+			else                                       return !( LeftOn( a->idx , b->idx , a2->idx ) && LeftOn( b->idx , a->idx , a0->idx ) );
+		};
+
+	auto IsDiagonal = [&]( const PolygonVertex *a , const PolygonVertex *b )
+		{
+			PolygonVertex *c = polygon;
+			do
+			{
+				PolygonVertex *n = c->next;
+				if( c!=a && n!=a && c!=b && n!=b && Intersect( a->idx , b->idx , c->idx , n->idx ) ) return false;
+				c = n;
+			}
+			while( c!=polygon );
+			return true;
+		};
+
+	auto IsEar = [&]( const PolygonVertex *v )
+		{
+			return InCone( v->prev , v->next ) && InCone( v->next , v->prev ) && IsDiagonal( v->prev , v->next );
+		};
+
+	if( TotalArea2()<0 ) for( unsigned int i=0 ; i<polygonVertices.size() ; i++ ) std::swap( polygonVertices[i].prev , polygonVertices[i].next );
+
+	std::vector< PolygonVertex * > earVertices;
+	// Mark the ear vertices
+	ProcessPolygon( [&]( PolygonVertex *v ){ if( ( v->isEar = IsEar( v ) ) ) earVertices.push_back(v); } );
+
+	while( triangles.size()<vertices.size()-2 )
+	{
+		if( !earVertices.size() )
+		{
+//			MK_WARN( "Expected an ear vertex: " , PolygonSize() );
+			ProcessPolygon( [&]( PolygonVertex *v ){ if( ( v->isEar = IsEar( v ) ) ) earVertices.push_back(v); } );
+			if( !earVertices.size() )
+			{
+//				ProcessPolygon( [&]( PolygonVertex *v ){ std::cout << v->idx << " : " << vertices[ v->idx ] << std::endl; }  );
+//				ProcessPolygon( [&]( PolygonVertex *v ){ poly.push_back( v->idx ); }  );
+//				MK_ERROR_OUT( "Could not find ears" );
+//std::cout << polys.size() << std::endl;
+				return;
+			}
+		}
+#if 1
+		auto EarQuality = [&]( PolygonVertex *v )
+			{
+				Point< Real , 2 > v1 = vertices[ v->next->idx ] - vertices[ v->idx ];
+				Point< Real , 2 > v2 = vertices[ v->prev->idx ] - vertices[ v->idx ];
+				v1 /= (Real)sqrt( Point< Real , 2 >::SquareNorm( v1 ) );
+				v2 /= (Real)sqrt( Point< Real , 2 >::SquareNorm( v2 ) );
+				return Point< Real , 2 >::Dot( v1 , v2 );
+			};
+
+		unsigned int idx = 0;
+		for( unsigned int i=1 ; i<earVertices.size() ; i++ ) if( EarQuality( earVertices[i] ) > EarQuality( earVertices[idx] ) ) idx = i;
+		PolygonVertex *ear = earVertices[idx];
+		earVertices[idx] = earVertices.back();
+		earVertices.pop_back();
+#else
+		PolygonVertex *ear = earVertices.back();
+		earVertices.pop_back();
+#endif
+
+		{
+			SimplexIndex< 2 , Index > si;
+			si[0] = ear->idx;
+			si[1] = ear->next->idx;
+			si[2] = ear->prev->idx;
+			triangles.push_back( si );
+		}
+
+		PolygonVertex *prev = ear->prev , *next = ear->next;
+
+		prev->next = next;
+		next->prev = prev;
+		if( ear==polygon ) polygon = next;
+
+		if( !prev->isEar ) if( ( prev->isEar=IsEar( prev ) ) ) earVertices.push_back( prev );
+		if( !next->isEar ) if( ( next->isEar=IsEar( next ) ) ) earVertices.push_back( next );
+	}
+}

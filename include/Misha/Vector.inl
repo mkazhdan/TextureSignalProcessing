@@ -30,7 +30,6 @@ DAMAGE.
 #define __VECTORIMPL_HPP
 
 #define Assert assert
-#include <cassert>
 
 ////////////
 // Vector //

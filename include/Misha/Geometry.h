@@ -1,4 +1,4 @@
-/* -*- C++ -*-
+/*
 Copyright (c) 2006, Michael Kazhdan and Matthew Bolitho
 All rights reserved.
 
@@ -25,1036 +25,1740 @@ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING 
 ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
 DAMAGE.
 */
+
 #ifndef GEOMETRY_INCLUDED
 #define GEOMETRY_INCLUDED
+
+#define NEW_GEOMETRY_CODE
+
+#include <concepts>
 #include <cmath>
 #include <cassert>
 #include <complex>
 #include <vector>
 #include <unordered_map>
+#include <initializer_list>
+#include <cstring>
+#include <algorithm>
+#include <functional>
+#ifndef _WIN32
+#include <cstdlib>
+#endif
+#include <float.h>
+#include <unordered_map>
 #include "Algebra.h"
+#include "Exceptions.h"
+#include "Array.h"
+
 
 #define PAN_FIX 1
-#define FAST_POINT 1
 
-template< class Real > Real Random( void );
-
-template< class Real , int Dim >
-class Point : public InnerProductSpace< Real , Point< Real , Dim > >
+namespace MishaK
 {
-public:
-	/////////////////////////////////
-	// Inner product space methods //
-	void Add            ( const Point& p );
-	void Scale          ( Real s );
-	Real InnerProduct   ( const Point< Real , Dim >& p ) const;
-	/////////////////////////////////
+	template< typename V > struct FieldOf{ using F = typename V::R; };
+	template<> struct FieldOf< float >{ using F = float; };
+	template<> struct FieldOf< double >{ using F = double; };
 
-	Real coords[Dim];
-	Point ( void ) { memset( coords , 0 , sizeof(Real)*Dim ); }
-	template<class Real2>
-	operator Point< Real2, Dim > ( void ) const
+
+	// An empty type
+	template< typename Real >
+	struct EmptyVectorType
 	{
-		Point< Real2, Dim > p;
-		for( int d=0 ; d<Dim ; d++ ) p.coords[d] = Real2( coords[d] ); 
-		return p;
-	}
-	Real& operator [] (int idx) { return coords[idx]; }
-	const Real& operator [] (int idx) const { return coords[idx]; }
+		EmptyVectorType& operator += ( const EmptyVectorType& p ){ return *this; }
+		EmptyVectorType& operator -= ( const EmptyVectorType& p ){ return *this; }
+		EmptyVectorType& operator *= ( Real s )                  { return *this; }
+		EmptyVectorType& operator /= ( Real s )                  { return *this; }
+		EmptyVectorType  operator +  ( const EmptyVectorType& p ) const { EmptyVectorType _p = *this ; _p += p ; return _p; }
+		EmptyVectorType  operator -  ( const EmptyVectorType& p ) const { EmptyVectorType _p = *this ; _p -= p ; return _p; }
+		EmptyVectorType  operator *  ( Real s )                   const { EmptyVectorType _p = *this ; _p *= s ; return _p; }
+		EmptyVectorType  operator /  ( Real s )                   const { EmptyVectorType _p = *this ; _p /= s ; return _p; }
 
-	////////////////////////////////////////////////////////////////////////////
-	/*! Writes an ASCII representation of the point to an output stream.
-	//  @param[in]  os   output stream
-	//  @param[in]  p    the vector to be output
-	//  @return     reference to the output stream for output operator chaining
-	*///////////////////////////////////////////////////////////////////////////
-	friend std::ostream & operator<<(std::ostream &os, const Point &p)
+		friend std::ostream &operator << ( std::ostream &os , const EmptyVectorType &v ){ return os; }
+	};
+	template< typename Real > EmptyVectorType< Real > operator * ( Real s , EmptyVectorType< Real > v ){ return v*s; }
+
+	template< typename _Real , typename ... VectorTypes >
+	struct VectorTypeUnion
 	{
-		os << "[";
-		for (int i = 0; i < Dim; ++i)   {
-			if (i)
-				os << ", ";
-			os << p[i];
-		}
+	protected:
+		typedef std::tuple< VectorTypes ... > _VectorTuple;
+	public:
+		typedef _Real Real;
+		template< unsigned int I > using VectorType = typename std::tuple_element< I , _VectorTuple >::type;
+		template< unsigned int I >       VectorType< I >& get( void )       { return std::get< I >( _vectorTypeTuple ); }
+		template< unsigned int I > const VectorType< I >& get( void ) const { return std::get< I >( _vectorTypeTuple ); }
 
-		os << "]";
+		VectorTypeUnion& operator += ( const VectorTypeUnion& p ){ _add<0>( p ) ; return *this; }
+		VectorTypeUnion& operator -= ( const VectorTypeUnion& p ){ _sub<0>( p ) ; return *this; }
+		VectorTypeUnion& operator *= ( Real s )                  { _mul<0>( s ) ; return *this; }
+		VectorTypeUnion& operator /= ( Real s )                  { _div<0>( s ) ; return *this; }
+		VectorTypeUnion  operator +  ( const VectorTypeUnion& p ) const { VectorTypeUnion _p = *this ; _p += p ; return _p; }
+		VectorTypeUnion  operator -  ( const VectorTypeUnion& p ) const { VectorTypeUnion _p = *this ; _p -= p ; return _p; }
+		VectorTypeUnion  operator *  ( Real s )                   const { VectorTypeUnion _p = *this ; _p *= s ; return _p; }
+		VectorTypeUnion  operator /  ( Real s )                   const { VectorTypeUnion _p = *this ; _p /= s ; return _p; }
 
-		return os;
-	}
-};
+		VectorTypeUnion( void ){}
+		VectorTypeUnion( const VectorTypes & ... vectors ){ _set< 0 >( vectors ... ); }
 
-////////////////////////////////////////////////////////////////////////////////
-/*! Convenience function to create Point<Real, 2>s
-//  @param[in]  x   the first component
-//  @param[in]  x   the second component
-//  @return     Point<Real, 2> initialized with the two components
-*///////////////////////////////////////////////////////////////////////////////
-template<typename Real>
-Point<Real, 2> MakePoint2(Real x, Real y)
-{
-	Point<Real, 2> result;
-	result[0] = x;
-	result[1] = y;
-	return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/*! Complex-real vector dot product
-//  @param[in]  a   complex vector lhs
-//  @param[in]  b   real vector rhs
-//  @return     (complex result) a dot b
-*///////////////////////////////////////////////////////////////////////////////
-template <class Real, int Dim>
-inline std::complex<Real> operator*(const Point<std::complex<Real>, Dim> &a
-	, const Point<Real              , Dim> &b)
-{
-	std::complex<Real> dot = 0;
-	for (int i = 0; i < Dim; ++i)   {
-		dot += a[i] * b[i];
-	}
-	return dot;
-}
-
-template<class Real,int Cols,int Rows>
-class Matrix : public InnerProductSpace<Real,Matrix<Real,Cols,Rows> >
-{
-public:
-	//////////////////////////
-	// Vector space methods //
-	void Add            ( const Matrix& m );
-	void Scale          ( Real s );
-	Real InnerProduct   ( const Matrix& m ) const;
-	//////////////////////////
-
-	Real coords[Cols][Rows];
-	Matrix ( void ) { memset( coords , 0 , sizeof( Real ) * Cols * Rows ); }
-	template<class Real2>
-	operator Matrix< Real2 , Cols , Rows > ( void ) const
-	{
-		Matrix< Real2, Cols , Rows > m;
-		for( int c=0 ; c<Cols ; c++ ) for ( int r=0 ; r<Rows ; r++ ) m.coords[c][r] = Real2( coords[c][r] ); 
-		return m;
-	}
-	template<int C,int R>
-	Matrix(const Matrix<Real,C,R>& m)
-	{
-		for(int i=0;i<Cols && i<C;i++)
-			for(int j=0;j<Rows && j<R;j++)
-				coords[i][j]=m.coords[i][j];
-	}
-	Real& operator () (int c,int r) { return coords[c][r]; }
-	const Real& operator () (int c,int r) const { return coords[c][r]; }
-
-	template<int Cols1>
-	Matrix<Real,Cols1,Rows> operator * ( const Matrix< Real , Cols1 , Cols >& m ) const;
-
-	Matrix<Real,Rows,Cols> transpose( void ) const;
-
-	template<class Real2>
-	Point<Real2,Rows> operator * ( const Point< Real2 , Cols >& v ) const;
-	template<class Real2>
-	Point<Real2,Rows> operator () ( const Point< Real2 , Cols >& v ) const;
-};
-
-template< class Real , int Dim >
-class SquareMatrix : public Algebra< Real , SquareMatrix< Real , Dim > > , public Matrix< Real , Dim , Dim >
-{
-public:
-	using Matrix< Real , Dim , Dim >::coords;
-	////////////////////////////////
-	// Additional algebra methods //
-	void Multiply ( const SquareMatrix& m );
-	void SetIdentity( void );
-	////////////////////////////////
-
-	SquareMatrix( const Matrix< Real , Dim , Dim >& m ){ memcpy( coords , m.coords , sizeof(Real)*Dim*Dim ); }
-	SquareMatrix( void )                               { memset( coords , 0 ,        sizeof(Real)*Dim*Dim ); }
-	static SquareMatrix Identity( void ){ SquareMatrix m ; for( int i=0 ; i<Dim ; i++ ) m(i,i) = (Real)1 ; return m; }
-	Real subDeterminant( int c , int r ) const;
-	Real determinant( void ) const;
-	Real trace( void ) const;
-	SquareMatrix inverse( bool& success ) const;
-	SquareMatrix inverse( void ) const;
-	SquareMatrix transpose( void ) const { return Matrix< Real , Dim , Dim >::transpose(); }
-
-	// [NOTE] Disabling because we would like the product to be returned as a square matrix
-//	using Matrix< Real , Dim , Dim >::operator *;
-	using Matrix< Real , Dim , Dim >::operator ();
-	template< class Real2 > Point< Real2 , Dim-1 > operator () ( const Point< Real2 , Dim-1 >& v ) const;
-};
-template< class Real , int Dim1 , int Dim2 > Matrix< Real , Dim2 , Dim1 > operator * ( const SquareMatrix< Real , Dim1 >& m1 , const Matrix< Real , Dim2 , Dim1 >& m2 ){ return ( Matrix< Real , Dim1 , Dim1 > )m1 * m2; }
-template< class Real , int Dim1 , int Dim2 > Matrix< Real , Dim1 , Dim2 > operator * ( const Matrix< Real , Dim1 , Dim2 >& m1 , const SquareMatrix< Real , Dim1 >& m2 ){ return m1 * ( Matrix< Real , Dim1 , Dim1 > )m2; }
-
-//const Matrix< Real , 1Dim , Dim >& m ) const { return Matrix< Real , Dim , Dim >::operator * ( m ); }
-//template< int _Dim > friend Matrix< Real , Dim , _Dim > operator * ( const Matrix< Real , Dim , _Dim >& m1 , const SquareMatrix< Real , Dim >& m2 ){ return m1*m2; }
-
-
-template< class V , int Dim , class _R = typename V::R >
-class Gradient : public VectorSpace< _R , Gradient< V , Dim , _R > >
-{
-public:
-	//////////////////////////
-	// Vector space methods //
-	void Add            ( const Gradient& g ) { for( int c=0  ; c<Dim ; c++ ) gradients[c] += g.gradients[c]; }
-	void Scale          ( _R s ) { for( int c=0 ; c<Dim ; c++ ) gradients[c] *= s; }
-	//                      //
-	//////////////////////////
-
-	V gradients[Dim];
-	Gradient( void ) { for( int d=0 ; d<Dim ;  d++ ) gradients[d] *= 0; }
-	V& operator[] ( int idx ) { return gradients[idx]; }
-	const V& operator[] ( int idx ) const { return gradients[idx]; }
-
-	template< class V2 , class _R2>
-	operator Gradient< V2, Dim , _R2 > ( void ) const
-	{
-		Gradient< V2 , Dim , _R2 > g;
-		for( int d=0 ; d<Dim ; d++ ) g.gradients[d] = V2( gradients[d] ); 
-		return g;
-	}
-
-	template< class Real >
-	Gradient Project( const Point< Real , Dim >& dir ) const
-	{
-		V dot;
-		Gradient g;
-		g *= 0;
-		dot *= 0;
-		Real len = Real( sqrt( Point< Real , Dim >::SquareNorm( dir ) ) );
-		if( !len ) return g;
-		Point< Real , Dim > _dir = dir / len;
-		for( int d=0 ; d<Dim ; d++ ) dot += gradients[d] * _dir[d];
-		for( int d=0 ; d<Dim ; d++ ) g.gradients[d] = dot * _dir[d];
-		return g;
-	}
-};
-
-template< class V , int Dim , class _R = typename V::R >
-class ConstantFunction : public VectorSpace< _R , ConstantFunction< V , Dim , _R > >
-{
-public:
-	V value;
-	Gradient< V , Dim , _R > gradients;
-	ConstantFunction( void ) { value *= 0 , gradients *= 0;}
-
-	template< class Real > V operator( ) ( const Point< Real , Dim >& p ) const { return value; }
-	template< class Real > Gradient< V , Dim , _R > gradient( const Point< Real , Dim >& p ) const { return gradients; }
-
-	//////////////////////////
-	// Vector space methods //
-	void Add            ( const ConstantFunction& cf ) { value += cf.value; }
-	void Scale          ( _R s ) { value *= s , this->offset *= s; }
-	//////////////////////////
-};
-
-template< class V , int Dim , class _R = typename V::R >
-class LinearFunction : public VectorSpace< _R , LinearFunction< V , Dim , _R > >
-{
-public:
-	Gradient< V , Dim , _R > gradients;
-	V offset;
-	LinearFunction( void ) { offset *= 0 ; }
-	template< class Real >
-	V operator( ) ( const Point< Real , Dim >& p ) const
-	{
-		V v;
-		v *= 0;
-		for( int d=0 ; d<Dim ; d++ ) v += gradients[d] * p[d];
-		v -= offset;
-		return v;
-	}
-	template< class Real >
-	LinearFunction fitToHyperplane( const Point< Real , Dim >& p , const Point< Real , Dim >& n ) const
-	{
-		LinearFunction f;
-		Real len = Point< Real , Dim >::SquareNorm( n );
-		if( !len )
+		friend std::ostream &operator << ( std::ostream &os , const VectorTypeUnion &v )
 		{
-			f.gradients *= 0;
-			f.offset = -(*this)( p );
+			os << "{ ";
+			v._streamOut< 0 >( os );
+			os << " }";
+			return os;
 		}
+	protected:
+		std::tuple< VectorTypes ... > _vectorTypeTuple;
+		template< unsigned int I , typename _Vector , typename ... _Vectors > void _set( const _Vector &vector , const _Vectors & ... vectors ){ get< I >() = vector ; _set< I+1 >( vectors ... ); }
+		template< unsigned int I , typename _Vector                         > void _set( const _Vector &vector                                ){ get< I >() = vector ;                             }
+		template< unsigned int I > typename std::enable_if< I!=sizeof...(VectorTypes) >::type _add( const VectorTypeUnion& p ){ get<I>() += p.get<I>() ; _add< I+1 >( p ); }
+		template< unsigned int I > typename std::enable_if< I==sizeof...(VectorTypes) >::type _add( const VectorTypeUnion& p ){ }
+		template< unsigned int I > typename std::enable_if< I!=sizeof...(VectorTypes) >::type _sub( const VectorTypeUnion& p ){ get<I>() -= p.get<I>() ; _sub< I+1 >( p ); }
+		template< unsigned int I > typename std::enable_if< I==sizeof...(VectorTypes) >::type _sub( const VectorTypeUnion& p ){ }
+		template< unsigned int I > typename std::enable_if< I!=sizeof...(VectorTypes) >::type _mul( Real s ){ get<I>() *= s ; _mul< I+1 >( s ); }
+		template< unsigned int I > typename std::enable_if< I==sizeof...(VectorTypes) >::type _mul( Real s ){ }
+		template< unsigned int I > typename std::enable_if< I!=sizeof...(VectorTypes) >::type _div( Real s ){ get<I>() /= s ; _div< I+1 >( s ); }
+		template< unsigned int I > typename std::enable_if< I==sizeof...(VectorTypes) >::type _div( Real s ){ }
+		template< unsigned int I > typename std::enable_if< I!=sizeof...(VectorTypes) >::type _streamOut( std::ostream &os ) const { os << get<I>() ; if( I!=sizeof...(VectorTypes)-1 ) os << " , "; _streamOut< I+1 >( os ); }
+		template< unsigned int I > typename std::enable_if< I==sizeof...(VectorTypes) >::type _streamOut( std::ostream &os ) const { }
+	};
+	template< typename Real , typename ... Vectors >
+	VectorTypeUnion< Real , Vectors ... > operator * ( Real s , VectorTypeUnion< Real , Vectors ... > vu ){ return vu * s; }
+
+	template< class Real > Real Random( void );
+
+#ifdef NEW_GEOMETRY_CODE
+	template< typename Real , int Rows , int Cols > class Matrix;
+	template< typename Real , int Dim > using SquareMatrix = Matrix< Real , Dim , Dim >;
+#else // !NEW_GEOMETRY_CODE
+	template< class Real , int Dim > class SquareMatrix;
+#endif // NEW_GEOMETRY_CODE
+
+	template< typename Real , unsigned int Dim > class XForm;
+
+
+#ifdef NEW_GEOMETRY_CODE
+	template< typename T , unsigned int Dim , typename Real=T > struct Point;
+
+	template< typename T , unsigned int Dim , typename Real >
+	struct Point : public InnerProductSpace< Real , Point< T , Dim , Real > >
+	{
+		typedef InnerProductSpace< T , Point > IPS;
+
+		template< class ... Points >
+		static void _AddColumnVector( SquareMatrix< T , Dim >& x , int c , Point point , Points ... points )
+		{
+			for( int r=0 ; r<Dim ; r++ ) x( c , r ) = point[r];
+			if constexpr( sizeof...(Points) ) _AddColumnVector( x , c+1 , points ... );
+		}
+
+		template< typename ... Ts >
+		void _set( T t , Ts ... ts )
+		{
+			coords[ Dim-1-sizeof...(Ts) ] = t;
+			if constexpr( sizeof...(Ts) ) _set( ts... );
+		}
+	public:
+		/////////////////////////////////
+		// Inner product space methods //
+		void Add( const Point &p ){ for( int d=0 ; d<Dim ; d++ ) coords[d] += p.coords[d]; }
+		void Scale( Real s ){ for( int d=0 ; d<Dim ; d++ ) coords[d] *= s; }
+		Real InnerProduct( const Point &p )	const
+		{
+			Real dot={};
+#if 0
+			if constexpr( std::derived_from< T , InnerProductSpace< Real , T > > )
+#else // __cplusplus<202002l
+			if constexpr( std::is_base_of_v< InnerProductSpace< Real , T > , T > )
+#endif // __cplusplus
+				for( int i=0 ; i<Dim ; i++ ) dot += T::Dot( p.coords[i] , coords[i] );
+			else
+				for( int i=0 ; i<Dim ; i++ ) dot += p.coords[i] * coords[i];
+			return dot;
+		}
+		/////////////////////////////////
+
+		T coords[Dim];
+
+		template< typename ... Ts >
+		Point( Ts ... ts )
+		{
+			static_assert( sizeof...(Ts)==0 || sizeof...(Ts)==Dim , "[ERROR] Invalid number of coefficients" );
+
+			if constexpr( sizeof...(Ts)==0 ) for( unsigned int d=0 ; d<Dim ; d++ ) coords[d] = T{};
+			else _set( ts... );
+		}
+		Point( T *c ){ for( unsigned int d=0 ; d<Dim ; d++ ) coords[d] = c[d]; }
+		Point( const T *c ){ for( unsigned int d=0 ; d<Dim ; d++ ) coords[d] = c[d]; }
+
+		template< typename _T , typename _Real >
+		Point( const Point< _T , Dim , _Real > &p ){ for( unsigned int d=0 ; d<Dim ; d++ ) coords[d] = static_cast< T >( p[d] ); }
+
+		template< typename _T , typename _Real >
+		Point( Point< _T , Dim , _Real > &p ){ for( unsigned int d=0 ; d<Dim ; d++ ) coords[d] = static_cast< T >( p[d] ); }
+
+		T& operator [] ( int idx ) { return coords[idx]; }
+		const T& operator [] ( int idx ) const { return coords[idx]; }
+
+		template< class ... Points > static Point CrossProduct( Points ... points )
+		{
+			static_assert( sizeof ... ( points )==Dim-1 , "Number of points in cross-product must be one less than the dimension" );
+			SquareMatrix< Real , Dim > x;
+			_AddColumnVector( x , 0 , points ... );
+			Point p;
+			for( int d=0 ; d<Dim ; d++ ) p[d] = ( d&1 ) ? -x.subDeterminant( Dim-1 , d ) : x.subDeterminant( Dim-1 , d );
+			return p;
+		}
+
+		static Point CrossProduct( const Point *points )
+		{
+			XForm< Real , Dim > x;
+			for( unsigned int d=0 ; d<Dim-1 ; d++ ) for( unsigned int c=0 ; c<Dim ; c++ ) x(d,c) = points[d][c];
+			Point p;
+			for( unsigned int d=0 ; d<Dim ; d++ ) p[d] = ( d&1 ) ? -x.subDeterminant( Dim-1 , d ) : x.subDeterminant( Dim-1 , d );
+			return p;
+		}
+
+		static Point CrossProduct( Point *points ){ return CrossProduct( ( const Point * )points ); }
+
+
+		static Point< Real , Dim > Min( Point< Real , Dim > p , Point< Real , Dim > q ){ Point< Real , Dim > m ; for( int d=0 ; d<Dim ; d++ ) m[d] = std::min< Real >( p[d] , q[d] ) ; return m; }
+		static Point< Real , Dim > Max( Point< Real , Dim > p , Point< Real , Dim > q ){ Point< Real , Dim > m ; for( int d=0 ; d<Dim ; d++ ) m[d] = std::max< Real >( p[d] , q[d] ) ; return m; }
+
+		friend std::ostream &operator << ( std::ostream &os , const Point &p )
+		{
+			os << "( ";
+			for( int d=0 ; d<Dim ; d++ )
+			{
+				if( d ) os << " , ";
+				os << p[d];
+			}
+			return os << " )";
+		}
+
+	};
+
+	template< typename T , typename Real >
+	struct Point< T , (unsigned int)-1 , Real > : public InnerProductSpace< Real , Point< T , (unsigned int)-1 , Real > >
+	{
+	public:
+		/////////////////////////////////
+		// Inner product space methods //
+		void Add( const Point& p )
+		{
+			if( !_dim ){ _resize( p._dim ) ; for( unsigned int i=0 ; i<_dim ; i++ ) _coords[i] = p._coords[i]; }
+			else if( _dim==p._dim ) for( unsigned int i=0 ; i<_dim ; i++ ) _coords[i] += p._coords[i];
+			else MK_ERROR_OUT( "Dimensions don't match: " , _dim , " != " , p._dim );
+		}
+		void Scale( Real s ){ for( unsigned int i=0 ; i<_dim ; i++ ) (*this)[i] *= s; }
+		Real InnerProduct( const Point &p ) const
+		{
+			if( _dim!=p._dim ) MK_ERROR_OUT( "Dimensions differ: " , _dim , " != " , p._dim );
+
+			Real dot={};
+#if 0
+			if constexpr( std::derived_from< T , InnerProductSpace< Real , T > > )
+#else // __cplusplus<202002l
+			if constexpr( std::is_base_of_v< InnerProductSpace< Real , T > , T > )
+#endif // __cplusplus
+				for( int i=0 ; i<_dim ; i++ ) dot += T::Dot( p._coords[i] , _coords[i] );
+			else
+				for( int i=0 ; i<_dim ; i++ ) dot += p._coords[i] * _coords[i];
+			return dot;
+		}
+		/////////////////////////////////
+
+		Point( void ) : _coords(nullptr) , _dim(0){}
+		Point( size_t dim ) : _coords(nullptr) , _dim(0) { if( dim ){ _resize( (unsigned int)dim ) ; for( unsigned int d=0 ; d<dim ; d++ ) _coords[d] = T{}; } }
+		Point( const Point &p ) : _coords(nullptr) , _dim(0) { if( p._dim ){ _resize( p._dim ) ; for( unsigned int d=0 ; d<_dim ; d++ ) _coords[d] = p._coords[d]; } }
+		template< typename _T , typename _Real >
+		Point( const Point< _T , (unsigned int)-1 , _Real > &p ) : Point( p.dim() ) { for( unsigned int d=0 ; d<_dim ; d++ ) _coords[d] = static_cast< T >( p[d] ); }
+		template< typename _T , typename _Real >
+		Point( Point< _T , (unsigned int)-1 , _Real > &p ) : Point( p.dim() ) { for( unsigned int d=0 ; d<_dim ; d++ ) _coords[d] = static_cast< T >( p[d] ); }
+
+		~Point( void ){ delete[] _coords ; _coords = nullptr; }
+
+
+
+		Point &operator = ( const Point &p )
+		{
+			if( _dim!=p._dim && _dim!=0 ) MK_ERROR_OUT( "Dimensions don't match: " , _dim , " != " , p._dim );
+
+			if( !_dim ) _resize( p._dim );
+			for( unsigned int d=0 ; d<_dim ; d++ ) _coords[d] = p._coords[d];
+
+			return *this;
+		}
+
+		unsigned int dim( void ) const { return _dim; }
+		T &operator[]( size_t idx ){ return _coords[idx]; }
+		const T &operator[]( size_t idx ) const { return _coords[idx]; }
+
+		friend std::ostream &operator << ( std::ostream &os , const Point &p )
+		{
+			os << "( ";
+			for( size_t d=0 ; d<p.dim() ; d++ )
+			{
+				if( d ) os << " , ";
+				os << p[d];
+			}
+			return os << " )";
+		}
+	protected:
+		T *_coords;
+		unsigned int _dim;
+		void _resize( unsigned int dim ){ if( dim ){ _coords = new Real[dim] ; _dim = dim; } }
+	};
+
+	template< typename T , unsigned int Dim , typename Real > Point< T , Dim , Real > operator * ( Real s , Point< T , Dim , Real > p ){ return p*s; }
+#else // !NEW_GEOMETRY_CODE
+	template< typename Real , unsigned int Dim > struct Point;
+
+	template< typename Real , unsigned int Dim >
+	struct Point : public InnerProductSpace< Real , Point< Real , Dim > >
+	{
+		typedef InnerProductSpace< Real , Point > IPS;
+
+		template< class ... Points >
+		static void _AddColumnVector( SquareMatrix< Real , Dim >& x , int c , Point point , Points ... points )
+		{
+			for( int r=0 ; r<Dim ; r++ ) x( c , r ) = point[r];
+			_AddColumnVector( x , c+1 , points ... );
+		}
+		static void _AddColumnVector( SquareMatrix< Real , Dim >& x , int c ){ ; }
+		void _init( const Real *values , unsigned int sz )
+		{
+			if     ( sz==0   ) memset( coords , 0 , sizeof(coords) );
+			else if( sz==Dim ) memcpy( coords , values , sizeof(coords) );
+			else MK_ERROR_OUT( "Should never be called" );
+		}
+
+	public:
+		/////////////////////////////////
+		// Inner product space methods //
+		void Add            ( const Point& p );
+		void Scale          ( Real s );
+		Real InnerProduct   ( const Point& p ) const;
+		/////////////////////////////////
+
+		Real coords[Dim];
+		Point( void ){ memset( coords , 0 , sizeof(Real)*Dim ); }
+		template< typename Real2 >
+		Point( Point< Real2 , Dim > p ){ for( int i=0 ; i<Dim ; i++ ) coords[i] = (Real)p.coords[i]; }
+		Point( std::initializer_list< Real > l ){ memset( coords , 0 , sizeof(Real)*Dim ) ; for( int i=0 ; i<Dim && l.size() ; i++ ) coords[i] = l.begin()[i]; }
+		template< typename ... Reals >
+		Point( Real value , Reals ... values )
+		{
+			static_assert( 1+sizeof...(values)==Dim  , "[ERROR] Point< Real , Dim >::Point: Invalid number of coefficients" );
+			const Real _values[] = { value , (Real)values... };
+			_init( _values , Dim );
+		}
+		Point( const Real *values ){ _init( values , Dim ); }
+
+		template< typename Real2 >
+		operator Point< Real2 , Dim > ( void ) const
+		{
+			Point< Real2, Dim > p;
+			for( int d=0 ; d<Dim ; d++ ) p.coords[d] = Real2( coords[d] ); 
+			return p;
+		}
+		Real& operator [] (int idx) { return coords[idx]; }
+		const Real& operator [] (int idx) const { return coords[idx]; }
+
+		template< class ... Points > static Point CrossProduct( Points ... points )
+		{
+			static_assert( sizeof ... ( points )==Dim-1 , "Number of points in cross-product must be one less than the dimension" );
+			SquareMatrix< Real , Dim > x;
+			_AddColumnVector( x , 0 , points ... );
+			Point p;
+			for( int d=0 ; d<Dim ; d++ ) p[d] = ( d&1 ) ? -x.subDeterminant( Dim-1 , d ) : x.subDeterminant( Dim-1 , d );
+			return p;
+		}
+
+		static Point CrossProduct( const Point *points )
+		{
+			XForm< Real , Dim > x;
+			for( unsigned int d=0 ; d<Dim-1 ; d++ ) for( unsigned int c=0 ; c<Dim ; c++ ) x(d,c) = points[d][c];
+			Point p;
+			for( unsigned int d=0 ; d<Dim ; d++ ) p[d] = ( d&1 ) ? -x.subDeterminant( Dim-1 , d ) : x.subDeterminant( Dim-1 , d );
+			return p;
+		}
+
+		static Point CrossProduct( Point *points ){ return CrossProduct( ( const Point * )points ); }
+
+
+		static Point< Real , Dim > Min( Point< Real , Dim > p , Point< Real , Dim > q ){ Point< Real , Dim > m ; for( int d=0 ; d<Dim ; d++ ) m[d] = std::min< Real >( p[d] , q[d] ) ; return m; }
+		static Point< Real , Dim > Max( Point< Real , Dim > p , Point< Real , Dim > q ){ Point< Real , Dim > m ; for( int d=0 ; d<Dim ; d++ ) m[d] = std::max< Real >( p[d] , q[d] ) ; return m; }
+
+		friend std::ostream &operator << ( std::ostream &os , const Point &p )
+		{
+			os << "( ";
+			for( int d=0 ; d<Dim ; d++ )
+			{
+				if( d ) os << " , ";
+				os << p[d];
+			}
+			return os << " )";
+		}
+	};
+	template< typename Real , unsigned int Dim > Point< Real , Dim > operator * ( Real s , Point< Real , Dim > p ){ return p*s; }
+
+	template< typename Real >
+	struct Point< Real , (unsigned int)-1 > : public InnerProductSpace< Real , Point< Real , (unsigned int)-1 > >
+	{
+	public:
+		/////////////////////////////////
+		// Inner product space methods //
+		void Add( const Point& p )
+		{
+			if( !_dim ){ _resize( p._dim ) ; for( unsigned int i=0 ; i<_dim ; i++ ) _coords[i] = p._coords[i]; }
+			else if( _dim==p._dim ) for( unsigned int i=0 ; i<_dim ; i++ ) _coords[i] += p._coords[i];
+			else MK_ERROR_OUT( "Dimensions don't match: " , _dim , " != " , p._dim );
+		}
+		void Scale( Real s ){ for( unsigned int i=0 ; i<_dim ; i++ ) (*this)[i] *= s; }
+		Real InnerProduct( const Point &p ) const
+		{
+			Real dot;
+			if( _dim!=p._dim ) MK_ERROR_OUT( "Dimensions differ: " , _dim , " != " , p._dim );
+			for( size_t d=0 ; d<_dim ; d++ ) dot += _coords[d] * p._coords[d];
+			return dot;
+		}
+		/////////////////////////////////
+
+		Point( void ) : _coords(NULL) , _dim(0){}
+		Point( size_t dim ) : _coords(NULL) , _dim(0) { if( dim ){ _resize( (unsigned int)dim ) ; memset( _coords , 0 , sizeof(Real)*_dim ); } }
+		Point( const Point &p ) : _coords(NULL) , _dim(0) { if( p._dim ){ _resize( p._dim ) ; memcpy( _coords , p._coords , sizeof(Real)*_dim ); } }
+		~Point( void ){ delete[] _coords ; _coords = NULL; }
+
+		Point &operator = ( const Point &p )
+		{
+			if( !_dim ){ _resize( p._dim ) ; memcpy( _coords , p._coords , sizeof(Real)*_dim ); }
+			else if( _dim==p._dim ) memcpy( _coords , p._coords , sizeof(Real)*_dim );
+			else MK_ERROR_OUT( "Dimensions don't match: " , _dim , " != " , p._dim );
+			return *this;
+		}
+
+		unsigned int dim( void ) const { return _dim; }
+		Real &operator[]( size_t idx ){ return _coords[idx]; }
+		const Real &operator[]( size_t idx ) const { return _coords[idx]; }
+
+		friend std::ostream &operator << ( std::ostream &os , const Point &p )
+		{
+			os << "( ";
+			for( size_t d=0 ; d<p.dim() ; d++ )
+			{
+				if( d ) os << " , ";
+				os << p[d];
+			}
+			return os << " )";
+		}
+	protected:
+		Real *_coords;
+		unsigned int _dim;
+		void _resize( unsigned int dim ){ if( dim ){ _coords = new Real[dim] ; _dim = dim; } }
+	};
+	template< typename Real > Point< Real , (unsigned int)-1 > operator * ( Real s , Point< Real , (unsigned int)-1 > p ){ return p*s; }
+#endif // NEW_GEOMETRY_CODE
+
+	/** This templated class represents a Ray.*/
+	template< typename T , unsigned int Dim , typename Real=T >
+	class Ray
+	{
+	public:
+		/** The starting point of the ray */
+		Point< T , Dim , Real> position;
+
+		/** The direction of the ray */
+		Point< T , Dim , Real> direction;
+
+		/** The default constructor */
+		Ray( void ){}
+
+		/** The constructor settign the the position and direction of the ray */
+		Ray( const Point< T , Dim , Real> &position , const Point< T , Dim , Real> &direction ) : position(position) , direction(direction) {}
+
+		/** This method computes the translation of the ray by p and returns the translated ray.*/
+		Ray  operator +  ( const Point< T , Dim , Real> &p ) const { return Ray( position + p , direction );}
+
+		/** This method translates the current ray by p.*/
+		Ray &operator += ( const Point< T , Dim , Real> &p ){ position += p ; return *this; }
+
+		/** This method computes the translation of the ray by -p and returns the translated ray.*/
+		Ray  operator -  ( const Point< T , Dim , Real> &p ) const { return Ray( position - p , direction );}
+
+		/** This method translates the current ray by -p.*/
+		Ray &operator -= ( const Point< T , Dim , Real> &p ){ position -= p ; return *this; }
+
+		/** This method returns the point at a distance of t along the ray. */
+		Point< T , Dim , Real> operator() ( Real t ) const { return position + direction*t; }
+	};
+
+
+	template< class Real , int Cols , int Rows >
+	class Matrix : public InnerProductSpace< Real , Matrix< Real , Cols , Rows > >
+	{
+	public:
+		//////////////////////////
+		// Vector space methods //
+		void Add            ( const Matrix& m );
+		void Scale          ( Real s );
+		Real InnerProduct   ( const Matrix& m ) const;
+		//////////////////////////
+
+		Real coords[Cols][Rows];
+		Matrix ( void ) { memset( coords , 0 , sizeof( Real ) * Cols * Rows ); }
+		template<class Real2>
+		operator Matrix< Real2 , Cols , Rows > ( void ) const
+		{
+			Matrix< Real2, Cols , Rows > m;
+			for( int c=0 ; c<Cols ; c++ ) for ( int r=0 ; r<Rows ; r++ ) m.coords[c][r] = Real2( coords[c][r] ); 
+			return m;
+		}
+		template<int C,int R>
+		Matrix( const Matrix< Real , C , R> &m )
+		{
+			for(int i=0;i<Cols && i<C;i++)
+				for(int j=0;j<Rows && j<R;j++)
+					coords[i][j]=m.coords[i][j];
+		}
+		Real& operator () (int c,int r) { return coords[c][r]; }
+		const Real& operator () (int c,int r) const { return coords[c][r]; }
+
+		template<int Cols1>
+		Matrix<Real,Cols1,Rows> operator * ( const Matrix< Real , Cols1 , Cols >& m ) const;
+
+		Matrix< Real , Rows , Cols > transpose( void ) const;
+
+#ifdef NEW_GEOMETRY_CODE
+		template< typename T >
+		Point< T , Rows , Real > operator * ( const Point<  T , Cols , Real > &v ) const;
+
+		template< typename T >
+		Point< T , Rows , Real > operator() ( const Point<  T , Cols , Real > &v ) const;
+
+		template< typename T >
+		Real operator () ( const Point< T , Rows , Real >& v1 , const Point< T , Cols , Real >& v2 ) const;
+#else // !NEW_GEOMETRY_CODE
+		template<class Real2>
+		Point<Real2,Rows> operator * ( const Point< Real2 , Cols >& v ) const;
+		template<class Real2>
+		Point<Real2,Rows> operator () ( const Point< Real2 , Cols >& v ) const;
+
+		Real operator () ( const Point< Real , Rows >& v1 , const Point< Real , Cols >& v2 ) const;
+#endif // NEW_GEOMETRY_CODE
+
+		friend std::ostream &operator << ( std::ostream &os , const Matrix &m )
+		{
+			os << "{ ";
+			for( int r=0 ; r<Rows ; r++ )
+			{
+				if( r ) os << " , ";
+				os << "{ ";
+				for( int c=0 ; c<Cols ; c++ )
+				{
+					if( c ) os << " , ";
+					os << m.coords[c][r];
+				}
+				os << " }";
+			}
+			return os << " }";
+		}
+	};
+
+	template< class Real , int Rows >
+	class Matrix< Real , 0 , Rows > : public InnerProductSpace< Real , Matrix< Real , 0 , Rows > >
+	{
+		static const unsigned int Cols = 0;
+	public:
+		//////////////////////////
+		// Vector space methods //
+		void Add            ( const Matrix& m ){}
+		void Scale          ( Real s ){}
+		Real InnerProduct   ( const Matrix& m ) const { return (Real)0; }
+		//////////////////////////
+
+		Matrix( void ){}
+
+		template< class Real2 >
+		operator Matrix< Real2 , Cols , Rows > ( void ) const{}
+
+		template< int C , int R >
+		Matrix( const Matrix< Real , C , R > &m ){}
+
+		Real& operator () ( int c , int r ) { MK_ERROR_OUT( "Should not be accessing the entries of this matrix" ) ; Real v=0 ; return v; }
+		const Real& operator () ( int c , int r ) const { MK_ERROR_OUT( "Should not be accessing the entries of this matrix" ) ; Real v=0 ; return v; }
+
+		template< int Cols1 >
+		Matrix< Real , Cols1 , Rows > operator * ( const Matrix< Real , Cols1 , Cols >& m ) const { return Matrix< Real , Cols1 , Rows >(); }
+
+		Matrix< Real , Rows , Cols > transpose( void ) const{ return Matrix< Real , Rows , Cols >(); }
+
+		template< class Real2 >
+		Point< Real2 , Rows > operator * ( const Point< Real2 , Cols >& v ) const { return Point< Real2 , Rows >(); }
+
+		template< class Real2 >
+		Point< Real2 , Rows > operator () ( const Point< Real2 , Cols >& v ) const { return Point< Real2 , Rows >(); }
+
+		friend std::ostream &operator << ( std::ostream &os , const Matrix &m ){ return os <<  "{ }"; }
+	};
+
+	template< class Real , int Cols >
+	class Matrix< Real , Cols , 0 > : public InnerProductSpace< Real , Matrix< Real , Cols , 0 > >
+	{
+		static const unsigned int Rows = 0;
+	public:
+		//////////////////////////
+		// Vector space methods //
+		void Add            ( const Matrix& m ){}
+		void Scale          ( Real s ){}
+		Real InnerProduct   ( const Matrix& m ) const { return (Real)0; }
+		//////////////////////////
+
+		Matrix( void ){}
+
+		template< class Real2 >
+		operator Matrix< Real2 , Cols , Rows > ( void ) const{}
+
+		template< int C , int R >
+		Matrix( const Matrix< Real , C , R > &m ){}
+
+		Real& operator () ( int c , int r ) { MK_ERROR_OUT( "Should not be accessing the entries of this matrix" ) ; return (Real&)*(Real*)NULL; }
+		const Real& operator () ( int c , int r ) const { MK_ERROR_OUT( "Should not be accessing the entries of this matrix" ) ; return (Real&)*(Real*)NULL; }
+
+		template< int Cols1 >
+		Matrix< Real , Cols1 , Rows > operator * ( const Matrix< Real , Cols1 , Cols >& m ) const { return Matrix< Real , Cols1 , Rows >(); }
+
+		Matrix< Real , Rows , Cols > transpose( void ) const{ return Matrix< Real , Rows , Cols >(); }
+
+		template< class Real2 >
+		Point< Real2 , Rows > operator * ( const Point< Real2 , Cols >& v ) const { return Point< Real2 , Rows >(); }
+
+		template< class Real2 >
+		Point< Real2 , Rows > operator () ( const Point< Real2 , Cols >& v ) const { return Point< Real2 , Rows >(); }
+
+		friend std::ostream &operator << ( std::ostream &os , const Matrix &m ){ return os <<  "{ }"; }
+	};
+
+#ifdef NEW_GEOMETRY_CODE
+	// Need forward declaration to support the characteristic polynomial
+	namespace Polynomial{ template< unsigned int Dim , unsigned int Degree , typename Real > class Polynomial; }
+
+	template< class Real , int Dim >
+	class Matrix< Real , Dim , Dim > : public Algebra< Real , Matrix< Real , Dim , Dim > > , public InnerProductSpace< Real , Matrix< Real , Dim , Dim > >
+	{
+	public:
+		static const int Cols = Dim;
+		static const int Rows = Dim;
+		////////////////////////////////
+		// Vector space methods       //
+		void Add            ( const Matrix& m );
+		void Scale          ( Real s );
+		Real InnerProduct   ( const Matrix& m ) const;
+		////////////////////////////////
+		// Additional algebra methods //
+		void Multiply       ( const Matrix& m );
+		void SetIdentity    ( void );
+		////////////////////////////////
+
+		Real coords[Dim][Dim];
+		Matrix ( void ) { memset( coords , 0 , sizeof( Real ) * Cols * Rows ); }
+		template< class Real2 >
+		operator Matrix< Real2 , Cols , Rows > ( void ) const
+		{
+			Matrix< Real2, Cols , Rows > m;
+			for( int c=0 ; c<Cols ; c++ ) for ( int r=0 ; r<Rows ; r++ ) m.coords[c][r] = Real2( coords[c][r] ); 
+			return m;
+		}
+		template<int C,int R>
+		Matrix( const Matrix< Real , C , R> &m )
+		{
+			for(int i=0;i<Cols && i<C;i++)
+				for(int j=0;j<Rows && j<R;j++)
+					coords[i][j]=m.coords[i][j];
+		}
+		Real& operator () (int c,int r) { return coords[c][r]; }
+		const Real& operator () (int c,int r) const { return coords[c][r]; }
+
+		template<int Cols1>
+		Matrix< Real , Cols1 , Dim > operator * ( const Matrix< Real , Cols1 , Dim >& m ) const;
+
+		Matrix< Real , Dim , Dim > transpose( void ) const;
+
+		template<class Real2>
+		Point<Real2,Dim> operator * ( const Point< Real2 , Dim >& v ) const;
+		template<class Real2>
+		Point<Real2,Dim> operator () ( const Point< Real2 , Dim >& v ) const;
+		Real operator () ( const Point< Real , Dim >& v1 , const Point< Real , Dim > &v2 ) const;
+
+		friend std::ostream &operator << ( std::ostream &os , const Matrix &m )
+		{
+			os << "{ ";
+			for( int r=0 ; r<Rows ; r++ )
+			{
+				if( r ) os << " , ";
+				os << "{ ";
+				for( int c=0 ; c<Cols ; c++ )
+				{
+					if( c ) os << " , ";
+					os << m.coords[c][r];
+				}
+				os << " }";
+			}
+			return os << " }";
+		}
+
+		static Matrix Identity( void )
+		{
+			Matrix M;
+			M.SetIdentity();
+			return M;
+		}
+		Real subDeterminant( int c , int r ) const;
+		Real determinant( void ) const;
+		Real trace( void ) const;
+		Matrix inverse( bool& success ) const;
+		Matrix inverse( void ) const;
+		class Polynomial::Polynomial< 1 , Dim , Real > characteristicPolynomial( void ) const;
+
+		template< class Real2 > Point< Real2 , Dim-1 > operator () ( const Point< Real2 , Dim-1 >& v ) const;
+	protected:
+		friend Matrix< double , Dim+1 , Dim+1 >;
+		class Polynomial::Polynomial< 1 , Dim , Real > _characteristicPolynomial( Matrix< char , Dim , Dim > mask ) const;
+	};
+
+#if 0
+	template< class Real , int Dim1 , int Dim2 > Matrix< Real , Dim2 , Dim1 > operator * ( const SquareMatrix< Real , Dim1 >& m1 , const Matrix< Real , Dim2 , Dim1 >& m2 ){ return ( Matrix< Real , Dim1 , Dim1 > )m1 * m2; }
+	template< class Real , int Dim1 , int Dim2 > Matrix< Real , Dim1 , Dim2 > operator * ( const Matrix< Real , Dim1 , Dim2 >& m1 , const SquareMatrix< Real , Dim1 >& m2 ){ return m1 * ( Matrix< Real , Dim1 , Dim1 > )m2; }
+#endif
+
+	template< class Real >
+	class Matrix< Real , 0 , 0 > : public Algebra< Real , Matrix< Real , 0 , 0 > > , public InnerProductSpace< Real , Matrix< Real , 0 , 0 > >
+	{
+	public:
+		static const unsigned int Dim = 0;
+		static const int Cols = 0;
+		static const int Rows = 0;
+
+		////////////////////////////////
+		// Vector space methods       //
+		void Add            ( const Matrix& m ){}
+		void Scale          ( Real s ){}
+		Real InnerProduct   ( const Matrix& m ) const { return (Real)0; }
+		////////////////////////////////
+		// Additional algebra methods //
+		void Multiply ( const Matrix& m ){;}
+		void SetIdentity( void ){;}
+		////////////////////////////////
+
+		Matrix( void ){}
+
+		template< class Real2 >
+		operator Matrix< Real2 , Cols , Rows > ( void ) const{}
+
+		template< int C , int R >
+		Matrix( const Matrix< Real , C , R > &m ){}
+
+		Real& operator () ( int c , int r ) { MK_ERROR_OUT( "Should not be accessing the entries of this matrix" ) ; Real v=0 ; return v; }
+		const Real& operator () ( int c , int r ) const { MK_ERROR_OUT( "Should not be accessing the entries of this matrix" ) ; Real v=0 ; return v; }
+
+		template< int Cols1 >
+		Matrix< Real , Cols1 , Rows > operator * ( const Matrix< Real , Cols1 , Cols >& m ) const { return Matrix< Real , Cols1 , Rows >(); }
+
+		template< class Real2 >
+		Point< Real2 , Rows > operator * ( const Point< Real2 , Cols >& v ) const { return Point< Real2 , Rows >(); }
+
+		template< class Real2 >
+		Point< Real2 , Rows > operator () ( const Point< Real2 , Cols >& v ) const { return Point< Real2 , Rows >(); }
+
+		friend std::ostream &operator << ( std::ostream &os , const Matrix &m ){ return os <<  "{ }"; }
+
+		Real determinant( void ) const { return 0; }
+		Real trace( void ) const { return 0; }
+		Matrix transpose( void ) const { return Matrix(); }
+	};
+
+#else // !NEW_GEOMETRY_CODE
+
+	template< class Real >
+	class Matrix< Real , 0 , 0 > : public InnerProductSpace< Real , Matrix< Real , 0 , 0 > >
+	{
+		static const unsigned int Cols = 0;
+		static const unsigned int Rows = 0;
+	public:
+		//////////////////////////
+		// Vector space methods //
+		void Add            ( const Matrix& m ){}
+		void Scale          ( Real s ){}
+		Real InnerProduct   ( const Matrix& m ) const { return (Real)0; }
+		//////////////////////////
+
+		Matrix( void ){}
+
+		template< class Real2 >
+		operator Matrix< Real2 , Cols , Rows > ( void ) const{}
+
+		template< int C , int R >
+		Matrix( const Matrix< Real , C , R > &m ){}
+
+		Real& operator () ( int c , int r ) { MK_ERROR_OUT( "Should not be accessing the entries of this matrix" ) ; Real v=0 ; return v; }
+		const Real& operator () ( int c , int r ) const { MK_ERROR_OUT( "Should not be accessing the entries of this matrix" ) ; Real v=0 ; return v; }
+
+		template< int Cols1 >
+		Matrix< Real , Cols1 , Rows > operator * ( const Matrix< Real , Cols1 , Cols >& m ) const { return Matrix< Real , Cols1 , Rows >(); }
+
+		Matrix< Real , Rows , Cols > transpose( void ) const{ return Matrix< Real , Rows , Cols >(); }
+
+		template< class Real2 >
+		Point< Real2 , Rows > operator * ( const Point< Real2 , Cols >& v ) const { return Point< Real2 , Rows >(); }
+
+		template< class Real2 >
+		Point< Real2 , Rows > operator () ( const Point< Real2 , Cols >& v ) const { return Point< Real2 , Rows >(); }
+
+		friend std::ostream &operator << ( std::ostream &os , const Matrix &m ){ return os <<  "{ }"; }
+	};
+
+	// Need forward declaration to support the characteristic polynomial
+	namespace Polynomial{ template< unsigned int Dim , unsigned int Degree , typename Real > class Polynomial; }
+
+	template< class Real , int Dim >
+	class SquareMatrix : public Algebra< Real , SquareMatrix< Real , Dim > > , public Matrix< Real , Dim , Dim >
+	{
+	public:
+		using Matrix< Real , Dim , Dim >::coords;
+		////////////////////////////////
+		// Additional algebra methods //
+		void Multiply ( const SquareMatrix& m );
+		void SetIdentity( void );
+		////////////////////////////////
+
+		SquareMatrix( const Matrix< Real , Dim , Dim >& m ){ memcpy( coords , m.coords , sizeof(Real)*Dim*Dim ); }
+		SquareMatrix( void )                               { memset( coords , 0 ,        sizeof(Real)*Dim*Dim ); }
+		static SquareMatrix Identity( void )
+		{
+			SquareMatrix M;
+			M.SetIdentity();
+			return M;
+		}
+		Real subDeterminant( int c , int r ) const;
+		Real determinant( void ) const;
+		Real trace( void ) const;
+		SquareMatrix inverse( bool& success ) const;
+		SquareMatrix inverse( void ) const;
+		SquareMatrix transpose( void ) const { return Matrix< Real , Dim , Dim >::transpose(); }
+		class Polynomial::Polynomial< 1 , Dim , Real > characteristicPolynomial( void ) const;
+
+		// [NOTE] Disabling because we would like the product to be returned as a square matrix
+		//	using Matrix< Real , Dim , Dim >::operator *;
+		using Matrix< Real , Dim , Dim >::operator ();
+		template< class Real2 > Point< Real2 , Dim-1 > operator () ( const Point< Real2 , Dim-1 >& v ) const;
+	protected:
+		friend SquareMatrix< double , Dim+1 >;
+		class Polynomial::Polynomial< 1 , Dim , Real > _characteristicPolynomial( SquareMatrix< char , Dim > mask ) const;
+	};
+
+	template< class Real , int Dim1 , int Dim2 > Matrix< Real , Dim2 , Dim1 > operator * ( const SquareMatrix< Real , Dim1 >& m1 , const Matrix< Real , Dim2 , Dim1 >& m2 ){ return ( Matrix< Real , Dim1 , Dim1 > )m1 * m2; }
+	template< class Real , int Dim1 , int Dim2 > Matrix< Real , Dim1 , Dim2 > operator * ( const Matrix< Real , Dim1 , Dim2 >& m1 , const SquareMatrix< Real , Dim1 >& m2 ){ return m1 * ( Matrix< Real , Dim1 , Dim1 > )m2; }
+
+	template< class Real >
+	class SquareMatrix< Real , 0 > : public Algebra< Real , SquareMatrix< Real , 0 > >
+	{
+	public:
+		static const unsigned int Dim = 0;
+		////////////////////////////////
+		// Additional algebra methods //
+		void Multiply ( const SquareMatrix& m ){;}
+		void SetIdentity( void ){;}
+		////////////////////////////////
+
+		Real &operator () ( int c , int r ){ MK_ERROR_OUT( "Should not be accessing the entries of a 0x0 matrix" ) ; Real v ; return v; }
+		const Real &operator () ( int c , int r ) const { MK_ERROR_OUT( "Should not be accessing the entries of a 0x0 matrix" ) ; Real v ; return v; }
+		Real determinant( void ) const { return 0; }
+		Real trace( void ) const { return 0; }
+		SquareMatrix transpose( void ) const { return Matrix< Real , Dim , Dim >::transpose(); }
+	};
+#endif // NEW_GEOMETRY_CODE
+
+#ifdef NEW_GEOMETRY_CODE
+	template< typename T , unsigned int Dim1 , unsigned int Dim2 , typename Real >
+	Matrix< Real , Dim2 , Dim1 > OuterProduct( Point< T , Dim1 , Real > p1 , Point< T , Dim2 , Real > p2 )
+	{
+		Matrix< Real , Dim2 , Dim1 > op;
+#if 0
+		if constexpr( std::derived_from< T , InnerProductSpace< Real , T > > )
+#else // __cplusplus<202002l
+		if constexpr( std::is_base_of_v< InnerProductSpace< Real , T > , T > )
+#endif // __cplusplus
+			for( unsigned int i=0 ; i<Dim1 ; i++ ) for( unsigned int j=0 ; j<Dim2 ; j++ ) op(j,i) = T::Dot( p1[i] , p2[j] );
 		else
+			for( unsigned int i=0 ; i<Dim1 ; i++ ) for( unsigned int j=0 ; j<Dim2 ; j++ ) op(j,i) = p1[i] * p2[j];
+		return op;
+	}
+	template< typename T , unsigned int Dim , typename Real >
+	SquareMatrix< Real , Dim > OuterProduct( Point< T , Dim , Real > p1 , Point< T , Dim , Real > p2 )
+	{
+		SquareMatrix< Real , Dim > op;
+#if 0
+		if constexpr( std::derived_from< T , InnerProductSpace< Real , T > > )
+#else // __cplusplus<202002l
+		if constexpr( std::is_base_of_v< InnerProductSpace< Real , T > , T > )
+#endif // __cplusplus
+			for( unsigned int i=0 ; i<Dim ; i++ ) for( unsigned int j=0 ; j<Dim ; j++ ) op(j,i) = T::Dot( p1[i] , p2[j] );
+		else
+			for( unsigned int i=0 ; i<Dim ; i++ ) for( unsigned int j=0 ; j<Dim ; j++ ) op(j,i) = p1[i] * p2[j];
+		return op;
+	}
+#else // !NEW_GEOMETRY_CODE
+	template< typename Real , unsigned int Dim1 , unsigned int Dim2 >
+	Matrix< Real , Dim2 , Dim1 > OuterProduct( Point< Real , Dim1 > p1 , Point< Real , Dim2 > p2 )
+	{
+		Matrix< Real , Dim2 , Dim1 > op;
+		for( unsigned int i=0 ; i<Dim1 ; i++ ) for( unsigned int j=0 ; j<Dim2 ; j++ ) op(j,i) = p1[i] * p2[j];
+		return op;
+	}
+
+	template< typename Real , unsigned int Dim >
+	SquareMatrix< Real , Dim > OuterProduct( Point< Real , Dim > p1 , Point< Real , Dim > p2 )
+	{
+		SquareMatrix< Real , Dim > op;
+		for( unsigned int i=0 ; i<Dim ; i++ ) for( unsigned int j=0 ; j<Dim ; j++ ) op(j,i) = p1[i] * p2[j];
+		return op;
+	}
+#endif // NEW_GEOMETRY_CODE
+
+	template< class V , int Dim , class _R = typename V::R >
+	class Gradient : public VectorSpace< _R , Gradient< V , Dim , _R > >
+	{
+	public:
+		//////////////////////////
+		// Vector space methods //
+		void Add            ( const Gradient& g ) { for( int c=0  ; c<Dim ; c++ ) grad[c] += g.grad[c]; }
+		void Scale          ( _R s ) { for( int c=0 ; c<Dim ; c++ ) grad[c] *= s; }
+		//                      //
+		//////////////////////////
+
+		V grad[Dim];
+#if 1
+		Gradient( void ) { for( int d=0 ; d<Dim ;  d++ ) grad[d] = V{}; }
+#else
+		Gradient( void ) { for( int d=0 ; d<Dim ;  d++ ) grad[d] *= 0; }
+#endif
+		V& operator[] ( int idx ) { return grad[idx]; }
+		const V& operator[] ( int idx ) const { return grad[idx]; }
+
+		template< class V2 , class _R2>
+		operator Gradient< V2, Dim , _R2 > ( void ) const
 		{
-			Point< Real , Dim > normal = n / Real( sqrt( double( len ) ) );
+			Gradient< V2 , Dim , _R2 > g;
+			for( int d=0 ; d<Dim ; d++ ) g.grad[d] = V2( grad[d] ); 
+			return g;
+		}
+
+		template< class Real >
+		Gradient Project( const Point< Real , Dim >& dir ) const
+		{
 			V dot;
+			Gradient g;
+#if 1
+			g = V{};
+			dot = V{};
+#else
+			g *= 0;
 			dot *= 0;
-			for( int d=0 ; d<Dim ; d++ ) dot += gradients[d] * normal[d];
-			for( int d=0 ; d<Dim ; d++ ) f.gradients[d] = gradients[d] - dot * normal[d];
-			f.offset *= 0;
-			f.offset = -(*this)( p ) + f( p );
+#endif
+			Real len = Real( sqrt( Point< Real , Dim >::SquareNorm( dir ) ) );
+			if( !len ) return g;
+			Point< Real , Dim > _dir = dir / len;
+			for( int d=0 ; d<Dim ; d++ ) dot += grad[d] * _dir[d];
+			for( int d=0 ; d<Dim ; d++ ) g.grad[d] = dot * _dir[d];
+			return g;
 		}
-		return f;
-	}
-	template< class V2 , class _R2 >
-	operator LinearFunction< V2 , Dim , _R2 > ( void ) const
-	{
-		LinearFunction< V2 , Dim , _R2 > lf;
-		lf.offset = V2 ( offset );
-		lf.gradients = Gradient< V2 , Dim , _R2 >( gradients );
-		return lf;
-	}
-	template< class Real >
-	Gradient< V , Dim , _R > gradient( const Point< Real , Dim >& p ) const { return gradients; }
+	};
 
-	// Warning, this function requires the taking of an inverse, which may fail...
-	template< class Real >
-	static LinearFunction BestFit( const Point< Real , Dim >* points , const V* values , int count )
+	template< class V , int Dim , class _R = typename V::R >
+	class ConstantFunction : public VectorSpace< _R , ConstantFunction< V , Dim , _R > >
 	{
-		LinearFunction lf;
-		V constraint[Dim];
-		SquareMatrix< Real , Dim > M , Minv;
-		M *= 0;
-		for( int d=0 ; d<Dim ; d++ ) constraint[d] *= 0;
-		for( int i=0 ; i<count ; i++ )
+	public:
+		V value;
+		Gradient< V , Dim , _R > grad;
+		ConstantFunction( void ) { value *= 0 , grad *= 0;}
+
+		template< class Real > V operator( ) ( const Point< Real , Dim >& p ) const { return value; }
+		template< class Real > Gradient< V , Dim , _R > gradient( const Point< Real , Dim >& p ) const { return grad; }
+
+		//////////////////////////
+		// Vector space methods //
+		void Add            ( const ConstantFunction& cf ) { value += cf.value; }
+		void Scale          ( _R s ) { value *= s , this->offset *= s; }
+		//////////////////////////
+	};
+
+	//template< class V , int Dim , class _R = typename V::R >
+	template< class V , int Dim , class _R = typename FieldOf< V >::F >
+	class LinearFunction : public VectorSpace< _R , LinearFunction< V , Dim , _R > >
+	{
+	public:
+#if 1
+		std::conditional_t< std::is_same_v< V , _R > , Point< _R , Dim > , Gradient< V , Dim , _R > > grad;
+#else
+		Gradient< V , Dim , _R > grad;
+#endif
+		V offset;
+		LinearFunction( void ) : offset(V{}) {}
+		template< class Real >
+		V operator( ) ( const Point< Real , Dim >& p ) const
 		{
-			for( int k=0 ; k<Dim ; k++ ) for( int l=0 ; l<Dim ; l++ ) M( k , l ) += points[i][k] * points[i][l];
-			for( int j=0 ; j<count ; j++ ) for( int k=0 ; k<Dim ; k++ ) for( int l=0 ; l<Dim ; l++ ) M( k , l ) -= points[i][k] * points[j][l] / Real( count ); 
-
-			for( int d=0 ; d<Dim ; d++ ) constraint[d] += values[i] * points[i][d];
-			for( int j=0 ; j<count ; j++ ) for( int d=0 ; d<Dim ; d++ ) constraint[d] -= values[j] * points[i][d] / Real( count );
+			V v{};
+			for( int d=0 ; d<Dim ; d++ ) v += grad[d] * p[d];
+			v -= offset;
+			return v;
 		}
-		Minv = M.inverse();
-
-		lf *= 0;
-		for( int c=0 ; c<Dim ; c++ ) for( int r=0 ; r<Dim ; r++ ) lf.gradients[r] += constraint[c] * Minv( c , r );
-		for( int i=0 ; i<count ; i++ )
+		template< class Real >
+		LinearFunction fitToHyperplane( const Point< Real , Dim >& p , const Point< Real , Dim >& n ) const
 		{
-			for( int d=0 ; d<Dim ; d++ ) lf.offset += lf.gradients[d] * points[i][d];
-			lf.offset -= values[i];
+			LinearFunction f;
+			Real len = Point< Real , Dim >::SquareNorm( n );
+			if( !len )
+			{
+				f.grad *= 0;
+				f.offset = -(*this)( p );
+			}
+			else
+			{
+				Point< Real , Dim > normal = n / Real( sqrt( double( len ) ) );
+				V dot;
+				dot *= 0;
+				for( int d=0 ; d<Dim ; d++ ) dot += grad[d] * normal[d];
+				for( int d=0 ; d<Dim ; d++ ) f.grad[d] = grad[d] - dot * normal[d];
+				f.offset *= 0;
+				f.offset = -(*this)( p ) + f( p );
+			}
+			return f;
 		}
-		lf.offset /= Real( count );
-		return lf;
-	}
-
-
-	//////////////////////////
-	// Vector space methods //
-	void Add            ( const LinearFunction& lf ) { this->gradients += lf.gradients , offset += lf.offset; }
-	void Scale          ( _R s ) { gradients *= s , offset *= s; }
-	//////////////////////////
-};
-
-template< class Real , int Dim >
-struct OrientedPoint
-{
-	Point< Real , Dim > position , normal;
-	template< class Real2 > operator Point< Real2, Dim > ( void ) const { return Point< Real2 , Dim >( position ); }
-};
-
-#if FAST_POINT
-template< class Real >
-struct Point2D
-{
-	Point2D( void ){ coords[0] = coords[1] = (Real)0.; }
-	Point2D( Real x , Real y ){ coords[0] = x , coords[1] = y; }
-	template< class Real2 > Point2D( const Point2D< Real2 >& p ){ coords[0] = (Real)p.coords[0] , coords[1] = (Real)p.coords[1]; }
-	template< class Real2 > Point2D( const Point< Real2 , 2 >& p ){ coords[0] = (Real)p.coords[0] , coords[1] = (Real)p.coords[1]; }
-	template< class Real2 > Point2D& operator = ( const Point2D< Real2 >& p ){ coords[0] = (Real)p.coords[0] , coords[1] = (Real)p.coords[1] ; return *this; }
-	template< class Real2 > Point2D& operator = ( const Point< Real2 , 2 >& p ){ coords[0] = (Real)p.coords[0] , coords[1] = (Real)p.coords[1] ; return *this; }
-	Real& operator[] ( int i ) { return coords[i]; }
-	const Real& operator[] ( int i ) const { return coords[i]; }
-
-	Point2D& operator += ( const Point2D& p ){ coords[0] += p.coords[0] , coords[1] += p.coords[1] ; return *this; }
-	Point2D& operator -= ( const Point2D& p ){ coords[0] -= p.coords[0] , coords[1] -= p.coords[1] ; return *this; }
-	Point2D& operator *= ( Real s ){ coords[0] *= s , coords[1] *= s ; return *this; }
-	Point2D& operator /= ( Real s ){ coords[0] /= s , coords[1] /= s ; return *this; }
-
-	Point2D operator - ( void ) const { return Point2D( -coords[0] , -coords[1] ); }
-
-	Point2D operator + ( const Point2D& p ) const { return Point2D( coords[0] + p.coords[0] , coords[1] + p.coords[1] ); }
-	Point2D operator - ( const Point2D& p ) const { return Point2D( coords[0] - p.coords[0] , coords[1] - p.coords[1] ); }
-	Point2D operator * ( Real s ) const { return Point2D( coords[0] * s , coords[1] * s ); }
-	Point2D operator / ( Real s ) const { return Point2D( coords[0] / s , coords[1] / s ); }
-
-	Real squareNorm( void ) const { return coords[0]*coords[0] + coords[1]*coords[1]; }
-	static Real Dot( const Point2D& p1 , const Point2D& p2 ){ return p1.coords[0]*p2.coords[0] + p1.coords[1]*p2.coords[1]; }
-	static Real SquareNorm( const Point2D& p ){ return p.coords[0]*p.coords[0] + p.coords[1]*p.coords[1]; }
-	static Real Length( const Point2D& p ){ return (Real)sqrt( SquareNorm(p) ); }
-	Real coords[2];
-
-	friend std::ostream & operator << ( std::ostream & os , Point2D< Real > p ){ return os << "{ " << p[0] << " , " << p[1] << " }"; }
-};
-template< class Real > Point2D< Real > operator * ( Real s , const Point2D< Real >& v ){ return v * s; }
-template< class Real > Point2D< Real > operator / ( Real s , const Point2D< Real >& v ){ return v / s; }
-template< class Real > Point2D< Real > operator * ( const SquareMatrix< Real , 2 >& M , const Point2D< Real >& v )
-{
-	return Point2D< Real >( M.coords[0][0] * v[0] + M.coords[1][0] * v[1] , M.coords[0][1] * v[0] + M.coords[1][1] * v[1] );
-}
-template< class Real >
-struct Point3D
-{
-	Point3D( void ){ coords[0] = coords[1] = coords[2] = (Real)0.; }
-	Point3D( Real x , Real y , Real z ){ coords[0] = x , coords[1] = y , coords[2] = z; }
-	template< class Real2 > Point3D( const Point3D< Real2 >& p ){ coords[0] = (Real)p.coords[0] , coords[1] = (Real)p.coords[1] , coords[2] = (Real)p.coords[2]; }
-	template< class Real2 > Point3D( const Point< Real2 , 3 >& p ){ coords[0] = (Real)p.coords[0] , coords[1] = (Real)p.coords[1] , coords[2] = (Real)p.coords[2]; }
-	template< class Real2 > Point3D& operator = ( const Point3D< Real2 >& p ){ coords[0] = (Real)p.coords[0] , coords[1] = (Real)p.coords[1] , coords[2] = (Real)p.coords[2] ; return *this; }
-	template< class Real2 > Point3D& operator = ( const Point< Real2 , 3 >& p ){ coords[0] = (Real)p.coords[0] , coords[1] = (Real)p.coords[1] , coords[2] = (Real)p.coords[2] ; return *this; }
-	Real& operator[] ( int i ) { return coords[i]; }
-	const Real& operator[] ( int i ) const { return coords[i]; }
-
-	Point3D& operator += ( const Point3D& p ){ coords[0] += p.coords[0] , coords[1] += p.coords[1] , coords[2] += p.coords[2] ; return *this; }
-	Point3D& operator -= ( const Point3D& p ){ coords[0] -= p.coords[0] , coords[1] -= p.coords[1] , coords[2] -= p.coords[2] ; return *this; }
-	Point3D& operator *= ( Real s ){ coords[0] *= s , coords[1] *= s , coords[2] *= s ; return *this; }
-	Point3D& operator /= ( Real s ){ coords[0] /= s , coords[1] /= s , coords[2] /= s ; return *this; }
-
-	Point3D operator - ( void ) const { return Point3D( -coords[0] , -coords[1] , -coords[2] ); }
-
-	Point3D operator + ( const Point3D& p ) const { return Point3D( coords[0] + p.coords[0] , coords[1] + p.coords[1] , coords[2] + p.coords[2] ); }
-	Point3D operator - ( const Point3D& p ) const { return Point3D( coords[0] - p.coords[0] , coords[1] - p.coords[1] , coords[2] - p.coords[2] ); }
-	Point3D operator * ( Real s ) const { return Point3D( coords[0] * s , coords[1] * s , coords[2] * s ); }
-	Point3D operator / ( Real s ) const { return Point3D( coords[0] / s , coords[1] / s , coords[2] / s ); }
-
-	Real squareNorm( void ) const { return coords[0]*coords[0] + coords[1]*coords[1] + coords[2]*coords[2]; }
-	static Real Dot( const Point3D& p1 , const Point3D& p2 ){ return p1.coords[0]*p2.coords[0] + p1.coords[1]*p2.coords[1] + p1.coords[2]*p2.coords[2]; }
-	static Real SquareNorm( const Point3D& p ){ return p.coords[0]*p.coords[0] + p.coords[1]*p.coords[1] + p.coords[2]*p.coords[2]; }
-	static Real Length( const Point3D& p ){ return (Real)sqrt( SquareNorm(p) ); }
-	static Point3D CrossProduct( const Point3D& p1 , const Point3D& p2 )
-	{
-		return Point3D( p1.coords[1]*p2.coords[2] - p1.coords[2]*p2.coords[1], - p1.coords[0]*p2.coords[2] + p1.coords[2]*p2.coords[0] , p1.coords[0]*p2.coords[1] - p1.coords[1]*p2.coords[0] );
-	}
-	Real coords[3];
-
-	friend std::ostream & operator << ( std::ostream & os , Point3D< Real > p ){ return os << "{ " << p[0] << " , " << p[1] << " , " << p[2] << " }"; }
-
-};
-template< class Real > Point3D< Real > operator * ( Real s , const Point3D< Real > &p ){ return p*s; }
-template< class Real > Point3D< Real > operator * ( const SquareMatrix< Real , 3 >& M , const Point3D< Real >& v )
-{
-	return Point3D< Real >( M.coords[0][0] * v[0] + M.coords[1][0] * v[1] + M.coords[2][0] * v[2] , M.coords[0][1] * v[0] + M.coords[1][1] * v[1] + M.coords[2][1] * v[2] , M.coords[0][2] * v[0] + M.coords[1][2] * v[1] + M.coords[2][2] * v[2] );
-}
-#else // !FAST_POINT
-template< class Real >
-class Point2D : public Point<Real,2>
-{
-public:
-	Point2D(void) : Point<Real,2>(){;}
-	Point2D(const Point<Real,2>& p) {   memcpy(this->coords,p.coords,sizeof(Real)*2);   }
-	Point2D( Real v1 , Real v2 ) { coords[0] = v1 , coords[1] = v2; }
-};
-
-template< class Real >
-class Point3D : public Point<Real,3>
-{
-public:
-	using Point<Real, 3>::coords;
-	Point3D(void) : Point<Real,3>(){;}
-	Point3D(const Point<Real,3>& p) { *this = p; }
-	Point3D( Real v1 , Real v2 , Real v3 ) { coords[0] = v1 , coords[1] = v2 , coords[2] = v3; }
-	Point3D(const Real *p)  { *this = p; }
-
-	static Point3D CrossProduct( const Point3D& p1 , const Point3D & p2 );
-
-	////////////////////////////////////////////////////////////////////////////
-	/*! Allow assignment from another point of lower or equal dimension. If the
-	//  RHS dimension is lower, copy only the number of elements in RHS.
-	//  @param[in]  p   vector from which to copy
-	//  @return     reference to the LHS (this) to allow chaining
-	*///////////////////////////////////////////////////////////////////////////
-	template<int RHSDim>
-	Point3D &operator= (const Point<Real, RHSDim> &p)
-	{
-		assert(RHSDim <= 3);
-		for (int d = 0; d < RHSDim; d++)
-			coords[d] = p.coords[d];
-
-		return *this;
-	}
-
-	////////////////////////////////////////////////////////////////////////////
-	/*! Allow assignment from a flat array
-	//  @param[in]  p   the value array to copy
-	//  @return     reference to the LHS (this) to allow chaining
-	*///////////////////////////////////////////////////////////////////////////
-	Point3D &operator=(const Real *p)
-	{
-		memcpy(coords, p, sizeof(Real) * 3);
-		return *this;
-	}
-
-	////////////////////////////////////////////////////////////////////////////
-	/*! Allow assignment from a point of a different real type
-	//  @return     reference to the LHS (this) to allow chaining
-	*///////////////////////////////////////////////////////////////////////////
-	template<typename Real2>
-	Point3D &operator=(const Point3D<Real2> &p)
-	{
-		Point3D<Real2> p2;
-		for (int d = 0; d < 3; d++)
-			coords[d] = (Real) p.coords[d];
-
-		return *this;
-	}
-
-	////////////////////////////////////////////////////////////////////////////
-	/*! Allow addition with a flat array
-	//  @param[in]  p   the value array to accumulate
-	//  @return     copy of result
-	*///////////////////////////////////////////////////////////////////////////
-	Point3D operator+(const Real *p)
-	{
-		Point3D result(*this);
-		for (int i = 0; i < 3; ++i)
-			result.coords[i] += p[i];
-		return result;
-	}
-};
-#endif // FAST_POINT
-
-////////////////////////////////////////////////////////////////////////////////
-/*! Creates a complex 3d point: p1 + i p2
-//  @param[in]  p1      real part
-//  @param[in]  p1      imaginary part
-//  @return     complex 3d point
-*///////////////////////////////////////////////////////////////////////////////
-template<typename Real>
-inline Point3D<std::complex<Real> > ComplexPoint3D(const Point3D<Real> &p1
-	, const Point3D<Real> &p2)
-{
-	return Point3D<std::complex<Real> >(std::complex<Real>(p1[0], p2[0])
-		, std::complex<Real>(p1[1], p2[1])
-		, std::complex<Real>(p1[2], p2[2]));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/*! Extracts the real vector part from a complex vector
-//  @param[in]  vector to process
-//  @return     real part
-*///////////////////////////////////////////////////////////////////////////////
-template<typename Real>
-inline Point3D<Real> real(const Point3D<std::complex<Real> > &p)
-{
-	return Point3D<Real>(real(p[0]), real(p[1]), real(p[2]));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/*! Extracts the imaginary vector part from a complex vector
-//  @param[in]  vector to process
-//  @return     imaginary part
-*///////////////////////////////////////////////////////////////////////////////
-template<typename Real>
-inline Point3D<Real> imag(const Point3D<std::complex<Real> > &p)
-{
-	return Point3D<Real>(imag(p[0]), imag(p[1]), imag(p[2]));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/*! Separately normalizes both the real and the imaginary part of a complex 3D
-//  vector
-//  @param[inout]   p   the vector to normalize
-*///////////////////////////////////////////////////////////////////////////////
-template<typename Real>
-inline void NormalizeParts(Point3D<std::complex<Real> > &p)
-{
-	Point3D<Real> realPart = real(p);
-	Point3D<Real> imagPart = imag(p);
-	realPart /= sqrt(SquareNorm(realPart));
-	imagPart /= sqrt(SquareNorm(imagPart));
-	p = ComplexPoint3D(realPart, imagPart);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/*! Saves on a sqrt() operation when the vector is unit.
-//  @param[inout]   p   the vector to normalize
-*///////////////////////////////////////////////////////////////////////////////
-template<typename Real>
-void safe_normalize(Point3D<Real> &p)
-{
-	Real normSq = SquareNorm(p);
-	if ((normSq != Real(0)) && (std::abs(1 - normSq) >= 1.0e-16))
-		p *= (1 / sqrt(normSq));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/*! Linearly interpolates between two points
-//  @param[in]  alpha       blending factor (alpha = 0 ==> p1)
-//  @param[in]  p1, p2      points to interpolate
-//  @return     interpolation result
-*///////////////////////////////////////////////////////////////////////////////
-template<typename Num>
-Point3D<Num> LinInterp(Num alpha, const Point3D<Num> &p1,
-	const Point3D<Num> &p2)
-{
-	return (1 - alpha) * p1 + alpha * p2;
-}
-
-template< class V , class _R = typename V::R >
-class Gradient3D : public Gradient< V , 3 , _R >
-{
-public:
-	Gradient3D( void ) : Gradient< V , 3 , _R >( ){ ; }
-	Gradient3D( const Gradient< V , 3 , _R >& lf ) { for( int d=0 ; d<3 ; d++ ) this->gradients[d] = lf.gradients[d]; }
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/*! Class to represent a linear function mapping R^3 to V
-//  (as I understand it--JP)
-//  @tparam  V  the range type
-//  @tparam _R  the floating point representation
-*///////////////////////////////////////////////////////////////////////////////
-template< class V , class _R = typename V::R >
-class LinearFunction3D : public LinearFunction< V , 3 , _R >
-{
-public:
-	LinearFunction3D( void ) : LinearFunction< V , 3 , _R >( ){ ; }
-	LinearFunction3D( const LinearFunction< V , 3 , _R >& lf )
-	{
-		for( int d=0 ; d<3 ; d++ ) this->gradients[d] = lf.gradients[d];
-		this->offset = lf.offset;
-	}
-	template< class Real >
-	static LinearFunction3D GetInterpolant( const Point3D< Real >* vertices , const V* values , Point3D< Real > n )
-	{
-		Point3D< Real > p1 = Point3D< Real >( vertices[1] - vertices[0] );
-		Point3D< Real > p2 = Point3D< Real >( vertices[2] - vertices[0] );
-		Point3D< Real > v1 = Point3D< Real >::CrossProduct( p2 , n  );
-		Point3D< Real > v2 = Point3D< Real >::CrossProduct( p1 , n  );
-
-		Real d1 = Point3D< Real >::Dot( v1 , p1 );
-		Real d2 = Point3D< Real >::Dot( v2 , p2 );
-		if( !d1 || !d2 )
+		template< class V2 , class _R2 >
+		operator LinearFunction< V2 , Dim , _R2 > ( void ) const
 		{
-			LinearFunction3D< V , _R > lf;
-			lf.gradients *= 0;
-#if PAN_FIX
-			lf.offset = -( values[0] + values[1] + values[2] ) / 3;
-#else // !PAN_FIX
-			lf.offset =  ( values[0] + values[1] + values[2] ) / 3;
-#endif // PAN_FIX
+			LinearFunction< V2 , Dim , _R2 > lf;
+			lf.offset = V2 ( offset );
+			lf.grad = Gradient< V2 , Dim , _R2 >( grad );
 			return lf;
 		}
-		else
-		{
-			v1 /= d1;
-			v2 /= d2;
-		}
+		template< class Real >
+		Gradient< V , Dim , _R > gradient( const Point< Real , Dim >& p ) const { return grad; }
 
-		LinearFunction3D< V , _R > lf;
-		lf.offset =
-			- ( values[0] * ( 1.0 + Point3D< Real >::Dot( vertices[0] , v1 ) + Point3D< Real >::Dot( vertices[0] , v2 ) )
-			- values[1] * Point3D< Real >::Dot( vertices[0] , v1 )
-			- values[2] * Point3D< Real >::Dot( vertices[0] , v2 ) );
-		for( int d=0 ; d<3 ; d++ ) lf.gradients[d] = - values[0]*v1[d] - values[0]*v2[d] + values[1]*v1[d] + values[2]*v2[d];
-		return lf;
-	}
-	template< class Real >
-	static LinearFunction3D GetInterpolant( const Point3D< Real >& v1 ,
-		const Point3D< Real >& v2 ,
-		const Point3D< Real >& v3 ,
-		const V& s1 , const V& s2 , const V s3 ,
-		Point3D< Real > n )
-	{
-		Point3D< Real > p1 = Point3D< Real >( v2 - v1 );
-		Point3D< Real > p2 = Point3D< Real >( v3 - v1 );
-		Point3D< Real > _v1 = Point3D< Real >::CrossProduct( p2 , n  );
-		Point3D< Real > _v2 = Point3D< Real >::CrossProduct( p1 , n  );
-
-		Real d1 = Point3D< Real >::Dot( _v1 , p1 );
-		Real d2 = Point3D< Real >::Dot( _v2 , p2 );
-		if( !d1 || !d2 )
+		// Warning, this function requires the taking of an inverse, which may fail...
+		template< class Real >
+		static LinearFunction BestFit( ConstPointer( Point< Real , Dim > ) points , ConstPointer( V ) values , int count )
 		{
-			LinearFunction3D< V , _R > lf;
-			lf.gradients *= 0;
-#if PAN_FIX
-			lf.offset = -( s1 + s2 + s3 ) / _R(3);
-#else // !PAN_FIX
-			lf.offset = ( s1 + s2 + s3 ) / _R(3);
-#endif // PAN_FIX
+			LinearFunction lf;
+			V constraint[Dim];
+			SquareMatrix< Real , Dim > M , Minv;
+#if 1
+			for( int d=0 ; d<Dim ; d++ ) constraint[d] = V{};
+#else
+			M *= 0;
+			for( int d=0 ; d<Dim ; d++ ) constraint[d] *= 0;
+#endif
+			for( int i=0 ; i<count ; i++ )
+			{
+				for( int k=0 ; k<Dim ; k++ ) for( int l=0 ; l<Dim ; l++ ) M( k , l ) += points[i][k] * points[i][l];
+				for( int j=0 ; j<count ; j++ ) for( int k=0 ; k<Dim ; k++ ) for( int l=0 ; l<Dim ; l++ ) M( k , l ) -= points[i][k] * points[j][l] / Real( count ); 
+
+				for( int d=0 ; d<Dim ; d++ ) constraint[d] += values[i] * points[i][d];
+				for( int j=0 ; j<count ; j++ ) for( int d=0 ; d<Dim ; d++ ) constraint[d] -= values[j] * points[i][d] / Real( count );
+			}
+			bool success;
+			Minv = M.inverse( success );
+			if( !success ){ MK_THROW( "Could not inverse matrix" ); }
+
+#if 1
+			// [WARNING] Apparently "offset" could have been initialized to something awful so that multiplication by zero is still awful
+			lf.grad = std::conditional_t< std::is_same_v< V , _R > , Point< _R , Dim > , Gradient< V , Dim , _R > >{};
+			lf.offset = V{};
+#else
+			lf *= 0;
+#endif
+			for( int c=0 ; c<Dim ; c++ ) for( int r=0 ; r<Dim ; r++ ) lf.grad[r] += constraint[c] * Minv( c , r );
+			for( int i=0 ; i<count ; i++ )
+			{
+				for( int d=0 ; d<Dim ; d++ ) lf.offset += lf.grad[d] * points[i][d];
+				lf.offset -= values[i];
+			}
+			lf.offset /= Real( count );
 			return lf;
 		}
-		else
+
+		friend std::ostream &operator << ( std::ostream &stream , const LinearFunction &lf )
 		{
-			_v1 /= d1;
-			_v2 /= d2;
-		}
+			stream << " < " << lf.grad << " , . >";
+			if     ( lf.offset<0 ) return stream << " + " << - lf.offset;
+			else if( lf.offset>0 ) return stream << " - " <<   lf.offset;
+			else                   return stream;
+		};
 
-		LinearFunction3D< V , _R > lf;
-		lf.offset = - ( s1 * ( Real(1.0)
-			+ Point3D< Real >::Dot( v1 , _v1 )
-			+ Point3D< Real >::Dot( v1 , _v2 ))
-			- s2 * Point3D< Real >::Dot( v1 , _v1 )
-			- s3 * Point3D< Real >::Dot( v1 , _v2 ) );
-		for( int d=0 ; d<3 ; d++ ) lf.gradients[d] = - s1*_v1[d] - s1*_v2[d] + s2*_v1[d] + s3*_v2[d];
-		return lf;
-	}
-	template< class Real >
-	static LinearFunction3D GetInterpolant( const Point3D< Real >* vertices , const V* values )
+
+		//////////////////////////
+		// Vector space methods //
+		void Add            ( const LinearFunction& lf ) { grad += lf.grad , offset += lf.offset; }
+		void Scale          ( _R s ) { grad *= s , offset *= s; }
+		//////////////////////////
+	};
+
+	template< class Real , int Dim >
+	struct OrientedPoint
 	{
-		Point3D< Real > p1 = Point3D< Real >( vertices[1] - vertices[0] );
-		Point3D< Real > p2 = Point3D< Real >( vertices[2] - vertices[0] );
-		Point3D< Real > n  = Point3D< Real >::CrossProduct( p1 , p2 );
-		return GetInterpolant( vertices , values , n );
-	}
-	template< class Real >
-	static LinearFunction3D GetInterpolant( const Point3D< Real >& v1 , const Point3D< Real >& v2 , const Point3D< Real >& v3 , const V& s1 , const V& s2 , const V& s3 )
+		Point< Real , Dim > position , normal;
+		template< class Real2 > operator Point< Real2, Dim > ( void ) const { return Point< Real2 , Dim >( position ); }
+	};
+
+	template< typename Real , typename Data >
+	struct ProjectiveData
 	{
-		Point3D< Real > p1 = Point3D< Real >( v2 - v1 );
-		Point3D< Real > p2 = Point3D< Real >( v3 - v1 );
-		Point3D< Real > n  = Point3D< Real >::CrossProduct( p1 , p2 );
-		return GetInterpolant( v1 ,v2 , v3 , s1 , s2 , s3 , n );
-	}
-};
+		Data data;
+		Real weight;
+		ProjectiveData( Data d=Data() , Real w=(Real)0 ) : data(d) , weight(w) { ; }
+		operator Data (){ return weight!=0 ? data/weight : data*weight; }
+		Data value( void ) const { return weight!=0 ? data/weight : data*weight; }
+		ProjectiveData& operator += ( const ProjectiveData& p ){ data += p.data , weight += p.weight ; return *this; }
+		ProjectiveData& operator -= ( const ProjectiveData& p ){ data -= p.data , weight += p.weight ; return *this; }
+		ProjectiveData& operator *= ( Real s ){ data *= s , weight *= std::abs(s) ; return *this; }
+		ProjectiveData& operator /= ( Real s ){ data /= s , weight /= std::abs(s) ; return *this; }
+		ProjectiveData  operator +  ( const ProjectiveData& p ) const { return ProjectiveData( data+p.data , weight+p.weight ); }
+		ProjectiveData  operator -  ( const ProjectiveData& p ) const { return ProjectiveData( data-p.data , weight+p.weight ); }
+		ProjectiveData  operator *  ( Real s ) const { return ProjectiveData( data*s , weight*std::abs(s) ); }
+		ProjectiveData  operator /  ( Real s ) const { return ProjectiveData( data/s , weight/std::abs(s) ); }
+		ProjectiveData  operator -  ( void ) const{ return ProjectiveData( -data , weight ); }
+	};
 
-template<class Real>
-class OrientedPoint2D : public OrientedPoint<Real,2>{;};
-template<class Real>
-class OrientedPoint3D : public OrientedPoint<Real,3>{;};
+	template< class Real > using Point2D = Point< Real , 2 >;
+	template< class Real > using Point3D = Point< Real , 3 >;
 
-template<class Real>
-class XForm4x4 : public SquareMatrix<Real,4>
-{
-public:
-	XForm4x4(void) : SquareMatrix<Real,4>(){;}
-	XForm4x4(const SquareMatrix<Real,4>& xForm) {   memcpy(this->coords,xForm.coords,sizeof(Real)*4*4); };
-};
-template<class Real>
-class XForm3x3 : public SquareMatrix<Real,3>
-{
-public:
-	XForm3x3(void) : SquareMatrix<Real,3>(){;}
-	XForm3x3(const SquareMatrix<Real,3>& xForm) {   memcpy(this->coords,xForm.coords,sizeof(Real)*3*3); };
-};
-template<class Real>
-class XForm2x2 : public SquareMatrix<Real,2>
-{
-public:
-	XForm2x2(void) : SquareMatrix<Real,2>(){;}
-	XForm2x2(const SquareMatrix<Real,2>& xForm) {   memcpy(this->coords,xForm.coords,sizeof(Real)*2*2); };
-};
+	template<class Real>
+	class OrientedPoint2D : public OrientedPoint<Real,2>{;};
+	template<class Real>
+	class OrientedPoint3D : public OrientedPoint<Real,3>{;};
 
-template< class Real > Point2D< Real > RandomDiskPoint( void );
-template< class Real > Point3D< Real > RandomBallPoint( void );
-
-template< class Real > Point2D< Real > RandomCirclePoint( void );
-template< class Real > Point3D< Real > RandomSpherePoint( void );
-
-template<class Real>
-XForm3x3<Real> RotationMatrix( Real a , Real b , Real c , Real d );
-
-template<class Real>
-XForm3x3<Real> RotationMatrix( const Point3D<Real>& axis , const Real& angle );
-
-template<class Real>
-XForm3x3<Real> RandomRotationMatrix( void );
-
-template<class Real>
-double Length(const Point3D<Real>& p);
-
-template<class Real>
-double SquareLength(const Point3D<Real>& p);
-
-template<class Real>
-double Distance(const Point3D<Real>& p1,const Point3D<Real>& p2);
-
-template <class Real>
-void CrossProduct(const Point3D<Real>& p1,const Point3D<Real>& p2,Point3D<Real>& p);
-
-template <class Real>
-Point3D<Real> CrossProduct(const Point3D<Real>& p1,const Point3D<Real>& p2)
-{
-	// Avoid Point3D<Real>:: in front of every call
-	return Point3D<Real>::CrossProduct(p1, p2);
-}
-
-template <class Real>
-Point3D<Real> CrossProduct(const Point<Real, 3> &p1, const Point<Real, 3>& p2)
-{
-	// Avoid Point3D<Real>:: in front of every call
-	return Point3D<Real>::CrossProduct(p1, p2);
-}
-
-template <class Real>
-Real Dot(const Point3D<Real>& p1,const Point3D<Real>& p2)
-{
-	// Avoid Point3D<Real>:: in front of every call
-	return Point3D<Real>::Dot(p1, p2);
-}
-
-template <class Real>
-Real SquareNorm(const Point3D<Real>& p)
-{
-	// Avoid Point3D<Real>:: in front of every call
-	return Point3D<Real>::SquareNorm(p);
-}
-
-template<class Real, int Dim>
-Real SquareNorm(const Point<Real, Dim> &p)
-{
-	// Avoid Point<Real, Dim>:: in front of every call
-	return Point<Real, Dim>::SquareNorm(p);
-}
-
-template< class Real >
-double SquareNorm( std::complex< Real > c )
-{
-	return c.real()*c.real() + c.imag()*c.imag();
-}
-
-template<class Real>
-void Transform(const XForm4x4<Real>& xForm,const Point3D<Real>& p,Point3D<Real>& q);
-
-template<class Real>
-void TransformNoTranslate(const XForm4x4<Real>& xForm,const Point3D<Real>& p,Point3D<Real>& q);
-
-template< class Real , int Count >
-class BarycentricCoordinatesImplementation
-{
-	template< class _Real , int _Count >
-	friend class BarycentricCoordinatesImplementation;
-protected:
-	template< class Vertex , int Dim >
-	static void _BarycentricCoordinates( const Vertex& p , const Vertex v[Count] , Real a[Count] , bool inside );
-public:
-	template< int Dim >
-	static void BarycentricCoordinates( const Point< Real , Dim >& p , const Point< Real , Dim > v[Count] , Real a[Count] , bool inside ){ return _BarycentricCoordinates< Point< Real , Dim > , Dim >( p , v , a , inside ); }
-	static void BarycentricCoordinates( const Point3D< Real >& p , const Point3D< Real > v[Count] , Real a[Count] , bool inside ){ return _BarycentricCoordinates< Point3D< Real > , 3 >( p , v , a , inside ); }
-};
-template< class Real >
-class BarycentricCoordinatesImplementation< Real , 1 >
-{
-	template< class _Real , int _Count >
-	friend class BarycentricCoordinatesImplementation;
-protected:
-	template< class Vertex , int Dim > static void _BarycentricCoordinates( const Vertex& p , const Vertex v[1] , Real a[1] , bool inside ){ a[0] = (Real)1; }
-};
-template< class Real , int Dim , int Count >
-void BarycentricCoordinates( const Point< Real , Dim >& p , const Point< Real , Dim > v[Count] , Real a[Count] , bool inside=false )
-{
-	return BarycentricCoordinatesImplementation< Real , Count >::template BarycentricCoordinates< Dim >( p , v , a , inside );
-}
-template< class Real , int Count >
-void BarycentricCoordinates( const Point3D< Real >& p , const Point3D< Real > v[Count] , Real a[Count] , bool inside=false )
-{
-	return BarycentricCoordinatesImplementation< Real , Count >::BarycentricCoordinates( p , v , a , inside );
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/*! Uses a barycentric coordinate vector to interpolate three data values
-//  @param[in]  coords      bary centric coordinates
-//  @param[in]  d0, d1, d2  data values to interpolate
-//  @return     interpolated data value
-*///////////////////////////////////////////////////////////////////////////////
-template<typename BaryCoords, typename DataType>
-inline DataType BarycentricInterpolate(const BaryCoords &coords
-	, const DataType &d0, const DataType &d1, const DataType &d2);
-
-////////////////////////////////////////////////////////////////////////////////
-/*! Computes a triangle's inscribed circle
-//  http://en.wikipedia.org/wiki/Incircle
-//  @param[in]  p0, p1, p2      triangle vertex positions
-//  @param[out] center          incircle center
-//  @param[out] radius          incircle radius
-*///////////////////////////////////////////////////////////////////////////////
-template<typename PointType, typename Real>
-inline void Incircle(const PointType &p0, const PointType &p1,
-	const PointType &p2, PointType &center, Real &radius);
-
-////////////////////////////////////////////////////////////////////////////////
-/*! Computes a triangle's circumscribed circle
-//  http://en.wikipedia.org/wiki/Circumscribed_circle
-//  @param[in]  p0, p1, p2      triangle vertex positions
-//  @param[in]  tri             triangle to process
-//  @param[out] center          incircle center
-*///////////////////////////////////////////////////////////////////////////////
-template<typename PointType, typename Real>
-inline void Circumcircle(const PointType &p0, const PointType &p1
-	, const PointType &p2, PointType &center, Real &radius);
-
-class Edge
-{
-public:
-	double p[2][2];
-	double Length(void) const{
-		double d[2];
-		d[0]=p[0][0]-p[1][0];
-		d[1]=p[0][1]-p[1][1];
-
-		return sqrt(d[0]*d[0]+d[1]*d[1]);
-	}
-};
-class Triangle
-{
-public:
-	double p[3][3];
-	double Area(void) const{
-		double v1[3],v2[3],v[3];
-		for(int d=0;d<3;d++){
-			v1[d]=p[1][d]-p[0][d];
-			v2[d]=p[2][d]-p[0][d];
-		}
-		v[0]= v1[1]*v2[2]-v1[2]*v2[1];
-		v[1]=-v1[0]*v2[2]+v1[2]*v2[0];
-		v[2]= v1[0]*v2[1]-v1[1]*v2[0];
-		return sqrt(v[0]*v[0]+v[1]*v[1]+v[2]*v[2])/2;
-	}
-	double AspectRatio(void) const{
-		double d=0;
-		int i,j;
-		for(i=0;i<3;i++){
-			for(i=0;i<3;i++)
-				for(j=0;j<3;j++){d+=(p[(i+1)%3][j]-p[i][j])*(p[(i+1)%3][j]-p[i][j]);}
-		}
-		return Area()/d;
-	}
-};
-class EdgeIndex
-{
-public:
-	int v[2];
-	int& operator[] ( int idx )       { return v[idx]; }
-	int  operator[] ( int idx ) const { return v[idx]; }
-};
-
-class SeamEdge : public EdgeIndex
-{
-public:
-	// NOTE: edge is from index 1 to index 0
-	/** The rotation across the seam edge */
-	unsigned char rot;
-	/** The face with which this seam was associated in the obj file
-	*  (used to make writing the seams back to an obj file easy) */
-	unsigned int face_idx;
-};
-
-class ConeVertex
-{
-public:
-	/** Index of vertex in the vertex list */
-	int v;
-	/** Vertex index quadrupled so it becomes integer (4 for non-singular
-	*  vertices) */
-	char two_cone_angle_over_pi;
-
-	ConeVertex()
-		: v(-1), two_cone_angle_over_pi(0) { }
-	ConeVertex(int i, char doubleConeAngleOverPi)
-		: v(i), two_cone_angle_over_pi(doubleConeAngleOverPi)
+	template< typename Real , unsigned int Dim >
+	class XForm : public SquareMatrix< Real , Dim >
 	{
-	}
-};
+		using SquareMatrix< Real , Dim >::coords;
+	public:
+		using SquareMatrix< Real , Dim >::Identity;
+		using SquareMatrix< Real , Dim >::operator *;
 
-class TriangleIndex
-{
-protected:
-	unsigned int v[3];
-public:
-	TriangleIndex( void ) { v[0] = v[1] = v[2] = 0; }
-	TriangleIndex( unsigned int v0 , unsigned int v1 , unsigned int v2 ){ v[0] = v0; v[1] = v1; v[2] = v2; }
-	unsigned int &operator[]( unsigned int idx ) { return v[idx]; }
-	unsigned int  operator[]( unsigned int idx ) const { return v[idx]; }
-};
-
-template< class Data >
-class TriangleIndexWithData : public TriangleIndex
-{
-public:
-	Data data[3];
-	TriangleIndexWithData( void ) { v[0] = v[1] = v[2] = 0 ;}
-	TriangleIndexWithData( unsigned int v0 , unsigned int v1 , unsigned int v2 ){ v[0] = v0 , v[1] = v1 , v[2] = v2; }
-	TriangleIndexWithData( unsigned int v0 , unsigned int v1 , unsigned int v2 , Data d0 , Data d1 , Data d2 ){ v[0] = v0 , v[1] = v1 , v[2] = v2 , data[0] = d0 , data[1] = d1 , data[2] = d2; }
-};
-
-template< class Real , class Vertex >
-void Subdivide1To4( std::vector< TriangleIndex >& triangles , std::vector< Vertex >& vertices )
-{
-#define EDGE_KEY( i1 , i2 ) ( (i1)>(i2) ? ( ( (long long) (i1) )<<32 ) | ( (long long) (i2) ) : ( ( (long long) (i2) )<<32 ) | ( (long long) (i1) ) )
-
-	std::vector< TriangleIndex > _triangles( triangles.size()*4 );
-	std::vector< Vertex > _vertices = vertices;
-	
-	std::unordered_map< long long , int > vMap;
-	for( int i=0 ; i<triangles.size() ; i++ )	
-	{
-		long long keys[] = { EDGE_KEY( triangles[i][1] , triangles[i][2] ) , EDGE_KEY( triangles[i][2] , triangles[i][0] ) , EDGE_KEY( triangles[i][0] , triangles[i][1] ) };
-		int eIndex[3];
-		for( int j=0 ; j<3 ; j++ )
-			if( vMap.find( keys[j] )==vMap.end() )
-			{
-				vMap[ keys[j] ] = eIndex[j] = (int)_vertices.size();
-				_vertices.push_back( ( vertices[ triangles[i][(j+1)%3] ] + vertices[ triangles[i][(j+2)%3] ] ) / 2 );
-			}
-			else eIndex[j] = vMap[ keys[j] ];
-		_triangles[4*i+0] = TriangleIndex( eIndex[0] , eIndex[1] , eIndex[2] );
-		_triangles[4*i+1] = TriangleIndex( triangles[i][0] , eIndex[2] , eIndex[1] );
-		_triangles[4*i+2] = TriangleIndex( eIndex[2] , triangles[i][1] , eIndex[0] );
-		_triangles[4*i+3] = TriangleIndex( eIndex[1] , eIndex[0] , triangles[i][2] );
-	}
-	triangles = _triangles;
-	vertices = _vertices;
-#undef EDGE_KEY
-}
-template< class Real , class Vertex , class Data >
-void Subdivide1To4( std::vector< TriangleIndexWithData< Data > >& triangles , std::vector< Vertex >& vertices )
-{
-#define EDGE_KEY( i1 , i2 ) ( (i1)>(i2) ? ( ( (long long) (i1) )<<32 ) | ( (long long) (i2) ) : ( ( (long long) (i2) )<<32 ) | ( (long long) (i1) ) )
-
-	std::vector< TriangleIndex > _triangles( triangles.size()*4 );
-	std::vector< Vertex > _vertices = vertices;
-	
-	std::unordered_map< long long , int > vMap;
-	for( int i=0 ; i<triangles.size() ; i++ )	
-	{
-		long long keys[] = { EDGE_KEY( triangles[i][1] , triangles[i][2] ) , EDGE_KEY( triangles[i][2] , triangles[i][0] ) , EDGE_KEY( triangles[i][0] , triangles[i][1] ) };
-		Data data[3];
-		int eIndex[3];
-		for( int j=0 ; j<3 ; j++ )
+		XForm( void ) : SquareMatrix< Real , Dim >(){;}
+		XForm( const SquareMatrix< Real , Dim > &xForm ){ memcpy( coords , xForm.coords , sizeof(Real)*Dim*Dim ); };
+		XForm( const SquareMatrix< Real , Dim-1 > &L , Point< Real , Dim-1 > t=Point< Real , Dim >() ) : XForm()
 		{
-			if( vMap.find( keys[j] )==vMap.end() )
-			{
-				vMap[ keys[j] ] = eIndex[j] = (int)_vertices.size();
-				_vertices.push_back( ( vertices[ triangles[i][(j+1)%3] ] + vertices[ triangles[i][(j+2)%3] ] ) / 2 );
-			}
-			else eIndex[j] = vMap[ keys[j] ];
-			data[j] = ( triangles[i].data[(j+1)%3] + triangles[i].data[(j+2)%3] ) / 2;
+			for( unsigned int i=0 ; i<Dim-1 ; i++ ) for( unsigned int j=0 ; j<Dim-1 ; j++ ) coords[i][j] = L.coords[i][j];
+			for( unsigned int j=0 ; j<Dim-1 ; j++ ) coords[Dim-1][j] = t[j];
+			coords[Dim-1][Dim-1] = (Real)1.;
 		}
-		_triangles[4*i+0] = TriangleIndex( eIndex[0] , eIndex[1] , eIndex[2] , data[0] , data[1] , data[2] );
-		_triangles[4*i+1] = TriangleIndex( triangles[i][0] , eIndex[2] , eIndex[1] , triangles[i][0].data , data[1] , data[2] );
-		_triangles[4*i+2] = TriangleIndex( eIndex[2] , triangles[i][1] , eIndex[0] , data[2] , triangles[i][1].data , data[0] );
-		_triangles[4*i+3] = TriangleIndex( eIndex[1] , eIndex[0] , triangles[i][2] , data[1] , data[0] , triangles[i][2].data );
+		Point< Real , Dim > operator * ( Point< Real , Dim > p ) const { return SquareMatrix< Real , Dim >::operator * ( p ); }
+		Point< Real , Dim-1 > operator * ( Point< Real , Dim-1 > p ) const
+		{
+			Point< Real , Dim > _p;
+			for( unsigned int d=0 ; d<Dim-1 ; d++ ) _p[d] = p[d];
+			_p[Dim-1] = 1;
+			_p = SquareMatrix< Real , Dim >::operator * ( _p );
+			_p /= _p[Dim-1];
+			for( int d=0 ; d<Dim-1 ; d++ ) p[d] = _p[d];
+			return p;
+		}
+
+		static XForm Scale( Real s )
+		{
+			XForm xForm = Identity();
+			for( int d=0 ; d<Dim-1 ; d++ ) xForm(d,d) = s;
+			return xForm;
+		}
+
+		static XForm Scale( Point< Real , Dim-1 > s )
+		{
+			XForm xForm = Identity();
+			for( int d=0 ; d<Dim-1 ; d++ ) xForm(d,d) = s[d];
+			return xForm;
+		}
+
+		static XForm Translate( Point< Real , Dim-1 > t )
+		{
+			XForm xForm = Identity();
+			for( int d=0 ; d<Dim-1 ; d++ ) xForm(Dim-1,d) = t[d];
+			return xForm;
+		}
+	};
+	template< typename Real > using XForm4x4 = XForm< Real , 4 >;
+	template< typename Real > using XForm3x3 = XForm< Real , 3 >;
+	template< typename Real > using XForm2x2 = XForm< Real , 2 >;
+
+	///////////////
+	// Simplices //
+	///////////////
+	template< unsigned int K , typename Index=unsigned int > struct SimplexIndex;
+
+	template< unsigned int K > struct Factorial{ static const unsigned long long Value = Factorial< K-1 >::Value * K; };
+	template<> struct Factorial< 0 >{ static const unsigned long long Value = 1; };
+
+	template< class Real , unsigned int Dim , unsigned int K >
+	struct Simplex
+	{	
+		Point< Real , Dim > p[K+1];
+		Simplex( void ){ static_assert( K<=Dim , "[ERROR] Bad simplex dimension" ); }
+		Simplex( const Point< Real , Dim > p[K+1] ) : Simplex() { for( unsigned int k=0 ; k<=K ; k++ ) this->p[k] = p[k]; }
+		template< typename ... Points >
+		Simplex( Point< Real , Dim > p , Points ... ps ) : Simplex( { p , ps... } ){ static_assert( sizeof...(Points)==K , "[ERROR] Wrong number of points" ); }
+		Point< Real , Dim >& operator[]( unsigned int k ){ return p[k]; }
+		const Point< Real , Dim >& operator[]( unsigned int k ) const { return p[k]; }
+		Real measure( void ) const { return (Real)sqrt( squareMeasure() ); }
+		Real squareMeasure( void ) const
+		{
+			XForm< Real , K > mass;
+			for( unsigned int i=1 ; i<=K ; i++ ) for( unsigned int j=1 ; j<=K ; j++ ) mass(i-1,j-1) = Point< Real , Dim >::Dot( p[i]-p[0] , p[j]-p[0] );
+			return mass.determinant() / ( Factorial< K >::Value * Factorial< K >::Value );
+		}
+
+		Point< Real , Dim > center( void ) const
+		{
+			Point< Real , Dim > c;
+			for( unsigned int k=0 ; k<=K ; k++ ) c += p[k];
+			return c / (K+1);
+		}
+
+		Point< Real , Dim > randomSample( void ) const
+		{
+			while( true )
+			{
+				Point< Real , K > bc;
+				Real sum = 0;
+				for( unsigned int d=0 ; d<K ; d++ ) sum += ( bc[d] = Random< Real >() );
+				if( sum<=1 )
+				{
+					Point< Real , Dim > q = p[0];
+					for( unsigned int d=0 ; d<K ; d++ ) q += ( p[d+1] - p[0] ) * bc[d];
+					return q;
+				}
+			}
+		}
+
+		void split( const Real values[K+1] , std::vector< Simplex >& back , std::vector< Simplex >& front ) const;
+		void split( Point< Real , Dim > pNormal , Real pOffset , std::vector< Simplex >& back , std::vector< Simplex >& front ) const;
+		Point< Real , Dim > operator()( const Real weights[K+1] ) const
+		{
+			Point< Real , Dim > q;
+			for( unsigned int k=0 ; k<=K ; k++ ) q += p[k] * weights[k];
+			return q;
+		}
+		
+		Point< Real , Dim > operator()( Point< Real , K+1 > bc ) const
+		{
+			Point< Real , Dim > q;
+			for( unsigned int k=0 ; k<=K ; k++ ) q += p[k] * bc[k];
+			return q;
+		}
+
+		Point< Real , Dim > operator()( Point< Real , K > &x ) const
+		{
+			Point< Real , Dim > q = p[0];
+			for( unsigned int k=0 ; k<K ; k++ ) q += ( p[k+1] - p[0] ) * x[k];
+			return q;
+		}
+
+
+		template< unsigned int _K=K >
+		typename std::enable_if< _K==Dim-1 , Point< Real , Dim > >::type normal( void ) const
+		{
+			Point< Real , Dim > d[Dim-1];
+			for( int k=1 ; k<Dim ; k++ ) d[k-1] = p[k] - p[0];
+			return Point< Real , Dim >::CrossProduct( d );
+		}
+
+		template< unsigned int _K=K >
+		typename std::enable_if< _K==Dim , bool >::type isInterior( Point< Real , Dim > p ) const
+		{
+			struct SimplexIndex< Dim > si;
+			for( unsigned int d=0 ; d<=Dim ; d++ ) si[d] = d;
+			unsigned int count = 0;
+			for( unsigned int d=0 ; d<=Dim ; d++ )
+			{
+				bool oriented = d%2;
+				SimplexIndex< Dim-1 > fi = si.face( d );
+				Simplex< Real , Dim , Dim-1 > f;
+				for( unsigned int d=0 ; d<Dim ; d++ ) f[d] = this->p[ fi[d] ];
+				Point< Real , Dim > c = f.center();
+				Point< Real , Dim > n = oriented ? f.normal() : -f.normal();
+				if( Point< Real , Dim >::Dot( p-c , n )<0 ) count++;
+			}
+			return count==0 || count==Dim+1;
+		}
+
+		Real volume( void ) const
+		{
+			SquareMatrix< double , K > M;
+			for( unsigned int i=0 ; i<K ; i++ ) for( unsigned j=0 ; j<K ; j++ ) M(i,j) = Point< Real , Dim >::Dot( p[i+1]-p[0] , p[j+1]-p[0] );
+			return (Real)sqrt( fabs( M.determinant() ) );
+		}
+
+#if 1
+		Point< double , K+1 > barycentricCoordinates( Point< double , Dim > q ) const
+		{
+			SquareMatrix< double , K > M;
+			Point< double , K > dot;
+			for( unsigned int i=0 ; i<K ; i++ )
+			{
+				dot[i] = Point< double , Dim >::Dot( q-p[0] , p[i+1]-p[0] );
+				for( unsigned int j=0 ; j<K ; j++ ) M(i,j) = Point< double , Dim >::Dot( p[i+1]-p[0] , p[j+1]-p[0] );
+			}
+			Point< double , K > _b = M.inverse() * dot;
+			Point< double , K+1 > b;
+			b[0] = 1.;
+			for( unsigned int k=0 ; k<K ; k++ ) b[0] -= _b[k] , b[k+1] = _b[k];
+			return b;
+		}
+#else
+		template< unsigned int _K=K >
+		typename std::enable_if< _K==Dim , Point< Real , Dim+1 > >::type barycentricCoordinates( Point< Real , Dim > q ) const
+		{
+			q -= p[0];
+			SquareMatrix< Real , Dim > D;
+			for( unsigned int c=0 ; c<Dim ; c++ ) for( unsigned int r=0 ; r<Dim ; r++ ) D(c,r) = p[c+1][r] - p[0][r];
+			q = D.inverse() * q;
+			Point< Real , Dim+1 > bc;
+			bc[0] = (Real)1.;
+			for( unsigned int d=0 ; d<Dim ; d++ ) bc[0] -= q[d] , bc[d+1] = q[d];
+			return bc;
+		};
+#endif
+
+		Point< Real , Dim > nearest( Point< Real , Dim > point , Real barycentricCoordinates[K+1] ) const;
+		Point< Real , Dim > nearest( Point< Real , Dim > point ) const { Real barycentricCoordinates[K+1] ; return nearest( point , barycentricCoordinates ); }
+
+		friend std::ostream &operator << ( std::ostream &os , const Simplex &s )
+		{
+			os << "{ ";
+			for( int k=0 ; k<=K ; k++ )
+			{
+				if( k ) os << " , ";
+				os << s[k];
+			}
+			return os << " }";
+		}
+
+		struct NearestKey
+		{
+			void init( Simplex simplex );
+			Point< Real , Dim > nearest( Point< Real , Dim > point , Real barycentricCoordinates[K+1] ) const { _nearest( point , barycentricCoordinates ) ; return operator()( barycentricCoordinates ); }
+			Point< Real , Dim > nearest( Point< Real , Dim > point ) const { Real barycentricCoordinates[K+1] ; return nearest( point , barycentricCoordinates ); }
+			Point< Real , Dim > operator()( const Real weights[K+1] ) const
+			{
+				Point< Real , Dim > q;
+				Real weightSum = 0;
+				for( unsigned int k=0 ; k<K ; k++ ) q += _dirs[k] * weights[k+1] , weightSum += weights[k+1];
+				return q + _base * ( weights[0] + weightSum );
+			}
+
+		protected:
+			Point< Real , Dim > _base , _dirs[K];
+			SquareMatrix< Real , K > _Dinv;
+			typename Simplex< Real , Dim , K-1 >::NearestKey _faceKeys[K+1];
+			void _nearest( Point< Real , Dim > point , Real barycentricCoordinates[K+1] ) const;
+
+			friend typename Simplex< Real , Dim , K+1 >::NearestKey;
+		};
+	protected:
+		void _nearest( Point< Real , Dim > point , Real barycentricCoordinates[K+1] ) const;
+		friend Simplex< Real , Dim , K+1 >;
+	};
+
+	template< class Real , unsigned int Dim >	
+	struct Simplex< Real , Dim , 0 >
+	{
+		Point< Real , Dim > p[1];
+		Point< Real , Dim >& operator[]( unsigned int k ){ return p[k]; }
+		const Point< Real , Dim >& operator[]( unsigned int k ) const { return p[k]; }
+		Real squareMeasure( void ) const { return (Real)1.; }
+		Real measure( void ) const { return (Real)1.; }
+		Point< Real , Dim > center( void ) const { return p[0]; }
+		Point< Real , Dim > operator()( const Real weights[1] ) const { return p[0] * weights[0]; }
+		Point< Real , Dim > randomSample( void ) const { return p[0]; }
+		void split( const Real values[1] , std::vector< Simplex >& back , std::vector< Simplex >& front ) const
+		{
+			if( values[0] ) back.push_back( *this );
+			else            front.push_back( *this );
+		}
+		void split( Point< Real , Dim > pNormal , Real pOffset , std::vector< Simplex >& back , std::vector< Simplex >& front ) const
+		{
+			const Real values[] = { Point< Real , Dim >::Dot( p[0] , pNormal ) - pOffset };
+			return split( values , back , front );
+		}
+
+		Point< Real , Dim > nearest( Point< Real , Dim > point , Real barycentricCoordinates[1] ) const { _nearest( point , barycentricCoordinates ) ; return operator()( barycentricCoordinates ); }
+		Point< Real , Dim > nearest( Point< Real , Dim > point ) const { Real barycentricCoordinates[1] ; return nearest( point , barycentricCoordinates ); }
+
+		template< unsigned int _K=0 >
+		typename std::enable_if< _K==Dim , Point< Real , Dim+1 > >::type barycentricCoordinates( Point< Real , Dim > q ) const
+		{
+			return Point< Real , 1 >( 1 );
+		};
+		Point< Real , Dim > operator()( Point< Real , Dim+1 > &bc ) const
+		{
+			Point< Real , Dim > q;
+			for( unsigned int d=0 ; d<=Dim ; d++ ) q += p[d]*bc[d];
+			return q;
+		}
+
+		double volume( void ) const { return 1.; }
+
+		friend std::ostream &operator << ( std::ostream &os , const Simplex &s )
+		{
+			return os << "{ " << s[0] << " }";
+		}
+
+		struct NearestKey
+		{
+			void init( Simplex simplex ){ _base = simplex[0]; }
+			Point< Real , Dim > nearest( Point< Real , Dim > point , Real barycentricCoordinates[1] ) const { _nearest( point , barycentricCoordinates ) ; return operator()( barycentricCoordinates ); }
+			Point< Real , Dim > nearest( Point< Real , Dim > point ) const { Real barycentricCoordinates[1] ; return nearest( point , barycentricCoordinates ); }
+			Point< Real , Dim > operator()( const Real weights[1] ) const { return _base * weights[0]; }
+		protected:
+			Point< Real , Dim > _base;
+			void _nearest( Point< Real , Dim > point , Real barycentricCoordinates[1] ) const { barycentricCoordinates[0] = (Real)1.; }
+
+			friend typename Simplex< Real , Dim , 1 >::NearestKey;
+		};
+	protected:
+		void _nearest( Point< Real , Dim > point , Real barycentricCoordinates[1] ) const { barycentricCoordinates[0] = (Real)1.; }
+		friend Simplex< Real , Dim , 1 >;
+	};
+
+	template< class Real , unsigned int Dim , unsigned int K >
+	Simplex< Real , Dim , K > operator * ( XForm< Real , Dim+1 > xForm , Simplex< Real , Dim , K > simplex )
+	{
+		for( unsigned int k=0 ; k<=K ; k++ ) simplex[k] = xForm * simplex[k];
+		return simplex;
 	}
-	triangles = _triangles;
-	vertices = _vertices;
-#undef EDGE_KEY
-}
 
-////////////////////////////////////////////////////////////////////////////////
-/*! @class ParameterizedTriangleIndex
-//  Holds holds both the vertex and uv indices of each triangle corner.
-*///////////////////////////////////////////////////////////////////////////////
-class ParameterizedTriangleIndex : public TriangleIndex
-{
-	using TriangleIndex::v;
-	int m_uv[3];
-public: 
-	ParameterizedTriangleIndex()
-		: TriangleIndex() { m_uv[0] = m_uv[1] = m_uv[2] = 0; }
+	template< typename Index >
+	struct EdgeTable
+	{
+	protected:
+		struct _EdgeKey
+		{
+			Index key1 , key2;
+			_EdgeKey( Index k1=0 , Index k2=0 ) : key1(k1) , key2(k2) {}
+			bool operator == ( const _EdgeKey &key ) const  { return key1==key.key1 && key2==key.key2; }
+			struct Hasher{ size_t operator()( const _EdgeKey &key ) const { return (size_t)( key.key1 * key.key2 ); } };
+		};
+		std::unordered_map< _EdgeKey , Index , typename _EdgeKey::Hasher > _edgeTable;
+	public:
+		template< typename InitializationFunction >
+		Index &operator()( Index v1 , Index v2 , InitializationFunction &initializationFunction )
+		{
+			auto iter = _edgeTable.find( _EdgeKey(v1,v2) );
+			if( iter==_edgeTable.end() )
+			{
+				Index idx = initializationFunction();
+				_edgeTable[ EdgeKey(v1,v2) ] = idx;
+				return idx;
+			}
+			else return iter->second;
+		};
+	};
 
-	ParameterizedTriangleIndex(int v0, int v1, int v2)
-		: TriangleIndex(v0, v1, v2) { m_uv[0] = m_uv[1] = m_uv[2] = 0; }
-	ParameterizedTriangleIndex(const TriangleIndex &t)
-		: TriangleIndex(t) { m_uv[0] = m_uv[1] = m_uv[2] = 0; }
-	int &uv(int idx)        { return m_uv[idx]; }
-	int  uv(int idx) const  { return m_uv[idx]; }
-};
+	/////////////////
+	// Permutation //
+	/////////////////
+	// This class represents a permutation, which can be thought of as a map from the range [0,N) to itself
+	template< unsigned int N >
+	struct Permutation
+	{
+		// The identity permutation
+		Permutation( void ){ for( unsigned int n=0 ; n<N ; n++ ) _indices[n] = n; }
 
-template <class Real>
-class MinimalAreaTriangulation
-{
-	double* bestTriangulation;
-	int* midPoint;
-	double GetArea( int i , int j , const std::vector<Point3D<Real> >& vertices );
-	void GetTriangulation( int i , int j , const std::vector<Point3D<Real> >& vertices,std::vector<TriangleIndex>& triangles , int& idx);
-public:
-	MinimalAreaTriangulation(void);
-	~MinimalAreaTriangulation(void);
-	double GetArea(const std::vector<Point3D<Real> >& vertices);
-	void GetTriangulation( const std::vector<Point3D<Real> >& vertices , std::vector<TriangleIndex>& triangles );
-};
+		// The permutation that describes how a list of N elements should be sorted
+		// Specifically, P[i] gives the index of the i-th element in the sorted list
+		Permutation( std::function< bool ( unsigned int , unsigned int ) > SortFunction )
+		{
+			unsigned int indices[N];
+			for( unsigned int n=0 ; n<N ; n++ ) indices[n] = n;
+			std::sort( indices , indices+N , SortFunction );
+			for( unsigned int n=0 ; n<N ; n++ ) _indices[ indices[n] ] = n;
+		}
 
-template< class Real >
-void SplitTriangle( std::vector< Point3D< Real > >& vertices , TriangleIndex triangle , Point3D< Real > pNormal , Real pOffset ,
-	std::vector< TriangleIndex >& backTriangles , std::vector< TriangleIndex >& frontTriangles );
-template< class Real >
-void SplitTriangle( std::vector< Point3D< Real > >& vertices , TriangleIndex triangle , int direction , Real offset ,
-	std::vector< TriangleIndex >& backTriangles , std::vector< TriangleIndex >& frontTriangles );
+		// Returns the index of the i-th element after applying the permtuation
+		unsigned int operator[]( unsigned int i ) const { return _indices[i]; }
+
+		// Returns the inverse of a permutation
+		Permutation inverse( void ) const
+		{
+			Permutation p;
+			for( unsigned int n=0 ; n<N ; n++ ) p._indices[ _indices[n] ] = n;
+			return p;
+		}
+
+		// Returns the composition of two permutations
+		Permutation operator * ( Permutation p ) const
+		{
+			Permutation _p;
+			for( unsigned int n=0 ; n<N ; n++ ) _p._indices[n] = _indices[ p[n] ];
+			return _p;
+		}
+
+		// Returns the matrix form of a permutation
+		template< typename Real >
+		SquareMatrix< Real , N > toMatrix( void ) const
+		{
+			SquareMatrix< Real , N > p;
+			for( unsigned int n=0 ; n<N ; n++ ) p(n,_indices[n]) = 1;
+			return p;
+		};
+
+		// Transposes the i-th and j-th elements
+		void transpose( unsigned int i , unsigned int j ){ std::swap< unsigned int >( _indices[i] , _indices[j] ); }
+
+		// Returns 0/1 depending on whether the parity of the permutation is even/odd
+		unsigned int parity( void ) const
+		{
+			unsigned int count = 0;
+			for( unsigned int i=0 ; i<N ; i++ ) for( unsigned int j=0 ; j<i ; j++ ) if( _indices[i]>_indices[j] ) count++;
+			return count&1;
+		}
+
+		friend std::ostream &operator << ( std::ostream &os , const Permutation &p )
+		{
+			os << "{ ";
+			for( int n=0 ; n<N ; n++ )
+			{
+				if( n ) os << " , ";
+				os << p._indices[n];
+			}
+			return os << " }";
+		}
+
+	protected:
+		unsigned int _indices[N];
+	};
+
+	//////////////////
+	// SimplexIndex //
+	//////////////////
+	//template< unsigned int K , typename Index=unsigned int >
+	template< unsigned int K , typename Index >
+	struct SimplexIndex
+	{
+		Index idx[K+1];
+		template< class ... Ints >
+		SimplexIndex( Ints ... values ){ static_assert( sizeof...(values)==K+1 || sizeof...(values)==0 , "[ERROR] Invalid number of coefficients" ) ; _init( 0 , (Index)values ... ); }
+		Index &operator[] ( unsigned int i ) { return idx[i] ;}
+		const Index &operator[] ( unsigned int i ) const { return idx[i]; }
+		template< typename Real , typename Vertex >
+		void split( const Real values[K+1] , std::vector< Vertex > &vertices , EdgeTable< Index > &edgeTable , std::vector< SimplexIndex >& back , std::vector< SimplexIndex >& front ) const;
+#ifdef NEW_GEOMETRY_CODE
+		template< typename ... UInts >
+		SimplexIndex< K - (unsigned int)sizeof...( UInts ) - 1 > face( unsigned int faceIndex , UInts ... faceIndices ) const;
+		//	template< typename ... UInts >
+		//	SimplexIndex< K - (unsigned int)sizeof...( UInts ) - 1 > face( unsigned int faceIndex , UInts ... faceIndices ) const { bool oriented ; return face( oriented , faceIndex , faceIndices... ); }
+
+		// Invokes the function on each of the _K-dimensional faces
+		template< unsigned int _K , typename FaceFunctor /* = std::function< void ( SimplexIndex< _K , Index > )*/ >
+		void processFaces( FaceFunctor F ) const;
+
+		// Invokes the function on each of the _K-dimensional faces
+		template< unsigned int _K , typename FaceFunctor /* = std::function< void ( SimplexIndex< _K , Index > )*/ >
+		static void ProcessFaces( FaceFunctor F );
+
+#else // !NEW_GEOMETRY_CODE
+		//	SimplexIndex< K-1 , Index > face( unsigned int faceIndex ) const;
+		SimplexIndex< K-1 , Index > face( unsigned int faceIndex , bool &oriented ) const;
+#endif // NEW_GEOMETRY_CODE
+
+		// Sorts the indices and returns a boolean indicating if the permutation is even
+		bool sort( void );
+		bool sort( const Index indices[] );
+
+		Permutation< K+1 > getPermutation( const Index indices[] ) const { return Permutation< K+1 >( [&]( unsigned int i1 , unsigned int i2 ){ return indices[ idx[i1] ]<indices[ idx[i2] ]; } ); }
+
+		static SimplexIndex Canonical( void )
+		{
+			SimplexIndex< K , Index > si;
+			for( unsigned int k=0 ; k<=K ; k++ ) si[k] = k;
+			return si;
+		}
+#ifdef NEW_GEOMETRY_CODE
+		template< typename ... UInts >
+		static SimplexIndex< K - (unsigned int)sizeof...( UInts ) - 1 , Index > Face( unsigned int faceIndex , UInts ... faceIndices );
+		//	template< typename ... UInts >
+		//	static SimplexIndex< K - (unsigned int)sizeof...( UInts ) - 1 , Index > Face( unsigned int faceIndex , UInts ... faceIndices ){ bool oriented ; return Face( oriented , faceIndex , faceIndices... ); }
+#else // !NEW_GEOMETRY_CODE
+		static SimplexIndex< K-1 , Index > Face( unsigned int k , bool &orientation );
+		static SimplexIndex< K-1 , Index > Face( unsigned int k ){ bool oriented ; return Face( k , oriented ); }
+#endif // NEW_GEOMETRY_CODE
+
+	protected:
+#ifdef NEW_GEOMETRY_CODE
+		SimplexIndex< K-1 , Index > _face( bool &oriented , unsigned int faceIndex ) const;
+
+		static SimplexIndex< K-1 , Index > _Face( bool &oriented , unsigned int k );
+
+		template< unsigned int _K , typename ... UInts , typename FaceFunctor /* = std::function< void ( SimplexIndex< _K , Index > )*/ >
+		void _processFaces( FaceFunctor F , unsigned int faceIndex , UInts ... faceIndices ) const;
+#endif // NEW_GEOMETRY_CODE
+		void _init( unsigned int k )
+		{
+			if( !k ) for( unsigned int k=0 ; k<=K ; k++ ) idx[k] = k;
+			else MK_ERROR_OUT( "Should never be called" );
+		}
+		template< class ... Ints > void _init( unsigned int k , Index v , Ints ... values )
+		{
+			idx[k] = v;
+			if( k+1<=K ) _init( k+1 , values ... );
+		}
+
+		friend std::ostream &operator << ( std::ostream &os , const SimplexIndex &s )
+		{
+			os << "{ ";
+			for( int d=0 ; d<=K ; d++ )
+			{
+				if( d ) os << " , ";
+				os << s[d];
+			}
+			return os << " }";
+		}
+	};
+
+	template< typename Index >
+	struct SimplexIndex< 0 , Index >
+	{
+		Index idx[1];
+		SimplexIndex( Index i=0 ){ idx[0]=i; }
+		Index &operator[] ( unsigned int i ) { return idx[i] ;}
+		const Index &operator[] ( unsigned int i ) const { return idx[i]; }
+		template< typename Real , typename Vertex >
+		void split( const Real values[1] , std::vector< Vertex > &vertices , EdgeTable< Index > &edgeTable , std::vector< SimplexIndex >& back , std::vector< SimplexIndex >& front ) const
+		{
+			if( values[0]<0 ) back.push_back( *this );
+			else              front.push_back( *this );
+		}
+		bool sort( void ){ return true; }
+		bool sort( const Index indices[] ){ return true; }
+
+		Permutation< 1 > getPermutation( const Index indices[] ) const { return Permutation<1>(); }
+
+#ifdef NEW_GEOMETRY_CODE
+		// Invokes the function on each of the _K-dimensional faces
+		template< unsigned int _K , typename FaceFunctor /* = std::function< void ( SimplexIndex< _K , Index > )*/ >
+		void processFaces( FaceFunctor F ) const
+		{
+			static_assert( _K<=0 , "[ERROR] Sub-simplex dimension larger than simplex dimension" );
+			F( *this );
+		}
+
+		// Invokes the function on each of the _K-dimensional faces
+		template< unsigned int _K , typename FaceFunctor /* = std::function< void ( SimplexIndex< _K , Index > )*/ >
+		static void ProcessFaces( FaceFunctor F )
+		{
+			SimplexIndex< 0 , Index > si;
+			for( unsigned int k=0 ; k<=0 ; k++ ) si[k] = k;
+			si.template processFaces< _K >( F );
+		}
+#endif // NEW_GEOMETRY_CODE
+
+	protected:
+		friend std::ostream &operator << ( std::ostream &os , const SimplexIndex &s )
+		{
+			os << "{ ";
+			for( int d=0 ; d<=0 ; d++ )
+			{
+				if( d ) os << " , ";
+				os << s[d];
+			}
+			return os << " }";
+		}
+	};
+
+	template< typename Real , unsigned int Dim , unsigned int K >
+	struct SimplicialComplex
+	{
+		SimplicialComplex( const std::vector< Simplex< Real , Dim , K > > &simplices ) : _simplices( simplices ){}
+		virtual size_t size( void ) const { return _simplices.size(); }
+		virtual Simplex< Real , Dim , K > operator[]( size_t idx ) const { return _simplices[idx]; }
+	protected:
+		SimplicialComplex( void ) : _simplices(__simplices) {}
+		const std::vector< Simplex< Real , Dim , K > > &_simplices;
+		const std::vector< Simplex< Real , Dim , K > > __simplices;
+	};
+
+	template< typename Real , unsigned int Dim , unsigned int K , typename IndexType >
+	struct IndexedSimplicialComplex : public SimplicialComplex< Real , Dim , K >
+	{
+		IndexedSimplicialComplex( const std::vector< Point< Real , Dim > > &vertices , const std::vector< SimplexIndex< K , IndexType > > &simplices ) : _vertices(vertices) , _simplices(simplices){}
+		IndexedSimplicialComplex( IndexedSimplicialComplex && isc )
+		{
+			std::swap( _vertices , isc._vertices );
+			std::swap( _simplices , isc._simplices );
+		}
+
+		size_t size( void ) const { return _simplices.size(); }
+		Simplex< Real , Dim , K > operator[]( size_t idx ) const
+		{
+			Simplex< Real , Dim , K > s;
+			for( unsigned int k=0 ; k<=K ; k++ ) s[k] = _vertices[ _simplices[idx][k] ];
+			return s;
+		}
+	protected:
+		const std::vector< Point< Real , Dim > > &_vertices;
+		const std::vector< SimplexIndex< K , IndexType > > &_simplices;
+	};
+
+	template< typename Real , unsigned int Dim , unsigned int K >
+	struct TransformedSimplicialComplex : public SimplicialComplex< Real , Dim , K >
+	{
+		TransformedSimplicialComplex( const SimplicialComplex< Real , Dim , K > &simplicialComplex , const XForm< Real , Dim+1 > &xForm ) : _simplicialComplex(simplicialComplex) , _xForm(xForm){}
+		size_t size( void ) const { return _simplicialComplex.size(); }
+		Simplex< Real , Dim , K > operator[]( size_t idx ) const { return _xForm * _simplicialComplex[idx]; }
+	protected:
+		const SimplicialComplex< Real , Dim , K > &_simplicialComplex;
+		XForm< Real , Dim+1 > _xForm;
+	};
+
+
+	template< typename Real , unsigned int Dim > Point< Real , Dim > RandomBallPoint( void );
+	template< typename Real , unsigned int Dim > Point< Real , Dim > RandomSpherePoint( void );
+	template< typename Real , unsigned int Dim > SquareMatrix< double , Dim > RandomRotationMatrix( void );
+
+	template<class Real>
+	XForm3x3<Real> RotationMatrix( Real a , Real b , Real c , Real d );
+
+	template<class Real>
+	XForm3x3<Real> RotationMatrix( const Point3D<Real>& axis , const Real& angle );
+
+	typedef SimplexIndex< 1 , int > EdgeIndex;
+	typedef SimplexIndex< 2 , int > TriangleIndex;
+	typedef SimplexIndex< 3 , int > TetrahedronIndex;
+
+	template< class Real > Point3D< Real > NearestPointOnTriangle( Point3D< Real > point , const Point3D< Real > triangle[3] , Real* b );
+	template< class Real > Point3D< Real > NearestPointOnEdge( Point3D< Real > point , const Point3D< Real > edge[2] , Real& b0 , Real& b1 );
+
+	template< class Real , unsigned int Dim >
+	class MinimalAreaTriangulation
+	{
+		static double _Area( Point< Real , Dim > v0 , Point< Real , Dim > v1 , Point< Real , Dim > v2 );
+		double *_bestTriangulation;
+		size_t *_midPoint;
+		double _GetArea( size_t i , size_t j , const std::vector< Point< Real , Dim > > &vertices );
+		template< typename Index >
+		void _GetTriangulation( size_t i , size_t j , const std::vector< Point< Real , Dim > > &vertices,std::vector< SimplexIndex< 2 , Index > > &triangles , size_t &idx );
+	public:
+		MinimalAreaTriangulation( void );
+		~MinimalAreaTriangulation( void );
+		double GetArea( const std::vector< Point< Real , Dim > > &vertices);
+		template< typename Index >
+		void GetTriangulation( const std::vector< Point< Real , Dim > > &vertices , std::vector< SimplexIndex< 2 , Index > > &triangles );
+	};
+
+	struct EarTriangulation
+	{
+		template< typename Index , typename Real >
+		static void GetTriangulation( const std::vector< Point< Real , 2 > > &vertices , std::vector< SimplexIndex< 2 , Index > > &triangles );
+	};
 #include "Geometry.inl"
+}
 #endif // GEOMETRY_INCLUDED

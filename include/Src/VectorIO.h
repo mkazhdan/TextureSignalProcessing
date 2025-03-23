@@ -33,55 +33,57 @@ DAMAGE.
 #include <Misha/Image.h>
 #include <Misha/Miscellany.h>
 
-template< typename T >
-void ReadVector( std::vector<T> & vec , const char * fileName )
+namespace MishaK
 {
-	FILE * file;
-	file = fopen( fileName , "rb" );
-	if( !file ) THROW( "Unable to read " , fileName );
-	int vecSize;
-	fread( &vecSize , sizeof(int) , 1 , file );
-	vec.resize( vecSize );
-	fread( &vec[0] , sizeof(T) , vecSize , file );
-	fclose( file );
+	template< typename T >
+	void ReadVector( std::vector<T> & vec , std::string fileName )
+	{
+		FILE * file;
+		file = fopen( fileName.c_str() , "rb" );
+		if( !file ) MK_THROW( "Unable to read " , fileName );
+		int vecSize;
+		fread( &vecSize , sizeof(int) , 1 , file );
+		vec.resize( vecSize );
+		fread( &vec[0] , sizeof(T) , vecSize , file );
+		fclose( file );
+	}
+
+	template<typename T>
+	void WriteVector(const std::vector<T> & vec, std::string fileName){
+
+		FILE * file;
+		file = fopen(fileName.c_str(), "wb");
+		int vecSize = (int)vec.size();
+		fwrite(&vecSize, sizeof(int), 1, file);
+		fwrite(&vec[0], sizeof(T), vecSize, file);
+		fclose(file);
+	}
+
+
+	template <class T>
+	void WriteBinaryImage(const Image<T> & image, std::string fileName) {
+		FILE * file;
+		file = fopen(fileName.c_str(), "wb");
+		int width = image.res(0);
+		int height = image.res(1);
+		fwrite(&width, sizeof(int), 1, file);
+		fwrite(&height, sizeof(int), 1, file);
+		fwrite(&image[0], sizeof(T), width*height, file);
+		fclose(file);
+	}
+
+	template< class T >
+	void ReadBinaryImage( Image< T > &image , std::string fileName )
+	{
+		FILE * file;
+		file = fopen(fileName.c_str(), "rb");
+		if( !file ) MK_THROW( "Unable to read " , fileName );
+		int width, height;
+		fread(&width, sizeof(int), 1, file);
+		fread(&height, sizeof(int), 1, file);
+		image.resize(width, height);
+		fread(&image[0], sizeof(T), width*height, file);
+		fclose(file);
+	}
 }
-
-template<typename T>
-void WriteVector(const std::vector<T> & vec, const char * fileName){
-
-	FILE * file;
-	file = fopen(fileName, "wb");
-	int vecSize = (int)vec.size();
-	fwrite(&vecSize, sizeof(int), 1, file);
-	fwrite(&vec[0], sizeof(T), vecSize, file);
-	fclose(file);
-}
-
-
-template <class T>
-void WriteBinaryImage(const Image<T> & image, const char * fileName) {
-	FILE * file;
-	file = fopen(fileName, "wb");
-	int width = image.width();
-	int height = image.height();
-	fwrite(&width, sizeof(int), 1, file);
-	fwrite(&height, sizeof(int), 1, file);
-	fwrite(&image[0], sizeof(T), width*height, file);
-	fclose(file);
-}
-
-template< class T >
-void ReadBinaryImage( Image< T > &image , const char *fileName )
-{
-	FILE * file;
-	file = fopen(fileName, "rb");
-	if( !file ) THROW( "Unable to read " , fileName );
-	int width, height;
-	fread(&width, sizeof(int), 1, file);
-	fread(&height, sizeof(int), 1, file);
-	image.resize(width, height);
-	fread(&image[0], sizeof(T), width*height, file);
-	fclose(file);
-}
-
 #endif //VECTOR_IO_INCLUDED

@@ -8,6 +8,8 @@ replicability_instructions.htm
 *.bin
 *.vsidx
 *.opensdf
+*.filter
+*.filters
 *.bat
 *.o
 *.obj
@@ -39,3 +41,4 @@ CHOLMOD/*
 */x64/*
 */_Eigen/
 *~
+TextureVertexToCorner/

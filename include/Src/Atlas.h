@@ -31,95 +31,101 @@ DAMAGE.
 
 #define DEBUG_ATLAS
 
+#include <set>
+#include <Misha/Miscellany.h>
+#include <Misha/Exceptions.h>
 #include "SimpleTriangleMesh.h"
 #include "ChartDecomposition.h"
-#include <set>
 
+
+namespace MishaK
+{
 
 #ifdef DEBUG_ATLAS
-struct _TriangleIndex
-{
-	TriangleIndex index;
-	int oldIndex;
-	_TriangleIndex( void ) : oldIndex( -1 ){}
-	_TriangleIndex( TriangleIndex i , int o ) : index( i ) , oldIndex( o ){}
+	struct _TriangleIndex
+	{
+		SimplexIndex< 2 > index;
+		int oldIndex;
+		_TriangleIndex( void ) : oldIndex( -1 ){}
+		_TriangleIndex( SimplexIndex< 2 > i , int o ) : index( i ) , oldIndex( o ){}
 
-	unsigned int &operator[] ( unsigned int idx )       { return index[idx]; }
-	unsigned int  operator[] ( unsigned int idx ) const { return index[idx]; }
-	int operator()( void ) const { return oldIndex; }
-};
+		unsigned int &operator[] ( unsigned int idx )       { return index[idx]; }
+		unsigned int  operator[] ( unsigned int idx ) const { return index[idx]; }
+		int operator()( void ) const { return oldIndex; }
+	};
 #endif // DEBUG_ATLAS
 
-template< typename GeometryReal >
-class AtlasMesh : public SimpleTriangleMesh< GeometryReal , 2 >
-{
-public:
-	using SimpleTriangleMesh< GeometryReal , 2 >::vertices;
-	using SimpleTriangleMesh< GeometryReal , 2 >::triangles;
+	template< typename GeometryReal >
+	class AtlasMesh : public SimpleTriangleMesh< GeometryReal , 2 >
+	{
+	public:
+		using SimpleTriangleMesh< GeometryReal , 2 >::vertices;
+		using SimpleTriangleMesh< GeometryReal , 2 >::triangles;
 
-	std::vector< int > triangleIndexInChart;
-	std::vector< int > triangleChartIndex;
-	std::vector< int > halfEdgeToEdgeIndex;
-	std::vector< int > vertexMap;
-	int numCharts;
-};
+		std::vector< int > triangleIndexInChart;
+		std::vector< int > triangleChartIndex;
+		std::vector< int > halfEdgeToEdgeIndex;
+		std::vector< int > vertexMap;
+		int numCharts;
+	};
 
-template< typename GeometryReal >
-class AtlasChart
-{
-public:
-	Point2D< GeometryReal > minCorner;
-	Point2D< GeometryReal > maxCorner;
-	Point2D< GeometryReal > gridOrigin;
-	int originCoords[2];
+	template< typename GeometryReal >
+	class AtlasChart
+	{
+	public:
+		Point2D< GeometryReal > minCorner;
+		Point2D< GeometryReal > maxCorner;
+		Point2D< GeometryReal > gridOrigin;
+		int originCoords[2];
 #ifdef DEBUG_ATLAS
-	std::vector< _TriangleIndex > triangles;
+		std::vector< _TriangleIndex > triangles;
 #else // !DEBUG_ATLAS
-	std::vector< TriangleIndex > triangles;
+		std::vector< SimplexIndex< 2 > > triangles;
 #endif // DEBUG_ATLAS
-	std::vector< Point2D< GeometryReal > > vertices;
-	std::vector< int > boundaryHalfEdges;
-	std::vector< int > atlasEdgeIndices;
+		std::vector< Point2D< GeometryReal > > vertices;
+		std::vector< int > boundaryHalfEdges;
+		std::vector< int > atlasEdgeIndices;
 
-	std::vector< int > meshVertexIndices;
-	std::vector< int > meshTriangleIndices;
-};
+		std::vector< int > meshVertexIndices;
+		std::vector< int > meshTriangleIndices;
+	};
 
-template< typename GeometryReal >
-class IndexedVector2D
-{
-public:
-	IndexedVector2D( Point2D< GeometryReal > p_p , int p_index , int p_vertex )
+	template< typename GeometryReal >
+	class IndexedVector2D
 	{
-		p = p_p;
-		index = p_index;
-		vertex = p_vertex;
-	}
-	Point2D< GeometryReal > p;
-	int index;
-	int vertex;
-};
-
-template< typename GeometryReal >
-class IndexedVector2DComparison
-{
-public:
-	bool operator()( const IndexedVector2D< GeometryReal > &p1 , const IndexedVector2D< GeometryReal > &p2 ) const
-	{
-		for( int i=0 ; i<2 ; i++ )
+	public:
+		IndexedVector2D( Point2D< GeometryReal > p_p , int p_index , int p_vertex )
 		{
-			if      ( p1.p[i]<p2.p[i] ) return true;
-			else if ( p2.p[i]<p1.p[i] ) return false;
-			else
-			{
-				if     ( p1.vertex<p2.vertex ) return true;
-				else if( p2.vertex<p1.vertex ) return false;
-			}
+			p = p_p;
+			index = p_index;
+			vertex = p_vertex;
 		}
-		return false;
-	}
-};
+		Point2D< GeometryReal > p;
+		int index;
+		int vertex;
+	};
+
+	template< typename GeometryReal >
+	class IndexedVector2DComparison
+	{
+	public:
+		bool operator()( const IndexedVector2D< GeometryReal > &p1 , const IndexedVector2D< GeometryReal > &p2 ) const
+		{
+			for( int i=0 ; i<2 ; i++ )
+			{
+				if      ( p1.p[i]<p2.p[i] ) return true;
+				else if ( p2.p[i]<p1.p[i] ) return false;
+				else
+				{
+					if     ( p1.vertex<p2.vertex ) return true;
+					else if( p2.vertex<p1.vertex ) return false;
+				}
+			}
+			return false;
+		}
+	};
 
 #include "AtlasMesh.inl"
 #include "AtlasCharts.inl"
+}
 #endif// ATLAS_MESH_INLCUDED

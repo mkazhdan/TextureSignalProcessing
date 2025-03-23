@@ -5,15 +5,15 @@ VisualStudioVersion = 17.11.35312.102
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TextureFiltering", "TextureFiltering\TextureFiltering.vcxproj", "{C6ABBF5D-BB74-4812-AB52-973D8B76A266}"
 	ProjectSection(ProjectDependencies) = postProject
-		{B5899B32-FAC2-477E-99AA-86736B97F2FC} = {B5899B32-FAC2-477E-99AA-86736B97F2FC}
 		{0BE55595-4080-4265-82AF-51108EC956B2} = {0BE55595-4080-4265-82AF-51108EC956B2}
+		{B5899B32-FAC2-477E-99AA-86736B97F2FC} = {B5899B32-FAC2-477E-99AA-86736B97F2FC}
 		{D3D173AB-D306-4179-BEC4-95CE1B14E647} = {D3D173AB-D306-4179-BEC4-95CE1B14E647}
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Geodesics", "Geodesics\Geodesics.vcxproj", "{CC79FFAF-4BF9-4A11-94EA-D44BCC5D80F4}"
 	ProjectSection(ProjectDependencies) = postProject
-		{B5899B32-FAC2-477E-99AA-86736B97F2FC} = {B5899B32-FAC2-477E-99AA-86736B97F2FC}
 		{0BE55595-4080-4265-82AF-51108EC956B2} = {0BE55595-4080-4265-82AF-51108EC956B2}
+		{B5899B32-FAC2-477E-99AA-86736B97F2FC} = {B5899B32-FAC2-477E-99AA-86736B97F2FC}
 		{D3D173AB-D306-4179-BEC4-95CE1B14E647} = {D3D173AB-D306-4179-BEC4-95CE1B14E647}
 	EndProjectSection
 EndProject
@@ -21,7 +21,89 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PNG", "PNG\PNG.vcxproj", "{
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ZLIB", "ZLIB\ZLIB.vcxproj", "{D3D173AB-D306-4179-BEC4-95CE1B14E647}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Include", "Include", "{FC2900F0-9610-4D1A-88F0-2C0F23E592CC}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Misha", "Misha", "{7DA121C8-3C1A-4FE2-8A3B-61560CC564FB}"
+	ProjectSection(SolutionItems) = preProject
+		include\Misha\Algebra.h = include\Misha\Algebra.h
+		include\Misha\Array.h = include\Misha\Array.h
+		include\Misha\Array.inl = include\Misha\Array.inl
+		include\Misha\Atomic.h = include\Misha\Atomic.h
+		include\Misha\BMP.h = include\Misha\BMP.h
+		include\Misha\BMP.inl = include\Misha\BMP.inl
+		include\Misha\Camera.h = include\Misha\Camera.h
+		include\Misha\CmdLineParser.h = include\Misha\CmdLineParser.h
+		include\Misha\CmdLineParser.inl = include\Misha\CmdLineParser.inl
+		include\Misha\Exceptions.h = include\Misha\Exceptions.h
+		include\Misha\FEM.BasisInfo.inc = include\Misha\FEM.BasisInfo.inc
+		include\Misha\FEM.h = include\Misha\FEM.h
+		include\Misha\FEM.inl = include\Misha\FEM.inl
+		include\Misha\files.txt = include\Misha\files.txt
+		include\Misha\Geometry.h = include\Misha\Geometry.h
+		include\Misha\Geometry.inl = include\Misha\Geometry.inl
+		include\Misha\Image.h = include\Misha\Image.h
+		include\Misha\JPEG.h = include\Misha\JPEG.h
+		include\Misha\JPEG.inl = include\Misha\JPEG.inl
+		include\Misha\LinearSolvers.h = include\Misha\LinearSolvers.h
+		include\Misha\MemoryUsage.h = include\Misha\MemoryUsage.h
+		include\Misha\Miscellany.h = include\Misha\Miscellany.h
+		include\Misha\MultiThreading.h = include\Misha\MultiThreading.h
+		include\Misha\PBM.h = include\Misha\PBM.h
+		include\Misha\PBM.inl = include\Misha\PBM.inl
+		include\Misha\Ply.h = include\Misha\Ply.h
+		include\Misha\Ply.inl = include\Misha\Ply.inl
+		include\Misha\PlyFile.h = include\Misha\PlyFile.h
+		include\Misha\PlyFile.inl = include\Misha\PlyFile.inl
+		include\Misha\PlyVertexData.h = include\Misha\PlyVertexData.h
+		include\Misha\PlyVertexData.inl = include\Misha\PlyVertexData.inl
+		include\Misha\PNG.h = include\Misha\PNG.h
+		include\Misha\PNG.inl = include\Misha\PNG.inl
+		include\Misha\Poly34.h = include\Misha\Poly34.h
+		include\Misha\Poly34.inl = include\Misha\Poly34.inl
+		include\Misha\Polynomial.h = include\Misha\Polynomial.h
+		include\Misha\Polynomial.inl = include\Misha\Polynomial.inl
+		include\Misha\Rasterizer2D.h = include\Misha\Rasterizer2D.h
+		include\Misha\RegularGrid.h = include\Misha\RegularGrid.h
+		include\Misha\RegularGrid.inl = include\Misha\RegularGrid.inl
+		include\Misha\RightTriangleQuadrature.h = include\Misha\RightTriangleQuadrature.h
+		include\Misha\SparseMatrix.h = include\Misha\SparseMatrix.h
+		include\Misha\SparseMatrix.inl = include\Misha\SparseMatrix.inl
+		include\Misha\SparseMatrixInterface.h = include\Misha\SparseMatrixInterface.h
+		include\Misha\SparseMatrixInterface.inl = include\Misha\SparseMatrixInterface.inl
+		include\Misha\Texels.h = include\Misha\Texels.h
+		include\Misha\Texels.inl = include\Misha\Texels.inl
+		include\Misha\Vector.h = include\Misha\Vector.h
+		include\Misha\Vector.inl = include\Misha\Vector.inl
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "JPEG", "JPEG\JPEG.vcxproj", "{0BE55595-4080-4265-82AF-51108EC956B2}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LineIntegralConvolution", "LineIntegralConvolution\LineIntegralConvolution.vcxproj", "{53350EE4-5B9C-4977-8E91-4FE6E84D9E38}"
+	ProjectSection(ProjectDependencies) = postProject
+		{0BE55595-4080-4265-82AF-51108EC956B2} = {0BE55595-4080-4265-82AF-51108EC956B2}
+		{B5899B32-FAC2-477E-99AA-86736B97F2FC} = {B5899B32-FAC2-477E-99AA-86736B97F2FC}
+		{D3D173AB-D306-4179-BEC4-95CE1B14E647} = {D3D173AB-D306-4179-BEC4-95CE1B14E647}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ReactionDiffusion", "ReactionDiffusion\ReactionDiffusion.vcxproj", "{E2DE783C-D9A1-4EB6-A8F4-5E8FA84C0BAA}"
+	ProjectSection(ProjectDependencies) = postProject
+		{0BE55595-4080-4265-82AF-51108EC956B2} = {0BE55595-4080-4265-82AF-51108EC956B2}
+		{B5899B32-FAC2-477E-99AA-86736B97F2FC} = {B5899B32-FAC2-477E-99AA-86736B97F2FC}
+		{D3D173AB-D306-4179-BEC4-95CE1B14E647} = {D3D173AB-D306-4179-BEC4-95CE1B14E647}
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Shaders", "Shaders", "{E53407B5-8B55-4CC7-86B2-A83A5243C1D5}"
+	ProjectSection(SolutionItems) = preProject
+		include\Shaders\normal_texture_fragment.fs = include\Shaders\normal_texture_fragment.fs
+		include\Shaders\normal_texture_vertex.vs = include\Shaders\normal_texture_vertex.vs
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TextureStitching", "TextureStitching\TextureStitching.vcxproj", "{F2C72C17-7116-4E00-8411-FC4B46EB59BE}"
+	ProjectSection(ProjectDependencies) = postProject
+		{0BE55595-4080-4265-82AF-51108EC956B2} = {0BE55595-4080-4265-82AF-51108EC956B2}
+		{B5899B32-FAC2-477E-99AA-86736B97F2FC} = {B5899B32-FAC2-477E-99AA-86736B97F2FC}
+		{D3D173AB-D306-4179-BEC4-95CE1B14E647} = {D3D173AB-D306-4179-BEC4-95CE1B14E647}
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Src", "Src", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
 	ProjectSection(SolutionItems) = preProject
 		include\Src\Atlas.h = include\Src\Atlas.h
 		include\Src\AtlasCharts.inl = include\Src\AtlasCharts.inl
@@ -36,16 +118,17 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Include", "Include", "{FC29
 		include\Src\HierarchyConstruction.inl = include\Src\HierarchyConstruction.inl
 		include\Src\HSV.h = include\Src\HSV.h
 		include\Src\IndexedPolygon.h = include\Src\IndexedPolygon.h
-		include\Src\InteriorTexelToCellLines.inl = include\Src\InteriorTexelToCellLines.inl
+		include\Src\InteriorTexelToCellLines.h = include\Src\InteriorTexelToCellLines.h
 		include\Src\IterativeSolvers.inl = include\Src\IterativeSolvers.inl
 		include\Src\MapLoop.h = include\Src\MapLoop.h
 		include\Src\MassAndStiffness.h = include\Src\MassAndStiffness.h
 		include\Src\Metric.inl = include\Src\Metric.inl
+		include\Src\MeshIO.h = include\Src\MeshIO.h
 		include\Src\Padding.h = include\Src\Padding.h
 		include\Src\PolygonClipping.h = include\Src\PolygonClipping.h
+		include\Src\PreProcessing.h = include\Src\PreProcessing.h
 		include\Src\ProlongationAndRestriction.inl = include\Src\ProlongationAndRestriction.inl
-		include\Src\QuadratureIntergration.inl = include\Src\QuadratureIntergration.inl
-		include\Src\RightTriangleQuadrature.h = include\Src\RightTriangleQuadrature.h
+		include\Src\QuadratureIntergration.h = include\Src\QuadratureIntergration.h
 		include\Src\SimpleTriangleMesh.h = include\Src\SimpleTriangleMesh.h
 		include\Src\Solver.h = include\Src\Solver.h
 		include\Src\SparseMatrixParser.h = include\Src\SparseMatrixParser.h
@@ -55,76 +138,25 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Include", "Include", "{FC29
 		include\Src\TexturedMeshVisualization.inl = include\Src\TexturedMeshVisualization.inl
 		include\Src\TextureFilteringVisualization.h = include\Src\TextureFilteringVisualization.h
 		include\Src\TextureFilteringVisualization.inl = include\Src\TextureFilteringVisualization.inl
+		include\Src\TextureIO.h = include\Src\TextureIO.h
 		include\Src\Triangle.h = include\Src\Triangle.h
 		include\Src\Triangle.inl = include\Src\Triangle.inl
 		include\Src\UpdateCoefficients.inl = include\Src\UpdateCoefficients.inl
 		include\Src\VectorIO.h = include\Src\VectorIO.h
+		include\Src\Visualization.h = include\Src\Visualization.h
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Misha", "Misha", "{7DA121C8-3C1A-4FE2-8A3B-61560CC564FB}"
-	ProjectSection(SolutionItems) = preProject
-		include\Misha\Algebra.h = include\Misha\Algebra.h
-		include\Misha\Array.h = include\Misha\Array.h
-		include\Misha\Array.inl = include\Misha\Array.inl
-		include\Misha\Atomic.h = include\Misha\Atomic.h
-		include\Misha\Camera.h = include\Misha\Camera.h
-		include\Misha\CmdLineParser.h = include\Misha\CmdLineParser.h
-		include\Misha\CmdLineParser.inl = include\Misha\CmdLineParser.inl
-		include\Misha\FEM.h = include\Misha\FEM.h
-		include\Misha\FEM.inl = include\Misha\FEM.inl
-		include\Misha\Geometry.h = include\Misha\Geometry.h
-		include\Misha\Geometry.inl = include\Misha\Geometry.inl
-		include\Misha\Grid.h = include\Misha\Grid.h
-		include\Misha\Grid.inl = include\Misha\Grid.inl
-		include\Misha\Image.h = include\Misha\Image.h
-		include\Misha\ImageIO.h = include\Misha\ImageIO.h
-		include\Misha\JPEG.h = include\Misha\JPEG.h
-		include\Misha\JPEG.inl = include\Misha\JPEG.inl
-		include\Misha\LinearSolvers.h = include\Misha\LinearSolvers.h
-		include\Misha\MemoryUsage.h = include\Misha\MemoryUsage.h
-		include\Misha\Miscellany.h = include\Misha\Miscellany.h
-		include\Misha\MultiThreading.h = include\Misha\MultiThreading.h
-		include\Misha\Ply.h = include\Misha\Ply.h
-		include\Misha\Ply.inl = include\Misha\Ply.inl
-		include\Misha\PlyFile.h = include\Misha\PlyFile.h
-		include\Misha\PlyFile.inl = include\Misha\PlyFile.inl
-		include\Misha\PNG.h = include\Misha\PNG.h
-		include\Misha\PNG.inl = include\Misha\PNG.inl
-		include\Misha\SparseMatrix.h = include\Misha\SparseMatrix.h
-		include\Misha\SparseMatrix.inl = include\Misha\SparseMatrix.inl
-		include\Misha\SparseMatrixInterface.h = include\Misha\SparseMatrixInterface.h
-		include\Misha\SparseMatrixInterface.inl = include\Misha\SparseMatrixInterface.inl
-		include\Misha\Vector.h = include\Misha\Vector.h
-		include\Misha\Vector.inl = include\Misha\Vector.inl
-		include\Misha\Visualization.h = include\Misha\Visualization.h
-	EndProjectSection
-EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "JPEG", "JPEG\JPEG.vcxproj", "{0BE55595-4080-4265-82AF-51108EC956B2}"
-EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LineIntegralConvolution", "LineIntegralConvolution\LineIntegralConvolution.vcxproj", "{53350EE4-5B9C-4977-8E91-4FE6E84D9E38}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TextureDilation", "TextureDilation\TextureDilation.vcxproj", "{C93F9636-6782-4261-B74F-A379FFCA9407}"
 	ProjectSection(ProjectDependencies) = postProject
-		{B5899B32-FAC2-477E-99AA-86736B97F2FC} = {B5899B32-FAC2-477E-99AA-86736B97F2FC}
 		{0BE55595-4080-4265-82AF-51108EC956B2} = {0BE55595-4080-4265-82AF-51108EC956B2}
+		{B5899B32-FAC2-477E-99AA-86736B97F2FC} = {B5899B32-FAC2-477E-99AA-86736B97F2FC}
 		{D3D173AB-D306-4179-BEC4-95CE1B14E647} = {D3D173AB-D306-4179-BEC4-95CE1B14E647}
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ReactionDiffusion", "ReactionDiffusion\ReactionDiffusion.vcxproj", "{E2DE783C-D9A1-4EB6-A8F4-5E8FA84C0BAA}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TextureMasking", "TextureMasking\TextureMasking.vcxproj", "{A390262E-A1BB-4E5F-A835-335ACFAC1552}"
 	ProjectSection(ProjectDependencies) = postProject
-		{B5899B32-FAC2-477E-99AA-86736B97F2FC} = {B5899B32-FAC2-477E-99AA-86736B97F2FC}
 		{0BE55595-4080-4265-82AF-51108EC956B2} = {0BE55595-4080-4265-82AF-51108EC956B2}
-		{D3D173AB-D306-4179-BEC4-95CE1B14E647} = {D3D173AB-D306-4179-BEC4-95CE1B14E647}
-	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Shaders", "Shaders", "{E53407B5-8B55-4CC7-86B2-A83A5243C1D5}"
-	ProjectSection(SolutionItems) = preProject
-		include\Shaders\normal_texture_fragment.fs = include\Shaders\normal_texture_fragment.fs
-		include\Shaders\normal_texture_vertex.vs = include\Shaders\normal_texture_vertex.vs
-	EndProjectSection
-EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TextureStitching", "TextureStitching\TextureStitching.vcxproj", "{F2C72C17-7116-4E00-8411-FC4B46EB59BE}"
-	ProjectSection(ProjectDependencies) = postProject
 		{B5899B32-FAC2-477E-99AA-86736B97F2FC} = {B5899B32-FAC2-477E-99AA-86736B97F2FC}
-		{0BE55595-4080-4265-82AF-51108EC956B2} = {0BE55595-4080-4265-82AF-51108EC956B2}
 		{D3D173AB-D306-4179-BEC4-95CE1B14E647} = {D3D173AB-D306-4179-BEC4-95CE1B14E647}
 	EndProjectSection
 EndProject
@@ -192,6 +224,22 @@ Global
 		{F2C72C17-7116-4E00-8411-FC4B46EB59BE}.Release|x64.ActiveCfg = Release|x64
 		{F2C72C17-7116-4E00-8411-FC4B46EB59BE}.Release|x64.Build.0 = Release|x64
 		{F2C72C17-7116-4E00-8411-FC4B46EB59BE}.Release|x86.ActiveCfg = Release|x64
+		{C93F9636-6782-4261-B74F-A379FFCA9407}.Debug|x64.ActiveCfg = Debug|x64
+		{C93F9636-6782-4261-B74F-A379FFCA9407}.Debug|x64.Build.0 = Debug|x64
+		{C93F9636-6782-4261-B74F-A379FFCA9407}.Debug|x86.ActiveCfg = Debug|Win32
+		{C93F9636-6782-4261-B74F-A379FFCA9407}.Debug|x86.Build.0 = Debug|Win32
+		{C93F9636-6782-4261-B74F-A379FFCA9407}.Release|x64.ActiveCfg = Release|x64
+		{C93F9636-6782-4261-B74F-A379FFCA9407}.Release|x64.Build.0 = Release|x64
+		{C93F9636-6782-4261-B74F-A379FFCA9407}.Release|x86.ActiveCfg = Release|Win32
+		{C93F9636-6782-4261-B74F-A379FFCA9407}.Release|x86.Build.0 = Release|Win32
+		{A390262E-A1BB-4E5F-A835-335ACFAC1552}.Debug|x64.ActiveCfg = Debug|x64
+		{A390262E-A1BB-4E5F-A835-335ACFAC1552}.Debug|x64.Build.0 = Debug|x64
+		{A390262E-A1BB-4E5F-A835-335ACFAC1552}.Debug|x86.ActiveCfg = Debug|Win32
+		{A390262E-A1BB-4E5F-A835-335ACFAC1552}.Debug|x86.Build.0 = Debug|Win32
+		{A390262E-A1BB-4E5F-A835-335ACFAC1552}.Release|x64.ActiveCfg = Release|x64
+		{A390262E-A1BB-4E5F-A835-335ACFAC1552}.Release|x64.Build.0 = Release|x64
+		{A390262E-A1BB-4E5F-A835-335ACFAC1552}.Release|x86.ActiveCfg = Release|Win32
+		{A390262E-A1BB-4E5F-A835-335ACFAC1552}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

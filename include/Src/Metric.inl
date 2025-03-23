@@ -27,8 +27,6 @@ DAMAGE.
 */
 #pragma once
 
-#include <Misha/Miscellany.h>
-
 enum
 {
 	EMBEDDING_METRIC,
@@ -132,7 +130,7 @@ void InitializePrincipalCurvatureDirection( const OrientedTexturedTriangleMesh< 
 		GeometryReal c = S.determinant();
 		GeometryReal discriminant = (GeometryReal)( b*b - 4.0*a*c );
 
-		if( discriminant<0 ) THROW( "Negative discriminant: " , discriminant );
+		if( discriminant<0 ) MK_THROW( "Negative discriminant: " , discriminant );
 
 		discriminant = (GeometryReal)sqrt(discriminant);
 		GeometryReal roots[] = { (-b-discriminant) / (2.0*a) , (-b+discriminant) / (2.0*a) };
@@ -247,7 +245,7 @@ void InitializeMetric( OrientedTexturedTriangleMesh< GeometryReal > &mesh , int 
 
 	if     ( metricMode==EMBEDDING_METRIC ) surfaceMetric = embeddingMetric;
 	else if( metricMode==UNIFORM_METRIC   ) InitializeUniformMetric( mesh , true , surfaceMetric );
-	else THROW( "Unrecognized  metric: " , metricMode );
+	else MK_THROW( "Unrecognized  metric: " , metricMode );
 	InitializeParameterMetric( mesh , surfaceMetric , atlasCharts , parameterMetric );
 }
 

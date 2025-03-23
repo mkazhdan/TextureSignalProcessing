@@ -26,14 +26,6 @@ ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF S
 DAMAGE.
 */
 
-#include <float.h>
-#include <complex>
-#include <unordered_map>
-#include "Miscellany.h"
-#include "Exceptions.h"
-#include "Misha/MultiThreading.h"
-#include "Misha/Atomic.h"
-
 ///////////////////
 //  SparseMatrix //
 ///////////////////
@@ -48,6 +40,29 @@ SparseMatrix< T , IndexType >::SparseMatrix( void )
 	rows = 0;
 	_entries = NullPointer< Pointer( MatrixEntry< T , IndexType > ) >( );
 }
+
+template< class T , class IndexType >
+void SparseMatrix< T , IndexType >::write( FILE* fp ) const
+{
+	fwrite( &rows , sizeof(size_t) , 1 , fp );
+	fwrite( rowSizes , sizeof(size_t) , rows , fp );
+	for( int i=0 ; i<rows ; i++ ) fwrite( _entries[i] , sizeof( MatrixEntry< T , IndexType > ) , rowSizes[i] , fp );
+}
+template< class T , class IndexType >
+void SparseMatrix< T , IndexType >::read( FILE* fp )
+{
+	size_t _rows;
+	fread( &_rows , sizeof(size_t) , 1 , fp );
+	resize( _rows );
+	for( int i=0 ; i<rows ; i++ )
+	{
+		size_t _rowSize;
+		fread( &_rowSize , sizeof(size_t) , 1 , fp );
+		SetRowSize( i , _rowSize );
+	}
+	for( int i=0 ; i<rows ; i++ ) fread( _entries[i] , sizeof( MatrixEntry< T , IndexType > ) , rowSizes[i] , fp );
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /*! Sets the column index of all allocated entries to -1 so that they are
 //  treated as non-existent. This is needed because SetRowSize() uses malloc
@@ -153,10 +168,11 @@ SparseMatrix< T , IndexType >::SparseMatrix( const SparseMatrix< T2 , IndexType2
 }
 
 template< class T , class IndexType >
-double SparseMatrix< T , IndexType >::SquareNorm(void) const
+template< typename SquareNormFunctor >
+double SparseMatrix< T , IndexType >::SquareNorm( SquareNormFunctor F ) const
 {
 	double l2=0;
-	for( int i=0 ; i<rows ; i++ ) for( int j=0 ; j<rowSizes[i] ; j++ ) l2 += _entries[i][j].Value * _entries[i][j].Value;
+	for( int i=0 ; i<rows ; i++ ) for( int j=0 ; j<rowSizes[i] ; j++ ) l2 += F( _entries[i][j].Value );
 	return l2;
 }
 template< class T , class IndexType >
@@ -168,9 +184,18 @@ double SparseMatrix< T , IndexType >::ASymmetricSquareNorm(void) const
 		double t1=0 , t2=0;
 		int N = _entries[i][j].N;
 		if( N==i ) continue;
+#if 1
 		// [WARNING] multi-counting 
 		for( int k=0 ; k<rowSizes[i] ; k++ ) if( _entries[i][k].N==N ) t1 += _entries[i][k].Value;
 		for( int k=0 ; k<rowSizes[N] ; k++ ) if( _entries[N][k].N==i ) t2 += _entries[N][k].Value;
+#else
+		t1 = _entries[i][j].Value;
+		for( int k=0 ; k<rowSizes[N] ; k++ ) if( _entries[N][k].N==i )
+		{
+			t2 = _entries[N][k].Value;
+			break;
+		}
+#endif
 		l2 += (t1-t2)*(t1-t2);
 	}
 	return l2;
@@ -244,6 +269,14 @@ SparseMatrix< T , IndexType >& SparseMatrix< T , IndexType >::operator = (const 
 }
 template< class T , class IndexType >
 template< class T2 >
+Vector< T2 > SparseMatrix< T , IndexType >::operator * ( const Vector< T2 >& V ) const
+{
+	Vector< T2 > R( Rows() );
+	Interface::Multiply( V , R );
+	return R;
+}
+template< class T , class IndexType >
+template< class T2 >
 void SparseMatrix< T , IndexType >::operator() ( const T2* in , T2* out ) const { Interface::Multiply( in , out ); }
 
 
@@ -280,7 +313,7 @@ void SparseMatrix< T , IndexType >::SetRowSize( size_t row , size_t count )
 		}
 		rowSizes[row] = count;
 	}
-	else ERROR_OUT( "Row is out of bounds: 0 <= " , row , " < " , rows );
+	else fprintf( stderr , "[ERROR] SparseMatrix::SetRowSize: Row is out of bounds: 0 <= %d < %d\n" , (int)row , (int)rows ) , exit( 0 );
 }
 template< class T , class IndexType >
 void SparseMatrix< T , IndexType >::ResetRowSize( size_t row , size_t count )
@@ -292,7 +325,46 @@ void SparseMatrix< T , IndexType >::ResetRowSize( size_t row , size_t count )
 		if( count>oldCount ) memset( _entries[row]+oldCount , 0 , sizeof( MatrixEntry< T , IndexType > ) * ( count - oldCount ) );
 		rowSizes[row] = count;
 	}
-	else ERROR_OUT( "Row is out of bounds: 0 <= " , row , " < " , rows );
+	else fprintf( stderr , "[ERROR] SparseMatrix::ResetRowSize: Row is out of bounds: 0 <= %d < %d\n" , (int)row , (int)rows ) , exit( 0 );
+}
+template< class T , class IndexType >
+void SparseMatrix< T , IndexType >::CollapseRow( int r )
+{
+	{
+		std::unordered_map< IndexType , T > rowValues;
+		for( int j=0 ; j<rowSizes[r] ; j++ )
+		{
+			int N = _entries[r][j].N;
+			auto iter = rowValues.find( N );
+			if( iter==rowValues.end() ) rowValues[N]  = _entries[r][j].Value;
+			else                        iter->second += _entries[r][j].Value;
+		}
+		SetRowSize( r , (int)rowValues.size() );
+		rowSizes[r] = 0;
+		for( auto iter=rowValues.begin() ; iter!=rowValues.end() ; iter++ ) _entries[r][ rowSizes[r]++ ] = MatrixEntry< T , IndexType >( iter->first , iter->second );
+	}
+}
+template< class T , class IndexType >
+void SparseMatrix< T , IndexType >::CollapseRows( void )
+{
+	ThreadPool::ParallelFor
+		(
+			0 , rows ,
+			[&]( unsigned int , size_t i )
+			{
+				std::unordered_map< IndexType , T > rowValues;
+				for( int j=0 ; j<rowSizes[i] ; j++ )
+				{
+					int N = _entries[i][j].N;
+					auto iter = rowValues.find( N );
+					if( iter==rowValues.end() ) rowValues[N]  = _entries[i][j].Value;
+					else                        iter->second += _entries[i][j].Value;
+				}
+				SetRowSize( i , (int)rowValues.size() );
+				rowSizes[i] = 0;
+				for( auto iter=rowValues.begin() ; iter!=rowValues.end() ; iter++ ) _entries[i][ rowSizes[i]++ ] = MatrixEntry< T , IndexType >( iter->first , iter->second );
+			}
+		);
 }
 
 /////////////////////
@@ -357,7 +429,7 @@ SparseMatrix< T , IndexType > SparseMatrix< T , IndexType >::operator * ( const 
 	size_t bCols = 0 , bRows = B.rows;
 	for( int i=0 ; i<A.rows ; i++ ) for( int j=0 ; j<A.rowSizes[i] ; j++ ) if( aCols<=A[i][j].N ) aCols = A[i][j].N+1;
 	for( int i=0 ; i<B.rows ; i++ ) for( int j=0 ; j<B.rowSizes[i] ; j++ ) if( bCols<=B[i][j].N ) bCols = B[i][j].N+1;
-	if( bRows<aCols ) ERROR_OUT( "Matrix sizes do not support multiplication " , aRows , " x " , aCols , " * " , bRows , " x " , bCols );
+	if( bRows<aCols ) fprintf( stderr , "[Error] SparseMatrix::operator *: Matrix sizes do not support multiplication %lld x %lld * %lld x %lld\n" , (unsigned long long)aRows , (unsigned long long)aCols , (unsigned long long)bRows , (unsigned long long)bCols ) , exit( 0 );
 
 	out.resize( (int)aRows );
 	ThreadPool::ParallelFor
@@ -390,8 +462,10 @@ template< class T , class IndexType >
 SparseMatrix< T , IndexType > SparseMatrix< T , IndexType >::operator + ( const SparseMatrix< T , IndexType >& B ) const
 {
 	const SparseMatrix& A = *this;
+	size_t rows = std::max< size_t >( A.rows , B.rows );
 	SparseMatrix out;
-	out.resize( std::max< size_t >( A.rows , B.rows ) );
+
+	out.resize( rows );
 	ThreadPool::ParallelFor
 		(
 			0 , rows ,
@@ -456,7 +530,6 @@ SparseMatrix< T , IndexType > SparseMatrix< T , IndexType >::operator - ( const 
 				for( typename std::unordered_map< IndexType , T >::iterator iter=row.begin() ; iter!=row.end() ; iter++ ) out[i][ out.rowSizes[i]++ ] = MatrixEntry< T , IndexType >( iter->first , iter->second );
 			}
 		);
-
 	return out;
 }
 
@@ -465,16 +538,16 @@ SparseMatrix< T , IndexType > SparseMatrix< T , IndexType >::transpose( T (*Tran
 {
 	SparseMatrix A;
 	const SparseMatrix& At = *this;
-	size_t aRows = 0;
+	size_t aRows = 0 , aCols = At.rows;
 	for( int i=0 ; i<At.rows ; i++ ) for( int j=0 ; j<At.rowSizes[i] ; j++ ) if( aRows<=At[i][j].N ) aRows = At[i][j].N+1;
 
 	A.resize( aRows );
 	for( int i=0 ; i<aRows ; i++ ) A.rowSizes[i] = 0;
-	ThreadPool::ParallelFor( 0 , At.rows , [&]( unsigned int , size_t i ){ for( int j=0 ; j<At.rowSizes[i] ; j++ ) Misha::AddAtomic< size_t >( A.rowSizes[ At[i][j].N ] , 1 ); } );
+	ThreadPool::ParallelFor( 0 , At.rows , [&]( unsigned int , size_t i ){ for( int j=0 ; j<At.rowSizes[i] ; j++ ) AddAtomic( A.rowSizes[ At[i][j].N ] , (size_t)1 ); } );
 
 	ThreadPool::ParallelFor
 		(
-			0 , A.rows , 
+			0 , A.rows ,
 			[&]( unsigned int , size_t i )
 			{
 				size_t t = A.rowSizes[i];
@@ -483,6 +556,7 @@ SparseMatrix< T , IndexType > SparseMatrix< T , IndexType >::transpose( T (*Tran
 				A.rowSizes[i] = 0;
 			}
 		);
+
 	if( TransposeFunction ) for( int i=0 ; i<At.rows ; i++ ) for( int j=0 ; j<At.rowSizes[i] ; j++ )
 	{
 		int ii = At[i][j].N;
@@ -502,11 +576,17 @@ SparseMatrix< T , IndexType > SparseMatrix< T , IndexType >::transpose( size_t a
 	const SparseMatrix& At = *this;
 	size_t _aRows = 0 , aCols = At.rows;
 	for( int i=0 ; i<At.rows ; i++ ) for( int j=0 ; j<At.rowSizes[i] ; j++ ) if( aCols<=At[i][j].N ) _aRows = At[i][j].N+1;
-	if( _aRows>aRows ) ERROR_OUT( "prescribed output dimension too low: " , aRows , " < " , _aRows );
+	if( _aRows>aRows )
+	{
+		fprintf( stderr , "[Error] SparseMatrix::transpose: prescribed output dimension too low: %d < %d\n" , (int)aRows , (int)_aRows );
+		return false;
+	}
 
 	A.resize( aRows );
 	for( int i=0 ; i<aRows ; i++ ) A.rowSizes[i] = 0;
-	ThreadPool::ParallelFor( 0 , At.rows , [&]( unsigned int , size_t i ){ for( int j=0 ; j<At.rowSizes[i] ; j++ ) Misha::AddAtomic( A.rowSizes[ At[i][j].N ] , 1 ); } );
+
+	ThreadPool::ParallelFor( 0 , At.rows , [&]( unsigned int , size_t i ){ for( int j=0 ; j<At.rowSizes[i] ; j++ ) AddAtomic( A.rowSizes[ At[i][j].N ] , 1 ); } );
+
 	ThreadPool::ParallelFor
 		(
 			0 , A.rows ,
@@ -550,8 +630,16 @@ bool TransposeMultiply( const SparseMatrix< T1 , IndexType >& At , const SparseM
 	int bRows = B.rows , bCols = 0;
 	for( int i=0 ; i<At.rows ; i++ ) for( int j=0 ; j<At.rowSizes[i] ; j++ ) if( _aRows<=At[i][j].N ) _aRows = At[i][j].N+1;
 	for( int i=0 ; i< B.rows ; i++ ) for( int j=0 ; j< B.rowSizes[i] ; j++ ) if(  bCols<= B[i][j].N )  bCols =  B[i][j].N+1;
-	if( _aRows>aRows ) ERROR_OUT( "Prescribed output dimension too low: " , aRows , " < " , _aRows );
-	if( bCols>At.rows ) ERROR_OUT( "Matrix sizes do not support multiplication " , aRows , " x " , aCols , " * " , bRows , " x " , bCols );
+	if( _aRows>aRows )
+	{
+		fprintf( stderr , "[Error] TransposeMultiply: prescribed output dimension too low: %d < %d\n" , aRows , _aRows );
+		return false;
+	}
+	if( bCols>At.rows )
+	{
+		fprintf( stderr , "[Error] TransposeMultiply: Matrix sizes do not support multiplication %d x %d * %d x %d\n" , aRows , aCols , bRows , bCols );
+		return false;
+	}
 
 	std::vector< std::unordered_map< IndexType , T3 > > rows;
 	rows.resize( _aRows );
@@ -596,7 +684,11 @@ bool Multiply( const SparseMatrixInterface< A_T , A_const_iterator >& A , const 
 	size_t bCols = 0 , bRows = B.Rows();
 	for( int i=0 ; i<A.Rows() ; i++ ) for( A_const_iterator iter=A.begin(i) ; iter!=A.end(i) ; iter++ ) if( aCols<=iter->N ) aCols = iter->N+1;
 	for( int i=0 ; i<B.Rows() ; i++ ) for( B_const_iterator iter=B.begin(i) ; iter!=B.end(i) ; iter++ ) if( bCols<=iter->N ) bCols = iter->N+1;
-	if( bRows<aCols ) ERROR_OUT( "Matrix sizes do not support multiplication " , aRows , " x " , aCols , " * " , bRows , " x " , bCols );
+	if( bRows<aCols )
+	{
+		fprintf( stderr , "[Error] Multiply: Matrix sizes do not support multiplication %lld x %lld * %lld x %lld\n" , (unsigned long long)aRows , (unsigned long long)aCols , (unsigned long long)bRows , (unsigned long long)bCols );
+		return false;
+	}
 
 	out.resize( (int)aRows );
 	ThreadPool::ParallelFor
@@ -608,13 +700,13 @@ bool Multiply( const SparseMatrixInterface< A_T , A_const_iterator >& A , const 
 				for( A_const_iterator iterA=A.begin(i) ; iterA!=A.end(i) ; iterA++ )
 				{
 					Out_IndexType idx1 = iterA->N;
-if( idx1==-1 ) continue;
+					if( idx1==-1 ) continue;
 					A_T AValue = iterA->Value;
 					if( idx1<0 ) continue;
 					for( B_const_iterator iterB=B.begin(idx1) ; iterB!=B.end(idx1) ; iterB++ )
 					{
 						Out_IndexType idx2 = iterB->N;
-if( idx2==-1 ) continue;
+						if( idx2==-1 ) continue;
 						B_T BValue = iterB->Value;
 						Out_T temp = Out_T( BValue * AValue ); // temp = A( i , idx1 ) * B( idx1 , idx2 )
 						typename std::unordered_map< Out_IndexType , Out_T >::iterator iter = row.find(idx2);
@@ -666,7 +758,11 @@ bool Transpose( const SparseMatrixInterface< T , In_const_iterator >& At , Spars
 {
 	size_t _aRows = 0 , aCols = At.Rows();
 	for( int i=0 ; i<At.Rows() ; i++ ) for( In_const_iterator iter=At.begin(i) ; iter!=At.end(i) ; iter++ ) if( aCols<=iter->N ) _aRows = iter->N+1;
-	if( _aRows>aRows ) ERROR_OUT( "Prescribed output dimension too low: " , aRows , " < " , _aRows );
+	if( _aRows>aRows )
+	{
+		fprintf( stderr , "[Error] Transpose: prescribed output dimension too low: %d < %zu\n" , aRows , _aRows );
+		return false;
+	}
 
 	A.resize( aRows );
 	for( int i=0 ; i<aRows ; i++ ) A.rowSizes[i] = 0;
@@ -701,7 +797,11 @@ bool Multiply( const SparseMatrix< T1 , IndexType >& A , const SparseMatrix< T2 
 	int bCols = 0 , bRows = B.rows;
 	for( int i=0 ; i<A.rows ; i++ ) for( int j=0 ; j<A.rowSizes[i] ; j++ ) if( aCols<=A[i][j].N ) aCols = A[i][j].N+1;
 	for( int i=0 ; i<B.rows ; i++ ) for( int j=0 ; j<B.rowSizes[i] ; j++ ) if( bCols<=B[i][j].N ) bCols = B[i][j].N+1;
-	if( bRows<aCols ) ERROR_OUT( "Matrix sizes do not support multiplication " , aRows , " x " , aCols , " * " , bRows , " x " , bCols );
+	if( bRows<aCols )
+	{
+		fprintf( stderr , "[Error] Multiply: Matrix sizes do not support multiplication %d x %d * %d x %d\n" , aRows , aCols , bRows , bCols );
+		return false;
+	}
 
 	out.resize( aRows );
 	ThreadPool::ParallelFor
@@ -770,7 +870,11 @@ bool Transpose( const SparseMatrix< T , IndexType >& At , SparseMatrix< T , Inde
 {
 	int _aRows = 0 , aCols = At.rows;
 	for( int i=0 ; i<At.rows ; i++ ) for( int j=0 ; j<At.rowSizes[i] ; j++ ) if( _aRows<=At[i][j].N ) _aRows = At[i][j].N+1;
-	if( _aRows>aRows ) Miscellany::ErrorOut( "Prescribed output dimension too low: " , aRows , " < " , _aRows );
+	if( _aRows>aRows )
+	{
+		fprintf( stderr , "[Error] Transpose: prescribed output dimension too low: %d < %d\n" , aRows , _aRows );
+		return false;
+	}
 
 	A.resize( aRows );
 	for( int i=0 ; i<aRows ; i++ ) A.rowSizes[i] = 0;
@@ -801,6 +905,66 @@ bool Transpose( const SparseMatrix< T , IndexType >& At , SparseMatrix< T , Inde
 
 
 #define DUMP_OUTPUT 0
+template< class Data >
+double Dot( const Vector< Data >& v1 , const Vector< Data >& v2 , double (*dot)( Data , Data ) )
+{
+	double d = 0;
+	for( int i=0 ; i<v1.size() && i<v2.size() ; i++ ) d += dot( v1[i] , v2[i] );
+	return d;
+}
+template< class Data >
+std::complex< double > Dot( const Vector< Data >& v1 , const Vector< Data >& v2 , std::complex< double > (*dot)( Data , Data ) )
+{
+	std::complex< double > d = 0;
+	for( int i=0 ; i<v1.size() && i<v2.size() ; i++ ) d += dot( v1[i] , v2[i] );
+	return d;
+}
+template < class Matrix , class Data >
+static int SolveConjugateGradient( const Matrix& SPD , const Vector< Data >& b , const int& iters , Vector< Data >& solution , double (*dot)( Data , Data ) , const double eps )
+{
+	Vector<Data> d,r,Md,temp;
+	double alpha,beta,rDotR,oldRDotR;
+	Md.resize(b.size());
+
+	temp.resize(b.size());
+	SPD.Multiply(solution,temp);
+	d = r = b-temp;
+	oldRDotR = rDotR = Dot( r , r , dot );
+	if( Dot( b , b , dot )<=eps)
+	{
+		solution.SetZero();
+		return 0;
+	}
+	int i;
+	for(i=0;i<iters;i++)
+	{
+		double temp;
+		SPD.Multiply(d,Md);
+		temp = Dot( d , Md , dot );
+		if( temp<=eps )
+		{
+			break;
+		}
+		alpha=rDotR/temp;
+		r.SubtractScaled(Md,alpha);
+		temp = Dot( r , r , dot );
+		// BADNESS!!! How can the size of the residual increase?
+		if(temp>2*oldRDotR)
+		{
+			break;
+		}
+		oldRDotR=rDotR;
+		beta=temp/rDotR;
+		solution.AddScaled(d,alpha);
+		if(beta<=eps)
+		{
+			break;
+		}
+		rDotR=temp;
+		Vector<Data>::Add(d,beta,r,d);
+	}
+	return i;
+}
 inline std::complex< double > operator + ( std::complex< double > c1 , std::complex< float > c2 )
 {
 	return std::complex< double >( c1.real()+c2.real() , c1.imag()+c2.imag() );
@@ -825,7 +989,326 @@ inline std::complex< double > operator * ( std::complex< float > c1 , double c2 
 {
 	return std::complex< double >( c1.real()*c2 , c1.imag()*c2 );
 }
+template < class Matrix , class Data >
+static int SolveConjugateGradient( const Matrix& SPD , const Vector< Data >& b , const int& iters , Vector< Data >& solution , std::complex< double > (*dot)( Data , Data ) , const double eps )
+{
+	Vector< Data > d , r , Md,temp;
+	std::complex< double > alpha;
+	double rDotR , oldRDotR , beta;
+	Md.resize( b.size() );
 
+	temp.resize( b.size() );
+	SPD.Multiply( solution , temp );
+	d = r = b-temp;
+	oldRDotR = rDotR = Dot( r , r , dot ).real();
+	if( Dot( b , b , dot ).real()<=eps )
+	{
+		solution.SetZero();
+		return 0;
+	}
+	int i;
+	for( i=0 ; i<iters ; i++ )
+	{
+		std::complex< double > temp;
+		SPD.Multiply( d , Md );
+		temp = Dot( d , Md , dot );
+		if( temp.real()*temp.real()+temp.imag()*temp.imag()<=eps*eps ) break;
+
+		alpha = rDotR/temp;
+		r.SubtractScaled( Md , alpha );
+		double _temp = Dot( r , r , dot ).real();
+		if( _temp>2*oldRDotR ) break;
+
+		oldRDotR = rDotR;
+		beta = _temp/rDotR;
+		solution.AddScaled( d , alpha );
+		if( beta<=eps ) break;
+		rDotR = _temp;
+		Vector< Data >::Add( d , beta , r , d );
+	}
+	return i;
+}
+template < class Matrix , class Data >
+static int SolveConjugateGradient( const Matrix& SPD , const Vector< Data >& b , const int& iters , Vector< Data >& solution , const double eps )
+{
+	Vector<Data> d,r,Md,temp;
+	double alpha,beta,rDotR,oldRDotR;
+	Md.resize(b.size());
+
+	temp.resize(b.size());
+	SPD.Multiply(solution,temp);
+	d=r=b-temp;
+	oldRDotR=rDotR=r.Dot(r);
+	if(b.Dot(b)<=eps)
+	{
+#if DUMP_OUTPUT
+		printf("Badness0: %g %g\n",r.Dot(r),eps);
+#endif // DUMP_OUTPUT
+		solution.SetZero();
+		return 0;
+	}
+	int i;
+	for(i=0;i<iters;i++)
+	{
+		double temp;
+		SPD.Multiply(d,Md);
+		temp=d.Dot(Md);
+		if(temp<=eps)
+		{
+#if DUMP_OUTPUT
+			printf("Badness1: %g %g\n",temp,eps);
+#endif // DUMP_OUTPUT
+			break;
+		}
+		alpha=rDotR/temp;
+		r.SubtractScaled(Md,alpha);
+		temp=r.Dot(r);
+		// BADNESS!!! How can the size of the residual increase?
+		if(temp>2*oldRDotR)
+		{
+#if DUMP_OUTPUT
+			printf("Badness1.5: %g %g\n",temp,oldRDotR);
+#endif // DUMP_OUTPUT
+			break;
+		}
+		oldRDotR=rDotR;
+		if(temp/b.Dot(b)<=eps)
+		{
+#if DUMP_OUTPUT
+//			printf("Badness2: %g %g\n",temp,eps);
+#endif // DUMP_OUTPUT
+//			break;
+		}
+		beta=temp/rDotR;
+		solution.AddScaled(d,alpha);
+		if(beta<=eps)
+		{
+#if DUMP_OUTPUT
+			printf("Badness3: %g %g\n",beta,eps);
+#endif // DUMP_OUTPUT
+			break;
+		}
+		rDotR=temp;
+		Vector<Data>::Add(d,beta,r,d);
+	}
+	return i;
+}
+template <class Matrix,class IPS,class Real>
+static int SolveConjugateGradient(const Matrix& SPD,const Vector<IPS>& b,const int& iters,Vector<IPS>& solution,const double eps)
+{
+	Vector<IPS> d,r,Md,temp;
+	double alpha,beta,rDotR,oldRDotR;
+	Md.resize(b.size());
+
+	temp.resize(b.size());
+	SPD.Multiply(solution,temp);
+	d=r=b-temp;
+	oldRDotR=rDotR=r.IPSDot(r);
+	if(b.IPSDot(b)<=eps)
+	{
+#if DUMP_OUTPUT
+		printf("Badness0: %g %g\n",r.Dot(r),eps);
+#endif // DUMP_OUTPUT
+		solution.SetZero();
+		return 0;
+	}
+	int i;
+	for(i=0;i<iters;i++)
+	{
+		double temp;
+		SPD.Multiply(d,Md);
+		temp=d.IPSDot(Md);
+		if(temp<=eps)
+		{
+#if DUMP_OUTPUT
+			printf("Badness1: %g %g\n",temp,eps);
+#endif // DUMP_OUTPUT
+			break;
+		}
+		alpha=rDotR/temp;
+		r.SubtractScaled(Md,alpha);
+		temp=r.IPSDot(r);
+		// BADNESS!!! How can the size of the residual increase?
+		if(temp>2*oldRDotR)
+		{
+#if DUMP_OUTPUT
+			printf("Badness1.5: %g %g\n",temp,oldRDotR);
+#endif // DUMP_OUTPUT
+			break;
+		}
+		oldRDotR=rDotR;
+		if(temp/b.IPSDot(b)<=eps)
+		{
+#if DUMP_OUTPUT
+//			printf("Badness2: %g %g\n",temp,eps);
+#endif // DUMP_OUTPUT
+//			break;
+		}
+		beta=temp/rDotR;
+		solution.AddScaled(d,alpha);
+		if(beta<=eps)
+		{
+#if DUMP_OUTPUT
+			printf("Badness3: %g %g\n",beta,eps);
+#endif // DUMP_OUTPUT
+			break;
+		}
+		rDotR=temp;
+		Vector<IPS>::Add(d,beta,r,d);
+	}
+	return i;
+}
+
+
+template <class Matrix,class IPS,class Real>
+static int SolveConjugateGradient2(const Matrix& SPD,const Vector<IPS>& b,const int& iters,Vector<IPS>& x,const double eps)
+{
+	Vector<IPS> q,d,r;
+	double delta_new,delta_old,delta_0,alpha,beta;
+	q.resize(b.size());
+	SPD.Multiply(x,q);
+	d=r=b-q;
+	delta_0=delta_new=r.IPSDot(r);
+printf("%f %f\n",x.IPSDot(x),delta_0);
+	int i;
+	for(i=0;i<iters && delta_new>eps*eps*delta_0;i++)
+	{
+		SPD.Multiply(d,q);
+		alpha=delta_new/(d.IPSDot/*<double>*/(q));
+printf("\t%d] %f\n",i,d.IPSDot(q));
+printf("\t\talpha = %f\n",alpha);
+		x.AddScaled(d,alpha);
+		if(!(i%50))
+		{
+			SPD.Multiply(x,q);
+			r=b-q;
+		}
+		else	r.SubtractScaled(q,alpha);
+		delta_old=delta_new;
+		delta_new=r.IPSDot/*<double>*/(r);
+		beta=delta_new/delta_old;
+printf("\t\t beta = %f\n",beta);
+printf("\t\tresid = %f\n",delta_new/delta_0);
+		Vector<IPS>::Add(d,beta,r,d);
+	}
+printf("Iters: %d / %d\n",i,iters);
+//exit(0);
+	return i;
+}
+
+// Prevent "duplicate symbol" linker errors by hiding the constants from
+// external files.
+namespace {
+    ////////////////////////////////////////////////////////////////////////////
+    /*! Declares some default constants for conjugate gradient solvers
+    //  @tparam Real    floating point representation
+    *///////////////////////////////////////////////////////////////////////////
+    template <typename Real>
+    class CGConstants
+    {
+        public:
+            /** Constant used for convergence testing */
+            static const Real eps;
+    };
+
+    template<> const float CGConstants<float>::eps = float(1e-12);
+    template<> const double CGConstants<double>::eps = 1e-16;
+}
+
+template< class MType , class IndexType , class VType >
+int SolveConjugateGradient( const SparseMatrix< MType , IndexType >& A , const Vector<VType>& b , const int& iters , Vector<VType>& x ,
+						   Vector<VType> (*Multiply)(const SparseMatrix< MType , IndexType >& , const Vector<VType>& ) )
+{
+    VType eps = CGConstants<VType>::eps;
+	Vector<VType> r = b - Multiply(A,x);
+	Vector<VType> d = r;
+	double delta_new = r.Dot(r);
+	double delta_0 = delta_new;
+	int i;
+	for(i=0; i<iters && delta_new>eps*delta_0 ;i++)
+	{
+		Vector<VType> q = Multiply(A,d);
+		double alpha = delta_new / d.Dot(q);
+		x = x + d*alpha;
+		if( !(i%50) )	r = b - Multiply(A,x);
+		else			r = r - q*alpha;
+
+		double delta_old = delta_new;
+		delta_new = r.Dot(r);
+		double beta = delta_new / delta_old;
+		d = r + d*beta;
+	}
+	return i;
+}
+
+template< class MType , class IndexType , class VType >
+int SolveConjugateGradient(const SparseMatrix<MType, IndexType> &A,
+        const Vector<VType> &b, const int &iters, Vector<VType> &x,
+        VType eps = CGConstants<VType>::eps)
+{
+	Vector<VType> r = b - A * x;
+	Vector<VType> d = r;
+	double delta_new = r.Dot(r);
+	double delta_0 = delta_new;
+	int i;
+	for(i = 0; (i < iters) && (delta_new > (eps * delta_0)); i++)
+	{
+		Vector<VType> q = A * d;
+		double alpha = delta_new / d.Dot(q);
+		x = x + d*alpha;
+		if( !(i%50) )	r = b - A * x;
+		else			r = r - q * alpha;
+
+		double delta_old = delta_new;
+		delta_new = r.Dot(r);
+		double beta = delta_new / delta_old;
+		d = r + d*beta;
+	}
+	return i;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/*! Solves a system using conjugate gradient while tracking the intermediate
+//  solution at each step
+//  @param[in]      A
+//  @param[in]      b
+//  @param[in]      iters
+//  @param[inout]   x
+//  @param[out]     xValues
+//  @param[in]      Multiply
+//  @return         Number of iterations until convergence (or iters)
+*///////////////////////////////////////////////////////////////////////////////
+template< class MType , class IndexType , class VType >
+int SolveConjugateGradient(const SparseMatrix<MType, IndexType> &A
+        , const Vector<VType> &b, const int &iters, Vector<VType> &x
+        , std::vector<Vector<VType> > &xValues
+        , Vector<VType> (*Multiply)(const SparseMatrix<MType, IndexType>&
+            , const Vector<VType>& ) )
+{
+	double eps=1e-16;
+	Vector<VType> r = b - Multiply(A,x);
+	Vector<VType> d = r;
+	double delta_new = r.Dot(r);
+	double delta_0 = delta_new;
+	int i;
+	for(i=0; i<iters && delta_new>eps*delta_0 ;i++)
+	{
+		Vector<VType> q = Multiply(A,d);
+		double alpha = delta_new / d.Dot(q);
+		x = x + d*alpha;
+		if( !(i%50) )	r = b - Multiply(A,x);
+		else			r = r - q*alpha;
+
+        xValues.push_back(x);
+
+		double delta_old = delta_new;
+		delta_new = r.Dot(r);
+		double beta = delta_new / delta_old;
+		d = r + d*beta;
+	}
+	return i;
+}
 
 //////////////////
 // BandedMatrix //
@@ -861,7 +1344,7 @@ template< class T , unsigned int Radius > void BandedMatrix< T , Radius >::resiz
 	{
 		_rows = rows;
 		_entries = AllocPointer< T >( rows * ( 2 * Radius + 1 ) );
-		if( !_entries ) ERROR_OUT( "Failed to allocate BandedMatrix::_entries ( " , rows , " x " , 2*Radius+1 , " )" );
+		if( !_entries ) fprintf( stderr , "[ERROR] BandedMatrix::resize: Failed to allocate BandedMatrix::_entries ( %d x %d )\n" , rows , 2*Radius+1 ) , exit( 0 );
 	}
 }
 template< class T , unsigned int Radius > void BandedMatrix< T , Radius >::resize( size_t rows , const T& clearValue )
@@ -898,18 +1381,18 @@ void BandedMatrix< T , Radius >::multiply( ConstPointer( T2 ) in , Pointer( T2 )
 	else
 	{
 		ThreadPool::ParallelFor
-			(
-				Radius , _rows-Radius ,
-				[&]( unsigned int , size_t i )
-				{
-					T2 sum(0);
-					ConstPointer( T ) __entries = _entries + i * ( 2 * Radius + 1 );
-					ConstPointer( T2 ) _in = in + i - Radius;
-					for( int j=0 ; j<=2*Radius ; j++ ) sum += (T2)( _in[j] * __entries[j] );
-					out[i] = sum;
-				} ,
-				threads
-			);
+		(
+			Radius , _rows-Radius ,
+			[&]( unsigned int , size_t i )
+			{
+				T2 sum(0);
+				ConstPointer( T ) __entries = _entries + i * ( 2 * Radius + 1 );
+				ConstPointer( T2 ) _in = in + i - Radius;
+				for( int j=0 ; j<=2*Radius ; j++ ) sum += (T2)( _in[j] * __entries[j] );
+				out[i] = sum;
+			} ,
+			threads
+		);
 	}
 	for( int i=(int)_rows-Radius ; i<_rows ; i++ )
 	{
@@ -956,18 +1439,18 @@ void BandedMatrix< T , Radius >::multiply2( ConstPointer( T2 ) in , Pointer( T2 
 	else
 	{
 		ThreadPool::ParallelFor
-			(
-				Radius , _rows-Radius ,
-				[&]( unsigned int , size_t i )
-				{
-					T2 sum0(0) , sum1(0);
-					ConstPointer( T ) __entries = _entries + i * ( 2 * Radius + 1 );
-					ConstPointer( T2 ) _in = in + (i-Radius)*2;
-					for( int j=0 ; j<=2*Radius ; j++ ) sum0 += (T2)( _in[j<<1] * __entries[j] ) ,  sum1 += (T2)( _in[(j<<1)|1] * __entries[j] );
-					out[ i<<1   ] = sum0;
-					out[(i<<1)|1] = sum1;
-				} ,
-				threads
+		(
+			Radius , _rows-Radius ,
+			[&]( unsigned int , size_t i )
+			{
+				T2 sum0(0) , sum1(0);
+				ConstPointer( T ) __entries = _entries + i * ( 2 * Radius + 1 );
+				ConstPointer( T2 ) _in = in + (i-Radius)*2;
+				for( int j=0 ; j<=2*Radius ; j++ ) sum0 += (T2)( _in[j<<1] * __entries[j] ) ,  sum1 += (T2)( _in[(j<<1)|1] * __entries[j] );
+				out[ i<<1   ] = sum0;
+				out[(i<<1)|1] = sum1;
+			} ,
+			threads
 			);
 	}
 	for( int i=(int)_rows-Radius ; i<_rows ; i++ )
@@ -992,9 +1475,10 @@ double BandedMatrix< T , Radius >::squareNorm( void ) const
 	for( int i=0 ; i<entries() ; i++ ) n2 += _entries[i] * _entries[i];
 	return n2;
 }
-#include <map>
+
 template< class RealIn, class RealOut>
-void CompressSparseMatrix(const  SparseMatrix< RealIn, int > & M, SparseMatrix< RealOut, int > & _M) {
+void CompressSparseMatrix( const SparseMatrix< RealIn , int > & M, SparseMatrix< RealOut, int > & _M )
+{
 	int nrows = (int)M.Rows();
 	_M.resize(nrows);
 

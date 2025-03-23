@@ -37,36 +37,38 @@ DAMAGE.
 #include <Src/SimpleTriangleMesh.h>
 #include <Src/Basis.h>
 #include <Src/Solver.h>
-#include <Src/QuadratureIntergration.inl>
+#include <Src/QuadratureIntergration.h>
 #include <Src/MassAndStiffness.h>
 #include <Src/Padding.h>
 #include <Src/TexturedMeshVisualization.h>
 
-cmdLineParameter< char* > Input( "in" );
-cmdLineParameter< int   > Width( "width" , 1024 );
-cmdLineParameter< int   > Height( "height" , 1024 );
-cmdLineParameter< float > DiffusionInterpolationWeight( "interpolation" , 1e3 );
-cmdLineParameter< int   > Levels( "levels" , 4 );
-cmdLineParameter< char* > CameraConfig( "camera" );
-cmdLineReadable Serial( "serial" );
-cmdLineParameter< int   > DisplayMode( "display" , TWO_REGION_DISPLAY );
-cmdLineParameter< int   > MatrixQuadrature( "mQuadrature" , 6 );
-cmdLineParameter< int   > VectorFieldQuadrature( "vfQuadrature" , 6 );
+using namespace MishaK;
 
-cmdLineParameter< int   > MultigridBlockHeight ( "mBlockH" ,  16 );
-cmdLineParameter< int   > MultigridBlockWidth  ( "mBlockW" , 128 );
-cmdLineParameter< int   > MultigridPaddedHeight( "mPadH"   ,   0 );
-cmdLineParameter< int   > MultigridPaddedWidth ( "mPadW"   ,   2 );
+CmdLineParameter< std::string > Input( "in" );
+CmdLineParameter< int   > Width( "width" , 1024 );
+CmdLineParameter< int   > Height( "height" , 1024 );
+CmdLineParameter< float > DiffusionInterpolationWeight( "interpolation" , 1e3 );
+CmdLineParameter< int   > Levels( "levels" , 4 );
+CmdLineParameter< std::string > CameraConfig( "camera" );
+CmdLineReadable Serial( "serial" );
+CmdLineParameter< int   > DisplayMode( "display" , TWO_REGION_DISPLAY );
+CmdLineParameter< int   > MatrixQuadrature( "mQuadrature" , 6 );
+CmdLineParameter< int   > VectorFieldQuadrature( "vfQuadrature" , 6 );
 
-cmdLineParameter< int   > RandomJitter( "jitter" , 0 );
-cmdLineReadable Verbose( "verbose" );
-cmdLineReadable NoHelp( "noHelp" );
-cmdLineReadable DetailVerbose( "detail" );
-cmdLineReadable UseDirectSolver( "useDirectSolver" );
-cmdLineReadable Double( "double" );
-cmdLineReadable PreciseIntegration( "preciseIntegration" );
+CmdLineParameter< int   > MultigridBlockHeight ( "mBlockH" ,  16 );
+CmdLineParameter< int   > MultigridBlockWidth  ( "mBlockW" , 128 );
+CmdLineParameter< int   > MultigridPaddedHeight( "mPadH"   ,   0 );
+CmdLineParameter< int   > MultigridPaddedWidth ( "mPadW"   ,   2 );
 
-cmdLineReadable* params[] =
+CmdLineParameter< int   > RandomJitter( "jitter" , 0 );
+CmdLineReadable Verbose( "verbose" );
+CmdLineReadable NoHelp( "noHelp" );
+CmdLineReadable DetailVerbose( "detail" );
+CmdLineReadable UseDirectSolver( "useDirectSolver" );
+CmdLineReadable Double( "double" );
+CmdLineReadable PreciseIntegration( "preciseIntegration" );
+
+CmdLineReadable* params[] =
 {
 	&Input , &Width , &Height , &DiffusionInterpolationWeight , &CameraConfig , &Levels , &UseDirectSolver , &Serial , &DisplayMode , &MultigridBlockHeight , &MultigridBlockWidth , &MultigridPaddedHeight , &MultigridPaddedWidth ,
 	&Verbose , &DetailVerbose ,
@@ -81,29 +83,29 @@ cmdLineReadable* params[] =
 void ShowUsage( const char* ex )
 {
 	printf( "Usage %s:\n", ex );
-	printf( "\t --%s <input mesh>\n" , Input.name );
-	printf( "\t[--%s <texture width>=%d]\n" , Width.name , Width.value );
-	printf( "\t[--%s <texture height>=%d]\n" , Height.name , Height.value );
-	printf( "\t[--%s <diffusion interpolation weight>=%f]\n" , DiffusionInterpolationWeight.name , DiffusionInterpolationWeight.value );
-	printf( "\t[--%s <system matrix quadrature points per triangle>=%d]\n" , MatrixQuadrature.name , MatrixQuadrature.value );
-	printf( "\t[--%s <normalized vector field quadrature points per triangle>=%d]\n" , VectorFieldQuadrature.name , VectorFieldQuadrature.value );
-	printf( "\t[--%s]\n" , PreciseIntegration.name );
-	printf( "\t[--%s]\n" , UseDirectSolver.name );
-	printf( "\t[--%s <jittering seed>]\n" , RandomJitter.name );
-	printf( "\t[--%s]\n" , Verbose.name );
+	printf( "\t --%s <input mesh>\n" , Input.name.c_str() );
+	printf( "\t[--%s <texture width>=%d]\n" , Width.name.c_str() , Width.value );
+	printf( "\t[--%s <texture height>=%d]\n" , Height.name.c_str() , Height.value );
+	printf( "\t[--%s <diffusion interpolation weight>=%f]\n" , DiffusionInterpolationWeight.name.c_str() , DiffusionInterpolationWeight.value );
+	printf( "\t[--%s <system matrix quadrature points per triangle>=%d]\n" , MatrixQuadrature.name.c_str() , MatrixQuadrature.value );
+	printf( "\t[--%s <normalized vector field quadrature points per triangle>=%d]\n" , VectorFieldQuadrature.name.c_str() , VectorFieldQuadrature.value );
+	printf( "\t[--%s]\n" , PreciseIntegration.name.c_str() );
+	printf( "\t[--%s]\n" , UseDirectSolver.name.c_str() );
+	printf( "\t[--%s <jittering seed>]\n" , RandomJitter.name.c_str() );
+	printf( "\t[--%s]\n" , Verbose.name.c_str() );
 
-	printf( "\t[--%s <camera configuration file>]\n" , CameraConfig.name );
-	printf( "\t[--%s <hierarchy levels>=%d]\n" , Levels.name , Levels.value );
-	printf( "\t[--%s]\n" , DetailVerbose.name );
-	printf( "\t[--%s <display mode>=%d]\n" , DisplayMode.name , DisplayMode.value );
+	printf( "\t[--%s <camera configuration file>]\n" , CameraConfig.name.c_str() );
+	printf( "\t[--%s <hierarchy levels>=%d]\n" , Levels.name.c_str() , Levels.value );
+	printf( "\t[--%s]\n" , DetailVerbose.name.c_str() );
+	printf( "\t[--%s <display mode>=%d]\n" , DisplayMode.name.c_str() , DisplayMode.value );
 	printf( "\t\t%d] One Region \n" , ONE_REGION_DISPLAY );
 	printf( "\t\t%d] Two Region \n" , TWO_REGION_DISPLAY );
-	printf( "\t[--%s <multigrid block width>=%d]\n"   , MultigridBlockWidth.name   , MultigridBlockWidth.value   );
-	printf( "\t[--%s <multigrid block height>=%d]\n"  , MultigridBlockHeight.name  , MultigridBlockHeight.value  );
-	printf( "\t[--%s <multigrid padded width>=%d]\n"  , MultigridPaddedWidth.name  , MultigridPaddedWidth.value  );
-	printf( "\t[--%s <multigrid padded height>=%d]\n" , MultigridPaddedHeight.name , MultigridPaddedHeight.value );
-	printf( "\t[--%s]\n" , Serial.name );
-	printf( "\t[--%s]\n" , NoHelp.name );
+	printf( "\t[--%s <multigrid block width>=%d]\n"   , MultigridBlockWidth.name.c_str()   , MultigridBlockWidth.value   );
+	printf( "\t[--%s <multigrid block height>=%d]\n"  , MultigridBlockHeight.name.c_str()  , MultigridBlockHeight.value  );
+	printf( "\t[--%s <multigrid padded width>=%d]\n"  , MultigridPaddedWidth.name.c_str()  , MultigridPaddedWidth.value  );
+	printf( "\t[--%s <multigrid padded height>=%d]\n" , MultigridPaddedHeight.name.c_str() , MultigridPaddedHeight.value );
+	printf( "\t[--%s]\n" , Serial.name.c_str() );
+	printf( "\t[--%s]\n" , NoHelp.name.c_str() );
 }
 
 template< typename PreReal , typename Real >
@@ -156,7 +158,7 @@ public:
 
 #if defined( USE_CHOLMOD )
 	typedef CholmodCholeskySolver< Real , 1 > DirectSolver;
-#elif defined( USE_EIGEN_SIMPLICIAL )
+#elif defined( USE_EIGEN )
 	typedef EigenCholeskySolver< Real , 1 > DirectSolver;
 #elif defined( USE_EIGEN_PARDISO )
 	typedef EigenPardisoSolver< Real , 1 > DirectSolver;
@@ -402,12 +404,10 @@ void Geodesics< PreReal , Real >::Idle( void )
 		{
 			Point2D< float > ip = visualization.selectImagePos(mouseX, mouseY);
 			//printf("Texture Coord %f %f \n", ip[0], ip[1]);
-			int i = floor(ip[0] * float(nodeIndex.width()) - 0.5f);
-			int j = floor((1.0 - ip[1]) * float(nodeIndex.height()) - 0.5f);
+			int i = floor(ip[0] * float(nodeIndex.res(0)) - 0.5f);
+			int j = floor((1.0 - ip[1]) * float(nodeIndex.res(1)) - 0.5f);
 			//printf("Image pos %d %d \n", i, j);
-			if (i >= 0 && i < nodeIndex.width() && j >= 0 && j < nodeIndex.height()) {
-				selectedTexel = nodeIndex(i, j);
-			}
+			if( i>=0 && i<(int)nodeIndex.res(0) && j>=0 && j<(int)nodeIndex.res(1) ) selectedTexel = nodeIndex(i, j);
 		}
 
 		if( impulseTexel!=selectedTexel && selectedTexel!=-1 )
@@ -462,9 +462,10 @@ void Geodesics< PreReal , Real >::MouseFunc( int button , int state , int x , in
 		}
 		else {
 			Point2D<float> ip = visualization.selectImagePos(x, y);
-			int i = floor(ip[0] * float(nodeIndex.width()) - 0.5f);
-			int j = floor((1.0 - ip[1])*float(nodeIndex.height()) - 0.5f);
-			if (i >= 0 && i < nodeIndex.width() && j >= 0 && j < nodeIndex.height()) {
+			int i = floor(ip[0] * float(nodeIndex.res(0)) - 0.5f);
+			int j = floor((1.0 - ip[1])*float(nodeIndex.res(1)) - 0.5f);
+			if( i>=0 && i<(int)nodeIndex.res(0) && j >= 0 && j<(int)nodeIndex.res(1) )
+			{
 				mouseSelectionActive = true;
 				selectedTexel = nodeIndex(i, j);
 			}
@@ -549,7 +550,7 @@ void Geodesics< PreReal , Real >::ExportTextureCallBack( Visualization * /*v*/ ,
 	outputImage.resize( textureWidth , textureHeight );
 	for( int i=0 ; i<outputImage.size() ; i++ ) outputImage[i] = Point3D< float >( outputBuffer[3*i] , outputBuffer[3*i+1] , outputBuffer[3*i+2]) / float(255.0);
 	padding.unpad( outputImage );
-	outputImage.template write< 8 >(prompt);
+	WriteImage< 8 >( outputImage , prompt );
 }
 
 template< typename PreReal , typename Real >
@@ -647,7 +648,7 @@ void Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 		case 12: InitializeMassAndStiffness<12>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
 		case 24: InitializeMassAndStiffness<24>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
 		case 32: InitializeMassAndStiffness<32>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		default: THROW( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
+		default: MK_THROW( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
 		}
 	}
 	if( Verbose.set ) printf( "\tInitialized mass and stiffness: %.2f(s)\n" , timer.elapsed() );
@@ -714,7 +715,7 @@ void Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 
 	InitializeGridAtlasInteriorCellLines( hierarchy.gridAtlases[0].gridCharts , interiorCellLines , interiorCellLineIndex );
 	if( interiorCellLineIndex.size()!=hierarchy.gridAtlases[0].numInteriorCells )
-		THROW( "Inconsistent number of interior cells: " , hierarchy.gridAtlases[0].numInteriorCells , " != " , interiorCellLineIndex.size() );
+		MK_THROW( "Inconsistent number of interior cells: " , hierarchy.gridAtlases[0].numInteriorCells , " != " , interiorCellLineIndex.size() );
 
 	coarseBoundaryFineBoundaryProlongation = boundaryProlongation.coarseBoundaryFineBoundaryProlongation;
 	fineBoundaryCoarseBoundaryRestriction = boundaryProlongation.fineBoundaryCoarseBoundaryRestriction;
@@ -733,7 +734,7 @@ void Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 		case 12: InitializeIntegration< 12 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , gradientSamples , !PreciseIntegration.set ) ; break;
 		case 24: InitializeIntegration< 24 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , gradientSamples , !PreciseIntegration.set ) ; break;
 		case 32: InitializeIntegration< 32 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , gradientSamples , !PreciseIntegration.set ) ; break;
-		default: THROW( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
+		default: MK_THROW( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
 		}
 	}
 	if( Verbose.set ) printf( "\tInitialized vector field integration: %.2f(s)\n" , timer.elapsed() );
@@ -865,7 +866,7 @@ void Geodesics< PreReal , Real >::Init( void )
 
 	//Assign position to exterior nodes using barycentric-exponential map
 	{
-		FEM::RiemannianMesh< PreReal > rMesh( GetPointer( mesh.triangles ) , mesh.triangles.size() );
+		FEM::RiemannianMesh< PreReal , unsigned int > rMesh( GetPointer( mesh.triangles ) , mesh.triangles.size() );
 		rMesh.setMetricFromEmbedding( GetPointer( mesh.vertices ) );
 		rMesh.makeUnitArea();
 		Pointer( FEM::CoordinateXForm< PreReal > ) xForms = rMesh.getCoordinateXForms();
@@ -913,21 +914,21 @@ void _main( int argc, char *argv[] )
 	char windowName[1024];
 	sprintf( windowName , "Goedsics" );
 	glutCreateWindow( windowName );
-	if( glewInit()!=GLEW_OK ) THROW( "glewInit failed" );
+	if( glewInit()!=GLEW_OK ) MK_THROW( "glewInit failed" );
 	glutDisplayFunc ( Geodesics< PreReal , Real >::Display );
 	glutReshapeFunc ( Geodesics< PreReal , Real >::Reshape );
 	glutMouseFunc   ( Geodesics< PreReal , Real >::MouseFunc );
 	glutMotionFunc  ( Geodesics< PreReal , Real >::MotionFunc );
 	glutKeyboardFunc( Geodesics< PreReal , Real >::KeyboardFunc );
 	if( !UseDirectSolver.set ) glutIdleFunc( Geodesics< PreReal , Real >::Idle );
-	if( CameraConfig.set ) Geodesics< PreReal , Real >::visualization.ReadSceneConfigurationCallBack( &Geodesics< PreReal , Real >::visualization , CameraConfig.value );
+	if( CameraConfig.set ) Geodesics< PreReal , Real >::visualization.ReadSceneConfigurationCallBack( &Geodesics< PreReal , Real >::visualization , CameraConfig.value.c_str() );
 	Geodesics< PreReal , Real >::InitializeVisualization( Geodesics< PreReal , Real >::textureWidth , Geodesics< PreReal , Real >::textureHeight );
 	glutMainLoop();
 }
 
 int main( int argc , char* argv[] )
 {
-	cmdLineParse( argc-1 , argv+1 , params );
+	CmdLineParse( argc-1 , argv+1 , params );
 	if( !Input.set ){ ShowUsage( argv[0] ) ; return EXIT_FAILURE; }
 	if( Serial.set ) ThreadPool::ParallelizationType = ThreadPool::ParallelType::NONE;
 	if( !NoHelp.set )
@@ -945,7 +946,7 @@ int main( int argc , char* argv[] )
 		if( Double.set ) _main< double , double >( argc , argv );
 		else             _main< double , float  >( argc , argv );
 	}
-	catch( Misha::Exception &e )
+	catch( Exception &e )
 	{
 		printf( "%s\n" , e.what() );
 		return EXIT_FAILURE;

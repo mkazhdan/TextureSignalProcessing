@@ -59,7 +59,7 @@ void StitchingVisualization::display(void)
 		GLuint mBuffer = visualizationMode==MULTIPLE_INPUT_MODE ? textureBuffer : compositeTextureBuffer;
 #endif
 		GLuint tBuffer = textureBuffer;
-		setViewport( 0 );
+		setViewport( 1 );
 		DrawRegion( showMesh , showMask ? mBuffer : tBuffer , false , false );
 	}
 
@@ -67,7 +67,7 @@ void StitchingVisualization::display(void)
 	{
 		GLuint mBuffer = visualizationMode==MULTIPLE_INPUT_MODE ? referenceConfidenceBuffers[referenceIndex] : maskTextureBuffer;
 		GLuint tBuffer = visualizationMode==MULTIPLE_INPUT_MODE ? referenceTextureBuffers[referenceIndex] : compositeTextureBuffer;
-		setViewport( 1 );
+		setViewport( 0 );
 		DrawRegion( showMesh , showMask ? mBuffer : tBuffer , false , false );
 	}
 
@@ -116,7 +116,7 @@ void StitchingVisualization::UpdateCompositeTextureBuffer( const Image< Point3D<
 
 	unsigned char * imValues = new unsigned char[composite.size() * 3];
 	for( int j=0 ; j<composite.size() ; j++ ) for( int c=0 ; c<3 ; c++ ) imValues[3 * j + c] = (unsigned char)(composite[j][c] * 255.0);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, composite.width(), composite.height(), 0, GL_RGB, GL_UNSIGNED_BYTE, (GLvoid*)&imValues[0]);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, composite.res(0), composite.res(1), 0, GL_RGB, GL_UNSIGNED_BYTE, (GLvoid*)&imValues[0]);
 	delete[] imValues;
 
 	glBindTexture(GL_TEXTURE_2D, 0);
@@ -135,7 +135,7 @@ void StitchingVisualization::UpdateMaskTextureBuffer( const Image< Point3D< Real
 
 	unsigned char * imValues = new unsigned char[mask.size() * 3];
 	for( int j=0 ; j<mask.size() ; j++ ) for( int c=0 ; c<3 ; c++ ) imValues[3 * j + c] = (unsigned char)(mask[j][c] * 255.0);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, mask.width(), mask.height(), 0, GL_RGB, GL_UNSIGNED_BYTE, (GLvoid*)&imValues[0]);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, mask.res(0), mask.res(1), 0, GL_RGB, GL_UNSIGNED_BYTE, (GLvoid*)&imValues[0]);
 	delete[] imValues;
 
 	glBindTexture(GL_TEXTURE_2D, 0);
@@ -158,7 +158,7 @@ void StitchingVisualization::UpdateReferenceTextureBuffers( const std::vector< I
 
 		unsigned char * imValues = new unsigned char[images[i].size() * 3];
 		for (int j = 0; j < images[i].size(); j++) for (int c = 0; c < 3; c++) imValues[3 * j + c] = (unsigned char)(images[i][j][c]*255.0);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, images[i].width(), images[i].height(), 0, GL_RGB, GL_UNSIGNED_BYTE, (GLvoid*)&imValues[0]);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, images[i].res(0), images[i].res(1), 0, GL_RGB, GL_UNSIGNED_BYTE, (GLvoid*)&imValues[0]);
 		delete[] imValues;
 
 		glBindTexture(GL_TEXTURE_2D, 0);
@@ -182,7 +182,7 @@ void StitchingVisualization::UpdateReferenceConfidenceBuffers( const std::vector
 
 		unsigned char * imValues = new unsigned char[confidences[i].size() * 3];
 		for( int j=0 ; j<confidences[i].size() ; j++ ) for( int c=0 ; c<3 ; c++ ) imValues[ 3*j + c ] = (unsigned char)(confidences[i][j]*255.0);
-		glTexImage2D( GL_TEXTURE_2D , 0 , GL_RGBA , confidences[i].width() , confidences[i].height() , 0 , GL_RGB , GL_UNSIGNED_BYTE , (GLvoid*)&imValues[0] );
+		glTexImage2D( GL_TEXTURE_2D , 0 , GL_RGBA , confidences[i].res(0) , confidences[i].res(1) , 0 , GL_RGB , GL_UNSIGNED_BYTE , (GLvoid*)&imValues[0] );
 		delete[] imValues;
 
 		glBindTexture( GL_TEXTURE_2D , 0 );
@@ -204,7 +204,7 @@ void StitchingVisualization::UpdateTextureBuffer( const Image< Point3D< Real > >
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, image.width(), image.height(), 0, GL_RGB, GL_FLOAT, (GLvoid*)&image[0]);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, image.res(0), image.res(1), 0, GL_RGB, GL_FLOAT, (GLvoid*)&image[0]);
 
 	// Unbind the texture
 	glBindTexture(GL_TEXTURE_2D, 0);

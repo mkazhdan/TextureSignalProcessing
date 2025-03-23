@@ -30,10 +30,24 @@ DAMAGE.
 
 #define NEW_CODE					// General-purpose experimental code encapsulation
 
+#define USE_EIGEN
+#undef USE_CHOLMOD
+#undef USE_EIGEN_PARDISO
+
 
 //#define NO_OPEN_GL_VISUALIZATION		// Disable OpenGL visualization
 //#define USE_TEXTURE_TRIANGLES		// Represent textures using a separate triangulation
 
 #define INSERTION_EPSILON 1e-12		// Separation from interval end-points required for insertion
+
+
+//#define DEBUG_BAD_LOOP
+#ifdef DEBUG_BAD_LOOP
+#include <functional>
+std::function< bool ( unsigned int ) > DebugChartFunctor = [&]( unsigned int ){ return false; };
+std::function< bool ( unsigned int ) > DebugCellFunctor = [&]( unsigned int ){ return false; };
+bool DebugChart = false; 
+bool DebugCell = false;
+#endif // DEBUG_BAD_LOOP
 
 #endif // PRE_PROCESSING_INCLUDED

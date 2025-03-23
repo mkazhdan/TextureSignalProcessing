@@ -27,9 +27,6 @@ DAMAGE.
 */
 #pragma once
 
-#include <Misha/Miscellany.h>
-#include <Misha/Exceptions.h>
-
 template< typename GeometryReal >
 void InitializeBoundaryAndDeepTexelIndexing( const std::vector< GridChart< GeometryReal > > &gridCharts , const int numTexels , std::vector< int > &boundaryAndDeepIndex , std::vector< int > &boundaryGlobalIndex , std::vector< int > &deepGlobalIndex ) 
 {
@@ -41,19 +38,20 @@ void InitializeBoundaryAndDeepTexelIndexing( const std::vector< GridChart< Geome
 	for (int c = 0; c < gridCharts.size(); c++)
 	{
 		const GridChart< GeometryReal > &gridChart = gridCharts[c];
-		for (int j = 0; j < gridChart.nodeType.height(); j++)for (int i = 0; i < gridChart.nodeType.width(); i++) {
+		for( unsigned int j=0 ; j<gridChart.nodeType.res(1) ; j++ ) for( unsigned int i=0 ; i<gridChart.nodeType.res(0) ; i++ )
+		{
 			if (gridChart.nodeType(i, j) == 0 || gridChart.nodeType(i, j) == 1) {
 				boundaryGlobalIndex.push_back(lastGlobalIndex);
 				boundaryAndDeepIndex[lastGlobalIndex] = lastBoundaryIndex;
 				lastBoundaryIndex++;
-				if( gridChart.globalTexelIndex(i,j)!=lastGlobalIndex ) THROW( "Unexpected global index: actual " , gridChart.globalTexelIndex(i,j) , " , expected " , lastGlobalIndex );
+				if( gridChart.globalTexelIndex(i,j)!=lastGlobalIndex ) MK_THROW( "Unexpected global index: actual " , gridChart.globalTexelIndex(i,j) , " , expected " , lastGlobalIndex );
 				lastGlobalIndex++;
 			}
 			else if (gridChart.nodeType(i, j) == 2) {
 				deepGlobalIndex.push_back(lastGlobalIndex);
 				boundaryAndDeepIndex[lastGlobalIndex] = lastDeepIndex;
 				lastDeepIndex--;
-				if( gridChart.globalTexelIndex(i,j)!=lastGlobalIndex ) THROW( "Unexpected global index: actual " , gridChart.globalTexelIndex(i,j) , " , expected " , lastGlobalIndex );
+				if( gridChart.globalTexelIndex(i,j)!=lastGlobalIndex ) MK_THROW( "Unexpected global index: actual " , gridChart.globalTexelIndex(i,j) , " , expected " , lastGlobalIndex );
 				lastGlobalIndex++;
 			}
 		}
@@ -105,9 +103,9 @@ void InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geome
 			if( barycentricCoord[0]>=0 && barycentricCoord[1]>=0 && ( barycentricCoord[0]+barycentricCoord[1] )<=1 )
 			{
 #ifdef DEBUG_ATLAS
-				if( nodeType(i,j)!=-1 ) WARN( "Node ( " , i , " , " , j , " ) covered by two triangles: " , atlasChart.triangles[t]() , " " , nodeOwner(i,j) );
+				if( nodeType(i,j)!=-1 ) MK_WARN( "Texel ( " , i+gridChart.cornerCoords[0] , " , " , j+gridChart.cornerCoords[1] , " ) covered by two triangles: " , atlasChart.triangles[t]() , " " , nodeOwner(i,j) );
 #else // !DEBUG_ATLAS
-				if( nodeType(i,j)!=-1 ) WARN( "Node ( " , i , " , " , j , " ) in chart " , chartID , " already covered [" , t , "]" );
+				if( nodeType(i,j)!=-1 ) MK_WARN( "Node ( " , i , " , " , j , " ) in chart " , chartID , " already covered [" , t , "]" );
 #endif // DEBUG_ATLAS
 				nodeType(i,j) = 1;
 #ifdef DEBUG_ATLAS
@@ -342,7 +340,7 @@ void InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geome
 	int lastLocalBoundaryCellIndex = 0;
 	int lastLocalInteriorCellIndex = 0;
 
-	for (int j = 0; j < height - 1; j++)for (int i = 0; i < width - 1; i++) {
+	for (int j = 0; j < height - 1; j++) for (int i = 0; i < width - 1; i++) {
 		if (gridChart.cellType(i, j) != -1) {
 			localCellIndex(i, j) = lastLocalCellIndex;
 			lastLocalCellIndex++;
@@ -350,7 +348,7 @@ void InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geome
 			if (globalTexelIndices[0] != -1 && globalTexelIndices[1] != -1 && globalTexelIndices[2] != -1 && globalTexelIndices[3] != -1) {
 				bilinearElementIndices.push_back( BilinearElementIndex( globalTexelIndices[0] , globalTexelIndices[1] , globalTexelIndices[2] , globalTexelIndices[3] ) );
 			}
-			else THROW( "Active cell adjacent to unactive node" );
+			else MK_THROW( "Active cell adjacent to unactive node" );
 
 			if (gridChart.cellType(i, j) == 0) {
 				localBoundaryCellIndex(i, j) = lastLocalBoundaryCellIndex;
@@ -366,7 +364,7 @@ void InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geome
 					interiorCellCorners.push_back( BilinearElementIndex( globalTexelInteriorIndices[0] , globalTexelInteriorIndices[1] , globalTexelInteriorIndices[2] , globalTexelInteriorIndices[3] ) );
 					interiorCellGlobalCorners.push_back( BilinearElementIndex( globalTexelIndices[0] , globalTexelIndices[1] , globalTexelIndices[2] , globalTexelIndices[3] ) );
 				}
-				else THROW( "Interior cell adjacent to non interior node" );
+				else MK_THROW( "Interior cell adjacent to non interior node" );
 				lastLocalInteriorCellIndex++;
 			}
 		}
@@ -403,7 +401,7 @@ void InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geome
 				newLine.nextLineIndex = globalTexelIndex(rasterStart, j + 1);
 				newLine.coeffStartIndex = globalTexelDeepIndex(rasterStart, j);
 
-				if( newLine.lineStartIndex==-1 || newLine.lineEndIndex==-1 || newLine.prevLineIndex==-1 || newLine.nextLineIndex==-1 ) THROW( "Inavlid Indexing" );
+				if( newLine.lineStartIndex==-1 || newLine.lineEndIndex==-1 || newLine.prevLineIndex==-1 || newLine.nextLineIndex==-1 ) MK_THROW( "Inavlid Indexing" );
 				rasterLines.push_back(newLine);
 
 				SegmentedRasterLine & newSegmentLine = segmentedLines.back();
@@ -560,7 +558,11 @@ void InitializeTextureNodes( const std::vector< GridChart< GeometryReal > > &gri
 	for (int c = 0; c < gridCharts.size(); c++)
 	{
 		const GridChart< GeometryReal > &gridChart = gridCharts[c];
+#if 1
+		const Image< int > & globalTexelIndex = gridChart.globalTexelIndex;
+#else
 		const Image<int> globalTexelIndex = gridChart.globalTexelIndex;
+#endif
 		for (int j = 0; j < gridChart.height; j++)for (int i = 0; i < gridChart.width; i++) {
 			int texelIndex = globalTexelIndex(i, j);
 			if (texelIndex != -1)
@@ -600,11 +602,11 @@ void InitializeAtlasHierachicalBoundaryCoefficients( const GridAtlas< GeometryRe
 		const GridChart< GeometryReal > &coarseChart = coarseAtlas.gridCharts[currentNode.chartID];
 		const GridChart< GeometryReal > &fineChart = fineAtlas.gridCharts[currentNode.chartID];
 
-		int coarseChartWidth = coarseChart.nodeType.width();
-		int coarseChartHeight = coarseChart.nodeType.height();
+		int coarseChartWidth = coarseChart.nodeType.res(0);
+		int coarseChartHeight = coarseChart.nodeType.res(1);
 
-		int fineChartWidth = fineChart.nodeType.width();
-		int fineChartHeight = fineChart.nodeType.height();
+		int fineChartWidth = fineChart.nodeType.res(0);
+		int fineChartHeight = fineChart.nodeType.res(1);
 
 		int ci = currentNode.ci;
 		int cj = currentNode.cj;
@@ -743,7 +745,7 @@ void InitializeHierarchy( const int width , const int height , HierarchicalSyste
 		InitializeGridCharts( atlasCharts , cellSizeW , cellSizeH , gridAtlases[i].nodeInfo , gridAtlases[i].gridCharts , gridAtlases[i].rasterLines , gridAtlases[i].segmentedLines , gridAtlases[i].threadTasks , gridAtlases[i].numTexels , gridAtlases[i].numInteriorTexels , gridAtlases[i].numDeepTexels , gridAtlases[i].numBoundaryTexels , gridAtlases[i].numCells , gridAtlases[i].numBoundaryCells , gridAtlases[i].numInteriorCells , multigridBlockInfo );
 
 		if( gridAtlases[i].numTexels!=gridAtlases[i].numBoundaryTexels+gridAtlases[i].numDeepTexels )
-			THROW( "Boundary and deep texels does not form a partition: " , gridAtlases[i].numTexels , " != " , gridAtlases[i].numBoundaryTexels , " + " , gridAtlases[i].numDeepTexels );
+			MK_THROW( "Boundary and deep texels does not form a partition: " , gridAtlases[i].numTexels , " != " , gridAtlases[i].numBoundaryTexels , " + " , gridAtlases[i].numDeepTexels );
 
 		InitializeBoundaryAndDeepTexelIndexing( gridAtlases[i].gridCharts , gridAtlases[i].numTexels , gridAtlases[i].boundaryAndDeepIndex , gridAtlases[i].boundaryGlobalIndex , gridAtlases[i].deepGlobalIndex );
 
