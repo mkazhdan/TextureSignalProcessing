@@ -91,6 +91,11 @@ CmdLineReadable ColorAsNormal( "colorAsNormal" );
 #else // !NO_OPEN_GL_VISUALIZATION
 CmdLineReadable Nearest( "nearest" );
 #endif // NO_OPEN_GL_VISUALIZATION
+
+#ifdef NEW_CODE
+CmdLineParameter< double > CollapseEpsilon( "collapse" , 0 );
+#endif // NEW_CODE
+
 CmdLineReadable* params[] =
 {
 	&Input , &Output , &InterpolationWeight , &GradientModulation , &CameraConfig , &Levels , &UseDirectSolver , &Serial  , &Verbose ,
@@ -110,6 +115,9 @@ CmdLineReadable* params[] =
 	&OutputVCycles ,
 	&Seamless ,
 	&ColorAsNormal ,
+#ifdef NEW_CODE
+	&CollapseEpsilon ,
+#endif // NEW_CODE
 #ifdef NO_OPEN_GL_VISUALIZATION
 #else // !NO_OPEN_GL_VISUALIZATION
 	&Nearest ,
@@ -159,6 +167,9 @@ void ShowUsage( const char* ex )
 	printf( "\t[--%s <multigrid block height>=%d]\n"   , MultigridBlockHeight.name.c_str()   , MultigridBlockHeight.value   );
 	printf( "\t[--%s <multigrid padded width>=%d]\n"   , MultigridPaddedWidth.name.c_str()   , MultigridPaddedWidth.value   );
 	printf( "\t[--%s <multigrid padded height>=%d]\n"  , MultigridPaddedHeight.name.c_str()  , MultigridPaddedHeight.value  );
+#ifdef NEW_CODE
+	printf( "\t[--%s <collapse epsilon>=%g]\n" , CollapseEpsilon.name.c_str() , CollapseEpsilon.value );
+#endif // NEW_CODE
 	printf( "\t[--%s]\n" , Serial.name.c_str() );
 	printf( "\t[--%s]\n" , NoHelp.name.c_str() );
 	printf( "\t[--%s]\n" , Paused.name.c_str() );
@@ -1001,7 +1012,12 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::Init( void )
 	gradientModulation = GradientModulation.value;
 
 
+#ifdef NEW_CODE
+	mesh.read( Input.values[0].c_str() , DetailVerbose.set , CollapseEpsilon.value );
+#else // !NEW_CODE
 	mesh.read( Input.values[0].c_str() , DetailVerbose.set );
+#endif // NEW_CODE
+
 	{
 		std::string ext = ToLower( GetFileExtension( Input.values[1] ) );
 		if( ext==std::string( "normap" ) ) ReadBinaryImage( highFrequencyTexture , Input.values[1] );

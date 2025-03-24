@@ -42,11 +42,17 @@ using namespace MishaK;
 
 CmdLineParameter< std::string > Input( "in" ) , Output( "out" );
 CmdLineParameterArray< unsigned int , 2 > Resolution( "res" );
+#ifdef NEW_CODE
+CmdLineParameter< double > CollapseEpsilon( "collapse" , 0 );
+#endif // NEW_CODE
 CmdLineReadable Cells( "cells" ) , ID( "id" );
 
 CmdLineReadable* params[] =
 {
 	&Input , &Output , &Resolution , &Cells , &ID ,
+#ifdef NEW_CODE
+	&CollapseEpsilon ,
+#endif // NEW_CODE
 	NULL
 };
 
@@ -56,6 +62,9 @@ void ShowUsage( const char* ex )
 	printf( "\t --%s <input mesh>\n" , Input.name.c_str() );
 	printf( "\t --%s <texture width, texture height> \n" , Resolution.name.c_str() );
 	printf( "\t[--%s <output texture>]\n" , Output.name.c_str() );
+#ifdef NEW_CODE
+	printf( "\t[--%s <collapse epsilon>=%g]\n" , CollapseEpsilon.name.c_str() , CollapseEpsilon.value );
+#endif // NEW_CODE
 	printf( "\t[--%s]\n" , Cells.name.c_str() );
 	printf( "\t[--%s]\n" , ID.name.c_str() );
 }
@@ -73,6 +82,9 @@ int main( int argc , char* argv[] )
 	std::vector< SimplexIndex< K > > simplices;
 
 	ReadTexturedMesh( Input.value , vertices , textureCoordinates , simplices );
+#ifdef NEW_CODE
+	if( CollapseEpsilon.value>0 ) CollapseVertices( vertices , simplices , CollapseEpsilon.value );
+#endif // NEW_CODE
 
 	RegularGrid< K , Point< double , 3 > > mask( Resolution.values );
 

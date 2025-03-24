@@ -36,11 +36,16 @@ DAMAGE.
 #include <Misha/Miscellany.h>
 #include <Misha/Geometry.h>
 #include <Src/VectorIO.h>
+#ifdef NEW_CODE
+#include <Src/MeshIO.h>
+#endif // NEW_CODE
 
 namespace MishaK
 {
 	template< typename Real > using PlyVertexFactory = VertexFactory::PositionFactory< Real , 3 >;
 	template< typename Real > using PlyVertex = typename PlyVertexFactory< Real >::VertexType;
+#ifdef NEW_CODE
+#else // !NEW_CODE
 	template< typename Real >
 	struct PlyTexturedFace
 	{
@@ -123,6 +128,7 @@ namespace MishaK
 		{ "vertex_indices", PLY_INT, PLY_INT, offsetof(PlyTexturedFace, vertices), 1, PLY_UCHAR, PLY_INT, (int)offsetof(PlyTexturedFace, nr_vertices) },
 		{ "texcoord", PLY_DOUBLE, PLY_DOUBLE, (int)offsetof(PlyTexturedFace, uv_coordinates), 1, PLY_UCHAR, PLY_INT, (int)offsetof(PlyTexturedFace, nr_uv_coordinates) },
 	};
+#endif // NEW_CODE
 
 
 	template< typename GeometryReal >
@@ -416,11 +422,19 @@ namespace MishaK
 			else PlyWritePolygons( fileName.c_str() , vertices , plyTexturedFaces , PlyVertex< GeometryReal >::WriteProperties , PlyVertex< GeometryReal >::WriteComponents , PlyTexturedFace< GeometryReal >::WriteProperties , PlyTexturedFace< GeometryReal >::WriteComponents , PLY_BINARY_NATIVE );
 		}
 
+#ifdef NEW_CODE
+		void read( std::string meshName , bool verbose , double eps )
+#else // !NEW_CODE
 		void read( std::string meshName , bool verbose )
+#endif // NEW_CODE
 		{
 			vertices.clear();
 			triangles.clear();
 			textureCoordinates.clear();
+#ifdef NEW_CODE
+			ReadTexturedMesh( meshName , vertices , textureCoordinates , triangles );
+			if( eps>0 ) CollapseVertices( vertices , triangles , eps );
+#else // !NEW_CODE
 			std::string ext = ToLower( GetFileExtension( meshName ) );
 			if( ext==std::string( "ply" ) )
 			{
@@ -658,6 +672,7 @@ namespace MishaK
 				}
 			}
 			else MK_ERROR_OUT( "Unrecognized file extension: " , meshName );
+#endif // NEW_CODE
 
 			// Flip the vertical axis
 #ifdef USE_TEXTURE_TRIANGLES

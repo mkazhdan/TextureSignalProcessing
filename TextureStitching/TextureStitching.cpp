@@ -85,6 +85,9 @@ CmdLineReadable Serial( "serial" );
 #else // !NO_OPEN_GL_VISUALIZATION
 CmdLineReadable Nearest( "nearest" );
 #endif // NO_OPEN_GL_VISUALIZATION
+#ifdef NEW_CODE
+CmdLineParameter< double > CollapseEpsilon( "collapse" , 0 );
+#endif // NEW_CODE
 
 #ifdef DEBUG_BAD_LOOP
 CmdLineParameterArray< int , 2 > DebugChartCell( "debugChartCell" );
@@ -108,6 +111,9 @@ CmdLineReadable* params[] =
 #else // !NO_OPEN_GL_VISUALIZATION
 	&Nearest ,
 #endif // NO_OPEN_GL_VISUALIZATION
+#ifdef NEW_CODE
+	&CollapseEpsilon ,
+#endif // NEW_CODE
 	NULL
 };
 
@@ -146,6 +152,9 @@ void ShowUsage( const char *ex )
 	printf( "\t[--%s <multigrid block height>=%d]\n" , MultigridBlockHeight.name.c_str() , MultigridBlockHeight.value );
 	printf( "\t[--%s <multigrid padded width>=%d]\n" , MultigridPaddedWidth.name.c_str() , MultigridPaddedWidth.value );
 	printf( "\t[--%s <multigrid padded height>=%d]\n" , MultigridPaddedHeight.name.c_str() , MultigridPaddedHeight.value );
+#ifdef NEW_CODE
+	printf( "\t[--%s <collapse epsilon>=%g]\n" , CollapseEpsilon.name.c_str() , CollapseEpsilon.value );
+#endif // NEW_CODE
 	printf( "\t[--%s]\n", Serial.name.c_str() );
 	printf( "\t[--%s]\n", DetailVerbose.name.c_str() );
 	printf( "\t[--%s]\n" , NoHelp.name.c_str() );
@@ -1100,7 +1109,11 @@ void Stitching< PreReal , Real , TextureBitDepth >::Init( void )
 	levels = std::max< int >( Levels.value , 1 );
 	interpolationWeight = InterpolationWeight.value;
 
+#ifdef NEW_CODE
+	mesh.read( In.values[0] , DetailVerbose.set , CollapseEpsilon.value );
+#else // !NEW_CODE
 	mesh.read( In.values[0] , DetailVerbose.set );
+#endif // NEW_CODE
 	if( InputLowFrequency.set ) ReadImage< TextureBitDepth >( lowFrequencyTexture , InputLowFrequency.value );
 
 	// Define centroid and scale for visualization

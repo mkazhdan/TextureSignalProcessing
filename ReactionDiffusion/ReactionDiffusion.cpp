@@ -84,6 +84,10 @@ CmdLineParameter< float > AnisotropyScale( "aScl" , 1.f );
 CmdLineParameter< float > AnisotropyExponent( "aExp" , 0.f );
 CmdLineReadable IntrinsicVectorField( "intrinsicVF" );
 
+#ifdef NEW_CODE
+CmdLineParameter< double > CollapseEpsilon( "collapse" , 0 );
+#endif // NEW_CODE
+
 CmdLineReadable* params[] =
 {
 	&Input , &Output , &OutputSteps , &Width , &Height , &Speed , &FeedKillRates , &DiffusionScale , &SamplesFraction , &CameraConfig , &Levels , &UseDirectSolver , &Serial , &DisplayMode , &MultigridBlockHeight , &MultigridBlockWidth , &MultigridPaddedHeight , &MultigridPaddedWidth ,
@@ -94,6 +98,9 @@ CmdLineReadable* params[] =
 	&ApproximateIntegration , &Dots ,
 	&NoHelp ,
 	&VectorField , &IntrinsicVectorField , &AnisotropyScale , &AnisotropyExponent , 
+#ifdef NEW_CODE
+	&CollapseEpsilon ,
+#endif // NEW_CODE
 	NULL
 };
 
@@ -131,6 +138,9 @@ void ShowUsage( const char* ex )
 	printf( "\t[--%s <input vector field>]\n" , VectorField.name.c_str() );
 	printf( "\t[--%s <anisotropy scale>=%f]\n" , AnisotropyScale.name.c_str() , AnisotropyScale.value );
 	printf( "\t[--%s <anisotropy exponent>=%f]\n" , AnisotropyExponent.name.c_str() , AnisotropyExponent.value );
+#ifdef NEW_CODE
+	printf( "\t[--%s <collapse epsilon>=%g]\n" , CollapseEpsilon.name.c_str() , CollapseEpsilon.value );
+#endif // NEW_CODE
 	printf( "\t[--%s]\n" , IntrinsicVectorField.name.c_str() );
 	printf( "\t[--%s]\n" , Serial.name.c_str() );
 
@@ -846,8 +856,12 @@ void GrayScottReactionDiffusion< PreReal , Real >::Init( void )
 	for( int ab=0 ; ab<2 ; ab++ ) diffusionRates[ab] *= DiffusionScale.value / 10.;
 	textureWidth = Width.value;
 	textureHeight = Height.value;
+#ifdef NEW_CODE
+	mesh.read( Input.value , DetailVerbose.set , CollapseEpsilon.value );
+#else // !NEW_CODE
 	mesh.read( Input.value , DetailVerbose.set );
-
+#endif // NEW_CODE
+	
 	if( RandomJitter.set )
 	{
 		if( RandomJitter.value ) srand( RandomJitter.value );

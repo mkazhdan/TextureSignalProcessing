@@ -34,12 +34,17 @@ DAMAGE.
 #include "Misha/PlyVertexData.h"
 #include "Misha/Geometry.h"
 #include "Misha/CmdLineParser.h"
+#include "Misha/RegularGrid.h"
 
 namespace MishaK
 {
-
 	template< typename Index , typename Real , unsigned int Dim , unsigned int TDim >
 	void ReadTexturedMesh( std::string fileName , std::vector< Point< Real , Dim > > &vertices , std::vector< Point< Real , TDim > > &textureCoordinates , std::vector< SimplexIndex< 2 , Index > > &simplices );
+
+#ifdef NEW_CODE
+	template< typename Index , typename Real , unsigned int Dim >
+	void CollapseVertices( std::vector< Point< Real , Dim > > &vertices , std::vector< SimplexIndex< 2 , Index > > &simplices , double eps );
+#endif // NEW_CODE
 
 	template< typename Index , typename Real > struct PlyTexturedFace;
 
@@ -239,6 +244,91 @@ namespace MishaK
 		}
 		else MK_ERROR_OUT( "Unrecognized file type: " , fileName , " -> " , ext );
 	}
+
+#ifdef NEW_CODE
+	template< typename Index , typename Real , unsigned int Dim >
+	void CollapseVertices( std::vector< Point< Real , Dim > > &vertices , std::vector< SimplexIndex< 2 , Index > > &simplices , double eps )
+	{
+		auto SetMinMax = [&]( Point< Real , Dim > &min , Point< Real , Dim > &max )
+			{
+				min = max = Point< Real , Dim >( vertices[0] );
+				for( unsigned int i=0 ; i<vertices.size() ; i++ ) for( unsigned int j=0 ; j<Dim ; j++ ) min[j] = std::min< Real >( min[j] , vertices[i][j] ) , max[j] = std::max< double >( max[j] , vertices[i][j] );
+			};
+
+
+		Point< Real , Dim > min , max;
+		SetMinMax( min , max );
+
+		std::vector< int > old2new( vertices.size() );
+		for( unsigned int i=0 ; i<vertices.size() ; i++ ) old2new[i] = i;
+
+		auto NewIndex = [&]( unsigned int i )
+			{
+				while( old2new[i]!=i ) i = old2new[i];
+				return i;
+			};
+
+		// Need to choose a resolution so that:
+		//	    1/res >= eps
+		// <=>  res <= 1/eps
+		// [NOTE] Distances are measured after rescaling to fit in the unit cube
+		const long long res = static_cast< long long >( floor( 1./eps ) );
+		auto VIndex = [&]( Point< Real , Dim > p )
+			{
+				p -= min;
+				for( unsigned int j=0 ; j<Dim ; j++ ) p[j] /= max[j] - min[j];
+				typename RegularGrid< Dim >::Index I;
+				for( unsigned int d=0 ; d<Dim ; d++ ) I[d] = (int)( p[d] * res );
+				return I;
+			};
+
+		std::map< typename RegularGrid< Dim >::Index , std::vector< unsigned int > > vMap;
+		for( unsigned int i=0 ; i<vertices.size() ; i++ ) vMap[ VIndex( Point< Real , Dim >( vertices[i] ) ) ].push_back( i );
+
+		for( unsigned int i=0 ; i<vertices.size() ; i++ ) if( old2new[i]==i )
+		{
+			Point< Real , Dim > p( vertices[i] );
+			typename RegularGrid< Dim >::Index I = VIndex( p );
+			typename RegularGrid< Dim >::Range range;
+			std::vector< int > matches;
+			for( unsigned int d=0 ; d<Dim ; d++ ) range.first[d] = I[d]-1 , range.second[d] = I[d]+1;
+
+
+			auto Kernel = [&]( typename RegularGrid< Dim >::Index I )
+				{
+					auto iter = vMap.find( I );
+					if( iter!=vMap.end() )
+					{
+						for( unsigned int j=0 ; j<iter->second.size() ; j++ )
+						{
+							Point< Real , Dim > q( vertices[ iter->second[j] ] );
+							if( Point< Real , Dim >::Length( p - q )<eps ) matches.push_back( iter->second[j] );
+						}
+					}
+				};
+			range.process( Kernel );
+
+			if( !matches.size() ) MK_ERROR_OUT( "No matches found" );
+
+			for( unsigned int j=0 ; j<matches.size() ; j++ ) old2new[ NewIndex( matches[j] ) ] = i;
+
+		}
+		std::map< int , int > _vMap;
+		for( unsigned int i=0 ; i<vertices.size() ; i++ ) _vMap[ NewIndex( i ) ] = 0;
+		{
+			int idx = 0;
+			for( auto iter=_vMap.begin() ; iter!=_vMap.end() ; iter++ ) iter->second = idx++;
+		}
+
+		std::vector< Point< Real , Dim > > _vertices( _vMap.size() );
+		std::vector< SimplexIndex< 2 , Index > > _simplices( simplices.size() );
+		for( unsigned int i=0 ; i<vertices.size() ; i++ ) _vertices[ _vMap[ NewIndex(i) ] ] = vertices[i];
+		for( unsigned int i=0 ; i<simplices.size() ; i++ ) for( unsigned int j=0 ; j<3 ; j++ ) _simplices[i][j] = _vMap[ NewIndex( simplices[i][j] ) ];
+
+		vertices = _vertices;
+		simplices = _simplices;
+	}
+#endif // NEW_CODE
 
 	template< typename Index , typename Real >
 	struct PlyTexturedFace

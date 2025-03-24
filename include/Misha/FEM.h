@@ -526,9 +526,9 @@ namespace MishaK
 	template< class Real > const FEM::CotangentVector< Real > FEM::RightTriangle< Real >::CornerDifferentials[] = { FEM::CotangentVector< Real >( Point2D< Real >(-1,-1) ) , FEM::CotangentVector< Real >( Point2D< Real >( 1, 0) ) , FEM::CotangentVector< Real >( Point2D< Real >( 0,1) ) };
 	template< class Real > const FEM::  TangentVector< Real > FEM::RightTriangle< Real >::EdgeDirections [] = { FEM::  TangentVector< Real >( Point2D< Real >(-1, 1) ) , FEM::  TangentVector< Real >( Point2D< Real >( 0,-1) ) , FEM::  TangentVector< Real >( Point2D< Real >( 1,0) ) };
 
-	template<> const unsigned int FEM::ElementInfo< FEM::ELEMENT_VERTEX   >::ElementsPerTriangle = 3;
-	template<> const unsigned int FEM::ElementInfo< FEM::ELEMENT_EDGE     >::ElementsPerTriangle = 3;
-	template<> const unsigned int FEM::ElementInfo< FEM::ELEMENT_TRIANGLE >::ElementsPerTriangle = 1;
+	template<> inline const unsigned int FEM::ElementInfo< FEM::ELEMENT_VERTEX   >::ElementsPerTriangle = 3;
+	template<> inline const unsigned int FEM::ElementInfo< FEM::ELEMENT_EDGE     >::ElementsPerTriangle = 3;
+	template<> inline const unsigned int FEM::ElementInfo< FEM::ELEMENT_TRIANGLE >::ElementsPerTriangle = 1;
 
 #include "FEM.inl"
 
