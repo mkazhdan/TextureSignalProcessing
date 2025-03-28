@@ -33,7 +33,7 @@ void _Rasterize( Triangle triangle , RasterizationFunctor && F , Range< 2 > cell
 template< bool NodeAtCellCenter , typename RasterizationFunctor /* = std::function< void ( Index ) > )*/ >
 void RasterizeNodes( Triangle triangle , RasterizationFunctor && F , Range< 2 > cellRange )
 {
-	return _Rasterize< NodeAtCellCenter , -1 >( triangle , std::forward< RasterizationFunctor >( F ) , cellRange );
+	return _Rasterize< NodeAtCellCenter , (unsigned int)-1 >( triangle , std::forward< RasterizationFunctor >( F ) , cellRange );
 }
 
 template< bool Nearest , bool NodeAtCellCenter , typename RasterizationFunctor /* = std::function< void ( Index ) > )*/ >
