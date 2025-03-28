@@ -50,9 +50,6 @@ DAMAGE.
 #include "Exceptions.h"
 #include "Array.h"
 
-
-#define PAN_FIX 1
-
 namespace MishaK
 {
 	template< typename V > struct FieldOf{ using F = typename V::R; };
@@ -127,17 +124,12 @@ namespace MishaK
 
 	template< class Real > Real Random( void );
 
-#ifdef NEW_GEOMETRY_CODE
 	template< typename Real , int Rows , int Cols > class Matrix;
 	template< typename Real , int Dim > using SquareMatrix = Matrix< Real , Dim , Dim >;
-#else // !NEW_GEOMETRY_CODE
-	template< class Real , int Dim > class SquareMatrix;
-#endif // NEW_GEOMETRY_CODE
 
 	template< typename Real , unsigned int Dim > class XForm;
 
 
-#ifdef NEW_GEOMETRY_CODE
 	template< typename T , unsigned int Dim , typename Real=T > struct Point;
 
 	template< typename T , unsigned int Dim , typename Real >
@@ -311,154 +303,6 @@ namespace MishaK
 	};
 
 	template< typename T , unsigned int Dim , typename Real > Point< T , Dim , Real > operator * ( Real s , Point< T , Dim , Real > p ){ return p*s; }
-#else // !NEW_GEOMETRY_CODE
-	template< typename Real , unsigned int Dim > struct Point;
-
-	template< typename Real , unsigned int Dim >
-	struct Point : public InnerProductSpace< Real , Point< Real , Dim > >
-	{
-		typedef InnerProductSpace< Real , Point > IPS;
-
-		template< class ... Points >
-		static void _AddColumnVector( SquareMatrix< Real , Dim >& x , int c , Point point , Points ... points )
-		{
-			for( int r=0 ; r<Dim ; r++ ) x( c , r ) = point[r];
-			_AddColumnVector( x , c+1 , points ... );
-		}
-		static void _AddColumnVector( SquareMatrix< Real , Dim >& x , int c ){ ; }
-		void _init( const Real *values , unsigned int sz )
-		{
-			if     ( sz==0   ) memset( coords , 0 , sizeof(coords) );
-			else if( sz==Dim ) memcpy( coords , values , sizeof(coords) );
-			else MK_ERROR_OUT( "Should never be called" );
-		}
-
-	public:
-		/////////////////////////////////
-		// Inner product space methods //
-		void Add            ( const Point& p );
-		void Scale          ( Real s );
-		Real InnerProduct   ( const Point& p ) const;
-		/////////////////////////////////
-
-		Real coords[Dim];
-		Point( void ){ memset( coords , 0 , sizeof(Real)*Dim ); }
-		template< typename Real2 >
-		Point( Point< Real2 , Dim > p ){ for( int i=0 ; i<Dim ; i++ ) coords[i] = (Real)p.coords[i]; }
-		Point( std::initializer_list< Real > l ){ memset( coords , 0 , sizeof(Real)*Dim ) ; for( int i=0 ; i<Dim && l.size() ; i++ ) coords[i] = l.begin()[i]; }
-		template< typename ... Reals >
-		Point( Real value , Reals ... values )
-		{
-			static_assert( 1+sizeof...(values)==Dim  , "[ERROR] Point< Real , Dim >::Point: Invalid number of coefficients" );
-			const Real _values[] = { value , (Real)values... };
-			_init( _values , Dim );
-		}
-		Point( const Real *values ){ _init( values , Dim ); }
-
-		template< typename Real2 >
-		operator Point< Real2 , Dim > ( void ) const
-		{
-			Point< Real2, Dim > p;
-			for( int d=0 ; d<Dim ; d++ ) p.coords[d] = Real2( coords[d] ); 
-			return p;
-		}
-		Real& operator [] (int idx) { return coords[idx]; }
-		const Real& operator [] (int idx) const { return coords[idx]; }
-
-		template< class ... Points > static Point CrossProduct( Points ... points )
-		{
-			static_assert( sizeof ... ( points )==Dim-1 , "Number of points in cross-product must be one less than the dimension" );
-			SquareMatrix< Real , Dim > x;
-			_AddColumnVector( x , 0 , points ... );
-			Point p;
-			for( int d=0 ; d<Dim ; d++ ) p[d] = ( d&1 ) ? -x.subDeterminant( Dim-1 , d ) : x.subDeterminant( Dim-1 , d );
-			return p;
-		}
-
-		static Point CrossProduct( const Point *points )
-		{
-			XForm< Real , Dim > x;
-			for( unsigned int d=0 ; d<Dim-1 ; d++ ) for( unsigned int c=0 ; c<Dim ; c++ ) x(d,c) = points[d][c];
-			Point p;
-			for( unsigned int d=0 ; d<Dim ; d++ ) p[d] = ( d&1 ) ? -x.subDeterminant( Dim-1 , d ) : x.subDeterminant( Dim-1 , d );
-			return p;
-		}
-
-		static Point CrossProduct( Point *points ){ return CrossProduct( ( const Point * )points ); }
-
-
-		static Point< Real , Dim > Min( Point< Real , Dim > p , Point< Real , Dim > q ){ Point< Real , Dim > m ; for( int d=0 ; d<Dim ; d++ ) m[d] = std::min< Real >( p[d] , q[d] ) ; return m; }
-		static Point< Real , Dim > Max( Point< Real , Dim > p , Point< Real , Dim > q ){ Point< Real , Dim > m ; for( int d=0 ; d<Dim ; d++ ) m[d] = std::max< Real >( p[d] , q[d] ) ; return m; }
-
-		friend std::ostream &operator << ( std::ostream &os , const Point &p )
-		{
-			os << "( ";
-			for( int d=0 ; d<Dim ; d++ )
-			{
-				if( d ) os << " , ";
-				os << p[d];
-			}
-			return os << " )";
-		}
-	};
-	template< typename Real , unsigned int Dim > Point< Real , Dim > operator * ( Real s , Point< Real , Dim > p ){ return p*s; }
-
-	template< typename Real >
-	struct Point< Real , (unsigned int)-1 > : public InnerProductSpace< Real , Point< Real , (unsigned int)-1 > >
-	{
-	public:
-		/////////////////////////////////
-		// Inner product space methods //
-		void Add( const Point& p )
-		{
-			if( !_dim ){ _resize( p._dim ) ; for( unsigned int i=0 ; i<_dim ; i++ ) _coords[i] = p._coords[i]; }
-			else if( _dim==p._dim ) for( unsigned int i=0 ; i<_dim ; i++ ) _coords[i] += p._coords[i];
-			else MK_ERROR_OUT( "Dimensions don't match: " , _dim , " != " , p._dim );
-		}
-		void Scale( Real s ){ for( unsigned int i=0 ; i<_dim ; i++ ) (*this)[i] *= s; }
-		Real InnerProduct( const Point &p ) const
-		{
-			Real dot;
-			if( _dim!=p._dim ) MK_ERROR_OUT( "Dimensions differ: " , _dim , " != " , p._dim );
-			for( size_t d=0 ; d<_dim ; d++ ) dot += _coords[d] * p._coords[d];
-			return dot;
-		}
-		/////////////////////////////////
-
-		Point( void ) : _coords(NULL) , _dim(0){}
-		Point( size_t dim ) : _coords(NULL) , _dim(0) { if( dim ){ _resize( (unsigned int)dim ) ; memset( _coords , 0 , sizeof(Real)*_dim ); } }
-		Point( const Point &p ) : _coords(NULL) , _dim(0) { if( p._dim ){ _resize( p._dim ) ; memcpy( _coords , p._coords , sizeof(Real)*_dim ); } }
-		~Point( void ){ delete[] _coords ; _coords = NULL; }
-
-		Point &operator = ( const Point &p )
-		{
-			if( !_dim ){ _resize( p._dim ) ; memcpy( _coords , p._coords , sizeof(Real)*_dim ); }
-			else if( _dim==p._dim ) memcpy( _coords , p._coords , sizeof(Real)*_dim );
-			else MK_ERROR_OUT( "Dimensions don't match: " , _dim , " != " , p._dim );
-			return *this;
-		}
-
-		unsigned int dim( void ) const { return _dim; }
-		Real &operator[]( size_t idx ){ return _coords[idx]; }
-		const Real &operator[]( size_t idx ) const { return _coords[idx]; }
-
-		friend std::ostream &operator << ( std::ostream &os , const Point &p )
-		{
-			os << "( ";
-			for( size_t d=0 ; d<p.dim() ; d++ )
-			{
-				if( d ) os << " , ";
-				os << p[d];
-			}
-			return os << " )";
-		}
-	protected:
-		Real *_coords;
-		unsigned int _dim;
-		void _resize( unsigned int dim ){ if( dim ){ _coords = new Real[dim] ; _dim = dim; } }
-	};
-	template< typename Real > Point< Real , (unsigned int)-1 > operator * ( Real s , Point< Real , (unsigned int)-1 > p ){ return p*s; }
-#endif // NEW_GEOMETRY_CODE
 
 	/** This templated class represents a Ray.*/
 	template< typename T , unsigned int Dim , typename Real=T >
@@ -529,7 +373,6 @@ namespace MishaK
 
 		Matrix< Real , Rows , Cols > transpose( void ) const;
 
-#ifdef NEW_GEOMETRY_CODE
 		template< typename T >
 		Point< T , Rows , Real > operator * ( const Point<  T , Cols , Real > &v ) const;
 
@@ -538,14 +381,6 @@ namespace MishaK
 
 		template< typename T >
 		Real operator () ( const Point< T , Rows , Real >& v1 , const Point< T , Cols , Real >& v2 ) const;
-#else // !NEW_GEOMETRY_CODE
-		template<class Real2>
-		Point<Real2,Rows> operator * ( const Point< Real2 , Cols >& v ) const;
-		template<class Real2>
-		Point<Real2,Rows> operator () ( const Point< Real2 , Cols >& v ) const;
-
-		Real operator () ( const Point< Real , Rows >& v1 , const Point< Real , Cols >& v2 ) const;
-#endif // NEW_GEOMETRY_CODE
 
 		friend std::ostream &operator << ( std::ostream &os , const Matrix &m )
 		{
@@ -639,7 +474,6 @@ namespace MishaK
 		friend std::ostream &operator << ( std::ostream &os , const Matrix &m ){ return os <<  "{ }"; }
 	};
 
-#ifdef NEW_GEOMETRY_CODE
 	// Need forward declaration to support the characteristic polynomial
 	namespace Polynomial{ template< unsigned int Dim , unsigned int Degree , typename Real > class Polynomial; }
 
@@ -684,11 +518,14 @@ namespace MishaK
 
 		Matrix< Real , Dim , Dim > transpose( void ) const;
 
-		template<class Real2>
-		Point<Real2,Dim> operator * ( const Point< Real2 , Dim >& v ) const;
-		template<class Real2>
-		Point<Real2,Dim> operator () ( const Point< Real2 , Dim >& v ) const;
-		Real operator () ( const Point< Real , Dim >& v1 , const Point< Real , Dim > &v2 ) const;
+		template< typename T >
+		Point< T , Dim , Real > operator * ( const Point< T , Dim , Real > &v ) const;
+
+		template< typename T >
+		Point< T , Dim , Real > operator() ( const Point< T , Dim , Real > &v ) const;
+
+		template< typename T >
+		Real operator () ( const Point< T , Dim , Real >& v1 , const Point< T , Dim , Real >& v2 ) const;
 
 		friend std::ostream &operator << ( std::ostream &os , const Matrix &m )
 		{
@@ -777,108 +614,6 @@ namespace MishaK
 		Matrix transpose( void ) const { return Matrix(); }
 	};
 
-#else // !NEW_GEOMETRY_CODE
-
-	template< class Real >
-	class Matrix< Real , 0 , 0 > : public InnerProductSpace< Real , Matrix< Real , 0 , 0 > >
-	{
-		static const unsigned int Cols = 0;
-		static const unsigned int Rows = 0;
-	public:
-		//////////////////////////
-		// Vector space methods //
-		void Add            ( const Matrix& m ){}
-		void Scale          ( Real s ){}
-		Real InnerProduct   ( const Matrix& m ) const { return (Real)0; }
-		//////////////////////////
-
-		Matrix( void ){}
-
-		template< class Real2 >
-		operator Matrix< Real2 , Cols , Rows > ( void ) const{}
-
-		template< int C , int R >
-		Matrix( const Matrix< Real , C , R > &m ){}
-
-		Real& operator () ( int c , int r ) { MK_ERROR_OUT( "Should not be accessing the entries of this matrix" ) ; Real v=0 ; return v; }
-		const Real& operator () ( int c , int r ) const { MK_ERROR_OUT( "Should not be accessing the entries of this matrix" ) ; Real v=0 ; return v; }
-
-		template< int Cols1 >
-		Matrix< Real , Cols1 , Rows > operator * ( const Matrix< Real , Cols1 , Cols >& m ) const { return Matrix< Real , Cols1 , Rows >(); }
-
-		Matrix< Real , Rows , Cols > transpose( void ) const{ return Matrix< Real , Rows , Cols >(); }
-
-		template< class Real2 >
-		Point< Real2 , Rows > operator * ( const Point< Real2 , Cols >& v ) const { return Point< Real2 , Rows >(); }
-
-		template< class Real2 >
-		Point< Real2 , Rows > operator () ( const Point< Real2 , Cols >& v ) const { return Point< Real2 , Rows >(); }
-
-		friend std::ostream &operator << ( std::ostream &os , const Matrix &m ){ return os <<  "{ }"; }
-	};
-
-	// Need forward declaration to support the characteristic polynomial
-	namespace Polynomial{ template< unsigned int Dim , unsigned int Degree , typename Real > class Polynomial; }
-
-	template< class Real , int Dim >
-	class SquareMatrix : public Algebra< Real , SquareMatrix< Real , Dim > > , public Matrix< Real , Dim , Dim >
-	{
-	public:
-		using Matrix< Real , Dim , Dim >::coords;
-		////////////////////////////////
-		// Additional algebra methods //
-		void Multiply ( const SquareMatrix& m );
-		void SetIdentity( void );
-		////////////////////////////////
-
-		SquareMatrix( const Matrix< Real , Dim , Dim >& m ){ memcpy( coords , m.coords , sizeof(Real)*Dim*Dim ); }
-		SquareMatrix( void )                               { memset( coords , 0 ,        sizeof(Real)*Dim*Dim ); }
-		static SquareMatrix Identity( void )
-		{
-			SquareMatrix M;
-			M.SetIdentity();
-			return M;
-		}
-		Real subDeterminant( int c , int r ) const;
-		Real determinant( void ) const;
-		Real trace( void ) const;
-		SquareMatrix inverse( bool& success ) const;
-		SquareMatrix inverse( void ) const;
-		SquareMatrix transpose( void ) const { return Matrix< Real , Dim , Dim >::transpose(); }
-		class Polynomial::Polynomial< 1 , Dim , Real > characteristicPolynomial( void ) const;
-
-		// [NOTE] Disabling because we would like the product to be returned as a square matrix
-		//	using Matrix< Real , Dim , Dim >::operator *;
-		using Matrix< Real , Dim , Dim >::operator ();
-		template< class Real2 > Point< Real2 , Dim-1 > operator () ( const Point< Real2 , Dim-1 >& v ) const;
-	protected:
-		friend SquareMatrix< double , Dim+1 >;
-		class Polynomial::Polynomial< 1 , Dim , Real > _characteristicPolynomial( SquareMatrix< char , Dim > mask ) const;
-	};
-
-	template< class Real , int Dim1 , int Dim2 > Matrix< Real , Dim2 , Dim1 > operator * ( const SquareMatrix< Real , Dim1 >& m1 , const Matrix< Real , Dim2 , Dim1 >& m2 ){ return ( Matrix< Real , Dim1 , Dim1 > )m1 * m2; }
-	template< class Real , int Dim1 , int Dim2 > Matrix< Real , Dim1 , Dim2 > operator * ( const Matrix< Real , Dim1 , Dim2 >& m1 , const SquareMatrix< Real , Dim1 >& m2 ){ return m1 * ( Matrix< Real , Dim1 , Dim1 > )m2; }
-
-	template< class Real >
-	class SquareMatrix< Real , 0 > : public Algebra< Real , SquareMatrix< Real , 0 > >
-	{
-	public:
-		static const unsigned int Dim = 0;
-		////////////////////////////////
-		// Additional algebra methods //
-		void Multiply ( const SquareMatrix& m ){;}
-		void SetIdentity( void ){;}
-		////////////////////////////////
-
-		Real &operator () ( int c , int r ){ MK_ERROR_OUT( "Should not be accessing the entries of a 0x0 matrix" ) ; Real v ; return v; }
-		const Real &operator () ( int c , int r ) const { MK_ERROR_OUT( "Should not be accessing the entries of a 0x0 matrix" ) ; Real v ; return v; }
-		Real determinant( void ) const { return 0; }
-		Real trace( void ) const { return 0; }
-		SquareMatrix transpose( void ) const { return Matrix< Real , Dim , Dim >::transpose(); }
-	};
-#endif // NEW_GEOMETRY_CODE
-
-#ifdef NEW_GEOMETRY_CODE
 	template< typename T , unsigned int Dim1 , unsigned int Dim2 , typename Real >
 	Matrix< Real , Dim2 , Dim1 > OuterProduct( Point< T , Dim1 , Real > p1 , Point< T , Dim2 , Real > p2 )
 	{
@@ -907,23 +642,6 @@ namespace MishaK
 			for( unsigned int i=0 ; i<Dim ; i++ ) for( unsigned int j=0 ; j<Dim ; j++ ) op(j,i) = p1[i] * p2[j];
 		return op;
 	}
-#else // !NEW_GEOMETRY_CODE
-	template< typename Real , unsigned int Dim1 , unsigned int Dim2 >
-	Matrix< Real , Dim2 , Dim1 > OuterProduct( Point< Real , Dim1 > p1 , Point< Real , Dim2 > p2 )
-	{
-		Matrix< Real , Dim2 , Dim1 > op;
-		for( unsigned int i=0 ; i<Dim1 ; i++ ) for( unsigned int j=0 ; j<Dim2 ; j++ ) op(j,i) = p1[i] * p2[j];
-		return op;
-	}
-
-	template< typename Real , unsigned int Dim >
-	SquareMatrix< Real , Dim > OuterProduct( Point< Real , Dim > p1 , Point< Real , Dim > p2 )
-	{
-		SquareMatrix< Real , Dim > op;
-		for( unsigned int i=0 ; i<Dim ; i++ ) for( unsigned int j=0 ; j<Dim ; j++ ) op(j,i) = p1[i] * p2[j];
-		return op;
-	}
-#endif // NEW_GEOMETRY_CODE
 
 	template< class V , int Dim , class _R = typename V::R >
 	class Gradient : public VectorSpace< _R , Gradient< V , Dim , _R > >
@@ -1551,7 +1269,6 @@ namespace MishaK
 		const Index &operator[] ( unsigned int i ) const { return idx[i]; }
 		template< typename Real , typename Vertex >
 		void split( const Real values[K+1] , std::vector< Vertex > &vertices , EdgeTable< Index > &edgeTable , std::vector< SimplexIndex >& back , std::vector< SimplexIndex >& front ) const;
-#ifdef NEW_GEOMETRY_CODE
 		template< typename ... UInts >
 		SimplexIndex< K - (unsigned int)sizeof...( UInts ) - 1 > face( unsigned int faceIndex , UInts ... faceIndices ) const;
 		//	template< typename ... UInts >
@@ -1565,11 +1282,6 @@ namespace MishaK
 		template< unsigned int _K , typename FaceFunctor /* = std::function< void ( SimplexIndex< _K , Index > )*/ >
 		static void ProcessFaces( FaceFunctor F );
 
-#else // !NEW_GEOMETRY_CODE
-		//	SimplexIndex< K-1 , Index > face( unsigned int faceIndex ) const;
-		SimplexIndex< K-1 , Index > face( unsigned int faceIndex , bool &oriented ) const;
-#endif // NEW_GEOMETRY_CODE
-
 		// Sorts the indices and returns a boolean indicating if the permutation is even
 		bool sort( void );
 		bool sort( const Index indices[] );
@@ -1582,25 +1294,18 @@ namespace MishaK
 			for( unsigned int k=0 ; k<=K ; k++ ) si[k] = k;
 			return si;
 		}
-#ifdef NEW_GEOMETRY_CODE
 		template< typename ... UInts >
 		static SimplexIndex< K - (unsigned int)sizeof...( UInts ) - 1 , Index > Face( unsigned int faceIndex , UInts ... faceIndices );
 		//	template< typename ... UInts >
 		//	static SimplexIndex< K - (unsigned int)sizeof...( UInts ) - 1 , Index > Face( unsigned int faceIndex , UInts ... faceIndices ){ bool oriented ; return Face( oriented , faceIndex , faceIndices... ); }
-#else // !NEW_GEOMETRY_CODE
-		static SimplexIndex< K-1 , Index > Face( unsigned int k , bool &orientation );
-		static SimplexIndex< K-1 , Index > Face( unsigned int k ){ bool oriented ; return Face( k , oriented ); }
-#endif // NEW_GEOMETRY_CODE
 
 	protected:
-#ifdef NEW_GEOMETRY_CODE
 		SimplexIndex< K-1 , Index > _face( bool &oriented , unsigned int faceIndex ) const;
 
 		static SimplexIndex< K-1 , Index > _Face( bool &oriented , unsigned int k );
 
 		template< unsigned int _K , typename ... UInts , typename FaceFunctor /* = std::function< void ( SimplexIndex< _K , Index > )*/ >
 		void _processFaces( FaceFunctor F , unsigned int faceIndex , UInts ... faceIndices ) const;
-#endif // NEW_GEOMETRY_CODE
 		void _init( unsigned int k )
 		{
 			if( !k ) for( unsigned int k=0 ; k<=K ; k++ ) idx[k] = k;
@@ -1642,7 +1347,6 @@ namespace MishaK
 
 		Permutation< 1 > getPermutation( const Index indices[] ) const { return Permutation<1>(); }
 
-#ifdef NEW_GEOMETRY_CODE
 		// Invokes the function on each of the _K-dimensional faces
 		template< unsigned int _K , typename FaceFunctor /* = std::function< void ( SimplexIndex< _K , Index > )*/ >
 		void processFaces( FaceFunctor F ) const
@@ -1659,7 +1363,6 @@ namespace MishaK
 			for( unsigned int k=0 ; k<=0 ; k++ ) si[k] = k;
 			si.template processFaces< _K >( F );
 		}
-#endif // NEW_GEOMETRY_CODE
 
 	protected:
 		friend std::ostream &operator << ( std::ostream &os , const SimplexIndex &s )

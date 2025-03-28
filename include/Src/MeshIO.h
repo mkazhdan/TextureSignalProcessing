@@ -41,10 +41,8 @@ namespace MishaK
 	template< typename Index , typename Real , unsigned int Dim , unsigned int TDim >
 	void ReadTexturedMesh( std::string fileName , std::vector< Point< Real , Dim > > &vertices , std::vector< Point< Real , TDim > > &textureCoordinates , std::vector< SimplexIndex< 2 , Index > > &simplices );
 
-#ifdef NEW_CODE
 	template< typename Index , typename Real , unsigned int Dim >
 	void CollapseVertices( std::vector< Point< Real , Dim > > &vertices , std::vector< SimplexIndex< 2 , Index > > &simplices , double eps );
-#endif // NEW_CODE
 
 	template< typename Index , typename Real > struct PlyTexturedFace;
 
@@ -245,7 +243,6 @@ namespace MishaK
 		else MK_ERROR_OUT( "Unrecognized file type: " , fileName , " -> " , ext );
 	}
 
-#ifdef NEW_CODE
 	template< typename Index , typename Real , unsigned int Dim >
 	void CollapseVertices( std::vector< Point< Real , Dim > > &vertices , std::vector< SimplexIndex< 2 , Index > > &simplices , double eps )
 	{
@@ -328,7 +325,6 @@ namespace MishaK
 		vertices = _vertices;
 		simplices = _simplices;
 	}
-#endif // NEW_CODE
 
 	template< typename Index , typename Real >
 	struct PlyTexturedFace

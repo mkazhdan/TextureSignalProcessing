@@ -29,6 +29,8 @@ DAMAGE.
 #ifndef CAMERA_INCLUDED
 #define CAMERA_INCLUDED
 #include <Misha/Geometry.h>
+//#include <GL/glew.h>
+//#include <GL/glut.h>
 
 namespace MishaK
 {

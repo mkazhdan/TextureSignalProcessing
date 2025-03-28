@@ -220,11 +220,7 @@ bool Polynomial< 0 , Degree , Real >::_print( std::ostream &ostream , const std:
 }
 
 template< unsigned int Degree , typename Real >
-#ifdef NEW_GEOMETRY_CODE
 Matrix< Real , Polynomial< 0 , Degree , Real >::NumCoefficients , Polynomial< 0 , Degree , Real >::NumCoefficients > Polynomial< 0 , Degree , Real >::EvaluationMatrix( const Point< Real , 0 > positions[NumCoefficients] )
-#else // !NEW_GEOMETRY_CODE
-SquareMatrix< Real , Polynomial< 0 , Degree , Real >::NumCoefficients > Polynomial< 0 , Degree , Real >::EvaluationMatrix( const Point< Real , 0 > positions[NumCoefficients] )
-#endif // NEW_GEOMETRY_CODE
 {
 	SquareMatrix< Real , NumCoefficients > E;
 	E(0,0) = 1;
@@ -561,11 +557,7 @@ Real Polynomial< Dim , Degree , Real >::integrateUnitRightSimplex( void ) const
 }
 
 template< unsigned int Dim , unsigned int Degree , typename Real >
-#ifdef NEW_GEOMETRY_CODE
 Matrix< Real , Polynomial< Dim , Degree , Real >::NumCoefficients , Polynomial< Dim , Degree , Real >::NumCoefficients > Polynomial< Dim , Degree , Real >::EvaluationMatrix( const Point< Real , Dim > positions[NumCoefficients] )
-#else // !NEW_GEOMETRY_CODE
-SquareMatrix< Real , Polynomial< Dim , Degree , Real >::NumCoefficients > Polynomial< Dim , Degree , Real >::EvaluationMatrix( const Point< Real , Dim > positions[NumCoefficients] )
-#endif // NEW_GEOMETRY_CODE
 {
 	SquareMatrix< Real , NumCoefficients > E;
 	unsigned int degrees[ Dim ];

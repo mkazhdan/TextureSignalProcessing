@@ -71,13 +71,13 @@ void SparseMatrix< T , IndexType >::read( FILE* fp )
 template <class T, class IndexType>
 void SparseMatrix<T, IndexType>::invalidateEntries()
 {
-    IndexType numRows = Rows();
-    for( IndexType r=0 ; r<numRows ; ++r )
+	IndexType numRows = Rows();
+	for( IndexType r=0 ; r<numRows ; ++r )
 	{
-        IndexType numColumns = RowSize(r);
-        MatrixEntry<T, IndexType> *row = _entries[r];
-        for( IndexType c=0 ; c<numColumns ; ++c ) row[c].N = -1;
-    }
+		IndexType numColumns = RowSize(r);
+		MatrixEntry<T, IndexType> *row = _entries[r];
+		for( IndexType c=0 ; c<numColumns ; ++c ) row[c].N = -1;
+	}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -93,33 +93,33 @@ void SparseMatrix<T, IndexType>::invalidateEntries()
 *///////////////////////////////////////////////////////////////////////////////
 template <class T, class IndexType>
 bool SparseMatrix<T, IndexType>::addScalarToEntry(T s, IndexType i,
-          IndexType j)
+	IndexType j)
 {
-    // Don't add unset entries (possibly change this to use a tolerance)
-    if ((s.real() == 0) && (s.imag() == 0))
-        return true;
+	// Don't add unset entries (possibly change this to use a tolerance)
+	if ((s.real() == 0) && (s.imag() == 0))
+		return true;
 
-    MatrixEntry<T, IndexType> *row = _entries[i];
-    IndexType rSize = RowSize(i);
+	MatrixEntry<T, IndexType> *row = _entries[i];
+	IndexType rSize = RowSize(i);
 
-    bool success = false;
-    int availableIdx = -1;
-    for (IndexType k = 0; !success && (k < rSize); ++k) {
-        if (row[k].N == j) {
-            row[k].Value += s;
-            success = true;
-        }
-        if ((availableIdx == -1) && (row[k].N == (unsigned int) -1))
-            availableIdx = k;
-    }
+	bool success = false;
+	int availableIdx = -1;
+	for (IndexType k = 0; !success && (k < rSize); ++k) {
+		if (row[k].N == j) {
+			row[k].Value += s;
+			success = true;
+		}
+		if ((availableIdx == -1) && (row[k].N == (unsigned int) -1))
+			availableIdx = k;
+	}
 
-    if (!success && (availableIdx != -1))   {
-        row[availableIdx].Value = s;
-        row[availableIdx].N = j;
-        success = true;
-    }
+	if (!success && (availableIdx != -1))   {
+		row[availableIdx].Value = s;
+		row[availableIdx].N = j;
+		success = true;
+	}
 
-    return success;
+	return success;
 }
 
 template< class T , class IndexType >
@@ -348,23 +348,23 @@ template< class T , class IndexType >
 void SparseMatrix< T , IndexType >::CollapseRows( void )
 {
 	ThreadPool::ParallelFor
-		(
-			0 , rows ,
-			[&]( unsigned int , size_t i )
+	(
+		0 , rows ,
+		[&]( unsigned int , size_t i )
+		{
+			std::unordered_map< IndexType , T > rowValues;
+			for( int j=0 ; j<rowSizes[i] ; j++ )
 			{
-				std::unordered_map< IndexType , T > rowValues;
-				for( int j=0 ; j<rowSizes[i] ; j++ )
-				{
-					int N = _entries[i][j].N;
-					auto iter = rowValues.find( N );
-					if( iter==rowValues.end() ) rowValues[N]  = _entries[i][j].Value;
-					else                        iter->second += _entries[i][j].Value;
-				}
-				SetRowSize( i , (int)rowValues.size() );
-				rowSizes[i] = 0;
-				for( auto iter=rowValues.begin() ; iter!=rowValues.end() ; iter++ ) _entries[i][ rowSizes[i]++ ] = MatrixEntry< T , IndexType >( iter->first , iter->second );
+				int N = _entries[i][j].N;
+				auto iter = rowValues.find( N );
+				if( iter==rowValues.end() ) rowValues[N]  = _entries[i][j].Value;
+				else                        iter->second += _entries[i][j].Value;
 			}
-		);
+			SetRowSize( i , (int)rowValues.size() );
+			rowSizes[i] = 0;
+			for( auto iter=rowValues.begin() ; iter!=rowValues.end() ; iter++ ) _entries[i][ rowSizes[i]++ ] = MatrixEntry< T , IndexType >( iter->first , iter->second );
+		}
+	);
 }
 
 /////////////////////
@@ -433,29 +433,29 @@ SparseMatrix< T , IndexType > SparseMatrix< T , IndexType >::operator * ( const 
 
 	out.resize( (int)aRows );
 	ThreadPool::ParallelFor
-		(
-			0 , aRows ,
-			[&]( unsigned int , size_t i )
+	(
+		0 , aRows ,
+		[&]( unsigned int , size_t i )
+		{
+			std::unordered_map< IndexType , T > row;
+			for( int j=0 ; j<A.rowSizes[i] ; j++ )
 			{
-				std::unordered_map< IndexType , T > row;
-				for( int j=0 ; j<A.rowSizes[i] ; j++ )
+				IndexType idx1 = A[i][j].N;
+				T AValue = A[i][j].Value;
+				for( int k=0 ; k<B.rowSizes[idx1] ; k++ )
 				{
-					IndexType idx1 = A[i][j].N;
-					T AValue = A[i][j].Value;
-					for( int k=0 ; k<B.rowSizes[idx1] ; k++ )
-					{
-						IndexType idx2 = B[idx1][k].N;
-						T BValue = B[idx1][k].Value;
-						typename std::unordered_map< IndexType , T >::iterator iter = row.find(idx2);
-						if( iter==row.end() ) row[idx2] = AValue * BValue;
-						else iter->second += AValue * BValue;
-					}
+					IndexType idx2 = B[idx1][k].N;
+					T BValue = B[idx1][k].Value;
+					typename std::unordered_map< IndexType , T >::iterator iter = row.find(idx2);
+					if( iter==row.end() ) row[idx2] = AValue * BValue;
+					else iter->second += AValue * BValue;
 				}
-				out.SetRowSize( i , (int)row.size() );
-				out.rowSizes[i] = 0;
-				for( typename std::unordered_map< IndexType , T >::iterator iter=row.begin() ; iter!=row.end() ; iter++ ) out[i][ out.rowSizes[i]++ ] = MatrixEntry< T , IndexType >( iter->first , iter->second );
 			}
-		);
+			out.SetRowSize( i , (int)row.size() );
+			out.rowSizes[i] = 0;
+			for( typename std::unordered_map< IndexType , T >::iterator iter=row.begin() ; iter!=row.end() ; iter++ ) out[i][ out.rowSizes[i]++ ] = MatrixEntry< T , IndexType >( iter->first , iter->second );
+		}
+	);
 	return out;
 }
 template< class T , class IndexType >
@@ -467,32 +467,32 @@ SparseMatrix< T , IndexType > SparseMatrix< T , IndexType >::operator + ( const 
 
 	out.resize( rows );
 	ThreadPool::ParallelFor
-		(
-			0 , rows ,
-			[&]( unsigned int , size_t i )
-			{
-				std::unordered_map< IndexType , T > row;
-				if( i<A.rows )
-					for( int j=0 ; j<A.rowSizes[i] ; j++ )
-					{
-						IndexType idx = A[i][j].N;
-						typename std::unordered_map< IndexType , T >::iterator iter = row.find(idx);
-						if( iter==row.end() ) row[idx] = A[i][j].Value;
-						else iter->second += A[i][j].Value;
-					}
-				if( i<B.rows )
-					for( int j=0 ; j<B.rowSizes[i] ; j++ )
-					{
-						IndexType idx = B[i][j].N;
-						typename std::unordered_map< IndexType , T >::iterator iter = row.find(idx);
-						if( iter==row.end() ) row[idx] = B[i][j].Value;
-						else iter->second += B[i][j].Value;
-					}
-				out.SetRowSize( i , row.size() );
-				out.rowSizes[i] = 0;
-				for( typename std::unordered_map< IndexType , T >::iterator iter=row.begin() ; iter!=row.end() ; iter++ ) out[i][ out.rowSizes[i]++ ] = MatrixEntry< T , IndexType >( iter->first , iter->second );
-			}
-		);
+	(
+		0 , rows ,
+		[&]( unsigned int , size_t i )
+		{
+			std::unordered_map< IndexType , T > row;
+			if( i<A.rows )
+				for( int j=0 ; j<A.rowSizes[i] ; j++ )
+				{
+					IndexType idx = A[i][j].N;
+					typename std::unordered_map< IndexType , T >::iterator iter = row.find(idx);
+					if( iter==row.end() ) row[idx] = A[i][j].Value;
+					else iter->second += A[i][j].Value;
+				}
+			if( i<B.rows )
+				for( int j=0 ; j<B.rowSizes[i] ; j++ )
+				{
+					IndexType idx = B[i][j].N;
+					typename std::unordered_map< IndexType , T >::iterator iter = row.find(idx);
+					if( iter==row.end() ) row[idx] = B[i][j].Value;
+					else iter->second += B[i][j].Value;
+				}
+			out.SetRowSize( i , row.size() );
+			out.rowSizes[i] = 0;
+			for( typename std::unordered_map< IndexType , T >::iterator iter=row.begin() ; iter!=row.end() ; iter++ ) out[i][ out.rowSizes[i]++ ] = MatrixEntry< T , IndexType >( iter->first , iter->second );
+		}
+	);
 	return out;
 }
 template< class T , class IndexType >
@@ -504,32 +504,32 @@ SparseMatrix< T , IndexType > SparseMatrix< T , IndexType >::operator - ( const 
 
 	out.resize( rows );
 	ThreadPool::ParallelFor
-		(
-			0 , rows ,
-			[&]( unsigned int , size_t i )
-			{
-				std::unordered_map< IndexType , T > row;
-				if( i<A.rows )
-					for( int j=0 ; j<A.rowSizes[i] ; j++ )
-					{
-						IndexType idx = A[i][j].N;
-						typename std::unordered_map< IndexType , T >::iterator iter = row.find(idx);
-						if( iter==row.end() ) row[idx] = A[i][j].Value;
-						else iter->second += A[i][j].Value;
-					}
-				if( i<B.rows )
-					for( int j=0 ; j<B.rowSizes[i] ; j++ )
-					{
-						IndexType idx = B[i][j].N;
-						typename std::unordered_map< IndexType , T >::iterator iter = row.find(idx);
-						if( iter==row.end() ) row[idx] = -B[i][j].Value;
-						else iter->second -= B[i][j].Value;
-					}
-				out.SetRowSize( i , (int)row.size() );
-				out.rowSizes[i] = 0;
-				for( typename std::unordered_map< IndexType , T >::iterator iter=row.begin() ; iter!=row.end() ; iter++ ) out[i][ out.rowSizes[i]++ ] = MatrixEntry< T , IndexType >( iter->first , iter->second );
-			}
-		);
+	(
+		0 , rows ,
+		[&]( unsigned int , size_t i )
+		{
+			std::unordered_map< IndexType , T > row;
+			if( i<A.rows )
+				for( int j=0 ; j<A.rowSizes[i] ; j++ )
+				{
+					IndexType idx = A[i][j].N;
+					typename std::unordered_map< IndexType , T >::iterator iter = row.find(idx);
+					if( iter==row.end() ) row[idx] = A[i][j].Value;
+					else iter->second += A[i][j].Value;
+				}
+			if( i<B.rows )
+				for( int j=0 ; j<B.rowSizes[i] ; j++ )
+				{
+					IndexType idx = B[i][j].N;
+					typename std::unordered_map< IndexType , T >::iterator iter = row.find(idx);
+					if( iter==row.end() ) row[idx] = -B[i][j].Value;
+					else iter->second -= B[i][j].Value;
+				}
+			out.SetRowSize( i , (int)row.size() );
+			out.rowSizes[i] = 0;
+			for( typename std::unordered_map< IndexType , T >::iterator iter=row.begin() ; iter!=row.end() ; iter++ ) out[i][ out.rowSizes[i]++ ] = MatrixEntry< T , IndexType >( iter->first , iter->second );
+		}
+	);
 	return out;
 }
 
@@ -546,16 +546,16 @@ SparseMatrix< T , IndexType > SparseMatrix< T , IndexType >::transpose( T (*Tran
 	ThreadPool::ParallelFor( 0 , At.rows , [&]( unsigned int , size_t i ){ for( int j=0 ; j<At.rowSizes[i] ; j++ ) AddAtomic( A.rowSizes[ At[i][j].N ] , (size_t)1 ); } );
 
 	ThreadPool::ParallelFor
-		(
-			0 , A.rows ,
-			[&]( unsigned int , size_t i )
-			{
-				size_t t = A.rowSizes[i];
-				A.rowSizes[i] = 0;
-				A.SetRowSize( i , t );
-				A.rowSizes[i] = 0;
-			}
-		);
+	(
+		0 , A.rows ,
+		[&]( unsigned int , size_t i )
+		{
+			size_t t = A.rowSizes[i];
+			A.rowSizes[i] = 0;
+			A.SetRowSize( i , t );
+			A.rowSizes[i] = 0;
+		}
+	);
 
 	if( TransposeFunction ) for( int i=0 ; i<At.rows ; i++ ) for( int j=0 ; j<At.rowSizes[i] ; j++ )
 	{
@@ -588,16 +588,16 @@ SparseMatrix< T , IndexType > SparseMatrix< T , IndexType >::transpose( size_t a
 	ThreadPool::ParallelFor( 0 , At.rows , [&]( unsigned int , size_t i ){ for( int j=0 ; j<At.rowSizes[i] ; j++ ) AddAtomic( A.rowSizes[ At[i][j].N ] , 1 ); } );
 
 	ThreadPool::ParallelFor
-		(
-			0 , A.rows ,
-			[&]( unsigned int , size_t i )
-			{
-				size_t t = A.rowSizes[i];
-				A.rowSizes[i] = 0;
-				A.SetRowSize( i , t );
-				A.rowSizes[i] = 0;
-			}
-		);
+	(
+		0 , A.rows ,
+		[&]( unsigned int , size_t i )
+		{
+			size_t t = A.rowSizes[i];
+			A.rowSizes[i] = 0;
+			A.SetRowSize( i , t );
+			A.rowSizes[i] = 0;
+		}
+	);
 
 	if( TransposeFunction )
 		for( int i=0 ; i<At.rows ; i++ ) for( int j=0 ; j<At.rowSizes[i] ; j++ )
@@ -664,16 +664,16 @@ bool TransposeMultiply( const SparseMatrix< T1 , IndexType >& At , const SparseM
 
 	out.resize( aRows );
 	ThreadPool::ParallelFor
-		(
-			0 , rows.size() ,
-			[&]( unsigned int , size_t i )
-			{
-				out.SetRowSize( i , rows[i].size() );
-				out.rowSizes[i] = 0;
-				for( typename std::unordered_map< IndexType , T3 >::iterator iter=rows[i].begin() ; iter!=rows[i].end() ; iter++ )
-					out[i][ out.rowSizes[i]++ ] = MatrixEntry< T3 , IndexType >( iter->first , iter->second );
-			}
-		);
+	(
+		0 , rows.size() ,
+		[&]( unsigned int , size_t i )
+		{
+			out.SetRowSize( i , rows[i].size() );
+			out.rowSizes[i] = 0;
+			for( typename std::unordered_map< IndexType , T3 >::iterator iter=rows[i].begin() ; iter!=rows[i].end() ; iter++ )
+				out[i][ out.rowSizes[i]++ ] = MatrixEntry< T3 , IndexType >( iter->first , iter->second );
+		}
+	);
 	return true;
 }
 #if MATRIX_MULTIPLY_INTERFACE
@@ -692,35 +692,35 @@ bool Multiply( const SparseMatrixInterface< A_T , A_const_iterator >& A , const 
 
 	out.resize( (int)aRows );
 	ThreadPool::ParallelFor
-		(
-			0 , aRows ,
-			[&]( unsigned int , size_t i )
+	(
+		0 , aRows ,
+		[&]( unsigned int , size_t i )
+		{
+			std::unordered_map< Out_IndexType , Out_T > row;
+			for( A_const_iterator iterA=A.begin(i) ; iterA!=A.end(i) ; iterA++ )
 			{
-				std::unordered_map< Out_IndexType , Out_T > row;
-				for( A_const_iterator iterA=A.begin(i) ; iterA!=A.end(i) ; iterA++ )
+				Out_IndexType idx1 = iterA->N;
+				if( idx1==-1 ) continue;
+				A_T AValue = iterA->Value;
+				if( idx1<0 ) continue;
+				for( B_const_iterator iterB=B.begin(idx1) ; iterB!=B.end(idx1) ; iterB++ )
 				{
-					Out_IndexType idx1 = iterA->N;
-					if( idx1==-1 ) continue;
-					A_T AValue = iterA->Value;
-					if( idx1<0 ) continue;
-					for( B_const_iterator iterB=B.begin(idx1) ; iterB!=B.end(idx1) ; iterB++ )
-					{
-						Out_IndexType idx2 = iterB->N;
-						if( idx2==-1 ) continue;
-						B_T BValue = iterB->Value;
-						Out_T temp = Out_T( BValue * AValue ); // temp = A( i , idx1 ) * B( idx1 , idx2 )
-						typename std::unordered_map< Out_IndexType , Out_T >::iterator iter = row.find(idx2);
-						if( iter==row.end() ) row[idx2] = temp;
-						else iter->second += temp;
-					}
+					Out_IndexType idx2 = iterB->N;
+					if( idx2==-1 ) continue;
+					B_T BValue = iterB->Value;
+					Out_T temp = Out_T( BValue * AValue ); // temp = A( i , idx1 ) * B( idx1 , idx2 )
+					typename std::unordered_map< Out_IndexType , Out_T >::iterator iter = row.find(idx2);
+					if( iter==row.end() ) row[idx2] = temp;
+					else iter->second += temp;
 				}
-				out.SetRowSize( i , (int)row.size() );
-				out.rowSizes[i] = 0;
-				for( typename std::unordered_map< Out_IndexType , Out_T >::iterator iter=row.begin() ; iter!=row.end() ; iter++ )
-					out[i][ out.rowSizes[i]++ ] = MatrixEntry< Out_T , Out_IndexType >( iter->first , iter->second );
-			} ,
-			threads
-		);
+			}
+			out.SetRowSize( i , (int)row.size() );
+			out.rowSizes[i] = 0;
+			for( typename std::unordered_map< Out_IndexType , Out_T >::iterator iter=row.begin() ; iter!=row.end() ; iter++ )
+				out[i][ out.rowSizes[i]++ ] = MatrixEntry< Out_T , Out_IndexType >( iter->first , iter->second );
+		} ,
+		threads
+	);
 	return true;
 }
 template< class T , class In_const_iterator , class Out_IndexType >
@@ -805,33 +805,33 @@ bool Multiply( const SparseMatrix< T1 , IndexType >& A , const SparseMatrix< T2 
 
 	out.resize( aRows );
 	ThreadPool::ParallelFor
-		(
-			0 , aRows ,
-			[&]( unsigned int , size_t i )
+	(
+		0 , aRows ,
+		[&]( unsigned int , size_t i )
+		{
+			std::unordered_map< IndexType , T3 > row;
+			for( int j=0 ; j<A.rowSizes[i] ; j++ )
 			{
-				std::unordered_map< IndexType , T3 > row;
-				for( int j=0 ; j<A.rowSizes[i] ; j++ )
+				IndexType idx1 = A[i][j].N;
+				T1 AValue = A[i][j].Value;
+				if( idx1<0 ) continue;
+				for( int k=0 ; k<B.rowSizes[idx1] ; k++ )
 				{
-					IndexType idx1 = A[i][j].N;
-					T1 AValue = A[i][j].Value;
-					if( idx1<0 ) continue;
-					for( int k=0 ; k<B.rowSizes[idx1] ; k++ )
-					{
-						IndexType idx2 = B[idx1][k].N;
-						T2 BValue = B[idx1][k].Value;
-						T3 temp = T3( BValue * AValue ); // temp = A( i , idx1 ) * B( idx1 , idx2 )
-						typename std::unordered_map< IndexType , T3 >::iterator iter = row.find(idx2);
-						if( iter==row.end() ) row[idx2] = temp;
-						else iter->second += temp;
-					}
+					IndexType idx2 = B[idx1][k].N;
+					T2 BValue = B[idx1][k].Value;
+					T3 temp = T3( BValue * AValue ); // temp = A( i , idx1 ) * B( idx1 , idx2 )
+					typename std::unordered_map< IndexType , T3 >::iterator iter = row.find(idx2);
+					if( iter==row.end() ) row[idx2] = temp;
+					else iter->second += temp;
 				}
-				out.SetRowSize( i , row.size() );
-				out.rowSizes[i] = 0;
-				for( typename std::unordered_map< IndexType , T3 >::iterator iter=row.begin() ; iter!=row.end() ; iter++ )
-					out[i][ out.rowSizes[i]++ ] = MatrixEntry< T3 , IndexType >( iter->first , iter->second );
-			} ,
-			threads
-		);
+			}
+			out.SetRowSize( i , row.size() );
+			out.rowSizes[i] = 0;
+			for( typename std::unordered_map< IndexType , T3 >::iterator iter=row.begin() ; iter!=row.end() ; iter++ )
+				out[i][ out.rowSizes[i]++ ] = MatrixEntry< T3 , IndexType >( iter->first , iter->second );
+		} ,
+		threads
+	);
 	return true;
 }
 template< class T , class IndexType >
@@ -1075,9 +1075,9 @@ static int SolveConjugateGradient( const Matrix& SPD , const Vector< Data >& b ,
 		if(temp/b.Dot(b)<=eps)
 		{
 #if DUMP_OUTPUT
-//			printf("Badness2: %g %g\n",temp,eps);
+			//			printf("Badness2: %g %g\n",temp,eps);
 #endif // DUMP_OUTPUT
-//			break;
+			//			break;
 		}
 		beta=temp/rDotR;
 		solution.AddScaled(d,alpha);
@@ -1140,9 +1140,9 @@ static int SolveConjugateGradient(const Matrix& SPD,const Vector<IPS>& b,const i
 		if(temp/b.IPSDot(b)<=eps)
 		{
 #if DUMP_OUTPUT
-//			printf("Badness2: %g %g\n",temp,eps);
+			//			printf("Badness2: %g %g\n",temp,eps);
 #endif // DUMP_OUTPUT
-//			break;
+			//			break;
 		}
 		beta=temp/rDotR;
 		solution.AddScaled(d,alpha);
@@ -1169,14 +1169,14 @@ static int SolveConjugateGradient2(const Matrix& SPD,const Vector<IPS>& b,const 
 	SPD.Multiply(x,q);
 	d=r=b-q;
 	delta_0=delta_new=r.IPSDot(r);
-printf("%f %f\n",x.IPSDot(x),delta_0);
+	printf("%f %f\n",x.IPSDot(x),delta_0);
 	int i;
 	for(i=0;i<iters && delta_new>eps*eps*delta_0;i++)
 	{
 		SPD.Multiply(d,q);
 		alpha=delta_new/(d.IPSDot/*<double>*/(q));
-printf("\t%d] %f\n",i,d.IPSDot(q));
-printf("\t\talpha = %f\n",alpha);
+		printf("\t%d] %f\n",i,d.IPSDot(q));
+		printf("\t\talpha = %f\n",alpha);
 		x.AddScaled(d,alpha);
 		if(!(i%50))
 		{
@@ -1187,39 +1187,39 @@ printf("\t\talpha = %f\n",alpha);
 		delta_old=delta_new;
 		delta_new=r.IPSDot/*<double>*/(r);
 		beta=delta_new/delta_old;
-printf("\t\t beta = %f\n",beta);
-printf("\t\tresid = %f\n",delta_new/delta_0);
+		printf("\t\t beta = %f\n",beta);
+		printf("\t\tresid = %f\n",delta_new/delta_0);
 		Vector<IPS>::Add(d,beta,r,d);
 	}
-printf("Iters: %d / %d\n",i,iters);
-//exit(0);
+	printf("Iters: %d / %d\n",i,iters);
+	//exit(0);
 	return i;
 }
 
 // Prevent "duplicate symbol" linker errors by hiding the constants from
 // external files.
 namespace {
-    ////////////////////////////////////////////////////////////////////////////
-    /*! Declares some default constants for conjugate gradient solvers
-    //  @tparam Real    floating point representation
-    *///////////////////////////////////////////////////////////////////////////
-    template <typename Real>
-    class CGConstants
-    {
-        public:
-            /** Constant used for convergence testing */
-            static const Real eps;
-    };
+	////////////////////////////////////////////////////////////////////////////
+	/*! Declares some default constants for conjugate gradient solvers
+	//  @tparam Real    floating point representation
+	*///////////////////////////////////////////////////////////////////////////
+	template <typename Real>
+	class CGConstants
+	{
+	public:
+		/** Constant used for convergence testing */
+		static const Real eps;
+	};
 
-    template<> const float CGConstants<float>::eps = float(1e-12);
-    template<> const double CGConstants<double>::eps = 1e-16;
+	template<> const float CGConstants<float>::eps = float(1e-12);
+	template<> const double CGConstants<double>::eps = 1e-16;
 }
 
 template< class MType , class IndexType , class VType >
 int SolveConjugateGradient( const SparseMatrix< MType , IndexType >& A , const Vector<VType>& b , const int& iters , Vector<VType>& x ,
-						   Vector<VType> (*Multiply)(const SparseMatrix< MType , IndexType >& , const Vector<VType>& ) )
+	Vector<VType> (*Multiply)(const SparseMatrix< MType , IndexType >& , const Vector<VType>& ) )
 {
-    VType eps = CGConstants<VType>::eps;
+	VType eps = CGConstants<VType>::eps;
 	Vector<VType> r = b - Multiply(A,x);
 	Vector<VType> d = r;
 	double delta_new = r.Dot(r);
@@ -1243,8 +1243,8 @@ int SolveConjugateGradient( const SparseMatrix< MType , IndexType >& A , const V
 
 template< class MType , class IndexType , class VType >
 int SolveConjugateGradient(const SparseMatrix<MType, IndexType> &A,
-        const Vector<VType> &b, const int &iters, Vector<VType> &x,
-        VType eps = CGConstants<VType>::eps)
+	const Vector<VType> &b, const int &iters, Vector<VType> &x,
+	VType eps = CGConstants<VType>::eps)
 {
 	Vector<VType> r = b - A * x;
 	Vector<VType> d = r;
@@ -1281,10 +1281,10 @@ int SolveConjugateGradient(const SparseMatrix<MType, IndexType> &A,
 *///////////////////////////////////////////////////////////////////////////////
 template< class MType , class IndexType , class VType >
 int SolveConjugateGradient(const SparseMatrix<MType, IndexType> &A
-        , const Vector<VType> &b, const int &iters, Vector<VType> &x
-        , std::vector<Vector<VType> > &xValues
-        , Vector<VType> (*Multiply)(const SparseMatrix<MType, IndexType>&
-            , const Vector<VType>& ) )
+	, const Vector<VType> &b, const int &iters, Vector<VType> &x
+	, std::vector<Vector<VType> > &xValues
+	, Vector<VType> (*Multiply)(const SparseMatrix<MType, IndexType>&
+		, const Vector<VType>& ) )
 {
 	double eps=1e-16;
 	Vector<VType> r = b - Multiply(A,x);
@@ -1300,7 +1300,7 @@ int SolveConjugateGradient(const SparseMatrix<MType, IndexType> &A
 		if( !(i%50) )	r = b - Multiply(A,x);
 		else			r = r - q*alpha;
 
-        xValues.push_back(x);
+		xValues.push_back(x);
 
 		double delta_old = delta_new;
 		delta_new = r.Dot(r);
@@ -1367,16 +1367,16 @@ void BandedMatrix< T , Radius >::multiply( ConstPointer( T2 ) in , Pointer( T2 )
 	if( Radius==1 )
 	{
 		ThreadPool::ParallelFor
-			(
-				1 , _rows-1 ,
-				[&]( unsigned int , size_t i )
-				{
-					ConstPointer( T ) __entries = _entries + i * 3;
-					ConstPointer( T2 ) _in = in + i - 1;
-					out[i] = (T2)( _in[0] * __entries[0] + _in[1] * __entries[1] + _in[2] * __entries[2] );
-				} ,
-				threads
-			);
+		(
+			1 , _rows-1 ,
+			[&]( unsigned int , size_t i )
+			{
+				ConstPointer( T ) __entries = _entries + i * 3;
+				ConstPointer( T2 ) _in = in + i - 1;
+				out[i] = (T2)( _in[0] * __entries[0] + _in[1] * __entries[1] + _in[2] * __entries[2] );
+			} ,
+			threads
+		);
 	}
 	else
 	{
@@ -1424,17 +1424,17 @@ void BandedMatrix< T , Radius >::multiply2( ConstPointer( T2 ) in , Pointer( T2 
 	if( Radius==1 )
 	{
 		ThreadPool::ParallelFor
-			(
-				1 , _rows-1 ,
-				[&]( unsigned int , size_t i )
-				{
-					ConstPointer( T ) __entries = _entries + i * 3;
-					ConstPointer( T2 ) _in = in + (i-1)*2;
-					out[ i<<1   ] = (T2)( _in[0] * __entries[0] + _in[2] * __entries[1] + _in[4] * __entries[2] );
-					out[(i<<1)|1] = (T2)( _in[1] * __entries[0] + _in[3] * __entries[1] + _in[5] * __entries[2] );
-				} ,
-				threads
-			);
+		(
+			1 , _rows-1 ,
+			[&]( unsigned int , size_t i )
+			{
+				ConstPointer( T ) __entries = _entries + i * 3;
+				ConstPointer( T2 ) _in = in + (i-1)*2;
+				out[ i<<1   ] = (T2)( _in[0] * __entries[0] + _in[2] * __entries[1] + _in[4] * __entries[2] );
+				out[(i<<1)|1] = (T2)( _in[1] * __entries[0] + _in[3] * __entries[1] + _in[5] * __entries[2] );
+			} ,
+			threads
+		);
 	}
 	else
 	{
@@ -1451,7 +1451,7 @@ void BandedMatrix< T , Radius >::multiply2( ConstPointer( T2 ) in , Pointer( T2 
 				out[(i<<1)|1] = sum1;
 			} ,
 			threads
-			);
+		);
 	}
 	for( int i=(int)_rows-Radius ; i<_rows ; i++ )
 	{

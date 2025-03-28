@@ -51,19 +51,8 @@ template<> const std::string Traits< unsigned long long >::name="unsigned long l
 template<> const std::string Traits<              float >::name="float";
 template<> const std::string Traits<             double >::name="double";
 
-#if 1
 template< typename Index >
 GregTurk::PlyProperty Face< Index >::Properties[] = { GregTurk::PlyProperty( "vertex_indices" , Type< Index >() , Type< Index >() , offsetof( Face , vertices ) , 1 , PLY_INT , PLY_INT , offsetof( Face , nr_vertices ) ) };
-#else
-template<>
-GregTurk::PlyProperty Face<          int       >::Properties[] = { GregTurk::PlyProperty( "vertex_indices" , PLY_INT       , PLY_INT       , offsetof( Face , vertices ) , 1 , PLY_INT , PLY_INT , offsetof( Face , nr_vertices ) ) };
-template<>
-GregTurk::PlyProperty Face< unsigned int       >::Properties[] = { GregTurk::PlyProperty( "vertex_indices" , PLY_UINT      , PLY_UINT      , offsetof( Face , vertices ) , 1 , PLY_INT , PLY_INT , offsetof( Face , nr_vertices ) ) };
-template<>
-GregTurk::PlyProperty Face<          long long >::Properties[] = { GregTurk::PlyProperty( "vertex_indices" , PLY_LONGLONG  , PLY_LONGLONG  , offsetof( Face , vertices ) , 1 , PLY_INT , PLY_INT , offsetof( Face , nr_vertices ) ) };
-template<>
-GregTurk::PlyProperty Face< unsigned long long >::Properties[] = { GregTurk::PlyProperty( "vertex_indices" , PLY_ULONGLONG , PLY_ULONGLONG , offsetof( Face , vertices ) , 1 , PLY_INT , PLY_INT , offsetof( Face , nr_vertices ) ) };
-#endif
 
 struct Edge{ int v1 , v2; };
 const GregTurk::PlyProperty EdgeProps[] =

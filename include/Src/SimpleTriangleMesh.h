@@ -36,100 +36,12 @@ DAMAGE.
 #include <Misha/Miscellany.h>
 #include <Misha/Geometry.h>
 #include <Src/VectorIO.h>
-#ifdef NEW_CODE
 #include <Src/MeshIO.h>
-#endif // NEW_CODE
 
 namespace MishaK
 {
 	template< typename Real > using PlyVertexFactory = VertexFactory::PositionFactory< Real , 3 >;
 	template< typename Real > using PlyVertex = typename PlyVertexFactory< Real >::VertexType;
-#ifdef NEW_CODE
-#else // !NEW_CODE
-	template< typename Real >
-	struct PlyTexturedFace
-	{
-		unsigned int nr_vertices , nr_uv_coordinates;
-		int *vertices;
-		Real *uv_coordinates;
-		PlyTexturedFace( void ){ vertices = NULL , uv_coordinates = NULL , nr_vertices = nr_uv_coordinates = 0; }
-		~PlyTexturedFace( void ){ resize(0); }
-		PlyTexturedFace( const PlyTexturedFace& face )
-		{
-			vertices = NULL , uv_coordinates = NULL;
-			(*this) = face;
-		}
-		PlyTexturedFace& operator = ( const PlyTexturedFace& face )
-		{
-			if( vertices ) free( vertices ) , vertices = NULL;
-			if( uv_coordinates ) free( uv_coordinates ) , uv_coordinates = NULL;
-			nr_vertices = face.nr_vertices , nr_uv_coordinates = face.nr_uv_coordinates;
-			if( nr_vertices ) vertices = (int*)malloc( sizeof(int)*nr_vertices );
-			else              vertices = NULL;
-			if( nr_uv_coordinates ) uv_coordinates = (Real*)malloc( sizeof(Real)*nr_uv_coordinates );
-			else                    uv_coordinates = NULL;
-			memcpy( vertices , face.vertices , sizeof(int)*nr_vertices );
-			memcpy( uv_coordinates , face.uv_coordinates , sizeof(Real)*nr_uv_coordinates );
-			return *this;
-		}
-		void resize( unsigned int count )
-		{
-			if( vertices ) free( vertices ) , vertices = NULL;
-			if( uv_coordinates ) free( uv_coordinates ) , uv_coordinates = NULL;
-			nr_vertices = nr_uv_coordinates = 0;
-			if( count )
-			{
-				vertices = (int*)malloc( sizeof(int)*count ) , nr_vertices = count;
-				uv_coordinates = (Real*)malloc( sizeof(Real)*2*count ) , nr_uv_coordinates = count*2;
-			}
-		}
-		int& operator[] ( int idx )       { return vertices[idx]; }
-		int  operator[] ( int idx ) const { return vertices[idx]; }
-#if 1
-		Point2D< Real >  texture( int idx ) const { return Point2D< Real >( uv_coordinates[2*idx] , uv_coordinates[2*idx+1] ); }
-		Point2D< Real >& texture( int idx )       { return *( (Point2D< Real >*)(uv_coordinates+2*idx) ); }
-#else
-		Point2D< Real > texture( int idx ) const { return Point2D< Real >( uv_coordinates[2*idx] , uv_coordinates[2*idx+1] ); }
-#endif
-		int size( void ) const { return nr_vertices; }
-
-		const static int ReadComponents=2;
-		const static int WriteComponents=2;
-		static GregTurk::PlyProperty ReadProperties[];
-		static GregTurk::PlyProperty WriteProperties[];
-	};
-	template<>
-	GregTurk::PlyProperty PlyTexturedFace< float >::ReadProperties[] =
-	{
-		{ "vertex_indices" , PLY_INT , PLY_INT , offsetof( PlyTexturedFace , vertices ) , 1 , PLY_INT , PLY_INT , (int)offsetof( PlyTexturedFace , nr_vertices ) } ,
-		{ "texcoord" , PLY_FLOAT , PLY_FLOAT , (int)offsetof( PlyTexturedFace , uv_coordinates ) , 1 , PLY_INT , PLY_INT , (int)offsetof( PlyTexturedFace , nr_uv_coordinates ) } ,
-	};
-	template<>
-	GregTurk::PlyProperty PlyTexturedFace< double >::ReadProperties[] =
-	{
-		{ "vertex_indices" , PLY_INT , PLY_INT , offsetof( PlyTexturedFace , vertices ) , 1 , PLY_INT , PLY_INT , (int)offsetof( PlyTexturedFace , nr_vertices ) } ,
-		{ "texcoord" , PLY_DOUBLE , PLY_DOUBLE , (int)offsetof( PlyTexturedFace , uv_coordinates ) , 1 , PLY_INT , PLY_INT , (int)offsetof( PlyTexturedFace , nr_uv_coordinates ) } ,
-	};
-	template<>
-	GregTurk::PlyProperty PlyTexturedFace< float >::WriteProperties[] =
-	{
-		//{ "vertex_indices", PLY_INT, PLY_INT, offsetof(PlyTexturedFace, vertices), 1, PLY_INT, PLY_INT, (int)offsetof(PlyTexturedFace, nr_vertices) },
-		//{ "texcoord", PLY_FLOAT, PLY_FLOAT, (int)offsetof(PlyTexturedFace, uv_coordinates), 1, PLY_INT, PLY_INT, (int)offsetof(PlyTexturedFace, nr_uv_coordinates) },
-		//Modified 5/17/2016 PLY_INT to PLY_UCHAR
-		{ "vertex_indices" , PLY_INT , PLY_INT , offsetof( PlyTexturedFace , vertices ) , 1 , PLY_UCHAR , PLY_INT , (int)offsetof( PlyTexturedFace , nr_vertices ) } ,
-		{ "texcoord", PLY_FLOAT, PLY_FLOAT, (int)offsetof(PlyTexturedFace, uv_coordinates), 1, PLY_UCHAR, PLY_INT, (int)offsetof(PlyTexturedFace, nr_uv_coordinates) },
-	};
-	template<>
-	GregTurk::PlyProperty PlyTexturedFace< double >::WriteProperties[] =
-	{
-		//{ "vertex_indices", PLY_INT, PLY_INT, offsetof(PlyTexturedFace, vertices), 1, PLY_INT, PLY_INT, (int)offsetof(PlyTexturedFace, nr_vertices) },
-		//{ "texcoord", PLY_DOUBLE, PLY_DOUBLE, (int)offsetof(PlyTexturedFace, uv_coordinates), 1, PLY_INT, PLY_INT, (int)offsetof(PlyTexturedFace, nr_uv_coordinates) },
-		//Modified 5/17/2016 PLY_INT to PLY_UCHAR
-		{ "vertex_indices", PLY_INT, PLY_INT, offsetof(PlyTexturedFace, vertices), 1, PLY_UCHAR, PLY_INT, (int)offsetof(PlyTexturedFace, nr_vertices) },
-		{ "texcoord", PLY_DOUBLE, PLY_DOUBLE, (int)offsetof(PlyTexturedFace, uv_coordinates), 1, PLY_UCHAR, PLY_INT, (int)offsetof(PlyTexturedFace, nr_uv_coordinates) },
-	};
-#endif // NEW_CODE
-
 
 	template< typename GeometryReal >
 	class MeshSample
@@ -392,7 +304,7 @@ namespace MishaK
 
 		void write( std::string fileName , const char *atlasName=NULL ) const
 		{
-			std::vector< PlyTexturedFace< GeometryReal > > plyTexturedFaces( triangles.size() );
+			std::vector< PlyTexturedFace< unsigned int , GeometryReal > > plyTexturedFaces( triangles.size() );
 			for( int i=0 ; i<triangles.size() ; i++ )
 			{
 				plyTexturedFaces[i].resize(3);
@@ -416,263 +328,19 @@ namespace MishaK
 				char atlas_comment[256];
 				sprintf( atlas_comment , "TextureFile %s" , atlasName );
 				comments[0] = atlas_comment;
-				PlyWritePolygons( fileName.c_str() , vertices , plyTexturedFaces , PlyVertex< GeometryReal >::WriteProperties , PlyVertex< GeometryReal >::WriteComponents , PlyTexturedFace< GeometryReal >::WriteProperties , PlyTexturedFace< GeometryReal >::WriteComponents , PLY_BINARY_NATIVE , comments , 1 );
+				PlyWritePolygons( fileName.c_str() , vertices , plyTexturedFaces , PlyVertex< GeometryReal >::WriteProperties , PlyVertex< GeometryReal >::WriteComponents , PlyTexturedFace< unsigned int , GeometryReal >::WriteProperties , PlyTexturedFace< unsigned int , GeometryReal >::WriteComponents , PLY_BINARY_NATIVE , comments , 1 );
 				delete[] comments;
 			}
-			else PlyWritePolygons( fileName.c_str() , vertices , plyTexturedFaces , PlyVertex< GeometryReal >::WriteProperties , PlyVertex< GeometryReal >::WriteComponents , PlyTexturedFace< GeometryReal >::WriteProperties , PlyTexturedFace< GeometryReal >::WriteComponents , PLY_BINARY_NATIVE );
+			else PlyWritePolygons( fileName.c_str() , vertices , plyTexturedFaces , PlyVertex< GeometryReal >::WriteProperties , PlyVertex< GeometryReal >::WriteComponents , PlyTexturedFace< unsigned int , GeometryReal >::WriteProperties , PlyTexturedFace< unsigned int , GeometryReal >::WriteComponents , PLY_BINARY_NATIVE );
 		}
 
-#ifdef NEW_CODE
 		void read( std::string meshName , bool verbose , double eps )
-#else // !NEW_CODE
-		void read( std::string meshName , bool verbose )
-#endif // NEW_CODE
 		{
 			vertices.clear();
 			triangles.clear();
 			textureCoordinates.clear();
-#ifdef NEW_CODE
 			ReadTexturedMesh( meshName , vertices , textureCoordinates , triangles );
 			if( eps>0 ) CollapseVertices( vertices , triangles , eps );
-#else // !NEW_CODE
-			std::string ext = ToLower( GetFileExtension( meshName ) );
-			if( ext==std::string( "ply" ) )
-			{
-				std::vector< PlyVertex< GeometryReal > > ply_vertices;
-				std::vector< PlyTexturedFace< GeometryReal > > ply_faces;
-				PlyVertexFactory< GeometryReal > factory;
-				int file_type = PLY::ReadPolygons( meshName , factory , ply_vertices , ply_faces , PlyTexturedFace< GeometryReal >::ReadProperties , PlyTexturedFace< GeometryReal >::ReadComponents ); 
-
-				vertices.resize( ply_vertices.size() );
-				for( int i=0 ; i<ply_vertices.size() ; i++ ) vertices[i] = ply_vertices[i];
-
-				{
-					MinimalAreaTriangulation< GeometryReal , 3 > mat;
-
-					for( unsigned int i=(unsigned int)ply_faces.size() ; i!=0 ; i-- )
-					{
-						PlyTexturedFace< GeometryReal > &face = ply_faces[i-1];
-						PlyTexturedFace< GeometryReal > oldFace = face;
-						if( face.size()>3 )
-						{
-							std::vector< Point3D< GeometryReal > > _vertices( face.size() );
-							std::vector< SimplexIndex< 2 > > _triangles;
-							for( unsigned int j=0 ; j<(unsigned int)face.size() ; j++ ) _vertices[j] = ply_vertices[ face[j] ];
-							mat.GetTriangulation( _vertices , _triangles );
-
-							auto TriangleToPLYFace = [&]( SimplexIndex< 2 > tri )
-								{
-									PlyTexturedFace< GeometryReal > plyFace;
-									plyFace.resize(3);
-									for( unsigned int i=0 ; i<3 ; i++ ) plyFace[i] = oldFace[ tri[i] ] , plyFace.texture(i) = oldFace.texture( tri[i] );
-									return plyFace;
-								};
-
-							face = TriangleToPLYFace( _triangles[0] );
-							for( unsigned int j=1 ; j<_triangles.size() ; j++ ) ply_faces.push_back( TriangleToPLYFace( _triangles[j] ) );
-						}
-					}
-				}
-
-				triangles.resize( ply_faces.size() );
-#ifdef USE_TEXTURE_TRIANGLES
-				textureMesh.triangles.resize( ply_faces.size() );
-				std::vector< Point2D< GeometryReal > > textureCoordinates( 3*ply_faces.size() );
-				for( int i=0 ; i<ply_faces.size() ; i++ ) for( int j=0 ; j<3 ; j++ ) triangles[i][j] = ply_faces[i][j];
-
-				struct IndexedTextureCoordinate
-				{
-					Point2D< GeometryReal > p;
-					int index , vertex;
-					IndexedTextureCoordinate( Point2D< GeometryReal > p , int index , int vertex ) : p(p) , index(index) , vertex(vertex){}
-				};
-
-				class IndexedTextureCoordinateComparison
-				{
-				public:
-					bool operator()( const IndexedTextureCoordinate &p1 , const IndexedTextureCoordinate &p2 ) const
-					{
-						for( int i=0 ; i<2 ; i++ )
-						{
-							if      ( p1.p[i]<p2.p[i] ) return true;
-							else if ( p2.p[i]<p1.p[i] ) return false;
-							else
-							{
-								if     ( p1.vertex<p2.vertex ) return true;
-								else if( p2.vertex<p1.vertex ) return false;
-							}
-						}
-						return false;
-					}
-				};
-
-				std::set< IndexedTextureCoordinate , IndexedTextureCoordinateComparison > indexedTextureCoordinateSet;
-
-				int lastVertexIndex = 0;
-				for( int i=0 ; i<ply_faces.size() ; i++ ) for( int j=0 ; j<3 ; j++ )
-				{
-					IndexedTextureCoordinate itc( ply_faces[i].texture(j) , lastVertexIndex , ply_faces[i][j] );
-					auto iter = indexedTextureCoordinateSet.find( itc );
-					if( iter==indexedTextureCoordinateSet.end() )
-					{
-						indexedTextureCoordinateSet.insert( itc );
-						lastVertexIndex++;
-					}
-				}
-				textureMesh.vertices.resize( indexedTextureCoordinateSet.size() );
-				for( auto iter=indexedTextureCoordinateSet.begin() ; iter!=indexedTextureCoordinateSet.end() ; iter++ ) textureMesh.vertices[ iter->index ] = iter->p;
-
-				for( int i=0 ; i<ply_faces.size() ; i++ ) for( int j=0 ; j<3 ; j++ )
-				{
-					IndexedTextureCoordinate itc( ply_faces[i].texture(j) , -1 , ply_faces[i][j] );
-					auto iter = indexedTextureCoordinateSet.find( itc );
-					if( iter==indexedTextureCoordinateSet.end() ) MK_ERROR_OUT( "Could not find texture in texture set" );
-					else textureMesh.triangles[i][j] = iter->index;
-				}
-
-#else // !USE_TEXTURE_TRIANGLES
-				textureCoordinates.resize( 3*ply_faces.size() );
-				for( int i=0 ; i<ply_faces.size() ; i++ ) for( int j=0 ; j<3 ; j++ )
-				{
-					triangles[i][j] = ply_faces[i][j];
-					textureCoordinates[3*i+j] = ply_faces[i].texture(j);
-				}
-#endif // USE_TEXTURE_TRIANGLES
-			}
-			else if( ext==std::string( "obj" ) )
-			{
-				struct ObjFaceIndex{ int vIndex , tIndex; };
-
-				std::vector< Point3D< GeometryReal > > obj_vertices;
-				std::vector< Point2D< GeometryReal > > obj_textures;
-				std::vector< std::vector< ObjFaceIndex > > obj_faces;
-				std::ifstream in( meshName );
-				if( !in.is_open() ) MK_ERROR_OUT( "Could not open file for reading: " , meshName );
-
-				std::string( line );
-				unsigned int count = 0;
-				while( std::getline( in , line ) )
-				{
-					std::stringstream ss;
-
-					// Read vertex position
-					if( line[0]=='v' && line[1]==' ' )
-					{
-						line = line.substr(2);
-						std::stringstream ss( line );
-						Point3D< GeometryReal > p;
-						ss >> p[0] >> p[1] >> p[2];
-						obj_vertices.push_back( p );
-					}
-					// Read texture coordinate
-					else if( line[0]=='v' && line[1]=='t' && line[2]==' ' )
-					{
-						line = line.substr(3);
-						std::stringstream ss( line );
-						Point2D< GeometryReal > p;
-						ss >> p[0] >> p[1];
-						obj_textures.push_back( p );
-					}
-					// Read face
-					else if( line[0]=='f' && line[1]==' ' )
-					{
-						std::vector< ObjFaceIndex > face;
-						line = line.substr(1);
-						while( line.size() && line[0]==' ' ) line = line.substr(1);
-						std::stringstream ss( line );
-						std::string token;
-						while( std::getline( ss , token , ' ' ) )
-						{
-							std::stringstream _ss(token);
-							std::string _token;
-							unsigned int count = 0;
-							ObjFaceIndex idx;
-							while( std::getline( _ss , _token , '/' ) )
-							{
-								if     ( count==0 ) idx.vIndex = std::stoi( _token );
-								else if( count==1 ) idx.tIndex = std::stoi( _token );
-								count++;
-							}
-							face.push_back( idx );
-						}
-						obj_faces.push_back( face );
-					}
-					count++;
-				}
-
-				vertices.resize( obj_vertices.size() );
-				for( int i=0 ; i<obj_vertices.size() ; i++ ) vertices[i] = obj_vertices[i];
-#ifdef USE_TEXTURE_TRIANGLES
-				textureMesh.vertices.resize( obj_textures.size() );
-				for( int i=0 ; i<obj_textures.size() ; i++ ) textureMesh.vertices[i] = obj_textures[i];
-#endif // USE_TEXTURE_TRIANGLES
-
-				auto ObjIndexToArrayIndex = [&]( size_t sz , int index )
-					{
-						if( index>0 ) return index-1;
-						else          return (int)sz + index;
-					};
-
-				// Triangulating polygonal faces
-				{
-					unsigned int tCount = 0;
-					for( unsigned int i=0 ; i<obj_faces.size() ; i++ )
-						if( obj_faces[i].size()<3 ) MK_ERROR_OUT( "Expected at least three vertices" );
-						else tCount += (unsigned int)obj_faces[i].size()-2;
-					if( tCount>obj_faces.size() )
-					{
-						MinimalAreaTriangulation< GeometryReal , 3 > mat;
-
-						obj_faces.reserve( tCount );
-						for( unsigned int i=(unsigned int)obj_faces.size() ; i!=0 ; i-- )
-						{
-							std::vector< ObjFaceIndex > &face = obj_faces[i-1];
-							std::vector< ObjFaceIndex > oldFace = face;
-							if( face.size()>3 )
-							{
-								std::vector< Point3D< GeometryReal > > _vertices( face.size() );
-								std::vector< SimplexIndex< 2 > > triangles;
-								for( unsigned int j=0 ; j<face.size() ; j++ ) _vertices[j] = vertices[ ObjIndexToArrayIndex( obj_vertices.size() , face[j].vIndex ) ];
-								mat.GetTriangulation( _vertices , triangles );
-
-								auto TriangleToOBJFace = [&]( SimplexIndex< 2 > tri )
-									{
-										std::vector< ObjFaceIndex > objFace(3);
-										for( unsigned int i=0 ; i<3 ; i++ ) objFace[i] = oldFace[ tri[i] ];
-										return objFace;
-									};
-
-								face = TriangleToOBJFace( triangles[0] );
-								for( unsigned int j=1 ; j<triangles.size() ; j++ ) obj_faces.push_back( TriangleToOBJFace( triangles[j] ) );
-							}
-						}
-					}
-				}
-
-				triangles.resize( obj_faces.size() );
-#ifdef USE_TEXTURE_TRIANGLES
-				textureMesh.triangles.resize( obj_faces.size() );
-#else // !USE_TEXTURE_TRIANGLES
-				textureCoordinates.resize( 3*obj_faces.size() );
-#endif // USE_TEXTURE_TRIANGLES
-				for( int i=0 ; i<obj_faces.size() ; i++ ) for( int j=0 ; j<3 ; j++ )
-				{
-					if     ( obj_faces[i][j].vIndex>0 ) triangles[i][j] = obj_faces[i][j].vIndex-1;
-					else if( obj_faces[i][j].vIndex<0 ) triangles[i][j] = (int)obj_vertices.size() + obj_faces[i][j].vIndex;
-					else MK_ERROR_OUT( "Zero vertex index unexpected in .obj file: " , i );
-
-#ifdef USE_TEXTURE_TRIANGLES
-					if     ( obj_faces[i][j].tIndex>0 ) textureMesh.triangles[i][j] = obj_faces[i][j].tIndex-1;
-					else if( obj_faces[i][j].tIndex<0 ) textureMesh.triangles[i][j] = (int)obj_textures.size() + obj_faces[i][j].tIndex;
-#else // !USE_TEXTURE_TRIANGLES
-					if     ( obj_faces[i][j].tIndex>0 ) textureCoordinates[3*i+j] = obj_textures[ obj_faces[i][j].tIndex-1 ];
-					else if( obj_faces[i][j].tIndex<0 ) textureCoordinates[3*i+j] = obj_textures[ (int)obj_textures.size() + obj_faces[i][j].tIndex ];
-#endif // USE_TEXTURE_TRIANGLES
-					else MK_ERROR_OUT( "Zero texture index unexpected in .obj file: " , i );
-				}
-			}
-			else MK_ERROR_OUT( "Unrecognized file extension: " , meshName );
-#endif // NEW_CODE
 
 			// Flip the vertical axis
 #ifdef USE_TEXTURE_TRIANGLES

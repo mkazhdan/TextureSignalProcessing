@@ -55,24 +55,6 @@ inline long long OppositeHalfEdgeKey( long long key )
 	return HalfEdgeKey( i2 , i1 );
 }
 
-#ifdef NEW_GEOMETRY_CODE
-#else // !NEW_GEOMETRY_CODE
-///////////
-// Point //
-///////////
-template< class Real , unsigned int Dim >
-void Point< Real , Dim >::Add		(const Point< Real , Dim >& p)	{	for(int d=0;d<Dim;d++)	coords[d]+=p.coords[d];	}
-template<class Real,unsigned int Dim>
-void Point<Real,Dim>::Scale		(Real s)					{	for(int d=0;d<Dim;d++)	coords[d]*=s;	}
-template<class Real,unsigned int Dim>
-Real Point<Real,Dim>::InnerProduct(const Point<Real,Dim>& p)	const
-{
-	Real dot=0;
-	for(int i=0;i<Dim;i++)	dot+=p.coords[i]*coords[i];
-	return dot;
-}
-#endif // NEW_GEOMETRY_CODE
-
 #if 0
 #if !FAST_POINT
 /////////////
@@ -124,7 +106,6 @@ Matrix<Real,Cols1,Rows> Matrix<Real,Cols,Rows>::operator * (const Matrix<Real,Co
 	return n;
 }
 
-#ifdef NEW_GEOMETRY_CODE
 template< typename Real , int Cols , int Rows >
 template< typename T >
 Point< T , Rows , Real > Matrix< Real , Cols , Rows >::operator * ( const Point< T , Cols , Real >& v ) const
@@ -147,30 +128,6 @@ template< class Real , int Cols , int Rows >
 template< typename T >
 Real Matrix< Real , Cols , Rows >::operator () ( const Point< T , Rows , Real >& v1 , const Point< T , Cols , Real > &v2 ) const { return Point< T , Rows , Real >::Dot( v1 , (*this)*v2 ); }
 
-#else // !NEW_GEOMETRY_CODE
-template< class Real , int Cols , int Rows >
-Real Matrix<Real,Cols,Rows>::operator () ( const Point< Real , Rows >& v1 , const Point< Real , Cols > &v2 ) const { return Point< Real , Rows >::Dot( v1 , (*this)*v2 ); }
-
-template<class Real,int Cols,int Rows>
-template<class Real2>
-Point< Real2 , Rows > Matrix< Real , Cols , Rows >::operator * ( const Point< Real2 , Cols >& v ) const
-{
-	Point< Real2 , Rows > out;
-	for( int j=0 ; j<Cols ; j++ )
-	{
-		const Real* _coords = coords[j];
-		Real2 _v = v.coords[j];
-		for( int i=0 ; i<Rows ; i++ ) out.coords[i] += Real2( _coords[i] ) * _v;
-	}
-	return out;
-}
-
-template<class Real,int Cols,int Rows>
-template<class Real2>
-Point<Real2,Rows> Matrix<Real,Cols,Rows>::operator () (const Point<Real2,Cols>& v) const { return (*this)*v; }
-#endif // NEW_GEOMETRY_CODE
-
-
 template<class Real,int Cols,int Rows>
 Matrix<Real,Rows,Cols> Matrix<Real,Cols,Rows>::transpose(void) const
 {
@@ -184,7 +141,6 @@ Matrix<Real,Rows,Cols> Matrix<Real,Cols,Rows>::transpose(void) const
 //////////////////
 // SquareMatrix //
 //////////////////
-#ifdef NEW_GEOMETRY_CODE
 template<> inline double Matrix< double , 1 , 1 >::determinant( void ) const { return coords[0][0];}
 template<> inline double Matrix< double , 2 , 2 >::determinant( void ) const { return coords[0][0]*coords[1][1] - coords[0][1]*coords[1][0]; }
 template<> inline double Matrix< double , 3 , 3 >::determinant( void ) const
@@ -213,25 +169,26 @@ Real Matrix< Real , Dim , Dim >::subDeterminant( int c , int r ) const
 }
 
 template< class Real , int Dim >
-Real Matrix< Real , Dim , Dim >::operator () ( const Point< Real , Dim >& v1 , const Point< Real , Dim > &v2 ) const { return Point< Real , Dim >::Dot( v1 , (*this)*v2 ); }
-
-template< class Real , int Dim >
-template< class Real2 >
-Point< Real2 , Dim > Matrix< Real , Dim , Dim >::operator () ( const Point< Real2 , Dim >& v ) const { return (*this)*v; }
-
-template< class Real , int Dim >
-template< class Real2 >
-Point< Real2 , Dim > Matrix< Real , Dim , Dim >::operator * ( const Point< Real2 , Dim >& v ) const
+template< typename T >
+Point< T , Dim , Real > Matrix< Real , Dim , Dim >::operator * ( const Point< T , Dim , Real >& v ) const
 {
-	Point< Real2 , Dim > out;
-	for( int j=0 ; j<Dim ; j++ )
+	Point< T , Dim , Real > out;
+	for( int j=0 ; j<Cols ; j++ )
 	{
 		const Real* _coords = coords[j];
-		Real2 _v = v.coords[j];
-		for( int i=0 ; i<Dim ; i++ ) out.coords[i] += Real2( _coords[i] ) * _v;
+		T _v = v.coords[j];
+		for( int i=0 ; i<Dim ; i++ ) out.coords[i] += _v * _coords[i];
 	}
 	return out;
 }
+
+template< class Real , int Dim >
+template< typename T >
+Point< T , Dim , Real > Matrix< Real , Dim , Dim >::operator () ( const Point< T , Dim , Real >& v ) const { return (*this)*v; }
+
+template< class Real , int Dim >
+template< typename T >
+Real Matrix< Real , Dim , Dim >::operator () ( const Point< T , Dim , Real >& v1 , const Point< T , Dim , Real > &v2 ) const { return Point< T , Dim , Real >::Dot( v1 , (*this)*v2 ); }
 
 template< class Real , int Dim >
 void Matrix< Real , Dim , Dim >::Add(const Matrix< Real , Dim , Dim >& m)
@@ -275,49 +232,12 @@ Matrix< Real , Dim , Dim > Matrix< Real , Dim , Dim >::transpose(void) const
 	return out;
 }
 
-#else // !NEW_GEOMETRY_CODE
-template<> inline double SquareMatrix< double , 1 >::determinant( void ) const { return coords[0][0];}
-template<> inline double SquareMatrix< double , 2 >::determinant( void ) const { return coords[0][0]*coords[1][1] - coords[0][1]*coords[1][0]; }
-template<> inline double SquareMatrix< double , 3 >::determinant( void ) const
-{
-	return
-		coords[0][0]*( coords[1][1]*coords[2][2] - coords[2][1]*coords[1][2] ) +
-		coords[1][0]*( coords[2][1]*coords[0][2] - coords[0][1]*coords[2][2] ) +
-		coords[2][0]*( coords[0][1]*coords[1][2] - coords[0][2]*coords[1][1] ) ;
-}
-template<class Real,int Dim>
-Real SquareMatrix<Real,Dim>::subDeterminant( int c , int r ) const
-{
-	SquareMatrix< Real , Dim-1 > temp;
-	for( int i=0 , ii=0 ; i<Dim ; i++ )
-	{
-		if( i==c ) continue;
-		for( int j=0 , jj=0 ; j<Dim ; j++ )
-		{
-			if( j==r ) continue;
-			temp.coords[ii][jj] = coords[i][j];
-			jj++;
-		}
-		ii++;
-	}
-	return Real( temp.determinant() );
-}
-#endif // NEW_GEOMETRY_CODE
-
 template< class Real , int Dim >
-#ifdef NEW_GEOMETRY_CODE
 Real Matrix< Real , Dim , Dim >::determinant( void ) const
-#else // !NEW_GEOMETRY_CODE
-Real SquareMatrix<Real,Dim>::determinant( void ) const
-#endif // NEW_GEOMETRY_CODE
 {
 	Real det = Real(1);
 	// Gaussian Elimination
-#ifdef NEW_GEOMETRY_CODE
 	Matrix xForm , temp;
-#else // !NEW_GEOMETRY_CODE
-	SquareMatrix xForm , temp;
-#endif // NEW_GEOMETRY_CODE
 	xForm = (*this);
 	for( int i=0 ; i<Dim ; i++ )
 	{
@@ -338,46 +258,26 @@ Real SquareMatrix<Real,Dim>::determinant( void ) const
 	return det;
 }
 template< class Real , int Dim >
-#ifdef NEW_GEOMETRY_CODE
 Real Matrix< Real , Dim , Dim >::trace( void ) const
-#else // !NEW_GEOMETRY_CODE
-Real SquareMatrix< Real , Dim >::trace( void ) const
-#endif // NEW_GEOMETRY_CODE
 {
 	Real tr = (Real)0;
 	for( int i=0 ; i<Dim ; i++ ) tr += coords[i][i];
 	return tr;
 }
 template< class Real , int Dim >
-#ifdef NEW_GEOMETRY_CODE
 Matrix< Real , Dim , Dim > Matrix< Real , Dim , Dim >::inverse( void ) const
-#else // !NEW_GEOMETRY_CODE
-SquareMatrix< Real , Dim > SquareMatrix< Real , Dim >::inverse( void ) const
-#endif // NEW_GEOMETRY_CODE
 {
 	bool success;
-#ifdef NEW_GEOMETRY_CODE
 	Matrix inv = inverse( success );
-#else // !NEW_GEOMETRY_CODE
-	SquareMatrix< Real , Dim > inv = inverse( success );
-#endif // NEW_GEOMETRY_CODE
 	if( !success ) fprintf( stderr , "[WARNING] Failed to invert matrix\n" );
 	return inv;
 }
 
 template< class Real , int Dim >
-#ifdef NEW_GEOMETRY_CODE
 Matrix< Real , Dim , Dim > Matrix< Real , Dim , Dim >::inverse( bool& success ) const
-#else // NEW_GEOMETRY_CODE
-SquareMatrix< Real , Dim > SquareMatrix< Real , Dim >::inverse( bool& success ) const
-#endif // NEW_GEOMETRY_CODE
 {
 	// Gaussian Elimination
-#ifdef NEW_GEOMETRY_CODE
 	Matrix xForm , iXForm , temp;
-#else // !NEW_GEOMETRY_CODE
-	SquareMatrix xForm , iXForm , temp;
-#endif // NEW_GEOMETRY_CODE
 	iXForm.SetIdentity() , xForm = (*this);
 	for( int i=0 ; i<Dim ; i++ )
 	{
@@ -387,11 +287,7 @@ SquareMatrix< Real , Dim > SquareMatrix< Real , Dim >::inverse( bool& success ) 
 		{
 //			fprintf( stderr , "[WARNING] Failed to invert matrix\n" );
 			success = false;
-#ifdef NEW_GEOMETRY_CODE
 			return Matrix();
-#else // !NEW_GEOMETRY_CODE
-			return SquareMatrix();
-#endif // NEW_GEOMETRY_CODE
 		}
 		// temp(i,j): mapping of the i-th row to the j-th row
 		temp.SetIdentity();
@@ -407,17 +303,9 @@ SquareMatrix< Real , Dim > SquareMatrix< Real , Dim >::inverse( bool& success ) 
 	return iXForm;
 }
 template< >
-#ifdef NEW_GEOMETRY_CODE
 inline Matrix< float , 2 , 2 > Matrix< float , 2 , 2 >::inverse( bool& success ) const
-#else // !NEW_GEOMETRY_CODE
-inline SquareMatrix< float , 2 > SquareMatrix< float , 2 >::inverse( bool& success ) const
-#endif // NEW_GEOMETRY_CODE
 {
-#ifdef NEW_GEOMETRY_CODE
 	Matrix iXForm;
-#else // !NEW_GEOMETRY_CODE
-	SquareMatrix iXForm;
-#endif // NEW_GEOMETRY_CODE
 	float det = ( coords[0][0]*coords[1][1]-coords[0][1]*coords[1][0] );
 	if( !det ) success = false;
 	float d = 1.f / det;
@@ -429,17 +317,9 @@ inline SquareMatrix< float , 2 > SquareMatrix< float , 2 >::inverse( bool& succe
 	return iXForm;
 }
 template< >
-#ifdef NEW_GEOMETRY_CODE
 inline Matrix< double , 2 , 2 > Matrix< double , 2 , 2 >::inverse( bool& success ) const
-#else // !NEW_GEOMETRY_CODE
-inline SquareMatrix< double , 2 > SquareMatrix< double , 2 >::inverse( bool& success ) const
-#endif // NEW_GEOMETRY_CODE
 {
-#ifdef NEW_GEOMETRY_CODE
 	Matrix iXForm;
-#else // !NEW_GEOMETRY_CODE
-	SquareMatrix iXForm;
-#endif // NEW_GEOMETRY_CODE
 	double det = ( coords[0][0]*coords[1][1]-coords[0][1]*coords[1][0] );
 	if( !det ) success = false;
 	double d = 1. / det;
@@ -452,11 +332,7 @@ inline SquareMatrix< double , 2 > SquareMatrix< double , 2 >::inverse( bool& suc
 }
 
 template< class Real , int Dim >
-#ifdef NEW_GEOMETRY_CODE
 Polynomial::Polynomial< 1 , Dim , Real > Matrix< Real , Dim , Dim >::_characteristicPolynomial( Matrix< char , Dim , Dim > mask ) const
-#else // !NEW_GEOMETRY_CODE
-Polynomial::Polynomial< 1 , Dim , Real > SquareMatrix< Real , Dim >::_characteristicPolynomial( SquareMatrix< char , Dim > mask ) const
-#endif // NEW_GEOMETRY_CODE
 {
 	if constexpr( Dim==1 )
 	{
@@ -486,13 +362,8 @@ Polynomial::Polynomial< 1 , Dim , Real > SquareMatrix< Real , Dim >::_characteri
 	{
 		Polynomial::Polynomial< 1 , Dim , Real > cPoly;
 
-#ifdef NEW_GEOMETRY_CODE
 		Matrix< Real , Dim-1 , Dim-1 > temp;
 		Matrix< char , Dim-1 , Dim-1 > _mask;
-#else // !NEW_GEOMETRY_CODE
-		SquareMatrix< Real , Dim-1 > temp;
-		SquareMatrix< char , Dim-1 > _mask;
-#endif // NEW_GEOMETRY_CODE
 		for( int c=0 ; c<Dim ; c++ )
 		{
 			for( int i=0 , ii=0 ; i<Dim ; i++ )
@@ -514,34 +385,18 @@ Polynomial::Polynomial< 1 , Dim , Real > SquareMatrix< Real , Dim >::_characteri
 }
 
 template< class Real , int Dim >
-#ifdef NEW_GEOMETRY_CODE
 Polynomial::Polynomial< 1 , Dim , Real > Matrix< Real , Dim , Dim >::characteristicPolynomial( void ) const
-#else // !NEW_GEOMETRY_CODE
-Polynomial::Polynomial< 1 , Dim , Real > SquareMatrix< Real , Dim >::characteristicPolynomial( void ) const
-#endif // NEW_GEOMETRY_CODE
 {
-#ifdef NEW_GEOMETRY_CODE
 	Matrix< char , Dim , Dim > mask;
-#else // !NEW_GEOMETRY_CODE
-	SquareMatrix< char , Dim > mask;
-#endif // NEW_GEOMETRY_CODE
 	for( int i=0 ; i<Dim ; i++ ) for( int j=0 ; j<Dim ; j++ ) mask.coords[i][j] = i==j ? 1 : 0;
 	return _characteristicPolynomial( mask );
 }
 
 
 template<class Real,int Dim>
-#ifdef NEW_GEOMETRY_CODE
 void Matrix< Real , Dim , Dim >::Multiply( const Matrix< Real , Dim , Dim > &m )
-#else // !NEW_GEOMETRY_CODE
-void SquareMatrix<Real,Dim>::Multiply (const SquareMatrix<Real,Dim>& m)
-#endif // NEW_GEOMETRY_CODE
 {
-#ifdef NEW_GEOMETRY_CODE
 	Matrix temp=*this;
-#else // !NEW_GEOMETRY_CODE
-	SquareMatrix temp=*this;
-#endif // NEW_GEOMETRY_CODE
 	for(int i=0;i<Dim;i++)
 		for(int j=0;j<Dim;j++)
 		{
@@ -550,22 +405,14 @@ void SquareMatrix<Real,Dim>::Multiply (const SquareMatrix<Real,Dim>& m)
 		}
 }
 template<class Real,int Dim>
-#ifdef NEW_GEOMETRY_CODE
 void Matrix< Real , Dim , Dim >::SetIdentity(void)
-#else // !NEW_GEOMETRY_CODE
-void SquareMatrix<Real,Dim>::SetIdentity(void)
-#endif // NEW_GEOMETRY_CODE
 {
 	memset(this->coords,0,sizeof(Real)*Dim*Dim);
 	for(int i=0;i<Dim;i++)	this->coords[i][i]=1;
 }
 template<class Real,int Dim>
 template<class Real2>
-#ifdef NEW_GEOMETRY_CODE
 Point<Real2,Dim-1> Matrix< Real , Dim , Dim >::operator () (const Point<Real2,Dim-1>& v) const
-#else // !NEW_GEOMETRY_CODE
-Point<Real2,Dim-1> SquareMatrix<Real,Dim>::operator () (const Point<Real2,Dim-1>& v) const
-#endif // NEW_GEOMETRY_CODE
 {
 	Real2 scale=1;
 	Point<Real2,Dim-1> out;
@@ -606,6 +453,23 @@ Point< Real , Dim > RandomBallPoint( void )
 		for( unsigned int d=0 ; d<Dim ; d++ ) p[d] = (Real)( 1.0 - 2.0*Random2< Real >() );
 		double l = p.squareNorm();
 		if( l<=1 ) return p;
+	}
+}
+
+template< typename Real , unsigned int Dim >
+Point< Real , Dim > RandomSimplexPoint( void )
+{
+	auto InSimplex = []( Point< double , Dim > p )
+		{
+			double sum = 0;
+			for( unsigned int d=0 ; d<Dim ; d++ ) sum += p[d];
+			return sum<1.;
+		};
+	Point< Real , Dim > p;
+	while( true )
+	{
+		for( unsigned int d=0 ; d<Dim ; d++ ) p[d] = Random< double >();
+		if( InSimplex( p ) ) return p;
 	}
 }
 
@@ -949,7 +813,6 @@ void Simplex< Real , Dim , K >::NearestKey::_nearest( Point< Real , Dim > point 
 // SimplexIndex //
 //////////////////
 
-#ifdef NEW_GEOMETRY_CODE
 template< unsigned int K , typename Index >
 template< unsigned int _K , typename FaceFunctor /* = std::function< void ( SimplexIndex< _K , Index > )*/ >
 void SimplexIndex< K , Index >::ProcessFaces( FaceFunctor F )
@@ -978,45 +841,18 @@ void SimplexIndex< K , Index >::_processFaces( FaceFunctor F , unsigned int face
 
 template< unsigned int K , typename Index >
 template< typename ... UInts >
-#ifdef NEW_GEOMETRY_CODE
 SimplexIndex< K - (unsigned int)sizeof...( UInts ) - 1 , Index > SimplexIndex< K , Index >::Face( unsigned int faceIndex , UInts ... faceIndices )
-#else // !NEW_GEOMETRY_CODE
-SimplexIndex< K - (unsigned int)sizeof...( UInts ) - 1 , Index > SimplexIndex< K , Index >::Face( bool &oriented , unsigned int faceIndex , UInts ... faceIndices )
-#endif // NEW_GEOMETRY_CODE
 {
-#ifdef NEW_GEOMETRY_CODE
 	SimplexIndex< K , Index > si;
 	for( unsigned int k=0 ; k<=K ; k++ ) si[k] = k;
 	return si.face( faceIndex , faceIndices ...  );
-#else // !NEW_GEOMETRY_CODE
-	static_assert( sizeof...(UInts)<K , "[ERROR] Too many indices" );
-#ifdef NEW_GEOMETRY_CODE
-	SimplexIndex< K-1 > f = _Face( oriented , faceIndex );
-#else // !NEW_GEOMETRY_CODE
-	SimplexIndex< K-1 > f = _Face( faceIndex , oriented );
-#endif // NEW_GEOMETRY_CODE
-
-	if constexpr( sizeof...(UInts)==0 ){ return f; }
-	else
-	{
-		bool _oriented;
-		SimplexIndex< K - sizeof...(UInts) - 1 > _f = f.face( _oriented , faceIndices... );
-		oriented ^= _oriented;
-		return _f;
-	}
-#endif // NEW_GEOMETRY_CODE
 }
 
 template< unsigned int K , typename Index >
 template< typename ... UInts >
-#ifdef NEW_GEOMETRY_CODE
 SimplexIndex< K - (unsigned int)sizeof...( UInts ) - 1 > SimplexIndex< K , Index >::face( unsigned int faceIndex , UInts ... faceIndices ) const
-#else // !NEW_GEOMETRY_CODE
-SimplexIndex< K - (unsigned int)sizeof...( UInts ) - 1 > SimplexIndex< K , Index >::face( bool &oriented , unsigned int faceIndex , UInts ... faceIndices ) const
-#endif // NEW_GEOMETRY_CODE
 {
 	static_assert( sizeof...(UInts)<K , "[ERROR] Too many indices" );
-#ifdef NEW_GEOMETRY_CODE
 	bool flagged[K+1];
 	{
 		const unsigned int idx[] = { faceIndex , faceIndices ... };
@@ -1029,17 +865,6 @@ SimplexIndex< K - (unsigned int)sizeof...( UInts ) - 1 > SimplexIndex< K , Index
 	for( unsigned int k=0 ; k<=K ; k++ ) if( !flagged[k] ) si[idx++] = operator[]( k );
 
 	return si;
-#else // !NEW_GEOMETRY_CODE
-	SimplexIndex< K-1 > f = _face( oriented , faceIndex );
-	if constexpr( sizeof...(UInts)==0 ){ return f; }
-	else
-	{
-		bool _oriented;
-		SimplexIndex< K - sizeof...(UInts) - 1 > _f = f.face( _oriented , faceIndices... );
-		oriented ^= _oriented;
-		return _f;
-	}
-#endif // NEW_GEOMETRY_CODE
 }
 template< unsigned int K , typename Index >
 SimplexIndex< K-1 , Index > SimplexIndex< K , Index >::_Face( bool &oriented , unsigned int f )
@@ -1063,40 +888,6 @@ SimplexIndex< K-1 , Index > SimplexIndex< K , Index >::_face( bool &oriented , u
 	oriented = (f%2)==0;
 	return s;
 }
-#else // !NEW_GEOMETRY_CODE
-template< unsigned int K , typename Index >
-SimplexIndex< K-1 , Index > SimplexIndex< K , Index >::Face( unsigned int f , bool &oriented )
-{
-	SimplexIndex< K-1 , Index > fi;
-	unsigned int i=0;
-	// Generate the face:
-	//		(-1)^f * { 0 , 1 , ... , f-1 , f+1 , ... , K }
-	for( unsigned int k=0 ; k<=K ; k++ ) if( k!=f ) fi[i++] = k;
-	oriented = (f%2)==0;
-	return fi;
-}
-template< unsigned int K , typename Index >
-SimplexIndex< K-1 , Index > SimplexIndex< K , Index >::face( unsigned int f , bool &oriented ) const
-{
-	SimplexIndex< K-1 , Index > s;
-	unsigned int i=0;
-	// Generate the face:
-	//		(-1)^f * { 0 , 1 , ... , f-1 , f+1 , ... , K }
-	for( unsigned int k=0 ; k<=K ; k++ ) if( k!=f ) s[i++] = idx[k];
-	oriented = (f%2)==0;
-	return s;
-}
-#if 0
-template< unsigned int K , typename Index >
-SimplexIndex< K-1 , Index > SimplexIndex< K , Index >::face( unsigned int f ) const
-{
-	bool oriented;
-	return face( f , oriented );
-}
-#endif
-
-#endif // NEW_GEOMETRY_CODE
-
 
 template< unsigned int K , typename Index >
 template< typename Real , typename Vertex >

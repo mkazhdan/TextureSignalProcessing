@@ -40,19 +40,27 @@ DAMAGE.
 using namespace MishaK;
 
 
-CmdLineParameter< std::string > Input( "in" ) , Output( "out" );
-CmdLineParameterArray< unsigned int , 2 > Resolution( "res" );
-#ifdef NEW_CODE
-CmdLineParameter< double > CollapseEpsilon( "collapse" , 0 );
-#endif // NEW_CODE
-CmdLineReadable Cells( "cells" ) , ID( "id" );
+CmdLineParameter< std::string >
+	Input( "in" ) ,
+	Output( "out" );
+
+CmdLineParameterArray< unsigned int , 2 >
+	Resolution( "res" );
+
+CmdLineParameter< double >
+	CollapseEpsilon( "collapse" , 0 );
+
+CmdLineReadable
+	UseNearest( "nearest" ) ,
+	NodeAtCorner( "nodeAtCorner" ) ,
+	ID( "id" );
 
 CmdLineReadable* params[] =
 {
-	&Input , &Output , &Resolution , &Cells , &ID ,
-#ifdef NEW_CODE
+	&Input , &Output , &Resolution , &ID ,
+	&UseNearest ,
+	&NodeAtCorner ,
 	&CollapseEpsilon ,
-#endif // NEW_CODE
 	NULL
 };
 
@@ -62,30 +70,24 @@ void ShowUsage( const char* ex )
 	printf( "\t --%s <input mesh>\n" , Input.name.c_str() );
 	printf( "\t --%s <texture width, texture height> \n" , Resolution.name.c_str() );
 	printf( "\t[--%s <output texture>]\n" , Output.name.c_str() );
-#ifdef NEW_CODE
 	printf( "\t[--%s <collapse epsilon>=%g]\n" , CollapseEpsilon.name.c_str() , CollapseEpsilon.value );
-#endif // NEW_CODE
-	printf( "\t[--%s]\n" , Cells.name.c_str() );
+	printf( "\t[--%s]\n" , UseNearest.name.c_str() );
+	printf( "\t[--%s]\n" , NodeAtCorner.name.c_str() );
+
 	printf( "\t[--%s]\n" , ID.name.c_str() );
 }
 
 static const unsigned int K = 2;
 static const unsigned int Dim = 3;
 
-int main( int argc , char* argv[] )
+template< bool Nearest , bool NodeAtCellCenter >
+RegularGrid< K , Point< double , 3 > > Execute
+( 
+	const std::vector< Point< double , Dim > > & vertices ,
+	const std::vector< Point< double , K > > & textureCoordinates ,
+	const std::vector< SimplexIndex< K > > & simplices
+)
 {
-	CmdLineParse( argc-1 , argv+1 , params );
-	if( !Input.set || !Resolution.set ){ ShowUsage( argv[0] ) ; return EXIT_FAILURE; }
-
-	std::vector< Point< double , Dim > > vertices;
-	std::vector< Point< double , K > > textureCoordinates;
-	std::vector< SimplexIndex< K > > simplices;
-
-	ReadTexturedMesh( Input.value , vertices , textureCoordinates , simplices );
-#ifdef NEW_CODE
-	if( CollapseEpsilon.value>0 ) CollapseVertices( vertices , simplices , CollapseEpsilon.value );
-#endif // NEW_CODE
-
 	RegularGrid< K , Point< double , 3 > > mask( Resolution.values );
 
 	Miscellany::Timer timer;
@@ -101,8 +103,7 @@ int main( int argc , char* argv[] )
 		for( size_t i=0 ; i<mask.size() ; i++ ) mask[i] = Point< double , 3 >( 0. , 0. , 0. );
 
 		RegularGrid< K , Texels::TexelInfo > interiorTexels;
-		if( !Cells.set ) interiorTexels = Texels::GetInteriorTexels( simplices.size() , [&]( size_t s  , unsigned int k ){ return textureCoordinates[ s*(K+1)+k ]; } , mask.res(0) , mask.res(1) );
-		else             interiorTexels = Texels::GetActiveTexels< Dim >( simplices.size() , [&]( size_t v ){ return vertices[v]; } , [&]( size_t s ){ return simplices[s]; } , [&]( size_t s  , unsigned int k ){ return textureCoordinates[ s*(K+1)+k ]; } , mask.res(0) , mask.res(1) , 0 , false , false );
+		interiorTexels = Texels::GetNodeTexelInfo< NodeAtCellCenter >( simplices.size() , [&]( size_t s  , unsigned int k ){ return textureCoordinates[ s*(K+1)+k ]; } , mask.res(0) , mask.res(1) );
 		for( size_t i=0 ; i<interiorTexels.size() ; i++ ) if( interiorTexels[i].sIdx!=-1 )
 		{
 			srand( interiorTexels[i].sIdx );
@@ -113,14 +114,34 @@ int main( int argc , char* argv[] )
 	{
 		for( size_t i=0 ; i<mask.size() ; i++ ) mask[i] = Point< double , 3 >( 1. , 0. , 0. );
 
-		RegularGrid< K , Texels::TexelInfo > activeTexels = Texels::GetActiveTexels< Dim >( simplices.size() , [&]( size_t v ){ return vertices[v]; } , [&]( size_t s ){ return simplices[s]; } , [&]( size_t s  , unsigned int k ){ return textureCoordinates[ s*(K+1)+k ]; } , mask.res(0) , mask.res(1) , 0 , false , false );
-		for( size_t i=0 ; i<activeTexels.size() ; i++ ) if( activeTexels[i].sIdx!=-1 ) mask[i] = Point< double , 3 >( 0. , 1. , 0. );
-
-		RegularGrid< K , Texels::TexelInfo > interiorTexels = Texels::GetInteriorTexels( simplices.size() , [&]( size_t s  , unsigned int k ){ return textureCoordinates[ s*(K+1)+k ]; } , mask.res(0) , mask.res(1) );
-		for( size_t i=0 ; i<interiorTexels.size() ; i++ ) if( interiorTexels[i].sIdx!=-1 ) mask[i] = Point< double , 3 >( 0. , 0. , 1. );
+		RegularGrid< K , Texels::TexelInfo > activeTexels = Texels::GetSupportedTexelInfo< Dim , Nearest , NodeAtCellCenter >( simplices.size() , [&]( size_t v ){ return vertices[v]; } , [&]( size_t s ){ return simplices[s]; } , [&]( size_t s  , unsigned int k ){ return textureCoordinates[ s*(K+1)+k ]; } , mask.res(0) , mask.res(1) , 0 , false , false );
+		for( size_t i=0 ; i<activeTexels.size() ; i++ ) if( activeTexels[i].sIdx!=-1 ) mask[i] = Point< double , 3 >( 0. , 0. , 1. );
 	}
 
 	std::cout << "Time: " << timer() << std::endl;
+
+	return mask;
+}
+
+int main( int argc , char* argv[] )
+{
+	CmdLineParse( argc-1 , argv+1 , params );
+	if( !Input.set || !Resolution.set ){ ShowUsage( argv[0] ) ; return EXIT_FAILURE; }
+
+	std::vector< Point< double , Dim > > vertices;
+	std::vector< Point< double , K > > textureCoordinates;
+	std::vector< SimplexIndex< K > > simplices;
+
+	ReadTexturedMesh( Input.value , vertices , textureCoordinates , simplices );
+	if( CollapseEpsilon.value>0 ) CollapseVertices( vertices , simplices , CollapseEpsilon.value );
+
+	RegularGrid< K , Point< double , 3 > > mask;
+	if( UseNearest.set )
+		if( NodeAtCorner.set ) mask = Execute< true  , false >( vertices , textureCoordinates , simplices );
+		else                   mask = Execute< true  , true  >( vertices , textureCoordinates , simplices );
+	else
+		if( NodeAtCorner.set ) mask = Execute< false , false >( vertices , textureCoordinates , simplices );
+		else                   mask = Execute< false , true  >( vertices , textureCoordinates , simplices );
 
 	if( Output.set ) WriteTexture( Output.value , mask );
 

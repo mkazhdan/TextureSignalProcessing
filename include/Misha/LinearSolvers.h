@@ -365,7 +365,6 @@ namespace MishaK
 			}
 			_eigenB.resize( M.Rows() );
 		}
-
 		void update( const SparseMatrixInterface< Real , MatrixRowIterator >& M )
 		{
 #ifdef STORE_EIGEN_MATRIX
@@ -388,21 +387,17 @@ namespace MishaK
 			default: fprintf( stderr , "[ERROR] EigenSolverCholeskyLLt::update Failed to factorize matrix\n" ) , exit(0);
 			}
 		}
-
 		void solve( const Eigen_Vector &b , Eigen_Vector &x ){ x = _solver.solve( b ); }
-
 		void solve( ConstPointer( Real ) b , Pointer( Real ) x )
 		{
 			ThreadPool::ParallelFor( 0 , _eigenB.size() , [&]( unsigned int , size_t i ){ _eigenB[i] = b[i]; } );
 			Eigen_Vector eigenX = _solver.solve( _eigenB );
 			ThreadPool::ParallelFor( 0 , eigenX.size() , [&]( unsigned int , size_t i ){ x[i] = (Real)eigenX[i]; } );
 		}
-
 		size_t dimension( void ) const { return _eigenB.size(); }
-
 		static void Solve( const SparseMatrixInterface< Real , MatrixRowIterator >& M , ConstPointer( Real ) b , Pointer( Real ) x ){ EigenSolverCholeskyLLt solver( M ) ; solver.solve( b , x ); }
-	}
-	;
+	};
+
 	template< class Real , class MatrixRowIterator >
 	class EigenSolverCholeskyLDLt : public EigenSolver< Real , MatrixRowIterator >
 	{
@@ -431,7 +426,6 @@ namespace MishaK
 			}
 			_eigenB.resize( M.Rows() );
 		}
-
 		void update( const SparseMatrixInterface< Real , MatrixRowIterator >& M )
 		{
 			Eigen::SparseMatrix< double > eigenM( int( M.Rows() ) , int( M.Rows() ) );
@@ -442,20 +436,17 @@ namespace MishaK
 			_solver.factorize( eigenM );
 			if( _solver.info()!=Eigen::Success ) fprintf( stderr , "[ERROR] EigenSolverCholeskyLDLt::update Failed to factorize matrix\n" ) , exit(0);
 		}
-
 		void solve( const Eigen_Vector &b , Eigen_Vector &x ){ x = _solver.solve( b ); }
-
 		void solve( ConstPointer( Real ) b , Pointer( Real ) x )
 		{
 			ThreadPool::ParallelFor( 0 , _eigenB.size() , [&]( unsigned int , size_t i ){ _eigenB[i] = b[i]; } );
 			Eigen_Vector eigenX = _solver.solve( _eigenB );
 			ThreadPool::ParallelFor( 0 , eigenX.size() , [&]( unsigned int , size_t i ){ x[i] = (Real)eigenX[i]; } );
 		}
-
 		size_t dimension( void ) const { return _eigenB.size(); }
-
 		static void Solve( const SparseMatrixInterface< Real , MatrixRowIterator >& M , ConstPointer( Real ) b , Pointer( Real ) x ){ EigenSolverCholeskyLDLt solver( M ) ; solver.solve( b , x ); }
 	};
+
 	template< class Real , class MatrixRowIterator >
 	class EigenSolverCG : public EigenSolver< Real , MatrixRowIterator >
 	{

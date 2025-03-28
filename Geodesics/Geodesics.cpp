@@ -68,9 +68,7 @@ CmdLineReadable UseDirectSolver( "useDirectSolver" );
 CmdLineReadable Double( "double" );
 CmdLineReadable PreciseIntegration( "preciseIntegration" );
 
-#ifdef NEW_CODE
 CmdLineParameter< double > CollapseEpsilon( "collapse" , 0 );
-#endif // NEW_CODE
 
 CmdLineReadable* params[] =
 {
@@ -81,9 +79,7 @@ CmdLineReadable* params[] =
 	&MatrixQuadrature , &VectorFieldQuadrature ,
 	&PreciseIntegration ,
 	&NoHelp ,
-#ifdef NEW_CODE
 	&CollapseEpsilon ,
-#endif // NEW_CODE
 	NULL
 };
 
@@ -111,9 +107,7 @@ void ShowUsage( const char* ex )
 	printf( "\t[--%s <multigrid block height>=%d]\n"  , MultigridBlockHeight.name.c_str()  , MultigridBlockHeight.value  );
 	printf( "\t[--%s <multigrid padded width>=%d]\n"  , MultigridPaddedWidth.name.c_str()  , MultigridPaddedWidth.value  );
 	printf( "\t[--%s <multigrid padded height>=%d]\n" , MultigridPaddedHeight.name.c_str() , MultigridPaddedHeight.value );
-#ifdef NEW_CODE
 	printf( "\t[--%s <collapse epsilon>=%g]\n" , CollapseEpsilon.name.c_str() , CollapseEpsilon.value );
-#endif // NEW_CODE
 	printf( "\t[--%s]\n" , Serial.name.c_str() );
 	printf( "\t[--%s]\n" , NoHelp.name.c_str() );
 }
@@ -836,11 +830,7 @@ void Geodesics< PreReal , Real >::Init( void )
 	textureWidth = Width.value;
 	textureHeight = Height.value;
 
-#ifdef NEW_CODE
 	mesh.read( Input.value , DetailVerbose.set , CollapseEpsilon.value );
-#else // !NEW_CODE
-	mesh.read( Input.value , DetailVerbose.set );
-#endif // NEW_CODE
 
 	if( RandomJitter.set )
 	{

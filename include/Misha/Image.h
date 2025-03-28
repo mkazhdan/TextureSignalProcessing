@@ -119,7 +119,7 @@ namespace MishaK
 	template< unsigned int BitDepth >
 	bool ImageReader< BitDepth >::ValidExtension( std::string ext )
 	{
-		for( unsigned int i=0 ; i<ext.size() ; i++ ) ext[i] = std::tolower( ext[i] );
+		ext = ToLower( ext );
 
 		if     ( ext==std::string( "jpeg" ) || ext==std::string( "jpg" ) ) return true;
 		else if( ext==std::string( "png" )                               ) return true;
