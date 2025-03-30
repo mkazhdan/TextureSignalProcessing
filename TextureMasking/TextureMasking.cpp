@@ -28,6 +28,7 @@ DAMAGE.
 
 #include <Src/PreProcessing.h>
 
+
 #include <Misha/CmdLineParser.h> 
 #include <Misha/Miscellany.h>
 #include <Misha/Exceptions.h>
@@ -53,14 +54,19 @@ CmdLineParameter< double >
 CmdLineReadable
 	UseNearest( "nearest" ) ,
 	NodeAtCorner( "nodeAtCorner" ) ,
+	BoundaryOnly( "boundary" ) ,
 	ID( "id" );
 
 CmdLineReadable* params[] =
 {
-	&Input , &Output , &Resolution , &ID ,
+	&Input ,
+	&Output ,
+	&Resolution ,
+	&ID ,
 	&UseNearest ,
 	&NodeAtCorner ,
 	&CollapseEpsilon ,
+	&BoundaryOnly ,
 	NULL
 };
 
@@ -73,7 +79,7 @@ void ShowUsage( const char* ex )
 	printf( "\t[--%s <collapse epsilon>=%g]\n" , CollapseEpsilon.name.c_str() , CollapseEpsilon.value );
 	printf( "\t[--%s]\n" , UseNearest.name.c_str() );
 	printf( "\t[--%s]\n" , NodeAtCorner.name.c_str() );
-
+	printf( "\t[--%s]\n" , BoundaryOnly.name.c_str() );
 	printf( "\t[--%s]\n" , ID.name.c_str() );
 }
 
@@ -90,6 +96,13 @@ RegularGrid< K , Point< double , 3 > > Execute
 {
 	RegularGrid< K , Point< double , 3 > > mask( Resolution.values );
 
+	auto TextureSimplexFunctor = [&]( size_t sIdx )
+		{
+			Simplex< double , K , K > simplex;
+			for( unsigned int k=0 ; k<=K ; k++ ) simplex[k] = textureCoordinates[ sIdx*(K+1) + k ];
+			return simplex;
+		};
+
 	Miscellany::Timer timer;
 	if( ID.set )
 	{
@@ -103,7 +116,7 @@ RegularGrid< K , Point< double , 3 > > Execute
 		for( size_t i=0 ; i<mask.size() ; i++ ) mask[i] = Point< double , 3 >( 0. , 0. , 0. );
 
 		RegularGrid< K , Texels::TexelInfo > interiorTexels;
-		interiorTexels = Texels::GetNodeTexelInfo< NodeAtCellCenter >( simplices.size() , [&]( size_t s  , unsigned int k ){ return textureCoordinates[ s*(K+1)+k ]; } , mask.res(0) , mask.res(1) );
+		interiorTexels = Texels::GetNodeTexelInfo< NodeAtCellCenter >( simplices.size() , TextureSimplexFunctor , mask.res() );
 		for( size_t i=0 ; i<interiorTexels.size() ; i++ ) if( interiorTexels[i].sIdx!=-1 )
 		{
 			srand( interiorTexels[i].sIdx );
@@ -114,8 +127,22 @@ RegularGrid< K , Point< double , 3 > > Execute
 	{
 		for( size_t i=0 ; i<mask.size() ; i++ ) mask[i] = Point< double , 3 >( 1. , 0. , 0. );
 
-		RegularGrid< K , Texels::TexelInfo > activeTexels = Texels::GetSupportedTexelInfo< Dim , Nearest , NodeAtCellCenter >( simplices.size() , [&]( size_t v ){ return vertices[v]; } , [&]( size_t s ){ return simplices[s]; } , [&]( size_t s  , unsigned int k ){ return textureCoordinates[ s*(K+1)+k ]; } , mask.res(0) , mask.res(1) , 0 , false , false );
-		for( size_t i=0 ; i<activeTexels.size() ; i++ ) if( activeTexels[i].sIdx!=-1 ) mask[i] = Point< double , 3 >( 0. , 0. , 1. );
+		if( BoundaryOnly.set )
+		{
+			std::vector< Simplex< double , K , 1 > > edges( simplices.size()*(K+1) );
+			for( unsigned int i=0 ; i<simplices.size() ; i++ ) for( unsigned int k=0 ; k<=K ; k++ )
+			{
+				edges[ i*(K+1) + k ][0] = textureCoordinates[ i*(K+1) + k ];
+				edges[ i*(K+1) + k ][1] = textureCoordinates[ i*(K+1) + (k+1)%(K+1) ];
+			}
+			RegularGrid< K , std::vector< size_t > > activeTexels = Texels::GetSupportedSimplexIndices< Nearest , NodeAtCellCenter , 1 >( edges.size() , [&]( size_t e ){ return edges[e]; } , mask.res() );
+			for( size_t i=0 ; i<activeTexels.size() ; i++ ) if( activeTexels[i].size() ) mask[i] = Point< double , 3 >( 0. , 0. , 1. );
+		}
+		else
+		{
+			RegularGrid< K , Texels::TexelInfo > activeTexels = Texels::GetSupportedTexelInfo< Dim , Nearest , NodeAtCellCenter >( simplices.size() , [&]( size_t v ){ return vertices[v]; } , [&]( size_t s ){ return simplices[s]; } , TextureSimplexFunctor , mask.res() , 0 , false , false );
+			for( size_t i=0 ; i<activeTexels.size() ; i++ ) if( activeTexels[i].sIdx!=-1 ) mask[i] = Point< double , 3 >( 0. , 0. , 1. );
+		}
 	}
 
 	std::cout << "Time: " << timer() << std::endl;

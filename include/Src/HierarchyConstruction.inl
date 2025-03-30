@@ -86,9 +86,41 @@ void InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geome
 	Image< Point2D< GeometryReal > > &barycentricCoords = gridChart.barycentricCoords;
 	barycentricCoords.resize(width, height);
 
+#ifdef USE_RASTERIZER
+	RegularGrid< 2 >::Range range;
+	range.second[0] = width;
+	range.second[1] = height;
+	//(1) Add nodes covered by the triangles
+#else // !USE_RASTERIZER
 	//(1) Add interior texels
+#endif // USE_RASTERIZER
 	for( int t=0 ; t<atlasChart.triangles.size() ; t++ )
 	{
+#ifdef USE_RASTERIZER
+		// Compute the associated triangle in (shifted) texel coordinates
+		Simplex< double , 2  , 2 > simplex;
+		for( unsigned int i=0 ; i<=2 ; i++ )
+		{
+			simplex[i] = atlasChart.vertices[ atlasChart.triangles[t][i] ] - gridChart.corner;
+			simplex[i][0] /= cellSizeW , simplex[i][1] /= cellSizeH;
+		}
+		auto Kernel = [&]( RegularGrid< 2 >::Index I )
+			{
+#ifdef DEBUG_ATLAS
+				if( nodeType(I)!=-1 ) MK_WARN( "Texel ( " , I[0]+gridChart.cornerCoords[0] , " , " , I[1]+gridChart.cornerCoords[1] , " ) covered by multiple triangles: " , atlasChart.triangles[t]() , " " , nodeOwner(I) );
+#else // !DEBUG_ATLAS
+				if( nodeType(I)!=-1 ) MK_WARN( "Node ( " , i , " , " , j , " ) in chart " , chartID , " already covered [" , t , "]" );
+#endif // DEBUG_ATLAS
+				nodeType(I) = 1;
+#ifdef DEBUG_ATLAS
+				nodeOwner(I) = atlasChart.triangles[t]();
+#endif // DEBUG_ATLAS
+				triangleID(I) = atlasChart.meshTriangleIndices[t];
+				Point3D< double > bc = simplex.barycentricCoordinates( Point2D< double >( I[0] , I[1] ) );
+				barycentricCoords(I) = Point2D< double >( bc[1] , bc[2] );
+			};
+		Rasterizer2D::RasterizeNodes< false >( simplex , Kernel , range );
+#else // !USE_RASTERIZER
 		Point2D< GeometryReal > tPos[3];
 		for( int i=0 ; i<3 ; i++ ) tPos[i] = atlasChart.vertices[ atlasChart.triangles[t][i] ] - gridChart.corner;
 		int minCorner[2] , maxCorner[2];
@@ -99,11 +131,11 @@ void InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geome
 		for( int j=minCorner[1] ; j<=maxCorner[1] ; j++ ) for( int i=minCorner[0] ; i<=maxCorner[0] ; i++ )
 		{
 			Point2D< GeometryReal > texel_pos = Point2D< GeometryReal >( (GeometryReal)i*cellSizeW , (GeometryReal)j*cellSizeH ) - tPos[0];
-			Point2D< GeometryReal > barycentricCoord = barycentricMap*texel_pos;
+			Point2D< GeometryReal > barycentricCoord = barycentricMap * texel_pos;
 			if( barycentricCoord[0]>=0 && barycentricCoord[1]>=0 && ( barycentricCoord[0]+barycentricCoord[1] )<=1 )
 			{
 #ifdef DEBUG_ATLAS
-				if( nodeType(i,j)!=-1 ) MK_WARN( "Texel ( " , i+gridChart.cornerCoords[0] , " , " , j+gridChart.cornerCoords[1] , " ) covered by two triangles: " , atlasChart.triangles[t]() , " " , nodeOwner(i,j) );
+				if( nodeType(i,j)!=-1 ) MK_WARN( "Texel ( " , i+gridChart.cornerCoords[0] , " , " , j+gridChart.cornerCoords[1] , " ) covered by multiple triangles: " , atlasChart.triangles[t]() , " " , nodeOwner(i,j) );
 #else // !DEBUG_ATLAS
 				if( nodeType(i,j)!=-1 ) MK_WARN( "Node ( " , i , " , " , j , " ) in chart " , chartID , " already covered [" , t , "]" );
 #endif // DEBUG_ATLAS
@@ -115,6 +147,7 @@ void InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geome
 				barycentricCoords(i,j) = barycentricCoord;
 			}
 		}
+#endif // USE_RASTERIZER
 	}
 
 	//(2) Add texels adjacent to boundary cells

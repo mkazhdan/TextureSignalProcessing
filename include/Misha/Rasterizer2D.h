@@ -29,6 +29,8 @@ DAMAGE.
 #ifndef RASTERIZER_2D_INCLUDED
 #define RASTERIZER_2D_INCLUDED
 
+#define NEW_RASTERIZER_CODE
+
 #include "RegularGrid.h"
 #include "Geometry.h"
 #include "Miscellany.h"
@@ -39,15 +41,16 @@ namespace MishaK
 	// Note: If the mapping to 2D is injective, RasterizeNodes should be parallelizable (assuming simplices to not pass exactly through node centers)
 	namespace Rasterizer2D
 	{
-		using Index = typename RegularGrid< 2 >::Index;
+		const unsigned int Dim = 2;
+
+		using Index = typename RegularGrid< Dim >::Index;
 		template< unsigned int Dim > using Range = typename RegularGrid< Dim >::Range;
-		using Triangle = Simplex< double , 2 , 2 >;
 
 		template< bool NodeAtCellCenter , typename RasterizationFunctor /* = std::function< void ( Index ) > )*/ >
-		void RasterizeNodes( Triangle triangle , RasterizationFunctor && F , Range< 2 > cellRange );
+		void RasterizeNodes( Simplex< double , Dim , Dim > triangle , RasterizationFunctor && F , Range< Dim > cellRange );
 
-		template< bool Nearest , bool NodeAtCellCenter , typename RasterizationFunctor /* = std::function< void ( Index ) > )*/ >
-		void RasterizeSupports( Triangle triangle , RasterizationFunctor && F , Range< 2 > cellRange );
+		template< bool Nearest , bool NodeAtCellCenter , unsigned int K , typename RasterizationFunctor /* = std::function< void ( Index ) > )*/ >
+		void RasterizeSupports( Simplex< double , Dim , K > simplex , RasterizationFunctor && F , Range< Dim > cellRange );
 
 #include "Rasterizer2D.inl"
 	};

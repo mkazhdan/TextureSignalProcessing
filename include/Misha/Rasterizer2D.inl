@@ -27,20 +27,20 @@ DAMAGE.
 */
 
 
-template< bool NodeAtCellCenter , unsigned int Degree , typename RasterizationFunctor /* = std::function< void ( Index ) > )*/ >
-void _Rasterize( Triangle triangle , RasterizationFunctor && F , Range< 2 > cellRange );
+template< bool NodeAtCellCenter , unsigned int Degree , unsigned int K , typename RasterizationFunctor /* = std::function< void ( Index ) > )*/ >
+void _Rasterize( Simplex< double , Dim , K > simplex , RasterizationFunctor && F , Range< Dim > cellRange );
 
 template< bool NodeAtCellCenter , typename RasterizationFunctor /* = std::function< void ( Index ) > )*/ >
-void RasterizeNodes( Triangle triangle , RasterizationFunctor && F , Range< 2 > cellRange )
+void RasterizeNodes( Simplex< double , Dim , Dim > triangle , RasterizationFunctor && F , Range< Dim > cellRange )
 {
 	return _Rasterize< NodeAtCellCenter , (unsigned int)-1 >( triangle , std::forward< RasterizationFunctor >( F ) , cellRange );
 }
 
-template< bool Nearest , bool NodeAtCellCenter , typename RasterizationFunctor /* = std::function< void ( Index ) > )*/ >
-void RasterizeSupports( Triangle triangle , RasterizationFunctor && F , Range< 2 > cellRange )
+template< bool Nearest , bool NodeAtCellCenter , unsigned int K , typename RasterizationFunctor /* = std::function< void ( Index ) > )*/ >
+void RasterizeSupports( Simplex< double , Dim , K > simplex , RasterizationFunctor && F , Range< Dim > cellRange )
 {
-	if constexpr( Nearest ) return _Rasterize< NodeAtCellCenter , 0 >( triangle , std::forward< RasterizationFunctor >( F ) , cellRange );
-	else                    return _Rasterize< NodeAtCellCenter , 1 >( triangle , std::forward< RasterizationFunctor >( F ) , cellRange );
+	if constexpr( Nearest ) return _Rasterize< NodeAtCellCenter , 0 >( simplex , std::forward< RasterizationFunctor >( F ) , cellRange );
+	else                    return _Rasterize< NodeAtCellCenter , 1 >( simplex , std::forward< RasterizationFunctor >( F ) , cellRange );
 }
 
 template< bool NodeAtCellCenter >
@@ -56,6 +56,7 @@ constexpr double _SupportRadius( void )
 	if constexpr( Degree==-1 ) return 0.;
 	else					   return ( Degree + 1. ) / 2.;
 }
+
 
 // Get the 1D range of indices whose support overlaps the segment
 template< bool NodeAtCellCenter , unsigned int Degree >
@@ -78,7 +79,7 @@ static Range< 1 > _GetCellRange( double s1 , double s2 )
 
 // Rasterizes the triangle obtained by connecting a horizontal line segment to a point
 template< bool NodeAtCellCenter , unsigned int Degree , typename RasterizationFunctor /* = std::function< void ( Index ) > )*/ >
-void _Rasterize( double y , double x0 , double x1 , Point< double , 2 > tip , RasterizationFunctor &&  F , const Range< 1 > cellRanges[2] )
+void _Rasterize( double y , double x0 , double x1 , Point< double , Dim > tip , RasterizationFunctor &&  F , const Range< 1 > cellRanges[Dim] )
 {
 	double y0 = y , y1 = tip[1];
 	if( y0>y1 ) std::swap( y0 , y1 );
@@ -122,41 +123,92 @@ void _Rasterize( double y , double x0 , double x1 , Point< double , 2 > tip , Ra
 }
 
 
-template< bool NodeAtCellCenter , unsigned int Degree , typename RasterizationFunctor /* = std::function< void ( Index ) > )*/ >
-void _Rasterize( Triangle triangle , RasterizationFunctor && F , Range< 2 > cellRange )
+template< bool NodeAtCellCenter , unsigned int Degree , unsigned int K , typename RasterizationFunctor /* = std::function< void ( Index ) > )*/ >
+void _Rasterize( Simplex< double , Dim , K > simplex , RasterizationFunctor && F , Range< Dim > cellRange )
 {
 	static_assert( std::is_convertible_v< RasterizationFunctor , std::function< void ( Index ) > > , "[ERROR] RasterizationFunctor poorly formed" );
 
 	// Split the 2D range into two 1D ranges
-	Range< 1 > cellRanges[2];
-	for( unsigned int d=0 ; d<2 ; d++ ) cellRanges[d].first[0] = cellRange.first[d] , cellRanges[d].second[0] = cellRange.second[d];
+	Range< 1 > cellRanges[Dim];
+	for( unsigned int d=0 ; d<Dim ; d++ ) cellRanges[d].first[0] = cellRange.first[d] , cellRanges[d].second[0] = cellRange.second[d];
 
-	// Find the index of the middle vertex
-	unsigned int i1 = -1;
-	for( unsigned int d=0 ; d<=2 ; d++ )
-		if( ( triangle[d][1]<=triangle[(d+1)%3][1] && triangle[d][1]>=triangle[(d+2)%3][1] ) || ( triangle[d][1]>=triangle[(d+1)%3][1] && triangle[d][1]<=triangle[(d+2)%3][1] ) )
-			i1 = d;
-	if( i1==-1 ) MK_ERROR_OUT( "Could not find middle vertex: " , triangle );
-	unsigned int i0 = (i1+2)%3 , i2 = (i1+1)%3;
-
-	double x1 = triangle[i1][0] , y = triangle[i1][1];
-
-	// All three vertices at the same height
-	if     ( y==triangle[i0][1] && y==triangle[i2][1] ) return;
-	// First and second vertices at the same height
-	else if( y==triangle[i0][1]                       ) _Rasterize< NodeAtCellCenter , Degree >( y , x1 , triangle[i0][0] , triangle[i2] , F , cellRanges );
-	// Second and third vertices at the same height
-	else if(                       y==triangle[i2][1] ) _Rasterize< NodeAtCellCenter , Degree >( y , x1 , triangle[i2][0] , triangle[i0] , F , cellRanges );
-	// All vertices at different heights
-	else
+	if constexpr( K==2 )
 	{
-		// Solve for s s.t.:
-		//	triangle[i0][1]*(1-s) + triangle[i2][1]*s = triangle[i1][1]
-		//	(triangle[i2][1]-triangle[i0][1]) * s = triangle[i1][1] - triangle[i0][1]
-		//	s = (triangle[i1][1] - triangle[i0][1]) / (triangle[i2][1]-triangle[i0][1])
-		double s = (triangle[i1][1] - triangle[i0][1]) / (triangle[i2][1]-triangle[i0][1]);
-		double x2 = triangle[i0][0]*(1-s) + triangle[i2][0]*s;
-		_Rasterize< NodeAtCellCenter , Degree >( y , x1 , x2 , triangle[i0] , F , cellRanges );
-		_Rasterize< NodeAtCellCenter , Degree >( y , x1 , x2 , triangle[i2] , F , cellRanges );
+		// Find the index of the middle vertex
+		unsigned int i1 = -1;
+		for( unsigned int d=0 ; d<=Dim ; d++ )
+			if( ( simplex[d][1]<=simplex[(d+1)%3][1] && simplex[d][1]>=simplex[(d+2)%3][1] ) || ( simplex[d][1]>=simplex[(d+1)%3][1] && simplex[d][1]<=simplex[(d+2)%3][1] ) )
+				i1 = d;
+		if( i1==-1 ) MK_ERROR_OUT( "Could not find middle vertex: " , simplex );
+		unsigned int i0 = (i1+2)%3 , i2 = (i1+1)%3;
+
+		double x1 = simplex[i1][0] , y = simplex[i1][1];
+
+		// All three vertices at the same height
+		if     ( y==simplex[i0][1] && y==simplex[i2][1] ) return;
+		// First and second vertices at the same height
+		else if( y==simplex[i0][1]                      ) _Rasterize< NodeAtCellCenter , Degree >( y , x1 , simplex[i0][0] , simplex[i2] , F , cellRanges );
+		// Second and third vertices at the same height
+		else if(                      y==simplex[i2][1] ) _Rasterize< NodeAtCellCenter , Degree >( y , x1 , simplex[i2][0] , simplex[i0] , F , cellRanges );
+		// All vertices at different heights
+		else
+		{
+			// Solve for s s.t.:
+			//	simplex[i0][1]*(1-s) + simplex[i2][1]*s = simplex[i1][1]
+			//	(simplex[i2][1]-simplex[i0][1]) * s = simplex[i1][1] - simplex[i0][1]
+			//	s = (simplex[i1][1] - simplex[i0][1]) / (simplex[i2][1]-simplex[i0][1])
+			double s = (simplex[i1][1] - simplex[i0][1]) / (simplex[i2][1]-simplex[i0][1]);
+			double x2 = simplex[i0][0]*(1-s) + simplex[i2][0]*s;
+			_Rasterize< NodeAtCellCenter , Degree >( y , x1 , x2 , simplex[i0] , F , cellRanges );
+			_Rasterize< NodeAtCellCenter , Degree >( y , x1 , x2 , simplex[i2] , F , cellRanges );
+		}
+	}
+	else if constexpr( K==1 )
+	{
+		double x0 = simplex[0][0] , x1 = simplex[1][0];
+		double y0 = simplex[0][1] , y1 = simplex[1][1];
+		if( y0>y1 ) std::swap( y0 , y1 ) , std::swap( x0 , x1 );
+
+		// For a given height, gives the span of the intersection of the horizontal line with the edge
+		auto Intersection = [&]( double _y )
+			{
+				_y = std::max< double >( y0 , std::min< double >( y1 , _y ) );
+				// Solve for s s.t.:
+				//	y0*(1-s) + y1*s = _y
+				//  (y1-y)*s = _y - y0
+				//	s = (_y-y0) / (y1-y0)
+				double s = (_y-y0) / (y1-y0);
+				return x0*(1-s) + x1*s;
+			};
+
+		// Returns the horizontal span of indices intersecting the edge, for a fixed height index
+		auto HorizontalCellRange = [&]( int iy )
+			{
+				if constexpr( Degree==-1 ) MK_ERROR_OUT( "Not supported for positive co-dimension" );
+				else
+				{
+					if( y0==y1 ) return Range< 1 >::Intersect( cellRanges[0] , _GetCellRange< NodeAtCellCenter , Degree >( std::min< double >( x0 , x1 ) , std::max< double >( x0 , x1 ) ) );
+					else
+					{
+						double r1 = Intersection( iy + _Offset< NodeAtCellCenter >() - _SupportRadius< Degree >() );
+						double r2 = Intersection( iy + _Offset< NodeAtCellCenter >() + _SupportRadius< Degree >() );
+						return Range< 1 >::Intersect( cellRanges[0] , _GetCellRange< NodeAtCellCenter , Degree >( std::min< double >( r1 , r2 ) , std::max< double >( r1 , r2 ) ) );
+					}
+				}
+			};
+
+		Range< 1 > iyRange = Range< 1 >::Intersect( cellRanges[1] , _GetCellRange< NodeAtCellCenter , Degree >( y0 , y1 ) );
+		for( int iy=iyRange.first[0] ; iy<=iyRange.second[0] ; iy++ )
+		{
+			Range< 1 > ixRange = HorizontalCellRange( iy );
+			for( int ix=ixRange.first[0] ; ix<=ixRange.second[0] ; ix++ ) F( Index(ix,iy) );
+		}
+	}
+	else if constexpr( K==0 )
+	{
+		Range< 1 > ixRange = Range< 1 >::Intersect( cellRanges[0] , _GetCellRange< NodeAtCellCenter , Degree >( simplex[0][0] , simplex[0][0] ) );
+		Range< 1 > iyRange = Range< 1 >::Intersect( cellRanges[1] , _GetCellRange< NodeAtCellCenter , Degree >( simplex[0][1] , simplex[0][1] ) );
+
+		for( int iy=iyRange.first[0] ; iy<=iyRange.second[0] ; iy++ ) for( int ix=ixRange.first[0] ; ix<=ixRange.second[0] ; ix++ ) F( Index(ix,iy) );
 	}
 }

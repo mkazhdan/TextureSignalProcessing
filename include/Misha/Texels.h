@@ -29,6 +29,8 @@ DAMAGE.
 #ifndef TEXEL_DILATION_INCLUDED
 #define TEXEL_DILATION_INCLUDED
 
+#define NEW_TEXEL_CODE
+
 #include <vector>
 
 #include "Misha/Exceptions.h"
@@ -42,36 +44,58 @@ namespace MishaK
 {
 	namespace Texels
 	{
-		const unsigned int K = 2;
+		const unsigned int Dim = 2;
+
+		template< typename SimplexIndexFunctor , unsigned int K >
+		constexpr bool IsValidSimplexIndexFunctor( void ){ return std::is_convertible_v< SimplexIndexFunctor , std::function< SimplexIndex< K >( size_t ) > >; }
+		template< typename SimplexFunctor , unsigned int EmbeddingDim , unsigned int K >
+		constexpr bool IsValidSimplexFunctor( void ){ return std::is_convertible_v< SimplexFunctor , std::function< Simplex< double , EmbeddingDim , K >( size_t ) > >; }
+		template< typename VertexFunctor , unsigned int EmbeddingDim >
+		constexpr bool IsValidVertexFunctor( void ){ return std::is_convertible_v< VertexFunctor , std::function< Point< double , EmbeddingDim >( size_t ) > >; }
 
 		struct TexelInfo
 		{
-			TexelInfo( void ) : sIdx(-1) { for( unsigned int k=0 ; k<=K ; k++ ) bc[k] = 1./(K+1); }
+			TexelInfo( void ) : sIdx(-1) { for( unsigned int d=0 ; d<=Dim ; d++ ) bc[d] = 1./(Dim+1); }
 
 			unsigned int sIdx;
-			Point< double , K+1 > bc;
+			Point< double , Dim+1 > bc;
 
-			template< typename Real , unsigned int Dim , typename VertexEmbeddingFunctor /* = std::function< Point< double , Dim > ( size_t ) > */ , typename SimplexFunctor /* = std::function< SimplexIndex< K >( size_t ) > */ >
-			Point< Real , Dim > position( const VertexEmbeddingFunctor & VF , const SimplexFunctor & SF ) const;
+			template< typename Real , unsigned int EmbeddingDim , typename SimplexEmbeddingFunctor /* = std::function< Point< double , EmbeddingDim > ( size_t ) > */ >
+			Point< Real , EmbeddingDim > position( const SimplexEmbeddingFunctor & SEF ) const;
 		};
 
-		template< typename Real , unsigned int Dim , typename VertexEmbeddingFunctor /* = std::function< Point< double , Dim > ( size_t ) > */ , typename SimplexFunctor /* = std::function< SimplexIndex< K >( size_t ) > */ >
-		RegularGrid< K , Point< Real , Dim > > GetTexelPositions( size_t simplexNum , VertexEmbeddingFunctor && VF , SimplexFunctor && SF , const RegularGrid< K , TexelInfo > &texelInfo );
+		template< bool NodeAtCellCenter >
+		Point< double , Dim > TexelNodePosition( typename RegularGrid< Dim >::Index I );
+
+		template< bool NodeAtCellCenter , unsigned int K >
+		Simplex< double , Dim , K > GetTexelSpaceSimplex( Simplex< double , Dim , K > simplex , const unsigned int res[Dim] );
+
+		template< typename Real , unsigned int EmbeddingDim , typename SimplexEmbeddingFunctor /* = std::function< Simplex< double , EmbeddingDim , Dim > > ( size_t ) > */ >
+		RegularGrid< Dim , Point< Real , EmbeddingDim > > GetTexelPositions( size_t simplexNum , SimplexEmbeddingFunctor && SEF , const RegularGrid< Dim , TexelInfo > &texelInfo );
 
 #pragma message ( "[WARNING] The output should really be a grid of vectors, since multiple triangles may be supported by the same texel" )
-		template< unsigned int Dim , bool Nearest , bool NodeAtCellCenter , typename VertexEmbeddingFunctor /* = std::function< Point< double , Dim > ( size_t ) > */ , typename SimplexFunctor /* = std::function< SimplexIndex< K >( size_t ) > */ , typename UVCoordinateFunctor /* = std::function< Point< double , K > ( unsigned int , unsigned int ) > */ >
-		RegularGrid< K , TexelInfo > GetSupportedTexelInfo( size_t simplexNum , VertexEmbeddingFunctor && VF , SimplexFunctor && SF , UVCoordinateFunctor && UV , unsigned int width , unsigned int height , unsigned int dilationRadius , bool finalize , bool verbose );
+		template< unsigned int EmbeddingDim , bool Nearest , bool NodeAtCellCenter , typename VertexEmbeddingFunctor /* = std::function< Point< double , EmbeddingDim > ( size_t ) > */ , typename SimplexIndexFunctor /* = std::function< SimplexIndex< Dim >( size_t ) > */ , typename SimplexFunctor /* = std::function< Simplex< double , Dim , Dim > ( size_t ) > */ >
+		RegularGrid< Dim , TexelInfo > GetSupportedTexelInfo( size_t simplexNum , VertexEmbeddingFunctor && VF , SimplexIndexFunctor && SIF , SimplexFunctor && SF , const unsigned int res[Dim] , unsigned int dilationRadius , bool finalize , bool verbose );
 
-		template< bool Nearest , bool NodeAtCellCenter , typename UVCoordinateFunctor /* = std::function< Point< double , K > ( unsigned int , unsigned int ) > */ >
-		RegularGrid< K , TexelInfo > GetSupportedTexelInfo( size_t simplexNum , UVCoordinateFunctor && UV , unsigned int width , unsigned int height );
+		template< bool Nearest , bool NodeAtCellCenter , typename SimplexFunctor /* = std::function< Simplex< double , Dim , Dim > ( size_t ) > */ >
+		RegularGrid< Dim , TexelInfo > GetSupportedTexelInfo( size_t simplexNum , SimplexFunctor && SF , const unsigned int res[Dim] );
 
-		template< bool NodeAtCellCenter , typename UVCoordinateFunctor /* = std::function< Point< double , K > ( unsigned int , unsigned int ) > */ >
-		RegularGrid< K , TexelInfo > GetNodeTexelInfo( size_t simplexNum , UVCoordinateFunctor && UV , unsigned int width , unsigned int height );
+#ifdef NEW_TEXEL_CODE
+		template< bool Nearest , bool NodeAtCellCenter , unsigned int K=Dim , typename SimplexFunctor = std::function< Simplex< double , Dim , K > ( size_t ) > >
+		RegularGrid< Dim , std::vector< size_t > > GetSupportedSimplexIndices( size_t simplexNum , SimplexFunctor && SF , unsigned int res[Dim] );
+#else // !NEW_TEXEL_CODE
+		template< bool Nearest , bool NodeAtCellCenter , typename SimplexFunctor /* = std::function< Simplex< double , Dim , Dim > ( size_t ) > */ >
+		RegularGrid< Dim , std::vector< size_t > > GetSupportedSimplexIndices( size_t simplexNum , SimplexFunctor && SF , unsigned int res[Dim] );
+#endif // NEW_TEXEL_CODE
 
-		template< bool Nearest , bool NodeAtCellCenter , typename UVCoordinateFunctor /* = std::function< Point< double , K > ( unsigned int , unsigned int ) > */ >
-		size_t DilateTexelInfo( UVCoordinateFunctor && UV , RegularGrid< K , TexelInfo > &texelInfo );
-		template< unsigned int Dim , typename VertexEmbeddingFunctor /* = std::function< Point< double , Dim > ( size_t ) > */ , typename SimplexFunctor /* = std::function< SimplexIndex< K >( size_t ) > */ >
-		void FinalizeTexelInfo( size_t simplexNum , VertexEmbeddingFunctor && VF , SimplexFunctor && SF , RegularGrid< K , TexelInfo > &texelInfo );
+		template< bool NodeAtCellCenter , typename SimplexFunctor /* = std::function< Simplex< double , Dim , Dim > ( size_t ) > */ >
+		RegularGrid< Dim , TexelInfo > GetNodeTexelInfo( size_t simplexNum , SimplexFunctor && SF , const unsigned int res[Dim] , bool forceThreadSafe=false );
+
+		template< bool Nearest , bool NodeAtCellCenter , typename SimplexFunctor /* = std::function< Simplex< double , Dim , Dim > ( size_t ) > */ >
+		size_t DilateTexelInfo( SimplexFunctor && SF , RegularGrid< Dim , TexelInfo > &texelInfo );
+
+		template< unsigned int EmbeddingDim , typename VertexEmbeddingFunctor /* = std::function< Point< double , EmbeddingDim > ( size_t ) > */ , typename SimplexIndexFunctor /* = std::function< SimplexIndex< Dim >( size_t ) > */ >
+		void FinalizeTexelInfo( size_t simplexNum , VertexEmbeddingFunctor && VF , SimplexIndexFunctor && SIF , RegularGrid< Dim , TexelInfo > &texelInfo );
 
 #include "Texels.inl"
 	}

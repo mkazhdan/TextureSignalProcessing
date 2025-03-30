@@ -36,6 +36,10 @@ DAMAGE.
 #include <Misha/RegularGrid.h>
 #include <Misha/Miscellany.h>
 #include <Misha/Exceptions.h>
+#ifdef USE_RASTERIZER
+#include <Misha/Texels.h>
+#include <Misha/Rasterizer2D.h>
+#endif // USE_RASTERIZER
 #include "IndexedPolygon.h"
 
 namespace MishaK
@@ -51,7 +55,7 @@ namespace MishaK
 		{
 			double scale = (double)Scale;
 			CType * pixels = new CType[ image.res(0)*image.res(1)*3 ];
-			for( unsigned int i=0 ; i<image.res(0) ; i++ ) for( unsigned int j=0 ; j<image.res(1) ; j++ ) for( int c=0 ; c<3 ; c++ ) pixels[ 3*(j*image.res(0)+i)+c ] = (CType)std::min< unsigned long long >( Scale , std::max< unsigned long long >( 0 , (unsigned long long)( image(i,j)[c] * scale + 0.5 ) ) );
+			for( unsigned int i=0 ; i<image.res(0) ; i++ ) for( unsigned int j=0 ; j<image.res(1) ; j++ ) for( int c=0 ; c<3 ; c++ ) pixels[ 3*(j*image.res(0)+i)+c ] = (CType)std::min< long long >( Scale , std::max< long long >( 0 , (long long)( image(i,j)[c] * scale + 0.5 ) ) );
 			ImageWriter< BitDepth >::Write( fileName , pixels , image.res(0) , image.res(1) , 3 );
 			delete[] pixels;
 		}
@@ -59,7 +63,7 @@ namespace MishaK
 		{
 			float scale = (float)Scale;
 			CType * pixels = new CType[ image.res(0) * image.res(1) * 3 ];
-			for( unsigned int i=0 ; i<image.res(0) ; i++ ) for( unsigned int j=0 ; j<image.res(1) ; j++ ) for( int c=0 ; c<3 ; c++ ) pixels[ 3*(j*image.res(0)+i)+c ] = (CType)std::min< unsigned long long >( Scale , std::max< unsigned long long >( 0 , (unsigned long long)( image(i,j)[c] * scale + 0.5f ) ) );
+			for( unsigned int i=0 ; i<image.res(0) ; i++ ) for( unsigned int j=0 ; j<image.res(1) ; j++ ) for( int c=0 ; c<3 ; c++ ) pixels[ 3*(j*image.res(0)+i)+c ] = (CType)std::min< long long >( Scale , std::max< long long >( 0 , (long long)( image(i,j)[c] * scale + 0.5f ) ) );
 			ImageWriter< BitDepth >::Write( fileName , pixels , image.res(0) , image.res(1) , 3 );
 			delete[] pixels;
 		}

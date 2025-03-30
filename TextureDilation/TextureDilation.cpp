@@ -78,6 +78,13 @@ int main( int argc , char* argv[] )
 	std::vector< Point< double , K > > textureCoordinates;
 	std::vector< SimplexIndex< K > > simplices;
 
+	auto TextureSimplexFunctor = [&]( size_t sIdx )
+		{
+			Simplex< double , K , K > simplex;
+			for( unsigned int k=0 ; k<=K ; k++ ) simplex[k] = textureCoordinates[ sIdx*(K+1) + k ];
+			return simplex;
+		};
+
 	ReadTexturedMesh( Input.values[0] , vertices , textureCoordinates , simplices );
 	if( CollapseEpsilon.value>0 ) CollapseVertices( vertices , simplices , CollapseEpsilon.value );
 	RegularGrid< K , Point< double , 3 > > texture = ReadTexture( Input.values[1] );
@@ -86,11 +93,11 @@ int main( int argc , char* argv[] )
 	if( Verbose.set ) std::cout << "Texture resolution: " << texture.res(0) << " x " << texture.res(1) << std::endl;
 
 	timer.reset();
-	RegularGrid< 2 , Texels::TexelInfo > inputTexelInfo = Texels::GetSupportedTexelInfo< Dim , false , true >( simplices.size() , [&]( size_t v ){ return vertices[v]; } , [&]( size_t s ){ return simplices[s]; } , [&]( size_t s , unsigned int k ){ return textureCoordinates[ s*(K+1)+k ]; } , texture.res(0) , texture.res(1) , 0 , true , false );
+	RegularGrid< 2 , Texels::TexelInfo > inputTexelInfo = Texels::GetSupportedTexelInfo< Dim , false , true >( simplices.size() , [&]( size_t v ){ return vertices[v]; } , [&]( size_t s ){ return simplices[s]; } , TextureSimplexFunctor , texture.res() , 0 , true , false );
 	if( Verbose.set ) std::cout << "Got input texels: " << timer() << std::endl;
 
 	timer.reset();
-	RegularGrid< 2 , Texels::TexelInfo > dilatedTexelInfo = Texels::GetSupportedTexelInfo< Dim , false , true >( simplices.size() , [&]( size_t v ){ return vertices[v]; } , [&]( size_t s ){ return simplices[s]; } , [&]( size_t s , unsigned int k ){ return textureCoordinates[ s*(K+1)+k ]; } , texture.res(0) , texture.res(1) , DilationRadius.value , true , Verbose.set );
+	RegularGrid< 2 , Texels::TexelInfo > dilatedTexelInfo = Texels::GetSupportedTexelInfo< Dim , false , true >( simplices.size() , [&]( size_t v ){ return vertices[v]; } , [&]( size_t s ){ return simplices[s]; } , TextureSimplexFunctor , texture.res() , DilationRadius.value , true , Verbose.set );
 	if( Verbose.set ) std::cout << "Got dilated texels: " << timer() << std::endl;
 
 	auto GetSimplex = [&]( unsigned int si )
@@ -112,7 +119,13 @@ int main( int argc , char* argv[] )
 		);
 	if( Verbose.set ) std::cout << "Set dilated texels: " << timer() << std::endl;
 
-	RegularGrid< K , Point< float , Dim > > texturePositions = Texels::GetTexelPositions< float , Dim >( simplices.size() , [&]( size_t v ){ return vertices[v]; } , [&]( size_t s ){ return simplices[s]; } , dilatedTexelInfo );
+	auto SimplexEmbeddingFunctor = [&]( size_t sIdx )
+		{
+			Simplex< double , 3 , 2 > s;
+			for( unsigned int i=0 ; i<3 ; i++ ) s[i] = vertices[ simplices[sIdx][i] ];
+			return s;
+		};
+	RegularGrid< K , Point< float , Dim > > texturePositions = Texels::GetTexelPositions< float , Dim >( simplices.size() , SimplexEmbeddingFunctor , dilatedTexelInfo );
 
 	if( Output.set ) WriteTexture( Output.value , texture );
 	if( OutputTexturePositions.set )
