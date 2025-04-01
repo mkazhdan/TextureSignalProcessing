@@ -473,6 +473,17 @@ Point< Real , Dim > RandomSimplexPoint( void )
 	}
 }
 
+template< typename Real , unsigned int K >
+Point< Real , K+1 > RandomBarycentricCoordinates( void )
+{
+	Point< Real , K+1 > bc;
+	Point< Real , K > s = RandomSimplexPoint< Real , K >();
+	bc[0] = (Real)1.;
+	for( unsigned int k=0 ; k<K ; k++ ) bc[0] -= s[k] , bc[k+1] = s[k];
+	return bc;
+}
+
+
 template< typename Real , unsigned int Dim >
 Point< Real , Dim > RandomSpherePoint( void )
 {
@@ -732,6 +743,9 @@ void Simplex< Real , Dim , K >::split( const Real values[K+1] , std::vector< Sim
 	}
 }
 
+
+#ifdef NEW_GEOMETRY_CODE
+#else // !NEW_GEOMETRY_CODE
 template< class Real , unsigned int Dim , unsigned int K >
 void Simplex< Real , Dim , K >::_nearest( Point< Real , Dim > point , Real barycentricCoordinates[K+1] ) const
 {
@@ -778,11 +792,40 @@ void Simplex< Real , Dim , K >::NearestKey::init( Simplex< Real , Dim , K > simp
 	for( int k=0 ; k<=K ; k++ )
 	{
 		for( int i=0 ; i<=K ; i++ )
-			if     ( i<k ) s[i  ] = simplex[i];
-			else if( i>k ) s[i-1] = simplex[i];
+			if     ( i<k ) s.p[i  ] = simplex[i];
+			else if( i>k ) s.p[i-1] = simplex[i];
 		_faceKeys[k].init( s );
 	}
 }
+
+#ifdef NEW_GEOMETRY_CODE
+template< class Real , unsigned int Dim , unsigned int K >
+Point< double , K+1 > Simplex< Real , Dim , K >::NearestKey::nearestBC( Point< Real , Dim > point ) const
+{
+	Point< double , K+1 > bc;
+	// Compute the projection of the point onto the plane containing the simplex
+	{
+		Point< Real , K > x;
+		Point< Real , Dim > q = point - _base;
+		for( unsigned int k=0 ; k<K ; k++ ) x[k] = Point< Real , Dim >::Dot( q , _dirs[k] );
+		x = _Dinv * x;
+		bc[0] = (Real)1.;
+		for( int i=0 ; i<K ; i++ ) bc[0] -= x[i] , bc[i+1] = x[i];
+	}
+
+	for( int k=0 ; k<=K ; k++ ) if( bc[k]<0 )
+	{
+		Real _bc[K];
+		_faceKeys[k]._nearest( point , &_bc[0] );
+		for( int i=0 ; i<=K ; i++ )
+			if     ( i<k ) bc[i] = _bc[i  ];
+			else if( i>k ) bc[i] = _bc[i-1];
+		bc[k] = 0;
+		break;
+	}
+	return bc;
+}
+#endif // NEW_GEOMETRY_CODE
 
 template< class Real , unsigned int Dim , unsigned int K >
 void Simplex< Real , Dim , K >::NearestKey::_nearest( Point< Real , Dim > point , Real barycentricCoordinates[K+1] ) const
@@ -808,6 +851,7 @@ void Simplex< Real , Dim , K >::NearestKey::_nearest( Point< Real , Dim > point 
 		break;
 	}
 }
+#endif // NEW_GEOMETRY_CODE
 
 //////////////////
 // SimplexIndex //

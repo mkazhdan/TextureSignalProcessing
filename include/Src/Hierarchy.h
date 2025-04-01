@@ -39,6 +39,7 @@ DAMAGE.
 #ifdef USE_RASTERIZER
 #include <Misha/Texels.h>
 #include <Misha/Rasterizer2D.h>
+#include <Misha/Geometry.h>
 #endif // USE_RASTERIZER
 #include "IndexedPolygon.h"
 

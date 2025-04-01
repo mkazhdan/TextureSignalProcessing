@@ -973,7 +973,7 @@ namespace MishaK
 			return q;
 		}
 
-		Point< Real , Dim > operator()( Point< Real , K > &x ) const
+		Point< Real , Dim > operator()( Point< Real , K > x ) const
 		{
 			Point< Real , Dim > q = p[0];
 			for( unsigned int k=0 ; k<K ; k++ ) q += ( p[k+1] - p[0] ) * x[k];
@@ -1016,17 +1016,17 @@ namespace MishaK
 		}
 
 #if 1
-		Point< double , K+1 > barycentricCoordinates( Point< double , Dim > q ) const
+		Point< Real , K+1 > barycentricCoordinates( Point< Real , Dim > q ) const
 		{
-			SquareMatrix< double , K > M;
-			Point< double , K > dot;
+			SquareMatrix< Real , K > M;
+			Point< Real , K > dot;
 			for( unsigned int i=0 ; i<K ; i++ )
 			{
-				dot[i] = Point< double , Dim >::Dot( q-p[0] , p[i+1]-p[0] );
-				for( unsigned int j=0 ; j<K ; j++ ) M(i,j) = Point< double , Dim >::Dot( p[i+1]-p[0] , p[j+1]-p[0] );
+				dot[i] = Point< Real , Dim >::Dot( q-p[0] , p[i+1]-p[0] );
+				for( unsigned int j=0 ; j<K ; j++ ) M(i,j) = Point< Real , Dim >::Dot( p[i+1]-p[0] , p[j+1]-p[0] );
 			}
-			Point< double , K > _b = M.inverse() * dot;
-			Point< double , K+1 > b;
+			Point< Real , K > _b = M.inverse() * dot;
+			Point< Real , K+1 > b;
 			b[0] = 1.;
 			for( unsigned int k=0 ; k<K ; k++ ) b[0] -= _b[k] , b[k+1] = _b[k];
 			return b;
@@ -1046,8 +1046,44 @@ namespace MishaK
 		};
 #endif
 
+#ifdef NEW_GEOMETRY_CODE
+		Point< Real , K+1 > nearestBC( Point< Real , Dim > p ) const
+		{
+			Point< Real , K+1 > bc = barycentricCoordinates( p );
+			if constexpr( K==0 ) return bc;
+			else
+			{
+				unsigned int count = 0;
+				for( unsigned int k=0 ; k<=K ; k++ ) if( bc[k]<0 ) count++;
+				if( !count ) return bc;
+				else
+				{
+					Real dist = std::numeric_limits< Real >::infinity();
+					Point< Real , K+1 > bc;
+					for( unsigned int k=0 ; k<=K ; k++ )
+					{
+						Simplex< Real , Dim , K-1 > _simplex;
+						for( unsigned int _k=0 , idx=0 ; _k<=K ; _k++ ) if( k!=_k ) _simplex[idx++] = operator[](_k);
+						Point< Real , K > _bc = _simplex.nearestBC( p );
+						double _dist = Point< double , Dim >::Length( _simplex(_bc) - p );
+						if( _dist<dist )
+						{
+							dist = _dist;
+							for( unsigned int _k=0 , idx=0 ; _k<=K ; _k++ )
+								if( k!=_k ) bc[_k] = _bc[idx++];
+								else        bc[_k] = 0;
+						}
+					}
+					return bc;
+				}
+			}
+		}
+		Point< Real , Dim > nearest( Point< Real , Dim > p ) const { return operator()( nearestBC(p) ); }
+#else // !NEW_GEOMETRY_CODE
 		Point< Real , Dim > nearest( Point< Real , Dim > point , Real barycentricCoordinates[K+1] ) const;
 		Point< Real , Dim > nearest( Point< Real , Dim > point ) const { Real barycentricCoordinates[K+1] ; return nearest( point , barycentricCoordinates ); }
+#endif // NEW_GEOMETRY_CODE
+
 
 		friend std::ostream &operator << ( std::ostream &os , const Simplex &s )
 		{
@@ -1060,8 +1096,15 @@ namespace MishaK
 			return os << " }";
 		}
 
+#ifdef NEW_GEOMETRY_CODE
+#else // !NEW_GEOMETRY_CODE
 		struct NearestKey
 		{
+#ifdef NEW_GEOMETRY_CODE
+			NearestKey( void ){}
+			NearestKey( Simplex s ){ init(s); }
+			Point< double , K+1 > nearestBC( Point< Real , Dim > point ) const;
+#endif // NEW_GEOMETRY_CODE
 			void init( Simplex simplex );
 			Point< Real , Dim > nearest( Point< Real , Dim > point , Real barycentricCoordinates[K+1] ) const { _nearest( point , barycentricCoordinates ) ; return operator()( barycentricCoordinates ); }
 			Point< Real , Dim > nearest( Point< Real , Dim > point ) const { Real barycentricCoordinates[K+1] ; return nearest( point , barycentricCoordinates ); }
@@ -1084,6 +1127,7 @@ namespace MishaK
 	protected:
 		void _nearest( Point< Real , Dim > point , Real barycentricCoordinates[K+1] ) const;
 		friend Simplex< Real , Dim , K+1 >;
+#endif // NEW_GEOMETRY_CODE
 	};
 
 	template< class Real , unsigned int Dim >	
@@ -1108,6 +1152,12 @@ namespace MishaK
 			return split( values , back , front );
 		}
 
+#ifdef NEW_GEOMETRY_CODE
+		Point< Real , 1 > nearestBC( Point< Real , Dim > p ) const { return Point< Real , 1 >( (Real)1 ); }
+		Point< Real , Dim > nearest( Point< Real , Dim > p ) const { return operator()( nearestBC(p) ); }
+		Point< Real , 1 > barycentricCoordinates( Point< Real , Dim > q ) const { return Point< Real , 1 >( 1 ); };
+		Point< Real , Dim > operator()( Point< Real , 1 > bc ) const { return p[0] * bc[0]; }
+#else // !NEW_GEOMETRY_CODE
 		Point< Real , Dim > nearest( Point< Real , Dim > point , Real barycentricCoordinates[1] ) const { _nearest( point , barycentricCoordinates ) ; return operator()( barycentricCoordinates ); }
 		Point< Real , Dim > nearest( Point< Real , Dim > point ) const { Real barycentricCoordinates[1] ; return nearest( point , barycentricCoordinates ); }
 
@@ -1116,12 +1166,14 @@ namespace MishaK
 		{
 			return Point< Real , 1 >( 1 );
 		};
+
 		Point< Real , Dim > operator()( Point< Real , Dim+1 > &bc ) const
 		{
 			Point< Real , Dim > q;
 			for( unsigned int d=0 ; d<=Dim ; d++ ) q += p[d]*bc[d];
 			return q;
 		}
+#endif // NEW_GEOMETRY_CODE
 
 		double volume( void ) const { return 1.; }
 
@@ -1130,8 +1182,15 @@ namespace MishaK
 			return os << "{ " << s[0] << " }";
 		}
 
+#ifdef NEW_GEOMETRY_CODE
+#else // !NEW_GEOMETRY_CODE
 		struct NearestKey
 		{
+#ifdef NEW_GEOMETRY_CODE
+			NearestKey( void ){}
+			NearestKey( Simplex s ){ init(s); }
+			Point< Real , 1 > nearestBC( Point< Real , Dim > ) const { return Point< Real , 1 >( (Real)1. ); }
+#endif // NEW_GEOMETRY_CODE
 			void init( Simplex simplex ){ _base = simplex[0]; }
 			Point< Real , Dim > nearest( Point< Real , Dim > point , Real barycentricCoordinates[1] ) const { _nearest( point , barycentricCoordinates ) ; return operator()( barycentricCoordinates ); }
 			Point< Real , Dim > nearest( Point< Real , Dim > point ) const { Real barycentricCoordinates[1] ; return nearest( point , barycentricCoordinates ); }
@@ -1145,6 +1204,7 @@ namespace MishaK
 	protected:
 		void _nearest( Point< Real , Dim > point , Real barycentricCoordinates[1] ) const { barycentricCoordinates[0] = (Real)1.; }
 		friend Simplex< Real , Dim , 1 >;
+#endif // NEW_GEOMETRY_CODE
 	};
 
 	template< class Real , unsigned int Dim , unsigned int K >
@@ -1425,6 +1485,8 @@ namespace MishaK
 
 	template< typename Real , unsigned int Dim > Point< Real , Dim > RandomBallPoint( void );
 	template< typename Real , unsigned int Dim > Point< Real , Dim > RandomSpherePoint( void );
+	template< typename Real , unsigned int Dim > Point< Real , Dim > RandomSimplexPoint( void );
+	template< typename Real , unsigned int K   > Point< Real , K+1 > RandomBarycentricCoordinates( void );
 	template< typename Real , unsigned int Dim > SquareMatrix< double , Dim > RandomRotationMatrix( void );
 
 	template<class Real>

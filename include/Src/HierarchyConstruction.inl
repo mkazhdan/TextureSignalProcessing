@@ -87,9 +87,21 @@ void InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geome
 	barycentricCoords.resize(width, height);
 
 #ifdef USE_RASTERIZER
-	RegularGrid< 2 >::Range range;
-	range.second[0] = width;
-	range.second[1] = height;
+	RegularGrid< 2 >::Range range , cellTypeRange;
+	range.second[0] = width , cellTypeRange.second[0] = width-1;
+	range.second[1] = height , cellTypeRange.second[1] = height-1;
+
+	auto GetSimplex = [&]( unsigned int t )
+		{
+			Simplex< double , 2  , 2 > simplex;
+			for( unsigned int i=0 ; i<=2 ; i++ )
+			{
+				simplex[i] = atlasChart.vertices[ atlasChart.triangles[t][i] ] - gridChart.corner;
+				simplex[i][0] /= cellSizeW , simplex[i][1] /= cellSizeH;
+			}
+			return simplex;
+		};
+
 	//(1) Add nodes covered by the triangles
 #else // !USE_RASTERIZER
 	//(1) Add interior texels
@@ -98,16 +110,11 @@ void InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geome
 	{
 #ifdef USE_RASTERIZER
 		// Compute the associated triangle in (shifted) texel coordinates
-		Simplex< double , 2  , 2 > simplex;
-		for( unsigned int i=0 ; i<=2 ; i++ )
-		{
-			simplex[i] = atlasChart.vertices[ atlasChart.triangles[t][i] ] - gridChart.corner;
-			simplex[i][0] /= cellSizeW , simplex[i][1] /= cellSizeH;
-		}
+		Simplex< double , 2  , 2 > simplex = GetSimplex( t );
 		auto Kernel = [&]( RegularGrid< 2 >::Index I )
 			{
 #ifdef DEBUG_ATLAS
-				if( nodeType(I)!=-1 ) MK_WARN( "Texel ( " , I[0]+gridChart.cornerCoords[0] , " , " , I[1]+gridChart.cornerCoords[1] , " ) covered by multiple triangles: " , atlasChart.triangles[t]() , " " , nodeOwner(I) );
+				if( nodeType(I)!=-1 ) MK_WARN_ONCE( "Texel ( " , I[0]+gridChart.cornerCoords[0] , " , " , I[1]+gridChart.cornerCoords[1] , " ) owned by multiple triangles (mapping likely not injective): " , atlasChart.triangles[t]() , " " , nodeOwner(I) );
 #else // !DEBUG_ATLAS
 				if( nodeType(I)!=-1 ) MK_WARN( "Node ( " , i , " , " , j , " ) in chart " , chartID , " already covered [" , t , "]" );
 #endif // DEBUG_ATLAS
@@ -115,7 +122,11 @@ void InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geome
 #ifdef DEBUG_ATLAS
 				nodeOwner(I) = atlasChart.triangles[t]();
 #endif // DEBUG_ATLAS
+#ifdef NEW_CODE
+				triangleID(I) = t;
+#else // !NEW_CODE
 				triangleID(I) = atlasChart.meshTriangleIndices[t];
+#endif // NEW_CODE
 				Point3D< double > bc = simplex.barycentricCoordinates( Point2D< double >( I[0] , I[1] ) );
 				barycentricCoords(I) = Point2D< double >( bc[1] , bc[2] );
 			};
@@ -143,7 +154,11 @@ void InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geome
 #ifdef DEBUG_ATLAS
 				nodeOwner(i,j) = atlasChart.triangles[t]();
 #endif // DEBUG_ATLAS
+#ifdef NEW_CODE
+				triangleID(i,j) = t;
+#else // !NEW_CODE
 				triangleID(i,j) = atlasChart.meshTriangleIndices[t];
+#endif // NEW_CODE
 				barycentricCoords(i,j) = barycentricCoord;
 			}
 		}
@@ -151,13 +166,67 @@ void InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geome
 	}
 
 	//(2) Add texels adjacent to boundary cells
+#ifdef NEW_CODE
+#else // !NEW_CODE
 	int interiorCellTriangles = 0;
+#endif // NEW_CODE
 
 	for( int e=0 ; e<atlasChart.boundaryHalfEdges.size() ; e++ )
 	{
 		int tIndex = atlasChart.boundaryHalfEdges[e] / 3;
 		int kIndex = atlasChart.boundaryHalfEdges[e] % 3;
 
+#ifdef USE_RASTERIZER
+		Simplex< double , 2 , 2 > simplex = GetSimplex( tIndex );
+		Simplex< double , 2  , 1 > subSimplex;
+		subSimplex[0] = simplex[kIndex] , subSimplex[1] = simplex[(kIndex+1)%3];
+		auto Kernel = [&]( RegularGrid< 2 >::Index I )
+			{
+				if( nodeType(I)!=1 )
+				{
+					nodeType(I) = 0;
+					Point3D< double > bc = simplex.barycentricCoordinates( Point2D< double >( I[0] , I[1] ) );
+					Point2D< GeometryReal > newBC = Point2D< GeometryReal >( Point2D< double >( bc[1] , bc[2] ) );
+
+					// If no triangle has been assigned, assign this one
+					if( triangleID(I)==-1 )
+					{
+#ifdef NEW_CODE
+						triangleID(I) = tIndex;
+#else // !NEW_CODE
+						triangleID(I) = atlasChart.meshTriangleIndices[tIndex];
+#endif // NEW_CODE
+						barycentricCoords(I) = newBC;
+					}
+					// Otherwise, update if closer
+					else
+					{
+						Point2D< GeometryReal > oldBC = barycentricCoords(I);
+#ifdef NEW_CODE
+						Simplex< double , 2 , 2 > oldSimplex = GetSimplex( triangleID(I) );
+						Point< double , 2 > oldP = oldSimplex( oldBC ) , newP = simplex( newBC );
+						double oldD2 = Point< double , 2 >::SquareDistance( oldP , oldSimplex.nearest(oldP) );
+						double newD2 = Point< double , 2 >::SquareDistance( newP ,    simplex.nearest(newP) );
+						if( newD2<oldD2 )
+#else // !NEW_CODE
+						GeometryReal minOld = std::min< GeometryReal >( std::min< GeometryReal >( oldBarycentricCoord3[0] , oldBarycentricCoord3[1] ) , oldBarycentricCoord3[2] );
+						GeometryReal minNew = std::min< GeometryReal >( std::min< GeometryReal >( newBarycentricCoord3[0] , newBarycentricCoord3[1] ) , newBarycentricCoord3[2] );
+						if( minNew>minOld )
+#endif // NEW_CODE
+						{
+#ifdef NEW_CODE
+							triangleID(I) = tIndex;
+#else // !NEW_CODE
+							triangleID(I) = atlasChart.meshTriangleIndices[tIndex];
+#endif // NEW_CODE
+							barycentricCoords(I) = newBC;
+						}
+					}
+				}
+			};
+		Rasterizer2D::RasterizeSupports< false , false >( subSimplex , Kernel , range );
+		Rasterizer2D::RasterizeSupports< true , true >( subSimplex , [&]( typename RegularGrid< 2 >::Index I ){ cellType(I)=0; } , cellTypeRange );
+#else // !USE_RASTERIZER
 		Point2D< GeometryReal > ePos[2];
 		ePos[0] = atlasChart.vertices[atlasChart.triangles[tIndex][kIndex]] - gridChart.corner;
 		ePos[1] = atlasChart.vertices[atlasChart.triangles[tIndex][(kIndex + 1) % 3]] - gridChart.corner;
@@ -180,21 +249,29 @@ void InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geome
 
 		for( int c=0 ; c<2 ; c++ ) for( int j=minCorner[1] ; j<=maxCorner[1] ; j++ ) for( int i=minCorner[0] ; i<=maxCorner[0] ; i++ )
 		{
-			Point2D< GeometryReal > cellNode[2] = { Point2D< GeometryReal >( (GeometryReal)i*cellSizeW , (GeometryReal)j*cellSizeH ), Point2D< GeometryReal >( (GeometryReal)i*cellSizeW , (GeometryReal)j*cellSizeH ) };
+			Point2D< GeometryReal > cellNode[2] =
+			{
+				Point2D< GeometryReal >( (GeometryReal)i*cellSizeW , (GeometryReal)j*cellSizeH ),
+				Point2D< GeometryReal >( (GeometryReal)i*cellSizeW , (GeometryReal)j*cellSizeH )
+			};
 			if( c==0 ) cellNode[1][c] += cellSizeW;
-			else cellNode[1][c] += cellSizeH;
+			else       cellNode[1][c] += cellSizeH;
 			Point2D< GeometryReal > cellSide = cellNode[1] - cellNode[0];
 			Point2D< GeometryReal > cellSideNormal = Point2D< GeometryReal >(cellSide[1], -cellSide[0]);
 			cellSideNormal /= Point2D< GeometryReal >::Length(cellSideNormal);
 			GeometryReal cellLevel = ( Point2D< GeometryReal >::Dot( cellSideNormal , cellNode[0] ) + Point2D< GeometryReal >::Dot( cellSideNormal , cellNode[1] ) ) / 2;
 
+			// Are the nodes on opposite sides of the edge
 			bool oppositeEdgeSide = ( Point2D< GeometryReal >::Dot( edgeNormal , cellNode[0] ) - edgeLevel ) * ( Point2D< GeometryReal >::Dot( edgeNormal , cellNode[1] ) - edgeLevel )<0;
+			// Are the edge end-points on opposite sides of the node
 			bool oppositeCellSide = ( Point2D< GeometryReal >::Dot( cellSideNormal , ePos[1] ) - cellLevel ) * ( Point2D< GeometryReal >::Dot( cellSideNormal , ePos[0] ) - cellLevel )<0;
 
+			// Do the edge and the side of the node cross
 			if( oppositeEdgeSide && oppositeCellSide )
 			{
 				if( c==0 ) cellType(i,j-1) = cellType(i,j) = 0;
 				if( c==1 ) cellType(i-1,j) = cellType(i,j) = 0;
+
 
 				for( int dn=-1 ; dn<=1 ; dn++ ) for( int dc=0 ; dc<2 ; dc++ ) //Update nodes on adjacent cells
 				{
@@ -212,7 +289,11 @@ void InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geome
 
 						if( triangleID( nIndices[0] , nIndices[1] )==-1 )
 						{
+#ifdef NEW_CODE
+							triangleID(nIndices[0], nIndices[1]) = tIndex;
+#else // !NEW_CODE
 							triangleID(nIndices[0], nIndices[1]) = atlasChart.meshTriangleIndices[tIndex];
+#endif // NEW_CODE
 							barycentricCoords(nIndices[0], nIndices[1]) = barycentricCoord;
 						}
 						else //Update the position to the closest triangle
@@ -224,7 +305,11 @@ void InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geome
 							GeometryReal minNew = std::min< GeometryReal >( std::min< GeometryReal >( newBarycentricCoord3[0] , newBarycentricCoord3[1] ) , newBarycentricCoord3[2] );
 							if( minNew>minOld )
 							{
+#ifdef NEW_CODE
+								triangleID( nIndices[0] , nIndices[1] ) = tIndex;
+#else // !NEW_CODE
 								triangleID( nIndices[0] , nIndices[1] ) = atlasChart.meshTriangleIndices[tIndex];
+#endif // NEW_CODE
 								barycentricCoords( nIndices[0] , nIndices[1] ) = barycentricCoord;
 							}
 						}
@@ -236,7 +321,11 @@ void InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geome
 		//(2.2) Add texels adjacent to cells that contain triangles
 		if ((minCorner[0] + 1 == maxCorner[0]) && (minCorner[1] + 1 == maxCorner[1])) {
 			cellType(minCorner[0], minCorner[1]) = 0;
+
+#ifdef NEW_CODE
+#else // !NEW_CODE
 			interiorCellTriangles++;
+#endif // NEW_CODE
 			for (int di = 0; di < 2; di++) for (int dj = 0; dj < 2; dj++) {
 				int nIndices[2] = { minCorner[0] + di, minCorner[1] + dj };
 				nIndices[0] = std::min<int>(std::max<int>(0, nIndices[0]), width - 1);
@@ -248,7 +337,11 @@ void InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geome
 					Point2D< GeometryReal > barycentricCoord = barycentricMap*texel_pos;
 
 					if (triangleID(nIndices[0], nIndices[1]) == -1) {
+#ifdef NEW_CODE
+						triangleID(nIndices[0], nIndices[1]) = tIndex;
+#else // !NEW_CODE
 						triangleID(nIndices[0], nIndices[1]) = atlasChart.meshTriangleIndices[tIndex];
+#endif // NEW_CODE
 						barycentricCoords(nIndices[0], nIndices[1]) = barycentricCoord;
 					}
 					else //Update the position to the closest triangle
@@ -260,7 +353,11 @@ void InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geome
 						GeometryReal minNew = std::min< GeometryReal >( std::min< GeometryReal >( newBarycentricCoord3[0] , newBarycentricCoord3[1] ) , newBarycentricCoord3[2] );
 						if( minNew>minOld )
 						{
+#ifdef NEW_CODE
+							triangleID( nIndices[0] , nIndices[1] ) = tIndex;
+#else // !NEW_CODE
 							triangleID( nIndices[0] , nIndices[1] ) = atlasChart.meshTriangleIndices[tIndex];
+#endif // NEW_CODE
 							barycentricCoords( nIndices[0] , nIndices[1] ) = barycentricCoord;
 						}
 					}
@@ -268,7 +365,11 @@ void InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geome
 				}
 			}
 		}
+#endif // USE_RASTERIZER
 	}
+#ifdef NEW_CODE
+	for( size_t i=0 ; i<triangleID.size() ; i++ ) if( triangleID[i]!=-1 ) triangleID[i] = atlasChart.meshTriangleIndices[ triangleID[i] ];
+#endif // NEW_CODE
 
 	//(3) Add interior cells
 	for (int j = 0; j < height - 1; j++)for (int i = 0; i < width - 1; i++) {

@@ -41,6 +41,8 @@ Point< Real , EmbeddingDim > TexelInfo::position( const SimplexEmbeddingFunctor 
 ///////////////
 ///////////////
 
+#ifdef NEW_TEXEL_CODE
+#else // !NEW_TEXEL_CODE
 inline double DistanceToEdge( Point< double , Dim > p , Point< double , Dim > v0 , Point< double , Dim > v1 )
 {
 	// E(s) = || p - ( v0*(1-s) + v1*s ) ||^2
@@ -64,6 +66,7 @@ inline double DistanceToTriangle( Point< double , Dim > p , Simplex< double , Di
 	else MK_ERROR_OUT( "At least one of the barycentric coordinates should be positive" );
 	return 0.;
 }
+#endif // NEW_TEXEL_CODE
 
 template< typename Real , unsigned int EmbeddingDim , typename SimplexEmbeddingFunctor /* = std::function< Simplex< double , EmbeddingDim , Dim > > ( size_t ) > */ >
 RegularGrid< Dim , Point< Real , EmbeddingDim > > GetTexelPositions( size_t simplexNum , SimplexEmbeddingFunctor && SEF , const RegularGrid< Dim , TexelInfo > &texelInfo )
@@ -281,7 +284,11 @@ size_t DilateTexelInfo( SimplexFunctor && SF , RegularGrid< Dim , TexelInfo > &t
 				for( unsigned int j=0 ; j<_boundary[i].neighbors.size() ; j++ )
 				{
 					Simplex< double , Dim , Dim > s = GetTexelSpaceSimplex< NodeAtCellCenter >( SF( _boundary[i].neighbors[j] ) , texelInfo.res() );
+#ifdef NEW_TEXEL_CODE
+					double d = Point< double , Dim >::SquareDistance( p , s( s.nearestBC( p ) ) );
+#else // !NEW_TEXEL_CODE
 					double d = DistanceToTriangle( p , s );
+#endif // NEW_TEXEL_CODE
 					if( d<dist ) dist = d , sIdx = _boundary[i].neighbors[j];
 				}
 				if( sIdx==-1 ) MK_ERROR_OUT( "Could not find neighboring simplex" );
