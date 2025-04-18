@@ -123,7 +123,7 @@ void DeepCoefficientRestriction( const std::vector< Real >& fineDeepCoefficients
 }
 
 template< typename MatrixReal >
-void BoundaryDeepMatrixConstruction( int numBoundayTexels , int numTexels , const std::vector< MatrixReal > &deepCoefficients , const std::vector< BoundaryDeepIndex > &boundaryDeepIndices , SparseMatrix< MatrixReal , int > &boundaryDeepMatrix )
+void BoundaryDeepMatrixConstruction( int numBoundaryTexels , int numTexels , const std::vector< MatrixReal > &deepCoefficients , const std::vector< BoundaryDeepIndex > &boundaryDeepIndices , SparseMatrix< MatrixReal , int > &boundaryDeepMatrix )
 {
 	std::vector< Eigen::Triplet< MatrixReal > > boundaryDeepTriplets;
 	for( int i=0 ; i<boundaryDeepIndices.size() ; i++ )
@@ -131,11 +131,11 @@ void BoundaryDeepMatrixConstruction( int numBoundayTexels , int numTexels , cons
 		boundaryDeepTriplets.push_back( Eigen::Triplet< MatrixReal >( boundaryDeepIndices[i].boundaryIndex , boundaryDeepIndices[i].deepGlobalIndex , deepCoefficients[ 10*boundaryDeepIndices[i].deepIndex + boundaryDeepIndices[i].offset ] ) );
 		//NOTE: Deep coefficient is not multiplied by reciprocal yet.
 	}
-	boundaryDeepMatrix = SetSparseMatrix( boundaryDeepTriplets , numBoundayTexels , numTexels , false );
+	boundaryDeepMatrix = SetSparseMatrix( boundaryDeepTriplets , numBoundaryTexels , numTexels , false );
 }
 
 template< typename MatrixReal >
-void BoundaryBoundaryMatrixConstruction( int numBoundayTexels , const std::vector< MatrixReal > &fineDeepCoefficients , const SparseMatrix< MatrixReal , int > &fineBoundaryBoundaryMatrix , const SparseMatrix< MatrixReal , int > &boundaryCoarseFineProlongation , const SparseMatrix< MatrixReal , int > &boundaryFineCoarseRestriction , const std::vector< BoundaryBoundaryIndex< MatrixReal > > &boundaryBoundaryIndices , SparseMatrix< MatrixReal , int > &coarseBoundaryBoundaryMatrix , bool verbose=false )
+void BoundaryBoundaryMatrixConstruction( int numBoundaryTexels , const std::vector< MatrixReal > &fineDeepCoefficients , const SparseMatrix< MatrixReal , int > &fineBoundaryBoundaryMatrix , const SparseMatrix< MatrixReal , int > &boundaryCoarseFineProlongation , const SparseMatrix< MatrixReal , int > &boundaryFineCoarseRestriction , const std::vector< BoundaryBoundaryIndex< MatrixReal > > &boundaryBoundaryIndices , SparseMatrix< MatrixReal , int > &coarseBoundaryBoundaryMatrix , bool verbose=false )
 {
 	Miscellany::Timer timer;
 
@@ -154,7 +154,7 @@ void BoundaryBoundaryMatrixConstruction( int numBoundayTexels , const std::vecto
 	if( verbose ) printf( "\t Triplets  =  %.4f\n" , timer.elapsed() );
 
 	if( verbose ) timer.reset();
-	coarseBoundaryBoundaryMatrix = SetSparseMatrix( boundaryBoundaryTriplets , numBoundayTexels , numBoundayTexels , false );
+	coarseBoundaryBoundaryMatrix = SetSparseMatrix( boundaryBoundaryTriplets , numBoundaryTexels , numBoundaryTexels , false );
 	if( verbose ) printf( "\t Parsing =  %.4f \n" , timer.elapsed() );
 
 	if( verbose ) timer.reset();
@@ -165,9 +165,9 @@ void BoundaryBoundaryMatrixConstruction( int numBoundayTexels , const std::vecto
 template< typename GeometryReal , typename MatrixReal >
 void FullMatrixConstruction( const GridAtlas< GeometryReal , MatrixReal > &gridAtlas , const SystemCoefficients< MatrixReal > &systemCoefficients , SparseMatrix< MatrixReal , int > &fullMatrix )
 {
-	int numTexels = gridAtlas.numTexels;
+	unsigned int numTexels = gridAtlas.numTexels;
 	fullMatrix.resize( numTexels );
-	std::vector< int > deepGlobalIndex = gridAtlas.deepGlobalIndex;
+	std::vector< unsigned int > deepGlobalIndex = gridAtlas.deepGlobalIndex;
 
 	//Add deep triplets
 	//Initalization deep
@@ -219,14 +219,14 @@ void FullMatrixConstruction( const GridAtlas< GeometryReal , MatrixReal > &gridA
 	}
 
 	std::vector< Eigen::Triplet< MatrixReal > > boundaryTriplets;
-	std::vector<int> boundaryGlobalIndex = gridAtlas.boundaryGlobalIndex;
+	std::vector< unsigned int > boundaryGlobalIndex = gridAtlas.boundaryGlobalIndex;
 	for (int i = 0; i < boundaryGlobalIndex.size(); i++) {
 		int globalIndex = boundaryGlobalIndex[i];
 		for( int j=0 ; j<systemCoefficients.boundaryDeepMatrix.RowSize(i) ; j++ )
 			boundaryTriplets.push_back( Eigen::Triplet< MatrixReal >( globalIndex , systemCoefficients.boundaryDeepMatrix[i][j].N , systemCoefficients.boundaryDeepMatrix[i][j].Value ) );
 		for( int j=0 ; j<systemCoefficients.boundaryBoundaryMatrix.RowSize(i) ; j++ )
 		{
-			int neighbourGlobalIndex = boundaryGlobalIndex[ systemCoefficients.boundaryBoundaryMatrix[i][j].N ];
+			unsigned int neighbourGlobalIndex = boundaryGlobalIndex[ systemCoefficients.boundaryBoundaryMatrix[i][j].N ];
 			boundaryTriplets.push_back( Eigen::Triplet< MatrixReal >( globalIndex , neighbourGlobalIndex , systemCoefficients.boundaryBoundaryMatrix[i][j].Value ) );
 		}
 	}

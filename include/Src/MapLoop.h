@@ -34,25 +34,35 @@ DAMAGE.
 
 namespace MishaK
 {
-	void LoopVertices( std::unordered_map< unsigned long long , unsigned long long > &forwardMap , std::vector< std::vector< unsigned long long > > &loopVertices )
+	template< typename Index , typename MapType /* = std::map< Index , Index > || std::unordered_map< Index , Index > */ >
+	void LoopVertices( MapType &forwardMap , std::vector< std::vector< Index > > &loopVertices )
 	{
+		static_assert( std::is_convertible_v< MapType , std::map< Index , Index > > || std::is_convertible_v< MapType , std::unordered_map< Index , Index > > , "[ERROR] MapType poorly formed" );
+
+		using SetType = std::conditional_t< std::is_convertible_v< MapType , std::unordered_map< Index , Index > > , std::unordered_set< Index > , std::set< Index > >;
+
 		loopVertices.clear();
-		std::unordered_set<unsigned long long> alreadyVisitedVertex;
+		SetType alreadyVisitedVertex;
 		unsigned int loopCounter = 0;
 		unsigned int edgeCounter = 0;
-		for (auto iter = forwardMap.begin(); iter != forwardMap.end(); iter++){
-			unsigned long long sourceVertex = (*iter).first;
-			if (alreadyVisitedVertex.find(sourceVertex) == alreadyVisitedVertex.end()){
-				std::vector< unsigned long long> currentLoop;
-				unsigned long long currentVertex = sourceVertex;
+		for( auto iter=forwardMap.begin() ; iter!=forwardMap.end() ; iter++ )
+		{
+			Index sourceVertex = (*iter).first;
+			if( alreadyVisitedVertex.find(sourceVertex) == alreadyVisitedVertex.end() )
+			{
+				std::vector< Index> currentLoop;
+				Index currentVertex = sourceVertex;
 				bool terminate = false;
-				do{
-					if (alreadyVisitedVertex.find(currentVertex) == alreadyVisitedVertex.end()){
+				do
+				{
+					if( alreadyVisitedVertex.find( currentVertex )==alreadyVisitedVertex.end() )
+					{
 						alreadyVisitedVertex.insert(currentVertex);
 						currentLoop.push_back(currentVertex);
 						auto mappedVertex = forwardMap.find(currentVertex);
-						if (mappedVertex != forwardMap.end()){
-							unsigned long long nextVertex = (*mappedVertex).second;
+						if( mappedVertex!=forwardMap.end() )
+						{
+							Index nextVertex = (*mappedVertex).second;
 							edgeCounter++;
 							currentVertex = nextVertex;
 						}
@@ -63,40 +73,12 @@ namespace MishaK
 						if( currentVertex!=sourceVertex ) MK_THROW( "Non-simple loop, node " , currentVertex );
 						terminate = true;
 					}
-				} while (!terminate);
+				}
+				while( !terminate );
 				loopCounter++;
 				loopVertices.push_back(currentLoop);
 			}
 		}
-	}
-
-	void ListVerticesSimpleLoop( std::unordered_map< int , int > &forwardMap , std::vector< int > &vertexList )
-	{
-		vertexList.clear();
-		std::unordered_set<int> alreadyVisitedVertex;
-
-		int sourceVertex = (*forwardMap.begin()).first;
-		int currentVertex = sourceVertex;
-		bool terminate = false;
-		do
-		{
-			if (alreadyVisitedVertex.find(currentVertex) == alreadyVisitedVertex.end()) {
-				alreadyVisitedVertex.insert(currentVertex);
-				vertexList.push_back(currentVertex);
-				auto mappedVertex = forwardMap.find(currentVertex);
-				if (mappedVertex != forwardMap.end()) {
-					unsigned long long nextVertex = (*mappedVertex).second;
-					currentVertex = (int)nextVertex;
-				}
-				else MK_THROW( "Vertex to dead end" );
-			}
-			else
-			{
-				if( currentVertex!=sourceVertex ) MK_THROW( "Non-simple loop" );
-				terminate = true;
-			}
-		}
-		while (!terminate);
 	}
 }
 #endif //MAPLOOP_INCLUDED

@@ -146,7 +146,7 @@ class GrayScottReactionDiffusion
 {
 public:
 	static std::vector< FEM::SamplePoint< PreReal > > randomSamples;
-	static OrientedTexturedTriangleMesh< PreReal > mesh;
+	static TexturedTriangleMesh< PreReal > mesh;
 	static int textureWidth;
 	static int textureHeight;
 	static Real diffusionRates[2];
@@ -173,7 +173,7 @@ public:
 	static SparseMatrix< Real , int > stiffness;
 	static SparseMatrix< Real , int > systemMatrices[2];
 
-	static int seedTexel;
+	static unsigned int seedTexel;
 
 	static std::vector< AtlasChart< PreReal > > atlasCharts;
 	static std::vector< std::vector< SquareMatrix< PreReal , 2 > > > parameterMetric;
@@ -206,7 +206,7 @@ public:
 	//Samples
 	static ScalarElementSamples< Real > scalarSamples;
 	static std::vector< InteriorCellLine > interiorCellLines;
-	static std::vector< std::pair< int , int > > interiorCellLineIndex;
+	static std::vector< std::pair< unsigned int , unsigned int > > interiorCellLineIndex;
 
 	//Linear Operators
 	static SystemCoefficients< Real > massCoefficients;
@@ -248,7 +248,7 @@ public:
 };
 
 template< typename PreReal , typename Real > std::vector< FEM::SamplePoint< PreReal > >								GrayScottReactionDiffusion< PreReal , Real >::randomSamples;
-template< typename PreReal , typename Real > OrientedTexturedTriangleMesh< PreReal >								GrayScottReactionDiffusion< PreReal , Real >::mesh;
+template< typename PreReal , typename Real > TexturedTriangleMesh< PreReal >										GrayScottReactionDiffusion< PreReal , Real >::mesh;
 template< typename PreReal , typename Real > int																	GrayScottReactionDiffusion< PreReal , Real >::textureWidth;
 template< typename PreReal , typename Real > int																	GrayScottReactionDiffusion< PreReal , Real >::textureHeight;
 template< typename PreReal , typename Real > TexturedMeshVisualization												GrayScottReactionDiffusion< PreReal , Real >::visualization;
@@ -291,9 +291,9 @@ template< typename PreReal , typename Real > typename GrayScottReactionDiffusion
 //Samples
 template< typename PreReal , typename Real > ScalarElementSamples< Real >											GrayScottReactionDiffusion< PreReal , Real >::scalarSamples;
 template< typename PreReal , typename Real > std::vector< InteriorCellLine >										GrayScottReactionDiffusion< PreReal , Real >::interiorCellLines;
-template< typename PreReal , typename Real > std::vector< std::pair< int , int > >									GrayScottReactionDiffusion< PreReal , Real >::interiorCellLineIndex;
+template< typename PreReal , typename Real > std::vector< std::pair< unsigned int , unsigned int > >				GrayScottReactionDiffusion< PreReal , Real >::interiorCellLineIndex;
 
-template< typename PreReal , typename Real > int																	GrayScottReactionDiffusion< PreReal , Real >::seedTexel = -1;
+template< typename PreReal , typename Real > unsigned int															GrayScottReactionDiffusion< PreReal , Real >::seedTexel = -1;
 template< typename PreReal , typename Real > std::vector< Point3D< float > >										GrayScottReactionDiffusion< PreReal , Real >::textureNodePositions;
 
 template< typename PreReal , typename Real > SparseMatrix< Real , int >												GrayScottReactionDiffusion< PreReal , Real >::coarseBoundaryFineBoundaryProlongation;
@@ -323,7 +323,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::SetRightHandSide( void )
 	static std::vector< Point2D< Real > > ab_x( multigridVariables[0][0].x.size() );
 	static std::vector< Point2D< Real > > ab_rhs( multigridVariables[0][0].rhs.size() );
 	for( int ab=0 ; ab<2 ; ab++ ) ThreadPool::ParallelFor( 0 , ab_x.size() , [&]( unsigned int , size_t i ){ ab_x[i][ab] = multigridVariables[ab][0].x[i]; } );
-	const std::vector< int >& boundaryGlobalIndex = hierarchy.gridAtlases[0].boundaryGlobalIndex;
+	const std::vector< unsigned int >& boundaryGlobalIndex = hierarchy.gridAtlases[0].boundaryGlobalIndex;
 
 	ThreadPool::ParallelFor( 0 , boundaryGlobalIndex.size() , [&]( unsigned int , size_t i ){coarseBoundaryValues[i] = ab_x[ boundaryGlobalIndex[i] ]; } );
 	coarseBoundaryFineBoundaryProlongation.Multiply( &coarseBoundaryValues[0] , &fineBoundaryValues[0] );
@@ -441,14 +441,14 @@ void GrayScottReactionDiffusion< PreReal , Real >::Idle( void )
 	if( updateCount && !visualization.promptCallBack )
 	{
 		if( UseDirectSolver.set ) UpdateExactSolution();
-		else                      UpdateApproximateSolution();
+		else UpdateApproximateSolution();
 
 		if( updateCount>0 ) updateCount--;
 		steps++;
 		sprintf( stepsString , "Steps: %d" , steps );
 	}
 	if( whichConcentration<0 ) UpdateOutputBuffer();
-	else                       UpdateOutputBuffer( multigridVariables[whichConcentration][0].x );
+	else UpdateOutputBuffer( multigridVariables[whichConcentration][0].x );
 }
 
 template< typename PreReal , typename Real >
@@ -555,10 +555,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeConcentrations( voi
 		{
 			int tIdx = randomSamples[i].tIdx;
 			Point2D< Real > p = randomSamples[i].p;
-			Point2D< Real > t =
-				mesh.textureCoordinates[ tIdx*3 + 0 ] * (Real)( 1. - p[0] - p[1] ) +
-				mesh.textureCoordinates[ tIdx*3 + 1 ] * (Real)(      p[0]        ) +
-				mesh.textureCoordinates[ tIdx*3 + 2 ] * (Real)(             p[1] );
+			Point2D< Real > t = mesh.textureTriangle( tIdx )( Point2D< PreReal >( p ) );
 			t[0] *= nodeIndex.res(0) , t[1] *= nodeIndex.res(1);
 			int idx = nodeIndex( (int)floor( t[0] +0.5 ) , (int)floor( t[1] +0.5 ) );
 			if( idx>=0 && idx<multigridVariables[1][0].x.size() ) multigridVariables[1][0].x[idx] = 1;
@@ -571,9 +568,8 @@ template< typename PreReal , typename Real >
 void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width , int height )
 {
 	Miscellany::Timer timer;
-	MultigridBlockInfo multigridBlockInfo( MultigridBlockWidth.value , MultigridBlockHeight.value , MultigridPaddedWidth.value , MultigridPaddedHeight.value , 0 );
-
-	InitializeHierarchy( mesh , width , height , levels , textureNodes , bilinearElementIndices , hierarchy , atlasCharts , multigridBlockInfo , true , DetailVerbose.set );
+	MultigridBlockInfo multigridBlockInfo( MultigridBlockWidth.value , MultigridBlockHeight.value , MultigridPaddedWidth.value , MultigridPaddedHeight.value );
+	InitializeHierarchy( mesh , width , height , levels , textureNodes , bilinearElementIndices , hierarchy , atlasCharts , multigridBlockInfo , false );
 	if( Verbose.set ) printf( "\tInitialized hierarchy: %.2f(s)\n" , timer.elapsed() );
 
 	//Initialize node index
@@ -599,21 +595,21 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 		if( IntrinsicVectorField.set )
 		{
 			ReadVector( vectorField , VectorField.value );
-			if( vectorField.size()!=mesh.triangles.size() ) MK_THROW( "Triangle and vector counts don't match: " , mesh.triangles.size() , " != " , vectorField.size() );
+			if( vectorField.size()!=mesh.numTriangles() ) MK_THROW( "Triangle and vector counts don't match: " , mesh.numTriangles() , " != " , vectorField.size() );
 		}
 		else
 		{
 			std::vector< Point3D< PreReal > > _vectorField;
 			ReadVector( _vectorField , VectorField.value );
-			if( _vectorField.size()!=mesh.triangles.size() ) MK_THROW( "Triangle and vector counts don't match: " , mesh.triangles.size() , " != " , _vectorField.size() );
+			if( _vectorField.size()!=mesh.numTriangles() ) MK_THROW( "Triangle and vector counts don't match: " , mesh.numTriangles() , " != " , _vectorField.size() );
 			vectorField.resize( _vectorField.size() );
 			ThreadPool::ParallelFor
 				(
-					0 , mesh.triangles.size() ,
+					0 , mesh.numTriangles() ,
 					[&]( unsigned int , size_t i )
 					{
-						Point3D< PreReal > v[] = { mesh.vertices[ mesh.triangles[i][0] ] , mesh.vertices[ mesh.triangles[i][1] ] , mesh.vertices[ mesh.triangles[i][2] ] };
-						Point3D< PreReal > d[] = { v[1]-v[0] , v[2]-v[0] };
+						Simplex< PreReal , 3 , 2 > s = mesh.surfaceTriangle(i);
+						Point3D< PreReal > d[] = { s[1]-s[0] , s[2]-s[0] };
 						SquareMatrix< PreReal , 2 > Dot;
 						for( int j=0 ; j<2 ; j++ ) for( int k=0 ; k<2 ; k++ ) Dot(j,k) = Point3D< PreReal >::Dot( d[j] , d[k] );
 						Point2D< PreReal > dot( Point3D< PreReal >::Dot( d[0] , _vectorField[i] ) , Point3D< PreReal >::Dot( d[1] , _vectorField[i] ) );
@@ -729,8 +725,8 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 
 	coarseBoundaryFineBoundaryProlongation = boundaryProlongation.coarseBoundaryFineBoundaryProlongation;
 	fineBoundaryCoarseBoundaryRestriction = boundaryProlongation.fineBoundaryCoarseBoundaryRestriction;
-	std::vector< int > fineBoundaryIndex = boundaryProlongation.fineBoundaryIndex;
-	int numFineBoundarNodes = boundaryProlongation.numFineBoundarNodes;
+	std::vector< unsigned int > fineBoundaryIndex = boundaryProlongation.fineBoundaryIndex;
+	unsigned int numFineBoundaryNodes = boundaryProlongation.numFineBoundaryNodes;
 
 	scalarSamples.resize( interiorCellLines.size() );
 
@@ -750,8 +746,8 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 	if( Verbose.set ) printf( "\tInitialized vector field integration: %.2f(s)\n" , timer.elapsed() );
 	coarseBoundaryValues.resize( hierarchy.gridAtlases[0].numTexels - hierarchy.gridAtlases[0].numDeepTexels );
 	coarseBoundaryRHS.resize   ( hierarchy.gridAtlases[0].numTexels - hierarchy.gridAtlases[0].numDeepTexels );
-	fineBoundaryValues.resize( numFineBoundarNodes );
-	fineBoundaryRHS.resize   ( numFineBoundarNodes );
+	fineBoundaryValues.resize( numFineBoundaryNodes );
+	fineBoundaryRHS.resize   ( numFineBoundaryNodes );
 
 	scalarSamples.sort();
 }
@@ -759,7 +755,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 template< typename PreReal , typename Real >
 void GrayScottReactionDiffusion< PreReal , Real >::InitializeVisualization( void )
 {
-	int tCount = (int)mesh.triangles.size();
+	unsigned int tCount = (unsigned int)mesh.numTriangles();
 
 	visualization.triangles.resize( tCount );
 	visualization.vertices.resize( 3*tCount );
@@ -767,28 +763,28 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeVisualization( void
 	visualization.textureCoordinates.resize( 3*tCount );
 	visualization.normals.resize( 3*tCount );
 
-
-	for( int i=0 ; i<tCount ; i++ ) for( int k=0 ; k<3 ; k++ ) visualization.triangles[i][k] = 3*i+k;
-
-	for( int i=0 ; i<tCount ; i++ ) for ( int j=0 ; j<3 ; j++ )
+	for( unsigned int t=0 , idx=0 ; t<tCount ; t++ )
 	{
-		visualization.vertices          [3*i+j] = mesh.vertices[ mesh.triangles[i][j] ];
-		visualization.normals           [3*i+j] = mesh.normals [ mesh.triangles[i][j] ];
-		visualization.textureCoordinates[3*i+j] = mesh.textureCoordinates[3*i+j];
+		Simplex< PreReal , 3 , 2 > sSimplex = mesh.surfaceTriangle(t);
+		Simplex< PreReal , 2 , 2 > tSimplex = mesh.textureTriangle(t);
+		Point3D< float > n = sSimplex.normal();
+		n /= Point3D< float >::Length( n );
+
+		for( int k=0 ; k<3 ; k++ , idx++ )
+		{
+			visualization.triangles[t][k] = idx;
+			visualization.vertices[idx] = sSimplex[k];
+			visualization.normals[idx] = n;
+			visualization.textureCoordinates[idx] = tSimplex[k];
+		}
 	}
 
-	std::vector< int > boundaryEdges;
-	mesh.initializeBoundaryEdges( boundaryEdges );
+	std::vector< unsigned int > boundaryHalfEdges = mesh.texture.boundaryHalfEdges();
 
-	for( int e=0 ; e<boundaryEdges.size() ; e++ )
+	for( int e=0 ; e<boundaryHalfEdges.size() ; e++ )
 	{
-		int tIndex = boundaryEdges[e] / 3;
-		int kIndex = boundaryEdges[e] % 3;
-		for( int c=0 ; c<2 ; c++ )
-		{
-			Point3D< float > v = Point3D< float >( mesh.vertices[ mesh.triangles[tIndex][ (kIndex+c)%3 ] ] );
-			visualization.boundaryEdgeVertices.push_back(v);
-		}
+		EdgeIndex eIndex = mesh.surface.edgeIndex( boundaryHalfEdges[e] );
+		for( int i=0 ; i<2 ; i++ ) visualization.chartBoundaryVertices.push_back( mesh.surface.vertices[ eIndex[i] ] );
 	}
 
 	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization,  's' , "export texture" , "Output Texture" , ExportTextureCallBack ) );
@@ -856,27 +852,21 @@ void GrayScottReactionDiffusion< PreReal , Real >::Init( void )
 	{
 		if( RandomJitter.value ) srand( RandomJitter.value );
 		else                     srand( time(NULL) );
-		std::vector< Point2D< PreReal > > randomOffset( mesh.vertices.size() );
 		PreReal jitterScale = (PreReal)1e-3 / std::max< int >( textureWidth , textureHeight );
-		for( int i=0 ; i<randomOffset.size() ; i++ ) randomOffset[i] = Point2D< PreReal >( (PreReal)1. - Random< PreReal >()*2 , (PreReal)1 - Random< PreReal >()*2 )*jitterScale;
-		for( int i=0 ; i<mesh.triangles.size() ; i++ ) for( int k=0 ; k<3 ; k++ ) mesh.textureCoordinates[3*i+k] += randomOffset[ mesh.triangles[i][k] ];
+		for( int i=0 ; i<mesh.texture.vertices.size() ; i++ ) mesh.texture.vertices[i] += Point2D< PreReal >( (PreReal)1. - Random< PreReal >()*2 , (PreReal)1. - Random< PreReal >()*2 ) * jitterScale;
 	}
 
 	{
-		padding = Padding::Init( textureWidth , textureHeight , mesh.textureCoordinates , DetailVerbose.set );
-		padding.pad( textureWidth , textureHeight , mesh.textureCoordinates );
+		padding = Padding::Init( textureWidth , textureHeight , mesh.texture.vertices , DetailVerbose.set );
+		padding.pad( textureWidth , textureHeight , mesh.texture.vertices );
 		textureWidth  += padding.width();
 		textureHeight += padding.height();
 	}
 
 	// Define centroid and scale for visualization
-	Point3D< PreReal > centroid;
-	for( int i=0 ; i<mesh.vertices.size() ; i++ ) centroid += mesh.vertices[i];
-	centroid /= (int)mesh.vertices.size();
-
-	PreReal radius = 0;
-	for( int i=0 ; i<mesh.vertices.size() ; i++ ) radius = std::max< PreReal >( radius , Point3D< PreReal >::Length( mesh.vertices[i]-centroid ) );
-	for( int i=0 ; i<mesh.vertices.size() ; i++ ) mesh.vertices[i] = ( mesh.vertices[i]-centroid ) / radius;
+	Point3D< PreReal > centroid = mesh.surface.centroid();
+	PreReal radius = mesh.surface.boundingRadius( centroid );
+	for( unsigned int i=0 ; i<mesh.surface.vertices.size() ; i++ ) mesh.surface.vertices[i] = ( mesh.surface.vertices[i]-centroid ) / radius;
 
 	Miscellany::Timer timer;
 	InitializeSystem( textureWidth , textureHeight );
@@ -888,11 +878,10 @@ void GrayScottReactionDiffusion< PreReal , Real >::Init( void )
 		printf( "Peak Memory (MB): %d\n" , Miscellany::MemoryInfo::PeakMemoryUsageMB() );
 	}
 
-	//Assign position to exterior nodes using barycentric-exponential map
+	// Assign position to exterior nodes using barycentric-exponential map
 	{
-		FEM::RiemannianMesh< PreReal , unsigned int > rMesh( GetPointer( mesh.triangles ) , mesh.triangles.size() );
-
-		rMesh.setMetricFromEmbedding( GetPointer( mesh.vertices ) );
+		FEM::RiemannianMesh< PreReal , unsigned int > rMesh( GetPointer( mesh.surface.triangles ) , mesh.surface.triangles.size() );
+		rMesh.setMetricFromEmbedding( GetPointer( mesh.surface.vertices ) );
 		rMesh.makeUnitArea();
 		Pointer( FEM::CoordinateXForm< PreReal > ) xForms = rMesh.getCoordinateXForms();
 
@@ -913,17 +902,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::Init( void )
 	}
 
 	textureNodePositions.resize( textureNodes.size() );
-	for( int i=0 ; i<textureNodePositions.size() ; i++ )
-	{
-		Point2D< PreReal > barycentricCoords = textureNodes[i].barycentricCoords;
-		int tID = textureNodes[i].tID;
-		Point3D< PreReal > p =
-			mesh.vertices[ mesh.triangles[tID][0] ] * ( (PreReal)1.-barycentricCoords[0]-barycentricCoords[1] ) +
-			mesh.vertices[ mesh.triangles[tID][1] ] *               barycentricCoords[0]                        +
-			mesh.vertices[ mesh.triangles[tID][2] ] *                                    barycentricCoords[1]   ;
-
-		textureNodePositions[i] = Point3D< float >( p );
-	}
+	for( int i=0 ; i<textureNodePositions.size() ; i++ ) textureNodePositions[i] = mesh.surface( textureNodes[i] );
 
 	InitializeConcentrations();
 

@@ -27,10 +27,42 @@ DAMAGE.
 */
 #pragma once
 
+#include <array>
 #include "Basis.h"
 
 namespace MishaK
 {
+	template< typename GeometryReal >
+	struct NodeInfo
+	{
+		NodeInfo( void ) : index(-1){}
+		NodeInfo( unsigned int index , Point2D< GeometryReal > position ) : index(index) , position(position) {}
+
+		unsigned int index;
+		Point2D< GeometryReal > position;
+	};
+
+#ifdef NEW_INTERSECTION_KEY
+	struct GridMeshIntersectionKey
+	{
+		unsigned int gridIndex , meshIndex;
+		GridMeshIntersectionKey( void ) : gridIndex(-1) , meshIndex(-1){}
+		GridMeshIntersectionKey( unsigned int g , unsigned int m ) : gridIndex(g) , meshIndex(m){}
+		bool isMeshVertex  ( void ) const { return gridIndex==-1 && meshIndex!=-1; }
+		bool isGridVertex  ( void ) const { return meshIndex==-1 && gridIndex!=-1; }
+		bool isIntersection( void ) const { return meshIndex!=-1 && gridIndex!=-1; }
+
+		bool operator < ( const GridMeshIntersectionKey &key ) const { return gridIndex<key.gridIndex || ( gridIndex==key.gridIndex && meshIndex<key.meshIndex ); }
+		bool operator == ( const GridMeshIntersectionKey &key ) const { return gridIndex==key.gridIndex && meshIndex==key.meshIndex; }
+		bool operator != ( const GridMeshIntersectionKey &key ) const { return gridIndex!=key.gridIndex || meshIndex!=key.meshIndex; }
+
+		static GridMeshIntersectionKey GridKey( unsigned int g ){ return GridMeshIntersectionKey( g , -1 ); }
+		static GridMeshIntersectionKey MeshKey( unsigned int m ){ return GridMeshIntersectionKey( -1 , m ); }
+
+		friend std::ostream &operator << ( std::ostream &s ,  const GridMeshIntersectionKey &iKey ){ return s << "( " << iKey.gridIndex << " , " << iKey.meshIndex << " )"; }
+	};
+#endif // NEW_INTERSECTION_KEY
+
 	template< typename GeometryReal >
 	struct BoundaryIndexedTriangle
 	{
@@ -44,66 +76,65 @@ namespace MishaK
 		const Point2D< GeometryReal >& operator [] ( size_t idx ) const { return vertices[idx]; }
 	};
 
-	template< typename GeometryReal >
-	struct AtlasIndexedPolygon
+	template< typename GeometryReal , unsigned int N >
+	struct _AtlasIndexedPolygon
 	{
-		std::vector < Point2D < GeometryReal > > vertices;
-		std::vector < int > indices;
-		std::vector < int > atlasVertexIndices;
-		std::vector < int > atlasVertexParentEdge;
-		std::vector < int > atlasEdgeIndices;
+		template< typename T > using Array = std::conditional_t< N==-1 , std::vector< T > , std::array< T , N > >;
+		Array< Point2D < GeometryReal > > vertices;
+		Array< int > indices;
+		Array< int > atlasVertexIndices;
+		Array< int > atlasVertexParentEdge;
+		Array< int > atlasEdgeIndices;
 		size_t size( void ) const { return vertices.size(); }
 		Point2D< GeometryReal >& operator [] ( size_t idx ){ return vertices[idx]; }
 		const Point2D< GeometryReal >& operator [] ( size_t idx ) const { return vertices[idx]; }
 	};
+	template< typename GeometryReal > using AtlasIndexedPolygon  = _AtlasIndexedPolygon< GeometryReal , static_cast< unsigned int >( -1 ) >;
+	template< typename GeometryReal > using AtlasIndexedTriangle = _AtlasIndexedPolygon< GeometryReal , 3 >;
 
-	template< typename GeometryReal >
-	struct AtlasIndexedTriangle
+	template< typename GeometryReal , unsigned int N >
+	struct _IndexedIntersectionPolygon
 	{
-		int id;
-		Point2D< GeometryReal > vertices[3];
-		int indices[3];
-		int atlasVertexParentEdge[3];
-		int atlasVertexIndices[3];
-		int atlasEdgeIndices[3];
+		template< typename T > using Array = std::conditional_t< N==-1 , std::vector< T > , std::array< T , N > >;
+		Array< Point2D< GeometryReal > > vertices;
+#ifdef NEW_INTERSECTION_KEY
+		Array< GridMeshIntersectionKey > indices;
+#else // !NEW_INTERSECTION_KEY
+		Array< unsigned long long > indices;
+#endif // NEW_INTERSECTION_KEY
+		Array< int > edgeIndices;	// [???]
 	};
+	template< typename GeometryReal > using IndexedIntersectionPolygon  = _IndexedIntersectionPolygon< GeometryReal , static_cast< unsigned int >( -1 ) >;
+	template< typename GeometryReal > using IndexedIntersectionTriangle = _IndexedIntersectionPolygon< GeometryReal , 3 >;
 
-	template< typename GeometryReal >
-	struct IndexedIntersectionPolygon
+#ifdef NEW_INTERSECTION_KEY
+#else // !NEW_INTERSECTION_KEY
+	unsigned long long SetIntersectionKey( const unsigned long i0 , const unsigned long i1 )
 	{
-		std::vector< Point2D < GeometryReal > > vertices;
-		std::vector< unsigned long long > indices;
-		std::vector< int > edgeIndices;
-	};
-
-	template< typename GeometryReal >
-	struct IndexedIntersectionTriangle
-	{
-		Point2D< GeometryReal > vertices[3];
-		unsigned long long indices[3];
-		int edgeIndices[3];
-	};
-
-	unsigned long long SetIntersectionKey(const unsigned long i0, const unsigned long i1) {
 		return ( ( (static_cast<unsigned long long>(i0) << 32) & 0xFFFFFFFF00000000) | (static_cast<unsigned long long>(i1) & 0x00000000FFFFFFFF));
 	}
 
-	void GetIntersectionKey(unsigned long long key, unsigned long & i0, unsigned long & i1) {
+	void GetIntersectionKey( unsigned long long key , unsigned long & i0 , unsigned long & i1 )
+	{
 		i1 = static_cast<unsigned long>(key & 0x00000000FFFFFFFF);
 		i0 = static_cast<unsigned long>((key >> 32) & 0x00000000FFFFFFFF);
 	}
+#endif // NEW_INTERSECTION_KEY
 
 	template< typename GeometryReal >
 	struct IntersectionInfo
 	{
+#ifdef NEW_INTERSECTION_KEY
+		GridMeshIntersectionKey intersectionKey;
+#else // !NEW_INTERSECTION_KEY
 		unsigned long long intersectionKey;
+#endif // NEW_INTERSECTION_KEY
 		int intersectionIndex;
 		Point2D< GeometryReal > position;
 		GeometryReal time;
-	};
 
-	template< typename GeometryReal >
-	bool IntersectionComparison( const IntersectionInfo< GeometryReal > &i0 , const IntersectionInfo< GeometryReal > &i1 ){ return i0.time < i1.time; };
+		static bool CompareByTime( const IntersectionInfo< GeometryReal > &i0 , const IntersectionInfo< GeometryReal > &i1 ){ return i0.time < i1.time; };
+	};
 
 	template< typename GeometryReal >
 	struct BoundarySegmentInfo

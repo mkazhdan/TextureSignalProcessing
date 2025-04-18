@@ -140,10 +140,19 @@ void Relaxation
 template< class Real , class Data , class Solver >
 void Relaxation
 (
-	const std::vector< Real > &deepCoefficients , const SparseMatrix< Real , int > &boundaryDeepMatrix , Solver &boundarySolver , const std::vector< int > &boundaryGlobalIndex ,
+	const std::vector< Real > &deepCoefficients ,
+	const SparseMatrix< Real , int > &boundaryDeepMatrix ,
+	Solver &boundarySolver ,
+	const std::vector< unsigned int > &boundaryGlobalIndex ,
 	const std::vector< ThreadTask > &threadTasks ,
-	const std::vector< Data > &rhs , std::vector< Data > &x0 , std::vector< Data > &boundaryRHS , std::vector< Data > &boundarySolution , std::vector< Data > &variableBoundaryRHS ,
-	int numIterations=2 , bool boundaryFirst=true , bool verbose=false
+	const std::vector< Data > &rhs ,
+	std::vector< Data > &x0 ,
+	std::vector< Data > &boundaryRHS ,
+	std::vector< Data > &boundarySolution ,
+	std::vector< Data > &variableBoundaryRHS ,
+	unsigned int numIterations=2 ,
+	bool boundaryFirst=true ,
+	bool verbose=false
 	)
 {
 
@@ -155,7 +164,8 @@ void Relaxation
 	Miscellany::Timer timer;
 
 	int it_offset = boundaryFirst ? 0 : 1;
-	for (int it = 0; it < numIterations; it++) {
+	for( unsigned int it=0 ; it<numIterations ; it++ )
+	{
 		if ((it + it_offset) % 2 == 0) {//Update Boundary;
 
 			if( verbose ) timer.reset();
@@ -236,11 +246,20 @@ void Relaxation
 template< class Real , class Data , class Solver >
 void RelaxationAndResidual
 (
-	const std::vector< Real > &deepCoefficients , const SparseMatrix< Real , int> &boundaryDeepMatrix , Solver &boundarySolver , const std::vector< int > &boundaryGlobalIndex ,
+	const std::vector< Real > &deepCoefficients ,
+	const SparseMatrix< Real , int > &boundaryDeepMatrix ,
+	Solver &boundarySolver ,
+	const std::vector< unsigned int > &boundaryGlobalIndex ,
 	const std::vector< ThreadTask > &threadTasks ,
-	const std::vector< Data > &rhs , std::vector< Data > &x0 , std::vector< Data > &boundaryRHS , std::vector< Data > &boundaryValue , std::vector< Data > &variableBoundaryRHS ,
-	const SparseMatrix< Real , int > & boundaryBoundaryMatrix , std::vector< Data > & residual ,
-	int numIterations=2 , bool verbose=false
+	const std::vector< Data > &rhs ,
+	std::vector< Data > &x0 ,
+	std::vector< Data > &boundaryRHS ,
+	std::vector< Data > &boundaryValue ,
+	std::vector< Data > &variableBoundaryRHS ,
+	const SparseMatrix< Real , int > & boundaryBoundaryMatrix ,
+	std::vector< Data > & residual ,
+	unsigned int numIterations=2 ,
+	bool verbose=false
 )
 {
 	int numBoundaryVariables = (int)boundaryGlobalIndex.size();
@@ -248,7 +267,8 @@ void RelaxationAndResidual
 	ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundaryRHS[i] = rhs[boundaryGlobalIndex[i]]; } );
 
 	Miscellany::Timer timer;
-	for (int it = 0; it < numIterations; it++) {
+	for( unsigned int it=0 ; it<numIterations ; it++ )
+	{
 		if (it % 2 == 0) {//Update Boundary
 
 			if( verbose ) timer.reset();
@@ -620,7 +640,7 @@ template< class Real , class Data , class DataReal=Real >
 void MultiplyBySystemMatrix_NoReciprocals
 (
 	const SystemCoefficients< Real > &systemCoefficients ,
-	const std::vector< int >& boundaryGlobalIndex ,
+	const std::vector< unsigned int >& boundaryGlobalIndex ,
 	const std::vector< RasterLine >& rasterLines ,
 	const std::vector< Data >& in ,
 	std::vector< Data > & out ,
@@ -767,14 +787,18 @@ void ComputeSystemResidual
 template< class Real , class Data >
 void MultiplyByRestriction
 (
-	const SparseMatrix< Real , int > & __boundaryRestrictionMatrix , const std::vector< int > &boundaryGlobalIndex , std::vector< Data > &boundaryValue ,
+	const SparseMatrix< Real , int > & __boundaryRestrictionMatrix ,
+	const std::vector< unsigned int > &boundaryGlobalIndex ,
+	std::vector< Data > &boundaryValue ,
 	const std::vector< RasterLine > &restrictionLines ,
-	const std::vector< Data > &in , std::vector< Data > &out , bool verbose=false
+	const std::vector< Data > &in ,
+	std::vector< Data > &out ,
+	bool verbose=false
 )
 {
 	Miscellany::Timer timer;
 
-	int numBoundaryVariables = (int)boundaryGlobalIndex.size();
+	unsigned int numBoundaryVariables = (unsigned int)boundaryGlobalIndex.size();
 
 	if( verbose ) timer.reset();
 	__boundaryRestrictionMatrix.Multiply((Data*)&in[0], (Data*)&boundaryValue[0]);
@@ -935,7 +959,7 @@ void CellStiffnessToTexelStiffness
 	const std::vector< Data >& interiorTexelToCellCoeffs ,
 	SparseMatrix< Real , int > boundaryCellBasedStiffnessRHSMatrix[Channels] ,
 	std::vector< Real > boundaryTexelValues[Channels] ,
-	const std::vector< int > & boundaryGlobalIndex ,
+	const std::vector< unsigned int > & boundaryGlobalIndex ,
 	std::vector< Data >& texelModulatedStiffness ,
 	bool verbose=false
 )
@@ -1052,7 +1076,7 @@ void VCycle( std::vector< MultigridLevelVariables< DataType > > &variables , con
 		if( verbose ) printf("Relaxation  + Residual %.4f\n" , tmr.elapsed() );
 
 		if( verbose ) tmr.reset();
-		MultiplyByRestriction(_indices.boundaryRestriction, nextLevelIndices.boundaryGlobalIndex, nextLevelVariables.boundary_value, nextLevelIndices.restrictionLines, _variables.residual, nextLevelVariables.rhs, detailVerbose);
+		MultiplyByRestriction( _indices.boundaryRestriction , nextLevelIndices.boundaryGlobalIndex , nextLevelVariables.boundary_value , nextLevelIndices.restrictionLines, _variables.residual, nextLevelVariables.rhs , detailVerbose );
 		if( verbose ) printf( "Restriction %.4f\n" , tmr.elapsed() );
 	}
 

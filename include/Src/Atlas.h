@@ -35,71 +35,77 @@ DAMAGE.
 #include <Misha/Miscellany.h>
 #include <Misha/Exceptions.h>
 #include "SimpleTriangleMesh.h"
-#include "ChartDecomposition.h"
-
 
 namespace MishaK
 {
-
-#ifdef DEBUG_ATLAS
-	struct _TriangleIndex
-	{
-		SimplexIndex< 2 > index;
-		int oldIndex;
-		_TriangleIndex( void ) : oldIndex( -1 ){}
-		_TriangleIndex( SimplexIndex< 2 > i , int o ) : index( i ) , oldIndex( o ){}
-
-		unsigned int &operator[] ( unsigned int idx )       { return index[idx]; }
-		unsigned int  operator[] ( unsigned int idx ) const { return index[idx]; }
-		int operator()( void ) const { return oldIndex; }
-	};
-#endif // DEBUG_ATLAS
+	template< typename GeometryReal > struct AtlasChart;
 
 	template< typename GeometryReal >
-	class AtlasMesh : public SimpleTriangleMesh< GeometryReal , 2 >
+	struct AtlasMesh : public SimpleTriangleMesh< GeometryReal , 2 >
 	{
-	public:
-		using SimpleTriangleMesh< GeometryReal , 2 >::vertices;
-		using SimpleTriangleMesh< GeometryReal , 2 >::triangles;
+		using SimpleTriangleMesh< GeometryReal , 2 >::vertices;		// The texture coordinates
+		using SimpleTriangleMesh< GeometryReal , 2 >::triangles;	// The triangles
 
-		std::vector< int > triangleIndexInChart;
-		std::vector< int > triangleChartIndex;
-		std::vector< int > halfEdgeToEdgeIndex;
-		std::vector< int > vertexMap;
-		int numCharts;
+		// Returns the index of the chart the triangle has been assigned to
+		unsigned int triangleChart( unsigned int t ) const { return _triangleToChart[t]; }
+
+		// Returns the index of the edge associated with the half-edge
+		unsigned int halfEdgeToEdge( unsigned int he ) const { return _halfEdgeToEdge[he]; }
+
+		// Returns the index of the texture vertex as a surface vertex
+		unsigned int textureToSurfaceVertex( unsigned int v ) const { return _textureToSurfaceVertex[v]; }
+
+		unsigned int numCharts;
+
+		void initialize( const TexturedTriangleMesh< GeometryReal > &inputMesh );
+
+		// Displace vertex positions if they are too close to the axes
+		void jitter( unsigned int width , unsigned int height , GeometryReal epsilon=(GeometryReal)1e-6 );
+
+		void initializeCharts( const std::vector< bool > &isBoundaryHalfEdge , unsigned int width , unsigned int height , std::vector< AtlasChart< GeometryReal > > &atlasCharts ) const;
+
+	protected:
+		std::vector< unsigned int > _triangleToChart;
+		std::vector< unsigned int > _halfEdgeToEdge;
+		std::vector< unsigned int > _textureToSurfaceVertex;
 	};
 
 	template< typename GeometryReal >
-	class AtlasChart
+	struct AtlasChart : public SimpleTriangleMesh< GeometryReal , 2 >
 	{
-	public:
+		using SimpleTriangleMesh< GeometryReal , 2 >::vertices;		// The texture coordinates
+		using SimpleTriangleMesh< GeometryReal , 2 >::triangles;	// The triangles
+
 		Point2D< GeometryReal > minCorner;
 		Point2D< GeometryReal > maxCorner;
 		Point2D< GeometryReal > gridOrigin;
 		int originCoords[2];
-#ifdef DEBUG_ATLAS
-		std::vector< _TriangleIndex > triangles;
-#else // !DEBUG_ATLAS
-		std::vector< SimplexIndex< 2 > > triangles;
-#endif // DEBUG_ATLAS
-		std::vector< Point2D< GeometryReal > > vertices;
-		std::vector< int > boundaryHalfEdges;
-		std::vector< int > atlasEdgeIndices;
 
-		std::vector< int > meshVertexIndices;
-		std::vector< int > meshTriangleIndices;
+		// The list of half edges on the boundary of the chart
+		std::vector< unsigned int > boundaryHalfEdges;
+
+		// Returns the index of the atlas edge associated with the chart half-edge
+		unsigned int atlasEdge( unsigned int he ) const { return _chartHalfEdgeToAtlasEdge[he]; }
+
+		// Returns the index of the texture vertex as a surface vertex
+		unsigned int surfaceVertex( unsigned int v ) const { return _chartToSurfaceVertex[v]; }
+
+		// Returns the index of the triangle within the atlas
+		unsigned int atlasTriangle( unsigned int t ) const { return _chartToAtlasTriangle[t]; }
+
+	protected:
+		friend AtlasMesh< GeometryReal >;
+
+		std::vector< unsigned int > _chartHalfEdgeToAtlasEdge;
+		std::vector< unsigned int > _chartToSurfaceVertex;
+		std::vector< unsigned int > _chartToAtlasTriangle;
 	};
 
 	template< typename GeometryReal >
 	class IndexedVector2D
 	{
 	public:
-		IndexedVector2D( Point2D< GeometryReal > p_p , int p_index , int p_vertex )
-		{
-			p = p_p;
-			index = p_index;
-			vertex = p_vertex;
-		}
+		IndexedVector2D( Point2D< GeometryReal > p , int index , int vertex ) : p(p) , index(index) , vertex(vertex){}
 		Point2D< GeometryReal > p;
 		int index;
 		int vertex;
@@ -124,6 +130,37 @@ namespace MishaK
 			return false;
 		}
 	};
+
+#ifdef PRE_CLIP_TRIANGLES
+#else // !PRE_CLIP_TRIANGLES
+	template< typename GeometryReal >
+	struct EdgeEquation
+	{
+		EdgeEquation( void ) : _offset(0) {}
+		EdgeEquation( Point2D< GeometryReal > v1 , Point2D< GeometryReal > v2 , bool normalize=false )
+		{
+			_n = v2 - v1;
+			_n = Point2D< GeometryReal >( -_n[1] , _n[0] );
+			if( normalize ) _n /= Point2D< GeometryReal >::Length( _n );
+			_offset = -Point2D< GeometryReal >::Dot( v1 , _n );
+		}
+		GeometryReal operator()( Point2D< GeometryReal > p ) const { return Point2D< GeometryReal >::Dot( _n , p ) + _offset; }
+		bool makePositive( Point2D< GeometryReal > p )
+		{
+			if( operator()( p )<0 )
+			{
+				_n = -_n;
+				_offset = -_offset;
+				return true;
+			}
+			else return false;
+		}
+	protected:
+		Point2D< GeometryReal > _n;
+		GeometryReal _offset;
+	};
+#endif // PRE_CLIP_TRIANGLES
+
 
 #include "AtlasMesh.inl"
 #include "AtlasCharts.inl"

@@ -147,6 +147,13 @@ bool RegularGrid< Dim >::Index::operator >= ( typename RegularGrid< Dim >::Index
 ////////////////////////
 // RegularGrid::Range //
 ////////////////////////
+
+template< unsigned int Dim >
+typename RegularGrid< Dim >::Range RegularGrid< Dim >::Range::CellsSupportedOnNode( Index I ){ return Range( I ).dilate(1,0); }
+
+template< unsigned int Dim >
+typename RegularGrid< Dim >::Range RegularGrid< Dim >::Range::NodesSupportedOnCell( Index I ){ return Range( I ).dilate(0,1); }
+
 template< unsigned int Dim >
 RegularGrid< Dim >::Range::Range( void ){}
 
@@ -164,10 +171,13 @@ typename RegularGrid< Dim >::Range RegularGrid< Dim >::Range::Intersect( Ranges 
 }
 
 template< unsigned int Dim >
-typename RegularGrid< Dim >::Range RegularGrid< Dim >::Range::dilate( unsigned int radius ) const
+typename RegularGrid< Dim >::Range RegularGrid< Dim >::Range::dilate( unsigned int radius ) const { return dilate(radius,radius); }
+
+template< unsigned int Dim >
+typename RegularGrid< Dim >::Range RegularGrid< Dim >::Range::dilate( unsigned int leftRadius , unsigned int rightRadius ) const
 {
 	Range r;
-	for( unsigned int d=0 ; d<Dim ; d++ ) r.first[d] = first[d]-radius , r.second[d] = second[d] + radius;
+	for( unsigned int d=0 ; d<Dim ; d++ ) r.first[d] = first[d] - static_cast< int >( leftRadius ) , r.second[d] = second[d] + static_cast< int >( rightRadius );
 	return r;
 }
 

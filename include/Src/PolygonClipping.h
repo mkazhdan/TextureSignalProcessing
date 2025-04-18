@@ -34,6 +34,35 @@ DAMAGE.
 
 namespace MishaK
 {
+#ifdef PRE_CLIP_TRIANGLES
+	template< typename GeometryReal >
+	struct EdgeEquation
+	{
+		EdgeEquation( void ) : _offset(0) {}
+		EdgeEquation( Point2D< GeometryReal > v1 , Point2D< GeometryReal > v2 , bool normalize=false )
+		{
+			_n = v2 - v1;
+			_n = Point2D< GeometryReal >( -_n[1] , _n[0] );
+			if( normalize ) _n /= Point2D< GeometryReal >::Length( _n );
+			_offset = -Point2D< GeometryReal >::Dot( v1 , _n );
+		}
+		GeometryReal operator()( Point2D< GeometryReal > p ) const { return Point2D< GeometryReal >::Dot( _n , p ) + _offset; }
+		bool makePositive( Point2D< GeometryReal > p )
+		{
+			if( operator()( p )<0 )
+			{
+				_n = -_n;
+				_offset = -_offset;
+				return true;
+			}
+			else return false;
+		}
+	protected:
+		Point2D< GeometryReal > _n;
+		GeometryReal _offset;
+	};
+#endif // PRE_CLIP_TRIANGLES
+
 	template< typename GeometryReal >
 	struct CellClippedTriangle
 	{
@@ -43,10 +72,12 @@ namespace MishaK
 		CellClippedTriangle( void ) : sz(0){}
 		CellClippedTriangle( const std::vector< Point2D< GeometryReal > > &triangle )
 		{
-			sz = (int)triangle.size();
-			for( int i=0 ; i<triangle.size() ; i++ ) vertices[i] = triangle[i];
+			sz = (unsigned int)triangle.size();
+			for( unsigned int i=0 ; i<triangle.size() ; i++ ) vertices[i] = triangle[i];
 		}
-		int size( void ) const { return (int)sz; }
+		CellClippedTriangle( const Simplex< GeometryReal , 2 , 2 > &triangle ) : sz(3) { for( unsigned int i=0 ; i<3 ; i++ ) vertices[i] = triangle[i]; }
+
+		unsigned int size( void ) const { return sz; }
 		void push_back( Point2D< GeometryReal > p ){ vertices[sz++] = p; }
 		Point2D< GeometryReal >& operator[] ( unsigned int idx ) { return vertices[idx]; }
 		const Point2D< GeometryReal >& operator[] ( unsigned int idx ) const { return vertices[idx]; }
@@ -145,11 +176,11 @@ namespace MishaK
 	}
 
 	template< typename GeometryReal >
-	int ClipTriangleToPrimalCell( CellClippedTriangle< GeometryReal >&tri , int i , int j , GeometryReal cellSizeW , GeometryReal cellSizeH )
+	unsigned int ClipTriangleToPrimalCell( CellClippedTriangle< GeometryReal >&tri , int i , int j , GeometryReal cellSizeW , GeometryReal cellSizeH )
 	{
 		ClipConvexPolygon( tri , Point2D< GeometryReal >(0,1) , cellSizeH*j , cellSizeH*(j+1) );
 		ClipConvexPolygon( tri , Point2D< GeometryReal >(1,0) , cellSizeW*i , cellSizeW*(i+1) );
-		return (int)tri.size();
+		return (unsigned int)tri.size();
 	}
 
 	//Vertex type 
@@ -159,7 +190,13 @@ namespace MishaK
 	// 1 interior
 
 	template< typename GeometryReal >
-	void ClipPartiallyIndexedPolygonToIndexedEdge( AtlasIndexedPolygon< GeometryReal > &polygon , const Point2D< GeometryReal > &normal , GeometryReal &offset , int edgeIndex, int atlasVertexIndices[2] )
+	void ClipPartiallyIndexedPolygonToIndexedEdge
+	(
+		AtlasIndexedPolygon< GeometryReal > &polygon ,
+		const EdgeEquation< GeometryReal > &edgeEquation , 
+		unsigned int edgeIndex,
+		unsigned int atlasVertexIndices[2]
+	)
 	{
 		std::vector< Point2D< GeometryReal > > outputVertices;
 		std::vector< int > outputVertexIndices; 
@@ -190,7 +227,7 @@ namespace MishaK
 		}
 		else
 		{
-			previousLevel = Point2D< GeometryReal >::Dot( previousVertex , normal ) - offset;
+			previousLevel = edgeEquation( previousVertex );
 			previousVertexType = previousLevel > 0 ? 1 : -1;
 		}
 
@@ -217,7 +254,7 @@ namespace MishaK
 			}
 			else
 			{
-				currentLevel = Point2D< GeometryReal >::Dot( currentVertex , normal ) - offset;
+				currentLevel = edgeEquation( currentVertex );
 				currentVertexType = currentLevel > 0 ? 1 : -1;
 			}
 
@@ -312,41 +349,23 @@ namespace MishaK
 
 	//Only for convex polygons
 	template< typename GeometryReal >
-	int ClipPartiallyIndexedPolygonToIndexedTriangle(AtlasIndexedPolygon< GeometryReal > &polygon , const AtlasIndexedTriangle< GeometryReal > &triangle , bool verbose=false )
+	unsigned int ClipPartiallyIndexedPolygonToIndexedTriangle( AtlasIndexedPolygon< GeometryReal > &polygon , const AtlasIndexedTriangle< GeometryReal > &triangle )
 	{
 		Point2D< GeometryReal > triangleCenter = (triangle.vertices[0] + triangle.vertices[1] + triangle.vertices[2]) / 3;
 
-		for (int k = 0; k < 3; k++){
+		for( int k=0 ; k<3 ; k++ )
+		{
+			EdgeIndex eIndex = CornerEdgeIndex( k );
 
-			//Compute edge normal (pointing inside)
-			Point2D< GeometryReal > dir =   triangle.vertices[ (k+1)%3 ] - triangle.vertices[k];
-			Point2D< GeometryReal > mid = ( triangle.vertices[ (k+1)%3 ] + triangle.vertices[k] ) / 2;
-			Point2D< GeometryReal > normal(-dir[1], dir[0]);
-			normal /= (GeometryReal)Point2D< GeometryReal >::Length(normal);
-			GeometryReal offset = Point2D< GeometryReal >::Dot( mid , normal );
-			if( Point2D< GeometryReal >::Dot( triangleCenter , normal )<offset )
-			{
-				normal *= -(GeometryReal)1.;
-				offset *= -(GeometryReal)1.;
-			}
+			EdgeEquation< GeometryReal > edgeEquation( triangle.vertices[ eIndex[0] ] , triangle.vertices[ eIndex[1] ] );
+			edgeEquation.makePositive( triangleCenter );
 
-			int edgeIndex = triangle.atlasEdgeIndices[k];
-			int atlasVertexIndices[2] = { triangle.atlasVertexIndices[k], triangle.atlasVertexIndices[(k + 1) % 3] };
-			ClipPartiallyIndexedPolygonToIndexedEdge( polygon , normal , offset , edgeIndex , atlasVertexIndices );
-
-			if( verbose )
-			{
-				printf("polygon after clipping against edge %d, corners %d %d, normal  %f %f, offset %f. \n", edgeIndex, atlasVertexIndices[0], atlasVertexIndices[1],normal[0],normal[1],offset);
-				printf("%d \n", (int)polygon.vertices.size());
-				for (int v = 0; v < polygon.vertices.size(); v++) printf("%f %f %f \n", polygon.vertices[v][0], polygon.vertices[v][1], 0.);
-				for (int v = 0; v < polygon.vertices.size(); v++) printf("%d ", polygon.atlasVertexIndices[v]);
-				printf("\n");
-				for (int v = 0; v < polygon.vertices.size(); v++) printf("%d ", polygon.atlasEdgeIndices[v]);
-				printf("\n");
-			}
+			unsigned int edgeIndex = triangle.atlasEdgeIndices[k];
+			unsigned int atlasVertexIndices[2] = { triangle.atlasVertexIndices[ eIndex[0] ], triangle.atlasVertexIndices[ eIndex[1] ] };
+			ClipPartiallyIndexedPolygonToIndexedEdge( polygon , edgeEquation , edgeIndex , atlasVertexIndices );
 		}
 
-		return (int)polygon.vertices.size();
+		return (unsigned int)polygon.vertices.size();
 	}
 
 	template< typename GeometryReal >
@@ -362,59 +381,77 @@ namespace MishaK
 		}
 	}
 
-	//Points in general positions
+	// Points in general positions
 	template< typename GeometryReal >
-	void ClipIndexedIntersectionPolygonToIndexedIntersectionEdge( IndexedIntersectionPolygon< GeometryReal > &polygon , const Point2D< GeometryReal > &normal , GeometryReal &offset , int edgeIndex )
+	void ClipIndexedIntersectionPolygonToIndexedIntersectionEdge
+	(
+		IndexedIntersectionPolygon< GeometryReal > &polygon ,
+		const EdgeEquation< GeometryReal > &edgeEquation , 
+		int edgeIndex
+	)
 	{
 		std::vector< Point2D< GeometryReal > > outputVertices;
+#ifdef NEW_INTERSECTION_KEY
+		std::vector< GridMeshIntersectionKey > outputIndices;
+#else // !NEW_INTERSECTION_KEY
 		std::vector< unsigned long long > outputIndices;
+#endif // NEW_INTERSECTION_KEY
 		std::vector< int > outputEdgeIndices;
 
 		Point2D< GeometryReal > previousVertex = polygon.vertices[ polygon.vertices.size()-1 ];
+#ifdef NEW_INTERSECTION_KEY
+		GridMeshIntersectionKey previousVertexIndex = polygon.indices[polygon.vertices.size() - 1];
+#else // !NEW_INTERSECTION_KEY
 		unsigned long long previousVertexIndex = polygon.indices[polygon.vertices.size() - 1];
-		int previousEdgeIndex = polygon.edgeIndices[polygon.vertices.size() - 2];
-		int nextEdgeIndex = polygon.edgeIndices[polygon.vertices.size() - 1];
+#endif // NEW_INTERSECTION_KEY
+		int previousEdgeIndex = polygon.edgeIndices[ polygon.vertices.size()-2 ];
+		int nextEdgeIndex = polygon.edgeIndices[ polygon.vertices.size()-1 ];
 
-		GeometryReal previousLevel = Point2D< GeometryReal >::Dot( previousVertex , normal ) - offset;
+		GeometryReal previousLevel = edgeEquation( previousVertex );
 		bool isPreviousInterior = previousLevel > 0;
 
-		for (int i = 0; i < polygon.vertices.size(); i++)
+		// Iterate over the vertices of the triangle:
+		// -- If the vertex is interior:
+		// ----- If the previous vertex was exterior, create and add the crossing edge
+		// ----- Add the crossing edge
+		// -- If the vertex is exterior
+		// ----- If the previous vertex was interior, create and add the crossing edge
+
+		for( int i=0 ; i<polygon.vertices.size() ; i++ )
 		{
 			Point2D< GeometryReal > currentVertex = polygon.vertices[i];
+#ifdef NEW_INTERSECTION_KEY
+			GridMeshIntersectionKey currentVertexIndex = polygon.indices[i];
+#else // !NEW_INTERSECTION_KEY
 			unsigned long long currentVertexIndex = polygon.indices[i];
+#endif // NEW_INTERSECTION_KEY
 			previousEdgeIndex = nextEdgeIndex;
 			nextEdgeIndex = polygon.edgeIndices[i];
 
-			GeometryReal currentLevel = Point2D< GeometryReal >::Dot( currentVertex , normal ) - offset;
+			GeometryReal currentLevel = edgeEquation( currentVertex );
 			bool isCurrentInterior = currentLevel > 0;
 
-			if (!isPreviousInterior){
-				if (isCurrentInterior){//Entrying edge
-					GeometryReal alpha = -currentLevel / (previousLevel - currentLevel);
-					Point2D< GeometryReal > intersection = previousVertex*alpha + currentVertex*(GeometryReal)( 1.-alpha );
-					outputVertices.push_back(intersection);
-
-					unsigned long long intersectionVertexKey = SetIntersectionKey(edgeIndex, previousEdgeIndex);
-					outputIndices.push_back(intersectionVertexKey);
-
-					outputEdgeIndices.push_back(previousEdgeIndex);
-				}
+			if( isPreviousInterior )
+			{
+				outputVertices.push_back( previousVertex );
+				outputIndices.push_back( previousVertexIndex );
+				outputEdgeIndices.push_back( previousEdgeIndex );
 			}
-			else{
-				outputVertices.push_back(previousVertex);
-				outputIndices.push_back(previousVertexIndex);
-				outputEdgeIndices.push_back(previousEdgeIndex);
 
-				if (!isCurrentInterior) //Exiting edge
-				{
-					GeometryReal alpha = -currentLevel / (previousLevel - currentLevel);
-					Point2D< GeometryReal > intersection = previousVertex*alpha + currentVertex*(GeometryReal)( 1.-alpha );
-					outputVertices.push_back(intersection);
-					unsigned long long intersectionVertexKey = SetIntersectionKey(edgeIndex, previousEdgeIndex);
-					outputIndices.push_back(intersectionVertexKey);
-					outputEdgeIndices.push_back(edgeIndex);
-				}
+			if( isPreviousInterior!=isCurrentInterior )
+			{
+				GeometryReal alpha = -currentLevel / (previousLevel - currentLevel);
+				outputVertices.push_back( previousVertex * alpha + currentVertex * ( 1-alpha ) );
+#ifdef NEW_INTERSECTION_KEY
+				outputIndices.push_back( GridMeshIntersectionKey( previousEdgeIndex , edgeIndex ) );
+#else // !NEW_INTERSECTION_KEY
+				unsigned long long intersectionVertexKey = SetIntersectionKey(edgeIndex, previousEdgeIndex);
+				outputIndices.push_back(intersectionVertexKey);
+#endif // NEW_INTERSECTION_KEY
+
+				outputEdgeIndices.push_back( isPreviousInterior ? edgeIndex : previousEdgeIndex );
 			}
+
 			previousVertex = currentVertex;
 			previousLevel = currentLevel;
 			previousVertexIndex = currentVertexIndex;
@@ -428,61 +465,52 @@ namespace MishaK
 
 	// A function clipping the edges of a (convex) cell to the sides of a triangle
 	template< typename GeometryReal >
-	int ClipIndexedIntersectionPolygonToIndexedIntersectionTriangle( IndexedIntersectionPolygon< GeometryReal > &polygon , const IndexedIntersectionTriangle< GeometryReal > &triangle , bool verbose=false )
+	int ClipIndexedIntersectionPolygonToIndexedIntersectionTriangle
+	(
+		IndexedIntersectionPolygon< GeometryReal > &polygon ,
+		const IndexedIntersectionTriangle< GeometryReal > &triangle
+	)
 	{
 		Point2D< GeometryReal > triangleCenter = ( triangle.vertices[0] + triangle.vertices[1] + triangle.vertices[2] ) / 3;
+#ifdef NEW_INTERSECTION_KEY
+		GridMeshIntersectionKey cornerKeys[6];
+#else // !NEW_INTERSECTION_KEY
 		unsigned long long cornerKeys[6];
+#endif // NEW_INTERSECTION_KEY
 		for( int k=0 ; k<3 ; k++ )
 		{
+#ifdef NEW_INTERSECTION_KEY
+			// [NOTE] In sequentially clipping the polygon to the triangle's edges, 
+			//        we can construct a vertex corresponding to a triangle's corner
+			//        that is marked with the two edges of the triangle that meet there.
+			//        In that case we need to clean up the indexing and mark it is a triangle corner
+			//        so that the GridMeshIntersectionKey becomes consistent
+			// [WARNING] This assumes that there isn't a grid edge with the same index as the triangle edge
+			cornerKeys[ 2*k+0 ] = GridMeshIntersectionKey( triangle.edgeIndices[(k + 2) % 3] , triangle.edgeIndices[k] );
+			cornerKeys[ 2*k+1 ] = GridMeshIntersectionKey( triangle.edgeIndices[k] , triangle.edgeIndices[(k + 2) % 3] );
+#else // !NEW_INTERSECTION_KEY
 			cornerKeys[ 2*k+0 ] = SetIntersectionKey( triangle.edgeIndices[k], triangle.edgeIndices[(k + 2) % 3] );
 			cornerKeys[ 2*k+1 ] = SetIntersectionKey( triangle.edgeIndices[(k + 2) % 3] , triangle.edgeIndices[k] );
+#endif // NEW_INTERSECTION_KEY
 		}
+#ifdef NEW_INTERSECTION_KEY
+		GridMeshIntersectionKey cornerIndices[6];
+#else // !NEW_INTERSECTION_KEY
 		unsigned long long cornerIndices[6];
+#endif // NEW_INTERSECTION_KEY
 		for( int k=0 ; k<3 ; k++ ) cornerIndices[2*k] = cornerIndices[2*k+1] = triangle.indices[k];
-
-		if( verbose )
-		{
-			printf("Triangle vertices\n");
-			for (int v = 0; v < 3; v++)printf("%f %f %f \n", triangle.vertices[v][0], triangle.vertices[v][1], 0.);
-			printf("Triangle corner keys \n");
-			printf("%llu %llu %llu\n", cornerKeys[0], cornerKeys[1], cornerKeys[2]);
-			printf("Triangle corner indices \n");
-			printf("%llu %llu %llu\n", cornerIndices[0], cornerIndices[1], cornerIndices[2]);
-		}
 
 		bool reverseOrientation = false;
 
+		// Clip the polygon to each edge of the triangle
 		for( int k=0 ; k<3 ; k++ )
 		{
 			// Compute edge normal (pointing inside)
-			Point2D< GeometryReal > dir =  triangle.vertices[ (k+1)%3 ] - triangle.vertices[k];
-			Point2D< GeometryReal > mid = (triangle.vertices[ (k+1)%3 ] + triangle.vertices[k]) / 2.0;
-			Point2D< GeometryReal > normal( -dir[1] , dir[0] );
-			normal /= Point2D< GeometryReal >::Length( normal );
+			EdgeIndex eIndex = CornerEdgeIndex( k );
+			EdgeEquation< GeometryReal > edgeEquation( triangle.vertices[ eIndex[0] ] , triangle.vertices[ eIndex[1] ] , true );
+			reverseOrientation = edgeEquation.makePositive( triangleCenter );
 
-			GeometryReal offset = Point2D< GeometryReal  >::Dot( mid , normal );
-			if( Point2D< GeometryReal >::Dot( triangleCenter , normal )<offset )
-			{
-				normal *= -(GeometryReal)1.;
-				offset *= -(GeometryReal)1.;
-				reverseOrientation = true;
-			}
-
-			int edgeIndex = triangle.edgeIndices[k];
-			ClipIndexedIntersectionPolygonToIndexedIntersectionEdge( polygon , normal , offset , edgeIndex );
-
-			if( verbose )
-			{
-				printf("polygon after clipping against edge %d, normal  %f %f, offset %f. \n",edgeIndex,normal[0], normal[1], offset);
-				printf("%d \n", (int)polygon.vertices.size());
-				for (int v = 0; v < polygon.vertices.size(); v++)printf("%f %f %f \n", polygon.vertices[v][0], polygon.vertices[v][1], 0.);
-				printf(" Vertex Indices \n");
-				for (int v = 0; v < polygon.vertices.size(); v++)printf("%llu ", polygon.indices[v]);
-				printf("\n");
-				printf(" Edge Indices \n");
-				for (int v = 0; v < polygon.vertices.size(); v++) printf("%d ", polygon.edgeIndices[v]);
-				printf("\n");
-			}
+			ClipIndexedIntersectionPolygonToIndexedIntersectionEdge( polygon , edgeEquation , triangle.edgeIndices[k] );
 		}
 
 		// Identify triangle corners
@@ -492,7 +520,11 @@ namespace MishaK
 		{
 			int n = (int)polygon.vertices.size();
 			std::vector< Point2D < GeometryReal > > reversedVertices(n);
+#ifdef NEW_INTERSECTION_KEY
+			std::vector< GridMeshIntersectionKey > reversedIndices(n);
+#else // !NEW_INTERSECTION_KEY
 			std::vector < unsigned long long > reversedIndices(n);
+#endif // NEW_INTERSECTION_KEY
 			std::vector < int > reversedEdges(n);
 			for( int k=0 ; k<n ; k++ )
 			{
@@ -508,6 +540,8 @@ namespace MishaK
 		return (int)polygon.vertices.size();
 	}
 
+#ifdef NEW_RASTERIZER
+#else // !NEW_RASTERIZER
 	template< typename GeometryReal >
 	void GetTriangleIntegerBBox( Point2D< GeometryReal > tPos[3] , const GeometryReal invCellSizeW , const GeometryReal invCellSizeH,  int minCorner[2], int maxCorner[2] )
 	{
@@ -543,6 +577,7 @@ namespace MishaK
 		maxCorner[0] = static_cast< int >( ceil ( fmaxx*invCellSizeW ) );
 		maxCorner[1] = static_cast< int >( ceil ( fmaxy*invCellSizeH ) );
 	}
+#endif // NEW_RASTERIZER
 
 	template< typename GeometryReal >
 	SquareMatrix< GeometryReal, 2 > GetBarycentricMap( Point2D< GeometryReal > tPos[3] )

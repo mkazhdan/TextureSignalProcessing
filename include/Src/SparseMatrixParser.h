@@ -29,6 +29,7 @@ DAMAGE.
 #include <set>
 #include <Misha/MultiThreading.h>
 #include <Misha/Atomic.h>
+#include <Misha/Atomic.Geometry.h>
 
 namespace MishaK
 {

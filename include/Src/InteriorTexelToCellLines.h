@@ -46,11 +46,11 @@ namespace MishaK
 			interiorTexeltoCellLine[i].texelEndIndex = rasterLines[i].lineEndIndex;
 			interiorTexeltoCellLine[i].coeffOffset = rasterLines[i].coeffStartIndex;
 
-			if( gridCharts[chartID].cellType( ci-1 , cj-1)!=1 ) MK_THROW( "Non interior cell" );
-			interiorTexeltoCellLine[i].previousCellStartIndex = gridCharts[chartID].localCellIndex(ci - 1, cj - 1) + gridCharts[chartID].globalIndexCellOffset;
+			if( gridCharts[chartID].cellType(ci-1,cj-1)!=CellType::Interior ) MK_THROW( "Non interior cell" );
+			interiorTexeltoCellLine[i].previousCellStartIndex = gridCharts[chartID].cellIndices(ci - 1, cj - 1).combined + gridCharts[chartID].combinedCellOffset;
 
-			if( gridCharts[chartID].cellType( ci-1 , cj )!=1 ) MK_THROW( "Non interior cell" );
-			interiorTexeltoCellLine[i].nextCellStartIndex = gridCharts[chartID].localCellIndex(ci - 1, cj) + gridCharts[chartID].globalIndexCellOffset;
+			if( gridCharts[chartID].cellType(ci-1,cj)!=CellType::Interior ) MK_THROW( "Non interior cell" );
+			interiorTexeltoCellLine[i].nextCellStartIndex = gridCharts[chartID].cellIndices(ci - 1, cj).combined + gridCharts[chartID].combinedCellOffset;
 		}
 	}
 }

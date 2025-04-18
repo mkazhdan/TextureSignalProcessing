@@ -27,13 +27,16 @@ DAMAGE.
 */
 #pragma once
 
+#include <Misha/Atomic.h>
+#include <Misha/Atomic.Geometry.h>
+
 namespace MishaK
 {
 	class InteriorCellLine
 	{
 	public:
-		int prevLineIndex , nextLineIndex;
-		int length;
+		unsigned int prevLineIndex , nextLineIndex;
+		unsigned int length;
 	};
 
 	template< typename GeometryReal >
@@ -41,14 +44,13 @@ namespace MishaK
 	(
 		const GridChart< GeometryReal > &gridChart ,
 		std::vector< InteriorCellLine > &interiorCellLines ,
-		std::vector< std::pair< int , int > > &interiorCellLineIndex
+		std::vector< std::pair< unsigned int , unsigned int > > &interiorCellLineIndex
 	)
 	{
-		const Image< int >& cellType = gridChart.cellType;
+		const Image< CellType >& cellType = gridChart.cellType;
 		unsigned int width = cellType.res(0) , height = cellType.res(1);
 
-		const Image< int > & globalTexelIndex = gridChart.globalTexelIndex;
-		const Image< int > & globalTexelInteriorIndex = gridChart.globalInteriorTexelIndex;
+		const Image< TexelIndex > & texelIndices = gridChart.texelIndices;
 
 		int localInteriorCellIndex = 0;
 
@@ -59,14 +61,14 @@ namespace MishaK
 			unsigned int rasterStart = -1;
 			while( offset<width )
 			{
-				bool currentIsInterior = cellType(offset, j) == 1;
+				bool currentIsInterior = cellType(offset, j)==CellType::Interior;
 				if( ( offset==0 || offset==width-1 ) && currentIsInterior ) MK_THROW( "Unexpected interior cell" );
 				if(  currentIsInterior && !previousIsInterior ) rasterStart = offset; //Start raster line
 				if( !currentIsInterior &&  previousIsInterior ) //Terminate raster line
 				{ 
 					InteriorCellLine newLine;
-					newLine.prevLineIndex = globalTexelIndex( rasterStart , j+0 );
-					newLine.nextLineIndex = globalTexelIndex( rasterStart , j+1 );
+					newLine.prevLineIndex = texelIndices( rasterStart , j+0 ).combined;
+					newLine.nextLineIndex = texelIndices( rasterStart , j+1 ).combined;
 					newLine.length = offset - rasterStart;
 
 					if( newLine.prevLineIndex==-1 || newLine.nextLineIndex==-1 ) MK_THROW( "Invalid indexing" );
@@ -74,7 +76,7 @@ namespace MishaK
 
 					for( unsigned int k=0 ; k<offset-rasterStart ; k++ )
 					{
-						if( (int)gridChart.interiorCellCorners[localInteriorCellIndex][0]!=globalTexelInteriorIndex( rasterStart+k , j ) ) MK_THROW( "Unexpected corner ID" );
+						if( (int)gridChart.interiorCellInteriorBilinearElementIndices[localInteriorCellIndex][0]!=texelIndices( rasterStart+k , j ).interiorOrCovered ) MK_THROW( "Unexpected corner ID" );
 
 						interiorCellLineIndex.push_back( std::pair< int , int >( currentLine , k ) );
 						localInteriorCellIndex++;
@@ -93,7 +95,7 @@ namespace MishaK
 	(
 		const std::vector< GridChart< GeometryReal > >& gridCharts ,
 		std::vector< InteriorCellLine >& interiorCellLines ,
-		std::vector< std::pair< int , int > >& interiorCellLineIndex
+		std::vector< std::pair< unsigned int , unsigned int > >& interiorCellLineIndex
 	)
 	{
 		for( int i=0 ; i<gridCharts.size() ; i++ ) InitializeGridChartInteriorCellLines( gridCharts[i] , interiorCellLines , interiorCellLineIndex );
@@ -218,8 +220,8 @@ namespace MishaK
 		const std::vector< SquareMatrix< GeometryReal , 2 > > &texture_metrics ,
 		const AtlasChart< GeometryReal > &atlasChart ,
 		const GridChart< GeometryReal > &gridChart ,
-		const std::vector< std::pair< int , int > >& interiorCellLineIndex ,
-		const std::vector< int >& fineBoundaryIndex ,
+		const std::vector< std::pair< unsigned int , unsigned int > >& interiorCellLineIndex ,
+		const std::vector< unsigned int >& fineBoundaryIndex ,
 		ElementSamples &elementSamples ,
 		std::mutex &element_samples_bilinear_mutex ,
 		std::mutex &element_samples_quadratic_mutex ,
@@ -233,18 +235,16 @@ namespace MishaK
 		auto InUnitTriangle = [&]( Point2D< GeometryReal > p ){ return !( p[0]<0-PRECISION_ERROR || p[1]<0-PRECISION_ERROR || ( p[0]+p[1] )>1+PRECISION_ERROR ); };
 		auto CellInTriangle = [&]( int i , int j , const std::vector< Point2D< GeometryReal > >& vertices )
 			{
-				GeometryReal x1 = (GeometryReal)i*gridChart.cellSizeW , x2 = (GeometryReal)(i+1)*gridChart.cellSizeW;
-				GeometryReal y1 = (GeometryReal)j*gridChart.cellSizeH , y2 = (GeometryReal)(j+1)*gridChart.cellSizeH;
-				Point2D< GeometryReal > points[] = { Point2D< GeometryReal >(x1,y1) , Point2D< GeometryReal >(x2,y1) , Point2D< GeometryReal >(x2,y2) , Point2D< GeometryReal >(x1,y2) };
-				Point2D< GeometryReal > normals[] = { vertices[1]-vertices[0] , vertices[2]-vertices[1] , vertices[0]-vertices[2] };
-				for( int k=0 ; k<3 ; k++ ) normals[k] = Point2D< GeometryReal >( normals[k][1] , -normals[k][0] );
-				GeometryReal offsets[] = { Point2D< GeometryReal >::Dot( normals[0] , vertices[0] ) , Point2D< GeometryReal >::Dot( normals[1] , vertices[1] ) , Point2D< GeometryReal >::Dot( normals[2] , vertices[2] ) };
-				for( int k=0 ; k<4 ; k++ )
+				Point2D< GeometryReal > points[] = { gridChart.nodePosition(i,j) , gridChart.nodePosition(i+1,j) , gridChart.nodePosition(i+1,j+1) , gridChart.nodePosition(i,j+1) };
+				EdgeEquation< GeometryReal > eq[3];
+				Point2D< GeometryReal > c = ( vertices[0] + vertices[1] + vertices[2] ) / 3;
+				for( unsigned int i=0 ; i<3 ; i++ )
 				{
-					if( ( Point2D< GeometryReal >::Dot( points[k] , normals[0] ) - offsets[0] )<0 ) return false;
-					if( ( Point2D< GeometryReal >::Dot( points[k] , normals[1] ) - offsets[1] )<0 ) return false;
-					if( ( Point2D< GeometryReal >::Dot( points[k] , normals[2] ) - offsets[2] )<0 ) return false;
+					EdgeIndex eIndex = CornerEdgeIndex( i );
+					eq[i] = EdgeEquation< GeometryReal >( vertices[ eIndex[0] ] , vertices[ eIndex[1] ] );
+					eq[i].makePositive(c);
 				}
+				for( int k=0 ; k<4 ; k++ ) for( unsigned int i=0 ; i<3 ; i++ ) if( eq[i]( points[k] )<0 ) return false;
 				return true;
 			};
 
@@ -292,6 +292,24 @@ namespace MishaK
 				}
 				return center / area;
 			};	
+#ifdef USE_RASTERIZER
+		using Range = RegularGrid< 2 >::Range;
+		using Index = RegularGrid< 2 >::Index;
+		Range nodeRange , cellRange;
+		nodeRange.second[0] = gridChart.width , cellRange.second[0] = gridChart.width-1;
+		nodeRange.second[1] = gridChart.height , cellRange.second[1] = gridChart.height-1;
+
+		auto GetSimplex = [&]( unsigned int t )
+			{
+				Simplex< double , 2 , 2 > simplex;
+				for( unsigned int i=0 ; i<=2 ; i++ )
+				{
+					simplex[i] = atlasChart.vertices[ atlasChart.triangles[t][i] ] - gridChart.corner;
+					simplex[i][0] /= gridChart.cellSizeW , simplex[i][1] /= gridChart.cellSizeH;
+				}
+				return simplex;
+			};
+#endif // USE_RASTERIZER
 
 		for( int t=0 ; t<atlasChart.triangles.size() ; t++ )
 		{
@@ -303,9 +321,12 @@ namespace MishaK
 			SquareMatrix< GeometryReal , 2 > cell_metric_inverse = cell_metric.inverse();
 			GeometryReal cell_area = (GeometryReal)sqrt( cell_metric.determinant() );
 
+#ifdef USE_RASTERIZER
+#else // !USE_RASTERIZER
 			//BBox
 			int minCorner[2] , maxCorner[2];
 			GetTriangleIntegerBBox( tPos , (GeometryReal)1./gridChart.cellSizeW , (GeometryReal)1./gridChart.cellSizeH , minCorner , maxCorner );
+#endif // USE_RASTERIZER
 
 			std::vector< Point2D< GeometryReal > > parametricVertices(3);
 			parametricVertices[0] = tPos[0], parametricVertices[1] = tPos[1], parametricVertices[2] = tPos[2];
@@ -314,17 +335,24 @@ namespace MishaK
 			for( int k=0 ; k<3 ; k++ )
 			{
 				atlasTriangle.vertices[k] = tPos[k];
-				atlasTriangle.atlasEdgeIndices[k] = atlasChart.atlasEdgeIndices[ 3*t+k ];
+				atlasTriangle.atlasEdgeIndices[k] = atlasChart.atlasEdge( 3*t+k );
 				atlasTriangle.atlasVertexIndices[k] = atlasChart.triangles[t][k];
 				atlasTriangle.atlasVertexParentEdge[k] = -1;
 			}
 
+#ifdef USE_RASTERIZER
+			// Iterate over the cells that overlap the triangle
+			auto Kernel = [&]( Index I )
+			{
+				int i = I[0] , j = I[1];
+#else // !USE_RASTERIZER
 			// Iterate over the cells that can overlap the triangle
 			for( int j=minCorner[1] ; j<maxCorner[1] ; j++ ) for( int i=minCorner[0] ; i<maxCorner[0] ; i++ )
 			{
+#endif // USE_RASTERIZER
 				auto TextureToCell = [&]( Point2D< GeometryReal > p ){ return Point2D< GeometryReal >( ( p[0] / gridChart.cellSizeW ) - i , ( p[1] / gridChart.cellSizeH ) - j ); };
 
-				int localInteriorIndex = gridChart.localInteriorCellIndex(i,j) , localBoundaryIndex = gridChart.localBoundaryCellIndex(i,j);
+				int localInteriorIndex = gridChart.cellIndices(i,j).interior , localBoundaryIndex = gridChart.cellIndices(i,j).boundary;
 				if( localInteriorIndex!=-1 && localBoundaryIndex!=-1 ) MK_THROW( "Cell simultaneosly interior and boundary" );
 
 				// Interior cells
@@ -336,7 +364,7 @@ namespace MishaK
 					SquareMatrix< GeometryReal , 2 > element_metric = cell_metric , element_metric_inverse = cell_metric_inverse;
 					GeometryReal element_area = cell_area;
 
-					int globalInteriorIndex = localInteriorIndex + gridChart.globalIndexInteriorCellOffset;
+					int globalInteriorIndex = localInteriorIndex + gridChart.interiorCellOffset;
 					int cellLineId = interiorCellLineIndex[globalInteriorIndex].first;
 					int cellLineOffset = interiorCellLineIndex[globalInteriorIndex].second;
 
@@ -380,7 +408,7 @@ namespace MishaK
 						// Transform the polygon vertices into the coordinate frame of the cell
 						for( int ii=0 ; ii<polygon.size() ; ii++ ) polygon[ii] = TextureToElement( polygon[ii] );
 
-						int globalInteriorIndex = localInteriorIndex + gridChart.globalIndexInteriorCellOffset;
+						int globalInteriorIndex = localInteriorIndex + gridChart.interiorCellOffset;
 						int cellLineId = interiorCellLineIndex[globalInteriorIndex].first;
 						int cellLineOffset = interiorCellLineIndex[globalInteriorIndex].second;
 
@@ -508,7 +536,7 @@ namespace MishaK
 										printf( "%d %d %d\n" , _element.atlasVertexIndices[0] , _element.atlasVertexIndices[1] , _element.atlasVertexIndices[2] );
 										printf( "%d %d %d\n" , _element.atlasEdgeIndices[0] , _element.atlasEdgeIndices[1] , _element.atlasEdgeIndices[2] );
 
-										ClipPartiallyIndexedPolygonToIndexedTriangle( _polygon , atlasTriangle , _bt==bt );
+										ClipPartiallyIndexedPolygonToIndexedTriangle( _polygon , atlasTriangle );
 									}
 								}
 							}
@@ -521,7 +549,12 @@ namespace MishaK
 						else if( clippingResult<0 ) MK_THROW( "Bad clipping result: " , clippingResult );
 					}
 				}
+#ifdef USE_RASTERIZER
+			};
+			Rasterizer2D::RasterizeSupports< true , true >( GetSimplex(t) , Kernel , cellRange );
+#else // !USE_RASTERIZER
 			}
+#endif // USE_RASTERIZER
 		}
 	}
 
@@ -531,8 +564,8 @@ namespace MishaK
 		const std::vector< std::vector< SquareMatrix< GeometryReal , 2 > > >& parameterMetric ,
 		const std::vector< AtlasChart< GeometryReal > > &atlasCharts ,
 		const std::vector< GridChart< GeometryReal > > &gridCharts ,
-		const std::vector< std::pair< int , int > > &interiorCellLineIndex ,
-		const std::vector< int > &fineBoundaryIndex ,
+		const std::vector< std::pair< unsigned int , unsigned int > > &interiorCellLineIndex ,
+		const std::vector< unsigned int > &fineBoundaryIndex ,
 		ElementSamples &elementSamples ,
 		bool fastIntegration
 	)
@@ -629,7 +662,7 @@ namespace MishaK
 	)
 	{
 		Miscellany::Timer timer;
-		auto UpdateRow = [&]( int r )
+		auto UpdateRow = [&]( unsigned int r )
 			{
 				const T* _inPrevious = &potential[ interiorCellLines[r].prevLineIndex ];
 				const T*     _inNext = &potential[ interiorCellLines[r].nextLineIndex ];
@@ -647,11 +680,11 @@ namespace MishaK
 
 				T rhsValues[] = { T() , T() , T() , T() };
 
-				int numSamples = (int)elementSamples.bilinear[r].size();
+				unsigned int numSamples = (unsigned int)elementSamples.bilinear[r].size();
 				const typename ElementSamples::Bilinear *samplePtr = &elementSamples.bilinear[r][0];
-				int currentOffset = 0;
+				unsigned int currentOffset = 0;
 
-				for( int j=0 ; j<numSamples ; j++ )
+				for( unsigned int j=0 ; j<numSamples ; j++ )
 				{
 					const typename ElementSamples::Bilinear &sample = *samplePtr;
 					if( sample.cellOffset>currentOffset )
@@ -663,9 +696,9 @@ namespace MishaK
 						_inNext++;
 						cornerValues[2] = *_inNext;
 
-						*_outPrevious += rhsValues[0];
+						Atomic< T >::Add( *_outPrevious , rhsValues[0] );
 						_outPrevious++;
-						*_outNext += rhsValues[3];
+						Atomic< T >::Add( *_outNext , rhsValues[3] );
 						_outNext++;
 						rhsValues[0] = rhsValues[1];
 						rhsValues[1] = T();
@@ -679,29 +712,14 @@ namespace MishaK
 					samplePtr++;
 				}
 
-				*_outPrevious += rhsValues[0];
+				Atomic< T >::Add( *_outPrevious , rhsValues[0] );
 				_outPrevious++;
-				*_outPrevious += rhsValues[1];
-				*_outNext += rhsValues[3];
+				Atomic< T >::Add( *_outPrevious , rhsValues[1] );
+				Atomic< T >::Add( *_outNext     , rhsValues[3] );
 				_outNext++;
-				*_outNext += rhsValues[2];
+				Atomic< T >::Add( *_outNext     , rhsValues[2] );
 			};
-
-		unsigned int threads = ThreadPool::NumThreads();
-		std::vector< int > lineRange( threads+1 );
-		int blockSize = (int)interiorCellLines.size() / threads;
-		for( unsigned int t=0 ; t<threads ; t++ ) lineRange[t] = t*blockSize;
-		lineRange[threads] = (int)interiorCellLines.size();
-		ThreadPool::ParallelFor
-		(
-			0 , threads ,
-			[&]( unsigned int , size_t t )
-			{
-				int firstLine = lineRange[t];
-				int lastLine = lineRange[t+1];
-				for( int r=firstLine ; r<lastLine ; r++ ) UpdateRow(r);
-			}
-		);
+		ThreadPool::ParallelFor( 0 , interiorCellLines.size() , [&]( unsigned int , size_t r ){ UpdateRow(r); } );
 
 		if( verbose ) printf( "Integrated bilinear: %.2f(s)\n" , timer.elapsed() );
 

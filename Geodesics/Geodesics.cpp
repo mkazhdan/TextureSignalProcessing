@@ -116,7 +116,7 @@ template< typename PreReal , typename Real >
 class Geodesics
 {
 public:
-	static OrientedTexturedTriangleMesh< PreReal > mesh;
+	static TexturedTriangleMesh< PreReal > mesh;
 	static int textureWidth;
 	static int textureHeight;
 	static Real diffusionInterpolationWeight;
@@ -136,7 +136,7 @@ public:
 	static std::vector< BilinearElementIndex > bilinearElementIndices;
 
 	static std::vector< TextureNodeInfo< PreReal > > textureNodes;
-	static Image<int> nodeIndex;
+	static Image< int > nodeIndex;
 
 	static SparseMatrix< Real , int > mass;
 	static SparseMatrix< Real , int > stiffness;
@@ -144,7 +144,7 @@ public:
 	static SparseMatrix< Real , int > smoothImpulseMatrix;
 	static SparseMatrix< Real , int > geodesicDistanceMatrix;
 
-	static int impulseTexel;
+	static unsigned int impulseTexel;
 
 	static std::vector< AtlasChart< PreReal > > atlasCharts;
 	static std::vector< std::vector< SquareMatrix< PreReal , 2 > > > parameterMetric;
@@ -187,7 +187,7 @@ public:
 	//Samples
 	static GradientElementSamples< Real > gradientSamples;
 	static std::vector<InteriorCellLine> interiorCellLines;
-	static std::vector<std::pair<int, int>> interiorCellLineIndex;
+	static std::vector< std::pair< unsigned int , unsigned int > > interiorCellLineIndex;
 
 	static unsigned char * outputBuffer;
 
@@ -203,8 +203,8 @@ public:
 	static void ExportTextureCallBack( Visualization* v , const char* prompt );
 	static void Init( void );
 	static void InitializeVisualization( int width , int height );
-	static void ComputeExactSolution( bool verbose=false );
-	static void UpdateSolution( bool verbose=false , bool detailVerbose=false );
+	static void ComputeExactSolution( void);
+	static void UpdateSolution( void );
 	static void InitializeSystem( int width , int height );
 
 	static void Display( void ){ visualization.Display(); }
@@ -215,7 +215,7 @@ public:
 	static void Idle( void );
 };
 
-template< typename PreReal , typename Real > OrientedTexturedTriangleMesh< PreReal >						Geodesics< PreReal , Real >::mesh;
+template< typename PreReal , typename Real > TexturedTriangleMesh< PreReal >								Geodesics< PreReal , Real >::mesh;
 template< typename PreReal , typename Real > int															Geodesics< PreReal , Real >::textureWidth;
 template< typename PreReal , typename Real > int															Geodesics< PreReal , Real >::textureHeight;
 template< typename PreReal , typename Real > TexturedMeshVisualization										Geodesics< PreReal , Real >::visualization;
@@ -265,9 +265,9 @@ template< typename PreReal , typename Real > typename Geodesics< PreReal , Real 
 //Samples
 template< typename PreReal , typename Real > GradientElementSamples< Real >									Geodesics< PreReal , Real >::gradientSamples;
 template< typename PreReal , typename Real > std::vector<InteriorCellLine>									Geodesics< PreReal , Real >::interiorCellLines;
-template< typename PreReal , typename Real > std::vector<std::pair<int, int>>								Geodesics< PreReal , Real >::interiorCellLineIndex;
+template< typename PreReal , typename Real > std::vector< std::pair< unsigned int , unsigned int > >		Geodesics< PreReal , Real >::interiorCellLineIndex;
 
-template< typename PreReal , typename Real > int															Geodesics< PreReal , Real >::impulseTexel = -1;
+template< typename PreReal , typename Real > unsigned int													Geodesics< PreReal , Real >::impulseTexel = static_cast< unsigned int >(-1);
 template< typename PreReal , typename Real > std::vector<Point3D< float > >									Geodesics< PreReal , Real >::textureNodePositions;
 
 template< typename PreReal , typename Real > Real															Geodesics< PreReal , Real >::smoothImpulseRange;
@@ -285,30 +285,23 @@ template< typename PreReal , typename Real > int															Geodesics< PreRea
 
 
 template< typename PreReal , typename Real >
-void Geodesics< PreReal , Real >::ComputeExactSolution( bool verbose )
+void Geodesics< PreReal , Real >::ComputeExactSolution( void )
 {
-	Miscellany::Timer timer;
-
 	//(1) Smoothing impulse	
-	timer.reset();
 	solve( fineSmoothImpulseSolver , multigridSmoothImpulseVariables[0].x , multigridSmoothImpulseVariables[0].rhs );
-	if( verbose ) printf( "Smoothing impulse %.4f\n" , timer.elapsed() );
 
 	//(1) Integrating vector field	
-	const std::vector<int> & boundaryGlobalIndex = hierarchy.gridAtlases[0].boundaryGlobalIndex;
+	const std::vector< unsigned int > & boundaryGlobalIndex = hierarchy.gridAtlases[0].boundaryGlobalIndex;
 
-	if( verbose ) timer.reset();
 	ThreadPool::ParallelFor
 	(
 		0 , boundaryGlobalIndex.size() ,
 		[&]( unsigned int , size_t i ){ coarseBoundaryValues[i] = multigridSmoothImpulseVariables[0].x[boundaryGlobalIndex[i]]; }
 	);
 	coarseBoundaryFineBoundaryProlongation.Multiply(&coarseBoundaryValues[0], &fineBoundaryValues[0]);
-	if( verbose ) printf("Coarse to fine %.4f \n" , timer.elapsed() );
 
 
 	std::vector< Real >& fineGeodesicDistanceRHS = multigridGeodesicDistanceVariables[0].rhs;
-	if( verbose ) timer.reset();
 	auto VectorFunction = []( Point2D< Real > v , SquareMatrix< Real , 2 > tensor )
 	{
 		Point2D< Real > _v = tensor * v;
@@ -319,22 +312,16 @@ void Geodesics< PreReal , Real >::ComputeExactSolution( bool verbose )
 	memset( &multigridGeodesicDistanceVariables[0].rhs[0] , 0 , multigridGeodesicDistanceVariables[0].rhs.size() * sizeof(Real) );
 	memset( &fineBoundaryRHS[0] , 0 , fineBoundaryRHS.size() * sizeof(Real) );
 	Integrate< Real >( interiorCellLines , gradientSamples , multigridSmoothImpulseVariables[0].x , fineBoundaryValues , VectorFunction , fineGeodesicDistanceRHS , fineBoundaryRHS );
-	if( verbose ) printf( "Integrating normalized vector field %.4f\n" , timer.elapsed() );
 
-	if( verbose ) timer.reset();
 	fineBoundaryCoarseBoundaryRestriction.Multiply( &fineBoundaryRHS[0] , &coarseBoundaryRHS[0] );
 	ThreadPool::ParallelFor
 		(
 			0 , boundaryGlobalIndex.size() ,
 			[&]( unsigned int , size_t i ){ fineGeodesicDistanceRHS[ boundaryGlobalIndex[i] ] += coarseBoundaryRHS[i]; }
 		);
-	if( verbose ) printf( "Fine to coarse %.4f\n" , timer.elapsed() );
-
 
 	//(3) Update geodesic distance solution	
-	if( verbose ) timer.reset();
 	solve( fineGeodesicDistanceSolver , multigridGeodesicDistanceVariables[0].x , fineGeodesicDistanceRHS );
-	if( verbose ) printf( "Computing geodesic distance %.4f\n" , timer.elapsed() );
 
 	Real expectedMinDistance = multigridGeodesicDistanceVariables[0].x[impulseTexel];
 
@@ -487,11 +474,8 @@ void Geodesics< PreReal , Real >::MouseFunc( int button , int state , int x , in
 		{
 			if( UseDirectSolver.set )
 			{
-				Miscellany::Timer timer;
-				ComputeExactSolution( DetailVerbose.set );
-				if( DetailVerbose.set ) printf( "Exact solution %.4f \n" , timer.elapsed() );
-
-				UpdateOutputBuffer(multigridGeodesicDistanceVariables[0].x);
+				ComputeExactSolution();
+				UpdateOutputBuffer( multigridGeodesicDistanceVariables[0].x );
 			}
 			glutPostRedisplay();
 		}
@@ -558,28 +542,21 @@ void Geodesics< PreReal , Real >::ExportTextureCallBack( Visualization * /*v*/ ,
 }
 
 template< typename PreReal , typename Real >
-void Geodesics< PreReal , Real >::UpdateSolution( bool verbose , bool detailVerbose )
+void Geodesics< PreReal , Real >::UpdateSolution( void )
 {
-	Miscellany::Timer timer;
-
 	// (1) Update smoothed input solution
-	if( verbose ) timer.reset();
-	VCycle( multigridSmoothImpulseVariables , multigridSmoothImpulseCoefficients , multigridIndices , smoothImpulseSolvers , detailVerbose , detailVerbose );
-	if( verbose ) printf( "Smoothing impulse %.4f\n" , timer.elapsed() );
+	VCycle( multigridSmoothImpulseVariables , multigridSmoothImpulseCoefficients , multigridIndices , smoothImpulseSolvers , false , false );
 
 	// (2) Integrate normalized vector field
-	const std::vector<int> & boundaryGlobalIndex = hierarchy.gridAtlases[0].boundaryGlobalIndex;
+	const std::vector< unsigned int > & boundaryGlobalIndex = hierarchy.gridAtlases[0].boundaryGlobalIndex;
 
-	if( verbose ) timer.reset();
 	ThreadPool::ParallelFor
 		(
 			0 , boundaryGlobalIndex.size() ,
 			[&]( unsigned int , size_t i ){ coarseBoundaryValues[i] = multigridSmoothImpulseVariables[0].x[boundaryGlobalIndex[i]]; }
 		);
 	coarseBoundaryFineBoundaryProlongation.Multiply(&coarseBoundaryValues[0], &fineBoundaryValues[0]);
-	if( verbose ) printf( "Coarse to fine %.4f\n" , timer.elapsed() );
 
-	if( verbose ) timer.reset();
 	auto VectorFunction = []( Point2D< Real > v , SquareMatrix< Real , 2 > tensor )
 	{
 		Point2D< Real > _v = tensor * v;
@@ -591,22 +568,17 @@ void Geodesics< PreReal , Real >::UpdateSolution( bool verbose , bool detailVerb
 	memset( &multigridGeodesicDistanceVariables[0].rhs[0] , 0 , multigridGeodesicDistanceVariables[0].rhs.size() * sizeof(Real) );
 	memset( &fineBoundaryRHS[0] , 0 , fineBoundaryRHS.size() * sizeof(Real) );
 	Integrate< Real >( interiorCellLines , gradientSamples , multigridSmoothImpulseVariables[0].x , fineBoundaryValues , VectorFunction , multigridGeodesicDistanceVariables[0].rhs , fineBoundaryRHS );
-	if( verbose ) printf( "Integrating normalized vector field %.4f \n" , timer.elapsed() );
 
-	if( verbose ) timer.reset();
 	fineBoundaryCoarseBoundaryRestriction.Multiply(&fineBoundaryRHS[0], &coarseBoundaryRHS[0]);
 	ThreadPool::ParallelFor
 		(
 			0 , boundaryGlobalIndex.size() ,
 			[&]( unsigned int , size_t i ){ multigridGeodesicDistanceVariables[0].rhs[boundaryGlobalIndex[i]] += coarseBoundaryRHS[i]; }
 		);
-	if( verbose ) printf( "Fine to coarse %.4f\n" , timer.elapsed() );
 
 
 	// (3) Update geodesic distance solution	
-	if( verbose ) timer.reset();
-	VCycle( multigridGeodesicDistanceVariables , multigridGeodesicDistanceCoefficients , multigridIndices, geodesicDistanceSolvers , detailVerbose , detailVerbose );
-	if( verbose ) printf( "Solving geodesic distance %.4f \n" , timer.elapsed() );
+	VCycle( multigridGeodesicDistanceVariables , multigridGeodesicDistanceCoefficients , multigridIndices, geodesicDistanceSolvers , false , false );
 
 	Real expectedMinDistance = multigridGeodesicDistanceVariables[0].x[impulseTexel];
 
@@ -620,10 +592,10 @@ void Geodesics< PreReal , Real >::UpdateSolution( bool verbose , bool detailVerb
 template< typename PreReal , typename Real >
 void Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 {
-	Miscellany::Timer timer;
-	MultigridBlockInfo multigridBlockInfo(MultigridBlockWidth.value, MultigridBlockHeight.value, MultigridPaddedWidth.value, MultigridPaddedHeight.value, 0);
-	InitializeHierarchy( mesh , width , height , levels , textureNodes , bilinearElementIndices , hierarchy , atlasCharts , multigridBlockInfo , true , DetailVerbose.set );
-	if( Verbose.set ) printf( "\tInitialized hierarchy: %.2f(s)\n" , timer.elapsed() );
+	Miscellany::PerformanceMeter pMeter( '.' );
+	MultigridBlockInfo multigridBlockInfo( MultigridBlockWidth.value , MultigridBlockHeight.value , MultigridPaddedWidth.value , MultigridPaddedHeight.value );
+	InitializeHierarchy( mesh , width , height , levels , textureNodes , bilinearElementIndices , hierarchy , atlasCharts , multigridBlockInfo , false );
+	if( Verbose.set ) std::cout << pMeter( "Hierarchy" ) << std::endl;
 
 	//Initialize node index
 	nodeIndex.resize(width, height);
@@ -642,7 +614,7 @@ void Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 
 	InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric );
 
-	timer.reset();
+	pMeter.reset();
 	{
 		switch( MatrixQuadrature.value )
 		{
@@ -655,22 +627,21 @@ void Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 		default: MK_THROW( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
 		}
 	}
-	if( Verbose.set ) printf( "\tInitialized mass and stiffness: %.2f(s)\n" , timer.elapsed() );
+	if( Verbose.set ) std::cout << pMeter( "System" ) << std::endl;
 
 	if( UseDirectSolver.set )
 	{
-		Miscellany::Timer tmr;
 		FullMatrixConstruction( hierarchy.gridAtlases[0] , massCoefficients , mass );
 		FullMatrixConstruction( hierarchy.gridAtlases[0] , stiffnessCoefficients , stiffness );
 		smoothImpulseMatrix = mass * diffusionInterpolationWeight + stiffness;
 		geodesicDistanceMatrix = mass * geodesicInterpolationWeight + stiffness;
-		printf( "\tAssembled matrices: %.2f(s) \n" , tmr.elapsed() );
+		if( Verbose.set ) std::cout << pMeter( "Assembled matrice" ) << std::endl;
 	}
 
 //////////////////////////////////// Initialize multigrid indices
 
 	multigridIndices.resize(levels);
-	for (int i = 0; i < levels; i++)
+	for( int i=0 ; i<levels ; i++ )
 	{
 		const GridAtlas< PreReal , Real > &gridAtlas = hierarchy.gridAtlases[i];
 		multigridIndices[i].threadTasks = gridAtlas.threadTasks;
@@ -683,13 +654,13 @@ void Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 			multigridIndices[i].boundaryRestriction = hierarchy.boundaryRestriction[i];
 		}
 	}
+	if( Verbose.set ) std::cout << pMeter( "MG indices" ) << std::endl;
 
 //////////////////////////////////// Initialize multigrid coefficients
 
-	timer.reset();
 	UpdateLinearSystem( diffusionInterpolationWeight , (Real)1. , hierarchy , multigridSmoothImpulseCoefficients , massCoefficients , stiffnessCoefficients , smoothImpulseSolvers , fineSmoothImpulseSolver , smoothImpulseMatrix , DetailVerbose.set , true , UseDirectSolver.set );
 	UpdateLinearSystem(  geodesicInterpolationWeight , (Real)1. , hierarchy , multigridGeodesicDistanceCoefficients , massCoefficients , stiffnessCoefficients , geodesicDistanceSolvers , fineGeodesicDistanceSolver , geodesicDistanceMatrix , DetailVerbose.set , true , UseDirectSolver.set );
-	if( Verbose.set ) printf( "\tInitialized multigrid coefficients: %.2f(s)\n" , timer.elapsed() );
+	if( Verbose.set ) std::cout << pMeter( "MG coefficients" ) << std::endl;
 
 //////////////////////////////////// Initialize multigrid variables
 
@@ -714,21 +685,22 @@ void Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 		variables.boundary_value.resize(hierarchy.gridAtlases[i].boundaryGlobalIndex.size());
 		variables.variable_boundary_value.resize(hierarchy.gridAtlases[i].boundaryGlobalIndex.size());
 	}
+	if( Verbose.set ) std::cout << pMeter( "MG variables" ) << std::endl;
 
 //////////////////////////////////// Initialize cell samples
 
 	InitializeGridAtlasInteriorCellLines( hierarchy.gridAtlases[0].gridCharts , interiorCellLines , interiorCellLineIndex );
 	if( interiorCellLineIndex.size()!=hierarchy.gridAtlases[0].numInteriorCells )
 		MK_THROW( "Inconsistent number of interior cells: " , hierarchy.gridAtlases[0].numInteriorCells , " != " , interiorCellLineIndex.size() );
+	if( Verbose.set ) std::cout << pMeter( "Cell samples" ) << std::endl;
 
 	coarseBoundaryFineBoundaryProlongation = boundaryProlongation.coarseBoundaryFineBoundaryProlongation;
 	fineBoundaryCoarseBoundaryRestriction = boundaryProlongation.fineBoundaryCoarseBoundaryRestriction;
-	std::vector<int> fineBoundaryIndex = boundaryProlongation.fineBoundaryIndex;
-	int numFineBoundarNodes = boundaryProlongation.numFineBoundarNodes;
+	std::vector< unsigned int > fineBoundaryIndex = boundaryProlongation.fineBoundaryIndex;
+	unsigned int numFineBoundaryNodes = boundaryProlongation.numFineBoundaryNodes;
 
 	gradientSamples.resize( interiorCellLines.size() );
 
-	timer.reset();
 	{
 		switch( VectorFieldQuadrature.value )
 		{
@@ -741,11 +713,11 @@ void Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 		default: MK_THROW( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
 		}
 	}
-	if( Verbose.set ) printf( "\tInitialized vector field integration: %.2f(s)\n" , timer.elapsed() );
+	if( Verbose.set ) std::cout << pMeter( "VF integration" ) << std::endl;
 	coarseBoundaryValues.resize(hierarchy.gridAtlases[0].numTexels - hierarchy.gridAtlases[0].numDeepTexels);
 	coarseBoundaryRHS.resize(hierarchy.gridAtlases[0].numTexels - hierarchy.gridAtlases[0].numDeepTexels);
-	fineBoundaryValues.resize(numFineBoundarNodes);
-	fineBoundaryRHS.resize(numFineBoundarNodes);
+	fineBoundaryValues.resize(numFineBoundaryNodes);
+	fineBoundaryRHS.resize(numFineBoundaryNodes);
 
 	gradientSamples.sort();
 }
@@ -756,36 +728,34 @@ void Geodesics< PreReal , Real >::InitializeVisualization( int width , int heigh
 	outputBuffer = new unsigned char[ height*width* 3];
 	memset( outputBuffer , 204 , height * width * 3 * sizeof(unsigned char) );
 
-	int tCount = (int)mesh.triangles.size();
+	unsigned int tCount = (unsigned int)mesh.surface.triangles.size();
 
 	visualization.triangles.resize( tCount );
 	visualization.vertices.resize( 3*tCount );
-	visualization.colors.resize( 3*tCount , Point3D< float >( 0.75f , 0.75f , 0.75f ) );
 	visualization.textureCoordinates.resize( 3*tCount );
 	visualization.normals.resize( 3*tCount );
+	visualization.colors.resize( 3*tCount , Point3D< float >( 0.75f , 0.75f , 0.75f ) );
 
-
-	for( int i=0 ; i<tCount ; i++ ) for( int k=0 ; k<3 ; k++ ) visualization.triangles[i][k] = 3*i+k;
-
-	for( int i=0 ; i<tCount ; i++ ) for ( int j=0 ; j<3 ; j++ )
+	for( unsigned int t=0 , idx=0 ; t<tCount ; t++ )
 	{
-		visualization.vertices          [3*i+j] = mesh.vertices[ mesh.triangles[i][j] ];
-		visualization.normals           [3*i+j] = mesh.normals [ mesh.triangles[i][j] ];
-		visualization.textureCoordinates[3*i+j] = mesh.textureCoordinates[3*i+j];
+		Point3D< float > n = mesh.surfaceTriangle( t ).normal();
+		n /= Point3D< float >::Length( n );
+
+		for( int k=0 ; k<3 ; k++ , idx++ )
+		{
+			visualization.triangles[t][k] = idx;
+			visualization.vertices[idx] = mesh.surface.vertices[ mesh.surface.triangles[t][k] ];
+			visualization.normals[idx] = n;
+			visualization.textureCoordinates[idx] = mesh.texture.vertices[ mesh.texture.triangles[t][k] ];
+		}
 	}
 	
-	std::vector< int > boundaryEdges;
-	mesh.initializeBoundaryEdges( boundaryEdges );
+	std::vector< unsigned int > boundaryHalfEdges = mesh.texture.boundaryHalfEdges();
 
-	for( int e=0 ; e<boundaryEdges.size() ; e++ )
+	for( unsigned int e=0 ; e<boundaryHalfEdges.size() ; e++ )
 	{
-		int tIndex = boundaryEdges[e] / 3;
-		int kIndex = boundaryEdges[e] % 3;
-		for( int c=0 ; c<2 ; c++ )
-		{
-			Point3D< float > v = Point3D< float >( mesh.vertices[ mesh.triangles[tIndex][ (kIndex+c)%3 ] ] );
-			visualization.boundaryEdgeVertices.push_back(v);
-		}
+		EdgeIndex eIndex = mesh.surface.edgeIndex( boundaryHalfEdges[e] );
+		for( unsigned int i=0 ; i<2 ; i++ ) visualization.chartBoundaryVertices.push_back( Point3D< float >( mesh.surface.vertices[ eIndex[i] ] ) );
 	}
 
 	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization,  's' , "export texture" , "Output Texture" , ExportTextureCallBack ) );
@@ -836,42 +806,35 @@ void Geodesics< PreReal , Real >::Init( void )
 	{
 		if( RandomJitter.value ) srand( RandomJitter.value );
 		else                     srand( time(NULL) );
-		std::vector< Point2D< PreReal > > randomOffset( mesh.vertices.size() );
 		PreReal jitterScale = (PreReal)1e-3 / std::max< int >( textureWidth , textureHeight );
-		for( int i=0 ; i<randomOffset.size() ; i++ ) randomOffset[i] = Point2D< PreReal >( (PreReal)1. - Random< PreReal >()*2 , (PreReal)1. - Random<PreReal>()*2 ) * jitterScale;
-		for( int i=0 ; i<mesh.triangles.size() ; i++ ) for( int k=0 ; k<3 ; k++ ) mesh.textureCoordinates[ 3*i+k ] += randomOffset[ mesh.triangles[i][k] ];
+		for( int i=0 ; i<mesh.texture.vertices.size() ; i++ ) mesh.texture.vertices[i] += Point2D< PreReal >( (PreReal)1. - Random< PreReal >()*2 , (PreReal)1. - Random<PreReal>()*2 ) * jitterScale;
 	}
 
 	{
-		padding = Padding::Init( textureWidth , textureHeight , mesh.textureCoordinates , DetailVerbose.set );
-		padding.pad( textureWidth , textureHeight , mesh.textureCoordinates );
+		padding = Padding::Init( textureWidth , textureHeight , mesh.texture.vertices , DetailVerbose.set );
+		padding.pad( textureWidth , textureHeight , mesh.texture.vertices );
 		textureWidth  += padding.width();
 		textureHeight += padding.height();
 	}
 
 	//Define centroid and scale for visualization
-	Point3D< PreReal > centroid;
-	for( int i=0 ; i<mesh.vertices.size() ; i++ ) centroid += mesh.vertices[i];
-	centroid /= (int)mesh.vertices.size();
-	PreReal radius = 0;
-	for( int i=0 ; i<mesh.vertices.size() ; i++ ) radius = std::max< PreReal >( radius , Point3D< PreReal >::Length( mesh.vertices[i]-centroid) );
-	for( int i=0 ; i<mesh.vertices.size() ; i++ ) mesh.vertices[i] = ( mesh.vertices[i]-centroid ) / radius;
+	Point3D< PreReal > centroid = mesh.surface.centroid();
+	PreReal radius = mesh.surface.boundingRadius( centroid );
+	for( unsigned int i=0 ; i<mesh.surface.vertices.size() ; i++ ) mesh.surface.vertices[i] = ( mesh.surface.vertices[i]-centroid ) / radius;
 
-
-	Miscellany::Timer timer;
+	Miscellany::PerformanceMeter pMeter( '.' );
 	InitializeSystem( textureWidth , textureHeight );
 
 	if( Verbose.set )
 	{
-		printf( "Resolution: %d / %d x %d\n" , (int)textureNodes.size() , textureWidth , textureHeight );
-		printf( "Initialized system %.2f(s)\n" , timer.elapsed() );
-		printf( "Peak Memory (MB): %d\n" , Miscellany::MemoryInfo::PeakMemoryUsageMB() );
+		std::cout << pMeter( "Initialized" ) << std::endl;
+		std::cout << "Resolution: " << textureNodes.size() << " / " << textureWidth << " x " << textureHeight << std::endl;
 	}
 
 	//Assign position to exterior nodes using barycentric-exponential map
 	{
-		FEM::RiemannianMesh< PreReal , unsigned int > rMesh( GetPointer( mesh.triangles ) , mesh.triangles.size() );
-		rMesh.setMetricFromEmbedding( GetPointer( mesh.vertices ) );
+		FEM::RiemannianMesh< PreReal , unsigned int > rMesh( GetPointer( mesh.surface.triangles ) , mesh.surface.triangles.size() );
+		rMesh.setMetricFromEmbedding( GetPointer( mesh.surface.vertices ) );
 		rMesh.makeUnitArea();
 		Pointer( FEM::CoordinateXForm< PreReal > ) xForms = rMesh.getCoordinateXForms();
 
@@ -890,16 +853,7 @@ void Geodesics< PreReal , Real >::Init( void )
 	}
 
 	textureNodePositions.resize( textureNodes.size() );
-	for( int i=0 ; i<textureNodePositions.size() ; i++ )
-	{
-		Point2D< PreReal > baryncetricCoords = textureNodes[i].barycentricCoords;
-		int tID = textureNodes[i].tID;
-		Point3D< PreReal > p =
-			mesh.vertices[ mesh.triangles[tID][0] ] * ( (PreReal)1.-baryncetricCoords[0]-baryncetricCoords[1] ) +
-			mesh.vertices[ mesh.triangles[tID][1] ] *               baryncetricCoords[0]                        +
-			mesh.vertices[ mesh.triangles[tID][2] ] *                                    baryncetricCoords[1]   ;
-		textureNodePositions[i] = Point3D< float >( p );
-	}
+	for( int i=0 ; i<textureNodePositions.size() ; i++ ) textureNodePositions[i] = mesh.surface( textureNodes[i] );
 }
 
 template< typename PreReal , typename Real >

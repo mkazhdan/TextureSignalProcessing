@@ -33,7 +33,7 @@ void _Rasterize( Simplex< double , Dim , K > simplex , RasterizationFunctor && F
 template< bool NodeAtCellCenter , typename RasterizationFunctor /* = std::function< void ( Index ) > )*/ >
 void RasterizeNodes( Simplex< double , Dim , Dim > triangle , RasterizationFunctor && F , Range< Dim > cellRange )
 {
-	return _Rasterize< NodeAtCellCenter , (unsigned int)-1 >( triangle , std::forward< RasterizationFunctor >( F ) , cellRange );
+	return _Rasterize< NodeAtCellCenter , static_cast< unsigned int >(-1) >( triangle , std::forward< RasterizationFunctor >( F ) , cellRange );
 }
 
 template< bool Nearest , bool NodeAtCellCenter , unsigned int K , typename RasterizationFunctor /* = std::function< void ( Index ) > )*/ >
@@ -75,6 +75,71 @@ static Range< 1 > _GetCellRange( double s1 , double s2 )
 	if( ( s2 - _Offset< NodeAtCellCenter >() + _SupportRadius< Degree >() )==range.second[0] ) range.second[0]--;
 
 	return range;
+}
+
+// Rasterizes the triangle obtained by connecting a horizontal line segment to a point
+template< bool NodeAtCellCenter , unsigned int Degree , typename RasterizationFunctor /* = std::function< void ( Index ) > )*/ >
+void _Rasterize( double y , double x0 , double x1 , Point< double , Dim > tip1 , Point< double , Dim > tip2 , RasterizationFunctor &&  F , const Range< 1 > cellRanges[Dim] )
+{
+	if( tip1[1]>tip2[1] ) std::swap( tip1 , tip2 );
+	if( x0>x1 ) std::swap( x0 , x1 );
+
+	double y0 = tip1[1] , y1=y , y2 = tip2[1];
+
+	auto Merge = []( std::pair< double , double > r1 , std::pair< double , double > r2 )
+		{
+			return std::make_pair( std::min< double >( r1.first , r2.first ) , std::max< double >( r1.second , r2.second ) );
+		};
+
+	// For a given height, gives the span of the intersection of the horizontal line with the triangle
+	auto Intersection1 = [&]( double y )
+		{
+			y = std::max< double >( y0 , std::min< double >( y1 , y ) );
+			// Solve for s s.t.:
+			//	y1*(1-s) + tip[1]*s = y
+			//  (tip[1]-y1)*s = y - y1
+			//	s = (y-y1) / (tip[1]-y1)
+			double s = (y-y1) / (tip1[1]-y1);
+			return std::pair< double , double >( x0*(1-s) + tip1[0]*s , x1*(1-s) + tip1[0]*s );
+		};
+	auto Intersection2 = [&]( double y )
+		{
+			y = std::max< double >( y1 , std::min< double >( y2 , y ) );
+			// Solve for s s.t.:
+			//	y*(1-s) + tip[1]*s = y
+			//  (tip[1]-y1)*s = y - y1
+			//	s = (y-y1) / (tip[1]-y1)
+			double s = (y-y1) / (tip2[1]-y1);
+			return std::pair< double , double >( x0*(1-s) + tip2[0]*s , x1*(1-s) + tip2[0]*s );
+		};
+
+	// Returns the horizontal span of indices intersecting the triangle, for a fixed height index
+	auto HorizontalCellRange = [&]( int iy )
+		{
+			double _y = iy + _Offset< NodeAtCellCenter >();
+			std::pair< double , double > r;
+			if constexpr( Degree==-1 )
+			{
+				if( _y<y1 ) r = Intersection1( _y );
+				else        r = Intersection2( _y );
+			}
+			else
+			{
+				double _y0 = _y - _SupportRadius< Degree >() , _y1 = _y + _SupportRadius< Degree >();
+				if     ( _y0>y ) r = Merge( Intersection2( _y0 ) , Intersection2( _y1 ) );
+				else if( _y1<y ) r = Merge( Intersection1( _y0 ) , Intersection1( _y1 ) );
+				else             r = Merge( Merge( Intersection1( _y0 ) , Intersection1( _y1 ) ) , Merge( Intersection2( _y0 ) , Intersection2( _y1 ) ) );
+			}
+			return Range< 1 >::Intersect( cellRanges[0] , _GetCellRange< NodeAtCellCenter , Degree >( r.first , r.second ) );
+		};
+
+	Range< 1 > iyRange = Range< 1 >::Intersect( cellRanges[1] , _GetCellRange< NodeAtCellCenter , Degree >( y0 , y2 ) );
+
+	for( int iy=iyRange.first[0] ; iy<=iyRange.second[0] ; iy++ )
+	{
+		Range< 1 > ixRange = HorizontalCellRange( iy );
+		for( int ix=ixRange.first[0] ; ix<=ixRange.second[0] ; ix++ ) F( Index(ix,iy) );
+	}
 }
 
 // Rasterizes the triangle obtained by connecting a horizontal line segment to a point
@@ -153,14 +218,14 @@ void _Rasterize( Simplex< double , Dim , K > simplex , RasterizationFunctor && F
 		// All vertices at different heights
 		else
 		{
+			// [WARNING] Could be rasterizing the same supports twice, once for each half-triangle.
 			// Solve for s s.t.:
 			//	simplex[i0][1]*(1-s) + simplex[i2][1]*s = simplex[i1][1]
 			//	(simplex[i2][1]-simplex[i0][1]) * s = simplex[i1][1] - simplex[i0][1]
 			//	s = (simplex[i1][1] - simplex[i0][1]) / (simplex[i2][1]-simplex[i0][1])
 			double s = (simplex[i1][1] - simplex[i0][1]) / (simplex[i2][1]-simplex[i0][1]);
 			double x2 = simplex[i0][0]*(1-s) + simplex[i2][0]*s;
-			_Rasterize< NodeAtCellCenter , Degree >( y , x1 , x2 , simplex[i0] , F , cellRanges );
-			_Rasterize< NodeAtCellCenter , Degree >( y , x1 , x2 , simplex[i2] , F , cellRanges );
+			_Rasterize< NodeAtCellCenter , Degree >( y , x1 , x2 , simplex[i0] , simplex[i2] , F , cellRanges );
 		}
 	}
 	else if constexpr( K==1 )

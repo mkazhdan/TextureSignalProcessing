@@ -393,7 +393,7 @@ void TexturedMeshVisualization::DrawGeometry( GLuint& textureBufferId , bool pho
 		glDepthMask(GL_FALSE);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		glBegin(GL_LINES);
-		for (int i = 0; i < boundaryEdgeVertices.size(); i++) glVertex3f(boundaryEdgeVertices[i][0], boundaryEdgeVertices[i][1], boundaryEdgeVertices[i][2]);
+		for (int i = 0; i < chartBoundaryVertices.size(); i++) glVertex3f(chartBoundaryVertices[i][0], chartBoundaryVertices[i][1], chartBoundaryVertices[i][2]);
 		glEnd();
 		glDisable(GL_LINE_SMOOTH);
 		glDisable(GL_BLEND);

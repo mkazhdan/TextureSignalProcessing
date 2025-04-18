@@ -144,11 +144,6 @@ The default value for this parameter is 6.
 The default value for this parameter is 100.
 </dd>
 
-<dt>[<b>--dilateBounaries</b> &lt;<i>dilation radius</i>&gt;]</dt>
-<dd> This integer values gives the radius by which the boundaries of the segments should be dilated before stithing is performed.<BR>
-The default value for this parameter is -1, indicating no dilation.
-</dd>
-
 </dd><dt>[<b>--jitter</B> &lt;<i>random seed</i>&gt;]</dt>
 <dd> If specified, this integer value is used to seed the random number generation for jittering. (This is used to avoid singular situations when mesh vertices fall directly on edges in the texture grid. In such a situation, the executable will issue a warning <B>"Zero row at index ..."</B>.)
 </dd>

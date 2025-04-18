@@ -40,8 +40,14 @@ DAMAGE.
 #include <Misha/Texels.h>
 #include <Misha/Rasterizer2D.h>
 #include <Misha/Geometry.h>
+#include <Misha/MultiThreading.h>
+#include <Misha/Atomic.h>
+#include <Misha/Atomic.Geometry.h>
 #endif // USE_RASTERIZER
 #include "IndexedPolygon.h"
+#ifdef PRE_CLIP_TRIANGLES
+#include "PolygonClipping.h"
+#endif // PRE_CLIP_TRIANGLES
 
 namespace MishaK
 {
@@ -328,18 +334,17 @@ namespace MishaK
 	class MultigridBlockInfo
 	{
 	public:
-		MultigridBlockInfo( int p_blockWidth = 128, int p_blockHeight = 16, int p_paddingWidth = 2, int p_paddingHeight = 2, int p_boundaryDilation = 0) {
+		MultigridBlockInfo( int p_blockWidth = 128, int p_blockHeight = 16, int p_paddingWidth = 2, int p_paddingHeight = 2 )
+		{
 			blockWidth = p_blockWidth;
 			blockHeight = p_blockHeight;
 			paddingWidth = p_paddingWidth;
 			paddingHeight = p_paddingHeight;
-			boundaryDilation = p_boundaryDilation;
 		}
 		int blockWidth;
 		int blockHeight;
 		int paddingWidth;
 		int paddingHeight;
-		int boundaryDilation;
 	};
 
 	class BlockDeepSegment
@@ -418,6 +423,53 @@ namespace MishaK
 		int index;
 	};
 
+	enum struct CellType
+	{
+		Exterior ,		// No geometry passes through the cell
+		Boundary ,		// A boundary edge passes through the cell
+		Interior		// A triangle passes through the cell, but not a boundary edge
+	};
+
+	enum struct TexelType
+	{
+		Unsupported ,					// No geometry passes through the support of the node
+		BoundarySupported ,				// The support of the texel includes boundary nodes
+		BoundarySupportedAndCovered ,	// The support of the texel includes boundary nodes and the node is covered by a triangle
+		InteriorSupported				// The support of the texel consists of interior nodes
+	};
+
+	struct CellIndex
+	{
+		CellIndex( void ) : combined(-1) , interior(-1) , boundary(-1){}
+		unsigned int combined , interior , boundary;
+	};
+
+	struct TexelIndex
+	{
+		TexelIndex( void ) : combined(-1) , interior(-1) , interiorOrCovered(-1){}
+		unsigned int combined , interior , interiorOrCovered;
+	};
+
+	bool IsCovered( TexelType texelType ){ return texelType==TexelType::BoundarySupportedAndCovered || texelType==TexelType::InteriorSupported; }
+	bool HasBoundarySupport( TexelType texelType ){ return texelType==TexelType::BoundarySupportedAndCovered || texelType==TexelType::BoundarySupported; }
+
+	std::string CellTypeName( CellType cellType )
+	{
+		if     ( cellType==CellType::Exterior ) return std::string( "Exterior" );
+		else if( cellType==CellType::Boundary ) return std::string( "Boundary" );
+		else if( cellType==CellType::Interior ) return std::string( "Interior" );
+		else MK_THROW( "Unrecognized cell type" );
+	}
+
+	std::string TexelTypeName( TexelType texelType )
+	{
+		if     ( texelType==TexelType::Unsupported ) return std::string( "Unsupported" );
+		else if( texelType==TexelType::BoundarySupportedAndCovered ) return std::string( "Boundary and interior supported" );
+		else if( texelType==TexelType::BoundarySupported ) return std::string( "Boundary supported" );
+		else if( texelType==TexelType::InteriorSupported ) return std::string( "Interior supported" );
+		else MK_THROW( "Unrecognized texel type" );
+	}
+
 	template< typename GeometryReal >
 	class GridChart
 	{
@@ -427,50 +479,92 @@ namespace MishaK
 		int centerOffset[2];
 		GeometryReal cellSizeW;
 		GeometryReal cellSizeH;
-		int width;
-		int height;
-		int globalTexelDeepOffset;
-		int globalTexelBoundaryOffset;
-		int globalIndexTexelOffset;
-		int globalIndexInteriorTexelOffset;
-		int globalIndexCellOffset;
-		int globalIndexInteriorCellOffset;
-		int gridIndexOffset;
-		Image< int > cellType;
-		Image< int > nodeType;
-		Image< int > globalInteriorTexelIndex;
-		Image< int > globalTexelIndex;
-		Image< int > globalTexelDeepIndex;
-		Image< int > globalTexelBoundaryIndex;
+		unsigned int width;
+		unsigned int height;
+		unsigned int combinedCellOffset;
+		unsigned int interiorCellOffset;
 
+		unsigned int gridIndexOffset;
 
-		Image< int > localCellIndex;
+		Point2D< GeometryReal > nodePosition( unsigned int i , unsigned int j ) const { return Point2D< GeometryReal >( i*cellSizeW , j*cellSizeH ); }
+
+		unsigned int nodeIndex( unsigned int i , unsigned int j ) const { return gridIndexOffset + width*j + i; }
+		bool factorNodeIndex( unsigned int idx , unsigned int &i , unsigned int &j ) const
+		{
+			if( idx<gridIndexOffset ) return false;
+			idx -= gridIndexOffset;
+			if( idx<width*height )
+			{
+				i = idx % width;
+				j = idx / width;
+				return true;
+			}
+			else return false;
+		}
+
+		unsigned int edgeIndex( unsigned int i , unsigned int j , unsigned int dir ) const { return gridIndexOffset + width*height*dir + j*width + i; }
+		bool factorEdgeIndex( unsigned int idx , unsigned int &i , unsigned int &j , unsigned int &dir ) const
+		{
+			dir = 0;
+			if( idx<gridIndexOffset ) return false;
+			idx -= gridIndexOffset;
+			if( idx<width*height )
+			{
+				i = idx % width;
+				j = idx / width;
+				return true;
+			}
+			else
+			{
+				idx -= width*height;
+				dir++;
+				if( idx<width*height )
+				{
+					i = idx % width;
+					j = idx / width;
+					return true;
+				}
+				else return false;
+			}
+		}
+
+		// Texel indices (global)
+		Image< TexelIndex > texelIndices;
+
+		// Cell indices (local)
+		Image< CellIndex > cellIndices;
+
+		// The indices of the incident nodes
 		std::vector< BilinearElementIndex > bilinearElementIndices;
 
-		Image<int> localInteriorCellIndex;
-		std::vector< BilinearElementIndex> interiorCellCorners;
+		// For interior cells, the indices of the incident interior nodes
+		std::vector< BilinearElementIndex > interiorCellInteriorBilinearElementIndices;
 
-		std::vector< BilinearElementIndex > interiorCellGlobalCorners;
+		// For interior cells, the indices of the incident nodes
+		std::vector< BilinearElementIndex > interiorCellGlobalBilinearElementIndices;
 
-		int numInteriorCells;
+		// Maps converting boundary/interiorl cell indices to combined cell indices
+		std::vector< unsigned int > interiorCellIndexToCombinedCellIndex;
+		std::vector< unsigned int > boundaryCellIndexToCombinedCellIndex;
 
-		Image< int > localBoundaryCellIndex;
-		int numBoundaryCells;
+		const unsigned int numInteriorCells( void ) const { return interiorCellIndexToCombinedCellIndex.size(); }
+		const unsigned int numBoundaryCells( void ) const { return boundaryCellIndexToCombinedCellIndex.size(); }
 
-		std::vector< int > interiorCellIndexToLocalCellIndex;
-		std::vector< int > boundaryCellIndexToLocalCellIndex;
-
-		std::vector< std::vector< AtlasIndexedPolygon< GeometryReal > > > boundaryPolygons;
+		std::vector< std::vector<     AtlasIndexedPolygon< GeometryReal > > > boundaryPolygons;
 		std::vector< std::vector< BoundaryIndexedTriangle< GeometryReal > > > boundaryTriangles;
 
-		int numBoundaryTriangles;
+		unsigned int numBoundaryTriangles;
 
 		std::vector< AuxiliaryNode< GeometryReal > > auxiliaryNodes;
 
-		Image< int > triangleID;
+		Image< CellType > cellType;
+		Image< TexelType > texelType;
+		Image< unsigned int > triangleID;
 		Image< Point2D< GeometryReal > > barycentricCoords;
+#ifdef PRE_CLIP_TRIANGLES
+		Image< std::vector< std::pair< unsigned int , CellClippedTriangle< GeometryReal > > > > clippedTriangles;
+#endif // PRE_CLIP_TRIANGLES
 	};
-
 
 	class GridNodeInfo
 	{
@@ -478,7 +572,7 @@ namespace MishaK
 		int chartID;
 		int ci;
 		int cj;
-		int nodeType;
+		TexelType texelType;
 	};
 
 	class TexelLineInfo
@@ -495,9 +589,9 @@ namespace MishaK
 	public:
 
 		std::vector< ThreadTask > threadTasks;
-		std::vector< int > boundaryAndDeepIndex;
-		std::vector< int > boundaryGlobalIndex;
-		std::vector< int > deepGlobalIndex;
+		std::vector< unsigned int > boundaryAndDeepIndex;
+		std::vector< unsigned int > boundaryGlobalIndex;
+		std::vector< unsigned int > deepGlobalIndex;
 		std::vector< GridNodeInfo > nodeInfo;
 		std::vector< GridChart< GeometryReal > > gridCharts;
 		std::vector< SegmentedRasterLine > segmentedLines;
@@ -506,17 +600,17 @@ namespace MishaK
 		std::vector< DeepLine > deepLines;
 		std::vector< ProlongationLine > prolongationLines;
 		Eigen::SparseMatrix< MatrixReal > coarseToFineNodeProlongation;
-		//int resolution;
-		int numTexels;
-		int numInteriorTexels;
-		int numDeepTexels;
-		int numBoundaryTexels;
-		int numCells;
-		int numBoundaryCells;
-		int numInteriorCells;
-		int numBoundaryNodes;
-		int numMidPoints;
-		int numFineNodes;
+
+		unsigned int numTexels;
+		unsigned int numInteriorTexels;
+		unsigned int numDeepTexels;
+		unsigned int numBoundaryTexels;
+		unsigned int numCells;
+		unsigned int numBoundaryCells;
+		unsigned int numInteriorCells;
+		unsigned int numBoundaryNodes;
+		unsigned int numMidPoints;
+		unsigned int numFineNodes;
 	};
 
 	struct BoundaryDeepIndex
@@ -577,7 +671,7 @@ namespace MishaK
 	class MultigridLevelIndices {
 	public:
 		std::vector<ThreadTask> threadTasks;
-		std::vector<int> boundaryGlobalIndex;
+		std::vector< unsigned int > boundaryGlobalIndex;
 		std::vector<SegmentedRasterLine> segmentedLines;
 		std::vector<RasterLine> rasterLines;
 		std::vector<RasterLine> restrictionLines;

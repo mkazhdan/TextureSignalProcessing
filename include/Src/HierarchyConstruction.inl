@@ -28,30 +28,39 @@ DAMAGE.
 #pragma once
 
 template< typename GeometryReal >
-void InitializeBoundaryAndDeepTexelIndexing( const std::vector< GridChart< GeometryReal > > &gridCharts , const int numTexels , std::vector< int > &boundaryAndDeepIndex , std::vector< int > &boundaryGlobalIndex , std::vector< int > &deepGlobalIndex ) 
+void InitializeBoundaryAndDeepTexelIndexing
+(
+	const std::vector< GridChart< GeometryReal > > &gridCharts ,
+	unsigned int numTexels ,
+	std::vector< unsigned int > &boundaryAndDeepIndex ,
+	std::vector< unsigned int > &boundaryGlobalIndex ,
+	std::vector< unsigned int > &deepGlobalIndex
+) 
 {
-	boundaryAndDeepIndex.resize(numTexels, 0);
+	boundaryAndDeepIndex.resize( numTexels , 0 );
 	int lastGlobalIndex = 0;
 	int lastBoundaryIndex = 1;
 	int lastDeepIndex = -1;
 
-	for (int c = 0; c < gridCharts.size(); c++)
+	for( int c=0 ; c<gridCharts.size() ; c++)
 	{
 		const GridChart< GeometryReal > &gridChart = gridCharts[c];
-		for( unsigned int j=0 ; j<gridChart.nodeType.res(1) ; j++ ) for( unsigned int i=0 ; i<gridChart.nodeType.res(0) ; i++ )
+		for( unsigned int j=0 ; j<gridChart.texelType.res(1) ; j++ ) for( unsigned int i=0 ; i<gridChart.texelType.res(0) ; i++ )
 		{
-			if (gridChart.nodeType(i, j) == 0 || gridChart.nodeType(i, j) == 1) {
+			if( HasBoundarySupport( gridChart.texelType(i,j) ) )
+			{
 				boundaryGlobalIndex.push_back(lastGlobalIndex);
 				boundaryAndDeepIndex[lastGlobalIndex] = lastBoundaryIndex;
 				lastBoundaryIndex++;
-				if( gridChart.globalTexelIndex(i,j)!=lastGlobalIndex ) MK_THROW( "Unexpected global index: actual " , gridChart.globalTexelIndex(i,j) , " , expected " , lastGlobalIndex );
+				if( gridChart.texelIndices(i,j).combined!=lastGlobalIndex ) MK_THROW( "Unexpected global index: actual " , gridChart.texelIndices(i,j).combined , " , expected " , lastGlobalIndex );
 				lastGlobalIndex++;
 			}
-			else if (gridChart.nodeType(i, j) == 2) {
+			else if( gridChart.texelType(i,j)==TexelType::InteriorSupported )
+			{
 				deepGlobalIndex.push_back(lastGlobalIndex);
 				boundaryAndDeepIndex[lastGlobalIndex] = lastDeepIndex;
 				lastDeepIndex--;
-				if( gridChart.globalTexelIndex(i,j)!=lastGlobalIndex ) MK_THROW( "Unexpected global index: actual " , gridChart.globalTexelIndex(i,j) , " , expected " , lastGlobalIndex );
+				if( gridChart.texelIndices(i,j).combined!=lastGlobalIndex ) MK_THROW( "Unexpected global index: actual " , gridChart.texelIndices(i,j).combined , " , expected " , lastGlobalIndex );
 				lastGlobalIndex++;
 			}
 		}
@@ -61,43 +70,79 @@ void InitializeBoundaryAndDeepTexelIndexing( const std::vector< GridChart< Geome
 //Node type : inactive(-1) , exterior (0), interior boundary (1), interior deep (2) hybryd (both deep and boundary for the solver)(3).
 //Cell type : inactive(-1) , boundary (0), interior (1).
 template< typename GeometryReal >
-void InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< GeometryReal > &atlasChart , GridChart< GeometryReal > &gridChart , std::vector< GridNodeInfo > &nodeInfo , std::vector< RasterLine > &rasterLines , std::vector< SegmentedRasterLine > &segmentedLines , std::vector< ThreadTask > &threadTasks , int &lastGlobalTexelIndex , int &lastGlobalTexelInteriorIndex , int &lastGlobalTexelDeepIndex , int &lastGlobalTexelBoundaryIndex , int &lastGlobalCellIndex , int &lastGlobalBoundaryCellIndex , int &lastGlobalInteriorCellIndex , const MultigridBlockInfo &multigridBlockInfo )
+void InitializeGridChartsActiveNodes
+(
+	unsigned int chartID ,
+	const AtlasChart< GeometryReal > & atlasChart ,
+	GridChart< GeometryReal > & gridChart ,
+	std::vector< GridNodeInfo > & nodeInfo ,
+	std::vector< RasterLine > & rasterLines ,
+	std::vector< SegmentedRasterLine > & segmentedLines ,
+	std::vector< ThreadTask > & threadTasks ,
+	unsigned int & combinedTexelIndex ,
+	unsigned int & interiorTexelIndex ,
+	unsigned int &     deepTexelIndex ,
+	unsigned int & boundaryTexelIndex ,
+	unsigned int & combinedCellIndex ,
+	unsigned int & boundaryCellIndex ,
+	unsigned int & interiorCellIndex ,
+	const MultigridBlockInfo & multigridBlockInfo
+)
 {
-	int width = gridChart.width;
-	int height = gridChart.height;
+	unsigned int width = gridChart.width;
+	unsigned int height = gridChart.height;
 	GeometryReal cellSizeW = gridChart.cellSizeW;
 	GeometryReal cellSizeH = gridChart.cellSizeH;
-	Image< int > &nodeType = gridChart.nodeType;
-	nodeType.resize( width , height );
-	for( int i=0 ; i<nodeType.size() ; i++ ) nodeType[i] = -1;
+	Image< TexelType > &texelType = gridChart.texelType;
+	texelType.resize( width , height );
+	for( int i=0 ; i<texelType.size() ; i++ ) texelType[i] = TexelType::Unsupported;
 #ifdef DEBUG_ATLAS
 	Image< int > nodeOwner;
 	nodeOwner.resize( width , height );
 #endif // DEBUG_ATLAS
 
-	Image< int > &cellType = gridChart.cellType;
+	Image< CellType > &cellType = gridChart.cellType;
 	cellType.resize( width-1 , height-1 );
-	for( int i=0 ; i<cellType.size() ; i++ ) cellType[i] = -1;
+	for( int i=0 ; i<cellType.size() ; i++ ) cellType[i] = CellType::Exterior;
 
-	Image< int > &triangleID = gridChart.triangleID;
+	Image< unsigned int > &triangleID = gridChart.triangleID;
 	triangleID.resize( width , height );
 	for ( int i=0 ; i<triangleID.size() ; i++ ) triangleID[i] = -1;
 
 	Image< Point2D< GeometryReal > > &barycentricCoords = gridChart.barycentricCoords;
-	barycentricCoords.resize(width, height);
+	barycentricCoords.resize( width , height );
+
+#ifdef PRE_CLIP_TRIANGLES
+	Image< std::vector< std::pair< unsigned int , CellClippedTriangle< GeometryReal > > > > &clippedTriangles = gridChart.clippedTriangles;
+	clippedTriangles.resize( width-1 , height-1 );
+#endif // PRE_CLIP_TRIANGLES
 
 #ifdef USE_RASTERIZER
-	RegularGrid< 2 >::Range range , cellTypeRange;
-	range.second[0] = width , cellTypeRange.second[0] = width-1;
-	range.second[1] = height , cellTypeRange.second[1] = height-1;
+	using Range = RegularGrid< 2 >::Range;
+	using Index = RegularGrid< 2 >::Index;
+	Range nodeRange , cellRange;
+	nodeRange.second[0] = width , cellRange.second[0] = width-1;
+	nodeRange.second[1] = height , cellRange.second[1] = height-1;
 
-	auto GetSimplex = [&]( unsigned int t )
+	auto GetTriangle = [&]( unsigned int t , bool textureSpace=true )
 		{
-			Simplex< double , 2  , 2 > simplex;
+			Simplex< double , 2 , 2 > simplex;
 			for( unsigned int i=0 ; i<=2 ; i++ )
 			{
 				simplex[i] = atlasChart.vertices[ atlasChart.triangles[t][i] ] - gridChart.corner;
-				simplex[i][0] /= cellSizeW , simplex[i][1] /= cellSizeH;
+				if( textureSpace ) simplex[i][0] /= cellSizeW , simplex[i][1] /= cellSizeH;
+			}
+			return simplex;
+		};
+
+	auto GetEdge = [&]( unsigned int he , bool textureSpace=true )
+		{
+			Simplex< double , 2 , 1 > simplex;
+			EdgeIndex eIndex = atlasChart.edgeIndex( he );
+			for( unsigned int i=0 ; i<2 ; i++ )
+			{
+				simplex[i] = atlasChart.vertices[ eIndex[i] ] - gridChart.corner;
+				if( textureSpace ) simplex[i][0] /= cellSizeW , simplex[i][1] /= cellSizeH;
 			}
 			return simplex;
 		};
@@ -106,31 +151,112 @@ void InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geome
 #else // !USE_RASTERIZER
 	//(1) Add interior texels
 #endif // USE_RASTERIZER
+
+#ifdef USE_RASTERIZER
+	// Rasterize triangles into nodes/cells
+	for( unsigned int t=0 ; t<atlasChart.triangles.size() ; t++ )
+	{
+		// Compute the associated triangle in (shifted) texel coordinates
+		Simplex< double , 2 , 2 > simplex = GetTriangle( t );
+
+		auto Kernel = [&]( Index I )
+			{
+				Point3D< double > bc = simplex.barycentricCoordinates( Point2D< double >( I[0] , I[1] ) );
+				Point2D< GeometryReal > newBC = Point2D< GeometryReal >( Point2D< double >( bc[1] , bc[2] ) );
+
+				texelType(I) = TexelType::BoundarySupported;
+
+				if( triangleID(I)==-1 )
+				{
+					triangleID(I) = t;
+					barycentricCoords(I) = newBC;
+				}
+				else
+				{
+					Point2D< GeometryReal > oldBC = barycentricCoords(I);
+					Simplex< double , 2 , 2 > oldSimplex = GetTriangle( triangleID(I) );
+					Point< double , 2 > oldP = oldSimplex( oldBC ) , newP = simplex( newBC );
+					double oldD2 = Point< double , 2 >::SquareDistance( oldP , oldSimplex.nearest(oldP) );
+					double newD2 = Point< double , 2 >::SquareDistance( newP ,    simplex.nearest(newP) );
+					if( newD2<oldD2 )
+					{
+						triangleID(I) = t;
+						barycentricCoords(I) = newBC;
+					}
+				}
+			};
+		Rasterizer2D::RasterizeSupports< false , false >( simplex , Kernel , nodeRange );
+#ifdef PRE_CLIP_TRIANGLES
+		{
+			Simplex< double , 2 , 2 > normalizedSimplex = GetTriangle( t , false );
+
+			auto Kernel = [&]( Index I )
+				{
+					cellType(I) = CellType::Interior;
+					CellClippedTriangle poly( normalizedSimplex );
+					if( ClipTriangleToPrimalCell( poly , I[0] , I[1] , gridChart.cellSizeW , gridChart.cellSizeH ) )
+						clippedTriangles(I).push_back( std::make_pair( t, poly ) );
+					else MK_THROW( "Expected triangle to intersect cell" );
+				};
+			Rasterizer2D::RasterizeSupports< true , true >( simplex , Kernel , cellRange );
+		}
+#else // !PRE_CLIP_TRIANGLES
+		Rasterizer2D::RasterizeSupports< true , true >( simplex , [&]( Index I ){ cellType(I)=CellType::Interior; } , cellRange );
+#endif // PRE_CLIP_TRIANGLES
+	}
+
+	// Over-write the node designation for nodes covered by a triangle
+	for( int t=0 ; t<atlasChart.triangles.size() ; t++ )
+		Rasterizer2D::RasterizeNodes< false >( GetTriangle( t ) , [&]( Index I ){ texelType(I) = TexelType::BoundarySupportedAndCovered; } , nodeRange );
+
+	// Rasterize boundary edges into cells
+	for( int e=0 ; e<atlasChart.boundaryHalfEdges.size() ; e++ )
+	{
+		int tIndex = atlasChart.boundaryHalfEdges[e] / 3;
+		int kIndex = atlasChart.boundaryHalfEdges[e] % 3;
+
+		Simplex< double , 2 , 2 > simplex = GetTriangle( tIndex );
+		Simplex< double , 2 , 1 > subSimplex = GetEdge( atlasChart.boundaryHalfEdges[e] );
+		Rasterizer2D::RasterizeSupports< true , true >( subSimplex , [&]( Index I ){ cellType(I)=CellType::Boundary; } , cellRange );
+	}
+
+	// Over-write the node designation for nodes whose support is entirely interior
+	{
+		auto Kernel = [&]( Index I )
+			{
+				if( triangleID(I)!=-1 )
+				{
+					unsigned int bCount = 0;
+					Range::Intersect( cellRange , Range::CellsSupportedOnNode(I) ).process( [&]( Index I ){ if( cellType(I)==CellType::Boundary ) bCount++; } );
+					if( !bCount ) texelType(I) = TexelType::InteriorSupported;
+				}
+			};
+		nodeRange.process( Kernel );
+	}
+#else // !USE_RASTERIZER
+
 	for( int t=0 ; t<atlasChart.triangles.size() ; t++ )
 	{
 #ifdef USE_RASTERIZER
 		// Compute the associated triangle in (shifted) texel coordinates
-		Simplex< double , 2  , 2 > simplex = GetSimplex( t );
-		auto Kernel = [&]( RegularGrid< 2 >::Index I )
+		Simplex< double , 2 , 2 > simplex = GetTriangle( t );
+		auto Kernel = [&]( Index I )
 			{
 #ifdef DEBUG_ATLAS
-				if( nodeType(I)!=-1 ) MK_WARN_ONCE( "Texel ( " , I[0]+gridChart.cornerCoords[0] , " , " , I[1]+gridChart.cornerCoords[1] , " ) owned by multiple triangles (mapping likely not injective): " , atlasChart.triangles[t]() , " " , nodeOwner(I) );
+				if( texelType(I)!=TexelType::Unassigned ) MK_WARN_ONCE( "Texel ( " , I[0]+gridChart.cornerCoords[0] , " , " , I[1]+gridChart.cornerCoords[1] , " ) owned by multiple triangles (mapping likely not injective): " , atlasChart.triangles[t]() , " " , nodeOwner(I) );
 #else // !DEBUG_ATLAS
-				if( nodeType(I)!=-1 ) MK_WARN( "Node ( " , i , " , " , j , " ) in chart " , chartID , " already covered [" , t , "]" );
+				if( texelType(I)!=TexelType::Unassigned ) MK_WARN( "Node ( " , i , " , " , j , " ) in chart " , chartID , " already covered [" , t , "]" );
 #endif // DEBUG_ATLAS
-				nodeType(I) = 1;
+				texelType(I) = TexelType::BoundarySupportedAndCovered;
 #ifdef DEBUG_ATLAS
 				nodeOwner(I) = atlasChart.triangles[t]();
 #endif // DEBUG_ATLAS
-#ifdef NEW_CODE
 				triangleID(I) = t;
-#else // !NEW_CODE
-				triangleID(I) = atlasChart.meshTriangleIndices[t];
-#endif // NEW_CODE
 				Point3D< double > bc = simplex.barycentricCoordinates( Point2D< double >( I[0] , I[1] ) );
 				barycentricCoords(I) = Point2D< double >( bc[1] , bc[2] );
 			};
-		Rasterizer2D::RasterizeNodes< false >( simplex , Kernel , range );
+		Rasterizer2D::RasterizeNodes< false >( simplex , Kernel , nodeRange );
+		Rasterizer2D::RasterizeSupports< true , true >( simplex , [&]( Index I ){ cellType(I)=CellType::Interior; } , cellRange );
 #else // !USE_RASTERIZER
 		Point2D< GeometryReal > tPos[3];
 		for( int i=0 ; i<3 ; i++ ) tPos[i] = atlasChart.vertices[ atlasChart.triangles[t][i] ] - gridChart.corner;
@@ -146,19 +272,15 @@ void InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geome
 			if( barycentricCoord[0]>=0 && barycentricCoord[1]>=0 && ( barycentricCoord[0]+barycentricCoord[1] )<=1 )
 			{
 #ifdef DEBUG_ATLAS
-				if( nodeType(i,j)!=-1 ) MK_WARN( "Texel ( " , i+gridChart.cornerCoords[0] , " , " , j+gridChart.cornerCoords[1] , " ) covered by multiple triangles: " , atlasChart.triangles[t]() , " " , nodeOwner(i,j) );
+				if( texelType(i,j)!=TexelType::Unsupported ) MK_WARN( "Texel ( " , i+gridChart.cornerCoords[0] , " , " , j+gridChart.cornerCoords[1] , " ) covered by multiple triangles: " , atlasChart.triangles[t]() , " " , nodeOwner(i,j) );
 #else // !DEBUG_ATLAS
-				if( nodeType(i,j)!=-1 ) MK_WARN( "Node ( " , i , " , " , j , " ) in chart " , chartID , " already covered [" , t , "]" );
+				if( texelType(i,j)!=TexelType::Unsupported ) MK_WARN( "Node ( " , i , " , " , j , " ) in chart " , chartID , " already covered [" , t , "]" );
 #endif // DEBUG_ATLAS
-				nodeType(i,j) = 1;
+				texelType(i,j) = TexelType::BoundarySupportedAndCovered;
 #ifdef DEBUG_ATLAS
 				nodeOwner(i,j) = atlasChart.triangles[t]();
 #endif // DEBUG_ATLAS
-#ifdef NEW_CODE
 				triangleID(i,j) = t;
-#else // !NEW_CODE
-				triangleID(i,j) = atlasChart.meshTriangleIndices[t];
-#endif // NEW_CODE
 				barycentricCoords(i,j) = barycentricCoord;
 			}
 		}
@@ -166,70 +288,52 @@ void InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geome
 	}
 
 	//(2) Add texels adjacent to boundary cells
-#ifdef NEW_CODE
-#else // !NEW_CODE
-	int interiorCellTriangles = 0;
-#endif // NEW_CODE
-
 	for( int e=0 ; e<atlasChart.boundaryHalfEdges.size() ; e++ )
 	{
 		int tIndex = atlasChart.boundaryHalfEdges[e] / 3;
 		int kIndex = atlasChart.boundaryHalfEdges[e] % 3;
 
 #ifdef USE_RASTERIZER
-		Simplex< double , 2 , 2 > simplex = GetSimplex( tIndex );
-		Simplex< double , 2  , 1 > subSimplex;
+		Simplex< double , 2 , 2 > simplex = GetTriangle( tIndex );
+		Simplex< double , 2 , 1 > subSimplex;
 		subSimplex[0] = simplex[kIndex] , subSimplex[1] = simplex[(kIndex+1)%3];
-		auto Kernel = [&]( RegularGrid< 2 >::Index I )
+		auto Kernel = [&]( Index I )
 			{
-				if( nodeType(I)!=1 )
+				if( texelType(I)!=TexelType::BoundarySupportedAndCovered )
 				{
-					nodeType(I) = 0;
+					texelType(I) = TexelType::BoundarySupported;
 					Point3D< double > bc = simplex.barycentricCoordinates( Point2D< double >( I[0] , I[1] ) );
 					Point2D< GeometryReal > newBC = Point2D< GeometryReal >( Point2D< double >( bc[1] , bc[2] ) );
 
 					// If no triangle has been assigned, assign this one
 					if( triangleID(I)==-1 )
 					{
-#ifdef NEW_CODE
 						triangleID(I) = tIndex;
-#else // !NEW_CODE
-						triangleID(I) = atlasChart.meshTriangleIndices[tIndex];
-#endif // NEW_CODE
 						barycentricCoords(I) = newBC;
 					}
 					// Otherwise, update if closer
 					else
 					{
 						Point2D< GeometryReal > oldBC = barycentricCoords(I);
-#ifdef NEW_CODE
-						Simplex< double , 2 , 2 > oldSimplex = GetSimplex( triangleID(I) );
+						Simplex< double , 2 , 2 > oldSimplex = GetTriangle( triangleID(I) );
 						Point< double , 2 > oldP = oldSimplex( oldBC ) , newP = simplex( newBC );
 						double oldD2 = Point< double , 2 >::SquareDistance( oldP , oldSimplex.nearest(oldP) );
 						double newD2 = Point< double , 2 >::SquareDistance( newP ,    simplex.nearest(newP) );
 						if( newD2<oldD2 )
-#else // !NEW_CODE
-						GeometryReal minOld = std::min< GeometryReal >( std::min< GeometryReal >( oldBarycentricCoord3[0] , oldBarycentricCoord3[1] ) , oldBarycentricCoord3[2] );
-						GeometryReal minNew = std::min< GeometryReal >( std::min< GeometryReal >( newBarycentricCoord3[0] , newBarycentricCoord3[1] ) , newBarycentricCoord3[2] );
-						if( minNew>minOld )
-#endif // NEW_CODE
 						{
-#ifdef NEW_CODE
 							triangleID(I) = tIndex;
-#else // !NEW_CODE
-							triangleID(I) = atlasChart.meshTriangleIndices[tIndex];
-#endif // NEW_CODE
 							barycentricCoords(I) = newBC;
 						}
 					}
 				}
 			};
-		Rasterizer2D::RasterizeSupports< false , false >( subSimplex , Kernel , range );
-		Rasterizer2D::RasterizeSupports< true , true >( subSimplex , [&]( typename RegularGrid< 2 >::Index I ){ cellType(I)=0; } , cellTypeRange );
+		Rasterizer2D::RasterizeSupports< false , false >( subSimplex , Kernel , nodeRange );
+		Rasterizer2D::RasterizeSupports< true , true >( subSimplex , [&]( Index I ){ cellType(I)=CellType::Boundary; } , cellRange );
 #else // !USE_RASTERIZER
 		Point2D< GeometryReal > ePos[2];
-		ePos[0] = atlasChart.vertices[atlasChart.triangles[tIndex][kIndex]] - gridChart.corner;
-		ePos[1] = atlasChart.vertices[atlasChart.triangles[tIndex][(kIndex + 1) % 3]] - gridChart.corner;
+		EdgeIndex eIndex = atlasChart.edgeIndex( atlasChart.boundaryHalfEdges[e] );
+		ePos[0] = atlasChart.vertices[ eIndex[0] ] - gridChart.corner;
+		ePos[1] = atlasChart.vertices[ eIndex[1] ] - gridChart.corner;
 
 		int minCorner[2] , maxCorner[2];
 		GetEdgeIntegerBBox( ePos , (GeometryReal)1./cellSizeW , (GeometryReal)1./cellSizeH , minCorner , maxCorner);
@@ -269,8 +373,8 @@ void InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geome
 			// Do the edge and the side of the node cross
 			if( oppositeEdgeSide && oppositeCellSide )
 			{
-				if( c==0 ) cellType(i,j-1) = cellType(i,j) = 0;
-				if( c==1 ) cellType(i-1,j) = cellType(i,j) = 0;
+				if( c==0 ) cellType(i,j-1) = cellType(i,j) = CellType::Boundary;
+				if( c==1 ) cellType(i-1,j) = cellType(i,j) = CellType::Boundary;
 
 
 				for( int dn=-1 ; dn<=1 ; dn++ ) for( int dc=0 ; dc<2 ; dc++ ) //Update nodes on adjacent cells
@@ -280,20 +384,16 @@ void InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geome
 					nIndices[c] += dc;
 					nIndices[0] = std::min< int >( std::max< int >( 0 , nIndices[0] ) , width  - 1 );
 					nIndices[1] = std::min< int >( std::max< int >( 0 , nIndices[1] ) , height - 1 );
-					if( nodeType( nIndices[0] , nIndices[1] )!=1 )
+					if( texelType( nIndices[0] , nIndices[1] )!=TexelType::BoundarySupportedAndCovered )
 					{
-						nodeType( nIndices[0] , nIndices[1] ) = 0;
+						texelType(nIndices[0],nIndices[1]) = TexelType::BoundarySupported;
 
 						Point2D< GeometryReal > texel_pos = Point2D< GeometryReal >( (GeometryReal)nIndices[0]*cellSizeW , (GeometryReal)nIndices[1]*cellSizeH ) - tPos[0];
 						Point2D< GeometryReal > barycentricCoord = barycentricMap*texel_pos;
 
 						if( triangleID( nIndices[0] , nIndices[1] )==-1 )
 						{
-#ifdef NEW_CODE
 							triangleID(nIndices[0], nIndices[1]) = tIndex;
-#else // !NEW_CODE
-							triangleID(nIndices[0], nIndices[1]) = atlasChart.meshTriangleIndices[tIndex];
-#endif // NEW_CODE
 							barycentricCoords(nIndices[0], nIndices[1]) = barycentricCoord;
 						}
 						else //Update the position to the closest triangle
@@ -305,11 +405,7 @@ void InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geome
 							GeometryReal minNew = std::min< GeometryReal >( std::min< GeometryReal >( newBarycentricCoord3[0] , newBarycentricCoord3[1] ) , newBarycentricCoord3[2] );
 							if( minNew>minOld )
 							{
-#ifdef NEW_CODE
 								triangleID( nIndices[0] , nIndices[1] ) = tIndex;
-#else // !NEW_CODE
-								triangleID( nIndices[0] , nIndices[1] ) = atlasChart.meshTriangleIndices[tIndex];
-#endif // NEW_CODE
 								barycentricCoords( nIndices[0] , nIndices[1] ) = barycentricCoord;
 							}
 						}
@@ -319,29 +415,22 @@ void InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geome
 		}
 
 		//(2.2) Add texels adjacent to cells that contain triangles
-		if ((minCorner[0] + 1 == maxCorner[0]) && (minCorner[1] + 1 == maxCorner[1])) {
-			cellType(minCorner[0], minCorner[1]) = 0;
-
-#ifdef NEW_CODE
-#else // !NEW_CODE
-			interiorCellTriangles++;
-#endif // NEW_CODE
+		if ((minCorner[0] + 1 == maxCorner[0]) && (minCorner[1] + 1 == maxCorner[1]))
+		{
+			cellType(minCorner[0], minCorner[1]) = CellType::Boundary;
 			for (int di = 0; di < 2; di++) for (int dj = 0; dj < 2; dj++) {
 				int nIndices[2] = { minCorner[0] + di, minCorner[1] + dj };
 				nIndices[0] = std::min<int>(std::max<int>(0, nIndices[0]), width - 1);
 				nIndices[1] = std::min<int>(std::max<int>(0, nIndices[1]), height - 1);
-				if (nodeType(nIndices[0], nIndices[1]) != 1) {
-					nodeType(nIndices[0], nIndices[1]) = 0;
+				if( texelType( nIndices[0], nIndices[1] )!=TexelType::BoundarySupportedAndCovered )
+				{
+					texelType( nIndices[0] , nIndices[1] ) = TexelType::BoundarySupported;
 
 					Point2D< GeometryReal > texel_pos = Point2D< GeometryReal >( (GeometryReal)nIndices[0]*cellSizeW , (GeometryReal)nIndices[1]*cellSizeH ) - tPos[0];
 					Point2D< GeometryReal > barycentricCoord = barycentricMap*texel_pos;
 
 					if (triangleID(nIndices[0], nIndices[1]) == -1) {
-#ifdef NEW_CODE
 						triangleID(nIndices[0], nIndices[1]) = tIndex;
-#else // !NEW_CODE
-						triangleID(nIndices[0], nIndices[1]) = atlasChart.meshTriangleIndices[tIndex];
-#endif // NEW_CODE
 						barycentricCoords(nIndices[0], nIndices[1]) = barycentricCoord;
 					}
 					else //Update the position to the closest triangle
@@ -353,11 +442,7 @@ void InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geome
 						GeometryReal minNew = std::min< GeometryReal >( std::min< GeometryReal >( newBarycentricCoord3[0] , newBarycentricCoord3[1] ) , newBarycentricCoord3[2] );
 						if( minNew>minOld )
 						{
-#ifdef NEW_CODE
 							triangleID( nIndices[0] , nIndices[1] ) = tIndex;
-#else // !NEW_CODE
-							triangleID( nIndices[0] , nIndices[1] ) = atlasChart.meshTriangleIndices[tIndex];
-#endif // NEW_CODE
 							barycentricCoords( nIndices[0] , nIndices[1] ) = barycentricCoord;
 						}
 					}
@@ -367,182 +452,188 @@ void InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geome
 		}
 #endif // USE_RASTERIZER
 	}
-#ifdef NEW_CODE
-	for( size_t i=0 ; i<triangleID.size() ; i++ ) if( triangleID[i]!=-1 ) triangleID[i] = atlasChart.meshTriangleIndices[ triangleID[i] ];
-#endif // NEW_CODE
 
+#ifdef USE_RASTERIZER
+#else // !USE_RASTERIZER
 	//(3) Add interior cells
-	for (int j = 0; j < height - 1; j++)for (int i = 0; i < width - 1; i++) {
-		if (nodeType(i, j) == 1 && nodeType(i + 1, j) == 1 && nodeType(i, j + 1) == 1 && nodeType(i + 1, j + 1) == 1 && cellType(i, j) == -1) {
-			cellType(i, j) = 1;
-		}
-	}
+	for( int j=0 ; j<height-1 ; j++ ) for( int i=0 ; i<width-1 ; i++ )
+		if( texelType(i,j)==TexelType::BoundarySupportedAndCovered && texelType(i+1,j)==TexelType::BoundarySupportedAndCovered && texelType(i,j+1)==TexelType::BoundarySupportedAndCovered && texelType(i+1,j+1)==TexelType::BoundarySupportedAndCovered && cellType(i,j)==CellType::Exterior ) cellType(i,j) = CellType::Interior;
+#endif // USE_RASTERIZER
 
-	int deepRadius = multigridBlockInfo.boundaryDilation + 1;
-	for (int j = deepRadius; j < height - deepRadius; j++)for (int i = deepRadius; i < width - deepRadius; i++) {
+#ifdef USE_RASTERIZER
+	//(3) Mark deep nodes
+	{
+		auto Kernel = [&]( Index I )
+			{
+				bool validDeepNode = true;
+				Range::Intersect( cellRange , Range::CellsSupportedOnNode(I) ).process( [&]( Index I ){ validDeepNode &= ( cellType(I)==CellType::Interior ); } );
+				if( validDeepNode ) texelType(I) = TexelType::InteriorSupported;
+			};
+		nodeRange.process( Kernel );
+	}
+#else // !USE_RASTERIZER
+	for( int j=1 ; j<height-1 ; j++ ) for( int i=1 ; i<width-1 ; i++ )
+	{
 		bool validDeepNode = true;
-		for (int di = -deepRadius; di < deepRadius; di++) for (int dj = -deepRadius; dj < deepRadius; dj++) {
-			if (cellType(i + di, j + dj) != 1) validDeepNode = false;
-		}
-		if (validDeepNode) nodeType(i, j) = 2;
+		for( int di=-1 ; di<1 ; di++ ) for( int dj=-1 ; dj<1 ; dj++ ) if( cellType( i+di , j+dj )!=CellType::Interior ) validDeepNode = false;
+		if( validDeepNode ) texelType(i,j) = TexelType::InteriorSupported;
 	}
+#endif // USE_RASTERIZER
+#endif // USE_RASTERIZER
 
-	gridChart.nodeType = nodeType;
-	gridChart.cellType = cellType;
+	// Make the triangle IDs chart-local
+	for( size_t i=0 ; i<triangleID.size() ; i++ ) if( triangleID[i]!=-1 ) triangleID[i] = atlasChart.atlasTriangle( triangleID[i] );
 
 	// (5) Enumerate variables in raster order
-	gridChart.globalIndexTexelOffset = lastGlobalTexelIndex;
-	gridChart.globalIndexInteriorTexelOffset = lastGlobalTexelInteriorIndex;
-	gridChart.globalIndexCellOffset = lastGlobalCellIndex;
-	gridChart.globalIndexInteriorCellOffset = lastGlobalInteriorCellIndex;
-	gridChart.globalTexelDeepOffset = lastGlobalTexelDeepIndex;
-	gridChart.globalTexelBoundaryOffset = lastGlobalTexelBoundaryIndex;
+	gridChart.combinedCellOffset = combinedCellIndex;
+	gridChart.interiorCellOffset = interiorCellIndex;
 
-	Image<int> & globalTexelIndex = gridChart.globalTexelIndex;
-	globalTexelIndex.resize(width, height);
-	for (int i = 0; i < globalTexelIndex.size(); i++)globalTexelIndex[i] = -1;
+	Image< TexelIndex > & texelIndices = gridChart.texelIndices;
+	texelIndices.resize( width , height );
 
-	Image<int> & globalTexelInteriorIndex = gridChart.globalInteriorTexelIndex;
-	globalTexelInteriorIndex.resize(width, height);
-	for (int i = 0; i < globalTexelInteriorIndex.size(); i++)globalTexelInteriorIndex[i] = -1;
+	// Set the global texel indices
+	for( int j=0 ; j<height ; j++ ) for( int i=0 ; i<width ; i++ ) if( gridChart.texelType(i,j)!=TexelType::Unsupported )
+	{
+		texelIndices(i,j).combined = combinedTexelIndex++;		
 
-	Image<int> & globalTexelDeepIndex = gridChart.globalTexelDeepIndex;
-	globalTexelDeepIndex.resize(width, height);
-	for (int i = 0; i < globalTexelDeepIndex.size(); i++)globalTexelDeepIndex[i] = -1;
-
-	Image<int> & globalTexelBoundaryIndex = gridChart.globalTexelBoundaryIndex;
-	globalTexelBoundaryIndex.resize(width, height);
-	for (int i = 0; i < globalTexelBoundaryIndex.size(); i++)globalTexelBoundaryIndex[i] = -1;
-
-	int lastLocalTexelIndex = 0;
-	int lastLocalTexelInteiorIndex = 0;
-	int lastLocalTexelDeepIndex = 0;
-	int lastLocalTexelBoundaryIndex = 0;
-	for (int j = 0; j < height; j++)for (int i = 0; i < width; i++) {
-		if (gridChart.nodeType(i, j) != -1) {
-			globalTexelIndex(i, j) = lastGlobalTexelIndex + lastLocalTexelIndex;
-			lastLocalTexelIndex++;
-
-			GridNodeInfo currentNodeInfo;
-			currentNodeInfo.ci = i;
-			currentNodeInfo.cj = j;
-			currentNodeInfo.chartID = chartID;
-			currentNodeInfo.nodeType = gridChart.nodeType(i, j);
-			nodeInfo.push_back(currentNodeInfo);
-
-		}
-		if (gridChart.nodeType(i, j) >= 1) {
-			globalTexelInteriorIndex(i, j) = lastGlobalTexelInteriorIndex + lastLocalTexelInteiorIndex;
-			lastLocalTexelInteiorIndex++;
-		}
-
-		if (gridChart.nodeType(i, j) == 0 || gridChart.nodeType(i, j) == 1) {
-			globalTexelBoundaryIndex(i, j) = lastGlobalTexelBoundaryIndex + lastLocalTexelBoundaryIndex;
-			lastLocalTexelBoundaryIndex++;
-		}
-
-		if (gridChart.nodeType(i, j) == 2) {
-			globalTexelDeepIndex(i, j) = lastGlobalTexelDeepIndex + lastLocalTexelDeepIndex;
-			lastLocalTexelDeepIndex++;
-		}
+		GridNodeInfo currentNodeInfo;
+		currentNodeInfo.ci = i;
+		currentNodeInfo.cj = j;
+		currentNodeInfo.chartID = chartID;
+		currentNodeInfo.texelType = gridChart.texelType(i,j);
+		nodeInfo.push_back( currentNodeInfo );
+		if( IsCovered( gridChart.texelType(i,j) ) ) texelIndices(i,j).interiorOrCovered = interiorTexelIndex++;
+		if( HasBoundarySupport( gridChart.texelType(i,j) ) ) boundaryTexelIndex++;
+		if( gridChart.texelType(i,j)==TexelType::InteriorSupported ) texelIndices(i,j).interior = deepTexelIndex++;
 	}
-	lastGlobalTexelIndex += lastLocalTexelIndex;
-	lastGlobalTexelInteriorIndex += lastLocalTexelInteiorIndex;
-	lastGlobalTexelDeepIndex += lastLocalTexelDeepIndex;
-	lastGlobalTexelBoundaryIndex += lastLocalTexelBoundaryIndex;
 
-	Image<int> & localCellIndex = gridChart.localCellIndex;
+	Image< CellIndex > & cellIndices = gridChart.cellIndices;
+	cellIndices.resize( width-1 , height-1 );
+
 	std::vector< BilinearElementIndex > & bilinearElementIndices = gridChart.bilinearElementIndices;
-	localCellIndex.resize(width - 1, height - 1);
-	for (int i = 0; i < localCellIndex.size(); i++)localCellIndex[i] = -1;
+	std::vector< BilinearElementIndex > & interiorCellInteriorBilinearElementIndices = gridChart.interiorCellInteriorBilinearElementIndices;
+	std::vector< BilinearElementIndex > & interiorCellGlobalBilinearElementIndices = gridChart.interiorCellGlobalBilinearElementIndices;
 
-	Image<int> & localInteriorCellIndex = gridChart.localInteriorCellIndex;
-	std::vector< BilinearElementIndex > & interiorCellCorners = gridChart.interiorCellCorners;
-	localInteriorCellIndex.resize(width - 1, height - 1);
-	for (int i = 0; i < localInteriorCellIndex.size(); i++)localInteriorCellIndex[i] = -1;
+	std::vector< unsigned int > & interiorCellIndexToCombinedCellIndex = gridChart.interiorCellIndexToCombinedCellIndex;
+	std::vector< unsigned int > & boundaryCellIndexToCombinedCellIndex = gridChart.boundaryCellIndexToCombinedCellIndex;
 
-	std::vector< BilinearElementIndex > & interiorCellGlobalCorners = gridChart.interiorCellGlobalCorners;
+	unsigned int _combinedCellIndex = 0;
+	unsigned int _boundaryCellIndex = 0;
+	unsigned int _interiorCellIndex = 0;
 
-	Image<int> & localBoundaryCellIndex = gridChart.localBoundaryCellIndex;
-	localBoundaryCellIndex.resize(width - 1, height - 1);
-	for (int i = 0; i < localBoundaryCellIndex.size(); i++)localBoundaryCellIndex[i] = -1;
+#ifdef USE_RASTERIZER
+	// Sanity check: Confirm that all active/interior cells are incident on active/non-boundary nodes
+	{
+		auto Kernel = [&]( Index I )
+			{
+				if( gridChart.cellType(I)!=CellType::Exterior )
+				{
+					unsigned int count = 0;
+					auto SubKernel = [&]( Index I ){ if( texelIndices(I).combined!=-1 ){ count++; } };
+					Range::NodesSupportedOnCell( I ).process( SubKernel );
+					if( count!=4 ) MK_THROW( "Active cell adjacent to inactive node" );
 
-	std::vector<int> & interiorCellIndexToLocalCellIndex = gridChart.interiorCellIndexToLocalCellIndex;
-	std::vector<int> & boundaryCellIndexToLocalCellIndex = gridChart.boundaryCellIndexToLocalCellIndex;
-
-	int lastLocalCellIndex = 0;
-	int lastLocalBoundaryCellIndex = 0;
-	int lastLocalInteriorCellIndex = 0;
-
-	for (int j = 0; j < height - 1; j++) for (int i = 0; i < width - 1; i++) {
-		if (gridChart.cellType(i, j) != -1) {
-			localCellIndex(i, j) = lastLocalCellIndex;
-			lastLocalCellIndex++;
-			int globalTexelIndices[4] = { globalTexelIndex(i, j), globalTexelIndex(i + 1, j), globalTexelIndex(i + 1, j + 1), globalTexelIndex(i, j + 1) };
-			if (globalTexelIndices[0] != -1 && globalTexelIndices[1] != -1 && globalTexelIndices[2] != -1 && globalTexelIndices[3] != -1) {
-				bilinearElementIndices.push_back( BilinearElementIndex( globalTexelIndices[0] , globalTexelIndices[1] , globalTexelIndices[2] , globalTexelIndices[3] ) );
-			}
-			else MK_THROW( "Active cell adjacent to unactive node" );
-
-			if (gridChart.cellType(i, j) == 0) {
-				localBoundaryCellIndex(i, j) = lastLocalBoundaryCellIndex;
-				boundaryCellIndexToLocalCellIndex.push_back(lastLocalCellIndex - 1);
-				lastLocalBoundaryCellIndex++;
-			}
-			else {
-				localInteriorCellIndex(i, j) = lastLocalInteriorCellIndex;
-				interiorCellIndexToLocalCellIndex.push_back(lastLocalCellIndex - 1);
-
-				int globalTexelInteriorIndices[4] = { globalTexelInteriorIndex(i, j), globalTexelInteriorIndex(i + 1, j), globalTexelInteriorIndex(i + 1, j + 1), globalTexelInteriorIndex(i, j + 1) };
-				if (globalTexelInteriorIndices[0] != -1 && globalTexelInteriorIndices[1] != -1 && globalTexelInteriorIndices[2] != -1 && globalTexelInteriorIndices[3] != -1) {
-					interiorCellCorners.push_back( BilinearElementIndex( globalTexelInteriorIndices[0] , globalTexelInteriorIndices[1] , globalTexelInteriorIndices[2] , globalTexelInteriorIndices[3] ) );
-					interiorCellGlobalCorners.push_back( BilinearElementIndex( globalTexelIndices[0] , globalTexelIndices[1] , globalTexelIndices[2] , globalTexelIndices[3] ) );
 				}
-				else MK_THROW( "Interior cell adjacent to non interior node" );
-				lastLocalInteriorCellIndex++;
-			}
+				if( gridChart.cellType(I)==CellType::Interior )
+				{
+					unsigned int count = 0;
+					auto SubKernel = [&]( Index I ){ if( texelIndices(I).interiorOrCovered!=-1 ){ count++; } };
+					Range::NodesSupportedOnCell( I ).process( SubKernel );
+					if( count!=4 ) MK_THROW( "Interior cell adjacent to non interior node" );
+				}
+			};
+		cellRange.process( Kernel );
+	}
+#endif // USE_RASTERIZER
+
+	for( unsigned int j=0 ; j<height-1 ; j++ ) for( unsigned int i=0 ; i<width-1 ; i++ ) if( gridChart.cellType(i,j)!=CellType::Exterior )
+	{
+#ifdef USE_RASTERIZER
+		bilinearElementIndices.emplace_back( texelIndices(i,j).combined , texelIndices(i+1,j).combined , texelIndices(i+1,j+1).combined , texelIndices(i,j+1).combined );
+
+		if( gridChart.cellType(i,j)==CellType::Boundary )
+		{
+			cellIndices(i,j).boundary = _boundaryCellIndex++;
+			boundaryCellIndexToCombinedCellIndex.push_back( _combinedCellIndex );
 		}
+		else
+		{
+			cellIndices(i,j).interior = _interiorCellIndex++;
+			interiorCellIndexToCombinedCellIndex.push_back( _combinedCellIndex );
+
+			interiorCellInteriorBilinearElementIndices.emplace_back( texelIndices(i,j).interiorOrCovered , texelIndices(i+1,j).interiorOrCovered , texelIndices(i+1,j+1).interiorOrCovered , texelIndices(i,j+1).interiorOrCovered );
+			interiorCellGlobalBilinearElementIndices.emplace_back( texelIndices(i,j).combined , texelIndices(i+1,j).combined , texelIndices(i+1,j+1).combined , texelIndices(i,j+1).combined );
+		}
+		cellIndices(i,j).combined = _combinedCellIndex++;
+#else // !USE_RASTERIZER
+		int globalTexelIndices[4] = { texelIndices(i,j).combined , texelIndices(i+1,j).combined , texelIndices(i+1,j+1).combined , texelIndices(i,j+1).combined };
+		if( globalTexelIndices[0]!=-1 && globalTexelIndices[1]!=-1 && globalTexelIndices[2]!=-1 && globalTexelIndices[3] != -1 )
+			bilinearElementIndices.push_back( BilinearElementIndex( globalTexelIndices[0] , globalTexelIndices[1] , globalTexelIndices[2] , globalTexelIndices[3] ) );
+		else MK_THROW( "Active cell adjacent to unactive node" );
+
+		if( gridChart.cellType(i,j)==CellType::Boundary )
+		{
+			cellIndices(i,j).boundary = _boundaryCellIndex;
+			boundaryCellIndexToCombinedCellIndex.push_back( _combinedCellIndex );
+			_boundaryCellIndex++;
+		}
+		else
+		{
+			cellIndices(i,j).interior = _interiorCellIndex;
+			interiorCellIndexToCombinedCellIndex.push_back( _combinedCellIndex );
+
+			int globalTexelInteriorIndices[4] = { texelIndices(i,j).interiorOrCovered , texelIndices(i+1,j).interiorOrCovered , texelIndices(i+1,j+1).interiorOrCovered , texelIndices(i,j+1).interiorOrCovered };
+			if( globalTexelInteriorIndices[0]!=-1 && globalTexelInteriorIndices[1]!=-1 && globalTexelInteriorIndices[2]!=-1 && globalTexelInteriorIndices[3]!=-1)
+			{
+				interiorCellInteriorBilinearElementIndices.push_back( BilinearElementIndex( globalTexelInteriorIndices[0] , globalTexelInteriorIndices[1] , globalTexelInteriorIndices[2] , globalTexelInteriorIndices[3] ) );
+				interiorCellGlobalBilinearElementIndices.push_back( BilinearElementIndex( globalTexelIndices[0] , globalTexelIndices[1] , globalTexelIndices[2] , globalTexelIndices[3] ) );
+			}
+			else MK_THROW( "Interior cell adjacent to non interior node" );
+			_interiorCellIndex++;
+		}
+		cellIndices(i,j).combined = _combinedCellIndex++;
+#endif // USE_RASTERIZER
 	}
 
-	lastGlobalCellIndex += lastLocalCellIndex;
-	lastGlobalBoundaryCellIndex += lastLocalBoundaryCellIndex;
-	lastGlobalInteriorCellIndex += lastLocalInteriorCellIndex;
-
-	gridChart.numInteriorCells = lastLocalInteriorCellIndex;
-	gridChart.numBoundaryCells = lastLocalBoundaryCellIndex;
+	combinedCellIndex += _combinedCellIndex;
+	boundaryCellIndex += _boundaryCellIndex;
+	interiorCellIndex += _interiorCellIndex;
 
 	// (6) Construct raster lines
-	for (int j = 0; j < height; j++) {
-		int offset = 0;
+	for( unsigned int j=0 ; j<height ; j++ )
+	{
 		bool firstSegment = true;
 		bool previousDeep = false;
 		int rasterStart = -1;
-		while (offset < width) {
-			bool currentIsDeep = nodeType(offset, j) == 2;
-			if (currentIsDeep && !previousDeep) {
-				rasterStart = offset; //Start raster line
-				if (firstSegment) {
+		for( unsigned int i=0 ; i<width ; i++ )
+		{
+			bool currentIsDeep = texelType(i,j)==TexelType::InteriorSupported;
+			if( currentIsDeep && !previousDeep )
+			{
+				rasterStart = i; // Start of raster line
+				if( firstSegment )
+				{
 					firstSegment = false;
 					SegmentedRasterLine newSegmentLine;
-					segmentedLines.push_back(newSegmentLine);
+					segmentedLines.push_back( newSegmentLine );
 				}
 			}
-			if (!currentIsDeep && previousDeep) { //Terminate raster line
+			if( !currentIsDeep && previousDeep ) // End of raster line
+			{ 
 				RasterLine newLine;
-				newLine.lineStartIndex = globalTexelIndex(rasterStart, j);
-				newLine.lineEndIndex = globalTexelIndex(offset - 1, j);
-				newLine.prevLineIndex = globalTexelIndex(rasterStart, j - 1);
-				newLine.nextLineIndex = globalTexelIndex(rasterStart, j + 1);
-				newLine.coeffStartIndex = globalTexelDeepIndex(rasterStart, j);
+				newLine.lineStartIndex  = texelIndices( rasterStart , j   ).combined;
+				newLine.lineEndIndex    = texelIndices(         i-1 , j   ).combined;
+				newLine.prevLineIndex   = texelIndices( rasterStart , j-1 ).combined;
+				newLine.nextLineIndex   = texelIndices( rasterStart , j+1 ).combined;
+				newLine.coeffStartIndex = texelIndices( rasterStart , j   ).interior;
 
 				if( newLine.lineStartIndex==-1 || newLine.lineEndIndex==-1 || newLine.prevLineIndex==-1 || newLine.nextLineIndex==-1 ) MK_THROW( "Inavlid Indexing" );
-				rasterLines.push_back(newLine);
+				rasterLines.push_back( newLine );
 
 				SegmentedRasterLine & newSegmentLine = segmentedLines.back();
-				newSegmentLine.segments.push_back(newLine);
+				newSegmentLine.segments.push_back( newLine );
 			}
 			previousDeep = currentIsDeep;
-			offset++;
 		}
 	}
 
@@ -552,7 +643,8 @@ void InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geome
 	int numHorizontalBlocks = ((width - multigridBlockInfo.paddingWidth - 1) / blockHorizontalOffset) + 1;
 	int numVerticalBlocks = ((height - multigridBlockInfo.paddingHeight - 1) / blockVerticalOffset) + 1;
 
-	for (int bj = 0; bj < numVerticalBlocks; bj++) {
+	for( int bj=0 ; bj<numVerticalBlocks ; bj++ )
+	{
 		ThreadTask threadTask;
 		int taskDeepTexels = 0;
 
@@ -572,21 +664,22 @@ void InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geome
 				int offset = blockHorizontalStart + 1;
 				int segmentStart = -1;
 				bool previousDeep = false;
-				while (offset <= blockHorizontalEnd - 1) {
-					bool currentDeep = (globalTexelDeepIndex(offset, j) != -1);
+				while (offset <= blockHorizontalEnd - 1)
+				{
+					bool currentDeep = (texelIndices(offset, j).interior != -1);
 					if (currentDeep && !previousDeep) {//Start segment
 						segmentStart = offset;
 					}
 
 					if ((previousDeep && !currentDeep) || (currentDeep && offset == blockHorizontalEnd - 1)) {//Terminate segment
 						BlockDeepSegment deepSegment;
-						deepSegment.currentStart = globalTexelIndex(segmentStart, j);
-						if (currentDeep)deepSegment.currentEnd = globalTexelIndex(offset, j);
-						else deepSegment.currentEnd = globalTexelIndex(offset - 1, j);
-						deepSegment.previousStart = globalTexelIndex(segmentStart, j - 1);
-						deepSegment.nextStart = globalTexelIndex(segmentStart, j + 1);
+						deepSegment.currentStart               = texelIndices(segmentStart, j).combined;
+						if (currentDeep)deepSegment.currentEnd = texelIndices(offset, j).combined;
+						else deepSegment.currentEnd            = texelIndices(offset - 1, j).combined;
+						deepSegment.previousStart              = texelIndices(segmentStart, j - 1).combined;
+						deepSegment.nextStart                  = texelIndices(segmentStart, j + 1).combined;
 
-						deepSegment.deepStart = globalTexelDeepIndex(segmentStart, j);
+						deepSegment.deepStart = texelIndices(segmentStart, j).interior;
 
 						segmentedLine.blockDeepSegments.push_back(deepSegment);
 					}
@@ -607,21 +700,22 @@ void InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geome
 					int offset = blockHorizontalStart;
 					int segmentStart = -1;
 					bool previousDeep = false;
-					while (offset <= blockHorizontalEnd) {
-						bool currentDeep = (globalTexelDeepIndex(offset, j) != -1);
+					while (offset <= blockHorizontalEnd)
+					{
+						bool currentDeep = (texelIndices(offset, j).interior != -1);
 						if (currentDeep && !previousDeep) {//Start segment
 							segmentStart = offset;
 						}
 
 						if ((previousDeep && !currentDeep) || (currentDeep && offset == blockHorizontalEnd)) {//Terminate segment
 							BlockDeepSegment deepSegment;
-							deepSegment.currentStart = globalTexelIndex(segmentStart, j);
-							if (currentDeep)deepSegment.currentEnd = globalTexelIndex(offset, j);
-							else deepSegment.currentEnd = globalTexelIndex(offset - 1, j);
-							deepSegment.previousStart = globalTexelIndex(segmentStart, j - 1);
-							deepSegment.nextStart = globalTexelIndex(segmentStart, j + 1);
+							deepSegment.currentStart               = texelIndices(segmentStart, j).combined;
+							if (currentDeep)deepSegment.currentEnd = texelIndices(offset, j).combined;
+							else deepSegment.currentEnd            = texelIndices(offset - 1, j).combined;
+							deepSegment.previousStart              = texelIndices(segmentStart, j - 1).combined;
+							deepSegment.nextStart                  = texelIndices(segmentStart, j + 1).combined;
 
-							deepSegment.deepStart = globalTexelDeepIndex(segmentStart, j);
+							deepSegment.deepStart = texelIndices(segmentStart, j).interior;
 
 							segmentedLine.blockDeepSegments.push_back(deepSegment);
 						}
@@ -635,15 +729,34 @@ void InitializeGridChartsActiveNodes( const int chartID, const AtlasChart< Geome
 				threadTask.blockTasks.push_back(blockTask);
 			}
 		}
-		if (threadTask.blockTasks.size()) {
+		if( threadTask.blockTasks.size() )
+		{
 			threadTask.taskDeepTexels = taskDeepTexels;
-			threadTasks.push_back(threadTask);
+			threadTasks.push_back( threadTask );
 		}
 	}
 }
 
 template< typename GeometryReal >
-void InitializeGridCharts( const std::vector< AtlasChart< GeometryReal > > &atlasCharts , const GeometryReal &cellSizeW , const GeometryReal &cellSizeH , std::vector< GridNodeInfo > &nodeInfo , std::vector< GridChart< GeometryReal > > &gridCharts , std::vector< RasterLine > &rasterLines , std::vector< SegmentedRasterLine > &segmentedLines , std::vector< ThreadTask > &threadTasks , int &numTexels , int &numInteriorTexels , int &numDeepTexels , int &numBoundaryTexels , int &numCells , int &numBoundaryCells , int &numInteriorCells , const MultigridBlockInfo &multigridBlockInfo )
+void InitializeGridCharts
+(
+	const std::vector< AtlasChart< GeometryReal > > &atlasCharts ,
+	GeometryReal cellSizeW , 
+	GeometryReal cellSizeH ,
+	std::vector< GridNodeInfo > &nodeInfo ,
+	std::vector< GridChart< GeometryReal > > &gridCharts ,
+	std::vector< RasterLine > &rasterLines ,
+	std::vector< SegmentedRasterLine > &segmentedLines ,
+	std::vector< ThreadTask > &threadTasks ,
+	unsigned int &numTexels ,
+	unsigned int &numInteriorTexels ,
+	unsigned int &numDeepTexels ,
+	unsigned int &numBoundaryTexels ,
+	unsigned int &numCells ,
+	unsigned int &numBoundaryCells ,
+	unsigned int &numInteriorCells ,
+	const MultigridBlockInfo &multigridBlockInfo
+)
 {
 	gridCharts.resize( atlasCharts.size() );
 
@@ -682,34 +795,27 @@ void InitializeGridCharts( const std::vector< AtlasChart< GeometryReal > > &atla
 		gridCharts[i].cellSizeH = cellSizeH;
 		int approxGridResolution = std::max<int>((int)ceil(1.0 / cellSizeW), (int)ceil(1.0 / cellSizeH));
 		gridCharts[i].gridIndexOffset = 2 * approxGridResolution*approxGridResolution*i;
-		InitializeGridChartsActiveNodes(i, atlasCharts[i], gridCharts[i], nodeInfo, rasterLines, segmentedLines, threadTasks, numTexels, numInteriorTexels, numDeepTexels, numBoundaryTexels, numCells, numBoundaryCells, numInteriorCells, multigridBlockInfo);
+		InitializeGridChartsActiveNodes( i , atlasCharts[i] , gridCharts[i] , nodeInfo , rasterLines , segmentedLines , threadTasks , numTexels , numInteriorTexels , numDeepTexels , numBoundaryTexels , numCells , numBoundaryCells , numInteriorCells , multigridBlockInfo );
 	}
 }
 
 template< typename GeometryReal >
 void InitializeTextureNodes( const std::vector< GridChart< GeometryReal > > &gridCharts , std::vector< TextureNodeInfo< GeometryReal > > &textureNodes )
 {
-	for (int c = 0; c < gridCharts.size(); c++)
+	for( int c=0 ; c<gridCharts.size() ; c++ )
 	{
 		const GridChart< GeometryReal > &gridChart = gridCharts[c];
-#if 1
-		const Image< int > & globalTexelIndex = gridChart.globalTexelIndex;
-#else
-		const Image<int> globalTexelIndex = gridChart.globalTexelIndex;
-#endif
-		for (int j = 0; j < gridChart.height; j++)for (int i = 0; i < gridChart.width; i++) {
-			int texelIndex = globalTexelIndex(i, j);
-			if (texelIndex != -1)
-			{
-				TextureNodeInfo< GeometryReal > textureNode;
-				textureNode.ci = gridChart.cornerCoords[0] + i;
-				textureNode.cj = gridChart.cornerCoords[1] + j;
-				textureNode.chartID = c;
-				textureNode.tID = gridChart.triangleID(i, j);
-				textureNode.barycentricCoords = gridChart.barycentricCoords(i, j);
-				textureNode.isInterior = gridChart.nodeType(i, j) > 0;
-				textureNodes.push_back(textureNode);
-			}
+		const Image< TexelIndex > & texelIndices = gridChart.texelIndices;
+		for( unsigned int j=0 ; j<gridChart.height ; j++ ) for( unsigned int i=0 ; i<gridChart.width ; i++ ) if( texelIndices(i,j).combined!=-1 )
+		{
+			TextureNodeInfo< GeometryReal > textureNode;
+			textureNode.ci = gridChart.cornerCoords[0] + i;
+			textureNode.cj = gridChart.cornerCoords[1] + j;
+			textureNode.chartID = c;
+			textureNode.tID = gridChart.triangleID(i,j);
+			textureNode.barycentricCoords = gridChart.barycentricCoords(i, j);
+			textureNode.isInterior = IsCovered( gridChart.texelType(i,j) );
+			textureNodes.push_back(textureNode);
 		}
 	}
 }
@@ -736,11 +842,11 @@ void InitializeAtlasHierachicalBoundaryCoefficients( const GridAtlas< GeometryRe
 		const GridChart< GeometryReal > &coarseChart = coarseAtlas.gridCharts[currentNode.chartID];
 		const GridChart< GeometryReal > &fineChart = fineAtlas.gridCharts[currentNode.chartID];
 
-		int coarseChartWidth = coarseChart.nodeType.res(0);
-		int coarseChartHeight = coarseChart.nodeType.res(1);
+		int coarseChartWidth = coarseChart.texelType.res(0);
+		int coarseChartHeight = coarseChart.texelType.res(1);
 
-		int fineChartWidth = fineChart.nodeType.res(0);
-		int fineChartHeight = fineChart.nodeType.res(1);
+		int fineChartWidth = fineChart.texelType.res(0);
+		int fineChartHeight = fineChart.texelType.res(1);
 
 		int ci = currentNode.ci;
 		int cj = currentNode.cj;
@@ -753,7 +859,7 @@ void InitializeAtlasHierachicalBoundaryCoefficients( const GridAtlas< GeometryRe
 			int pi = ci + li;
 			int pj = cj + lj;
 			if (pi >= 0 && pi < coarseChartWidth && pj >= 0 && pj < coarseChartHeight) {
-				int coarseGlobalIndex = coarseChart.globalTexelIndex(pi, pj);
+				int coarseGlobalIndex = coarseChart.texelIndices(pi, pj).combined;
 				if (coarseGlobalIndex != -1) {
 					int coarseBoundaryIndex = coarseAtlas.boundaryAndDeepIndex[coarseGlobalIndex];
 					if (coarseBoundaryIndex < 0) {//Deep
@@ -788,7 +894,7 @@ void InitializeAtlasHierachicalBoundaryCoefficients( const GridAtlas< GeometryRe
 			int pi = fi + di;
 			int pj = fj + dj;
 			if (pi >= 0 && pi < fineChartWidth && pj >= 0 && pj < fineChartHeight) {
-				int fineGlobalIndex = fineChart.globalTexelIndex(pi, pj);
+				int fineGlobalIndex = fineChart.texelIndices(pi, pj).combined;
 				if (fineGlobalIndex != -1) {
 					int fineBoundaryIndex = fineAtlas.boundaryAndDeepIndex[fineGlobalIndex];
 					MatrixReal weight = (MatrixReal)( 1.0 / (1.0 + std::abs(di) ) / ( 1.0 + std::abs(dj) ) );
@@ -800,7 +906,7 @@ void InitializeAtlasHierachicalBoundaryCoefficients( const GridAtlas< GeometryRe
 							int qi = pi + ki;
 							int qj = pj + kj;
 							if (qi >= 0 && qi < fineChartWidth && qj >= 0 && qj < fineChartHeight) {
-								int neighboutFineGlobalIndex = fineChart.globalTexelIndex(qi, qj);
+								int neighboutFineGlobalIndex = fineChart.texelIndices(qi, qj).combined;
 								if (neighboutFineGlobalIndex != -1) {
 									int neighbourFineBoundaryIndex = fineAtlas.boundaryAndDeepIndex[neighboutFineGlobalIndex];
 									if (neighbourFineBoundaryIndex < 0) {//Deep
@@ -863,14 +969,20 @@ void InitializeAtlasHierachicalBoundaryCoefficients( const GridAtlas< GeometryRe
 
 
 template< typename GeometryReal , typename MatrixReal >
-void InitializeHierarchy( const int width , const int height , HierarchicalSystem< GeometryReal , MatrixReal > &hierarchy , std::vector< AtlasChart< GeometryReal > > &atlasCharts , const int levels , const MultigridBlockInfo &multigridBlockInfo , bool verbose=false )
+void InitializeHierarchy
+(
+	unsigned int width ,
+	unsigned int height ,
+	HierarchicalSystem< GeometryReal , MatrixReal > &hierarchy ,
+	std::vector< AtlasChart< GeometryReal > > &atlasCharts ,
+	unsigned int levels ,
+	const MultigridBlockInfo &multigridBlockInfo
+)
 {
-	Miscellany::Timer timer;
-
 	std::vector< GridAtlas< GeometryReal , MatrixReal > > &gridAtlases = hierarchy.gridAtlases;
 	gridAtlases.resize(levels);
 
-	for( int i=0 ; i<levels ; i++ )
+	for( unsigned int i=0 ; i<levels ; i++ )
 	{
 		int reductionFactor = 1 << (i);
 		GeometryReal cellSizeW = (GeometryReal)reductionFactor / width;
@@ -882,74 +994,58 @@ void InitializeHierarchy( const int width , const int height , HierarchicalSyste
 			MK_THROW( "Boundary and deep texels does not form a partition: " , gridAtlases[i].numTexels , " != " , gridAtlases[i].numBoundaryTexels , " + " , gridAtlases[i].numDeepTexels );
 
 		InitializeBoundaryAndDeepTexelIndexing( gridAtlases[i].gridCharts , gridAtlases[i].numTexels , gridAtlases[i].boundaryAndDeepIndex , gridAtlases[i].boundaryGlobalIndex , gridAtlases[i].deepGlobalIndex );
-
-		if( verbose )
-		{
-			printf( "Level %d:\n" , i );
-			printf( "\t Active texels %d\n", gridAtlases[i].numTexels );
-			printf( "\t Deep texels %d\n" , gridAtlases[i].numDeepTexels );
-			printf( "\t Boundary texels %d\n" , gridAtlases[i].numBoundaryTexels );
-			printf( "\t Active cells %d\n" , gridAtlases[i].numCells );
-			printf( "\t Interior texture nodes %d\n" , gridAtlases[i].numInteriorTexels );
-			printf( "\t Deep lines %d\n" , (int)gridAtlases[i].segmentedLines.size() );
-			printf( "\t Deep segments %d\n" , (int)gridAtlases[i].rasterLines.size() );
-		}
 	}
-	if( verbose ) printf( "Hierarchy structure =  %.4f \n" , timer.elapsed() );
 
-	if( verbose ) timer.reset();
 	hierarchy.boundaryRestriction.resize( levels-1 );
-	for( int i=0 ; i<levels-1 ; i++ ) InitializeAtlasHierachicalRestriction( gridAtlases[i] , gridAtlases[i+1] , hierarchy.boundaryRestriction[i] );
-	for( int i=0 ; i<levels-1 ; i++ ) InitializeAtlasHierachicalProlongation( gridAtlases[i] , gridAtlases[i+1] );
+	for( unsigned int i=0 ; i<levels-1 ; i++ ) InitializeAtlasHierachicalRestriction( gridAtlases[i] , gridAtlases[i+1] , hierarchy.boundaryRestriction[i] );
+	for( unsigned int i=0 ; i<levels-1 ; i++ ) InitializeAtlasHierachicalProlongation( gridAtlases[i] , gridAtlases[i+1] );
 
-	if( verbose ) printf( "Hierarchy prolongation and restriction =  %.4f \n" , timer.elapsed() );
 
 	hierarchy.boundaryCoarseFineProlongation.resize(levels);
 	hierarchy.boundaryFineCoarseRestriction.resize(levels);
 	hierarchy.boundaryDeepIndices.resize(levels);
 	hierarchy.boundaryBoundaryIndices.resize(levels);
 
-	if( verbose ) timer.reset();
-
-	for( int i=1 ; i<levels ; i++ )
+	for( unsigned int i=1 ; i<levels ; i++ )
 	{
 		InitializeAtlasHierachicalBoundaryCoefficients( hierarchy.gridAtlases[i-1] , hierarchy.gridAtlases[i] , hierarchy.boundaryCoarseFineProlongation[i] , hierarchy.boundaryDeepIndices[i] , hierarchy.boundaryBoundaryIndices[i] );
 		hierarchy.boundaryFineCoarseRestriction[i-1] = hierarchy.boundaryCoarseFineProlongation[i].transpose();
 	}
-	if( verbose ) printf( "Boundary coefficient initialization =  %.4f \n" , timer.elapsed() );
 }
 
 template< typename GeometryReal , typename MatrixReal >
 void InitializeHierarchy
 (
-	OrientedTexturedTriangleMesh< GeometryReal > & mesh , const int width , const int height , const int levels , std::vector< TextureNodeInfo< GeometryReal > > &textureNodes , std::vector< BilinearElementIndex > &cellNodes ,
-	HierarchicalSystem< GeometryReal , MatrixReal > &hierarchy , std::vector< AtlasChart< GeometryReal > > &atlasCharts , const MultigridBlockInfo &multigridBlockInfo , bool verbose=false , bool detailVerbose=false , bool computeProlongation=false
+	TexturedTriangleMesh< GeometryReal > & mesh ,
+	unsigned int width ,
+	unsigned int height ,
+	unsigned int levels ,
+	std::vector< TextureNodeInfo< GeometryReal > > &textureNodes ,
+	std::vector< BilinearElementIndex > &cellNodes ,
+	HierarchicalSystem< GeometryReal , MatrixReal > &hierarchy ,
+	std::vector< AtlasChart< GeometryReal > > &atlasCharts ,
+	const MultigridBlockInfo &multigridBlockInfo ,
+	bool computeProlongation
 )
 {
-
-	Miscellany::Timer timer;
-
 	//(1) Initialize Atlas Mesh
 	AtlasMesh< GeometryReal > atlasMesh;
-	std::vector< int > oppositeHalfEdge;
-	std::unordered_map< int , int > boundaryVerticesIndices;
-	int numBoundaryVertices;
-	bool isClosedMesh;
+	std::vector< unsigned int > oppositeSurfaceCorners;
+	std::unordered_map< unsigned int , unsigned int > boundaryVerticesIndices;
+	unsigned int numBoundaryVertices;
+	bool isClosedSurfaceMesh;
 
-	InitializeAtlasMesh( mesh , width , height , atlasMesh , atlasCharts , oppositeHalfEdge , boundaryVerticesIndices , numBoundaryVertices , isClosedMesh , detailVerbose );
-
-	if( verbose ) timer.reset();
+	InitializeAtlasMesh( mesh , width , height , atlasMesh , atlasCharts , oppositeSurfaceCorners , boundaryVerticesIndices , numBoundaryVertices , isClosedSurfaceMesh );
 
 	//(2) Initialize Hierarchy
-	InitializeHierarchy( width , height , hierarchy , atlasCharts , levels , multigridBlockInfo , detailVerbose );
-	if( detailVerbose ) printf( "Hierarchy construction =  %.4f \n" , timer.elapsed() );
+	InitializeHierarchy( width , height , hierarchy , atlasCharts , levels , multigridBlockInfo );
 
 	//(3) Initialize fine level texture nodes and cells
 	InitializeTextureNodes( hierarchy.gridAtlases[0].gridCharts , textureNodes );
 	InitializeCellNodes( hierarchy.gridAtlases[0].gridCharts , cellNodes );
 
 	//(4) Initialize boundary triangulation
-	InitializeBoundaryTriangulation( hierarchy.gridAtlases[0] , atlasMesh , atlasCharts , oppositeHalfEdge , boundaryVerticesIndices , numBoundaryVertices , isClosedMesh );
+	InitializeBoundaryTriangulation( hierarchy.gridAtlases[0] , atlasMesh , atlasCharts , oppositeSurfaceCorners , boundaryVerticesIndices , numBoundaryVertices , isClosedSurfaceMesh );
 
 	//(5) Unnnecesary
 	if( computeProlongation )

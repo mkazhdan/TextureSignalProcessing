@@ -30,19 +30,20 @@ DAMAGE.
 #include <Misha/Miscellany.h>
 #include <Misha/Exceptions.h>
 #include <Misha/RightTriangleQuadrature.h>
+#include "SimpleTriangleMesh.h"
 
 namespace MishaK
 {
 	template< typename GeometryReal >
-	class TextureNodeInfo
+	struct TextureNodeInfo : public MeshSample< GeometryReal >
 	{
-	public:
-		TextureNodeInfo( void ) : tID(-1) , ci(-1) , cj(-1) , chartID(-1) , isInterior(false) {}
-		TextureNodeInfo( int _tID, Point2D< GeometryReal > _barycentricCoords , int _ci , int _cj , int _chartID , bool _isInterior ) : tID(_tID) , barycentricCoords(_barycentricCoords) , ci(_ci) , cj(_cj) , chartID(_chartID) , isInterior(_isInterior) {}
-		int tID;
-		Point2D< GeometryReal > barycentricCoords;
-		int ci , cj;
-		int chartID;
+		using MeshSample< GeometryReal >::tID;
+		using MeshSample< GeometryReal >::barycentricCoords;
+		TextureNodeInfo( void ) : ci(-1) , cj(-1) , chartID(-1) , isInterior(false) {}
+		TextureNodeInfo( int tID , Point2D< GeometryReal > barycentricCoords , int ci , int cj , int chartID , bool isInterior )
+			: MeshSample< GeometryReal >( tId , barycentricCoords ) , ci(ci) , cj(cj) , chartID(chartID) , isInterior(isInterior) {}
+		unsigned int ci , cj;
+		unsigned int chartID;
 		bool isInterior;
 	};
 

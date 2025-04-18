@@ -46,7 +46,12 @@ namespace MishaK
 		int texelEnd;
 	};
 
-	void InitializeDivergenceRasteLines( std::unordered_map< unsigned long long , int > &coarseEdgeIndex , const std::vector< RasterLine > &rasterLines , std::vector< DivegenceRasterLine > &divergenceRasterLines )
+	void InitializeDivergenceRasteLines
+	(
+		std::map< EdgeIndex , unsigned int > &coarseEdgeIndex ,
+		const std::vector< RasterLine > &rasterLines ,
+		std::vector< DivegenceRasterLine > &divergenceRasterLines
+	)
 	{
 		divergenceRasterLines.resize(rasterLines.size());
 		for (int i = 0; i < rasterLines.size(); i++) {
@@ -55,15 +60,15 @@ namespace MishaK
 			divLine.texelStart = line.lineStartIndex;
 			divLine.texelEnd = line.lineEndIndex;
 			divLine.deepCoefficientsStart = line.coeffStartIndex;
-			unsigned long long prevEdgeKey = SetMeshEdgeKey(line.prevLineIndex - 1, line.prevLineIndex);
-			if( coarseEdgeIndex.find(prevEdgeKey)==coarseEdgeIndex.end() ) MK_THROW( "Edge not found" );
+			EdgeIndex prevEdgeKey( line.prevLineIndex-1 , line.prevLineIndex );
+			if( coarseEdgeIndex.find( prevEdgeKey )==coarseEdgeIndex.end() ) MK_THROW( "Edge not found" );
 			divLine.prevEdgeRowStart = coarseEdgeIndex[prevEdgeKey];
 
-			unsigned long long currEdgeKey = SetMeshEdgeKey(line.lineStartIndex - 1, line.lineStartIndex);
+			EdgeIndex currEdgeKey( line.lineStartIndex-1 , line.lineStartIndex );
 			if( coarseEdgeIndex.find(currEdgeKey)==coarseEdgeIndex.end() ) MK_THROW( "Edge not found" );
 			divLine.currEdgeRowStart = coarseEdgeIndex[currEdgeKey];
 
-			unsigned long long nextEdgeKey = SetMeshEdgeKey(line.nextLineIndex - 1, line.nextLineIndex);
+			EdgeIndex nextEdgeKey( line.nextLineIndex-1 , line.nextLineIndex );
 			if( coarseEdgeIndex.find(nextEdgeKey)==coarseEdgeIndex.end() ) MK_THROW( "Edge not found" );
 			divLine.nextEdgeRowStart = coarseEdgeIndex[nextEdgeKey];
 		}

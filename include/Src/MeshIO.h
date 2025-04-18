@@ -41,6 +41,9 @@ namespace MishaK
 	template< typename Index , typename Real , unsigned int Dim , unsigned int TDim >
 	void ReadTexturedMesh( std::string fileName , std::vector< Point< Real , Dim > > &vertices , std::vector< Point< Real , TDim > > &textureCoordinates , std::vector< SimplexIndex< 2 , Index > > &simplices );
 
+	template< typename Index , typename Real , unsigned int Dim , unsigned int TDim >
+	void ReadTexturedMesh( std::string fileName , std::vector< Point< Real , Dim > > &vertices , std::vector< Point< Real , TDim > > &textureCoordinates , std::vector< SimplexIndex< 2 , Index > > &vSimplices , std::vector< SimplexIndex< 2 , Index > > &tSimplices , bool fuseTextureCoordinates=true );
+
 	template< typename Index , typename Real , unsigned int Dim >
 	void CollapseVertices( std::vector< Point< Real , Dim > > &vertices , std::vector< SimplexIndex< 2 , Index > > &simplices , double eps );
 
@@ -238,6 +241,261 @@ namespace MishaK
 				if     ( obj_faces[i][j].tIndex>0 ) textureCoordinates[3*i+j] = obj_textures[ obj_faces[i][j].tIndex-1 ];
 				else if( obj_faces[i][j].tIndex<0 ) textureCoordinates[3*i+j] = obj_textures[ (int)obj_textures.size() + obj_faces[i][j].tIndex ];
 				else MK_ERROR_OUT( "Zero texture index unexpected in .obj file: " , i );
+			}
+		}
+		else MK_ERROR_OUT( "Unrecognized file type: " , fileName , " -> " , ext );
+	}
+
+	template< typename Index , typename Real , unsigned int Dim , unsigned int TDim >
+	void ReadTexturedMesh
+	(
+		std::string fileName ,
+		std::vector< Point< Real ,  Dim > > &vertices ,
+		std::vector< Point< Real , TDim > > &textures ,
+		std::vector< SimplexIndex< 2 , Index > > &vSimplices ,
+		std::vector< SimplexIndex< 2 , Index > > &tSimplices ,
+		bool fuseTextureCoordinates 
+	)
+	{
+		static const unsigned int K = 2;
+		std::string ext = ToLower( GetFileExtension( fileName ) );
+		if( ext==std::string( "ply" ) )
+		{
+			using VertexFactory = VertexFactory::Factory< Real , VertexFactory::PositionFactory< Real , Dim > , VertexFactory::TextureFactory< Real , TDim > >;
+			using Vertex = typename VertexFactory::VertexType;
+			using Face = PlyTexturedFace< unsigned int , Real >;
+
+			VertexFactory factory;
+
+			std::vector< Vertex > inVertices;
+			std::vector< Face > inFaces;
+			bool *vFlags = new bool[ factory.plyReadNum() ];
+			bool *fFlags = new bool[ Face::NumProperties ];
+			int file_type;
+
+			try{ file_type = PLY::ReadPolygons( fileName , factory , inVertices , inFaces , Face::Properties , Face::NumProperties , vFlags , fFlags ); }
+			catch( const Exception & ){ MK_ERROR_OUT( "Failed to read ply file: " , fileName ); }
+
+			bool perVertexTexture = factory.template plyValidReadProperties< 1 >( vFlags );
+			if( !fFlags[0] ) MK_ERROR_OUT( "Failed to read face indices" );
+			if( !fFlags[1] && !perVertexTexture ) MK_ERROR_OUT( "Failed to read face textures" );
+			delete[] vFlags;
+			delete[] fFlags;
+
+			if constexpr( K==2 )
+			{
+				size_t faceNum = inFaces.size();
+				MinimalAreaTriangulation< Real , Dim > mat;
+				for( unsigned int i=(unsigned int)inFaces.size() ; i!=0 ; i-- )
+				{
+					Face &face = inFaces[i-1];
+					Face oldFace = face;
+
+					if( face.size()>3 )
+					{
+						std::vector< Point< Real , Dim > > _vertices( face.size() );
+						std::vector< SimplexIndex< K > > _triangles;
+						for( unsigned int j=0 ; j<(unsigned int)face.size() ; j++ ) _vertices[j] = inVertices[ face[j] ].template get<0>();
+						mat.GetTriangulation( _vertices , _triangles );
+
+						auto TriangleToFace = [&]( SimplexIndex< K > si )
+							{
+								Face face;
+								face.resize(K+1);
+								for( unsigned int k=0 ; k<=K ; k++ ) face[k] = oldFace[ si[k] ] , face.texture(k) = oldFace.texture( si[k] );
+								return face;
+							};
+
+						face = TriangleToFace( _triangles[0] );
+						for( unsigned int j=1 ; j<_triangles.size() ; j++ ) inFaces.push_back( TriangleToFace( _triangles[j] ) );
+					}
+				}
+				//		if( inFaces.size()!=faceNum ) WARN( "Triangulated: " , faceNum , " -> " , inFaces.size() );
+			}
+
+			vSimplices.resize( inFaces.size() );
+			tSimplices.resize( inFaces.size() );
+			vertices.resize( inVertices.size() );
+			for( unsigned int i=0 ; i<inVertices.size() ; i++ ) vertices[i] = inVertices[i].template get<0>();
+
+			if( perVertexTexture )
+			{
+				for( unsigned int i=0 ; i<inFaces.size() ; i++ ) for( unsigned int k=0 ; k<=K ; k++ ) vSimplices[i][k] = tSimplices[i][k] = inFaces[i][k];
+
+				textures.resize( inVertices.size() );
+				for( unsigned int i=0 ; i<inVertices.size() ; i++ ) textures[i] = inVertices[i].template get<1>();
+			}
+			else
+			{
+				for( unsigned int i=0 ; i<inFaces.size() ; i++ )
+					if( inFaces[i].nr_vertices!=(K+1) ) MK_ERROR_OUT( "Face is not a simplex" );
+					else if( inFaces[i].nr_uv_coordinates!=(K+1)*K ) MK_ERROR_OUT( "Unexpected number of texture coordinates: " , inFaces[i].nr_uv_coordinates , " != " , K+1 , " * " , K );
+
+				for( unsigned int i=0 ; i<inFaces.size() ; i++ ) for( unsigned int k=0 ; k<=K ; k++ )
+				{
+					vSimplices[i][k] = inFaces[i][k];
+					tSimplices[i][k] = i*(K+1)+k;
+				}
+
+				if( fuseTextureCoordinates )
+				{
+					struct IndexedTVertex
+					{
+						IndexedTVertex( void ) : vIndex(-1) , index(-1) {}
+						IndexedTVertex( Point2D< Real > p , unsigned int vIndex , unsigned int index ) : p(p) , vIndex(vIndex) , index(index){}
+						Point2D< Real > p;
+						unsigned int vIndex , index;
+						bool operator < ( const IndexedTVertex &v ) const
+						{
+							if( vIndex!=v.vIndex ) return vIndex<v.vIndex;
+							if( p[0]!=v.p[0] ) return p[0]<v.p[0];
+							else               return p[1]<v.p[1];
+						}
+						bool operator != ( const IndexedTVertex & v ) const { return vIndex!=v.vIndex || p[0]!=v.p[0] || p[1]!=v.p[1]; }
+					};
+
+					std::vector< IndexedTVertex > iVertices( inFaces.size()*3 );
+					for( unsigned int i=0 ; i<inFaces.size() ; i++ ) for( unsigned int k=0 ; k<3 ; k++ )
+						iVertices[3*i+k] = IndexedTVertex( inFaces[i].texture(k) , inFaces[i][k] , 3*i+k );
+					std::sort( iVertices.begin() , iVertices.end() );
+					std::vector< unsigned int > old2new( inFaces.size()*3 );
+					unsigned int idx=0;
+					for( unsigned int i=0 ; i<iVertices.size() ; i++ )
+					{
+						old2new[ iVertices[i].index ] = idx;
+						if( i==iVertices.size()-1 || iVertices[i]!=iVertices[i+1] ) idx++;
+					}
+					textures.resize( idx );
+					for( unsigned int i=0 , idx=0 ; i<inFaces.size() ; i++ ) for( unsigned int k=0 ; k<3 ; k++ , idx++ ) textures[ old2new[idx] ] = inFaces[i].texture(k);
+					for( unsigned int i=0 , idx=0 ; i<tSimplices.size() ; i++ ) for( unsigned int k=0 ; k<3 ; k++ , idx++ ) tSimplices[i][k] = old2new[idx];
+				}
+				else
+				{
+					textures.resize( inFaces.size()*(K+1) );
+					for( unsigned int i=0 ; i<inFaces.size() ; i++ ) for( unsigned int k=0 ; k<=K ; k++ ) textures[ i*(K+1)+k ] = inFaces[i].texture(k);
+				}
+
+			}
+		}
+		else if( ext==std::string( "obj" ) )
+		{
+			struct ObjFaceIndex{ int vIndex , tIndex; };
+
+			std::vector< Point3D< Real > > obj_vertices;
+			std::vector< Point2D< Real > > obj_textures;
+			std::vector< std::vector< ObjFaceIndex > > obj_faces;
+			std::ifstream in( fileName );
+			if( !in.is_open() ) MK_ERROR_OUT( "Could not open file for reading: " , fileName );
+
+			std::string( line );
+			unsigned int count = 0;
+			while( std::getline( in , line ) )
+			{
+				std::stringstream ss;
+
+				// Read vertex position
+				if( line[0]=='v' && line[1]==' ' )
+				{
+					line = line.substr(2);
+					std::stringstream ss( line );
+					Point3D< Real > p;
+					ss >> p[0] >> p[1] >> p[2];
+					obj_vertices.push_back( p );
+				}
+				// Read texture coordinate
+				else if( line[0]=='v' && line[1]=='t' && line[2]==' ' )
+				{
+					line = line.substr(3);
+					std::stringstream ss( line );
+					Point2D< Real > p;
+					ss >> p[0] >> p[1];
+					obj_textures.push_back( p );
+				}
+				// Read face
+				else if( line[0]=='f' && line[1]==' ' )
+				{
+					std::vector< ObjFaceIndex > face;
+					line = line.substr(1);
+					while( line.size() && line[0]==' ' ) line = line.substr(1);
+					std::stringstream ss( line );
+					std::string token;
+					while( std::getline( ss , token , ' ' ) )
+					{
+						std::stringstream _ss(token);
+						std::string _token;
+						unsigned int count = 0;
+						ObjFaceIndex idx;
+						while( std::getline( _ss , _token , '/' ) )
+						{
+							if     ( count==0 ) idx.vIndex = std::stoi( _token );
+							else if( count==1 ) idx.tIndex = std::stoi( _token );
+							count++;
+						}
+						face.push_back( idx );
+					}
+					obj_faces.push_back( face );
+				}
+				count++;
+			}
+
+			vertices.resize( obj_vertices.size() );
+			textures.resize( obj_textures.size() );
+			for( unsigned int i=0 ; i<obj_vertices.size() ; i++ ) vertices[i] = obj_vertices[i];
+			for( unsigned int i=0 ; i<obj_textures.size() ; i++ ) textures[i] = obj_textures[i];
+
+			auto ObjIndexToArrayIndex = [&]( size_t sz , int index )
+				{
+					if( index>0 ) return index-1;
+					else          return (int)sz + index;
+				};
+
+			// Triangulating polygonal faces
+			{
+				unsigned int tCount = 0;
+				for( unsigned int i=0 ; i<obj_faces.size() ; i++ )
+					if( obj_faces[i].size()<3 ) MK_ERROR_OUT( "Expected at least three vertices" );
+					else tCount += (unsigned int)obj_faces[i].size()-2;
+				if( tCount>obj_faces.size() )
+				{
+					MinimalAreaTriangulation< Real , 3 > mat;
+
+					obj_faces.reserve( tCount );
+					for( unsigned int i=(unsigned int)obj_faces.size() ; i!=0 ; i-- )
+					{
+						std::vector< ObjFaceIndex > &face = obj_faces[i-1];
+						std::vector< ObjFaceIndex > oldFace = face;
+						if( face.size()>3 )
+						{
+							std::vector< Point3D< Real > > _vertices( face.size() );
+							std::vector< SimplexIndex< 2 > > triangles;
+							for( unsigned int j=0 ; j<face.size() ; j++ ) _vertices[j] = vertices[ ObjIndexToArrayIndex( obj_vertices.size() , face[j].vIndex ) ];
+							mat.GetTriangulation( _vertices , triangles );
+
+							auto TriangleToOBJFace = [&]( SimplexIndex< 2 > tri )
+								{
+									std::vector< ObjFaceIndex > objFace(3);
+									for( unsigned int i=0 ; i<3 ; i++ ) objFace[i] = oldFace[ tri[i] ];
+									return objFace;
+								};
+
+							face = TriangleToOBJFace( triangles[0] );
+							for( unsigned int j=1 ; j<triangles.size() ; j++ ) obj_faces.push_back( TriangleToOBJFace( triangles[j] ) );
+						}
+					}
+				}
+			}
+
+			vSimplices.resize( obj_faces.size() );
+			tSimplices.resize( obj_faces.size() );
+			for( int i=0 ; i<obj_faces.size() ; i++ ) for( int j=0 ; j<3 ; j++ )
+			{
+				if     ( obj_faces[i][j].vIndex>0 ) vSimplices[i][j] = obj_faces[i][j].vIndex-1;
+				else if( obj_faces[i][j].vIndex<0 ) vSimplices[i][j] = (int)obj_vertices.size() + obj_faces[i][j].vIndex;
+				else MK_ERROR_OUT( "Zero vertex index unexpected in .obj file: " , i );
+
+				if     ( obj_faces[i][j].tIndex>0 ) tSimplices[i][j] = obj_faces[i][j].tIndex-1;
+				else if( obj_faces[i][j].tIndex<0 ) tSimplices[i][j] = (int)obj_textures.size() + obj_faces[i][j].tIndex;
+				else MK_ERROR_OUT( "Zero vertex index unexpected in .obj file: " , i );
 			}
 		}
 		else MK_ERROR_OUT( "Unrecognized file type: " , fileName , " -> " , ext );

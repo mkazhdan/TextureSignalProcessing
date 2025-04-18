@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2024, Michael Kazhdan
+Copyright (c) 2017, Michael Kazhdan
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -25,29 +25,27 @@ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING 
 ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
 DAMAGE.
 */
-#ifndef PRE_PROCESSING_INCLUDED
-#define PRE_PROCESSING_INCLUDED
+#ifndef ATOMIC_GEOMETRY_INCLUDED
+#define ATOMIC_GEOMETRY_INCLUDED
 
-#define NEW_CODE					// General-purpose experimental code encapsulation
-#define NEW_NEW_CODE
-#define NEW_INTERSECTION_KEY		// Represent auxiliary nodes explicilty as a struct
-#define USE_RASTERIZER				// Use triangle/edge rasterization code
-#define REORDER_BOUNDARY			// Re-order the boundary edges so that they are sequential [probably not necessary]
-#define PRE_CLIP_TRIANGLES			// Clip and store triangles with cells [Requires USE_RASTERIZER]
-//#define NEW_HALF_EDGE				// Standardize half-edge indexing
+#include "Atomic.h"
+#include "Geometry.h"
 
-//#define SEPARATE_POLYGONS			// Keep the polygons obtained by clipping triangles to boundary cells separate
+namespace MishaK
+{
+	template< typename T , unsigned int Dim , typename Real >
+	struct Atomic< Point< T , Dim , Real > >
+	{
+		using Value = Point< T , Dim , Real >;
+		static void Add( volatile Value &a , const Value &b ){ for( unsigned int d=0 ; d<Dim ; d++ ) Atomic< T >::Add( a[d] , b[d] ); }
+	};
 
-#define USE_EIGEN
-#undef USE_CHOLMOD
-#undef USE_EIGEN_PARDISO
+	template< class Real , int Cols , int Rows >
+	struct Atomic< Matrix< Real , Cols , Rows > >
+	{
+		using Value = Matrix< Real , Cols , Rows >;
+		static void Add( volatile Value &a , const Value &b ){ for( unsigned int c=0 ; c<Cols ; c++ ) for( unsigned int r=0 ; r<Rows ; r++ ) Atomic< T >::Add( a(c,r) , b(c,r) ); }
+	};
+}
 
-
-//#define NO_OPEN_GL_VISUALIZATION		// Disable OpenGL visualization
-#define USE_TEXTURE_TRIANGLES			// Represent textures using a separate triangulation
-
-#define INSERTION_EPSILON 1e-12		// Separation from interval end-points required for insertion
-
-//#define SANITY_CHECK
-
-#endif // PRE_PROCESSING_INCLUDED
+#endif // ATOMIC_GEOMETRY_INCLUDED

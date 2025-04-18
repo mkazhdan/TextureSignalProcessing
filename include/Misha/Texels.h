@@ -80,13 +80,8 @@ namespace MishaK
 		template< bool Nearest , bool NodeAtCellCenter , typename SimplexFunctor /* = std::function< Simplex< double , Dim , Dim > ( size_t ) > */ >
 		RegularGrid< Dim , TexelInfo > GetSupportedTexelInfo( size_t simplexNum , SimplexFunctor && SF , const unsigned int res[Dim] );
 
-#ifdef NEW_TEXEL_CODE
 		template< bool Nearest , bool NodeAtCellCenter , unsigned int K=Dim , typename SimplexFunctor = std::function< Simplex< double , Dim , K > ( size_t ) > >
 		RegularGrid< Dim , std::vector< size_t > > GetSupportedSimplexIndices( size_t simplexNum , SimplexFunctor && SF , unsigned int res[Dim] );
-#else // !NEW_TEXEL_CODE
-		template< bool Nearest , bool NodeAtCellCenter , typename SimplexFunctor /* = std::function< Simplex< double , Dim , Dim > ( size_t ) > */ >
-		RegularGrid< Dim , std::vector< size_t > > GetSupportedSimplexIndices( size_t simplexNum , SimplexFunctor && SF , unsigned int res[Dim] );
-#endif // NEW_TEXEL_CODE
 
 		template< bool NodeAtCellCenter , typename SimplexFunctor /* = std::function< Simplex< double , Dim , Dim > ( size_t ) > */ >
 		RegularGrid< Dim , TexelInfo > GetNodeTexelInfo( size_t simplexNum , SimplexFunctor && SF , const unsigned int res[Dim] , bool forceThreadSafe=false );

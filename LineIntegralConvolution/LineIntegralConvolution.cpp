@@ -33,7 +33,6 @@ DAMAGE.
 #include <Misha/FEM.h>
 #include <Src/Hierarchy.h>
 #include <Src/Basis.h>
-#include <Src/ChartDecomposition.h>
 #include <Src/HSV.h>
 #include <Src/Solver.h>
 #include <Src/MassAndStiffness.h>
@@ -141,7 +140,7 @@ public:
 	static Real sharpeningInterpolationWeight;
 	static Real licInterpolationWeight;
 
-	static OrientedTexturedTriangleMesh< PreReal > mesh;
+	static TexturedTriangleMesh< PreReal > mesh;
 	static int textureWidth;
 	static int textureHeight;
 	static int levels;
@@ -255,7 +254,7 @@ template< typename PreReal , typename Real > Real														LineConvolution< 
 template< typename PreReal , typename Real > Real														LineConvolution< PreReal , Real >::sharpeningInterpolationWeight;
 template< typename PreReal , typename Real > Real														LineConvolution< PreReal , Real >::licInterpolationWeight;
 
-template< typename PreReal , typename Real > OrientedTexturedTriangleMesh< PreReal >					LineConvolution< PreReal , Real >::mesh;
+template< typename PreReal , typename Real > TexturedTriangleMesh< PreReal >							LineConvolution< PreReal , Real >::mesh;
 template< typename PreReal , typename Real > int														LineConvolution< PreReal , Real >::textureWidth;
 template< typename PreReal , typename Real > int														LineConvolution< PreReal , Real >::textureHeight;
 
@@ -528,8 +527,8 @@ template< typename PreReal , typename Real >
 void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianMesh< PreReal , unsigned int >& rMesh , int width , int height )
 {
 	Miscellany::Timer timer;
-	MultigridBlockInfo multigridBlockInfo(MultigridBlockWidth.value, MultigridBlockHeight.value, MultigridPaddedWidth.value, MultigridPaddedHeight.value, 0);
-	InitializeHierarchy( mesh , width , height , levels , textureNodes , bilinearElementIndices , hierarchy , atlasCharts , multigridBlockInfo , true , DetailVerbose.set );
+	MultigridBlockInfo multigridBlockInfo( MultigridBlockWidth.value , MultigridBlockHeight.value , MultigridPaddedWidth.value , MultigridPaddedHeight.value );
+	InitializeHierarchy( mesh , width , height , levels , textureNodes , bilinearElementIndices , hierarchy , atlasCharts , multigridBlockInfo , false );
 	if( Verbose.set ) printf( "\tInitialized hierarchy: %.2f(s)\n" , timer.elapsed() );
 
 	//Initialize node index
@@ -569,21 +568,21 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 			if( IntrinsicVectorField.set )
 			{
 				ReadVector( vectorField , InVectorField.value );
-				if( vectorField.size()!=mesh.triangles.size() ) MK_THROW( "Triangle and vector counts don't match: " , mesh.triangles.size() , " != " , vectorField.size() );
+				if( vectorField.size()!=mesh.numTriangles() ) MK_THROW( "Triangle and vector counts don't match: " , mesh.numTriangles() , " != " , vectorField.size() );
 			}
 			else
 			{
 				std::vector< Point3D< PreReal > > _vectorField;
 				ReadVector( _vectorField , InVectorField.value );
-				if( _vectorField.size()!=mesh.triangles.size() ) MK_THROW( "Triangle and vector counts don't match: " , mesh.triangles.size() , " != " , _vectorField.size() );
+				if( _vectorField.size()!=mesh.numTriangles() ) MK_THROW( "Triangle and vector counts don't match: " , mesh.numTriangles() , " != " , _vectorField.size() );
 				vectorField.resize( _vectorField.size() );
 				ThreadPool::ParallelFor
 					(
-						0 , mesh.triangles.size() ,
+						0 , mesh.numTriangles() ,
 						[&]( unsigned int , size_t i )
 						{
-							Point3D< PreReal > v[] = { mesh.vertices[ mesh.triangles[i][0] ] , mesh.vertices[ mesh.triangles[i][1] ] , mesh.vertices[ mesh.triangles[i][2] ] };
-							Point3D< PreReal > d[] = { v[1]-v[0] , v[2]-v[0] };
+							Simplex< PreReal , 3 , 2 > s = mesh.surfaceTriangle(i);
+							Point3D< PreReal > d[] = { s[1]-s[0] , s[2]-s[0] };
 							SquareMatrix< PreReal , 2 > Dot;
 							for( int j=0 ; j<2 ; j++ ) for( int k=0 ; k<2 ; k++ ) Dot(j,k) = Point3D< PreReal >::Dot( d[j] , d[k] );
 							Point2D< PreReal > dot( Point3D< PreReal >::Dot( d[0] , _vectorField[i] ) , Point3D< PreReal >::Dot( d[1] , _vectorField[i] ) );
@@ -596,16 +595,23 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 		{
 			// Compute the principal curvatures
 			std::vector< PrincipalCurvature< PreReal > > principalCurvatures;
-			mesh.updateNormals();
+			std::vector< Point3D< PreReal > > normals( mesh.surface.vertices.size() );
+			for( unsigned int i=0 ; i<mesh.numTriangles() ; i++ )
+			{
+				Point3D< PreReal > n = mesh.surfaceTriangle(i).normal();
+				for( unsigned int k=0 ; k<3 ; k++ ) normals[ mesh.surface.triangles[i][k] ] += n;
+			}
+
+			for( unsigned int i=0 ; i<normals.size() ; i++ ) normals[i] /= Point3D< PreReal >::Length( normals[i] );
 			// Smooth the normals
 			{
 				Miscellany::Timer tmr;
 
 				SparseMatrix< PreReal , int > M , _M = rMesh.template massMatrix< FEM::BASIS_0_WHITNEY >() , _S = rMesh.template stiffnessMatrix< FEM::BASIS_0_WHITNEY >();
-				M.resize( 2*mesh.vertices.size() );
+				M.resize( 2*normals.size() );
 				ThreadPool::ParallelFor
 					(
-						0 , mesh.vertices.size() ,
+						0 , normals.size() ,
 						[&]( unsigned int , size_t i )
 						{
 							for( int ii=0 ; ii<2 ; ii++ )
@@ -615,25 +621,24 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 							}
 						}
 					);
-				std::vector< Point3D< PreReal > > tangents( mesh.vertices.size()*2 );
-				std::vector< PreReal > b( mesh.vertices.size()*2 ) , o( mesh.vertices.size()*2 );
+				std::vector< Point3D< PreReal > > tangents( normals.size()*2 );
+				std::vector< PreReal > b( normals.size()*2 ) , o( normals.size()*2 );
 
 				typedef EigenSolverCholeskyLDLt< PreReal , typename SparseMatrix< PreReal , int >::RowIterator > Solver;
 				Solver solver( M , true );
 
 				for( int iter=0 ; iter<NormalSmoothingIterations.value ; iter++ )
 				{
-
 					// Set the tangent directions
 					ThreadPool::ParallelFor
 					(
-						0 , mesh.vertices.size() ,
+						0 , normals.size() ,
 						[&]( unsigned int , size_t i )
 						{
 							Point3D< PreReal > v( 1 , 0 , 0 );
-							if( fabs( Point3D< PreReal >::Dot( v , mesh.normals[i] ) )>0.99 ) v = Point3D< PreReal >( 0 , 1 , 0 );
-							tangents[2*i+0] = Point3D< PreReal >::CrossProduct( mesh.normals[i] , v               ) ; tangents[2*i+0] /= Point3D< PreReal >::Length( tangents[2*i+0] );
-							tangents[2*i+1] = Point3D< PreReal >::CrossProduct( mesh.normals[i] , tangents[2*i+0] ) ; tangents[2*i+1] /= Point3D< PreReal >::Length( tangents[2*i+1] );
+							if( fabs( Point3D< PreReal >::Dot( v , normals[i] ) )>0.99 ) v = Point3D< PreReal >( 0 , 1 , 0 );
+							tangents[2*i+0] = Point3D< PreReal >::CrossProduct( normals[i] , v               ) ; tangents[2*i+0] /= Point3D< PreReal >::Length( tangents[2*i+0] );
+							tangents[2*i+1] = Point3D< PreReal >::CrossProduct( normals[i] , tangents[2*i+0] ) ; tangents[2*i+1] /= Point3D< PreReal >::Length( tangents[2*i+1] );
 						}
 					);
 
@@ -645,7 +650,7 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 					{
 						ThreadPool::ParallelFor
 						(
-							0 , mesh.vertices.size() ,
+							0 , normals.size() ,
 							[&]( unsigned int , size_t i )
 							{
 								for( int ii=0 ; ii<2 ; ii++ ) 
@@ -654,7 +659,7 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 									for( int j=0 ; j<_M.rowSizes[i] ; j++ )
 									{
 										for( int jj=0 ; jj<2 ; jj++ ) M[2*i+ii][2*j+jj].Value = ( _M[i][j].Value*NormalSmoothingInterpolation.value + _S[i][j].Value ) * Point3D< Real >::Dot( tangents[2*i+ii] , tangents[ 2*_M[i][j].N+jj ] );
-										b[2*i+ii] -= _S[i][j].Value * Point3D< Real >::Dot( mesh.normals[ _S[i][j].N ] , tangents[2*i+ii] );
+										b[2*i+ii] -= _S[i][j].Value * Point3D< Real >::Dot( normals[ _S[i][j].N ] , tangents[2*i+ii] );
 									}
 								}
 							}
@@ -666,18 +671,17 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 
 						ThreadPool::ParallelFor
 						(
-							0 , mesh.vertices.size() ,
+							0 , normals.size() ,
 							[&]( unsigned int , size_t i )
 							{
-								mesh.normals[i] += tangents[2*i+0] * o[2*i+0] + tangents[2*i+1] * o[2*i+1] , mesh.normals[i] /= Point3D< PreReal >::Length( mesh.normals[i] );
+								normals[i] += tangents[2*i+0] * o[2*i+0] + tangents[2*i+1] * o[2*i+1] , normals[i] /= Point3D< PreReal >::Length( normals[i] );
 							}
 						);
 					}
 				}		
 				if( Verbose.set ) printf( "\tSmoothed normals: %.2f(s)\n" , tmr.elapsed() );
 			}
-			InitializePrincipalCurvatureDirection( mesh , mesh.normals , principalCurvatures );
-			mesh.updateNormals();
+			InitializePrincipalCurvatureDirection( mesh , normals , principalCurvatures );
 
 			// Set the vector-field to the principal curvature direction times the umbilicity
 			vectorField.resize( principalCurvatures.size() );
@@ -711,11 +715,11 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 			std::vector< Point3D< PreReal > > _vectorField( vectorField.size() );
 			ThreadPool::ParallelFor
 				(
-					0 , mesh.triangles.size() ,
+					0 , mesh.numTriangles() ,
 					[&]( unsigned int , size_t i )
 					{
-						Point3D< PreReal > v[] = { mesh.vertices[ mesh.triangles[i][0] ] , mesh.vertices[ mesh.triangles[i][1] ] , mesh.vertices[ mesh.triangles[i][2] ] };
-						_vectorField[i] = (v[1]-v[0]) * vectorField[i][0] + (v[2]-v[0]) * vectorField[i][1];
+						Simplex< PreReal , 3 , 2 > s = mesh.surfaceTriangle(i);
+						_vectorField[i] = (s[1]-s[0]) * vectorField[i][0] + (s[2]-s[0]) * vectorField[i][1];
 					}
 				);
 			WriteVector( _vectorField , OutVectorField.value );
@@ -726,11 +730,11 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 				std::vector< Point3D< PreReal > > _vectorField( vectorField.size() );
 				ThreadPool::ParallelFor
 				(
-					0 , mesh.triangles.size() ,
+					0 , mesh.numTriangles() ,
 					[&]( unsigned int , size_t i )
 					{
-						Point3D< PreReal > v[] = { mesh.vertices[ mesh.triangles[i][0] ] , mesh.vertices[ mesh.triangles[i][1] ] , mesh.vertices[ mesh.triangles[i][2] ] };
-						_vectorField[i] = (v[1]-v[0]) * vectorField[i][0] + (v[2]-v[0]) * vectorField[i][1];
+						Simplex< PreReal , 3 , 2 > s = mesh.surfaceTriangle(i);
+						_vectorField[i] = (s[1]-s[0]) * vectorField[i][0] + (s[2]-s[0]) * vectorField[i][1];
 					}
 				);
 				WriteVector( _vectorField , OutVectorField.value );
@@ -877,7 +881,7 @@ void LineConvolution< PreReal , Real >::Reset( void )
 template< typename PreReal , typename  Real >
 void LineConvolution< PreReal , Real >::InitializeVisualization( void )
 {
-	int tCount = (int)mesh.triangles.size();
+	unsigned int tCount = (unsigned int)mesh.numTriangles();
 
 	visualization.triangles.resize( tCount );
 	visualization.vertices.resize( 3*tCount );
@@ -886,29 +890,26 @@ void LineConvolution< PreReal , Real >::InitializeVisualization( void )
 	visualization.normals.resize( 3*tCount );
 
 
-	for( int i=0 ; i<tCount ; i++ ) for( int k=0 ; k<3 ; k++ ) visualization.triangles[i][k] = 3*i+k;
+	for( unsigned int t=0 , idx=0 ; t<tCount ; t++ )
+	{
+		Point3D< float > n = mesh.surfaceTriangle(t).normal();
+		n /= Point3D< float >::Length( n );
 
-	for (int i = 0; i<tCount; i++) {
-		for (int j = 0; j < 3; j++) {
-			visualization.vertices[3 * i + j] = mesh.vertices[mesh.triangles[i][j]];
-			visualization.normals[3 * i + j] = mesh.normals[mesh.triangles[i][j]];
-			visualization.textureCoordinates[3 * i + j] = mesh.textureCoordinates[3 * i + j];
+		for( int k=0 ; k<3 ; k++ , idx++ )
+		{
+			visualization.triangles[t][k] = idx;
+			visualization.vertices[idx] = mesh.surface.vertices[ mesh.surface.triangles[t][k] ];
+			visualization.normals[idx] = n;
+			visualization.textureCoordinates[idx] = mesh.texture.vertices[ mesh.texture.triangles[t][k] ];
 		}
 	}
 
+	std::vector< unsigned int > boundaryHalfEdges = mesh.texture.boundaryHalfEdges();
 
-
-	std::vector<int> boundaryEdges;
-	mesh.initializeBoundaryEdges( boundaryEdges );
-
-	for (int e = 0; e < boundaryEdges.size(); e++) {
-		int tIndex = boundaryEdges[e] / 3;
-		int kIndex = boundaryEdges[e] % 3;
-		for (int c = 0; c < 2; c++)
-		{
-			Point3D< float > v = Point3D< float >( mesh.vertices[mesh.triangles[tIndex][(kIndex + c) % 3]] );
-			visualization.boundaryEdgeVertices.push_back(v);
-		}
+	for( int e=0; e<boundaryHalfEdges.size(); e++ )
+	{
+		EdgeIndex eIndex = mesh.surface.edgeIndex( boundaryHalfEdges[e] );
+		for( int i=0 ; i<2 ; i++ ) visualization.chartBoundaryVertices.push_back( mesh.surface.vertices[ eIndex[i] ] );
 	}
 
 	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , 'f' , "lic interpolation weight" , "LIC Interpolation Weight" , LICInterpolationWeightCallBack ) );
@@ -942,30 +943,25 @@ void LineConvolution< PreReal , Real >::Init( void )
 	{
 		if( RandomJitter.value ) srand( RandomJitter.value );
 		else                     srand( time(NULL) );
-		std::vector< Point2D< PreReal > >randomOffset( mesh.vertices.size() );
 		PreReal jitterScale = (PreReal)1e-3 / std::max< int >( textureWidth , textureHeight );
-		for( int i=0 ; i<randomOffset.size() ; i++ ) randomOffset[i] = Point2D< PreReal >( (PreReal)1. - Random< PreReal >()*2 , (PreReal)1. - Random< PreReal >()*2 ) * jitterScale;
-		for( int i=0 ; i<mesh.triangles.size() ; i++ ) for( int k=0 ; k<3 ; k++ ) mesh.textureCoordinates[ 3*i+k ] += randomOffset[ mesh.triangles[i][k] ];
+		for( int i=0 ; i<mesh.texture.vertices.size() ; i++ ) mesh.texture.vertices[i] += Point2D< PreReal >( (PreReal)1. - Random< PreReal >()*2 , (PreReal)1. - Random< PreReal >()*2 ) * jitterScale;
 	}
 
 	{
-		padding = Padding::Init( textureWidth , textureHeight , mesh.textureCoordinates , DetailVerbose.set );
-		padding.pad( textureWidth , textureHeight , mesh.textureCoordinates );
+		padding = Padding::Init( textureWidth , textureHeight , mesh.texture.vertices , DetailVerbose.set );
+		padding.pad( textureWidth , textureHeight , mesh.texture.vertices );
 		textureWidth  += padding.width();
 		textureHeight += padding.height();
 	}
 
 	// Define centroid and scale for visualization
-	Point3D< PreReal > centroid;
-	for( int i=0 ; i<mesh.vertices.size() ; i++ ) centroid += mesh.vertices[i];
-	centroid /= (int)mesh.vertices.size();
-	PreReal radius = 0;
-	for( int i=0 ; i<mesh.vertices.size() ; i++ ) radius = std::max< PreReal >( radius , Point3D< PreReal >::Length( mesh.vertices[i]-centroid ) );
-	for( int i=0 ; i<mesh.vertices.size() ; i++ ) mesh.vertices[i] = ( mesh.vertices[i]-centroid ) / radius;
+	Point3D< PreReal > centroid = mesh.surface.centroid();
+	PreReal radius = mesh.surface.boundingRadius( centroid );
+	for( unsigned int i=0 ; i<mesh.surface.vertices.size() ; i++ ) mesh.surface.vertices[i] = ( mesh.surface.vertices[i]-centroid ) / radius;
 
 	Miscellany::Timer timer;
-	FEM::RiemannianMesh< PreReal , unsigned int > rMesh( GetPointer( mesh.triangles ) , mesh.triangles.size() );
-	rMesh.setMetricFromEmbedding( GetPointer( mesh.vertices ) );
+	FEM::RiemannianMesh< PreReal , unsigned int > rMesh( GetPointer( mesh.surface.triangles ) , mesh.surface.triangles.size() );
+	rMesh.setMetricFromEmbedding( GetPointer( mesh.surface.vertices ) );
 	rMesh.makeUnitArea();
 
 	InitializeSystem( rMesh , textureWidth , textureHeight );
