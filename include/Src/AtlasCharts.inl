@@ -179,11 +179,7 @@ AtlasChart< GeometryReal >::GetCharts
 	for( unsigned int i=0 ; i<atlasInfo.oppositeHalfEdges.size() ; i++ ) if( atlasInfo.oppositeHalfEdges[i]==-1 ) atlasInfo.isClosed = false;
 
 	// Set the map taking the indices of surface vertices lying on the texture boundary to vertex indices
-#ifdef NEW_CODE
 	mesh.setBoundaryVertexInfo( textureBoundaryHalfEdges , atlasInfo.surfaceBoundaryVertexToIndex );
-#else // !NEW_CODE
-	mesh.setBoundaryVertexInfo( textureBoundaryHalfEdges , atlasInfo.chartToSurfaceBoundaryVertex );
-#endif // NEW_CODE
 
 	return atlasMesh.getCharts( isTextureBoundaryHalfEdge , width , height );
 }

@@ -116,11 +116,7 @@ template< typename GeometryReal >
 void InitializeChartBoundaryEdgeGridIntersections
 (
 	const AtlasChart< GeometryReal > & atlasChart ,
-#ifdef NEW_CODE
 	const std::map< unsigned int , unsigned int > & surfaceBoundaryVertexToIndex ,
-#else // !NEW_CODE
-	const std::unordered_map< unsigned int , unsigned int > & chartToSurfaceBoundaryVertex ,
-#endif // NEW_CODE
 	GridChart< GeometryReal > & gridChart ,
 	unsigned int & lastBoundaryIndex ,
 	unsigned int numInteriorNodes ,
@@ -169,13 +165,8 @@ void InitializeChartBoundaryEdgeGridIntersections
 				int index;
 				if( edgeIntersectionsInfo[i].intersectionKey.isMeshVertex() )	// Start/end vertex
 				{
-#ifdef NEW_CODE
 					auto iter = surfaceBoundaryVertexToIndex.find( atlasChart.surfaceVertex( edgeIntersectionsInfo[i].intersectionKey.meshIndex ) );
 					if( iter==surfaceBoundaryVertexToIndex.end() ) MK_THROW( "Boundary vertex not found" );
-#else // !NEW_CODE
-					auto iter = chartToSurfaceBoundaryVertex.find( atlasChart.surfaceVertex( edgeIntersectionsInfo[i].intersectionKey.meshIndex ) );
-					if( iter==chartToSurfaceBoundaryVertex.end() ) MK_THROW( "Boundary vertex not found" );
-#endif // NEW_CODE
 					index = iter->second;
 				}
 				else index = lastBoundaryIndex++;
@@ -593,11 +584,7 @@ void InitializeBoundaryPolygons
 )
 { //Fine System
 
-#ifdef NEW_CODE
 	unsigned int numBoundaryVertices = atlasInfo.surfaceBoundaryVertexToIndex.size();
-#else // !NEW_CODE
-	unsigned int numBoundaryVertices = atlasInfo.chartToSurfaceBoundaryVertex.size();
-#endif // NEW_CODE
 	unsigned int lastBoundaryIndex = numBoundaryVertices;
 	std::unordered_map< unsigned int , std::vector< IntersectionInfo< GeometryReal > > > boundaryEdgeIntersections;
 
@@ -605,11 +592,7 @@ void InitializeBoundaryPolygons
 	std::vector< std::map< GridMeshIntersectionKey , NodeInfo< GeometryReal > > > boundaryNodes( gridCharts.size() );
 
 	for( unsigned int i=0 ; i<gridCharts.size() ; i++ )
-#ifdef NEW_CODE
 		InitializeChartBoundaryEdgeGridIntersections( atlasCharts[i] , atlasInfo.surfaceBoundaryVertexToIndex , gridCharts[i] , lastBoundaryIndex , numInteriorNodes , boundaryEdgeIntersections , localBoundarySegmentsInfo[i] , boundaryNodes[i] );	
-#else // !NEW_CODE
-		InitializeChartBoundaryEdgeGridIntersections( atlasCharts[i] , atlasInfo.chartToSurfaceBoundaryVertex , gridCharts[i] , lastBoundaryIndex , numInteriorNodes , boundaryEdgeIntersections , localBoundarySegmentsInfo[i] , boundaryNodes[i] );
-#endif // NEW_CODE
 
 	numBoundaryNodes = lastBoundaryIndex;
 	std::vector< unsigned int > coveredOppositeBoundaryNode( numBoundaryNodes-numBoundaryVertices , 0 );

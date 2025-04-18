@@ -101,12 +101,8 @@ namespace MishaK
 			// The opposite half-edges (in the atlas mesh)
 			std::vector< unsigned int > oppositeHalfEdges;
 
-#ifdef NEW_CODE
 			// A map assigning an index to surface boundary verticess
 			std::map< unsigned int , unsigned int > surfaceBoundaryVertexToIndex;
-#else // !NEW_CODE
-			std::unordered_map< unsigned int , unsigned int > chartToSurfaceBoundaryVertex;
-#endif // NEW_CODE
 
 			// Is the surface mesh water-tight
 			bool isClosed;

@@ -260,18 +260,10 @@ const
 }
 
 template< typename Real >
-#ifdef NEW_CODE
 void TexturedTriangleMesh< Real >::setBoundaryVertexInfo
-#else // !NEW_CODE
-unsigned int TexturedTriangleMesh< Real >::setBoundaryVertexInfo
-#endif // NEW_CODE
 (
 	const std::vector< unsigned int > &textureBoundaryHalfEdges ,
-#ifdef NEW_CODE
 	std::map< unsigned int , unsigned int > &surfaceBoundaryVertexToIndex
-#else // !NEW_CODE
-	std::unordered_map< unsigned int , unsigned int > &chartToSurfaceBoundaryVertex
-#endif // NEW_CODE
 )
 const
 {
@@ -281,16 +273,7 @@ const
 	for( int b=0 ; b<textureBoundaryHalfEdges.size() ; b++ )
 	{
 		EdgeIndex e = surface.edgeIndex( textureBoundaryHalfEdges[b] );
-#ifdef NEW_CODE
 		if( surfaceBoundaryVertexToIndex.find( e[0] )==surfaceBoundaryVertexToIndex.end() ) surfaceBoundaryVertexToIndex[ e[0] ] = idx++;
 		if( surfaceBoundaryVertexToIndex.find( e[1] )==surfaceBoundaryVertexToIndex.end() ) surfaceBoundaryVertexToIndex[ e[1] ] = idx++;
-#else // !NEW_CODE
-		if( chartToSurfaceBoundaryVertex.find( e[0] )==chartToSurfaceBoundaryVertex.end() ) chartToSurfaceBoundaryVertex[ e[0] ] = idx++;
-		if( chartToSurfaceBoundaryVertex.find( e[1] )==chartToSurfaceBoundaryVertex.end() ) chartToSurfaceBoundaryVertex[ e[1] ] = idx++;
-#endif // NEW_CODE
 	}
-#ifdef NEW_CODE
-#else // !NEW_CODE
-	return idx;
-#endif // NEW_CODE
 }
