@@ -45,7 +45,7 @@ DAMAGE.
 //#define NO_OPEN_GL_VISUALIZATION		// Disable OpenGL visualization
 #define USE_TEXTURE_TRIANGLES			// Represent textures using a separate triangulation
 
-#define INSERTION_EPSILON 1e-12		// Separation from interval end-points required for insertion
+#define INSERTION_EPSILON 1e-12			// Separation from interval end-points required for insertion
 
 //#define SANITY_CHECK
 

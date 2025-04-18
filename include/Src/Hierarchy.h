@@ -154,6 +154,7 @@ namespace MishaK
 		unsigned int _sampleNum;
 		SampleData* _samples;
 	};
+
 	template< typename Real >
 	struct QuadraticElementScalarSample
 	{
@@ -197,6 +198,7 @@ namespace MishaK
 		unsigned int _sampleNum;
 		SampleData* _samples;
 	};
+
 	template< typename Real >
 	struct BilinearElementGradientSample
 	{
@@ -240,6 +242,7 @@ namespace MishaK
 		unsigned int _sampleNum;
 		SampleData* _samples;
 	};
+
 	template< typename Real >
 	struct QuadraticElementGradientSample
 	{
@@ -282,6 +285,7 @@ namespace MishaK
 		unsigned int _sampleNum;
 		SampleData* _samples;
 	};
+
 	template< typename _Real >
 	struct ScalarElementSamples
 	{
@@ -293,6 +297,7 @@ namespace MishaK
 		void resize( size_t sz ){ bilinear.resize( sz ); }
 		void sort( void ){ for( int i=0 ; i<bilinear.size() ; i++ ) std::sort( bilinear[i].begin() , bilinear[i].end() , Bilinear::Compare ); }
 	};
+
 	template< typename _Real >
 	struct GradientElementSamples
 	{
@@ -451,7 +456,7 @@ namespace MishaK
 	};
 
 	bool IsCovered( TexelType texelType ){ return texelType==TexelType::BoundarySupportedAndCovered || texelType==TexelType::InteriorSupported; }
-	bool HasBoundarySupport( TexelType texelType ){ return texelType==TexelType::BoundarySupportedAndCovered || texelType==TexelType::BoundarySupported; }
+	bool IsBoundarySupported( TexelType texelType ){ return texelType==TexelType::BoundarySupportedAndCovered || texelType==TexelType::BoundarySupported; }
 
 	std::string CellTypeName( CellType cellType )
 	{
@@ -583,15 +588,34 @@ namespace MishaK
 		int offset;
 	};
 
-	template< typename GeometryReal , typename MatrixReal >
-	class GridAtlas
+	struct IndexConverter
 	{
-	public:
+		unsigned int boundaryToSupported( unsigned int idx ) const { return _boundaryToSupported[idx]; }
+		unsigned int     deepToSupported( unsigned int idx ) const { return     _deepToSupported[idx]; }
+		unsigned int supportedToBoundary( unsigned int idx ) const { return _supportedToBoundaryOrDeep[idx].first ? _supportedToBoundaryOrDeep[idx].second : static_cast< unsigned int >(-1); }
+		unsigned int supportedToDeep    ( unsigned int idx ) const { return _supportedToBoundaryOrDeep[idx].first ? static_cast< unsigned int >(-1) : _supportedToBoundaryOrDeep[idx].second; }
+
+		const std::vector< unsigned int > &boundaryToSupported( void ) const { return _boundaryToSupported; }
+		const std::vector< unsigned int > &    deepToSupported( void ) const { return     _deepToSupported; }
+
+		size_t numSupported( void ) const { return _supportedToBoundaryOrDeep.size(); }
+		size_t numBoundary( void ) const { return _boundaryToSupported.size(); }
+		size_t numDeep( void ) const { return _deepToSupported.size(); }
+	protected:
+		template< typename GeometryReal >
+		friend void InitializeIndexConverter( const std::vector< GridChart< GeometryReal > > & , unsigned int , IndexConverter & );
+
+		std::vector< std::pair< bool , unsigned int > > _supportedToBoundaryOrDeep;
+		std::vector< unsigned int > _boundaryToSupported;
+		std::vector< unsigned int >     _deepToSupported;
+	};
+
+	template< typename GeometryReal , typename MatrixReal >
+	struct GridAtlas
+	{
 
 		std::vector< ThreadTask > threadTasks;
-		std::vector< unsigned int > boundaryAndDeepIndex;
-		std::vector< unsigned int > boundaryGlobalIndex;
-		std::vector< unsigned int > deepGlobalIndex;
+		IndexConverter indexConverter;
 		std::vector< GridNodeInfo > nodeInfo;
 		std::vector< GridChart< GeometryReal > > gridCharts;
 		std::vector< SegmentedRasterLine > segmentedLines;
@@ -668,10 +692,11 @@ namespace MishaK
 	};
 
 	template<class Real>
-	class MultigridLevelIndices {
+	class MultigridLevelIndices
+	{
 	public:
 		std::vector<ThreadTask> threadTasks;
-		std::vector< unsigned int > boundaryGlobalIndex;
+		std::vector< unsigned int > boundaryToSupported;
 		std::vector<SegmentedRasterLine> segmentedLines;
 		std::vector<RasterLine> rasterLines;
 		std::vector<RasterLine> restrictionLines;

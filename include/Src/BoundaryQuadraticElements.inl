@@ -742,11 +742,11 @@ void InitializeCoarseBoundaryToFineBoundaryProlongation
 {
 	std::vector< unsigned int > boundaryFineToFullFine;
 	std::vector< Eigen::Triplet< MatrixReal > > prolongationTriplets;
-	const std::vector< unsigned int > & boundaryAndDeepIndex = gridAtlas.boundaryAndDeepIndex;
+	const IndexConverter &indexConverter = gridAtlas.indexConverter;
 
 	fineBoundaryIndex.resize( gridAtlas.numFineNodes , static_cast< unsigned int >(-1) );
 	unsigned int lastFineBoundaryIndex = 0;
-	for (int i = 0; i < gridAtlas.gridCharts.size(); i++)
+	for( unsigned int i=0 ; i<gridAtlas.gridCharts.size() ; i++ )
 	{
 		const GridChart< GeometryReal > &gridChart = gridAtlas.gridCharts[i];
 		for( int j=0 ; j<gridChart.texelIndices.size() ; j++ )
@@ -755,10 +755,9 @@ void InitializeCoarseBoundaryToFineBoundaryProlongation
 			{ //Interior but not deep
 				int coarseGlobalIndex = gridChart.texelIndices[j].combined;
 
-				int coarseBondaryIndex = boundaryAndDeepIndex[coarseGlobalIndex] - 1;
-
-				if( coarseBondaryIndex>=0 ) prolongationTriplets.push_back( Eigen::Triplet< MatrixReal >( lastFineBoundaryIndex , coarseBondaryIndex , (MatrixReal)1. ) );
-				else MK_THROW( "Coarse node is not boundary. Global index " , coarseGlobalIndex , ". Boundary index " , coarseBondaryIndex );
+				unsigned int boundaryIndex = indexConverter.supportedToBoundary( coarseGlobalIndex );
+				if( boundaryIndex!=-1 ) prolongationTriplets.emplace_back( lastFineBoundaryIndex , boundaryIndex , (MatrixReal)1. );
+				else MK_THROW( "Coarse node is not boundary. Global index " , coarseGlobalIndex , ". Boundary index " , boundaryIndex );
 				fineBoundaryIndex[ gridChart.texelIndices[j].interiorOrCovered ] = lastFineBoundaryIndex;
 				lastFineBoundaryIndex++;
 				boundaryFineToFullFine.push_back( gridChart.texelIndices[j].interiorOrCovered );
@@ -825,10 +824,9 @@ void InitializeCoarseBoundaryToFineBoundaryProlongation
 						MK_THROW( "Interior-supported texel cannot be in the support of an auxiliary node. Weight " , texelWeight , " (A)" );
 					if( gridChart.auxiliaryNodes[j].index<numInteriorTexels || gridChart.auxiliaryNodes[j].index>numFineNodes || texelIndex<0 || texelIndex>numCoarseNodes ) MK_THROW( "Out of bounds index" );
 
-					int coarseBoundaryID = boundaryAndDeepIndex[texelIndex] - 1;
-
-					if( coarseBoundaryID<0 ) MK_THROW( "Coarse node is not boundary" );
-					prolongationTriplets.push_back( Eigen::Triplet< MatrixReal >( fineBoundaryID , coarseBoundaryID , texelWeight ) );
+					unsigned int boundaryIndex = indexConverter.supportedToBoundary( texelIndex );
+					if( boundaryIndex==-1 ) MK_THROW( "Coarse node is not boundary" );
+					prolongationTriplets.emplace_back( fineBoundaryID , boundaryIndex , texelWeight );
 				}
 			}
 		}

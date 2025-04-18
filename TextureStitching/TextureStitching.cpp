@@ -608,7 +608,7 @@ void Stitching< PreReal , Real , TextureBitDepth >::UpdateSolution( bool verbose
 	{
 		Miscellany::Timer timer;
 
-		MultiplyBySystemMatrix_NoReciprocals( massCoefficients , hierarchy.gridAtlases[0].boundaryGlobalIndex , hierarchy.gridAtlases[0].rasterLines , texelValues , texelMass );
+		MultiplyBySystemMatrix_NoReciprocals( massCoefficients , hierarchy.gridAtlases[0].indexConverter , hierarchy.gridAtlases[0].rasterLines , texelValues , texelMass );
 		ComputeDivergence( edgeValues , texelDivergence , deepDivergenceCoefficients , boundaryDivergenceMatrix , divergenceRasterLines );
 
 		ThreadPool::ParallelFor( 0 , textureNodes.size() , [&]( unsigned int , size_t i ){ multigridStitchingVariables[0].rhs[i] = texelMass[i] * interpolationWeight + texelDivergence[i]; } );
@@ -680,11 +680,12 @@ void Stitching< PreReal , Real , TextureBitDepth >::InitializeSystem( int width 
 	}
 
 	multigridIndices.resize(levels);
-	for( int i=0 ; i<levels ; i++ )
+	for( unsigned int i=0 ; i<levels ; i++ )
 	{
+		const IndexConverter & indexConverter = hierarchy.gridAtlases[i].indexConverter;
 		const GridAtlas< PreReal , Real > &gridAtlas = hierarchy.gridAtlases[i];
 		multigridIndices[i].threadTasks = gridAtlas.threadTasks;
-		multigridIndices[i].boundaryGlobalIndex = gridAtlas.boundaryGlobalIndex;
+		multigridIndices[i].boundaryToSupported = indexConverter.boundaryToSupported();
 		multigridIndices[i].segmentedLines = gridAtlas.segmentedLines;
 		multigridIndices[i].rasterLines = gridAtlas.rasterLines;
 		multigridIndices[i].restrictionLines = gridAtlas.restrictionLines;
@@ -697,15 +698,16 @@ void Stitching< PreReal , Real , TextureBitDepth >::InitializeSystem( int width 
 	if( Verbose.set ) printf( "\tInitialized multigrid coefficients: %.2f(s)\n" , timer.elapsed() );
 
 	multigridStitchingVariables.resize(levels);
-	for( int i=0 ; i<levels ; i++ )
+	for( unsigned int i=0 ; i<levels ; i++ )
 	{
+		const IndexConverter & indexConverter = hierarchy.gridAtlases[i].indexConverter;
 		MultigridLevelVariables< Point3D< Real > >& variables = multigridStitchingVariables[i];
 		variables.x.resize( hierarchy.gridAtlases[i].numTexels );
 		variables.rhs.resize( hierarchy.gridAtlases[i].numTexels );
 		variables.residual.resize( hierarchy.gridAtlases[i].numTexels );
-		variables.boundary_rhs.resize( hierarchy.gridAtlases[i].boundaryGlobalIndex.size() );
-		variables.boundary_value.resize( hierarchy.gridAtlases[i].boundaryGlobalIndex.size() );
-		variables.variable_boundary_value.resize( hierarchy.gridAtlases[i].boundaryGlobalIndex.size() );
+		variables.boundary_rhs.resize( indexConverter.numBoundary() );
+		variables.boundary_value.resize( indexConverter.numBoundary() );
+		variables.variable_boundary_value.resize( indexConverter.numBoundary() );
 	}
 }
 
@@ -713,7 +715,7 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth >
 void Stitching< PreReal , Real , TextureBitDepth >::SetUpSystem( void )
 {
 	texelMass.resize( textureNodes.size() );
-	MultiplyBySystemMatrix_NoReciprocals( massCoefficients , hierarchy.gridAtlases[0].boundaryGlobalIndex , hierarchy.gridAtlases[0].rasterLines , texelValues , texelMass );
+	MultiplyBySystemMatrix_NoReciprocals( massCoefficients , hierarchy.gridAtlases[0].indexConverter , hierarchy.gridAtlases[0].rasterLines , texelValues , texelMass );
 
 	ComputeDivergence( edgeValues , texelDivergence , deepDivergenceCoefficients , boundaryDivergenceMatrix , divergenceRasterLines );
 

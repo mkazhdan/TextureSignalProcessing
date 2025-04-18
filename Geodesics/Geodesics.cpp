@@ -247,7 +247,7 @@ template< typename PreReal , typename Real > int															Geodesics< PreRea
 template< typename PreReal , typename Real > HierarchicalSystem< PreReal , Real >							Geodesics< PreReal , Real >::hierarchy;
 
 template< typename PreReal , typename Real > unsigned char *												Geodesics< PreReal , Real >::outputBuffer;
-template< typename PreReal , typename Real > std::vector<MultigridLevelIndices<Real>>						Geodesics< PreReal , Real >::multigridIndices;
+template< typename PreReal , typename Real > std::vector< MultigridLevelIndices< Real > >					Geodesics< PreReal , Real >::multigridIndices;
 
 //Impulse Smoothing
 template< typename PreReal , typename Real > std::vector< SystemCoefficients< Real > >						Geodesics< PreReal , Real >::multigridSmoothImpulseCoefficients;
@@ -291,12 +291,12 @@ void Geodesics< PreReal , Real >::ComputeExactSolution( void )
 	solve( fineSmoothImpulseSolver , multigridSmoothImpulseVariables[0].x , multigridSmoothImpulseVariables[0].rhs );
 
 	//(1) Integrating vector field	
-	const std::vector< unsigned int > & boundaryGlobalIndex = hierarchy.gridAtlases[0].boundaryGlobalIndex;
+	const IndexConverter & indexConverter = hierarchy.gridAtlases[0].indexConverter;
 
 	ThreadPool::ParallelFor
 	(
-		0 , boundaryGlobalIndex.size() ,
-		[&]( unsigned int , size_t i ){ coarseBoundaryValues[i] = multigridSmoothImpulseVariables[0].x[boundaryGlobalIndex[i]]; }
+		0 , indexConverter.numBoundary() ,
+		[&]( unsigned int , size_t i ){ coarseBoundaryValues[i] = multigridSmoothImpulseVariables[0].x[ indexConverter.boundaryToSupported(i) ]; }
 	);
 	coarseBoundaryFineBoundaryProlongation.Multiply(&coarseBoundaryValues[0], &fineBoundaryValues[0]);
 
@@ -316,8 +316,8 @@ void Geodesics< PreReal , Real >::ComputeExactSolution( void )
 	fineBoundaryCoarseBoundaryRestriction.Multiply( &fineBoundaryRHS[0] , &coarseBoundaryRHS[0] );
 	ThreadPool::ParallelFor
 		(
-			0 , boundaryGlobalIndex.size() ,
-			[&]( unsigned int , size_t i ){ fineGeodesicDistanceRHS[ boundaryGlobalIndex[i] ] += coarseBoundaryRHS[i]; }
+			0 , indexConverter.numBoundary() ,
+			[&]( unsigned int , size_t i ){ fineGeodesicDistanceRHS[ indexConverter.boundaryToSupported(i) ] += coarseBoundaryRHS[i]; }
 		);
 
 	//(3) Update geodesic distance solution	
@@ -548,12 +548,12 @@ void Geodesics< PreReal , Real >::UpdateSolution( void )
 	VCycle( multigridSmoothImpulseVariables , multigridSmoothImpulseCoefficients , multigridIndices , smoothImpulseSolvers , false , false );
 
 	// (2) Integrate normalized vector field
-	const std::vector< unsigned int > & boundaryGlobalIndex = hierarchy.gridAtlases[0].boundaryGlobalIndex;
+	const IndexConverter & indexConverter = hierarchy.gridAtlases[0].indexConverter;
 
 	ThreadPool::ParallelFor
 		(
-			0 , boundaryGlobalIndex.size() ,
-			[&]( unsigned int , size_t i ){ coarseBoundaryValues[i] = multigridSmoothImpulseVariables[0].x[boundaryGlobalIndex[i]]; }
+			0 , indexConverter.numBoundary() ,
+			[&]( unsigned int , size_t i ){ coarseBoundaryValues[i] = multigridSmoothImpulseVariables[0].x[ indexConverter.boundaryToSupported(i) ]; }
 		);
 	coarseBoundaryFineBoundaryProlongation.Multiply(&coarseBoundaryValues[0], &fineBoundaryValues[0]);
 
@@ -572,8 +572,8 @@ void Geodesics< PreReal , Real >::UpdateSolution( void )
 	fineBoundaryCoarseBoundaryRestriction.Multiply(&fineBoundaryRHS[0], &coarseBoundaryRHS[0]);
 	ThreadPool::ParallelFor
 		(
-			0 , boundaryGlobalIndex.size() ,
-			[&]( unsigned int , size_t i ){ multigridGeodesicDistanceVariables[0].rhs[boundaryGlobalIndex[i]] += coarseBoundaryRHS[i]; }
+			0 , indexConverter.numBoundary() ,
+			[&]( unsigned int , size_t i ){ multigridGeodesicDistanceVariables[0].rhs[ indexConverter.boundaryToSupported(i) ] += coarseBoundaryRHS[i]; }
 		);
 
 
@@ -645,14 +645,12 @@ void Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 	{
 		const GridAtlas< PreReal , Real > &gridAtlas = hierarchy.gridAtlases[i];
 		multigridIndices[i].threadTasks = gridAtlas.threadTasks;
-		multigridIndices[i].boundaryGlobalIndex = gridAtlas.boundaryGlobalIndex;
+		multigridIndices[i].boundaryToSupported = gridAtlas.indexConverter.boundaryToSupported();
 		multigridIndices[i].segmentedLines = gridAtlas.segmentedLines;
 		multigridIndices[i].rasterLines = gridAtlas.rasterLines;
 		multigridIndices[i].restrictionLines = gridAtlas.restrictionLines;
 		multigridIndices[i].prolongationLines = gridAtlas.prolongationLines;
-		if (i < levels - 1) {
-			multigridIndices[i].boundaryRestriction = hierarchy.boundaryRestriction[i];
-		}
+		if( i<levels-1 ) multigridIndices[i].boundaryRestriction = hierarchy.boundaryRestriction[i];
 	}
 	if( Verbose.set ) std::cout << pMeter( "MG indices" ) << std::endl;
 
@@ -670,20 +668,21 @@ void Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 		variables.x.resize(hierarchy.gridAtlases[i].numTexels);
 		variables.rhs.resize(hierarchy.gridAtlases[i].numTexels);
 		variables.residual.resize(hierarchy.gridAtlases[i].numTexels);
-		variables.boundary_rhs.resize(hierarchy.gridAtlases[i].boundaryGlobalIndex.size());
-		variables.boundary_value.resize(hierarchy.gridAtlases[i].boundaryGlobalIndex.size());
-		variables.variable_boundary_value.resize(hierarchy.gridAtlases[i].boundaryGlobalIndex.size());
+		variables.boundary_rhs.resize( hierarchy.gridAtlases[i].indexConverter.numBoundary() );
+		variables.boundary_value.resize( hierarchy.gridAtlases[i].indexConverter.numBoundary() );
+		variables.variable_boundary_value.resize( hierarchy.gridAtlases[i].indexConverter.numBoundary() );
 	}
 
-	multigridGeodesicDistanceVariables.resize(levels);
-	for (int i = 0; i < levels; i++) {
+	multigridGeodesicDistanceVariables.resize( levels );
+	for( unsigned int i=0 ; i<levels ; i++ )
+	{
 		MultigridLevelVariables<Real> & variables = multigridGeodesicDistanceVariables[i];
 		variables.x.resize(hierarchy.gridAtlases[i].numTexels);
 		variables.rhs.resize(hierarchy.gridAtlases[i].numTexels);
 		variables.residual.resize(hierarchy.gridAtlases[i].numTexels);
-		variables.boundary_rhs.resize(hierarchy.gridAtlases[i].boundaryGlobalIndex.size());
-		variables.boundary_value.resize(hierarchy.gridAtlases[i].boundaryGlobalIndex.size());
-		variables.variable_boundary_value.resize(hierarchy.gridAtlases[i].boundaryGlobalIndex.size());
+		variables.boundary_rhs.resize( hierarchy.gridAtlases[i].indexConverter.numBoundary() );
+		variables.boundary_value.resize( hierarchy.gridAtlases[i].indexConverter.numBoundary() );
+		variables.variable_boundary_value.resize( hierarchy.gridAtlases[i].indexConverter.numBoundary() );
 	}
 	if( Verbose.set ) std::cout << pMeter( "MG variables" ) << std::endl;
 

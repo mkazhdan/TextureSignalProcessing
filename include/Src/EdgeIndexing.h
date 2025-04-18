@@ -86,7 +86,7 @@ namespace MishaK
 	void InitializeBoundaryEdgeIndexing
 	(
 		const SparseMatrix< MatrixReal , int > &boundaryAdjancencyMatrix ,
-		const std::vector< unsigned int > &boundaryGlobalIndex ,
+		const IndexConverter &indexConverter ,
 		std::map< EdgeIndex , unsigned int > &coarseEdgeIndex ,
 		std::vector< unsigned int > &boundaryEdgeToGlobalEdge ,
 		std::map< EdgeIndex , unsigned int > &boundaryEdgeIndex
@@ -101,12 +101,14 @@ namespace MishaK
 				{
 					EdgeIndex bminKey( bIndices[0] , bIndices[1] );
 					EdgeIndex bmaxKey( bIndices[1] , bIndices[0] );
-					if (boundaryEdgeIndex.find(bminKey) == boundaryEdgeIndex.end() && boundaryEdgeIndex.find(bmaxKey) == boundaryEdgeIndex.end()){
-						unsigned int gIndices[2] = { boundaryGlobalIndex[bIndices[0]],boundaryGlobalIndex[bIndices[1]] };
+					if( boundaryEdgeIndex.find(bminKey)==boundaryEdgeIndex.end() && boundaryEdgeIndex.find(bmaxKey)==boundaryEdgeIndex.end() )
+					{
+						unsigned int gIndices[2] = { indexConverter.boundaryToSupported( bIndices[0] ) , indexConverter.boundaryToSupported( bIndices[1] ) };
 						EdgeIndex minKey( gIndices[0] , gIndices[1] );
 						EdgeIndex maxKey( gIndices[1] , gIndices[0] );
 						int globalEdgeIndex = -1;
-						if (coarseEdgeIndex.find(minKey) != coarseEdgeIndex.end()) {
+						if( coarseEdgeIndex.find(minKey)!=coarseEdgeIndex.end() )
+						{
 							globalEdgeIndex = coarseEdgeIndex[minKey];
 							boundaryEdgeIndex[bminKey] = lastAddedBoundaryEdgeIndex;
 							lastAddedBoundaryEdgeIndex++;

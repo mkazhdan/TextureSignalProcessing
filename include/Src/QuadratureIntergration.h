@@ -719,7 +719,7 @@ namespace MishaK
 				_outNext++;
 				Atomic< T >::Add( *_outNext     , rhsValues[2] );
 			};
-		ThreadPool::ParallelFor( 0 , interiorCellLines.size() , [&]( unsigned int , size_t r ){ UpdateRow(r); } );
+		ThreadPool::ParallelFor( 0 , interiorCellLines.size() , [&]( unsigned int , size_t r ){ UpdateRow( static_cast< unsigned int >(r) ); } );
 
 		if( verbose ) printf( "Integrated bilinear: %.2f(s)\n" , timer.elapsed() );
 

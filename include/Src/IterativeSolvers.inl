@@ -29,15 +29,15 @@ DAMAGE.
 template< class Real , class Data , class Solver >
 void Relaxation
 (
-	const std::vector< Real > &deepCoefficients , const SparseMatrix< Real , int > &boundaryDeepMatrix , Solver &boundarySolver , const std::vector< int > &boundaryGlobalIndex ,
+	const std::vector< Real > &deepCoefficients , const SparseMatrix< Real , int > &boundaryDeepMatrix , Solver &boundarySolver , const std::vector< int > &boundaryToSupported ,
 	const std::vector< SegmentedRasterLine > &segmentedLines ,
 	const std::vector< Data > &rhs , std::vector< Data > &x0 , std::vector< Data > &boundaryRHS , std::vector< Data > &boundarySolution , std::vector< Data > &variableBoundaryRHS ,
 	int numIterations=2 , bool boundaryFirst=true , bool verbose=false
 )
 {
-	int numBoundaryVariables = boundaryGlobalIndex.size();
+	int numBoundaryVariables = boundaryToSupported.size();
 	
-	ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundaryRHS[i] = rhs[ boundaryGlobalIndex[i] ]; } );
+	ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundaryRHS[i] = rhs[ boundaryToSupported[i] ]; } );
 
 	Miscellany::Timer timer;
 
@@ -47,7 +47,7 @@ void Relaxation
 
 			if( verbose ) timer.reset();
 
-			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundarySolution[i] = x0[boundaryGlobalIndex[i]] ; variableBoundaryRHS[i] = boundaryRHS[i]; } );
+			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundarySolution[i] = x0[ boundaryToSupported[i] ] ; variableBoundaryRHS[i] = boundaryRHS[i]; } );
 
 			boundaryDeepMatrix.Multiply((Data*)&x0[0], (Data*)&variableBoundaryRHS[0], MULTIPLY_ADD | MULTIPLY_NEGATE);
 
@@ -57,7 +57,7 @@ void Relaxation
 			solve(boundarySolver,boundarySolution, variableBoundaryRHS);
 			if( verbose ) printf("\t Boundary update =  %.4f \n" , timer.elapsed() );
 
-			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ x0[boundaryGlobalIndex[i]] = boundarySolution[i]; } );
+			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ x0[ boundaryToSupported[i] ] = boundarySolution[i]; } );
 		}
 
 
@@ -143,7 +143,7 @@ void Relaxation
 	const std::vector< Real > &deepCoefficients ,
 	const SparseMatrix< Real , int > &boundaryDeepMatrix ,
 	Solver &boundarySolver ,
-	const std::vector< unsigned int > &boundaryGlobalIndex ,
+	const std::vector< unsigned int > &boundaryToSupported ,
 	const std::vector< ThreadTask > &threadTasks ,
 	const std::vector< Data > &rhs ,
 	std::vector< Data > &x0 ,
@@ -157,9 +157,9 @@ void Relaxation
 {
 
 
-	int numBoundaryVariables = (int)boundaryGlobalIndex.size();
+	int numBoundaryVariables = (int)boundaryToSupported.size();
 
-	ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundaryRHS[i] = rhs[boundaryGlobalIndex[i]]; } );
+	ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundaryRHS[i] = rhs[ boundaryToSupported[i] ]; } );
 
 	Miscellany::Timer timer;
 
@@ -170,7 +170,7 @@ void Relaxation
 
 			if( verbose ) timer.reset();
 
-			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundarySolution[i] = x0[ boundaryGlobalIndex[i] ] ; variableBoundaryRHS[i] = boundaryRHS[i]; } );
+			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundarySolution[i] = x0[ boundaryToSupported[i] ] ; variableBoundaryRHS[i] = boundaryRHS[i]; } );
 
 			boundaryDeepMatrix.Multiply((Data*)&x0[0], (Data*)&variableBoundaryRHS[0], MULTIPLY_ADD | MULTIPLY_NEGATE);
 
@@ -180,7 +180,7 @@ void Relaxation
 			solve(boundarySolver, boundarySolution, variableBoundaryRHS);
 			if( verbose ) printf( "\t Boundary update =  %.4f\n" , timer.elapsed() );
 
-			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ x0[boundaryGlobalIndex[i]] = boundarySolution[i]; } );
+			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ x0[ boundaryToSupported[i] ] = boundarySolution[i]; } );
 		}
 
 
@@ -249,7 +249,7 @@ void RelaxationAndResidual
 	const std::vector< Real > &deepCoefficients ,
 	const SparseMatrix< Real , int > &boundaryDeepMatrix ,
 	Solver &boundarySolver ,
-	const std::vector< unsigned int > &boundaryGlobalIndex ,
+	const std::vector< unsigned int > &boundaryToSupported ,
 	const std::vector< ThreadTask > &threadTasks ,
 	const std::vector< Data > &rhs ,
 	std::vector< Data > &x0 ,
@@ -262,9 +262,9 @@ void RelaxationAndResidual
 	bool verbose=false
 )
 {
-	int numBoundaryVariables = (int)boundaryGlobalIndex.size();
+	int numBoundaryVariables = (int)boundaryToSupported.size();
 
-	ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundaryRHS[i] = rhs[boundaryGlobalIndex[i]]; } );
+	ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundaryRHS[i] = rhs[ boundaryToSupported[i] ]; } );
 
 	Miscellany::Timer timer;
 	for( unsigned int it=0 ; it<numIterations ; it++ )
@@ -273,7 +273,7 @@ void RelaxationAndResidual
 
 			if( verbose ) timer.reset();
 
-			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundaryValue[i] = x0[ boundaryGlobalIndex[i] ] ; variableBoundaryRHS[i] = boundaryRHS[i]; } );
+			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundaryValue[i] = x0[ boundaryToSupported[i] ] ; variableBoundaryRHS[i] = boundaryRHS[i]; } );
 
 			boundaryDeepMatrix.Multiply((Data*)&x0[0], (Data*)&variableBoundaryRHS[0], MULTIPLY_ADD | MULTIPLY_NEGATE);
 			if( verbose ) printf( "\t Boundary initialization =  %.4f\n" , timer.elapsed() );
@@ -283,7 +283,7 @@ void RelaxationAndResidual
 			solve(boundarySolver, boundaryValue, variableBoundaryRHS);
 
 			if( verbose ) printf( "\t Boundary update =  %.4f\n" , timer.elapsed() );
-			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ x0[ boundaryGlobalIndex[i] ] = boundaryValue[i]; } );
+			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ x0[ boundaryToSupported[i] ] = boundaryValue[i]; } );
 		}
 
 		if (it % 2 == 1) {//Update Interior
@@ -385,7 +385,7 @@ void RelaxationAndResidual
 		if( verbose ) timer.reset();
 		boundaryDeepMatrix.Multiply((Data*)&x0[0], (Data*)&boundaryRHS[0], MULTIPLY_ADD | MULTIPLY_NEGATE);
 		boundaryBoundaryMatrix.Multiply((Data*)&boundaryValue[0], (Data*)&boundaryRHS[0], MULTIPLY_ADD | MULTIPLY_NEGATE);
-		for (int i = 0; i < numBoundaryVariables; i++)residual[boundaryGlobalIndex[i]] = boundaryRHS[i];
+		for (int i = 0; i < numBoundaryVariables; i++)residual[ boundaryToSupported[i] ] = boundaryRHS[i];
 		if( verbose ) printf( "\t Boundary residual =  %.4f\n" , timer.elapsed() );
 	}
 }
@@ -394,16 +394,16 @@ void RelaxationAndResidual
 template< class Real , class Data , class Solver >
 void RelaxationAndResidual
 (
-	const std::vector< Real > &deepCoefficients , const SparseMatrix< Real , int > &boundaryDeepMatrix , Solver &boundarySolver , const std::vector< int > &boundaryGlobalIndex ,
+	const std::vector< Real > &deepCoefficients , const SparseMatrix< Real , int > &boundaryDeepMatrix , Solver &boundarySolver , const std::vector< int > &boundaryToSupported ,
 	const std::vector< SegmentedRasterLine > &segmentedLines ,
 	const std::vector< Data > &rhs , std::vector< Data > &x0 , std::vector< Data > &boundaryRHS , std::vector< Data > &boundaryValue , std::vector< Data > &variableBoundaryRHS ,
 	const SparseMatrix< Real , int > &boundaryBoundaryMatrix , std::vector< Data > &residual ,
 	int numIterations=2 , bool verbose=false
 )
 {
-	int numBoundaryVariables = boundaryGlobalIndex.size();
+	int numBoundaryVariables = boundaryToSupported.size();
 
-	ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundaryRHS[i] = rhs[ boundaryGlobalIndex[i] ]; } );
+	ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundaryRHS[i] = rhs[ boundaryToSupported[i] ]; } );
 
 	Miscellany::Timer timer;
 	for (int it = 0; it < numIterations; it++) {
@@ -411,7 +411,7 @@ void RelaxationAndResidual
 
 			if( verbose ) timer.reset();
 
-			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundaryValue[i] = x0[ boundaryGlobalIndex[i] ] ; variableBoundaryRHS[i] = boundaryRHS[i] ; } );
+			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundaryValue[i] = x0[ boundaryToSupported[i] ] ; variableBoundaryRHS[i] = boundaryRHS[i] ; } );
 
 			boundaryDeepMatrix.Multiply((Data*)&x0[0], (Data*)&variableBoundaryRHS[0], MULTIPLY_ADD | MULTIPLY_NEGATE);
 			if( verbose ) printf( "\t Boundary initialization =  %.4f\n" , timer.elapsed() );
@@ -420,7 +420,7 @@ void RelaxationAndResidual
 			solve(boundarySolver, boundaryValue, variableBoundaryRHS);
 
 			if( verbose ) printf( "\t Boundary update =  %.4f\n" , timer.elapsed() );
-			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ x0[ boundaryGlobalIndex[i] ] = boundaryValue[i]; } );
+			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ x0[ boundaryToSupported[i] ] = boundaryValue[i]; } );
 		}
 
 		if (it % 2 == 1) {//Update Interior
@@ -562,21 +562,21 @@ void RelaxationAndResidual
 		if( verbose ) timer.reset();
 		boundaryDeepMatrix.Multiply((Data*)&x0[0], (Data*)&boundaryRHS[0], MULTIPLY_ADD | MULTIPLY_NEGATE);
 		boundaryBoundaryMatrix.Multiply((Data*)&boundaryValue[0], (Data*)&boundaryRHS[0], MULTIPLY_ADD | MULTIPLY_NEGATE);
-		for (int i = 0; i < numBoundaryVariables; i++)residual[boundaryGlobalIndex[i]] = boundaryRHS[i];
+		for (int i = 0; i < numBoundaryVariables; i++)residual[ boundaryToSupported[i] ] = boundaryRHS[i];
 		if( verbose ) printf( "\t Boundary residual =  %.4f\n" , timer.elapsed() );
 	}
 }
 
 template< class Real , class Data , class DataReal=Real >
-void MultiplyBySystemMatrix( const SystemCoefficients< Real > &systemCoefficients , const std::vector< int > &boundaryGlobalIndex , const std::vector< RasterLine > &rasterLines , const std::vector< Data > &in , std::vector< Data > &out , bool verbose=false )
+void MultiplyBySystemMatrix( const SystemCoefficients< Real > &systemCoefficients , const std::vector< int > &boundaryToSupported , const std::vector< RasterLine > &rasterLines , const std::vector< Data > &in , std::vector< Data > &out , bool verbose=false )
 {
 	Miscellany::Timer timer;
 
-	int numBoundaryVariables = boundaryGlobalIndex.size();
+	int numBoundaryVariables = boundaryToSupported.size();
 
 	std::vector<Data> inBoundaryValues;
 	inBoundaryValues.resize(numBoundaryVariables);
-	for (int i = 0; i < numBoundaryVariables; i++) inBoundaryValues[i] = in[boundaryGlobalIndex[i]];
+	for (int i = 0; i < numBoundaryVariables; i++) inBoundaryValues[i] = in[ boundaryToSupported[i] ];
 
 	std::vector<Data> outBoundaryValues;
 	outBoundaryValues.resize(numBoundaryVariables);
@@ -586,7 +586,7 @@ void MultiplyBySystemMatrix( const SystemCoefficients< Real > &systemCoefficient
 	systemCoefficients.boundaryDeepMatrix.Multiply(&in[0], &outBoundaryValues[0], MULTIPLY_ADD);
 	if( verbose ) printf( "\t Multiply boundary =  %.4f\n" , timer.elapsed() );
 
-	ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ out[boundaryGlobalIndex[i]] = outBoundaryValues[i]; } );
+	ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ out[ boundaryToSupported[i] ] = outBoundaryValues[i]; } );
 
 	auto UpdateRow = [&](int r)
 	{
@@ -640,7 +640,7 @@ template< class Real , class Data , class DataReal=Real >
 void MultiplyBySystemMatrix_NoReciprocals
 (
 	const SystemCoefficients< Real > &systemCoefficients ,
-	const std::vector< unsigned int >& boundaryGlobalIndex ,
+	const IndexConverter & indexConverter ,
 	const std::vector< RasterLine >& rasterLines ,
 	const std::vector< Data >& in ,
 	std::vector< Data > & out ,
@@ -649,12 +649,12 @@ void MultiplyBySystemMatrix_NoReciprocals
 {
 	Miscellany::Timer timer;
 
-	int numBoundaryVariables = (int)boundaryGlobalIndex.size();
+	unsigned int numBoundaryVariables = (unsigned int)indexConverter.numBoundary();
 
 	// Pull out the boundary values from the input array
 	std::vector< Data > outBoundaryValues( numBoundaryVariables );
 	std::vector< Data >  inBoundaryValues( numBoundaryVariables );
-	for( int i=0 ; i<numBoundaryVariables ; i++ ) inBoundaryValues[i] = in[ boundaryGlobalIndex[i] ];
+	for( int i=0 ; i<numBoundaryVariables ; i++ ) inBoundaryValues[i] = in[ indexConverter.boundaryToSupported(i) ];
 
 	timer.reset();
 	//  Perform the boundary -> boundary multiplication
@@ -664,7 +664,7 @@ void MultiplyBySystemMatrix_NoReciprocals
 	if( verbose ) printf( "\tMultiply boundary = %.4f\n" , timer.elapsed() );
 
 	// Write the boundary values back into the output array
-	ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ out[ boundaryGlobalIndex[i] ] = outBoundaryValues[i]; } );
+	ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ out[ indexConverter.boundaryToSupported(i) ] = outBoundaryValues[i]; } );
 
 	// Perform the interior -> interior multiplication
 	auto UpdateRow = [&]( int r )
@@ -723,7 +723,7 @@ template< class Real , class Data >
 void ComputeSystemResidual
 (
 	const std::vector< Real > &deepCoefficients , const SparseMatrix< Real , int > &boundaryDeepMatrix , const SparseMatrix< Real , int > &boundaryBoundaryMatrix ,
-	const std::vector< int > &boundaryGlobalIndex , const std::vector< RasterLine > &rasterLines ,
+	const std::vector< int > &boundaryToSupported , const std::vector< RasterLine > &rasterLines ,
 	const std::vector< Data > &boundaryRHS , const std::vector< Data > &boundaryValues , const std::vector< Data > &in , const std::vector< Data > &rhs , std::vector< Data > &out ,
 	bool verbose=false
 )
@@ -731,11 +731,11 @@ void ComputeSystemResidual
 	Miscellany::Timer timer;
 	//Boundary residual
 	{
-		int numBoundaryVariables = boundaryGlobalIndex.size();
+		int numBoundaryVariables = boundaryToSupported.size();
 		if( verbose ) timer.reset();
 		boundaryDeepMatrix.Multiply((Data*)&in[0], (Data*)&boundaryRHS[0], MULTIPLY_ADD | MULTIPLY_NEGATE);
 		boundaryBoundaryMatrix.Multiply((Data*)&boundaryValues[0], (Data*)&boundaryRHS[0], MULTIPLY_ADD | MULTIPLY_NEGATE);
-		for (int i = 0; i < numBoundaryVariables; i++)out[boundaryGlobalIndex[i]] = boundaryRHS[i];
+		for (int i = 0; i < numBoundaryVariables; i++) out[ boundaryToSupported[i] ] = boundaryRHS[i];
 		if( verbose ) printf( "\t Residual Boundary =  %.4f \n" , timer.elapsed() );
 	}
 
@@ -788,7 +788,7 @@ template< class Real , class Data >
 void MultiplyByRestriction
 (
 	const SparseMatrix< Real , int > & __boundaryRestrictionMatrix ,
-	const std::vector< unsigned int > &boundaryGlobalIndex ,
+	const std::vector< unsigned int > &boundaryToSupported ,
 	std::vector< Data > &boundaryValue ,
 	const std::vector< RasterLine > &restrictionLines ,
 	const std::vector< Data > &in ,
@@ -798,13 +798,13 @@ void MultiplyByRestriction
 {
 	Miscellany::Timer timer;
 
-	unsigned int numBoundaryVariables = (unsigned int)boundaryGlobalIndex.size();
+	unsigned int numBoundaryVariables = (unsigned int)boundaryToSupported.size();
 
 	if( verbose ) timer.reset();
 	__boundaryRestrictionMatrix.Multiply((Data*)&in[0], (Data*)&boundaryValue[0]);
 	if( verbose ) printf( "\t Restriction boundary  %.4f \n" , timer.elapsed() );
 	
-	ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ out[ boundaryGlobalIndex[i] ] = boundaryValue[i]; } );
+	ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ out[ boundaryToSupported[i] ] = boundaryValue[i]; } );
 
 
 	auto UpdateRow = [&](int r)
@@ -959,7 +959,7 @@ void CellStiffnessToTexelStiffness
 	const std::vector< Data >& interiorTexelToCellCoeffs ,
 	SparseMatrix< Real , int > boundaryCellBasedStiffnessRHSMatrix[Channels] ,
 	std::vector< Real > boundaryTexelValues[Channels] ,
-	const std::vector< unsigned int > & boundaryGlobalIndex ,
+	const IndexConverter & indexConverter ,
 	std::vector< Data >& texelModulatedStiffness ,
 	bool verbose=false
 )
@@ -967,7 +967,7 @@ void CellStiffnessToTexelStiffness
 	//Update Boundary Texels
 	Miscellany::Timer timer;
 	ThreadPool::ParallelFor( 0 , Channels , [&]( unsigned int , size_t c ){ boundaryCellBasedStiffnessRHSMatrix[c].Multiply( &cellSharpenningMask[0] , &boundaryTexelValues[c][0] ); } );
-	ThreadPool::ParallelFor( 0 , boundaryGlobalIndex.size() , [&]( unsigned int , size_t i ){ for( int c=0 ; c<Channels ; c++ ) texelModulatedStiffness[ boundaryGlobalIndex[i] ][c] = boundaryTexelValues[c][i]; } );
+	ThreadPool::ParallelFor( 0 , indexConverter.numBoundary() , [&]( unsigned int , size_t i ){ for( int c=0 ; c<Channels ; c++ ) texelModulatedStiffness[ indexConverter.boundaryToSupported(i) ][c] = boundaryTexelValues[c][i]; } );
 	if( verbose ) printf( "\tBoundary updated: %.3f(s) \n" , timer.elapsed() );
 	//Update Interior Texels
 
@@ -1007,7 +1007,7 @@ void CellStiffnessToTexelStiffness
 	const std::vector< Real >& interiorTexelToCellCoeffs ,
 	SparseMatrix< Real , int > boundaryCellBasedStiffnessRHSMatrix ,
 	std::vector< Real > boundaryTexelValues ,
-	const std::vector< int > & boundaryGlobalIndex ,
+	const IndexConverter &indexConverter ,
 	std::vector< Real >& texelModulatedStiffness ,
 	bool verbose=false
 )
@@ -1015,7 +1015,7 @@ void CellStiffnessToTexelStiffness
 	//Update Boundary Texels
 	Miscellany::Timer timer;
 	boundaryCellBasedStiffnessRHSMatrix.Multiply( &cellSharpenningMask[0] , &boundaryTexelValues[0] );
-	ThreadPool::ParallelFor( 0 , boundaryGlobalIndex.size() , [&]( unsigned int , size_t i ){ texelModulatedStiffness[ boundaryGlobalIndex[i] ] = boundaryTexelValues[i]; } );
+	ThreadPool::ParallelFor( 0 , boundaryToSupported.size() , [&]( unsigned int , size_t i ){ texelModulatedStiffness[ boundaryToSupported[i] ] = boundaryTexelValues[i]; } );
 	if( verbose ) printf( "\tBoundary updated: %.3f(s) \n" , timer.elapsed() );
 	//Update Interior Texels
 
@@ -1072,11 +1072,11 @@ void VCycle( std::vector< MultigridLevelVariables< DataType > > &variables , con
 		if( verbose ) printf( "Level %d\n" , i );
 
 		Miscellany::Timer tmr;
-		RelaxationAndResidual( _coefficients.deepCoefficients , _coefficients.boundaryDeepMatrix , vCycleSolvers.boundary[i] , _indices.boundaryGlobalIndex , _indices.threadTasks , _variables.rhs , _variables.x , _variables.boundary_rhs , _variables.boundary_value , _variables.variable_boundary_value , _coefficients.boundaryBoundaryMatrix , _variables.residual , 2 , detailVerbose );
+		RelaxationAndResidual( _coefficients.deepCoefficients , _coefficients.boundaryDeepMatrix , vCycleSolvers.boundary[i] , _indices.boundaryToSupported , _indices.threadTasks , _variables.rhs , _variables.x , _variables.boundary_rhs , _variables.boundary_value , _variables.variable_boundary_value , _coefficients.boundaryBoundaryMatrix , _variables.residual , 2 , detailVerbose );
 		if( verbose ) printf("Relaxation  + Residual %.4f\n" , tmr.elapsed() );
 
 		if( verbose ) tmr.reset();
-		MultiplyByRestriction( _indices.boundaryRestriction , nextLevelIndices.boundaryGlobalIndex , nextLevelVariables.boundary_value , nextLevelIndices.restrictionLines, _variables.residual, nextLevelVariables.rhs , detailVerbose );
+		MultiplyByRestriction( _indices.boundaryRestriction , nextLevelIndices.boundaryToSupported , nextLevelVariables.boundary_value , nextLevelIndices.restrictionLines, _variables.residual, nextLevelVariables.rhs , detailVerbose );
 		if( verbose ) printf( "Restriction %.4f\n" , tmr.elapsed() );
 	}
 
@@ -1093,7 +1093,7 @@ void VCycle( std::vector< MultigridLevelVariables< DataType > > &variables , con
 			MultigridLevelVariables<DataType> & _variables = variables[i];
 
 			if( verbose ) tmr.reset();
-			Relaxation( _coefficients.deepCoefficients , _coefficients.boundaryDeepMatrix , vCycleSolvers.boundary[i] , _indices.boundaryGlobalIndex , _indices.threadTasks , _variables.rhs , _variables.x , _variables.boundary_rhs , _variables.boundary_value , _variables.variable_boundary_value , 2 , true , detailVerbose );
+			Relaxation( _coefficients.deepCoefficients , _coefficients.boundaryDeepMatrix , vCycleSolvers.boundary[i] , _indices.boundaryToSupported , _indices.threadTasks , _variables.rhs , _variables.x , _variables.boundary_rhs , _variables.boundary_value , _variables.variable_boundary_value , 2 , true , detailVerbose );
 			if( verbose ) printf( "Gauss Seidel %.4f\n" , tmr.elapsed() );
 		}
 		else if( i==levels-1 )

@@ -39,8 +39,9 @@ namespace MishaK
 	{
 		using MeshSample< GeometryReal >::tID;
 		using MeshSample< GeometryReal >::barycentricCoords;
-		TextureNodeInfo( void ) : ci(-1) , cj(-1) , chartID(-1) , isInterior(false) {}
-		TextureNodeInfo( int tID , Point2D< GeometryReal > barycentricCoords , int ci , int cj , int chartID , bool isInterior )
+		TextureNodeInfo( void )
+			: ci(static_cast< unsigned int >(-1) ) , cj( static_cast< unsigned int >(-1) ) , chartID( static_cast< unsigned int >(-1) ) , isInterior(false) {}
+		TextureNodeInfo( unsigned int tID , Point2D< GeometryReal > barycentricCoords , unsigned int ci , unsigned int cj , unsigned int chartID , bool isInterior )
 			: MeshSample< GeometryReal >( tId , barycentricCoords ) , ci(ci) , cj(cj) , chartID(chartID) , isInterior(isInterior) {}
 		unsigned int ci , cj;
 		unsigned int chartID;

@@ -281,7 +281,7 @@ void InitializeAtlasHierachicalRestriction
 	std::vector< Eigen::Triplet< MatrixReal > > boundaryRestrictionTriplets;
 
 	const std::vector<GridNodeInfo> & coarseNodeInfo = coarseAtlas.nodeInfo;
-	const std::vector< unsigned int > & coarseBoundaryDeepIndexing = coarseAtlas.boundaryAndDeepIndex;
+	const IndexConverter &indexConverter = coarseAtlas.indexConverter;
 
 	const std::vector< RasterLine > &coarseRasterLines = coarseAtlas.rasterLines;
 	std::vector<RasterLine> & restrictionLines = coarseAtlas.restrictionLines;
@@ -390,13 +390,15 @@ void InitializeAtlasHierachicalRestriction
 
 			int cj[2];
 			MatrixReal cj_weights[2];
-			if (_fj % 2 == 0) {
+			if (_fj % 2 == 0)
+			{
 				cj[0] = _fj / 2 + coarseChart.centerOffset[1];
 				cj[1] = -1;
 				cj_weights[0] = 1.0;
 				cj_weights[1] = 0.0;
 			}
-			else {
+			else 
+			{
 				cj[0] = _fj / 2 + coarseChart.centerOffset[1];
 				cj[1] = (_fj + sign_fj) / 2 + coarseChart.centerOffset[1];
 				cj_weights[0] = 0.5;
@@ -408,9 +410,8 @@ void InitializeAtlasHierachicalRestriction
 				if( coarseNodeGlobalIndex==-1 ) MK_THROW( "Coarse texel is unactive! (D)" );
 				else
 				{
-					int coarseNodeBoundaryIndex = coarseBoundaryDeepIndexing[coarseNodeGlobalIndex] - 1;
-					if( coarseNodeBoundaryIndex>=0 )
-						boundaryRestrictionTriplets.push_back( Eigen::Triplet< MatrixReal >( coarseNodeBoundaryIndex , fineChart.texelIndices(fi,fj).combined , ci_weights[di] * cj_weights[dj] ) );
+					unsigned int coarseBoundaryIndex = indexConverter.supportedToBoundary( coarseNodeGlobalIndex );
+					if( coarseBoundaryIndex!=-1 ) boundaryRestrictionTriplets.emplace_back( coarseBoundaryIndex , fineChart.texelIndices(fi,fj).combined , ci_weights[di] * cj_weights[dj] );
 				}
 			}
 		}

@@ -83,6 +83,7 @@ const
 		Point2D< GeometryReal > midBBox = ( atlasCharts[i].minCorner+atlasCharts[i].maxCorner ) / 2;
 		midBBox[0] *= (GeometryReal)width;
 		midBBox[1] *= (GeometryReal)height;
+
 		midBBox -= Point2D< GeometryReal >( (GeometryReal)0.5 , (GeometryReal)0.5 );
 		midBBox = Point2D< GeometryReal >( (GeometryReal)floor( midBBox[0] ) , (GeometryReal)floor( midBBox[1] ) );
 		atlasCharts[i].originCoords[0] = (int)round( midBBox[0] );
@@ -99,53 +100,47 @@ const
 	{
 		AtlasChart< GeometryReal > &atlasChart = atlasCharts[i];
 		std::vector< unsigned int > &boundaryHalfEdges = atlasChart.boundaryHalfEdges;
-		for( unsigned int t=0 ; t<atlasChart.triangles.size() ; t++ )
-		{
-			unsigned int tIndex = atlasChart.atlasTriangle(t);
-			for( unsigned int k=0 ; k<3 ; k++ ) if( isBoundaryHalfEdge[ 3*tIndex+k ] ) boundaryHalfEdges.push_back( 3*t+k );
-		}
+		for( unsigned int he=0 ; he<atlasChart.triangles.size()*3 ; he++ ) if( isBoundaryHalfEdge[ atlasChart.atlasHalfEdge(he) ] ) boundaryHalfEdges.push_back( he );
 
 #ifdef REORDER_BOUNDARY
 		// Re-orer the boundary edges so that they are in sequence
 		struct Edge
 		{
-			EdgeIndex edge;
-			unsigned int index;
+			EdgeIndex edgeIndex;
+			unsigned int he;
 			bool processed;
 		};
 		std::vector< Edge > _boundaryHalfEdges( boundaryHalfEdges.size() );
 		for( unsigned int i=0 ; i<boundaryHalfEdges.size() ; i++ )
 		{
-			unsigned he = boundaryHalfEdges[i];
-			unsigned int t = he / 3 , k = he % 3;
-			_boundaryHalfEdges[i].index = he;
-			_boundaryHalfEdges[i].edge = atlasChart.edgeIndex( he );
+			_boundaryHalfEdges[i].he = boundaryHalfEdges[i];
+			_boundaryHalfEdges[i].edgeIndex = atlasChart.edgeIndex( boundaryHalfEdges[i] );
 			_boundaryHalfEdges[i].processed = false;
 		}
-		std::sort( _boundaryHalfEdges.begin() , _boundaryHalfEdges.end() , []( const Edge &e1 , const Edge &e2 ){ return e1.edge[0]<e2.edge[0]; } );
+		std::sort( _boundaryHalfEdges.begin() , _boundaryHalfEdges.end() , []( const Edge &e1 , const Edge &e2 ){ return e1.edgeIndex[0]<e2.edgeIndex[0]; } );
 
 		std::function< unsigned int ( unsigned int , const Edge * , unsigned int , unsigned int ) > FindEdge = [&]( unsigned int v , const Edge *edges , unsigned int sz , unsigned int off )
 			{
 				if( sz==1 )
 				{
-					if( edges[0].edge[0]==v ) return off;
+					if( edges[0].edgeIndex[0]==v ) return off;
 					else
 					{
 						MK_ERROR_OUT( "Could not find vertex: " , v );
 						return static_cast< unsigned int >(-1);
 					}
 				}
-				else if( v<edges[sz/2].edge[0] ) return FindEdge( v , edges , sz/2 , off );
+				else if( v<edges[sz/2].edgeIndex[0] ) return FindEdge( v , edges , sz/2 , off );
 				else return FindEdge( v , edges+(sz/2) , sz-(sz/2) , off+(sz/2) );
 			};
 		unsigned int e=0;
 
 		for( unsigned int i=0 ; i<boundaryHalfEdges.size() ; i++ )
 		{
-			e = FindEdge( _boundaryHalfEdges[e].edge[1] , &_boundaryHalfEdges[0] , (unsigned int)_boundaryHalfEdges.size() , 0 );
+			e = FindEdge( _boundaryHalfEdges[e].edgeIndex[1] , &_boundaryHalfEdges[0] , (unsigned int)_boundaryHalfEdges.size() , 0 );
 			if( _boundaryHalfEdges[e].processed ) MK_ERROR_OUT( "Edge already processed" );
 			_boundaryHalfEdges[e].processed = true;
-			boundaryHalfEdges[e] = _boundaryHalfEdges[e].index;
+			boundaryHalfEdges[e] = _boundaryHalfEdges[e].he;
 		}
 #endif // REORDER_BOUNDARY
 	}

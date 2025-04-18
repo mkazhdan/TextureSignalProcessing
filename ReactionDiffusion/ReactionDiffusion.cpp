@@ -323,12 +323,12 @@ void GrayScottReactionDiffusion< PreReal , Real >::SetRightHandSide( void )
 	static std::vector< Point2D< Real > > ab_x( multigridVariables[0][0].x.size() );
 	static std::vector< Point2D< Real > > ab_rhs( multigridVariables[0][0].rhs.size() );
 	for( int ab=0 ; ab<2 ; ab++ ) ThreadPool::ParallelFor( 0 , ab_x.size() , [&]( unsigned int , size_t i ){ ab_x[i][ab] = multigridVariables[ab][0].x[i]; } );
-	const std::vector< unsigned int >& boundaryGlobalIndex = hierarchy.gridAtlases[0].boundaryGlobalIndex;
+	const IndexConverter & indexConverter = hierarchy.gridAtlases[0].indexConverter;
 
-	ThreadPool::ParallelFor( 0 , boundaryGlobalIndex.size() , [&]( unsigned int , size_t i ){coarseBoundaryValues[i] = ab_x[ boundaryGlobalIndex[i] ]; } );
+	ThreadPool::ParallelFor( 0 , indexConverter.numBoundary() , [&]( unsigned int , size_t i ){ coarseBoundaryValues[i] = ab_x[ indexConverter.boundaryToSupported(i) ]; } );
 	coarseBoundaryFineBoundaryProlongation.Multiply( &coarseBoundaryValues[0] , &fineBoundaryValues[0] );
 
-	for( int ab=0 ; ab<2 ; ab++ ) MultiplyBySystemMatrix_NoReciprocals( massCoefficients , hierarchy.gridAtlases[0].boundaryGlobalIndex , hierarchy.gridAtlases[0].rasterLines , multigridVariables[ab][0].x , multigridVariables[ab][0].rhs );
+	for( unsigned int ab=0 ; ab<2 ; ab++ ) MultiplyBySystemMatrix_NoReciprocals( massCoefficients , indexConverter , hierarchy.gridAtlases[0].rasterLines , multigridVariables[ab][0].x , multigridVariables[ab][0].rhs );
 	auto ABFunction = [&]( Point2D< Real > ab , SquareMatrix< Real , 2 > )
 	{
 		return Point2D< Real >
@@ -344,7 +344,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::SetRightHandSide( void )
 	for( int ab=0 ; ab<2 ; ab++ )
 	{
 		ThreadPool::ParallelFor( 0 , ab_rhs.size() , [&]( unsigned int , size_t i ){ multigridVariables[ab][0].rhs[i] += ab_rhs[i][ab]; } );
-		ThreadPool::ParallelFor( 0 , boundaryGlobalIndex.size() , [&]( unsigned int , size_t i ){ multigridVariables[ab][0].rhs[ boundaryGlobalIndex[i] ] += coarseBoundaryRHS[i][ab]; } );
+		ThreadPool::ParallelFor( 0 , indexConverter.numBoundary() , [&]( unsigned int , size_t i ){ multigridVariables[ab][0].rhs[ indexConverter.boundaryToSupported(i) ] += coarseBoundaryRHS[i][ab]; } );
 	}
 }
 
@@ -682,11 +682,12 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 	//////////////////////////////////// Initialize multigrid indices
 
 	multigridIndices.resize( levels );
-	for( int i=0 ; i<levels ; i++ )
+	for( unsigned int i=0 ; i<levels ; i++ )
 	{
+		const IndexConverter & indexConverter = hierarchy.gridAtlases[i].indexConverter;
 		const GridAtlas< PreReal , Real > &gridAtlas = hierarchy.gridAtlases[i];
 		multigridIndices[i].threadTasks = gridAtlas.threadTasks;
-		multigridIndices[i].boundaryGlobalIndex = gridAtlas.boundaryGlobalIndex;
+		multigridIndices[i].boundaryToSupported = indexConverter.boundaryToSupported();
 		multigridIndices[i].segmentedLines = gridAtlas.segmentedLines;
 		multigridIndices[i].rasterLines = gridAtlas.rasterLines;
 		multigridIndices[i].restrictionLines = gridAtlas.restrictionLines;
@@ -702,18 +703,19 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 
 	//////////////////////////////////// Initialize multigrid variables
 
-	for( int ab=0 ; ab<2 ; ab++ )
+	for( unsigned int ab=0 ; ab<2 ; ab++ )
 	{
 		multigridVariables[ab].resize( levels );
-		for( int i=0 ; i<levels ; i++ )
+		for( unsigned int i=0 ; i<levels ; i++ )
 		{
+			const IndexConverter &indexConverter = hierarchy.gridAtlases[i].indexConverter;
 			MultigridLevelVariables< Real >& variables = multigridVariables[ab][i];
 		 	variables.x.resize( hierarchy.gridAtlases[i].numTexels );
 			variables.rhs.resize( hierarchy.gridAtlases[i].numTexels );
 		 	variables.residual.resize( hierarchy.gridAtlases[i].numTexels );
-			variables.boundary_rhs.resize( hierarchy.gridAtlases[i].boundaryGlobalIndex.size() );
-			variables.boundary_value.resize( hierarchy.gridAtlases[i].boundaryGlobalIndex.size() );
-			variables.variable_boundary_value.resize( hierarchy.gridAtlases[i].boundaryGlobalIndex.size() );
+			variables.boundary_rhs.resize( indexConverter.numBoundary() );
+			variables.boundary_value.resize( indexConverter.numBoundary() );
+			variables.variable_boundary_value.resize( indexConverter.numBoundary() );
 		}
 	}
 

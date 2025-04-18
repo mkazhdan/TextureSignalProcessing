@@ -326,7 +326,7 @@ void LineConvolution< PreReal , Real >::ComputeExactSolution( bool verbose )
 
 	// (1) Line Convolution	
 	// RHS = Mass * randSignal * licInterpolationWeight
-	MultiplyBySystemMatrix_NoReciprocals( anisoMassCoefficients , hierarchy.gridAtlases[0].boundaryGlobalIndex , hierarchy.gridAtlases[0].rasterLines , randSignal , multigridLineConvolutionVariables[0].rhs );
+	MultiplyBySystemMatrix_NoReciprocals( anisoMassCoefficients , hierarchy.gridAtlases[0].indexConverter , hierarchy.gridAtlases[0].rasterLines , randSignal , multigridLineConvolutionVariables[0].rhs );
 	ThreadPool::ParallelFor( 0 , textureNodes.size() , [&]( unsigned int , size_t i ){ multigridLineConvolutionVariables[0].rhs[i] *= licInterpolationWeight; } );
 
 	timer.reset();
@@ -335,10 +335,10 @@ void LineConvolution< PreReal , Real >::ComputeExactSolution( bool verbose )
 
 	//(2) Compute modulation RHS
 	mass_x0.resize( textureNodes.size() );
-	MultiplyBySystemMatrix_NoReciprocals( massCoefficients , hierarchy.gridAtlases[0].boundaryGlobalIndex , hierarchy.gridAtlases[0].rasterLines , multigridLineConvolutionVariables[0].x , mass_x0 );
+	MultiplyBySystemMatrix_NoReciprocals( massCoefficients , hierarchy.gridAtlases[0].indexConverter , hierarchy.gridAtlases[0].rasterLines , multigridLineConvolutionVariables[0].x , mass_x0 );
 
 	stiffness_x0.resize( textureNodes.size() );
-	MultiplyBySystemMatrix_NoReciprocals( stiffnessCoefficients , hierarchy.gridAtlases[0].boundaryGlobalIndex , hierarchy.gridAtlases[0].rasterLines , multigridLineConvolutionVariables[0].x , stiffness_x0 );
+	MultiplyBySystemMatrix_NoReciprocals( stiffnessCoefficients , hierarchy.gridAtlases[0].indexConverter , hierarchy.gridAtlases[0].rasterLines , multigridLineConvolutionVariables[0].x , stiffness_x0 );
 
 	ThreadPool::ParallelFor( 0 , textureNodes.size() , [&]( unsigned int , size_t i ){ multigridModulationVariables[0].rhs[i] = mass_x0[i] * sharpeningInterpolationWeight + stiffness_x0[i] * sharpeningGradientModulation; } );
 
@@ -502,18 +502,18 @@ void LineConvolution< PreReal , Real >::UpdateSolution( bool verbose , bool deta
 	Miscellany::Timer timer;
 
 	// (1) Update smoothed input solution
-	MultiplyBySystemMatrix_NoReciprocals( anisoMassCoefficients , hierarchy.gridAtlases[0].boundaryGlobalIndex , hierarchy.gridAtlases[0].rasterLines , randSignal , multigridLineConvolutionVariables[0].rhs );
+	MultiplyBySystemMatrix_NoReciprocals( anisoMassCoefficients , hierarchy.gridAtlases[0].indexConverter , hierarchy.gridAtlases[0].rasterLines , randSignal , multigridLineConvolutionVariables[0].rhs );
 	ThreadPool::ParallelFor( 0 , textureNodes.size() , [&]( unsigned int , size_t i ){ multigridLineConvolutionVariables[0].rhs[i] *= licInterpolationWeight; } );
 	if( verbose ) timer.reset();
 	VCycle( multigridLineConvolutionVariables , multigridLineConvolutionCoefficients , multigridIndices , lineConvolutionSolvers , detailVerbose , detailVerbose );
 	if( verbose ) printf( "Smoothing impulse %.4f\n" , timer.elapsed() );
 
 	// (2) Compute modulation RHS
-	mass_x0.resize(textureNodes.size());
-	MultiplyBySystemMatrix_NoReciprocals( massCoefficients , hierarchy.gridAtlases[0].boundaryGlobalIndex , hierarchy.gridAtlases[0].rasterLines , multigridLineConvolutionVariables[0].x , mass_x0 );
+	mass_x0.resize( textureNodes.size() );
+	MultiplyBySystemMatrix_NoReciprocals( massCoefficients , hierarchy.gridAtlases[0].indexConverter , hierarchy.gridAtlases[0].rasterLines , multigridLineConvolutionVariables[0].x , mass_x0 );
 
-	stiffness_x0.resize(textureNodes.size());
-	MultiplyBySystemMatrix_NoReciprocals( stiffnessCoefficients , hierarchy.gridAtlases[0].boundaryGlobalIndex , hierarchy.gridAtlases[0].rasterLines , multigridLineConvolutionVariables[0].x , stiffness_x0 );
+	stiffness_x0.resize( textureNodes.size() );
+	MultiplyBySystemMatrix_NoReciprocals( stiffnessCoefficients , hierarchy.gridAtlases[0].indexConverter , hierarchy.gridAtlases[0].rasterLines , multigridLineConvolutionVariables[0].x , stiffness_x0 );
 
 	ThreadPool::ParallelFor( 0 , textureNodes.size() , [&]( unsigned int , size_t i ){ multigridModulationVariables[0].rhs[i] = mass_x0[i] * sharpeningInterpolationWeight + stiffness_x0[i] * sharpeningGradientModulation; } );
 
@@ -550,7 +550,7 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 	{
 		const GridAtlas< PreReal , Real > &gridAtlas = hierarchy.gridAtlases[i];
 		multigridIndices[i].threadTasks = gridAtlas.threadTasks;
-		multigridIndices[i].boundaryGlobalIndex = gridAtlas.boundaryGlobalIndex;
+		multigridIndices[i].boundaryToSupported = gridAtlas.indexConverter.boundaryToSupported();
 		multigridIndices[i].segmentedLines = gridAtlas.segmentedLines;
 		multigridIndices[i].rasterLines = gridAtlas.rasterLines;
 		multigridIndices[i].restrictionLines = gridAtlas.restrictionLines;
@@ -833,27 +833,32 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 		if( Verbose.set ) printf( "\tInitialized multigrid coefficients: %.2f(s)\n" , timer.elapsed() );
 	}
 
+
 	//////////////////////////////////// Initialize multigrid variables
-	multigridLineConvolutionVariables.resize(levels);
-	for (int i = 0; i < levels; i++) {
-		MultigridLevelVariables< Point3D< Real > >& variables = multigridLineConvolutionVariables[i];
+	multigridLineConvolutionVariables.resize( levels );
+	for( unsigned int i=0 ; i<levels ; i++ )
+	{
+		const IndexConverter & indexConverter = hierarchy.gridAtlases[i].indexConverter;
+			MultigridLevelVariables< Point3D< Real > >& variables = multigridLineConvolutionVariables[i];
 		variables.x.resize(hierarchy.gridAtlases[i].numTexels);
 		variables.rhs.resize(hierarchy.gridAtlases[i].numTexels);
 		variables.residual.resize(hierarchy.gridAtlases[i].numTexels);
-		variables.boundary_rhs.resize(hierarchy.gridAtlases[i].boundaryGlobalIndex.size());
-		variables.boundary_value.resize(hierarchy.gridAtlases[i].boundaryGlobalIndex.size());
-		variables.variable_boundary_value.resize(hierarchy.gridAtlases[i].boundaryGlobalIndex.size());
+		variables.boundary_rhs.resize( indexConverter.numBoundary() );
+		variables.boundary_value.resize( indexConverter.numBoundary() );
+		variables.variable_boundary_value.resize( indexConverter.numBoundary() );
 	}
 
 	multigridModulationVariables.resize(levels);
-	for (int i = 0; i < levels; i++) {
+	for( unsigned int i=0 ; i<levels ; i++ )
+	{
+		const IndexConverter & indexConverter = hierarchy.gridAtlases[i].indexConverter;
 		MultigridLevelVariables< Point3D< Real > >& variables = multigridModulationVariables[i];
 		variables.x.resize(hierarchy.gridAtlases[i].numTexels);
 		variables.rhs.resize(hierarchy.gridAtlases[i].numTexels);
 		variables.residual.resize(hierarchy.gridAtlases[i].numTexels);
-		variables.boundary_rhs.resize(hierarchy.gridAtlases[i].boundaryGlobalIndex.size());
-		variables.boundary_value.resize(hierarchy.gridAtlases[i].boundaryGlobalIndex.size());
-		variables.variable_boundary_value.resize(hierarchy.gridAtlases[i].boundaryGlobalIndex.size());
+		variables.boundary_rhs.resize( indexConverter.numBoundary() );
+		variables.boundary_value.resize( indexConverter.numBoundary() );
+		variables.variable_boundary_value.resize( indexConverter.numBoundary() );
 	}
 
 	randSignal.resize( textureNodes.size() );

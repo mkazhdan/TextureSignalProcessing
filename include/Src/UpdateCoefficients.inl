@@ -167,11 +167,11 @@ void FullMatrixConstruction( const GridAtlas< GeometryReal , MatrixReal > &gridA
 {
 	unsigned int numTexels = gridAtlas.numTexels;
 	fullMatrix.resize( numTexels );
-	std::vector< unsigned int > deepGlobalIndex = gridAtlas.deepGlobalIndex;
+	const IndexConverter &indexConverter = gridAtlas.indexConverter;
 
 	//Add deep triplets
 	//Initalization deep
-	for (int i = 0; i < deepGlobalIndex.size(); i++) fullMatrix.SetRowSize(deepGlobalIndex[i], 9);
+	for( unsigned int i=0 ; i<indexConverter.numDeep() ; i++ ) fullMatrix.SetRowSize( indexConverter.deepToSupported(i) , 9 );
 
 	const std::vector<RasterLine> & rasterLines = gridAtlas.rasterLines;
 	for (int r = 0; r < rasterLines.size(); r++) {
@@ -219,14 +219,14 @@ void FullMatrixConstruction( const GridAtlas< GeometryReal , MatrixReal > &gridA
 	}
 
 	std::vector< Eigen::Triplet< MatrixReal > > boundaryTriplets;
-	std::vector< unsigned int > boundaryGlobalIndex = gridAtlas.boundaryGlobalIndex;
-	for (int i = 0; i < boundaryGlobalIndex.size(); i++) {
-		int globalIndex = boundaryGlobalIndex[i];
-		for( int j=0 ; j<systemCoefficients.boundaryDeepMatrix.RowSize(i) ; j++ )
+	for( unsigned int i=0 ; i<indexConverter.numBoundary() ; i++ )
+	{
+		unsigned int globalIndex = indexConverter.boundaryToSupported(i);
+		for( unsigned int j=0 ; j<systemCoefficients.boundaryDeepMatrix.RowSize(i) ; j++ )
 			boundaryTriplets.push_back( Eigen::Triplet< MatrixReal >( globalIndex , systemCoefficients.boundaryDeepMatrix[i][j].N , systemCoefficients.boundaryDeepMatrix[i][j].Value ) );
-		for( int j=0 ; j<systemCoefficients.boundaryBoundaryMatrix.RowSize(i) ; j++ )
+		for( unsigned int j=0 ; j<systemCoefficients.boundaryBoundaryMatrix.RowSize(i) ; j++ )
 		{
-			unsigned int neighbourGlobalIndex = boundaryGlobalIndex[ systemCoefficients.boundaryBoundaryMatrix[i][j].N ];
+			unsigned int neighbourGlobalIndex = indexConverter.boundaryToSupported( systemCoefficients.boundaryBoundaryMatrix[i][j].N );
 			boundaryTriplets.push_back( Eigen::Triplet< MatrixReal >( globalIndex , neighbourGlobalIndex , systemCoefficients.boundaryBoundaryMatrix[i][j].Value ) );
 		}
 	}
