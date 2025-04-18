@@ -1028,14 +1028,9 @@ void InitializeHierarchy
 	bool computeProlongation
 )
 {
-	//(1) Initialize Atlas Mesh
-	AtlasMesh< GeometryReal > atlasMesh;
-	std::vector< unsigned int > oppositeSurfaceCorners;
-	std::unordered_map< unsigned int , unsigned int > boundaryVerticesIndices;
-	unsigned int numBoundaryVertices;
-	bool isClosedSurfaceMesh;
-
-	InitializeAtlasMesh( mesh , width , height , atlasMesh , atlasCharts , oppositeSurfaceCorners , boundaryVerticesIndices , numBoundaryVertices , isClosedSurfaceMesh );
+	//(1) Initialize atlas charts
+	typename AtlasChart< GeometryReal >::AtlasInfo atlasInfo;
+	atlasCharts = AtlasChart< GeometryReal >::GetCharts( mesh , width , height , atlasInfo );
 
 	//(2) Initialize Hierarchy
 	InitializeHierarchy( width , height , hierarchy , atlasCharts , levels , multigridBlockInfo );
@@ -1045,7 +1040,7 @@ void InitializeHierarchy
 	InitializeCellNodes( hierarchy.gridAtlases[0].gridCharts , cellNodes );
 
 	//(4) Initialize boundary triangulation
-	InitializeBoundaryTriangulation( hierarchy.gridAtlases[0] , atlasMesh , atlasCharts , oppositeSurfaceCorners , boundaryVerticesIndices , numBoundaryVertices , isClosedSurfaceMesh );
+	InitializeBoundaryTriangulation( hierarchy.gridAtlases[0] , atlasCharts , atlasInfo );
 
 	//(5) Unnnecesary
 	if( computeProlongation )

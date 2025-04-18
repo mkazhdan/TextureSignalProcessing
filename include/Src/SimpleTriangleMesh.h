@@ -98,7 +98,11 @@ namespace MishaK
 		void setBoundaryHalfEdgeInfo( std::vector< unsigned int > &textureBoundaryHalfEdges , std::vector< unsigned int > &oppositeSurfaceHalfEdges ) const;
 
 		// Sets the boundary vertex information
+#ifdef NEW_CODE
+		void setBoundaryVertexInfo( const std::vector< unsigned int > &textureBoundaryHalfEdges , std::map< unsigned int , unsigned int > &surfaceBoundaryVertexToIndex ) const;		
+#else // !NEW_CODE
 		unsigned int setBoundaryVertexInfo( const std::vector< unsigned int > &textureBoundaryHalfEdges , std::unordered_map< unsigned int , unsigned int > &boundaryVerticesIndices ) const;
+#endif // NEW_CODE
 	};
 #include "SimpleTriangleMesh.inl"
 }

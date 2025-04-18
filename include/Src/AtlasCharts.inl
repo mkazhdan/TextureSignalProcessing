@@ -29,16 +29,16 @@ DAMAGE.
 
 
 template< typename GeometryReal >
-void AtlasMesh< GeometryReal >::initializeCharts
+std::vector< AtlasChart< GeometryReal > >
+AtlasMesh< GeometryReal >::getCharts
 (
 	const std::vector< bool > &isBoundaryHalfEdge ,
 	unsigned int width ,
-	unsigned int height ,
-	std::vector< AtlasChart< GeometryReal > > &atlasCharts
+	unsigned int height
 )
 const
 {
-	atlasCharts.resize( numCharts );
+	std::vector< AtlasChart< GeometryReal > > atlasCharts( numCharts );
 
 	for( unsigned int i=0 ; i<numCharts ; i++ )
 	{
@@ -149,41 +149,41 @@ const
 		}
 #endif // REORDER_BOUNDARY
 	}
+	return atlasCharts;
 }
 
 
 template< typename GeometryReal >
-void InitializeAtlasMesh
+std::vector< AtlasChart< GeometryReal > >
+AtlasChart< GeometryReal >::GetCharts
 (
 	const TexturedTriangleMesh< GeometryReal > &mesh ,
 	unsigned int width ,
 	unsigned int height ,
-	AtlasMesh< GeometryReal > &atlasMesh ,
-	std::vector< AtlasChart< GeometryReal > > &atlasCharts ,
-	std::vector< unsigned int > &oppositeSurfaceHalfEdges ,
-	std::unordered_map< unsigned int , unsigned int > &textureBoundarySurfaceVertexIndices ,
-	unsigned int &numBoundaryVertices ,
-	bool &isClosedSurfaceMesh
+	AtlasInfo &atlasInfo
 )
 {
-	// Compute the 2D mesh
+	// Compute the 2D atlas
+	AtlasMesh< GeometryReal > atlasMesh;
 	atlasMesh.initialize( mesh );
-
-	// Displace vertices
 	atlasMesh.jitter( width , height );
 
 	// Compute the opposite half-edges on the surface mesh and mark whether half-edges are boundaries on the texture mesh
 	std::vector< unsigned int > textureBoundaryHalfEdges;
-	mesh.setBoundaryHalfEdgeInfo( textureBoundaryHalfEdges , oppositeSurfaceHalfEdges );
+	mesh.setBoundaryHalfEdgeInfo( textureBoundaryHalfEdges , atlasInfo.oppositeHalfEdges );
 	std::vector< bool > isTextureBoundaryHalfEdge( mesh.numTriangles()*3 , false );
 	for( unsigned int i=0 ; i<textureBoundaryHalfEdges.size() ; i++ ) isTextureBoundaryHalfEdge[ textureBoundaryHalfEdges[i] ] = true;
 
 	// Determine if the mesh is water-tight
-	isClosedSurfaceMesh = true;
-	for( unsigned int i=0 ; i<oppositeSurfaceHalfEdges.size() ; i++ ) if( oppositeSurfaceHalfEdges[i]==-1 ) isClosedSurfaceMesh = false;
+	atlasInfo.isClosed = true;
+	for( unsigned int i=0 ; i<atlasInfo.oppositeHalfEdges.size() ; i++ ) if( atlasInfo.oppositeHalfEdges[i]==-1 ) atlasInfo.isClosed = false;
 
 	// Set the map taking the indices of surface vertices lying on the texture boundary to vertex indices
-	numBoundaryVertices = mesh.setBoundaryVertexInfo( textureBoundaryHalfEdges , textureBoundarySurfaceVertexIndices );
+#ifdef NEW_CODE
+	mesh.setBoundaryVertexInfo( textureBoundaryHalfEdges , atlasInfo.surfaceBoundaryVertexToIndex );
+#else // !NEW_CODE
+	mesh.setBoundaryVertexInfo( textureBoundaryHalfEdges , atlasInfo.chartToSurfaceBoundaryVertex );
+#endif // NEW_CODE
 
-	atlasMesh.initializeCharts( isTextureBoundaryHalfEdge , width , height , atlasCharts );
+	return atlasMesh.getCharts( isTextureBoundaryHalfEdge , width , height );
 }

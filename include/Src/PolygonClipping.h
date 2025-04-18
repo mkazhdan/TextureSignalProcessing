@@ -391,19 +391,11 @@ namespace MishaK
 	)
 	{
 		std::vector< Point2D< GeometryReal > > outputVertices;
-#ifdef NEW_INTERSECTION_KEY
 		std::vector< GridMeshIntersectionKey > outputIndices;
-#else // !NEW_INTERSECTION_KEY
-		std::vector< unsigned long long > outputIndices;
-#endif // NEW_INTERSECTION_KEY
 		std::vector< int > outputEdgeIndices;
 
 		Point2D< GeometryReal > previousVertex = polygon.vertices[ polygon.vertices.size()-1 ];
-#ifdef NEW_INTERSECTION_KEY
 		GridMeshIntersectionKey previousVertexIndex = polygon.indices[polygon.vertices.size() - 1];
-#else // !NEW_INTERSECTION_KEY
-		unsigned long long previousVertexIndex = polygon.indices[polygon.vertices.size() - 1];
-#endif // NEW_INTERSECTION_KEY
 		int previousEdgeIndex = polygon.edgeIndices[ polygon.vertices.size()-2 ];
 		int nextEdgeIndex = polygon.edgeIndices[ polygon.vertices.size()-1 ];
 
@@ -420,11 +412,7 @@ namespace MishaK
 		for( int i=0 ; i<polygon.vertices.size() ; i++ )
 		{
 			Point2D< GeometryReal > currentVertex = polygon.vertices[i];
-#ifdef NEW_INTERSECTION_KEY
 			GridMeshIntersectionKey currentVertexIndex = polygon.indices[i];
-#else // !NEW_INTERSECTION_KEY
-			unsigned long long currentVertexIndex = polygon.indices[i];
-#endif // NEW_INTERSECTION_KEY
 			previousEdgeIndex = nextEdgeIndex;
 			nextEdgeIndex = polygon.edgeIndices[i];
 
@@ -442,12 +430,7 @@ namespace MishaK
 			{
 				GeometryReal alpha = -currentLevel / (previousLevel - currentLevel);
 				outputVertices.push_back( previousVertex * alpha + currentVertex * ( 1-alpha ) );
-#ifdef NEW_INTERSECTION_KEY
 				outputIndices.push_back( GridMeshIntersectionKey( previousEdgeIndex , edgeIndex ) );
-#else // !NEW_INTERSECTION_KEY
-				unsigned long long intersectionVertexKey = SetIntersectionKey(edgeIndex, previousEdgeIndex);
-				outputIndices.push_back(intersectionVertexKey);
-#endif // NEW_INTERSECTION_KEY
 
 				outputEdgeIndices.push_back( isPreviousInterior ? edgeIndex : previousEdgeIndex );
 			}
@@ -472,14 +455,9 @@ namespace MishaK
 	)
 	{
 		Point2D< GeometryReal > triangleCenter = ( triangle.vertices[0] + triangle.vertices[1] + triangle.vertices[2] ) / 3;
-#ifdef NEW_INTERSECTION_KEY
 		GridMeshIntersectionKey cornerKeys[6];
-#else // !NEW_INTERSECTION_KEY
-		unsigned long long cornerKeys[6];
-#endif // NEW_INTERSECTION_KEY
 		for( int k=0 ; k<3 ; k++ )
 		{
-#ifdef NEW_INTERSECTION_KEY
 			// [NOTE] In sequentially clipping the polygon to the triangle's edges, 
 			//        we can construct a vertex corresponding to a triangle's corner
 			//        that is marked with the two edges of the triangle that meet there.
@@ -488,16 +466,8 @@ namespace MishaK
 			// [WARNING] This assumes that there isn't a grid edge with the same index as the triangle edge
 			cornerKeys[ 2*k+0 ] = GridMeshIntersectionKey( triangle.edgeIndices[(k + 2) % 3] , triangle.edgeIndices[k] );
 			cornerKeys[ 2*k+1 ] = GridMeshIntersectionKey( triangle.edgeIndices[k] , triangle.edgeIndices[(k + 2) % 3] );
-#else // !NEW_INTERSECTION_KEY
-			cornerKeys[ 2*k+0 ] = SetIntersectionKey( triangle.edgeIndices[k], triangle.edgeIndices[(k + 2) % 3] );
-			cornerKeys[ 2*k+1 ] = SetIntersectionKey( triangle.edgeIndices[(k + 2) % 3] , triangle.edgeIndices[k] );
-#endif // NEW_INTERSECTION_KEY
 		}
-#ifdef NEW_INTERSECTION_KEY
 		GridMeshIntersectionKey cornerIndices[6];
-#else // !NEW_INTERSECTION_KEY
-		unsigned long long cornerIndices[6];
-#endif // NEW_INTERSECTION_KEY
 		for( int k=0 ; k<3 ; k++ ) cornerIndices[2*k] = cornerIndices[2*k+1] = triangle.indices[k];
 
 		bool reverseOrientation = false;
@@ -520,11 +490,7 @@ namespace MishaK
 		{
 			int n = (int)polygon.vertices.size();
 			std::vector< Point2D < GeometryReal > > reversedVertices(n);
-#ifdef NEW_INTERSECTION_KEY
 			std::vector< GridMeshIntersectionKey > reversedIndices(n);
-#else // !NEW_INTERSECTION_KEY
-			std::vector < unsigned long long > reversedIndices(n);
-#endif // NEW_INTERSECTION_KEY
 			std::vector < int > reversedEdges(n);
 			for( int k=0 ; k<n ; k++ )
 			{

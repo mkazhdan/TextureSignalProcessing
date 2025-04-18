@@ -42,7 +42,6 @@ namespace MishaK
 		Point2D< GeometryReal > position;
 	};
 
-#ifdef NEW_INTERSECTION_KEY
 	struct GridMeshIntersectionKey
 	{
 		unsigned int gridIndex , meshIndex;
@@ -61,7 +60,6 @@ namespace MishaK
 
 		friend std::ostream &operator << ( std::ostream &s ,  const GridMeshIntersectionKey &iKey ){ return s << "( " << iKey.gridIndex << " , " << iKey.meshIndex << " )"; }
 	};
-#endif // NEW_INTERSECTION_KEY
 
 	template< typename GeometryReal >
 	struct BoundaryIndexedTriangle
@@ -97,38 +95,16 @@ namespace MishaK
 	{
 		template< typename T > using Array = std::conditional_t< N==-1 , std::vector< T > , std::array< T , N > >;
 		Array< Point2D< GeometryReal > > vertices;
-#ifdef NEW_INTERSECTION_KEY
 		Array< GridMeshIntersectionKey > indices;
-#else // !NEW_INTERSECTION_KEY
-		Array< unsigned long long > indices;
-#endif // NEW_INTERSECTION_KEY
 		Array< int > edgeIndices;	// [???]
 	};
 	template< typename GeometryReal > using IndexedIntersectionPolygon  = _IndexedIntersectionPolygon< GeometryReal , static_cast< unsigned int >( -1 ) >;
 	template< typename GeometryReal > using IndexedIntersectionTriangle = _IndexedIntersectionPolygon< GeometryReal , 3 >;
 
-#ifdef NEW_INTERSECTION_KEY
-#else // !NEW_INTERSECTION_KEY
-	unsigned long long SetIntersectionKey( const unsigned long i0 , const unsigned long i1 )
-	{
-		return ( ( (static_cast<unsigned long long>(i0) << 32) & 0xFFFFFFFF00000000) | (static_cast<unsigned long long>(i1) & 0x00000000FFFFFFFF));
-	}
-
-	void GetIntersectionKey( unsigned long long key , unsigned long & i0 , unsigned long & i1 )
-	{
-		i1 = static_cast<unsigned long>(key & 0x00000000FFFFFFFF);
-		i0 = static_cast<unsigned long>((key >> 32) & 0x00000000FFFFFFFF);
-	}
-#endif // NEW_INTERSECTION_KEY
-
 	template< typename GeometryReal >
 	struct IntersectionInfo
 	{
-#ifdef NEW_INTERSECTION_KEY
 		GridMeshIntersectionKey intersectionKey;
-#else // !NEW_INTERSECTION_KEY
-		unsigned long long intersectionKey;
-#endif // NEW_INTERSECTION_KEY
 		int intersectionIndex;
 		Point2D< GeometryReal > position;
 		GeometryReal time;
@@ -141,6 +117,6 @@ namespace MishaK
 	{
 		GeometryReal startTime;
 		GeometryReal endTime;
-		int halfEdge;
+		unsigned int chartHalfEdge;
 	};
 }

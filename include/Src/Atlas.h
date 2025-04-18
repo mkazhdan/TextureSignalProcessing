@@ -62,7 +62,7 @@ namespace MishaK
 		// Displace vertex positions if they are too close to the axes
 		void jitter( unsigned int width , unsigned int height , GeometryReal epsilon=(GeometryReal)1e-6 );
 
-		void initializeCharts( const std::vector< bool > &isBoundaryHalfEdge , unsigned int width , unsigned int height , std::vector< AtlasChart< GeometryReal > > &atlasCharts ) const;
+		std::vector< AtlasChart< GeometryReal > > getCharts( const std::vector< bool > &isBoundaryHalfEdge , unsigned int width , unsigned int height ) const;
 
 	protected:
 		std::vector< unsigned int > _triangleToChart;
@@ -87,11 +87,38 @@ namespace MishaK
 		// Returns the index of the atlas edge associated with the chart half-edge
 		unsigned int atlasEdge( unsigned int he ) const { return _chartHalfEdgeToAtlasEdge[he]; }
 
+		// Returns the index of the atlas half-edge associated with the chart half-edge
+		unsigned int atlasHalfEdge( unsigned int he ) const { return _chartToAtlasTriangle[he/3]*3 + (he%3); }
+
 		// Returns the index of the texture vertex as a surface vertex
 		unsigned int surfaceVertex( unsigned int v ) const { return _chartToSurfaceVertex[v]; }
 
 		// Returns the index of the triangle within the atlas
 		unsigned int atlasTriangle( unsigned int t ) const { return _chartToAtlasTriangle[t]; }
+
+		struct AtlasInfo
+		{
+			// The opposite half-edges (in the atlas mesh)
+			std::vector< unsigned int > oppositeHalfEdges;
+
+#ifdef NEW_CODE
+			// A map assigning an index to surface boundary verticess
+			std::map< unsigned int , unsigned int > surfaceBoundaryVertexToIndex;
+#else // !NEW_CODE
+			std::unordered_map< unsigned int , unsigned int > chartToSurfaceBoundaryVertex;
+#endif // NEW_CODE
+
+			// Is the surface mesh water-tight
+			bool isClosed;
+		};
+
+		static std::vector< AtlasChart< GeometryReal > > GetCharts
+			(
+				const TexturedTriangleMesh< GeometryReal > &mesh ,
+				unsigned int width ,
+				unsigned int height ,
+				AtlasInfo &atlasInfo
+			);
 
 	protected:
 		friend AtlasMesh< GeometryReal >;

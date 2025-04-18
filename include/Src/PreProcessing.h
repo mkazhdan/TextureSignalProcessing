@@ -30,7 +30,6 @@ DAMAGE.
 
 #define NEW_CODE					// General-purpose experimental code encapsulation
 #define NEW_NEW_CODE
-#define NEW_INTERSECTION_KEY		// Represent auxiliary nodes explicilty as a struct
 #define USE_RASTERIZER				// Use triangle/edge rasterization code
 #define REORDER_BOUNDARY			// Re-order the boundary edges so that they are sequential [probably not necessary]
 #define PRE_CLIP_TRIANGLES			// Clip and store triangles with cells [Requires USE_RASTERIZER]
