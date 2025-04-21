@@ -46,31 +46,31 @@ namespace MishaK
 	// If the mesh/grid index is undefined, it indexes a grid/mesh node.
 	struct GridMeshIntersectionKey
 	{
-		unsigned int gridEdgeIndex , meshEdgeIndex;
-		GridMeshIntersectionKey( void ) : gridEdgeIndex(-1) , meshEdgeIndex(-1){}
-		GridMeshIntersectionKey( unsigned int g , unsigned int m ) : gridEdgeIndex(g) , meshEdgeIndex(m){}
-		bool isMeshVertex  ( void ) const { return gridEdgeIndex==-1 && meshEdgeIndex!=-1; }
-		bool isGridVertex  ( void ) const { return meshEdgeIndex==-1 && gridEdgeIndex!=-1; }
-		bool isIntersection( void ) const { return meshEdgeIndex!=-1 && gridEdgeIndex!=-1; }
+		unsigned int gridIndex , meshIndex;
+		GridMeshIntersectionKey( void ) : gridIndex(-1) , meshIndex(-1){}
+		GridMeshIntersectionKey( unsigned int g , unsigned int m ) : gridIndex(g) , meshIndex(m){}
+		bool isMeshVertex  ( void ) const { return gridIndex==-1 && meshIndex!=-1; }
+		bool isGridNode    ( void ) const { return meshIndex==-1 && gridIndex!=-1; }
+		bool isIntersection( void ) const { return meshIndex!=-1 && gridIndex!=-1; }
 
-		bool operator < ( const GridMeshIntersectionKey &key ) const { return gridEdgeIndex<key.gridEdgeIndex || ( gridEdgeIndex==key.gridEdgeIndex && meshEdgeIndex<key.meshEdgeIndex ); }
-		bool operator == ( const GridMeshIntersectionKey &key ) const { return gridEdgeIndex==key.gridEdgeIndex && meshEdgeIndex==key.meshEdgeIndex; }
-		bool operator != ( const GridMeshIntersectionKey &key ) const { return gridEdgeIndex!=key.gridEdgeIndex || meshEdgeIndex!=key.meshEdgeIndex; }
+		bool operator < ( const GridMeshIntersectionKey &key ) const { return gridIndex<key.gridIndex || ( gridIndex==key.gridIndex && meshIndex<key.meshIndex ); }
+		bool operator == ( const GridMeshIntersectionKey &key ) const { return gridIndex==key.gridIndex && meshIndex==key.meshIndex; }
+		bool operator != ( const GridMeshIntersectionKey &key ) const { return gridIndex!=key.gridIndex || meshIndex!=key.meshIndex; }
 
 		static GridMeshIntersectionKey GridNodeKey( unsigned int g ){ return GridMeshIntersectionKey( g , -1 ); }
 		static GridMeshIntersectionKey MeshVertexKey( unsigned int m ){ return GridMeshIntersectionKey( -1 , m ); }
 
-		friend std::ostream &operator << ( std::ostream &s ,  const GridMeshIntersectionKey &iKey ){ return s << "( " << iKey.gridEdgeIndex << " , " << iKey.meshEdgeIndex << " )"; }
+		friend std::ostream &operator << ( std::ostream &s ,  const GridMeshIntersectionKey &iKey ){ return s << "( " << iKey.gridIndex << " , " << iKey.meshIndex << " )"; }
 	};
 
 	template< typename GeometryReal >
 	struct BoundaryIndexedTriangle
 	{
-		int id;
+		unsigned int id;
 		Point2D< GeometryReal > vertices[3];
-		int atlasVertexParentEdge[3];
-		int atlasVertexIndices[3];
-		int atlasEdgeIndices[3];
+		unsigned int atlasVertexParentEdge[3];
+		unsigned int atlasVertexIndices[3];
+		unsigned int atlasEdgeIndices[3];
 		QuadraticElementIndex indices;
 		Point2D< GeometryReal >& operator [] ( size_t idx ){ return vertices[idx]; }
 		const Point2D< GeometryReal >& operator [] ( size_t idx ) const { return vertices[idx]; }
@@ -80,11 +80,11 @@ namespace MishaK
 	struct _AtlasIndexedPolygon
 	{
 		template< typename T > using Array = std::conditional_t< N==-1 , std::vector< T > , std::array< T , N > >;
-		Array< Point2D < GeometryReal > > vertices;
-		Array< int > indices;
-		Array< int > atlasVertexIndices;
-		Array< int > atlasVertexParentEdge;
-		Array< int > atlasEdgeIndices;
+		Array< Point2D < GeometryReal > > vertices;		// The positions of the vertices within the chart
+		Array< unsigned int > indices;					// The index of the boundary vertex
+		Array< unsigned int > atlasVertexIndices;		// The index of the atlas vertex (or -1 if it is not an atlas vertex)
+		Array< unsigned int > atlasVertexParentEdge;	// If this is a not an original mesh vertex, the index of the associated polygon edge 
+		Array< unsigned int > atlasEdgeIndices;			// If this is a boundary segment, the index of the associated polygon edge
 		size_t size( void ) const { return vertices.size(); }
 		Point2D< GeometryReal >& operator [] ( size_t idx ){ return vertices[idx]; }
 		const Point2D< GeometryReal >& operator [] ( size_t idx ) const { return vertices[idx]; }
@@ -98,7 +98,7 @@ namespace MishaK
 		template< typename T > using Array = std::conditional_t< N==-1 , std::vector< T > , std::array< T , N > >;
 		Array< Point2D< GeometryReal > > vertices;
 		Array< GridMeshIntersectionKey > indices;
-		Array< int > edgeIndices;	// [???]
+		Array< unsigned int > edgeIndices;	// [???]
 	};
 	template< typename GeometryReal > using IndexedIntersectionPolygon  = _IndexedIntersectionPolygon< GeometryReal , static_cast< unsigned int >( -1 ) >;
 	template< typename GeometryReal > using IndexedIntersectionTriangle = _IndexedIntersectionPolygon< GeometryReal , 3 >;

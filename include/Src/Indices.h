@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2024, Michael Kazhdan
+Copyright (c) 2025, Fabian Prada and Michael Kazhdan
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -25,44 +25,28 @@ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING 
 ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
 DAMAGE.
 */
-#ifndef PRE_PROCESSING_INCLUDED
-#define PRE_PROCESSING_INCLUDED
+#pragma once
 
-#define NEW_CODE					// General-purpose experimental code encapsulation
-#define NEW_NEW_CODE
-#define USE_RASTERIZER				// Use triangle/edge rasterization code
-#define REORDER_BOUNDARY			// Re-order the boundary edges so that they are sequential [probably not necessary]
-#define PRE_CLIP_TRIANGLES			// Clip and store triangles with cells [Requires USE_RASTERIZER]
-//#define NEW_HALF_EDGE				// Standardize half-edge indexing
+namespace MishaK
+{
+#ifdef DEBUG_INDEXING
+	struct ChartHalfEdgeIndex
+	{
+		ChartHalfEdgeIndex( unsigned int idx ) : _idx(idx){}
+		explicit operator unsigned int (){ return _idx; }
+	protected:
+		unsigned int _idx;
+	};
 
-//#define SEPARATE_POLYGONS			// Keep the polygons obtained by clipping triangles to boundary cells separate
-
-#define USE_EIGEN
-#undef USE_CHOLMOD
-#undef USE_EIGEN_PARDISO
-
-
-//#define NO_OPEN_GL_VISUALIZATION		// Disable OpenGL visualization
-#define USE_TEXTURE_TRIANGLES			// Represent textures using a separate triangulation
-
-#define INSERTION_EPSILON 1e-12			// Separation from interval end-points required for insertion
-
-//#define SANITY_CHECK
-
-
-// Index types: Data | Sequential
-// -- (Half-)edges
-// -- Boundary (half-)edges
-// -- Segments
-// -- Grid nodes
-// -- Atlas/chart vertices
-// -- Auxiliary nodes
-// -- Triangle
-// -- Chart
-// Atlas: Shared vertices/edges
-// Chart: Separate vertices/edges
-
-#define NEW_INDEXING					// Use separate names for indexing
-#define DEBUG_INDEXING					// Use separate classes for indexing
-
-#endif // PRE_PROCESSING_INCLUDED
+	struct AtlasHalfEdgeIndex
+	{
+		AtlasHalfEdgeIndex( unsigned int idx ) : _idx(idx){}
+		explicit operator unsigned int (){ return _idx; }
+	protected:
+		unsigned int _idx;
+	};
+#else // !DEBUG_INDEXING
+	using ChartHalfEdgeIndex = unsigned int;
+	using AtlasHalfEdgeIndex = unsigned int;
+#endif // DEBUG_INDEXING
+}

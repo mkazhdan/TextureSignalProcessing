@@ -35,6 +35,9 @@ DAMAGE.
 #include <Misha/Miscellany.h>
 #include <Misha/Exceptions.h>
 #include "SimpleTriangleMesh.h"
+#ifdef NEW_INDEXING
+#include "Indices.h"
+#endif // NEW_INDEXING
 
 namespace MishaK
 {
@@ -43,19 +46,19 @@ namespace MishaK
 	template< typename GeometryReal >
 	struct AtlasMesh : public SimpleTriangleMesh< GeometryReal , 2 >
 	{
-		using SimpleTriangleMesh< GeometryReal , 2 >::vertices;		// The texture coordinates
-		using SimpleTriangleMesh< GeometryReal , 2 >::triangles;	// The triangles
+		using SimpleTriangleMesh< GeometryReal , 2 >::vertices;		// The chart coordinates
+		using SimpleTriangleMesh< GeometryReal , 2 >::triangles;	// The chart triangles
 
 		// Returns the index of the chart the triangle has been assigned to
-		unsigned int triangleChart( unsigned int t ) const { return _triangleToChart[t]; }
+		unsigned int triangleToChart( unsigned int t ) const { return _triangleToChart[t]; }
 
 		// Returns the index of the edge associated with the half-edge
 		unsigned int halfEdgeToEdge( unsigned int he ) const { return _halfEdgeToEdge[he]; }
 
-		// Returns the index of the texture vertex as a surface vertex
-		unsigned int textureToSurfaceVertex( unsigned int v ) const { return _textureToSurfaceVertex[v]; }
+		// Returns the index of the chart vertex as an atlas vertex
+		unsigned int chartToAtlasVertex( unsigned int v ) const { return _chartToAtlasVertex[v]; }
 
-		unsigned int numCharts;
+		unsigned int numCharts( void ) const { return _numCharts; }
 
 		void initialize( const TexturedTriangleMesh< GeometryReal > &inputMesh );
 
@@ -65,21 +68,22 @@ namespace MishaK
 		std::vector< AtlasChart< GeometryReal > > getCharts( const std::vector< bool > &isBoundaryHalfEdge , unsigned int width , unsigned int height ) const;
 
 	protected:
+		unsigned int _numCharts;
 		std::vector< unsigned int > _triangleToChart;
 		std::vector< unsigned int > _halfEdgeToEdge;
-		std::vector< unsigned int > _textureToSurfaceVertex;
+		std::vector< unsigned int > _chartToAtlasVertex;
 	};
 
 	template< typename GeometryReal >
 	struct AtlasChart : public SimpleTriangleMesh< GeometryReal , 2 >
 	{
-		using SimpleTriangleMesh< GeometryReal , 2 >::vertices;		// The texture coordinates
-		using SimpleTriangleMesh< GeometryReal , 2 >::triangles;	// The triangles
+		using SimpleTriangleMesh< GeometryReal , 2 >::vertices;		// The chart coordinates
+		using SimpleTriangleMesh< GeometryReal , 2 >::triangles;	// The chart triangles
 
 		Point2D< GeometryReal > minCorner;
 		Point2D< GeometryReal > maxCorner;
 		Point2D< GeometryReal > gridOrigin;
-		int originCoords[2];
+		unsigned int originCoords[2];
 
 		// The list of half edges on the boundary of the chart
 		std::vector< unsigned int > boundaryHalfEdges;
@@ -90,8 +94,8 @@ namespace MishaK
 		// Returns the index of the atlas half-edge associated with the chart half-edge
 		unsigned int atlasHalfEdge( unsigned int he ) const { return _chartToAtlasTriangle[he/3]*3 + (he%3); }
 
-		// Returns the index of the texture vertex as a surface vertex
-		unsigned int surfaceVertex( unsigned int v ) const { return _chartToSurfaceVertex[v]; }
+		// Returns the index of the chart vertex as an atlas vertex
+		unsigned int atlasVertex( unsigned int v ) const { return _chartToAtlasVertex[v]; }
 
 		// Returns the index of the triangle within the atlas
 		unsigned int atlasTriangle( unsigned int t ) const { return _chartToAtlasTriangle[t]; }
@@ -101,10 +105,10 @@ namespace MishaK
 			// The opposite half-edges (in the atlas mesh)
 			std::vector< unsigned int > oppositeHalfEdges;
 
-			// A map assigning an index to surface boundary verticess
-			std::map< unsigned int , unsigned int > surfaceBoundaryVertexToIndex;
+			// A map assigning an index to atlas boundary vertices
+			std::map< unsigned int , unsigned int > atlasBoundaryVertexToIndex;
 
-			// Is the surface mesh water-tight
+			// Is the atlas mesh water-tight
 			bool isClosed;
 		};
 
@@ -120,7 +124,7 @@ namespace MishaK
 		friend AtlasMesh< GeometryReal >;
 
 		std::vector< unsigned int > _chartHalfEdgeToAtlasEdge;
-		std::vector< unsigned int > _chartToSurfaceVertex;
+		std::vector< unsigned int > _chartToAtlasVertex;
 		std::vector< unsigned int > _chartToAtlasTriangle;
 	};
 

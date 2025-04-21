@@ -34,7 +34,7 @@ void AtlasMesh< GeometryReal >::initialize
 )
 {
 	// Compute the mapping from triangles to charts
-	_triangleToChart = inputMesh.texture.trianglesToComponents( numCharts );
+	_triangleToChart = inputMesh.texture.trianglesToComponents( _numCharts );
 
 	// Compute the 2D mesh(es)
 	{
@@ -53,7 +53,7 @@ void AtlasMesh< GeometryReal >::initialize
 				if( it==IndexedPointSet.end() )
 				{
 					IndexedPointSet.insert( idxP );
-					_textureToSurfaceVertex.push_back( inputMesh.surface.triangles[t][k] );
+					_chartToAtlasVertex.push_back( inputMesh.surface.triangles[t][k] );
 					currentCorner = (unsigned int)vertices.size();
 					vertices.push_back( tTriangle[k] );
 				}

@@ -1060,7 +1060,7 @@ void VCycle( std::vector< MultigridLevelVariables< DataType > > &variables , con
 	if( verbose ) printf("Zero arrays %.4f \n" , timer.elapsed() );
 
 	//Reduction phase
-	for( int i=0 ; i<levels-1 ; i++ )
+	for( unsigned int i=0 ; i<levels-1 ; i++ )
 	{
 		const SystemCoefficients< Real > & _coefficients = coefficients[i];
 		const MultigridLevelIndices<Real> & _indices = indices[i];
@@ -1080,7 +1080,7 @@ void VCycle( std::vector< MultigridLevelVariables< DataType > > &variables , con
 		if( verbose ) printf( "Restriction %.4f\n" , tmr.elapsed() );
 	}
 
-	//Prolongation phase
+	// Prolongation phase
 	for( int i=levels-1 ; i>=0 ; i-- )
 	{
 		if( verbose ) printf( "Level %d\n" , i );

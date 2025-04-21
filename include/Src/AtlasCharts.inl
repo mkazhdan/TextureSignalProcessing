@@ -38,9 +38,9 @@ AtlasMesh< GeometryReal >::getCharts
 )
 const
 {
-	std::vector< AtlasChart< GeometryReal > > atlasCharts( numCharts );
+	std::vector< AtlasChart< GeometryReal > > atlasCharts( _numCharts );
 
-	for( unsigned int i=0 ; i<numCharts ; i++ )
+	for( unsigned int i=0 ; i<_numCharts ; i++ )
 	{
 		atlasCharts[i].minCorner = Point2D< GeometryReal >(1,1);
 		atlasCharts[i].maxCorner = Point2D< GeometryReal >(0,0);
@@ -51,7 +51,7 @@ const
 
 	for( unsigned int t=0 ; t<triangles.size() ; t++ )
 	{
-		AtlasChart< GeometryReal > &atlasChart = atlasCharts[ triangleChart(t) ];
+		AtlasChart< GeometryReal > &atlasChart = atlasCharts[ triangleToChart(t) ];
 
 		SimplexIndex< 2 > tri;
 		for( unsigned int k=0 ; k<3 ; k++ )
@@ -68,7 +68,7 @@ const
 					atlasChart.maxCorner[c] = std::max< GeometryReal >( vertexPos[c] , atlasChart.maxCorner[c] );
 				}
 
-				atlasChart._chartToSurfaceVertex.push_back( textureToSurfaceVertex(v) );
+				atlasChart._chartToAtlasVertex.push_back( chartToAtlasVertex(v) );
 				atlasChart.vertices.push_back( vertexPos );
 			}
 			tri[k] = chartVertexID[v];
@@ -174,7 +174,7 @@ AtlasChart< GeometryReal >::GetCharts
 	for( unsigned int i=0 ; i<atlasInfo.oppositeHalfEdges.size() ; i++ ) if( atlasInfo.oppositeHalfEdges[i]==-1 ) atlasInfo.isClosed = false;
 
 	// Set the map taking the indices of surface vertices lying on the texture boundary to vertex indices
-	mesh.setBoundaryVertexInfo( textureBoundaryHalfEdges , atlasInfo.surfaceBoundaryVertexToIndex );
+	mesh.setBoundaryVertexInfo( textureBoundaryHalfEdges , atlasInfo.atlasBoundaryVertexToIndex );
 
 	return atlasMesh.getCharts( isTextureBoundaryHalfEdge , width , height );
 }

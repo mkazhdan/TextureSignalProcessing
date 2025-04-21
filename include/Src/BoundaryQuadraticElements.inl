@@ -120,12 +120,12 @@ template< typename GeometryReal >
 void InitializeChartBoundaryEdgeGridIntersections
 (
 	const AtlasChart< GeometryReal > & atlasChart ,
-	const std::map< unsigned int , unsigned int > & surfaceBoundaryVertexToIndex ,
+	const std::map< unsigned int , unsigned int > & atlasBoundaryVertexToIndex ,
 	GridChart< GeometryReal > & gridChart ,
 	unsigned int & boundarySize ,
-	std::map< unsigned int, std::vector< IntersectionInfo< GeometryReal > > > &boundaryEdgeIntersections ,
-	std::map< EdgeIndex , BoundarySegmentInfo< GeometryReal > > &localBoundarySegmentsInfo ,
-	std::map< GridMeshIntersectionKey , NodeInfo< GeometryReal > > & boundaryNodes 	// IntersectionKey -> boundary node index/position
+	std::map< unsigned int, std::vector< IntersectionInfo< GeometryReal > > > &atlasBoundaryHalfEdgeToIntersectionInfos ,
+	std::map< EdgeIndex , BoundarySegmentInfo< GeometryReal > > &segmentToBoundarySegmentInfo ,
+	std::map< GridMeshIntersectionKey , NodeInfo< GeometryReal > > & gridMeshIntersectionKeyToNodInfo
 )
 {
 	for( unsigned int b=0 ; b<atlasChart.boundaryHalfEdges.size() ; b++ )
@@ -134,58 +134,58 @@ void InitializeChartBoundaryEdgeGridIntersections
 		unsigned int atlasHalfEdge = atlasChart.atlasHalfEdge( chartHalfEdge );
 
 		// The intersections of the boundary edge with the grid edges
-		std::vector< IntersectionInfo< GeometryReal > > edgeIntersectionsInfo;
+		std::vector< IntersectionInfo< GeometryReal > > boundaryHalfEdgeIntersectionsInfo;
 
 		EdgeIndex eIndex = atlasChart.edgeIndex( atlasChart.boundaryHalfEdges[b] );
 		Simplex< GeometryReal , 2 , 1 > edge( atlasChart.vertices[ eIndex[0] ] - gridChart.corner , atlasChart.vertices[ eIndex[1] ] - gridChart.corner );
 
 		// Add the end-points of the edge
-		edgeIntersectionsInfo.emplace_back( GridMeshIntersectionKey::MeshVertexKey( eIndex[0] ) , edge[0] , 0 );
-		edgeIntersectionsInfo.emplace_back( GridMeshIntersectionKey::MeshVertexKey( eIndex[1] ) , edge[1] , 1 );
+		boundaryHalfEdgeIntersectionsInfo.emplace_back( GridMeshIntersectionKey::MeshVertexKey( eIndex[0] ) , edge[0] , 0 );
+		boundaryHalfEdgeIntersectionsInfo.emplace_back( GridMeshIntersectionKey::MeshVertexKey( eIndex[1] ) , edge[1] , 1 );
 
 		// Add the points where the edge intersects the grid
-		AddEdgeGridIntersection( edge , gridChart , atlasChart.atlasEdge( chartHalfEdge ) , edgeIntersectionsInfo );
+		AddEdgeGridIntersection( edge , gridChart , atlasChart.atlasEdge( chartHalfEdge ) , boundaryHalfEdgeIntersectionsInfo );
 
 		// Sort intersections
-		std::sort( edgeIntersectionsInfo.begin() , edgeIntersectionsInfo.end() , IntersectionInfo< GeometryReal >::CompareByTime );
+		std::sort( boundaryHalfEdgeIntersectionsInfo.begin() , boundaryHalfEdgeIntersectionsInfo.end() , IntersectionInfo< GeometryReal >::CompareByTime );
 
 		// Assign indices to the boundary-edge/grid intersections
-		for( unsigned int i=0 ; i<edgeIntersectionsInfo.size() ; i++ )
+		for( unsigned int i=0 ; i<boundaryHalfEdgeIntersectionsInfo.size() ; i++ )
 		{
 			// If we haven't seen this vertex before...
-			if( boundaryNodes.find( edgeIntersectionsInfo[i].intersectionKey )==boundaryNodes.end() )
+			if( gridMeshIntersectionKeyToNodInfo.find( boundaryHalfEdgeIntersectionsInfo[i].intersectionKey )==gridMeshIntersectionKeyToNodInfo.end() )
 			{
 				unsigned int index;
-				if( edgeIntersectionsInfo[i].intersectionKey.isMeshVertex() )	// Start/end vertex
+				if( boundaryHalfEdgeIntersectionsInfo[i].intersectionKey.isMeshVertex() )	// Start/end vertex
 				{
-					if( i!=0 && i!=edgeIntersectionsInfo.size()-1 ) MK_ERROR_OUT( "Expected boundary vertex" );
-					auto iter = surfaceBoundaryVertexToIndex.find( atlasChart.surfaceVertex( edgeIntersectionsInfo[i].intersectionKey.meshEdgeIndex ) );
-					if( iter==surfaceBoundaryVertexToIndex.end() ) MK_THROW( "Boundary vertex not found" );
+					if( i!=0 && i!=boundaryHalfEdgeIntersectionsInfo.size()-1 ) MK_ERROR_OUT( "Expected boundary vertex" );
+					auto iter = atlasBoundaryVertexToIndex.find( atlasChart.atlasVertex( boundaryHalfEdgeIntersectionsInfo[i].intersectionKey.meshIndex ) );
+					if( iter==atlasBoundaryVertexToIndex.end() ) MK_THROW( "Boundary vertex not found" );
 					index = iter->second;
 				}
 				else
 				{
-					if( i==0 && i==edgeIntersectionsInfo.size()-1 ) MK_ERROR_OUT( "Expected interior vertex" );
+					if( i==0 && i==boundaryHalfEdgeIntersectionsInfo.size()-1 ) MK_ERROR_OUT( "Expected interior vertex" );
 					index = boundarySize++;
 				}
 
-				boundaryNodes[ edgeIntersectionsInfo[i].intersectionKey ] = NodeInfo< GeometryReal >( index , edgeIntersectionsInfo[i].position );
+				gridMeshIntersectionKeyToNodInfo[ boundaryHalfEdgeIntersectionsInfo[i].intersectionKey ] = NodeInfo< GeometryReal >( index , boundaryHalfEdgeIntersectionsInfo[i].position );
 
-				gridChart.auxiliaryNodes.emplace_back( edgeIntersectionsInfo[i].position , index );
+				gridChart.auxiliaryNodes.emplace_back( boundaryHalfEdgeIntersectionsInfo[i].position , index );
 			}
-			edgeIntersectionsInfo[i].index = boundaryNodes[ edgeIntersectionsInfo[i].intersectionKey ].index;
+			boundaryHalfEdgeIntersectionsInfo[i].index = gridMeshIntersectionKeyToNodInfo[ boundaryHalfEdgeIntersectionsInfo[i].intersectionKey ].index;
 		}
 
 		// Add the segment information
-		for( unsigned int i=0 ; i<edgeIntersectionsInfo.size()-1 ; i++ )
+		for( unsigned int i=0 ; i<boundaryHalfEdgeIntersectionsInfo.size()-1 ; i++ )
 		{
-			EdgeIndex eIndex( boundaryNodes[ edgeIntersectionsInfo[i].intersectionKey ].index , boundaryNodes[ edgeIntersectionsInfo[i+1].intersectionKey ].index );
-			BoundarySegmentInfo< GeometryReal > segmentInfo( edgeIntersectionsInfo[i].time , edgeIntersectionsInfo[i+1].time , chartHalfEdge );
+			EdgeIndex eIndex( gridMeshIntersectionKeyToNodInfo[ boundaryHalfEdgeIntersectionsInfo[i].intersectionKey ].index , gridMeshIntersectionKeyToNodInfo[ boundaryHalfEdgeIntersectionsInfo[i+1].intersectionKey ].index );
+			BoundarySegmentInfo< GeometryReal > segmentInfo( boundaryHalfEdgeIntersectionsInfo[i].time , boundaryHalfEdgeIntersectionsInfo[i+1].time , chartHalfEdge );
 
-			if( localBoundarySegmentsInfo.find( eIndex )!=localBoundarySegmentsInfo.end() ) MK_THROW( "Replicated segment key" );
-			localBoundarySegmentsInfo[ eIndex ] = segmentInfo;
+			if( segmentToBoundarySegmentInfo.find( eIndex )!=segmentToBoundarySegmentInfo.end() ) MK_THROW( "Replicated segment key" );
+			segmentToBoundarySegmentInfo[ eIndex ] = segmentInfo;
 		}
-		boundaryEdgeIntersections[ atlasHalfEdge ] = edgeIntersectionsInfo;
+		atlasBoundaryHalfEdgeToIntersectionInfos[ atlasHalfEdge ] = boundaryHalfEdgeIntersectionsInfo;
 	}
 }
 
@@ -198,9 +198,9 @@ void InitializeChartBoundaryPolygons
 	unsigned int numInteriorNodes ,
 	unsigned int numBoundaryVertices ,
 	unsigned int numBoundaryNodes ,
-	const std::map< unsigned int , std::vector< IntersectionInfo< GeometryReal > > > &boundaryEdgeIntersections ,
-	const std::map< EdgeIndex , BoundarySegmentInfo< GeometryReal > > &boundarySegmentsInfo ,
-	const std::map< GridMeshIntersectionKey , NodeInfo< GeometryReal > > & boundaryNodes ,
+	const std::map< unsigned int , std::vector< IntersectionInfo< GeometryReal > > > & atlasBoundaryHalfEdgeToIntersectionInfos ,
+	const std::map< EdgeIndex , BoundarySegmentInfo< GeometryReal > > & segmentToBoundarySegmentInfo ,
+	const std::map< GridMeshIntersectionKey , NodeInfo< GeometryReal > > & gridMeshIntersectionKeyToNodInfo ,
 	unsigned int chartID
 )
 {
@@ -381,27 +381,27 @@ void InitializeChartBoundaryPolygons
 		std::vector< std::vector< NodeInfo< GeometryReal > > > loopNodes( loopKeys.size() );
 
 		// For vertices on the original mesh, the index of the associated mesh vertex (-1 otherwise)
-		std::vector< std::vector< int > > loopAtlasVertexIndices( loopKeys.size() );
+		std::vector< std::vector< unsigned int > > loopAtlasVertexIndices( loopKeys.size() );
 
 		// Remove vertices generated when non-boundary edges intersect the grid
 		for( unsigned int i=0 ; i<loopKeys.size() ; i++ )
 		{
-			std::vector< GridMeshIntersectionKey > reducedLoop;
+			std::vector< GridMeshIntersectionKey > reducedLoop;		// The subset of vertices that are either grid nodes or boundary nodes
 			std::vector< NodeInfo< GeometryReal > > currentLoopNodes;
-			std::vector< int > currentAtlasVertexIndices;
+			std::vector< unsigned int > currentAtlasVertexIndices;
 
 			// For each polygon vertex
-			for( int j=0 ; j<loopKeys[i].size() ; j++ )
+			for( unsigned int j=0 ; j<loopKeys[i].size() ; j++ )
 			{
 				GridMeshIntersectionKey currentVertexKey = loopKeys[i][j];
 
-				if( currentVertexKey.isGridVertex() )	// Texel node
+				if( currentVertexKey.isGridNode() )	// Texel node
 				{
 					unsigned int pi , pj;
-					if( !gridChart.factorNodeIndex( currentVertexKey.gridEdgeIndex , pi , pj ) ) MK_ERROR_OUT( "Could not factor node index" );
+					if( !gridChart.factorNodeIndex( currentVertexKey.gridIndex , pi , pj ) ) MK_ERROR_OUT( "Could not factor node index" );
 
 					// Confirm that the texel is inside the chart
-					int interiorTexelIndex = gridChart.texelIndices(pi,pj).interiorOrCovered;
+					unsigned int interiorTexelIndex = gridChart.texelIndices(pi,pj).interiorOrCovered;
 					if( interiorTexelIndex==-1 ) MK_THROW( "Invalid texel: " , Point2D< int >( pi , pj ) , " -> " , gridChart.texelIndices(pi,pj).interiorOrCovered , " : " , gridChart.texelIndices(pi, pj).interior );
 
 					reducedLoop.push_back( currentVertexKey );
@@ -410,14 +410,14 @@ void InitializeChartBoundaryPolygons
 				}
 				else
 				{
-					auto iter = boundaryNodes.find( currentVertexKey );
-					if( iter!=boundaryNodes.end() )
+					auto iter = gridMeshIntersectionKeyToNodInfo.find( currentVertexKey );
+					if( iter!=gridMeshIntersectionKeyToNodInfo.end() )
 					{
 						reducedLoop.push_back( currentVertexKey );
 						currentLoopNodes.push_back( iter->second );
 						currentLoopNodes.back().index += numInteriorNodes;
 
-						if( currentVertexKey.isMeshVertex() ) currentAtlasVertexIndices.push_back( currentVertexKey.meshEdgeIndex );
+						if( currentVertexKey.isMeshVertex() ) currentAtlasVertexIndices.push_back( currentVertexKey.meshIndex );
 						else						          currentAtlasVertexIndices.push_back(-1);
 					}
 				}
@@ -429,34 +429,33 @@ void InitializeChartBoundaryPolygons
 		}
 
 		// Add the intermediate vertices for boundary segments
-		std::vector< std::vector< int > > loopAtlasEdges( loopKeys.size() );
-		std::vector< std::vector< int > > loopAtlasVertexParentEdges( loopKeys.size() );
+		std::vector< std::vector< unsigned int > > loopAtlasEdges( loopKeys.size() );
+		std::vector< std::vector< unsigned int > > loopAtlasVertexParentEdges( loopKeys.size() );
 		for( int i=0 ; i<loopKeys.size() ; i++ )
 		{
-			std::vector< std::vector< int > > indicesToInsert;
+			std::vector< std::vector< unsigned int > > indicesToInsert;
 			std::vector< std::vector< GeometryReal > > timesToInsert;
 			std::vector< bool > isInsertionPos( loopKeys[i].size() , false );
-			std::vector< int > polygonAtlasEdgeIndex( loopKeys[i].size() , -1 );
-			std::vector< int > polygonAtlasVertexParentEdges( loopKeys[i].size() , -1 );	// The mesh edge the boundary vertex/node comes from
+			std::vector< unsigned int > polygonAtlasEdgeIndex( loopKeys[i].size() , -1 );
+			std::vector< unsigned int > polygonAtlasVertexParentEdges( loopKeys[i].size() , -1 );	// The mesh edge the boundary vertex/node comes from
 
-			for( int j=0 ; j<loopKeys[i].size() ; j++ )
+			for( unsigned int j=0 ; j<loopKeys[i].size() ; j++ )
 			{
 				GridMeshIntersectionKey currentVertexKey = loopKeys[i][j];
-				GridMeshIntersectionKey nextVertexKey = loopKeys[i][(j + 1) % loopKeys[i].size()];
+				GridMeshIntersectionKey    nextVertexKey = loopKeys[i][(j+1) % loopKeys[i].size()];
 
-
-				if( currentVertexKey.isIntersection() ) polygonAtlasVertexParentEdges[j] = currentVertexKey.meshEdgeIndex;
+				if( currentVertexKey.isIntersection() ) polygonAtlasVertexParentEdges[j] = currentVertexKey.meshIndex;
 
 				// If this is part of a boundary edge
-				auto currentBoundaryNodeIter = boundaryNodes.find( currentVertexKey );
-				auto nextBoundaryNodeIter = boundaryNodes.find( nextVertexKey );
-				if( currentBoundaryNodeIter!=boundaryNodes.end() && nextBoundaryNodeIter!=boundaryNodes.end() )
+				auto currentBoundaryNodeIter = gridMeshIntersectionKeyToNodInfo.find( currentVertexKey );
+				auto    nextBoundaryNodeIter = gridMeshIntersectionKeyToNodInfo.find(    nextVertexKey );
+				if( currentBoundaryNodeIter!=gridMeshIntersectionKeyToNodInfo.end() && nextBoundaryNodeIter!=gridMeshIntersectionKeyToNodInfo.end() )
 				{
 					EdgeIndex eIndex( currentBoundaryNodeIter->second.index , nextBoundaryNodeIter->second.index );
-					auto boundarSegmentInfoIter = boundarySegmentsInfo.find( eIndex );
-					if( boundarSegmentInfoIter!=boundarySegmentsInfo.end() )
+					auto segmentToBoundarySegmentInfoIter = segmentToBoundarySegmentInfo.find( eIndex );
+					if( segmentToBoundarySegmentInfoIter!=segmentToBoundarySegmentInfo.end() )
 					{
-						BoundarySegmentInfo< GeometryReal > segmentInfo = boundarSegmentInfoIter->second;
+						BoundarySegmentInfo< GeometryReal > segmentInfo = segmentToBoundarySegmentInfoIter->second;
 						polygonAtlasEdgeIndex[j] = atlasChart.atlasEdge( segmentInfo.chartHalfEdge );
 
 						unsigned int oppHalfEdge = oppositeHalfEdge[ atlasChart.atlasHalfEdge( segmentInfo.chartHalfEdge ) ];
@@ -465,15 +464,18 @@ void InitializeChartBoundaryPolygons
 							GeometryReal startTime = segmentInfo.startTime;
 							GeometryReal endTime = segmentInfo.endTime;
 
-							auto boundaryEdgeIntersectionsIter = boundaryEdgeIntersections.find( oppHalfEdge );
-							if( boundaryEdgeIntersectionsIter==boundaryEdgeIntersections.end() )
+							// Find the information for the opposite half-edge
+							auto atlasBoundaryHalfEdgeToIntersectionInfosIter = atlasBoundaryHalfEdgeToIntersectionInfos.find( oppHalfEdge );
+							if( atlasBoundaryHalfEdgeToIntersectionInfosIter==atlasBoundaryHalfEdgeToIntersectionInfos.end() )
 								MK_THROW( "Opposite edge intersections not found. Current  edge " , atlasChart.atlasHalfEdge( segmentInfo.chartHalfEdge ) , ". Opposite " , oppHalfEdge );
 
-							std::vector< int > segmentIndicesToInsert;
+							std::vector< unsigned int > segmentIndicesToInsert;
 							std::vector< GeometryReal > segmentTimesToInsert;
 
-							std::vector< IntersectionInfo< GeometryReal > > oppositeIntersection = boundaryEdgeIntersectionsIter->second;
-							for( int oppIter=(int)oppositeIntersection.size()-2 ; oppIter>0 ; oppIter-- )
+							// Iterate through the partitions of the opposite half-edge and, if they happen
+							// within the time interval associated with this segment, insert them
+							std::vector< IntersectionInfo< GeometryReal > > oppositeIntersection = atlasBoundaryHalfEdgeToIntersectionInfosIter->second;
+							for( unsigned int oppIter=(unsigned int)oppositeIntersection.size()-2 ; oppIter!=0 ; oppIter-- )
 							{
 								GeometryReal reversedTime = (GeometryReal)1. - oppositeIntersection[oppIter].time;
 								GeometryReal normalizedTime = ( reversedTime-startTime ) / ( endTime-startTime );
@@ -497,33 +499,40 @@ void InitializeChartBoundaryPolygons
 							}
 						}
 					}
+					// [NOTE] Both end-point may be on the boundary (e.g. when two sides of a triangle pass through the same grid edge)
+					//        but that may not make this a boundary segment
 				}
 			}
+
 			// Do insertions
-			int insertionCount = 0;
+			unsigned int insertionCount = 0;
 			std::vector< NodeInfo< GeometryReal > > expandedLoopNodes;
-			std::vector< int > expandedLoopAtlasVertexIndices;
-			std::vector< int > expandedLoopAtlasEdgeIndex;
-			std::vector< int > expandedVertexParentEdgeIndex;
-			for( int j=0 ; j<loopKeys[i].size() ; j++ )
+			std::vector< unsigned int > expandedLoopAtlasVertexIndices;
+			std::vector< unsigned int > expandedLoopAtlasEdgeIndex;
+			std::vector< unsigned int > expandedVertexParentEdgeIndex;
+			for( unsigned int j=0 ; j<loopKeys[i].size() ; j++ )
 			{
-				//expandedLoopKeys.push_back(loopKeys[i][j]);
+				// Add information for original loop vertex
+
+				//expandedLoopKeys.push_back( loopKeys[i][j] );
 				expandedLoopNodes.push_back( loopNodes[i][j] );
-				expandedLoopAtlasVertexIndices.push_back(loopAtlasVertexIndices[i][j]);
+				expandedLoopAtlasVertexIndices.push_back( loopAtlasVertexIndices[i][j] );
 
-				int currentSegmentAtlasEdgeIndex = polygonAtlasEdgeIndex[j];
-				expandedLoopAtlasEdgeIndex.push_back(currentSegmentAtlasEdgeIndex);
-				expandedVertexParentEdgeIndex.push_back(polygonAtlasVertexParentEdges[j]);
+				unsigned int currentSegmentAtlasEdgeIndex = polygonAtlasEdgeIndex[j];
+				expandedLoopAtlasEdgeIndex.push_back( currentSegmentAtlasEdgeIndex );
+				expandedVertexParentEdgeIndex.push_back( polygonAtlasVertexParentEdges[j] );
 
+				// If there are vertices to insert from the opposite boundary, do that now
 				if( isInsertionPos[j] )
 				{
-					std::vector< int > _indices = indicesToInsert[insertionCount];
-					std::vector< GeometryReal > _times = timesToInsert[insertionCount];
+					const std::vector< unsigned int > & _indices = indicesToInsert[insertionCount];
+					const std::vector< GeometryReal > & _times = timesToInsert[insertionCount];
 					Point2D< GeometryReal > currentPos = loopNodes[i][j].position;
-					Point2D< GeometryReal > nextPos = loopNodes[i][ (j+1)%loopKeys[i].size() ].position;
+					Point2D< GeometryReal >    nextPos = loopNodes[i][ (j+1)%loopKeys[i].size() ].position;
 
 					if( currentSegmentAtlasEdgeIndex==-1 ) MK_THROW( "Invalid atlas edge index" );
-					for( int k=0 ; k<_indices.size() ; k++ )
+
+					for( unsigned int k=0 ; k<_indices.size() ; k++ )
 					{
 						GeometryReal alpha = _times[k];
 						Point2D< GeometryReal > interpolatedPos = (GeometryReal)( 1.-alpha )*currentPos + nextPos*alpha;
@@ -532,12 +541,11 @@ void InitializeChartBoundaryPolygons
 							Point2D< GeometryReal > segmentDir = nextPos - currentPos;
 							interpolatedPos += Point2D< GeometryReal >( -segmentDir[1] , segmentDir[0] ) * (GeometryReal)( ( Random< GeometryReal >()*2 - 1. ) * 1e-10 );
 						}
+
+						// Validate that the added node is not an original atlas vertex (and has been processed)
 						if( _indices[k]<numBoundaryVertices || _indices[k]>numBoundaryNodes ) MK_THROW( "Out of bounds index: " , _indices[k] , " not in " , numBoundaryVertices , " " , numBoundaryNodes );
 
-						AuxiliaryNode< GeometryReal > auxNode;
-						auxNode.index = _indices[k] + numInteriorNodes;
-						auxNode.position = interpolatedPos;
-						gridChart.auxiliaryNodes.push_back(auxNode);
+						gridChart.auxiliaryNodes.emplace_back( interpolatedPos , _indices[k] + numInteriorNodes );
 
 						expandedLoopNodes.emplace_back( _indices[k] + numInteriorNodes , interpolatedPos );
 						expandedLoopAtlasVertexIndices.push_back(-1);
@@ -554,7 +562,7 @@ void InitializeChartBoundaryPolygons
 			loopAtlasVertexParentEdges[i] = expandedVertexParentEdgeIndex;
 		}
 
-		for( int i=0 ; i<loopNodes.size() ; i++ )
+		for( unsigned int i=0 ; i<loopNodes.size() ; i++ )
 		{
 			AtlasIndexedPolygon< GeometryReal > poly;
 			poly.vertices.resize( loopNodes[i].size() ) , poly.indices.resize( loopNodes[i].size() );
@@ -578,27 +586,34 @@ unsigned int InitializeBoundaryPolygons
 )
 { //Fine System
 
-	unsigned int boundarySize = (unsigned int)atlasInfo.surfaceBoundaryVertexToIndex.size();
-	// A map taking (atlas) boundary half-edge indices to their decomposition by grid edges
-	std::map< unsigned int , std::vector< IntersectionInfo< GeometryReal > > > boundaryEdgeIntersections;
+	// Get the initial count of atlas vertices residing on the boundary
+	unsigned int boundarySize = (unsigned int)atlasInfo.atlasBoundaryVertexToIndex.size();
 
-	std::vector< std::map< EdgeIndex , BoundarySegmentInfo< GeometryReal > > > localBoundarySegmentsInfo( gridCharts.size() );
-	std::vector< std::map< GridMeshIntersectionKey , NodeInfo< GeometryReal > > > boundaryNodes( gridCharts.size() );
+	// A map taking (atlas) boundary half-edge indices to their decomposition by grid edges
+	std::map< unsigned int , std::vector< IntersectionInfo< GeometryReal > > > atlasBoundaryHalfEdgeToIntersectionInfos;
+
+	// A map taking a segment to the associated segment information
+	std::vector< std::map< EdgeIndex , BoundarySegmentInfo< GeometryReal > > > segmentToBoundarySegmentInfo( gridCharts.size() );
+
+	// A map taking an intersection key to the associated node information
+	std::vector< std::map< GridMeshIntersectionKey , NodeInfo< GeometryReal > > > gridMeshIntersectionKeyToNodInfo( gridCharts.size() );
 
 	for( unsigned int i=0 ; i<gridCharts.size() ; i++ )
 	{
 		// -- Split the chart's boundary half-edges to the edges of the grid
 		// -- Add associated auxiliary nodes
 		// -- Add associated segments
-		InitializeChartBoundaryEdgeGridIntersections( atlasCharts[i] , atlasInfo.surfaceBoundaryVertexToIndex , gridCharts[i] , boundarySize , boundaryEdgeIntersections , localBoundarySegmentsInfo[i] , boundaryNodes[i] );	
-		for( unsigned int j=0 ; j<gridCharts[i].auxiliaryNodes.size() ; j++ ) gridCharts[i].auxiliaryNodes[j].index += numInteriorNodes;
+		InitializeChartBoundaryEdgeGridIntersections( atlasCharts[i] , atlasInfo.atlasBoundaryVertexToIndex , gridCharts[i] , boundarySize , atlasBoundaryHalfEdgeToIntersectionInfos , segmentToBoundarySegmentInfo[i] , gridMeshIntersectionKeyToNodInfo[i] );	
 	}
+
+	// Offset the auxiliary nodes' indices
+	for( unsigned int i=0 ; i<gridCharts.size() ; i++ ) for( unsigned int j=0 ; j<gridCharts[i].auxiliaryNodes.size() ; j++ ) gridCharts[i].auxiliaryNodes[j].index += numInteriorNodes;
 
 	for( unsigned int i=0 ; i<gridCharts.size() ; i++ )
 	{
 		try
 		{
-			InitializeChartBoundaryPolygons( atlasInfo.oppositeHalfEdges , atlasCharts[i] , gridCharts[i] , numInteriorNodes , (unsigned int)atlasInfo.surfaceBoundaryVertexToIndex.size() , boundarySize , boundaryEdgeIntersections , localBoundarySegmentsInfo[i] , boundaryNodes[i] , i );
+			InitializeChartBoundaryPolygons( atlasInfo.oppositeHalfEdges , atlasCharts[i] , gridCharts[i] , numInteriorNodes , (unsigned int)atlasInfo.atlasBoundaryVertexToIndex.size() , boundarySize , atlasBoundaryHalfEdgeToIntersectionInfos , segmentToBoundarySegmentInfo[i] , gridMeshIntersectionKeyToNodInfo[i] , i );
 		}
 		catch( const Exception & e )
 		{

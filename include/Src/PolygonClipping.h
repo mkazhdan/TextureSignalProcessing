@@ -199,9 +199,9 @@ namespace MishaK
 	)
 	{
 		std::vector< Point2D< GeometryReal > > outputVertices;
-		std::vector< int > outputVertexIndices; 
-		std::vector< int > outputEdgeIndices;
-		std::vector< int > outputParentVertexEdgeIndices;
+		std::vector< unsigned int > outputVertexIndices; 
+		std::vector< unsigned int > outputEdgeIndices;
+		std::vector< unsigned int > outputParentVertexEdgeIndices;
 		outputVertices.reserve( polygon.vertices.size()+3 );
 		outputVertexIndices.reserve( polygon.vertices.size()+3 );
 		outputEdgeIndices.reserve( polygon.vertices.size()+3 );
@@ -392,12 +392,12 @@ namespace MishaK
 	{
 		std::vector< Point2D< GeometryReal > > outputVertices;
 		std::vector< GridMeshIntersectionKey > outputIndices;
-		std::vector< int > outputEdgeIndices;
+		std::vector< unsigned int > outputEdgeIndices;
 
 		Point2D< GeometryReal > previousVertex = polygon.vertices[ polygon.vertices.size()-1 ];
 		GridMeshIntersectionKey previousVertexIndex = polygon.indices[polygon.vertices.size() - 1];
-		int previousEdgeIndex = polygon.edgeIndices[ polygon.vertices.size()-2 ];
-		int nextEdgeIndex = polygon.edgeIndices[ polygon.vertices.size()-1 ];
+		unsigned int previousEdgeIndex = polygon.edgeIndices[ polygon.vertices.size()-2 ];
+		unsigned int nextEdgeIndex = polygon.edgeIndices[ polygon.vertices.size()-1 ];
 
 		GeometryReal previousLevel = edgeEquation( previousVertex );
 		bool isPreviousInterior = previousLevel > 0;
@@ -409,7 +409,7 @@ namespace MishaK
 		// -- If the vertex is exterior
 		// ----- If the previous vertex was interior, create and add the crossing edge
 
-		for( int i=0 ; i<polygon.vertices.size() ; i++ )
+		for( unsigned int i=0 ; i<polygon.vertices.size() ; i++ )
 		{
 			Point2D< GeometryReal > currentVertex = polygon.vertices[i];
 			GridMeshIntersectionKey currentVertexIndex = polygon.indices[i];
@@ -488,10 +488,10 @@ namespace MishaK
 
 		if( reverseOrientation )
 		{
-			int n = (int)polygon.vertices.size();
+			unsigned int n = (int)polygon.vertices.size();
 			std::vector< Point2D < GeometryReal > > reversedVertices(n);
 			std::vector< GridMeshIntersectionKey > reversedIndices(n);
-			std::vector < int > reversedEdges(n);
+			std::vector < unsigned int > reversedEdges(n);
 			for( int k=0 ; k<n ; k++ )
 			{
 				reversedVertices[k] = polygon.vertices[ n-1-k ];
