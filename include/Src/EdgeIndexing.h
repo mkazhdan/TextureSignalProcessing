@@ -37,7 +37,7 @@ namespace MishaK
 	template< typename GeometryReal >
 	void InitializeIntraChartEdgeIndexing
 	(
-		std::map< EdgeIndex , unsigned int > &boundaryCoarseEdgeIndex ,
+		std::map< SimplexIndex< 1 > , unsigned int > &boundaryCoarseEdgeIndex ,
 		const GridChart< GeometryReal > &gridChart ,
 		unsigned int &lastAddedEdgeIndex
 	)
@@ -60,7 +60,7 @@ namespace MishaK
 			const BilinearElementIndex & indices = gridChart.combinedCellCombinedBilinearElementIndices[i];
 			for (int k = 0; k < edgesPerCell; k++) {
 				int vIndices[2] = { (int)indices[ pairsToAdd[2*k] ] , (int)indices[ pairsToAdd[2*k+1] ] };
-				EdgeIndex edgeKey( vIndices[0] , vIndices[1] );
+				SimplexIndex< 1 > edgeKey( vIndices[0] , vIndices[1] );
 				if (boundaryCoarseEdgeIndex.find(edgeKey) == boundaryCoarseEdgeIndex.end()) {
 					boundaryCoarseEdgeIndex[edgeKey] = lastAddedEdgeIndex;
 					lastAddedEdgeIndex++;
@@ -74,7 +74,7 @@ namespace MishaK
 	void InitializeIntraChartEdgeIndexing
 	(
 		const std::vector< GridChart< GeometryReal > > &gridCharts ,
-		std::map< EdgeIndex , unsigned int > &boundaryCoarseEdgeIndex
+		std::map< SimplexIndex< 1 > , unsigned int > &boundaryCoarseEdgeIndex
 	)
 	{
 		//Add edges within charts
@@ -87,9 +87,9 @@ namespace MishaK
 	(
 		const SparseMatrix< MatrixReal , int > &boundaryAdjancencyMatrix ,
 		const typename GridAtlas<>::IndexConverter & indexConverter ,
-		std::map< EdgeIndex , unsigned int > &coarseEdgeIndex ,
+		std::map< SimplexIndex< 1 > , unsigned int > &coarseEdgeIndex ,
 		std::vector< unsigned int > &boundaryEdgeToGlobalEdge ,
-		std::map< EdgeIndex , unsigned int > &boundaryEdgeIndex
+		std::map< SimplexIndex< 1 > , unsigned int > &boundaryEdgeIndex
 	)
 	{
 		int lastAddedCoarseEdgeIndex = (int)coarseEdgeIndex.size();
@@ -99,13 +99,13 @@ namespace MishaK
 				int bIndices[2] = {r,boundaryAdjancencyMatrix[r][c].N};
 				if (bIndices[0] != bIndices[1])
 				{
-					EdgeIndex bminKey( bIndices[0] , bIndices[1] );
-					EdgeIndex bmaxKey( bIndices[1] , bIndices[0] );
+					SimplexIndex< 1 > bminKey( bIndices[0] , bIndices[1] );
+					SimplexIndex< 1 > bmaxKey( bIndices[1] , bIndices[0] );
 					if( boundaryEdgeIndex.find(bminKey)==boundaryEdgeIndex.end() && boundaryEdgeIndex.find(bmaxKey)==boundaryEdgeIndex.end() )
 					{
 						unsigned int gIndices[2] = { indexConverter.boundaryToSupported( bIndices[0] ) , indexConverter.boundaryToSupported( bIndices[1] ) };
-						EdgeIndex minKey( gIndices[0] , gIndices[1] );
-						EdgeIndex maxKey( gIndices[1] , gIndices[0] );
+						SimplexIndex< 1 > minKey( gIndices[0] , gIndices[1] );
+						SimplexIndex< 1 > maxKey( gIndices[1] , gIndices[0] );
 						int globalEdgeIndex = -1;
 						if( coarseEdgeIndex.find(minKey)!=coarseEdgeIndex.end() )
 						{
@@ -137,7 +137,7 @@ namespace MishaK
 	void InitializeFineBoundaryEdgeChartIndexing
 	(
 		const std::vector< unsigned int > &fineBoundaryNodeIndex ,
-		std::map< EdgeIndex , unsigned int > &fineBoundaryEdgeIndex ,
+		std::map< SimplexIndex< 1 > , unsigned int > &fineBoundaryEdgeIndex ,
 		const GridChart< GeometryReal > &gridChart ,
 		unsigned int &lastAddedEdgeIndex
 	)
@@ -151,7 +151,7 @@ namespace MishaK
 				for (int k = 1; k < 6; k++) for (int l = 0; l < k; l++) {
 					int vIndices[2] = { fineHexIndices[k],fineHexIndices[l] };
 					if (vIndices[0] > vIndices[1]) std::swap(vIndices[0], vIndices[1]);
-					EdgeIndex edgeKey( vIndices[0] , vIndices[1] );
+					SimplexIndex< 1 > edgeKey( vIndices[0] , vIndices[1] );
 					if (fineBoundaryEdgeIndex.find(edgeKey) == fineBoundaryEdgeIndex.end()) {
 						fineBoundaryEdgeIndex[edgeKey] = lastAddedEdgeIndex;
 						lastAddedEdgeIndex++;
@@ -165,7 +165,7 @@ namespace MishaK
 	void InitializeFineBoundaryEdgeIndexing
 	(
 		const std::vector< unsigned int > &fineBoundaryNodeIndex ,
-		std::map< EdgeIndex , unsigned int > &fineBoundaryEdgeIndex ,
+		std::map< SimplexIndex< 1 > , unsigned int > &fineBoundaryEdgeIndex ,
 		const std::vector< GridChart< GeometryReal > > &gridCharts
 	)
 	{
@@ -177,18 +177,18 @@ namespace MishaK
 	void InitializeBoundaryCoarseToFineBoundaryOneFormProlongation
 	(
 		const SparseMatrix< MatrixReal , int > &boundaryCoarseToFineNodeProlongation ,
-		std::map< EdgeIndex , unsigned int > &boundaryCoarseEdgeIndex ,
-		std::map< EdgeIndex , unsigned int > &boundaryFineEdgeIndex ,
+		std::map< SimplexIndex< 1 > , unsigned int > &boundaryCoarseEdgeIndex ,
+		std::map< SimplexIndex< 1 > , unsigned int > &boundaryFineEdgeIndex ,
 		SparseMatrix< MatrixReal , int > &boundaryFineToBoundaryCoarseOneFormProlongation
 	)
 	{
 		std::vector< Eigen::Triplet< MatrixReal > > coarseToFineOneFormProlongation;
 		std::vector< std::vector< Eigen::Triplet< MatrixReal > > > _coarseToFineOneFormProlongation( ThreadPool::NumThreads() );
-		std::vector< std::pair< EdgeIndex , int > > _boundaryFineEdgeIndex;
+		std::vector< std::pair< SimplexIndex< 1 > , int > > _boundaryFineEdgeIndex;
 
 		// Transform the unordered_map into a vector of pairs for parallelization
 		_boundaryFineEdgeIndex.reserve( boundaryFineEdgeIndex.size() );
-		for( auto iter=boundaryFineEdgeIndex.begin() ; iter!=boundaryFineEdgeIndex.end() ; iter++ ) _boundaryFineEdgeIndex.push_back( std::pair< EdgeIndex , unsigned int >( iter->first , iter->second ) );
+		for( auto iter=boundaryFineEdgeIndex.begin() ; iter!=boundaryFineEdgeIndex.end() ; iter++ ) _boundaryFineEdgeIndex.push_back( std::pair< SimplexIndex< 1 > , unsigned int >( iter->first , iter->second ) );
 
 		ThreadPool::ParallelFor
 		(
@@ -196,7 +196,7 @@ namespace MishaK
 			[&]( unsigned int thread , size_t i )
 			{
 				unsigned int fineEdgeId = _boundaryFineEdgeIndex[i].second;
-				EdgeIndex fineEdgeCorners = _boundaryFineEdgeIndex[i].first;
+				SimplexIndex< 1 > fineEdgeCorners = _boundaryFineEdgeIndex[i].first;
 
 				for( int k=0 ; k<boundaryCoarseToFineNodeProlongation.RowSize( fineEdgeCorners[0] ) ; k++ )
 				{
@@ -211,7 +211,7 @@ namespace MishaK
 						if( coarseIndex1!=coarseIndex2 )
 						{
 							bool foundEdge = false;
-							EdgeIndex coarseEdgeKey( coarseIndex1 , coarseIndex2 );
+							SimplexIndex< 1 > coarseEdgeKey( coarseIndex1 , coarseIndex2 );
 							auto coarseEdgePtr = boundaryCoarseEdgeIndex.find( coarseEdgeKey );
 							if( coarseEdgePtr!=boundaryCoarseEdgeIndex.end() )
 							{
@@ -221,7 +221,7 @@ namespace MishaK
 							}
 							else
 							{
-								coarseEdgeKey = EdgeIndex( coarseIndex2 , coarseIndex1 );
+								coarseEdgeKey = SimplexIndex< 1 >( coarseIndex2 , coarseIndex1 );
 								coarseEdgePtr = boundaryCoarseEdgeIndex.find(coarseEdgeKey);
 								if( coarseEdgePtr!=boundaryCoarseEdgeIndex.end() )
 								{

@@ -240,7 +240,7 @@ namespace MishaK
 				Point2D< GeometryReal > c = ( vertices[0] + vertices[1] + vertices[2] ) / 3;
 				for( unsigned int i=0 ; i<3 ; i++ )
 				{
-					EdgeIndex eIndex = CornerEdgeIndex( i );
+					SimplexIndex< 1 > eIndex = CornerEdgeIndex( i );
 					eq[i] = EdgeEquation< GeometryReal >( vertices[ eIndex[0] ] , vertices[ eIndex[1] ] );
 					eq[i].makePositive(c);
 				}
@@ -304,17 +304,29 @@ namespace MishaK
 				Simplex< double , 2 , 2 > simplex;
 				for( unsigned int i=0 ; i<=2 ; i++ )
 				{
+#ifdef NEW_INDEXING
+					simplex[i] = atlasChart.vertex( ChartVertexIndex( atlasChart.triangle( ChartTriangleIndex(t) )[i] ) ) - gridChart.corner;
+#else // !NEW_INDEXING
 					simplex[i] = atlasChart.vertices[ atlasChart.triangles[t][i] ] - gridChart.corner;
+#endif // NEW_INDEXING
 					simplex[i][0] /= gridChart.cellSizeW , simplex[i][1] /= gridChart.cellSizeH;
 				}
 				return simplex;
 			};
 #endif // USE_RASTERIZER
 
-		for( int t=0 ; t<atlasChart.triangles.size() ; t++ )
+#ifdef NEW_INDEXING
+		for( unsigned int t=0 ; t<atlasChart.numTriangles() ; t++ )
+#else // !NEW_INDEXING
+		for( unsigned int t=0 ; t<atlasChart.triangles.size() ; t++ )
+#endif // NEW_INDEXING
 		{
 			Point2D< GeometryReal > tPos[3];
+#ifdef NEW_INDEXING
+			for( unsigned int i=0 ; i<3 ; i++ ) tPos[i] = atlasChart.vertex( ChartVertexIndex( atlasChart.triangle( ChartTriangleIndex(t) )[i] ) ) - gridChart.corner;
+#else // !NEW_INDEXING
 			for( int i=0 ; i<3 ; i++ ) tPos[i] = atlasChart.vertices[ atlasChart.triangles[t][i] ] - gridChart.corner;
+#endif // NEW_INDEXING
 
 			SquareMatrix< GeometryReal , 2 > texture_metric = texture_metrics[t];
 			SquareMatrix< GeometryReal , 2 > cell_metric = cell_to_texture_differential.transpose() * texture_metric * cell_to_texture_differential;
@@ -335,8 +347,13 @@ namespace MishaK
 			for( int k=0 ; k<3 ; k++ )
 			{
 				atlasTriangle.vertices[k] = tPos[k];
+#ifdef NEW_INDEXING
+				atlasTriangle.atlasEdgeIndices[k] = atlasChart.atlasEdge( ChartHalfEdgeIndex( 3*static_cast< unsigned int >(t) + k ) );
+				atlasTriangle.atlasVertexIndices[k] = atlasChart.triangle( ChartTriangleIndex(t) )[k];
+#else // !NEW_INDEXING
 				atlasTriangle.atlasEdgeIndices[k] = atlasChart.atlasEdge( 3*t+k );
 				atlasTriangle.atlasVertexIndices[k] = atlasChart.triangles[t][k];
+#endif // NEW_INDEXING
 				atlasTriangle.atlasVertexParentEdge[k] = -1;
 			}
 

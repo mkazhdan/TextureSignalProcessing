@@ -753,7 +753,7 @@ void Geodesics< PreReal , Real >::InitializeVisualization( int width , int heigh
 
 	for( unsigned int e=0 ; e<boundaryHalfEdges.size() ; e++ )
 	{
-		EdgeIndex eIndex = mesh.surface.edgeIndex( boundaryHalfEdges[e] );
+		SimplexIndex< 1 > eIndex = mesh.surface.edgeIndex( boundaryHalfEdges[e] );
 		for( unsigned int i=0 ; i<2 ; i++ ) visualization.chartBoundaryVertices.push_back( Point3D< float >( mesh.surface.vertices[ eIndex[i] ] ) );
 	}
 

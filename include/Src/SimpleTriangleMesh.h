@@ -51,7 +51,7 @@ namespace MishaK
 		Point2D< Real > barycentricCoords;
 	};
 
-	EdgeIndex CornerEdgeIndex( unsigned int k , bool flip=false );
+	SimplexIndex< 1 > CornerEdgeIndex( unsigned int k , bool flip=false );
 
 	template< typename Real , unsigned int Dim >
 	struct SimpleTriangleMesh
@@ -60,7 +60,7 @@ namespace MishaK
 		std::vector< SimplexIndex< 2 > > triangles;
 
 		// Returns the edge-index associated with the half-edge
-		EdgeIndex edgeIndex( unsigned int he , bool flip=false ) const;
+		SimplexIndex< 1 > edgeIndex( unsigned int he , bool flip=false ) const;
 
 		void read ( std::string fileName );
 		void write( std::string fileName ) const;

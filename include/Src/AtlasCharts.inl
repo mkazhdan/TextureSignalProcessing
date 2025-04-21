@@ -106,7 +106,7 @@ const
 		// Re-orer the boundary edges so that they are in sequence
 		struct Edge
 		{
-			EdgeIndex edgeIndex;
+			SimplexIndex< 1 > edgeIndex;
 			unsigned int he;
 			bool processed;
 		};
@@ -114,7 +114,7 @@ const
 		for( unsigned int i=0 ; i<boundaryHalfEdges.size() ; i++ )
 		{
 			_boundaryHalfEdges[i].he = boundaryHalfEdges[i];
-			_boundaryHalfEdges[i].edgeIndex = atlasChart.edgeIndex( boundaryHalfEdges[i] );
+			_boundaryHalfEdges[i].edgeIndex = atlasChart.edge( boundaryHalfEdges[i] );
 			_boundaryHalfEdges[i].processed = false;
 		}
 		std::sort( _boundaryHalfEdges.begin() , _boundaryHalfEdges.end() , []( const Edge &e1 , const Edge &e2 ){ return e1.edgeIndex[0]<e2.edgeIndex[0]; } );
@@ -164,17 +164,36 @@ AtlasChart< GeometryReal >::GetCharts
 	atlasMesh.jitter( width , height );
 
 	// Compute the opposite half-edges on the surface mesh and mark whether half-edges are boundaries on the texture mesh
+#ifdef NEW_INDEXING
+	std::vector< unsigned int > textureBoundaryHalfEdges;
+	{
+		std::vector< unsigned int > oppositeHalfEdges;
+		mesh.setBoundaryHalfEdgeInfo( textureBoundaryHalfEdges , oppositeHalfEdges );
+		atlasInfo.oppositeHalfEdges.resize( oppositeHalfEdges.size() );
+		for( unsigned int i=0 ; i<oppositeHalfEdges.size() ; i++ ) atlasInfo.oppositeHalfEdges[i] = AtlasHalfEdgeIndex( oppositeHalfEdges[i] );
+	}
+#else // !NEW_INDEXING
 	std::vector< unsigned int > textureBoundaryHalfEdges;
 	mesh.setBoundaryHalfEdgeInfo( textureBoundaryHalfEdges , atlasInfo.oppositeHalfEdges );
+#endif // NEW_INDEXING
 	std::vector< bool > isTextureBoundaryHalfEdge( mesh.numTriangles()*3 , false );
 	for( unsigned int i=0 ; i<textureBoundaryHalfEdges.size() ; i++ ) isTextureBoundaryHalfEdge[ textureBoundaryHalfEdges[i] ] = true;
 
 	// Determine if the mesh is water-tight
 	atlasInfo.isClosed = true;
-	for( unsigned int i=0 ; i<atlasInfo.oppositeHalfEdges.size() ; i++ ) if( atlasInfo.oppositeHalfEdges[i]==-1 ) atlasInfo.isClosed = false;
+	for( unsigned int i=0 ; i<atlasInfo.oppositeHalfEdges.size() ; i++ ) if( static_cast< unsigned int >( atlasInfo.oppositeHalfEdges[i] )==-1 ) atlasInfo.isClosed = false;
 
 	// Set the map taking the indices of surface vertices lying on the texture boundary to vertex indices
+#ifdef NEW_INDEXING
+	{
+		std::map< unsigned int , unsigned int > atlasBoundaryVertexToIndex;
+		mesh.setBoundaryVertexInfo( textureBoundaryHalfEdges , atlasBoundaryVertexToIndex );
+		for( auto iter=atlasBoundaryVertexToIndex.begin() ; iter!=atlasBoundaryVertexToIndex.end() ; iter++ )
+			atlasInfo.atlasBoundaryVertexToIndex[ AtlasVertexIndex( iter->first ) ] = AtlasBoundaryVertexIndex( iter->second );
+	}
+#else // !NEW_INDEXING
 	mesh.setBoundaryVertexInfo( textureBoundaryHalfEdges , atlasInfo.atlasBoundaryVertexToIndex );
+#endif // NEW_INDEXING
 
 	return atlasMesh.getCharts( isTextureBoundaryHalfEdge , width , height );
 }

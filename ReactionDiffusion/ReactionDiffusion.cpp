@@ -785,7 +785,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeVisualization( void
 
 	for( int e=0 ; e<boundaryHalfEdges.size() ; e++ )
 	{
-		EdgeIndex eIndex = mesh.surface.edgeIndex( boundaryHalfEdges[e] );
+		SimplexIndex< 1 > eIndex = mesh.surface.edgeIndex( boundaryHalfEdges[e] );
 		for( int i=0 ; i<2 ; i++ ) visualization.chartBoundaryVertices.push_back( mesh.surface.vertices[ eIndex[i] ] );
 	}
 

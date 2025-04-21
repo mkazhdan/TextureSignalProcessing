@@ -355,7 +355,7 @@ namespace MishaK
 
 		for( int k=0 ; k<3 ; k++ )
 		{
-			EdgeIndex eIndex = CornerEdgeIndex( k );
+			SimplexIndex< 1 > eIndex = CornerEdgeIndex( k );
 
 			EdgeEquation< GeometryReal > edgeEquation( triangle.vertices[ eIndex[0] ] , triangle.vertices[ eIndex[1] ] );
 			edgeEquation.makePositive( triangleCenter );
@@ -476,7 +476,7 @@ namespace MishaK
 		for( int k=0 ; k<3 ; k++ )
 		{
 			// Compute edge normal (pointing inside)
-			EdgeIndex eIndex = CornerEdgeIndex( k );
+			SimplexIndex< 1 > eIndex = CornerEdgeIndex( k );
 			EdgeEquation< GeometryReal > edgeEquation( triangle.vertices[ eIndex[0] ] , triangle.vertices[ eIndex[1] ] , true );
 			reverseOrientation = edgeEquation.makePositive( triangleCenter );
 

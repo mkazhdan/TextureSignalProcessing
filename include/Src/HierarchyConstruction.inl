@@ -119,19 +119,35 @@ void InitializeGridChartsActiveNodes
 			Simplex< double , 2 , 2 > simplex;
 			for( unsigned int i=0 ; i<=2 ; i++ )
 			{
+#ifdef NEW_INDEXING
+				simplex[i] = atlasChart.vertex( ChartVertexIndex( atlasChart.triangle( ChartTriangleIndex(t) )[i] ) ) - gridChart.corner;
+#else // !NEW_INDEXING
 				simplex[i] = atlasChart.vertices[ atlasChart.triangles[t][i] ] - gridChart.corner;
+#endif // NEW_INDEXING
 				if( textureSpace ) simplex[i][0] /= cellSizeW , simplex[i][1] /= cellSizeH;
 			}
 			return simplex;
 		};
 
+#ifdef NEW_INDEXING
+	auto GetEdge = [&]( ChartHalfEdgeIndex he , bool textureSpace=true )
+#else // !NEW_INDEXING
 	auto GetEdge = [&]( unsigned int he , bool textureSpace=true )
+#endif // NEW_INDEXING
 		{
 			Simplex< double , 2 , 1 > simplex;
+#ifdef NEW_INDEXING
+			SimplexIndex< 1 , ChartVertexIndex > eIndex = atlasChart.edge( he );
+#else // !NEW_INDEXING
 			EdgeIndex eIndex = atlasChart.edgeIndex( he );
+#endif // NEW_INDEXING
 			for( unsigned int i=0 ; i<2 ; i++ )
 			{
+#ifdef NEW_INDEXING
+				simplex[i] = atlasChart.vertex( eIndex[i] ) - gridChart.corner;
+#else // !NEW_INDEXING
 				simplex[i] = atlasChart.vertices[ eIndex[i] ] - gridChart.corner;
+#endif // NEW_INDEXING
 				if( textureSpace ) simplex[i][0] /= cellSizeW , simplex[i][1] /= cellSizeH;
 			}
 			return simplex;
@@ -144,7 +160,11 @@ void InitializeGridChartsActiveNodes
 
 #ifdef USE_RASTERIZER
 	// Rasterize triangles into nodes/cells
+#ifdef NEW_INDEXING
+	for( unsigned int t=0 ; t<atlasChart.numTriangles() ; t++ )
+#else // !NEW_INDEXING
 	for( unsigned int t=0 ; t<atlasChart.triangles.size() ; t++ )
+#endif // NEW_INDEXING
 	{
 		// Compute the associated triangle in (shifted) texel coordinates
 		Simplex< double , 2 , 2 > simplex = GetTriangle( t );
@@ -199,7 +219,11 @@ void InitializeGridChartsActiveNodes
 	}
 
 	// Over-write the node designation for nodes covered by a triangle
+#ifdef NEW_INDEXING
+	for( int t=0 ; t<atlasChart.numTriangles() ; t++ )
+#else // !NEW_INDEXING
 	for( int t=0 ; t<atlasChart.triangles.size() ; t++ )
+#endif // NEW_INDEXING
 		Rasterizer2D::RasterizeNodes< false >( GetTriangle( t ) , [&]( Index I ){ texelType(I) = TexelType::BoundarySupportedAndCovered; } , nodeRange );
 
 	// Rasterize boundary edges into cells
@@ -324,7 +348,7 @@ void InitializeGridChartsActiveNodes
 		Rasterizer2D::RasterizeSupports< true , true >( subSimplex , [&]( Index I ){ cellType(I)=CellType::Boundary; } , cellRange );
 #else // !USE_RASTERIZER
 		Point2D< GeometryReal > ePos[2];
-		EdgeIndex eIndex = atlasChart.edgeIndex( atlasChart.boundaryHalfEdges[e] );
+		SimplexIndex< 1 > eIndex = atlasChart.edgeIndex( atlasChart.boundaryHalfEdges[e] );
 		ePos[0] = atlasChart.vertices[ eIndex[0] ] - gridChart.corner;
 		ePos[1] = atlasChart.vertices[ eIndex[1] ] - gridChart.corner;
 

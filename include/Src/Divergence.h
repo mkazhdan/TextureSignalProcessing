@@ -48,7 +48,7 @@ namespace MishaK
 
 	void InitializeDivergenceRasteLines
 	(
-		std::map< EdgeIndex , unsigned int > &coarseEdgeIndex ,
+		std::map< SimplexIndex< 1 > , unsigned int > &coarseEdgeIndex ,
 		const std::vector< RasterLine > &rasterLines ,
 		std::vector< DivegenceRasterLine > &divergenceRasterLines
 	)
@@ -60,15 +60,15 @@ namespace MishaK
 			divLine.texelStart = line.lineStartIndex;
 			divLine.texelEnd = line.lineEndIndex;
 			divLine.deepCoefficientsStart = line.coeffStartIndex;
-			EdgeIndex prevEdgeKey( line.prevLineIndex-1 , line.prevLineIndex );
+			SimplexIndex< 1 > prevEdgeKey( line.prevLineIndex-1 , line.prevLineIndex );
 			if( coarseEdgeIndex.find( prevEdgeKey )==coarseEdgeIndex.end() ) MK_THROW( "Edge not found" );
 			divLine.prevEdgeRowStart = coarseEdgeIndex[prevEdgeKey];
 
-			EdgeIndex currEdgeKey( line.lineStartIndex-1 , line.lineStartIndex );
+			SimplexIndex< 1 > currEdgeKey( line.lineStartIndex-1 , line.lineStartIndex );
 			if( coarseEdgeIndex.find(currEdgeKey)==coarseEdgeIndex.end() ) MK_THROW( "Edge not found" );
 			divLine.currEdgeRowStart = coarseEdgeIndex[currEdgeKey];
 
-			EdgeIndex nextEdgeKey( line.nextLineIndex-1 , line.nextLineIndex );
+			SimplexIndex< 1 > nextEdgeKey( line.nextLineIndex-1 , line.nextLineIndex );
 			if( coarseEdgeIndex.find(nextEdgeKey)==coarseEdgeIndex.end() ) MK_THROW( "Edge not found" );
 			divLine.nextEdgeRowStart = coarseEdgeIndex[nextEdgeKey];
 		}

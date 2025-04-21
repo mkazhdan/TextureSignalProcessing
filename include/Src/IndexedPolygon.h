@@ -29,6 +29,9 @@ DAMAGE.
 
 #include <array>
 #include "Basis.h"
+#ifdef NEW_INDEXING
+#include "Indices.h"
+#endif // NEW_INDEXING
 
 namespace MishaK
 {
@@ -84,7 +87,11 @@ namespace MishaK
 		Array< unsigned int > indices;					// The index of the boundary vertex
 		Array< unsigned int > atlasVertexIndices;		// The index of the atlas vertex (or -1 if it is not an atlas vertex)
 		Array< unsigned int > atlasVertexParentEdge;	// If this is a not an original mesh vertex, the index of the associated polygon edge 
+#ifdef NEW_INDEXING
+		Array< AtlasEdgeIndex > atlasEdgeIndices;			// If this is a boundary segment, the index of the associated polygon edge
+#else // !NEW_INDEXING
 		Array< unsigned int > atlasEdgeIndices;			// If this is a boundary segment, the index of the associated polygon edge
+#endif // NEW_INDEXING
 		size_t size( void ) const { return vertices.size(); }
 		Point2D< GeometryReal >& operator [] ( size_t idx ){ return vertices[idx]; }
 		const Point2D< GeometryReal >& operator [] ( size_t idx ) const { return vertices[idx]; }

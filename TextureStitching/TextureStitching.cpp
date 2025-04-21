@@ -215,8 +215,8 @@ public:
 	static VCycleSolvers< DirectSolver > vCycleSolvers;
 	static DirectSolver directSolver;
 
-	static std:: map< EdgeIndex , unsigned int > edgeIndex;
-	static std::vector< EdgeIndex > edgePairs;
+	static std::map< SimplexIndex< 1 > , unsigned int > edgeIndex;
+	static std::vector< SimplexIndex< 1 > > edgePairs;
 
 	static SparseMatrix< Real , int > boundaryDivergenceMatrix;
 
@@ -353,8 +353,8 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth > Syst
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > unsigned int													Stitching< PreReal , Real , TextureBitDepth >::updateCount = static_cast< unsigned int >(-1);
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth >  std::map< EdgeIndex , unsigned int >							Stitching< PreReal , Real , TextureBitDepth >::edgeIndex;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth >  std::vector< EdgeIndex >										Stitching< PreReal , Real , TextureBitDepth >::edgePairs;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth >  std::map< SimplexIndex< 1 > , unsigned int >					Stitching< PreReal , Real , TextureBitDepth >::edgeIndex;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth >  std::vector< SimplexIndex< 1 > >								Stitching< PreReal , Real , TextureBitDepth >::edgePairs;
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth >  SparseMatrix< Real , int >										Stitching< PreReal , Real , TextureBitDepth >::boundaryDivergenceMatrix;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth >  std::vector< Real >											Stitching< PreReal , Real , TextureBitDepth >::deepDivergenceCoefficients;
@@ -929,7 +929,7 @@ void Stitching< PreReal , Real , TextureBitDepth >::ParseImages( void )
 		}
 		for( int e=0 ; e<edgePairs.size() ; e++ )
 		{
-			const EdgeIndex &edgeCorners = edgePairs[e];
+			const SimplexIndex< 1 > &edgeCorners = edgePairs[e];
 			int ci[] = { textureNodes[ edgeCorners[0] ].ci , textureNodes[ edgeCorners[1] ].ci };
 			int cj[] = { textureNodes[ edgeCorners[0] ].cj , textureNodes[ edgeCorners[1] ].cj };
 			if( inputMask( ci[0] , cj[0] )!=-1 && inputMask( ci[0] , cj[0] )==inputMask( ci[1] , cj[1] ) ) edgeValues[e] = inputComposition( ci[1] , cj[1] ) - inputComposition( ci[0] , cj[0] );
@@ -995,7 +995,7 @@ void Stitching< PreReal , Real , TextureBitDepth >::InitializeVisualization( voi
 
 	for( int e=0 ; e<boundaryHalfEdges.size() ; e++ )
 	{
-		EdgeIndex eIndex = mesh.surface.edgeIndex( boundaryHalfEdges[e] );
+		SimplexIndex< 1 > eIndex = mesh.surface.edgeIndex( boundaryHalfEdges[e] );
 		for( int i=0 ; i<2 ; i++ ) visualization.chartBoundaryVertices.push_back( mesh.surface.vertices[ eIndex[i] ] );
 	}
 

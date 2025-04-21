@@ -34,20 +34,32 @@ void AtlasMesh< GeometryReal >::initialize
 )
 {
 	// Compute the mapping from triangles to charts
+#ifdef NEW_INDEXING
+	{
+		std::vector< unsigned int > triangleToChart = inputMesh.texture.trianglesToComponents( _numCharts );
+		_triangleToChart.resize( triangleToChart.size() );
+		for( unsigned int i=0 ; i<triangleToChart.size() ; i++ ) _triangleToChart[i] = ChartIndex( triangleToChart[i] );
+	}
+#else // !NEW_INDEXING
 	_triangleToChart = inputMesh.texture.trianglesToComponents( _numCharts );
+#endif // NEW_INDEXING
 
 	// Compute the 2D mesh(es)
 	{
-		std::set< IndexedVector2D< GeometryReal > , IndexedVector2DComparison< GeometryReal > > IndexedPointSet;
-		typename std::set< IndexedVector2D< GeometryReal > , IndexedVector2DComparison< GeometryReal > >::iterator it;
+		std::set< IndexedVector2D< GeometryReal > > IndexedPointSet;
+		typename std::set< IndexedVector2D< GeometryReal > >::iterator it;
 
 		for( unsigned int t=0 ; t<inputMesh.numTriangles() ; t++ )
 		{
 			SimplexIndex< 2 > tri;
 			Simplex< GeometryReal , 2 , 2 > tTriangle = inputMesh.textureTriangle( t );
-			for( int k=0 ; k<3 ; k++ )
+			for( unsigned int k=0 ; k<3 ; k++ )
 			{
+#ifdef NEW_INDEXING
+				ChartVertexIndex currentCorner = ChartVertexIndex(-1);
+#else // !NEW_INDEXING
 				unsigned int currentCorner = static_cast< unsigned int >(-1);
+#endif // NEW_INDEXING
 				IndexedVector2D< GeometryReal > idxP( tTriangle[k] , (int)vertices.size() , inputMesh.surface.triangles[t][k] );
 				it = IndexedPointSet.find( idxP );
 				if( it==IndexedPointSet.end() )
@@ -62,7 +74,11 @@ void AtlasMesh< GeometryReal >::initialize
 					IndexedVector2D< GeometryReal > indexPoint = *it;
 					currentCorner = indexPoint.index;
 				}
+#ifdef NEW_INDEXING
+				tri[k] = static_cast< unsigned int >( currentCorner );
+#else // !NEW_INDEXING
 				tri[k] = currentCorner;
+#endif // NEW_INDEXING
 			}
 			triangles.push_back( tri );
 		}
@@ -71,10 +87,10 @@ void AtlasMesh< GeometryReal >::initialize
 	// Set the mapping from half-edges to edges
 	{
 		// A map from vertex to pairs to half-edge indices
-		std::map< EdgeIndex , unsigned int > edgeMap;
+		std::map< SimplexIndex< 1 > , unsigned int > edgeMap;
 		for( unsigned int he=0 ; he<triangles.size()*3 ; he++ )
 		{
-			EdgeIndex e = edgeIndex(he);
+			SimplexIndex< 1 > e = edgeIndex(he);
 			if( edgeMap.find(e)==edgeMap.end() ) edgeMap[e] = he;
 			else MK_THROW( "Non oriented manifold mesh" );	// If the same half-edge appears twice
 		}
@@ -83,7 +99,7 @@ void AtlasMesh< GeometryReal >::initialize
 		std::vector< unsigned int > halfEdgeToEdgeIndex( 3 * triangles.size() , static_cast< unsigned int >(-1) );
 		for( unsigned int he=0 ; he<triangles.size()*3 ; he++ )
 		{
-			EdgeIndex _e = edgeIndex( he , true );
+			SimplexIndex< 1 > _e = edgeIndex( he , true );
 
 			// Set the edge associated to both halves of the edge (once)
 			if( edgeMap.find(_e)!=edgeMap.end() ) // If the opposite edge exists

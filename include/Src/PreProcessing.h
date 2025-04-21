@@ -63,6 +63,6 @@ DAMAGE.
 // Chart: Separate vertices/edges
 
 #define NEW_INDEXING					// Use separate names for indexing
-#define DEBUG_INDEXING					// Use separate classes for indexing
+//#define DEBUG_INDEXING					// Use separate classes for indexing
 
 #endif // PRE_PROCESSING_INCLUDED

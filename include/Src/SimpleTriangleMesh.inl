@@ -30,23 +30,23 @@ DAMAGE.
 // SimpleTriangleMesh //
 ////////////////////////
 
-inline EdgeIndex CornerEdgeIndex( unsigned int k , bool flip )
+inline SimplexIndex< 1 > CornerEdgeIndex( unsigned int k , bool flip )
 {
 #ifdef NEW_HALF_EDGE
-	if( flip ) return EdgeIndex( (k+2)%3 , (k+1)%3 );
-	else       return EdgeIndex( (k+1)%3 , (k+2)%3 );
+	if( flip ) return SimplexIndex< 1 >( (k+2)%3 , (k+1)%3 );
+	else       return SimplexIndex< 1 >( (k+1)%3 , (k+2)%3 );
 #else // !NEW_HALF_EDGE
-	if( flip ) return EdgeIndex( (k+1)%3 , k );
-	else       return EdgeIndex( k , (k+1)%3 );
+	if( flip ) return SimplexIndex< 1 >( (k+1)%3 , k );
+	else       return SimplexIndex< 1 >( k , (k+1)%3 );
 #endif // NEW_HALF_EDGE
 }
 
 template< typename Real , unsigned int Dim >
-EdgeIndex SimpleTriangleMesh< Real , Dim >::edgeIndex( unsigned int he , bool flip ) const
+SimplexIndex< 1 > SimpleTriangleMesh< Real , Dim >::edgeIndex( unsigned int he , bool flip ) const
 {
 	unsigned int t = he/3 , k = he%3;
-	EdgeIndex eIndex = CornerEdgeIndex( k , flip );
-	return EdgeIndex( triangles[t][ eIndex[0] ] , triangles[t][ eIndex[1] ] );
+	SimplexIndex< 1 > eIndex = CornerEdgeIndex( k , flip );
+	return SimplexIndex< 1 >( triangles[t][ eIndex[0] ] , triangles[t][ eIndex[1] ] );
 }
 
 template< typename Real , unsigned int Dim >
@@ -96,10 +96,10 @@ std::vector< unsigned int > SimpleTriangleMesh< Real , Dim >::oppositeHalfEdges(
 {
 	std::vector< unsigned int > oppositeHalfEdges( 3*triangles.size() , static_cast< unsigned int >(-1) );
 
-	std::map< EdgeIndex , unsigned int > edgeMap;
+	std::map< SimplexIndex< 1 > , unsigned int > edgeMap;
 	for( unsigned int he=0 ; he<triangles.size()*3 ; he++ )
 	{
-		EdgeIndex e = edgeIndex( he ); 
+		SimplexIndex< 1 > e = edgeIndex( he ); 
 		if( edgeMap.find(e)==edgeMap.end() ) edgeMap[e] = he;
 		else MK_THROW( "Non manifold mesh" );
 	}
@@ -248,15 +248,14 @@ const
 {
 	oppositeSurfaceHalfEdges = surface.oppositeHalfEdges();
 
-	for( int c=0 ; c<numTriangles()*3 ; c++ )
-		if( oppositeSurfaceHalfEdges[c]!=-1 )
-		{
-			unsigned int _c = oppositeSurfaceHalfEdges[c];
-			EdgeIndex  eIndex = texture.edgeIndex(  c );
-			EdgeIndex _eIndex = texture.edgeIndex( _c );
-			if( eIndex[0]!=_eIndex[1] || eIndex[1]!=_eIndex[0] ) textureBoundaryHalfEdges.push_back( c );
-		}
-		else textureBoundaryHalfEdges.push_back( c );
+	for( unsigned int c=0 ; c<numTriangles()*3 ; c++ ) if( oppositeSurfaceHalfEdges[c]!=-1 )
+	{
+		unsigned int _c = oppositeSurfaceHalfEdges[c];
+		SimplexIndex< 1 >  eIndex = texture.edgeIndex(  c );
+		SimplexIndex< 1 > _eIndex = texture.edgeIndex( _c );
+		if( eIndex[0]!=_eIndex[1] || eIndex[1]!=_eIndex[0] ) textureBoundaryHalfEdges.push_back( c );
+	}
+	else textureBoundaryHalfEdges.push_back( c );
 }
 
 template< typename Real >
@@ -272,7 +271,7 @@ const
 	// Iterate over the boundary half-edges, get the associated edges, and add their (surface) vertices to the map if not already there.
 	for( int b=0 ; b<textureBoundaryHalfEdges.size() ; b++ )
 	{
-		EdgeIndex e = surface.edgeIndex( textureBoundaryHalfEdges[b] );
+		SimplexIndex< 1 > e = surface.edgeIndex( textureBoundaryHalfEdges[b] );
 		if( surfaceBoundaryVertexToIndex.find( e[0] )==surfaceBoundaryVertexToIndex.end() ) surfaceBoundaryVertexToIndex[ e[0] ] = idx++;
 		if( surfaceBoundaryVertexToIndex.find( e[1] )==surfaceBoundaryVertexToIndex.end() ) surfaceBoundaryVertexToIndex[ e[1] ] = idx++;
 	}

@@ -30,23 +30,34 @@ DAMAGE.
 namespace MishaK
 {
 #ifdef DEBUG_INDEXING
-	struct ChartHalfEdgeIndex
+	template< typename T >
+	struct UnsignedIntIndex
 	{
-		ChartHalfEdgeIndex( unsigned int idx ) : _idx(idx){}
+		explicit UnsignedIntIndex( unsigned int idx=-1 ) : _idx(idx){}
 		explicit operator unsigned int (){ return _idx; }
 	protected:
 		unsigned int _idx;
 	};
 
-	struct AtlasHalfEdgeIndex
-	{
-		AtlasHalfEdgeIndex( unsigned int idx ) : _idx(idx){}
-		explicit operator unsigned int (){ return _idx; }
-	protected:
-		unsigned int _idx;
-	};
+	struct               ChartIndex : public UnsignedIntIndex<               ChartIndex >{ using UnsignedIntIndex<               ChartIndex >::UnsignedIntIndex; };
+	struct       AtlasTriangleIndex : public UnsignedIntIndex<       AtlasTriangleIndex >{ using UnsignedIntIndex<       AtlasTriangleIndex >::UnsignedIntIndex; };
+	struct       ChartTriangleIndex : public UnsignedIntIndex<       ChartTriangleIndex >{ using UnsignedIntIndex<       ChartTriangleIndex >::UnsignedIntIndex; };
+	struct         AtlasVertexIndex : public UnsignedIntIndex<         AtlasVertexIndex >{ using UnsignedIntIndex<         AtlasVertexIndex >::UnsignedIntIndex; };
+	struct         ChartVertexIndex : public UnsignedIntIndex<         ChartVertexIndex >{ using UnsignedIntIndex<         ChartVertexIndex >::UnsignedIntIndex; };
+	struct           AtlasEdgeIndex : public UnsignedIntIndex<           AtlasEdgeIndex >{ using UnsignedIntIndex<           AtlasEdgeIndex >::UnsignedIntIndex; };
+	struct       AtlasHalfEdgeIndex : public UnsignedIntIndex<       AtlasHalfEdgeIndex >{ using UnsignedIntIndex<       AtlasHalfEdgeIndex >::UnsignedIntIndex; };
+	struct       ChartHalfEdgeIndex : public UnsignedIntIndex<       ChartHalfEdgeIndex >{ using UnsignedIntIndex<       ChartHalfEdgeIndex >::UnsignedIntIndex; };
+	struct AtlasBoundaryVertexIndex : public UnsignedIntIndex< AtlasBoundaryVertexIndex >{ using UnsignedIntIndex< AtlasBoundaryVertexIndex >::UnsignedIntIndex; };
+
 #else // !DEBUG_INDEXING
-	using ChartHalfEdgeIndex = unsigned int;
-	using AtlasHalfEdgeIndex = unsigned int;
+	using               ChartIndex = unsigned int;
+	using       AtlasTriangleIndex = unsigned int;
+	using       ChartTriangleIndex = unsigned int;
+	using         AtlasVertexIndex = unsigned int;
+	using         ChartVertexIndex = unsigned int;
+	using           AtlasEdgeIndex = unsigned int;
+	using       ChartHalfEdgeIndex = unsigned int;
+	using       AtlasHalfEdgeIndex = unsigned int;
+	using AtlasBoundaryVertexIndex = unsigned int;
 #endif // DEBUG_INDEXING
 }
