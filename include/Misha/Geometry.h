@@ -933,9 +933,24 @@ namespace MishaK
 	{	
 		Point< Real , Dim > p[K+1];
 		Simplex( void ){ static_assert( K<=Dim , "[ERROR] Bad simplex dimension" ); }
+
+#ifdef NEW_GEOMETRY_CODE
+		Simplex( const Point< Real , Dim > p[K+1] ) : Simplex() { _init( p ); }
+
+		template< typename ... Points >
+		Simplex( Point< Real , Dim > p , Points ... ps ) : Simplex()
+		{
+			static_assert( sizeof...(Points)==K , "[ERROR] Wrong number of points" );
+			const Point< Real , Dim > _p[] = { p , ps... };
+			_init( _p );
+		}
+#else // !NEW_GEOMETRY_CODE
 		Simplex( const Point< Real , Dim > p[K+1] ) : Simplex() { for( unsigned int k=0 ; k<=K ; k++ ) this->p[k] = p[k]; }
+
 		template< typename ... Points >
 		Simplex( Point< Real , Dim > p , Points ... ps ) : Simplex( { p , ps... } ){ static_assert( sizeof...(Points)==K , "[ERROR] Wrong number of points" ); }
+#endif // NEW_GEOMETRY_CODE
+
 		Point< Real , Dim >& operator[]( unsigned int k ){ return p[k]; }
 		const Point< Real , Dim >& operator[]( unsigned int k ) const { return p[k]; }
 		Real measure( void ) const { return (Real)sqrt( squareMeasure() ); }
@@ -978,7 +993,7 @@ namespace MishaK
 			for( unsigned int k=0 ; k<=K ; k++ ) q += p[k] * weights[k];
 			return q;
 		}
-		
+
 		Point< Real , Dim > operator()( Point< Real , K+1 > bc ) const
 		{
 			Point< Real , Dim > q;
@@ -1110,6 +1125,8 @@ namespace MishaK
 		}
 
 #ifdef NEW_GEOMETRY_CODE
+	protected:
+		void _init( const Point< Real , Dim > p[K+1] ){ for( unsigned int k=0 ; k<=K ; k++ ) this->p[k] = p[k]; }
 #else // !NEW_GEOMETRY_CODE
 		struct NearestKey
 		{

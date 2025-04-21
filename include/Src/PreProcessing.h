@@ -49,4 +49,8 @@ DAMAGE.
 
 //#define SANITY_CHECK
 
+
+// Index types:
+// -- Atlas boundary half-edge
+// -- Chart boundary half-edge
 #endif // PRE_PROCESSING_INCLUDED

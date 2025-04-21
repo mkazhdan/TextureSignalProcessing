@@ -98,7 +98,7 @@ void InitializeProlongation( int numInteriorTexels , int numFineNodes , int numC
 				if( fabs(texelWeight)>1e-11 )
 				{
 					auxiliaryNodesCumWeight[auxiliaryID] += texelWeight;
-					int texelIndex = gridChart.bilinearElementIndices[cellId][k];
+					int texelIndex = gridChart.combinedCellCombinedBilinearElementIndices[cellId][k];
 					if( nodeInfo[texelIndex].texelType==TexelType::InteriorSupported )
 						MK_THROW( "Interior-supported texel cannot be in the support of an auxiliary node. Weight " , texelWeight , " (B)" );
 					coveredNodes.insert(texelIndex);
@@ -280,8 +280,8 @@ void InitializeAtlasHierachicalRestriction
 {
 	std::vector< Eigen::Triplet< MatrixReal > > boundaryRestrictionTriplets;
 
-	const std::vector<GridNodeInfo> & coarseNodeInfo = coarseAtlas.nodeInfo;
-	const IndexConverter &indexConverter = coarseAtlas.indexConverter;
+	const std::vector< GridNodeInfo > & coarseNodeInfo = coarseAtlas.nodeInfo;
+	const typename GridAtlas<>::IndexConverter & indexConverter = coarseAtlas.indexConverter;
 
 	const std::vector< RasterLine > &coarseRasterLines = coarseAtlas.rasterLines;
 	std::vector<RasterLine> & restrictionLines = coarseAtlas.restrictionLines;

@@ -167,7 +167,7 @@ void FullMatrixConstruction( const GridAtlas< GeometryReal , MatrixReal > &gridA
 {
 	unsigned int numTexels = gridAtlas.numTexels;
 	fullMatrix.resize( numTexels );
-	const IndexConverter &indexConverter = gridAtlas.indexConverter;
+	const typename GridAtlas<>::IndexConverter & indexConverter = gridAtlas.indexConverter;
 
 	//Add deep triplets
 	//Initalization deep

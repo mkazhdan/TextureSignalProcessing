@@ -48,13 +48,13 @@ void AtlasMesh< GeometryReal >::initialize
 			for( int k=0 ; k<3 ; k++ )
 			{
 				unsigned int currentCorner = static_cast< unsigned int >(-1);
-				IndexedVector2D< GeometryReal > idxP( tTriangle[k] , vertices.size() , inputMesh.surface.triangles[t][k] );
+				IndexedVector2D< GeometryReal > idxP( tTriangle[k] , (int)vertices.size() , inputMesh.surface.triangles[t][k] );
 				it = IndexedPointSet.find( idxP );
 				if( it==IndexedPointSet.end() )
 				{
 					IndexedPointSet.insert( idxP );
 					_textureToSurfaceVertex.push_back( inputMesh.surface.triangles[t][k] );
-					currentCorner = vertices.size();
+					currentCorner = (unsigned int)vertices.size();
 					vertices.push_back( tTriangle[k] );
 				}
 				else

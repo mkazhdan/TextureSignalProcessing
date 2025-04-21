@@ -141,9 +141,9 @@ public:
 	static Real licInterpolationWeight;
 
 	static TexturedTriangleMesh< PreReal > mesh;
-	static int textureWidth;
-	static int textureHeight;
-	static int levels;
+	static unsigned int textureWidth;
+	static unsigned int textureHeight;
+	static unsigned int levels;
 
 	static int steps;
 	static char stepsString[];
@@ -255,8 +255,8 @@ template< typename PreReal , typename Real > Real														LineConvolution< 
 template< typename PreReal , typename Real > Real														LineConvolution< PreReal , Real >::licInterpolationWeight;
 
 template< typename PreReal , typename Real > TexturedTriangleMesh< PreReal >							LineConvolution< PreReal , Real >::mesh;
-template< typename PreReal , typename Real > int														LineConvolution< PreReal , Real >::textureWidth;
-template< typename PreReal , typename Real > int														LineConvolution< PreReal , Real >::textureHeight;
+template< typename PreReal , typename Real > unsigned int												LineConvolution< PreReal , Real >::textureWidth;
+template< typename PreReal , typename Real > unsigned int												LineConvolution< PreReal , Real >::textureHeight;
 
 template< typename PreReal , typename Real > TexturedMeshVisualization									LineConvolution< PreReal , Real >::visualization( true );
 
@@ -276,7 +276,7 @@ template< typename PreReal , typename Real > std::vector< BilinearElementIndex >
 
 template< typename PreReal , typename Real > int														LineConvolution< PreReal , Real >::steps;
 template< typename PreReal , typename Real > char														LineConvolution< PreReal , Real >::stepsString[1024];
-template< typename PreReal , typename Real > int														LineConvolution< PreReal , Real >::levels;
+template< typename PreReal , typename Real > unsigned int												LineConvolution< PreReal , Real >::levels;
 template< typename PreReal , typename Real > HierarchicalSystem< PreReal , Real >						LineConvolution< PreReal , Real >::hierarchy;
 
 template< typename PreReal , typename Real > unsigned char *											LineConvolution< PreReal , Real >::outputBuffer;
@@ -532,13 +532,13 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 	if( Verbose.set ) printf( "\tInitialized hierarchy: %.2f(s)\n" , timer.elapsed() );
 
 	//Initialize node index
-	nodeIndex.resize(width, height);
+	nodeIndex.resize( width , height );
 	for( int i=0 ; i<nodeIndex.size() ; i++ ) nodeIndex[i] = -1;
 	for( int i=0 ; i<textureNodes.size() ; i++ )
 	{
 		if( textureNodes[i].ci<0 || textureNodes[i].ci>textureWidth-1 || textureNodes[i].cj<0 || textureNodes[i].cj>textureHeight-1 )
 			MK_THROW( "Invalid node! " , textureNodes[i].ci , " " , textureNodes[i].cj );
-		nodeIndex(textureNodes[i].ci, textureNodes[i].cj) = i;
+		nodeIndex( textureNodes[i].ci , textureNodes[i].cj ) = i;
 	}
 
 	BoundaryProlongationData< Real > boundaryProlongation;
@@ -546,7 +546,7 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 
 	//////////////////////////////////// Initialize multigrid indices
 	multigridIndices.resize( levels );
-	for( int i=0 ; i<levels ; i++ )
+	for( unsigned int i=0 ; i<levels ; i++ )
 	{
 		const GridAtlas< PreReal , Real > &gridAtlas = hierarchy.gridAtlases[i];
 		multigridIndices[i].threadTasks = gridAtlas.threadTasks;
@@ -581,7 +581,7 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 						0 , mesh.numTriangles() ,
 						[&]( unsigned int , size_t i )
 						{
-							Simplex< PreReal , 3 , 2 > s = mesh.surfaceTriangle(i);
+							Simplex< PreReal , 3 , 2 > s = mesh.surfaceTriangle((unsigned int)i);
 							Point3D< PreReal > d[] = { s[1]-s[0] , s[2]-s[0] };
 							SquareMatrix< PreReal , 2 > Dot;
 							for( int j=0 ; j<2 ; j++ ) for( int k=0 ; k<2 ; k++ ) Dot(j,k) = Point3D< PreReal >::Dot( d[j] , d[k] );
@@ -718,7 +718,7 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 					0 , mesh.numTriangles() ,
 					[&]( unsigned int , size_t i )
 					{
-						Simplex< PreReal , 3 , 2 > s = mesh.surfaceTriangle(i);
+						Simplex< PreReal , 3 , 2 > s = mesh.surfaceTriangle((unsigned int)i);
 						_vectorField[i] = (s[1]-s[0]) * vectorField[i][0] + (s[2]-s[0]) * vectorField[i][1];
 					}
 				);
@@ -838,8 +838,8 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 	multigridLineConvolutionVariables.resize( levels );
 	for( unsigned int i=0 ; i<levels ; i++ )
 	{
-		const IndexConverter & indexConverter = hierarchy.gridAtlases[i].indexConverter;
-			MultigridLevelVariables< Point3D< Real > >& variables = multigridLineConvolutionVariables[i];
+		const typename GridAtlas<>::IndexConverter & indexConverter = hierarchy.gridAtlases[i].indexConverter;
+		MultigridLevelVariables< Point3D< Real > >& variables = multigridLineConvolutionVariables[i];
 		variables.x.resize(hierarchy.gridAtlases[i].numTexels);
 		variables.rhs.resize(hierarchy.gridAtlases[i].numTexels);
 		variables.residual.resize(hierarchy.gridAtlases[i].numTexels);
@@ -851,7 +851,7 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 	multigridModulationVariables.resize(levels);
 	for( unsigned int i=0 ; i<levels ; i++ )
 	{
-		const IndexConverter & indexConverter = hierarchy.gridAtlases[i].indexConverter;
+		const typename GridAtlas<>::IndexConverter & indexConverter = hierarchy.gridAtlases[i].indexConverter;
 		MultigridLevelVariables< Point3D< Real > >& variables = multigridModulationVariables[i];
 		variables.x.resize(hierarchy.gridAtlases[i].numTexels);
 		variables.rhs.resize(hierarchy.gridAtlases[i].numTexels);

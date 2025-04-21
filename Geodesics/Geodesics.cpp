@@ -291,7 +291,7 @@ void Geodesics< PreReal , Real >::ComputeExactSolution( void )
 	solve( fineSmoothImpulseSolver , multigridSmoothImpulseVariables[0].x , multigridSmoothImpulseVariables[0].rhs );
 
 	//(1) Integrating vector field	
-	const IndexConverter & indexConverter = hierarchy.gridAtlases[0].indexConverter;
+	const typename GridAtlas<>::IndexConverter & indexConverter = hierarchy.gridAtlases[0].indexConverter;
 
 	ThreadPool::ParallelFor
 	(
@@ -548,7 +548,7 @@ void Geodesics< PreReal , Real >::UpdateSolution( void )
 	VCycle( multigridSmoothImpulseVariables , multigridSmoothImpulseCoefficients , multigridIndices , smoothImpulseSolvers , false , false );
 
 	// (2) Integrate normalized vector field
-	const IndexConverter & indexConverter = hierarchy.gridAtlases[0].indexConverter;
+	const typename GridAtlas<>::IndexConverter & indexConverter = hierarchy.gridAtlases[0].indexConverter;
 
 	ThreadPool::ParallelFor
 		(

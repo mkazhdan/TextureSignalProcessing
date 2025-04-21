@@ -41,7 +41,7 @@ namespace MishaK
 		const std::vector< SquareMatrix< GeometryReal , 2 > > &texture_metrics ,
 		const AtlasChart< GeometryReal > &atlasChart ,
 		const GridChart< GeometryReal > &gridChart ,
-		const IndexConverter &indexConverter ,
+		const typename GridAtlas<>::IndexConverter & indexConverter ,
 		const std::vector< unsigned int >& fineBoundaryIndex ,
 		std::vector< MatrixReal >& deepMassCoefficients ,
 		std::vector< MatrixReal >& deepStiffnessCoefficients ,
@@ -253,11 +253,11 @@ namespace MishaK
 								GeometryReal element_area_scale_factor = area_scale[t];
 
 								// Transform the polygon vertices into the coordinate frame of the cell
-								for( int ii=0 ; ii<polygon.size() ; ii++ ) polygon[ii] = TextureToElement( polygon[ii] );
+								for( unsigned int ii=0 ; ii<polygon.size() ; ii++ ) polygon[ii] = TextureToElement( polygon[ii] );
 								SquareMatrix< GeometryReal , 4 > polygonStiffness , polygonMass;
 								SquareMatrix< GeometryReal , 4 > polygonDivergence;
 
-								for( int p=2 ; p<polygon.size() ; p++ )
+								for( unsigned int p=2 ; p<polygon.size() ; p++ )
 								{
 									Point2D< GeometryReal > dm[2] = { polygon[p-1]-polygon[0] , polygon[p]-polygon[0] };
 
@@ -818,7 +818,7 @@ namespace MishaK
 		auto NeighbourOffset = [&]( int k , int l ){ return ( offset_j[l] - offset_j[k] + 1 ) * 3 + ( offset_i[l] - offset_i[k] + 1 ); };
 		for( int i=0 ; i<gridChart.interiorCellInteriorBilinearElementIndices.size() ; i++ )
 		{
-			const BilinearElementIndex & indicesGlobal   = gridChart.interiorCellGlobalBilinearElementIndices[i];
+			const BilinearElementIndex & indicesGlobal   = gridChart.interiorCellCombinedBilinearElementIndices[i];
 			const BilinearElementIndex & indicesInterior = gridChart.interiorCellInteriorBilinearElementIndices[i];
 
 			int localCellIndex = gridChart.interiorCellIndexToCombinedCellIndex[i];
@@ -1015,7 +1015,7 @@ namespace MishaK
 			};
 
 		const std::vector< GridChart< GeometryReal > > &gridCharts = gridAtlas.gridCharts;
-		const IndexConverter &indexConverter = gridAtlas.indexConverter;
+		const typename GridAtlas<>::IndexConverter & indexConverter = gridAtlas.indexConverter;
 
 		if( computeCellBasedStiffness ) texelToCellCoeffs.resize( 3*4*gridAtlas.numDeepTexels );
 
@@ -1120,7 +1120,7 @@ namespace MishaK
 
 		if( computeCellBasedStiffness )
 		{
-			const IndexConverter &indexConverter = hierarchy.gridAtlases[0].indexConverter;
+			const typename GridAtlas<>::IndexConverter & indexConverter = hierarchy.gridAtlases[0].indexConverter;
 			unsigned int numBoundaryTexels = (unsigned int)indexConverter.numBoundary();
 			unsigned int numFineBoundaryNodes = boundaryProlongation.numFineBoundaryNodes;
 			std::vector< Point3D< MatrixReal > > coarseBoundarySignal;
@@ -1164,7 +1164,7 @@ namespace MishaK
 
 			SparseMatrix< MatrixReal , int > temp = boundaryProlongation.fineBoundaryCoarseBoundaryRestriction * fineBoundaryBoundaryDivergenceMatrix;
 			SparseMatrix< MatrixReal , int > boundaryBoundaryDivergenceMatrix = temp *  boundaryCoarseToFineBoundaryOneFormProlongation;
-			const IndexConverter &indexConverter = hierarchy.gridAtlases[0].indexConverter;
+			const typename GridAtlas<>::IndexConverter & indexConverter = hierarchy.gridAtlases[0].indexConverter;
 			for( int i=0 ; i<boundaryBoundaryDivergenceMatrix.Rows() ; i++ )
 			{
 				unsigned int supportedIndex = indexConverter.boundaryToSupported(i);

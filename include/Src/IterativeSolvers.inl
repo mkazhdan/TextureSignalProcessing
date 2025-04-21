@@ -640,7 +640,7 @@ template< class Real , class Data , class DataReal=Real >
 void MultiplyBySystemMatrix_NoReciprocals
 (
 	const SystemCoefficients< Real > &systemCoefficients ,
-	const IndexConverter & indexConverter ,
+	const typename GridAtlas<>::IndexConverter & indexConverter ,
 	const std::vector< RasterLine >& rasterLines ,
 	const std::vector< Data >& in ,
 	std::vector< Data > & out ,
@@ -654,7 +654,7 @@ void MultiplyBySystemMatrix_NoReciprocals
 	// Pull out the boundary values from the input array
 	std::vector< Data > outBoundaryValues( numBoundaryVariables );
 	std::vector< Data >  inBoundaryValues( numBoundaryVariables );
-	for( int i=0 ; i<numBoundaryVariables ; i++ ) inBoundaryValues[i] = in[ indexConverter.boundaryToSupported(i) ];
+	for( unsigned int i=0 ; i<numBoundaryVariables ; i++ ) inBoundaryValues[i] = in[ indexConverter.boundaryToSupported(i) ];
 
 	timer.reset();
 	//  Perform the boundary -> boundary multiplication
@@ -664,7 +664,7 @@ void MultiplyBySystemMatrix_NoReciprocals
 	if( verbose ) printf( "\tMultiply boundary = %.4f\n" , timer.elapsed() );
 
 	// Write the boundary values back into the output array
-	ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ out[ indexConverter.boundaryToSupported(i) ] = outBoundaryValues[i]; } );
+	ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ out[ indexConverter.boundaryToSupported((unsigned int)i) ] = outBoundaryValues[i]; } );
 
 	// Perform the interior -> interior multiplication
 	auto UpdateRow = [&]( int r )
@@ -959,7 +959,7 @@ void CellStiffnessToTexelStiffness
 	const std::vector< Data >& interiorTexelToCellCoeffs ,
 	SparseMatrix< Real , int > boundaryCellBasedStiffnessRHSMatrix[Channels] ,
 	std::vector< Real > boundaryTexelValues[Channels] ,
-	const IndexConverter & indexConverter ,
+	const typename GridAtlas<>::IndexConverter & indexConverter ,
 	std::vector< Data >& texelModulatedStiffness ,
 	bool verbose=false
 )
@@ -1007,7 +1007,7 @@ void CellStiffnessToTexelStiffness
 	const std::vector< Real >& interiorTexelToCellCoeffs ,
 	SparseMatrix< Real , int > boundaryCellBasedStiffnessRHSMatrix ,
 	std::vector< Real > boundaryTexelValues ,
-	const IndexConverter &indexConverter ,
+	const typename GridAtlas<>::IndexConverter & indexConverter ,
 	std::vector< Real >& texelModulatedStiffness ,
 	bool verbose=false
 )

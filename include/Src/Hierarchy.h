@@ -421,11 +421,12 @@ namespace MishaK
 	};
 
 	template< typename GeometryReal >
-	class AuxiliaryNode
+	struct AuxiliaryNode
 	{
-	public:
 		Point2D< GeometryReal > position;
-		int index;
+		unsigned int index;
+
+		AuxiliaryNode( Point2D< GeometryReal > position=Point2D< GeometryReal >() , unsigned int index=-1 ) : position(position) , index(index) {}
 	};
 
 	enum struct CellType
@@ -540,20 +541,20 @@ namespace MishaK
 		Image< CellIndex > cellIndices;
 
 		// The indices of the incident nodes
-		std::vector< BilinearElementIndex > bilinearElementIndices;
+		std::vector< BilinearElementIndex > combinedCellCombinedBilinearElementIndices;
 
 		// For interior cells, the indices of the incident interior nodes
 		std::vector< BilinearElementIndex > interiorCellInteriorBilinearElementIndices;
 
 		// For interior cells, the indices of the incident nodes
-		std::vector< BilinearElementIndex > interiorCellGlobalBilinearElementIndices;
+		std::vector< BilinearElementIndex > interiorCellCombinedBilinearElementIndices;
 
 		// Maps converting boundary/interiorl cell indices to combined cell indices
 		std::vector< unsigned int > interiorCellIndexToCombinedCellIndex;
 		std::vector< unsigned int > boundaryCellIndexToCombinedCellIndex;
 
-		const unsigned int numInteriorCells( void ) const { return interiorCellIndexToCombinedCellIndex.size(); }
-		const unsigned int numBoundaryCells( void ) const { return boundaryCellIndexToCombinedCellIndex.size(); }
+		const size_t numInteriorCells( void ) const { return interiorCellIndexToCombinedCellIndex.size(); }
+		const size_t numBoundaryCells( void ) const { return boundaryCellIndexToCombinedCellIndex.size(); }
 
 		std::vector< std::vector<     AtlasIndexedPolygon< GeometryReal > > > boundaryPolygons;
 		std::vector< std::vector< BoundaryIndexedTriangle< GeometryReal > > > boundaryTriangles;
@@ -588,34 +589,39 @@ namespace MishaK
 		int offset;
 	};
 
-	struct IndexConverter
+	template< typename ... T > struct GridAtlas;
+
+	template<>
+	struct GridAtlas<>
 	{
-		unsigned int boundaryToSupported( unsigned int idx ) const { return _boundaryToSupported[idx]; }
-		unsigned int     deepToSupported( unsigned int idx ) const { return     _deepToSupported[idx]; }
-		unsigned int supportedToBoundary( unsigned int idx ) const { return _supportedToBoundaryOrDeep[idx].first ? _supportedToBoundaryOrDeep[idx].second : static_cast< unsigned int >(-1); }
-		unsigned int supportedToDeep    ( unsigned int idx ) const { return _supportedToBoundaryOrDeep[idx].first ? static_cast< unsigned int >(-1) : _supportedToBoundaryOrDeep[idx].second; }
+		struct IndexConverter
+		{
+			unsigned int boundaryToSupported( unsigned int idx ) const { return _boundaryToSupported[idx]; }
+			unsigned int     deepToSupported( unsigned int idx ) const { return     _deepToSupported[idx]; }
+			unsigned int supportedToBoundary( unsigned int idx ) const { return _supportedToBoundaryOrDeep[idx].first ? _supportedToBoundaryOrDeep[idx].second : static_cast< unsigned int >(-1); }
+			unsigned int supportedToDeep    ( unsigned int idx ) const { return _supportedToBoundaryOrDeep[idx].first ? static_cast< unsigned int >(-1) : _supportedToBoundaryOrDeep[idx].second; }
 
-		const std::vector< unsigned int > &boundaryToSupported( void ) const { return _boundaryToSupported; }
-		const std::vector< unsigned int > &    deepToSupported( void ) const { return     _deepToSupported; }
+			const std::vector< unsigned int > &boundaryToSupported( void ) const { return _boundaryToSupported; }
+			const std::vector< unsigned int > &    deepToSupported( void ) const { return     _deepToSupported; }
 
-		size_t numSupported( void ) const { return _supportedToBoundaryOrDeep.size(); }
-		size_t numBoundary( void ) const { return _boundaryToSupported.size(); }
-		size_t numDeep( void ) const { return _deepToSupported.size(); }
-	protected:
-		template< typename GeometryReal >
-		friend void InitializeIndexConverter( const std::vector< GridChart< GeometryReal > > & , unsigned int , IndexConverter & );
+			size_t numSupported( void ) const { return _supportedToBoundaryOrDeep.size(); }
+			size_t numBoundary( void ) const { return _boundaryToSupported.size(); }
+			size_t numDeep( void ) const { return _deepToSupported.size(); }
+		protected:
+			template< typename GeometryReal >
+			friend void InitializeIndexConverter( const std::vector< GridChart< GeometryReal > > & , unsigned int , IndexConverter & );
 
-		std::vector< std::pair< bool , unsigned int > > _supportedToBoundaryOrDeep;
-		std::vector< unsigned int > _boundaryToSupported;
-		std::vector< unsigned int >     _deepToSupported;
+			std::vector< std::pair< bool , unsigned int > > _supportedToBoundaryOrDeep;
+			std::vector< unsigned int > _boundaryToSupported;
+			std::vector< unsigned int >     _deepToSupported;
+		};
 	};
 
 	template< typename GeometryReal , typename MatrixReal >
-	struct GridAtlas
+	struct GridAtlas< GeometryReal , MatrixReal >
 	{
-
 		std::vector< ThreadTask > threadTasks;
-		IndexConverter indexConverter;
+		typename GridAtlas<>::IndexConverter indexConverter;
 		std::vector< GridNodeInfo > nodeInfo;
 		std::vector< GridChart< GeometryReal > > gridCharts;
 		std::vector< SegmentedRasterLine > segmentedLines;

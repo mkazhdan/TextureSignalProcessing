@@ -56,8 +56,8 @@ namespace MishaK
 		//		1  
 		//		|  
 
-		for (int i = 0; i < gridChart.bilinearElementIndices.size(); i++){
-			const BilinearElementIndex & indices = gridChart.bilinearElementIndices[i];
+		for (int i = 0; i < gridChart.combinedCellCombinedBilinearElementIndices.size(); i++){
+			const BilinearElementIndex & indices = gridChart.combinedCellCombinedBilinearElementIndices[i];
 			for (int k = 0; k < edgesPerCell; k++) {
 				int vIndices[2] = { (int)indices[ pairsToAdd[2*k] ] , (int)indices[ pairsToAdd[2*k+1] ] };
 				EdgeIndex edgeKey( vIndices[0] , vIndices[1] );
@@ -86,7 +86,7 @@ namespace MishaK
 	void InitializeBoundaryEdgeIndexing
 	(
 		const SparseMatrix< MatrixReal , int > &boundaryAdjancencyMatrix ,
-		const IndexConverter &indexConverter ,
+		const typename GridAtlas<>::IndexConverter & indexConverter ,
 		std::map< EdgeIndex , unsigned int > &coarseEdgeIndex ,
 		std::vector< unsigned int > &boundaryEdgeToGlobalEdge ,
 		std::map< EdgeIndex , unsigned int > &boundaryEdgeIndex

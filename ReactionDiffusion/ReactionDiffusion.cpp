@@ -323,7 +323,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::SetRightHandSide( void )
 	static std::vector< Point2D< Real > > ab_x( multigridVariables[0][0].x.size() );
 	static std::vector< Point2D< Real > > ab_rhs( multigridVariables[0][0].rhs.size() );
 	for( int ab=0 ; ab<2 ; ab++ ) ThreadPool::ParallelFor( 0 , ab_x.size() , [&]( unsigned int , size_t i ){ ab_x[i][ab] = multigridVariables[ab][0].x[i]; } );
-	const IndexConverter & indexConverter = hierarchy.gridAtlases[0].indexConverter;
+	const typename GridAtlas<>::IndexConverter & indexConverter = hierarchy.gridAtlases[0].indexConverter;
 
 	ThreadPool::ParallelFor( 0 , indexConverter.numBoundary() , [&]( unsigned int , size_t i ){ coarseBoundaryValues[i] = ab_x[ indexConverter.boundaryToSupported(i) ]; } );
 	coarseBoundaryFineBoundaryProlongation.Multiply( &coarseBoundaryValues[0] , &fineBoundaryValues[0] );
@@ -684,7 +684,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 	multigridIndices.resize( levels );
 	for( unsigned int i=0 ; i<levels ; i++ )
 	{
-		const IndexConverter & indexConverter = hierarchy.gridAtlases[i].indexConverter;
+		const typename GridAtlas<>::IndexConverter & indexConverter = hierarchy.gridAtlases[i].indexConverter;
 		const GridAtlas< PreReal , Real > &gridAtlas = hierarchy.gridAtlases[i];
 		multigridIndices[i].threadTasks = gridAtlas.threadTasks;
 		multigridIndices[i].boundaryToSupported = indexConverter.boundaryToSupported();
@@ -708,7 +708,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 		multigridVariables[ab].resize( levels );
 		for( unsigned int i=0 ; i<levels ; i++ )
 		{
-			const IndexConverter &indexConverter = hierarchy.gridAtlases[i].indexConverter;
+			const typename GridAtlas<>::IndexConverter & indexConverter = hierarchy.gridAtlases[i].indexConverter;
 			MultigridLevelVariables< Real >& variables = multigridVariables[ab][i];
 		 	variables.x.resize( hierarchy.gridAtlases[i].numTexels );
 			variables.rhs.resize( hierarchy.gridAtlases[i].numTexels );

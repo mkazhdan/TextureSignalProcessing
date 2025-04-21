@@ -682,7 +682,7 @@ void Stitching< PreReal , Real , TextureBitDepth >::InitializeSystem( int width 
 	multigridIndices.resize(levels);
 	for( unsigned int i=0 ; i<levels ; i++ )
 	{
-		const IndexConverter & indexConverter = hierarchy.gridAtlases[i].indexConverter;
+		const typename GridAtlas<>::IndexConverter & indexConverter = hierarchy.gridAtlases[i].indexConverter;
 		const GridAtlas< PreReal , Real > &gridAtlas = hierarchy.gridAtlases[i];
 		multigridIndices[i].threadTasks = gridAtlas.threadTasks;
 		multigridIndices[i].boundaryToSupported = indexConverter.boundaryToSupported();
@@ -700,7 +700,7 @@ void Stitching< PreReal , Real , TextureBitDepth >::InitializeSystem( int width 
 	multigridStitchingVariables.resize(levels);
 	for( unsigned int i=0 ; i<levels ; i++ )
 	{
-		const IndexConverter & indexConverter = hierarchy.gridAtlases[i].indexConverter;
+		const typename GridAtlas<>::IndexConverter & indexConverter = hierarchy.gridAtlases[i].indexConverter;
 		MultigridLevelVariables< Point3D< Real > >& variables = multigridStitchingVariables[i];
 		variables.x.resize( hierarchy.gridAtlases[i].numTexels );
 		variables.rhs.resize( hierarchy.gridAtlases[i].numTexels );

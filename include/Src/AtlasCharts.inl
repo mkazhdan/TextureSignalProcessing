@@ -60,7 +60,7 @@ const
 			unsigned int v = triangles[t][k];
 			if( chartVertexID[v]==-1 )
 			{
-				chartVertexID[v] = atlasChart.vertices.size();
+				chartVertexID[v] = (unsigned int)atlasChart.vertices.size();
 				Point2D< GeometryReal > vertexPos = vertices[v];
 				for( unsigned int c=0 ; c<2 ; c++ )
 				{

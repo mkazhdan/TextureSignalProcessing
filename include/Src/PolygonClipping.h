@@ -361,7 +361,7 @@ namespace MishaK
 			edgeEquation.makePositive( triangleCenter );
 
 			unsigned int edgeIndex = triangle.atlasEdgeIndices[k];
-			unsigned int atlasVertexIndices[2] = { triangle.atlasVertexIndices[ eIndex[0] ], triangle.atlasVertexIndices[ eIndex[1] ] };
+			unsigned int atlasVertexIndices[2] = { triangle.atlasVertexIndices[ eIndex[0] ] , triangle.atlasVertexIndices[ eIndex[1] ] };
 			ClipPartiallyIndexedPolygonToIndexedEdge( polygon , edgeEquation , edgeIndex , atlasVertexIndices );
 		}
 

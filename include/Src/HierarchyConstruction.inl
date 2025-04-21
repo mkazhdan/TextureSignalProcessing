@@ -32,7 +32,7 @@ void InitializeIndexConverter
 (
 	const std::vector< GridChart< GeometryReal > > &gridCharts ,
 	unsigned int numSupportedTexels ,
-	IndexConverter &indexConverter
+	typename GridAtlas<>::IndexConverter & indexConverter
 ) 
 {
 	indexConverter._supportedToBoundaryOrDeep.resize( numSupportedTexels );
@@ -175,7 +175,9 @@ void InitializeGridChartsActiveNodes
 					}
 				}
 			};
+		// Process texels whose support overlaps a triangle
 		Rasterizer2D::RasterizeSupports< false , false >( simplex , Kernel , nodeRange );
+
 #ifdef PRE_CLIP_TRIANGLES
 		{
 			Simplex< double , 2 , 2 > normalizedSimplex = GetTriangle( t , false );
@@ -188,6 +190,7 @@ void InitializeGridChartsActiveNodes
 						clippedTriangles(I).push_back( std::make_pair( t, poly ) );
 					else MK_THROW( "Expected triangle to intersect cell" );
 				};
+			// Process cells
 			Rasterizer2D::RasterizeSupports< true , true >( simplex , Kernel , cellRange );
 		}
 #else // !PRE_CLIP_TRIANGLES
@@ -481,8 +484,8 @@ void InitializeGridChartsActiveNodes
 	Image< TexelIndex > & texelIndices = gridChart.texelIndices;
 	texelIndices.resize( width , height );
 
-	// Set the global texel indices
-	for( int j=0 ; j<height ; j++ ) for( int i=0 ; i<width ; i++ ) if( gridChart.texelType(i,j)!=TexelType::Unsupported )
+	// Set the texel indices
+	for( unsigned int j=0 ; j<height ; j++ ) for( unsigned int i=0 ; i<width ; i++ ) if( gridChart.texelType(i,j)!=TexelType::Unsupported )
 	{
 		texelIndices(i,j).combined = combinedTexelIndex++;		
 
@@ -496,20 +499,6 @@ void InitializeGridChartsActiveNodes
 		if( IsBoundarySupported( gridChart.texelType(i,j) ) ) boundaryTexelIndex++;
 		if( gridChart.texelType(i,j)==TexelType::InteriorSupported ) texelIndices(i,j).interior = deepTexelIndex++;
 	}
-
-	Image< CellIndex > & cellIndices = gridChart.cellIndices;
-	cellIndices.resize( width-1 , height-1 );
-
-	std::vector< BilinearElementIndex > & bilinearElementIndices = gridChart.bilinearElementIndices;
-	std::vector< BilinearElementIndex > & interiorCellInteriorBilinearElementIndices = gridChart.interiorCellInteriorBilinearElementIndices;
-	std::vector< BilinearElementIndex > & interiorCellGlobalBilinearElementIndices = gridChart.interiorCellGlobalBilinearElementIndices;
-
-	std::vector< unsigned int > & interiorCellIndexToCombinedCellIndex = gridChart.interiorCellIndexToCombinedCellIndex;
-	std::vector< unsigned int > & boundaryCellIndexToCombinedCellIndex = gridChart.boundaryCellIndexToCombinedCellIndex;
-
-	unsigned int _combinedCellIndex = 0;
-	unsigned int _boundaryCellIndex = 0;
-	unsigned int _interiorCellIndex = 0;
 
 #ifdef USE_RASTERIZER
 	// Sanity check: Confirm that all active/interior cells are incident on active/non-boundary nodes
@@ -536,10 +525,29 @@ void InitializeGridChartsActiveNodes
 	}
 #endif // USE_RASTERIZER
 
+
+	Image< CellIndex > & cellIndices = gridChart.cellIndices;
+	cellIndices.resize( width-1 , height-1 );
+
+	std::vector< BilinearElementIndex > & combinedCellCombinedBilinearElementIndices = gridChart.combinedCellCombinedBilinearElementIndices;
+	std::vector< BilinearElementIndex > & interiorCellInteriorBilinearElementIndices = gridChart.interiorCellInteriorBilinearElementIndices;
+	std::vector< BilinearElementIndex > & interiorCellCombinedBilinearElementIndices = gridChart.interiorCellCombinedBilinearElementIndices;
+
+	std::vector< unsigned int > & interiorCellIndexToCombinedCellIndex = gridChart.interiorCellIndexToCombinedCellIndex;
+	std::vector< unsigned int > & boundaryCellIndexToCombinedCellIndex = gridChart.boundaryCellIndexToCombinedCellIndex;
+
+	unsigned int _combinedCellIndex = 0;
+	unsigned int _boundaryCellIndex = 0;
+	unsigned int _interiorCellIndex = 0;
+
+	// For all cells supporting the triangle:
+	// -- set the (combined) indices of the corners
+	// -- if the cell insterior
+	// ---- set the (interior/covered) indices of the corners
 	for( unsigned int j=0 ; j<height-1 ; j++ ) for( unsigned int i=0 ; i<width-1 ; i++ ) if( gridChart.cellType(i,j)!=CellType::Exterior )
 	{
 #ifdef USE_RASTERIZER
-		bilinearElementIndices.emplace_back( texelIndices(i,j).combined , texelIndices(i+1,j).combined , texelIndices(i+1,j+1).combined , texelIndices(i,j+1).combined );
+		combinedCellCombinedBilinearElementIndices.emplace_back( texelIndices(i,j).combined , texelIndices(i+1,j).combined , texelIndices(i+1,j+1).combined , texelIndices(i,j+1).combined );
 
 		if( gridChart.cellType(i,j)==CellType::Boundary )
 		{
@@ -552,7 +560,7 @@ void InitializeGridChartsActiveNodes
 			interiorCellIndexToCombinedCellIndex.push_back( _combinedCellIndex );
 
 			interiorCellInteriorBilinearElementIndices.emplace_back( texelIndices(i,j).interiorOrCovered , texelIndices(i+1,j).interiorOrCovered , texelIndices(i+1,j+1).interiorOrCovered , texelIndices(i,j+1).interiorOrCovered );
-			interiorCellGlobalBilinearElementIndices.emplace_back( texelIndices(i,j).combined , texelIndices(i+1,j).combined , texelIndices(i+1,j+1).combined , texelIndices(i,j+1).combined );
+			interiorCellCombinedBilinearElementIndices.emplace_back( texelIndices(i,j).combined , texelIndices(i+1,j).combined , texelIndices(i+1,j+1).combined , texelIndices(i,j+1).combined );
 		}
 		cellIndices(i,j).combined = _combinedCellIndex++;
 #else // !USE_RASTERIZER
@@ -576,7 +584,7 @@ void InitializeGridChartsActiveNodes
 			if( globalTexelInteriorIndices[0]!=-1 && globalTexelInteriorIndices[1]!=-1 && globalTexelInteriorIndices[2]!=-1 && globalTexelInteriorIndices[3]!=-1)
 			{
 				interiorCellInteriorBilinearElementIndices.push_back( BilinearElementIndex( globalTexelInteriorIndices[0] , globalTexelInteriorIndices[1] , globalTexelInteriorIndices[2] , globalTexelInteriorIndices[3] ) );
-				interiorCellGlobalBilinearElementIndices.push_back( BilinearElementIndex( globalTexelIndices[0] , globalTexelIndices[1] , globalTexelIndices[2] , globalTexelIndices[3] ) );
+				interiorCellCombinedBilinearElementIndices.push_back( BilinearElementIndex( globalTexelIndices[0] , globalTexelIndices[1] , globalTexelIndices[2] , globalTexelIndices[3] ) );
 			}
 			else MK_THROW( "Interior cell adjacent to non interior node" );
 			_interiorCellIndex++;
@@ -633,7 +641,7 @@ void InitializeGridChartsActiveNodes
 	int numHorizontalBlocks = ((width - multigridBlockInfo.paddingWidth - 1) / blockHorizontalOffset) + 1;
 	int numVerticalBlocks = ((height - multigridBlockInfo.paddingHeight - 1) / blockVerticalOffset) + 1;
 
-	for( int bj=0 ; bj<numVerticalBlocks ; bj++ )
+	for( unsigned int bj=0 ; bj<numVerticalBlocks ; bj++ )
 	{
 		ThreadTask threadTask;
 		int taskDeepTexels = 0;
@@ -641,7 +649,8 @@ void InitializeGridChartsActiveNodes
 		int blockVerticalStart = bj*blockVerticalOffset;
 		int blockVerticalEnd = std::min<int>((bj + 1)*blockVerticalOffset + multigridBlockInfo.paddingHeight + 2 - 1, height - 1);
 
-		for (int bi = 0; bi < numHorizontalBlocks; bi++) {
+		for( unsigned int bi=0 ; bi<numHorizontalBlocks ; bi++ )
+		{
 			BlockTask blockTask;
 
 			int blockHorizontalStart = bi*blockHorizontalOffset;
@@ -731,8 +740,9 @@ template< typename GeometryReal >
 void InitializeGridCharts
 (
 	const std::vector< AtlasChart< GeometryReal > > &atlasCharts ,
-	GeometryReal cellSizeW , 
-	GeometryReal cellSizeH ,
+	unsigned int width , 
+	unsigned int height ,
+	unsigned int level ,
 	std::vector< GridNodeInfo > &nodeInfo ,
 	std::vector< GridChart< GeometryReal > > &gridCharts ,
 	std::vector< RasterLine > &rasterLines ,
@@ -758,33 +768,31 @@ void InitializeGridCharts
 	numBoundaryCells = 0;
 	numInteriorCells = 0;
 
+	GeometryReal cellSize[] = { (GeometryReal)(1<<level) / width , (GeometryReal)(1<<level) / height };
+
+	unsigned int _width  = (  width + ( (1<<level)-1 ) )>>level;
+	unsigned int _height = ( height + ( (1<<level)-1 ) )>>level;
+	unsigned int approxGridSize = _width * _height;
+
 	for( unsigned int i=0 ; i<atlasCharts.size() ; i++ )
 	{
-		int halfSize[2][2];
-		for( unsigned int c=0 ; c<2 ; c++ )
 		{
-			if( c==0 )
+			int halfSize[2][2];
+			for( unsigned int c=0 ; c<2 ; c++ )
 			{
-				halfSize[c][0] = (int)ceil( ( atlasCharts[i].gridOrigin[c] - atlasCharts[i].minCorner[c] ) / cellSizeW );
-				halfSize[c][1] = (int)ceil( ( atlasCharts[i].maxCorner[c] - atlasCharts[i].gridOrigin[c] ) / cellSizeW );
-				gridCharts[i].corner[c] = atlasCharts[i].gridOrigin[c] - cellSizeW * (GeometryReal)halfSize[c][0];
+				halfSize[c][0] = (int)ceil( ( atlasCharts[i].gridOrigin[c] - atlasCharts[i].minCorner[c] ) / cellSize[c] );
+				halfSize[c][1] = (int)ceil( ( atlasCharts[i].maxCorner[c] - atlasCharts[i].gridOrigin[c] ) / cellSize[c] );
+				gridCharts[i].corner[c] = atlasCharts[i].gridOrigin[c] - cellSize[c] * (GeometryReal)halfSize[c][0];
+				gridCharts[i].centerOffset[c] = halfSize[c][0];
+				gridCharts[i].cornerCoords[c] = atlasCharts[i].originCoords[c] - halfSize[c][0];
 			}
-			else
-			{
-				halfSize[c][0] = (int)ceil( ( atlasCharts[i].gridOrigin[c] - atlasCharts[i].minCorner[c] ) / cellSizeH );
-				halfSize[c][1] = (int)ceil( ( atlasCharts[i].maxCorner[c] - atlasCharts[i].gridOrigin[c] ) / cellSizeH );
-				gridCharts[i].corner[c] = atlasCharts[i].gridOrigin[c] - cellSizeH * (GeometryReal)halfSize[c][0];
-			}
-			gridCharts[i].centerOffset[c] = halfSize[c][0];
-			gridCharts[i].cornerCoords[c] = atlasCharts[i].originCoords[c] - halfSize[c][0];
-		}
 
-		gridCharts[i].width = halfSize[0][0] + halfSize[0][1] + 1;
-		gridCharts[i].height = halfSize[1][0] + halfSize[1][1] + 1;
-		gridCharts[i].cellSizeW = cellSizeW;
-		gridCharts[i].cellSizeH = cellSizeH;
-		unsigned int approxGridResolution = std::max< unsigned int >((unsigned int)ceil(1.0 / cellSizeW), (unsigned int)ceil(1.0 / cellSizeH));
-		gridCharts[i].gridIndexOffset = 2 * approxGridResolution*approxGridResolution*i;
+			gridCharts[i].width  = halfSize[0][0] + halfSize[0][1] + 1;
+			gridCharts[i].height = halfSize[1][0] + halfSize[1][1] + 1;
+		}
+		gridCharts[i].cellSizeW = cellSize[0];
+		gridCharts[i].cellSizeH = cellSize[1];
+		gridCharts[i].gridIndexOffset = 2*approxGridSize*i;
 		InitializeGridChartsActiveNodes( i , atlasCharts[i] , gridCharts[i] , nodeInfo , rasterLines , segmentedLines , threadTasks , numTexels , numInteriorTexels , numDeepTexels , numBoundaryTexels , numCells , numBoundaryCells , numInteriorCells , multigridBlockInfo );
 	}
 }
@@ -811,34 +819,41 @@ void InitializeTextureNodes( const std::vector< GridChart< GeometryReal > > &gri
 }
 
 template< typename GeometryReal >
-void InitializeCellNodes( const std::vector< GridChart< GeometryReal > > &gridCharts , std::vector< BilinearElementIndex > &cellNodes )
+void InitializeCellNodes( const std::vector< GridChart< GeometryReal > > &gridCharts , std::vector< BilinearElementIndex > &combinedCellCombinedBilinearElementIndices )
 {
 	for( int c=0 ; c<gridCharts.size() ; c++ )
 	{
-		const std::vector< BilinearElementIndex >& localBilinearElementIndices = gridCharts[c].bilinearElementIndices;
-		cellNodes.insert( cellNodes.end() , localBilinearElementIndices.begin() , localBilinearElementIndices.end() );
+		const std::vector< BilinearElementIndex >& _combinedCellCombinedBilinearElementIndices = gridCharts[c].combinedCellCombinedBilinearElementIndices;
+		combinedCellCombinedBilinearElementIndices.insert( combinedCellCombinedBilinearElementIndices.end() , _combinedCellCombinedBilinearElementIndices.begin() , _combinedCellCombinedBilinearElementIndices.end() );
 	}
 }
 
 template< typename GeometryReal , typename MatrixReal >
-void InitializeAtlasHierachicalBoundaryCoefficients( const GridAtlas< GeometryReal , MatrixReal > &fineAtlas , GridAtlas< GeometryReal , MatrixReal > &coarseAtlas , SparseMatrix< MatrixReal , int > &boundaryCoarseFineProlongation , std::vector< BoundaryDeepIndex > &boundaryDeepIndices , std::vector< BoundaryBoundaryIndex< MatrixReal > > &boundaryBoundaryIndices )
+void InitializeAtlasHierachicalBoundaryCoefficients
+(
+	const GridAtlas< GeometryReal , MatrixReal > &fineAtlas ,
+	GridAtlas< GeometryReal , MatrixReal > &coarseAtlas ,
+	SparseMatrix< MatrixReal , int > &boundaryCoarseFineProlongation ,
+	std::vector< BoundaryDeepIndex > &boundaryDeepIndices ,
+	std::vector< BoundaryBoundaryIndex< MatrixReal > > &boundaryBoundaryIndices
+)
 {
 	std::vector< Eigen::Triplet< MatrixReal > > prolongationTriplets;
 
 	const std::vector<GridNodeInfo> & coarseNodeInfo = coarseAtlas.nodeInfo;
-	const IndexConverter &coarseIndexConverter = coarseAtlas.indexConverter;
-	const IndexConverter &fineIndexConverter = fineAtlas.indexConverter;
+	const typename GridAtlas<>::IndexConverter & coarseIndexConverter = coarseAtlas.indexConverter;
+	const typename GridAtlas<>::IndexConverter & fineIndexConverter = fineAtlas.indexConverter;
 	for( unsigned int i=0 ; i<coarseIndexConverter.numBoundary() ; i++ )
 	{
 		const GridNodeInfo & currentNode = coarseNodeInfo[ coarseIndexConverter.boundaryToSupported(i) ];
 		const GridChart< GeometryReal > &coarseChart = coarseAtlas.gridCharts[ currentNode.chartID ];
 		const GridChart< GeometryReal > &fineChart = fineAtlas.gridCharts[ currentNode.chartID ];
 
-		int coarseChartWidth = coarseChart.texelType.res(0);
-		int coarseChartHeight = coarseChart.texelType.res(1);
+		unsigned int coarseChartWidth = coarseChart.texelType.res(0);
+		unsigned int coarseChartHeight = coarseChart.texelType.res(1);
 
-		int fineChartWidth = fineChart.texelType.res(0);
-		int fineChartHeight = fineChart.texelType.res(1);
+		unsigned int fineChartWidth = fineChart.texelType.res(0);
+		unsigned int fineChartHeight = fineChart.texelType.res(1);
 
 		int ci = currentNode.ci;
 		int cj = currentNode.cj;
@@ -847,10 +862,12 @@ void InitializeAtlasHierachicalBoundaryCoefficients( const GridAtlas< GeometryRe
 		int boundary_id[9];
 		int boundary_offset_i[9];
 		int boundary_offset_j[9];
-		for (int li = -1; li < 2; li++)for (int lj = -1; lj < 2; lj++) {
+		for( int li=-1 ; li<=1 ; li++ ) for( int lj=-1 ; lj<=1 ; lj++ )
+		{
 			int pi = ci + li;
 			int pj = cj + lj;
-			if (pi >= 0 && pi < coarseChartWidth && pj >= 0 && pj < coarseChartHeight) {
+			if( pi>=0 && pi<coarseChartWidth && pj>=0 && pj<coarseChartHeight )
+			{
 				unsigned int coarseGlobalIndex = coarseChart.texelIndices(pi, pj).combined;
 				if( coarseGlobalIndex!=-1 )
 				{
@@ -987,17 +1004,14 @@ void InitializeHierarchy
 	std::vector< GridAtlas< GeometryReal , MatrixReal > > &gridAtlases = hierarchy.gridAtlases;
 	gridAtlases.resize( levels );
 
-	for( unsigned int i=0 ; i<levels ; i++ )
+	for( unsigned int l=0 ; l<levels ; l++ )
 	{
-		unsigned int reductionFactor = 1 << (i);
-		GeometryReal cellSizeW = (GeometryReal)reductionFactor / width;
-		GeometryReal cellSizeH = (GeometryReal)reductionFactor / height;
-		InitializeGridCharts( atlasCharts , cellSizeW , cellSizeH , gridAtlases[i].nodeInfo , gridAtlases[i].gridCharts , gridAtlases[i].rasterLines , gridAtlases[i].segmentedLines , gridAtlases[i].threadTasks , gridAtlases[i].numTexels , gridAtlases[i].numInteriorTexels , gridAtlases[i].numDeepTexels , gridAtlases[i].numBoundaryTexels , gridAtlases[i].numCells , gridAtlases[i].numBoundaryCells , gridAtlases[i].numInteriorCells , multigridBlockInfo );
+		InitializeGridCharts( atlasCharts , width , height , l , gridAtlases[l].nodeInfo , gridAtlases[l].gridCharts , gridAtlases[l].rasterLines , gridAtlases[l].segmentedLines , gridAtlases[l].threadTasks , gridAtlases[l].numTexels , gridAtlases[l].numInteriorTexels , gridAtlases[l].numDeepTexels , gridAtlases[l].numBoundaryTexels , gridAtlases[l].numCells , gridAtlases[l].numBoundaryCells , gridAtlases[l].numInteriorCells , multigridBlockInfo );
 
-		if( gridAtlases[i].numTexels!=gridAtlases[i].numBoundaryTexels+gridAtlases[i].numDeepTexels )
-			MK_THROW( "Boundary and deep texels does not form a partition: " , gridAtlases[i].numTexels , " != " , gridAtlases[i].numBoundaryTexels , " + " , gridAtlases[i].numDeepTexels );
+		if( gridAtlases[l].numTexels!=gridAtlases[l].numBoundaryTexels+gridAtlases[l].numDeepTexels )
+			MK_THROW( "Boundary and deep texels does not form a partition: " , gridAtlases[l].numTexels , " != " , gridAtlases[l].numBoundaryTexels , " + " , gridAtlases[l].numDeepTexels );
 
-		InitializeIndexConverter( gridAtlases[i].gridCharts , gridAtlases[i].numTexels , gridAtlases[i].indexConverter );
+		InitializeIndexConverter( gridAtlases[l].gridCharts , gridAtlases[l].numTexels , gridAtlases[l].indexConverter );
 	}
 
 	hierarchy.boundaryRestriction.resize( levels-1 );

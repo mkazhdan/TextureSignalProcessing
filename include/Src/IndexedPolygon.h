@@ -42,23 +42,25 @@ namespace MishaK
 		Point2D< GeometryReal > position;
 	};
 
+	// A characterization of the intersection of grid and mesh edges
+	// If the mesh/grid index is undefined, it indexes a grid/mesh node.
 	struct GridMeshIntersectionKey
 	{
-		unsigned int gridIndex , meshIndex;
-		GridMeshIntersectionKey( void ) : gridIndex(-1) , meshIndex(-1){}
-		GridMeshIntersectionKey( unsigned int g , unsigned int m ) : gridIndex(g) , meshIndex(m){}
-		bool isMeshVertex  ( void ) const { return gridIndex==-1 && meshIndex!=-1; }
-		bool isGridVertex  ( void ) const { return meshIndex==-1 && gridIndex!=-1; }
-		bool isIntersection( void ) const { return meshIndex!=-1 && gridIndex!=-1; }
+		unsigned int gridEdgeIndex , meshEdgeIndex;
+		GridMeshIntersectionKey( void ) : gridEdgeIndex(-1) , meshEdgeIndex(-1){}
+		GridMeshIntersectionKey( unsigned int g , unsigned int m ) : gridEdgeIndex(g) , meshEdgeIndex(m){}
+		bool isMeshVertex  ( void ) const { return gridEdgeIndex==-1 && meshEdgeIndex!=-1; }
+		bool isGridVertex  ( void ) const { return meshEdgeIndex==-1 && gridEdgeIndex!=-1; }
+		bool isIntersection( void ) const { return meshEdgeIndex!=-1 && gridEdgeIndex!=-1; }
 
-		bool operator < ( const GridMeshIntersectionKey &key ) const { return gridIndex<key.gridIndex || ( gridIndex==key.gridIndex && meshIndex<key.meshIndex ); }
-		bool operator == ( const GridMeshIntersectionKey &key ) const { return gridIndex==key.gridIndex && meshIndex==key.meshIndex; }
-		bool operator != ( const GridMeshIntersectionKey &key ) const { return gridIndex!=key.gridIndex || meshIndex!=key.meshIndex; }
+		bool operator < ( const GridMeshIntersectionKey &key ) const { return gridEdgeIndex<key.gridEdgeIndex || ( gridEdgeIndex==key.gridEdgeIndex && meshEdgeIndex<key.meshEdgeIndex ); }
+		bool operator == ( const GridMeshIntersectionKey &key ) const { return gridEdgeIndex==key.gridEdgeIndex && meshEdgeIndex==key.meshEdgeIndex; }
+		bool operator != ( const GridMeshIntersectionKey &key ) const { return gridEdgeIndex!=key.gridEdgeIndex || meshEdgeIndex!=key.meshEdgeIndex; }
 
-		static GridMeshIntersectionKey GridKey( unsigned int g ){ return GridMeshIntersectionKey( g , -1 ); }
-		static GridMeshIntersectionKey MeshKey( unsigned int m ){ return GridMeshIntersectionKey( -1 , m ); }
+		static GridMeshIntersectionKey GridNodeKey( unsigned int g ){ return GridMeshIntersectionKey( g , -1 ); }
+		static GridMeshIntersectionKey MeshVertexKey( unsigned int m ){ return GridMeshIntersectionKey( -1 , m ); }
 
-		friend std::ostream &operator << ( std::ostream &s ,  const GridMeshIntersectionKey &iKey ){ return s << "( " << iKey.gridIndex << " , " << iKey.meshIndex << " )"; }
+		friend std::ostream &operator << ( std::ostream &s ,  const GridMeshIntersectionKey &iKey ){ return s << "( " << iKey.gridEdgeIndex << " , " << iKey.meshEdgeIndex << " )"; }
 	};
 
 	template< typename GeometryReal >
@@ -101,13 +103,18 @@ namespace MishaK
 	template< typename GeometryReal > using IndexedIntersectionPolygon  = _IndexedIntersectionPolygon< GeometryReal , static_cast< unsigned int >( -1 ) >;
 	template< typename GeometryReal > using IndexedIntersectionTriangle = _IndexedIntersectionPolygon< GeometryReal , 3 >;
 
+
 	template< typename GeometryReal >
 	struct IntersectionInfo
 	{
 		GridMeshIntersectionKey intersectionKey;
-		int intersectionIndex;
 		Point2D< GeometryReal > position;
 		GeometryReal time;
+		unsigned int index;
+
+		IntersectionInfo( void ) : index(-1){}
+		IntersectionInfo( GridMeshIntersectionKey intersectionKey , Point2D< GeometryReal > position , GeometryReal time , unsigned int index=-1 )
+			: intersectionKey(intersectionKey) , position(position) , time(time) , index(index){}
 
 		static bool CompareByTime( const IntersectionInfo< GeometryReal > &i0 , const IntersectionInfo< GeometryReal > &i1 ){ return i0.time < i1.time; };
 	};
@@ -118,5 +125,8 @@ namespace MishaK
 		GeometryReal startTime;
 		GeometryReal endTime;
 		unsigned int chartHalfEdge;
+
+		BoundarySegmentInfo( GeometryReal startTime=0 , GeometryReal endTime=1 , unsigned int chartHalfEdge=-1 )
+			: startTime(startTime) , endTime(endTime) , chartHalfEdge(chartHalfEdge){}
 	};
 }
