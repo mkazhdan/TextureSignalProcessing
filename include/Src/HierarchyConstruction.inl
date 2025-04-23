@@ -95,15 +95,25 @@ void InitializeGridChartsActiveNodes
 	cellType.resize( width-1 , height-1 );
 	for( int i=0 ; i<cellType.size() ; i++ ) cellType[i] = CellType::Exterior;
 
+#ifdef NEW_INDEXING
+	Image< ChartTriangleIndex > chartTriangleID;
+	chartTriangleID.resize( width , height );
+	for( unsigned int i=0 ; i<chartTriangleID.size() ; i++ ) chartTriangleID[i] = ChartTriangleIndex( -1 );
+#else // !NEW_INDEXING
 	Image< unsigned int > &triangleID = gridChart.triangleID;
 	triangleID.resize( width , height );
 	for ( int i=0 ; i<triangleID.size() ; i++ ) triangleID[i] = -1;
+#endif // NEW_INDEXING
 
 	Image< Point2D< GeometryReal > > &barycentricCoords = gridChart.barycentricCoords;
 	barycentricCoords.resize( width , height );
 
 #ifdef PRE_CLIP_TRIANGLES
+#ifdef NEW_INDEXING
+	Image< std::vector< std::pair< ChartTriangleIndex , CellClippedTriangle< GeometryReal > > > > &clippedTriangles = gridChart.clippedTriangles;
+#else // !NEW_INDEXING
 	Image< std::vector< std::pair< unsigned int , CellClippedTriangle< GeometryReal > > > > &clippedTriangles = gridChart.clippedTriangles;
+#endif // NEW_INDEXING
 	clippedTriangles.resize( width-1 , height-1 );
 #endif // PRE_CLIP_TRIANGLES
 
@@ -114,20 +124,30 @@ void InitializeGridChartsActiveNodes
 	nodeRange.second[0] = width , cellRange.second[0] = width-1;
 	nodeRange.second[1] = height , cellRange.second[1] = height-1;
 
+#ifdef NEW_INDEXING
+	auto GetTriangle = [&]( ChartTriangleIndex t , bool textureSpace=true )
+		{
+			Simplex< double , 2 , 2 > simplex;
+			SimplexIndex< 2 , ChartVertexIndex > tri = atlasChart.triangleIndex(t);
+			for( unsigned int k=0 ; k<=2 ; k++ )
+			{
+				simplex[k] = atlasChart.vertex( tri[k] ) - gridChart.corner;
+				if( textureSpace ) simplex[k][0] /= cellSizeW , simplex[k][1] /= cellSizeH;
+			}
+			return simplex;
+		};
+#else // !NEW_INDEXING
 	auto GetTriangle = [&]( unsigned int t , bool textureSpace=true )
 		{
 			Simplex< double , 2 , 2 > simplex;
 			for( unsigned int i=0 ; i<=2 ; i++ )
 			{
-#ifdef NEW_INDEXING
-				simplex[i] = atlasChart.vertex( ChartVertexIndex( atlasChart.triangle( ChartTriangleIndex(t) )[i] ) ) - gridChart.corner;
-#else // !NEW_INDEXING
 				simplex[i] = atlasChart.vertices[ atlasChart.triangles[t][i] ] - gridChart.corner;
-#endif // NEW_INDEXING
 				if( textureSpace ) simplex[i][0] /= cellSizeW , simplex[i][1] /= cellSizeH;
 			}
 			return simplex;
 		};
+#endif // NEW_INDEXING
 
 #ifdef NEW_INDEXING
 	auto GetEdge = [&]( ChartHalfEdgeIndex he , bool textureSpace=true )
@@ -137,9 +157,9 @@ void InitializeGridChartsActiveNodes
 		{
 			Simplex< double , 2 , 1 > simplex;
 #ifdef NEW_INDEXING
-			SimplexIndex< 1 , ChartVertexIndex > eIndex = atlasChart.edge( he );
+			SimplexIndex< 1 , ChartVertexIndex > eIndex = atlasChart.edgeIndex( he );
 #else // !NEW_INDEXING
-			EdgeIndex eIndex = atlasChart.edgeIndex( he );
+			SimplexIndex< 1 > eIndex = atlasChart.edgeIndex( he );
 #endif // NEW_INDEXING
 			for( unsigned int i=0 ; i<2 ; i++ )
 			{
@@ -167,7 +187,11 @@ void InitializeGridChartsActiveNodes
 #endif // NEW_INDEXING
 	{
 		// Compute the associated triangle in (shifted) texel coordinates
+#ifdef NEW_INDEXING
+		Simplex< double , 2 , 2 > simplex = GetTriangle( ChartTriangleIndex(t) );
+#else // !NEW_INDEXING
 		Simplex< double , 2 , 2 > simplex = GetTriangle( t );
+#endif // NEW_INDEXING
 
 		auto Kernel = [&]( Index I )
 			{
@@ -176,21 +200,35 @@ void InitializeGridChartsActiveNodes
 
 				texelType(I) = TexelType::BoundarySupported;
 
+#ifdef NEW_INDEXING
+				if( chartTriangleID(I)==ChartTriangleIndex(-1) )
+				{
+					chartTriangleID(I) = ChartTriangleIndex(t);
+#else // !NEW_INDEXING
 				if( triangleID(I)==-1 )
 				{
 					triangleID(I) = t;
+#endif // NEW_INDEXING
 					barycentricCoords(I) = newBC;
 				}
 				else
 				{
 					Point2D< GeometryReal > oldBC = barycentricCoords(I);
+#ifdef NEW_INDEXING
+					Simplex< double , 2 , 2 > oldSimplex = GetTriangle( chartTriangleID(I) );
+#else // !NEW_INDEXING
 					Simplex< double , 2 , 2 > oldSimplex = GetTriangle( triangleID(I) );
+#endif // NEW_INDEXING
 					Point< double , 2 > oldP = oldSimplex( oldBC ) , newP = simplex( newBC );
 					double oldD2 = Point< double , 2 >::SquareDistance( oldP , oldSimplex.nearest(oldP) );
 					double newD2 = Point< double , 2 >::SquareDistance( newP ,    simplex.nearest(newP) );
 					if( newD2<oldD2 )
 					{
+#ifdef NEW_INDEXING
+						chartTriangleID(I) = ChartTriangleIndex(t);
+#else // !NEW_INDEXING
 						triangleID(I) = t;
+#endif // NEW_INDEXING
 						barycentricCoords(I) = newBC;
 					}
 				}
@@ -200,14 +238,21 @@ void InitializeGridChartsActiveNodes
 
 #ifdef PRE_CLIP_TRIANGLES
 		{
+#ifdef NEW_INDEXING
+			Simplex< double , 2 , 2 > normalizedSimplex = GetTriangle( ChartTriangleIndex(t) , false );
+#else // !NEW_INDEXING
 			Simplex< double , 2 , 2 > normalizedSimplex = GetTriangle( t , false );
+#endif // NEW_INDEXING
 
 			auto Kernel = [&]( Index I )
 				{
 					cellType(I) = CellType::Interior;
 					CellClippedTriangle poly( normalizedSimplex );
-					if( ClipTriangleToPrimalCell( poly , I[0] , I[1] , gridChart.cellSizeW , gridChart.cellSizeH ) )
-						clippedTriangles(I).push_back( std::make_pair( t, poly ) );
+#ifdef NEW_INDEXING
+					if( ClipTriangleToPrimalCell( poly , I[0] , I[1] , gridChart.cellSizeW , gridChart.cellSizeH ) ) clippedTriangles(I).push_back( std::make_pair( ChartTriangleIndex(t) , poly ) );
+#else // !NEW_INDEXING
+					if( ClipTriangleToPrimalCell( poly , I[0] , I[1] , gridChart.cellSizeW , gridChart.cellSizeH ) ) clippedTriangles(I).push_back( std::make_pair( t, poly ) );
+#endif // NEW_INDEXING
 					else MK_THROW( "Expected triangle to intersect cell" );
 				};
 			// Process cells
@@ -221,18 +266,26 @@ void InitializeGridChartsActiveNodes
 	// Over-write the node designation for nodes covered by a triangle
 #ifdef NEW_INDEXING
 	for( int t=0 ; t<atlasChart.numTriangles() ; t++ )
+		Rasterizer2D::RasterizeNodes< false >( GetTriangle( ChartTriangleIndex(t) ) , [&]( Index I ){ texelType(I) = TexelType::BoundarySupportedAndCovered; } , nodeRange );
 #else // !NEW_INDEXING
 	for( int t=0 ; t<atlasChart.triangles.size() ; t++ )
-#endif // NEW_INDEXING
 		Rasterizer2D::RasterizeNodes< false >( GetTriangle( t ) , [&]( Index I ){ texelType(I) = TexelType::BoundarySupportedAndCovered; } , nodeRange );
+#endif // NEW_INDEXING
 
 	// Rasterize boundary edges into cells
-	for( int e=0 ; e<atlasChart.boundaryHalfEdges.size() ; e++ )
+	for( unsigned int e=0 ; e<atlasChart.boundaryHalfEdges.size() ; e++ )
 	{
+#ifdef NEW_INDEXING
+		unsigned int tIndex = static_cast< unsigned int >( atlasChart.boundaryHalfEdges[e] ) / 3;
+		unsigned int kIndex = static_cast< unsigned int >( atlasChart.boundaryHalfEdges[e] ) % 3;
+
+		Simplex< double , 2 , 2 > simplex = GetTriangle( ChartTriangleIndex(tIndex) );
+#else // !NEW_INDEXING
 		int tIndex = atlasChart.boundaryHalfEdges[e] / 3;
 		int kIndex = atlasChart.boundaryHalfEdges[e] % 3;
 
 		Simplex< double , 2 , 2 > simplex = GetTriangle( tIndex );
+#endif // NEW_INDEXING
 		Simplex< double , 2 , 1 > subSimplex = GetEdge( atlasChart.boundaryHalfEdges[e] );
 		Rasterizer2D::RasterizeSupports< true , true >( subSimplex , [&]( Index I ){ cellType(I)=CellType::Boundary; } , cellRange );
 	}
@@ -241,7 +294,11 @@ void InitializeGridChartsActiveNodes
 	{
 		auto Kernel = [&]( Index I )
 			{
+#ifdef NEW_INDEXING
+				if( chartTriangleID(I)!=ChartTriangleIndex(-1) )
+#else // !NEW_INDEXING
 				if( triangleID(I)!=-1 )
+#endif // NEW_INDEXING
 				{
 					unsigned int bCount = 0;
 					Range::Intersect( cellRange , Range::CellsSupportedOnNode(I) ).process( [&]( Index I ){ if( cellType(I)==CellType::Boundary ) bCount++; } );
@@ -498,8 +555,19 @@ void InitializeGridChartsActiveNodes
 #endif // USE_RASTERIZER
 #endif // USE_RASTERIZER
 
+#ifdef NEW_INDEXING
+	// Transform from chart triangle indices to atlas triangle indices
+	{
+		Image< AtlasTriangleIndex > &atlasTriangleID = gridChart.triangleID;
+		atlasTriangleID.resize( width , height );
+		for( unsigned int i=0 ; i<atlasTriangleID.size() ; i++ ) atlasTriangleID[i] = AtlasTriangleIndex( -1 );
+
+		for( size_t i=0 ; i<chartTriangleID.size() ; i++ ) if( chartTriangleID[i]!=ChartTriangleIndex(-1) ) atlasTriangleID[i] = atlasChart.atlasTriangle( chartTriangleID[i] );
+	}
+#else // !NEW_INDEXING
 	// Make the triangle IDs chart-local
 	for( size_t i=0 ; i<triangleID.size() ; i++ ) if( triangleID[i]!=-1 ) triangleID[i] = atlasChart.atlasTriangle( triangleID[i] );
+#endif // NEW_INDEXING
 
 	// (5) Enumerate variables in raster order
 	gridChart.combinedCellOffset = combinedCellIndex;
@@ -816,7 +884,10 @@ void InitializeGridCharts
 		}
 		gridCharts[i].cellSizeW = cellSize[0];
 		gridCharts[i].cellSizeH = cellSize[1];
+#ifdef NO_GRID_INDEX_OFFSET
+#else // !NO_GRID_INDEX_OFFSET
 		gridCharts[i].gridIndexOffset = 2*approxGridSize*i;
+#endif // NO_GRID_INDEX_OFFSET
 		InitializeGridChartsActiveNodes( i , atlasCharts[i] , gridCharts[i] , nodeInfo , rasterLines , segmentedLines , threadTasks , numTexels , numInteriorTexels , numDeepTexels , numBoundaryTexels , numCells , numBoundaryCells , numInteriorCells , multigridBlockInfo );
 	}
 }

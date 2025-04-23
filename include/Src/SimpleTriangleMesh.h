@@ -51,7 +51,7 @@ namespace MishaK
 		Point2D< Real > barycentricCoords;
 	};
 
-	SimplexIndex< 1 > CornerEdgeIndex( unsigned int k , bool flip=false );
+	SimplexIndex< 1 > OutgoingEdgeIndex( unsigned int k , bool flip=false );
 
 	template< typename Real , unsigned int Dim >
 	struct SimpleTriangleMesh

@@ -29,11 +29,10 @@ DAMAGE.
 #define PRE_PROCESSING_INCLUDED
 
 #define NEW_CODE					// General-purpose experimental code encapsulation
-#define NEW_NEW_CODE
+//#define NO_GRID_INDEX_OFFSET		// DOES NOT WORK: Causes confusion about index re-use across charts when running LIC
 #define USE_RASTERIZER				// Use triangle/edge rasterization code
 #define REORDER_BOUNDARY			// Re-order the boundary edges so that they are sequential [probably not necessary]
 #define PRE_CLIP_TRIANGLES			// Clip and store triangles with cells [Requires USE_RASTERIZER]
-//#define NEW_HALF_EDGE				// Standardize half-edge indexing
 
 //#define SEPARATE_POLYGONS			// Keep the polygons obtained by clipping triangles to boundary cells separate
 
@@ -49,20 +48,7 @@ DAMAGE.
 
 //#define SANITY_CHECK
 
-
-// Index types: Data | Sequential
-// -- (Half-)edges
-// -- Boundary (half-)edges
-// -- Segments
-// -- Grid nodes
-// -- Atlas/chart vertices
-// -- Auxiliary nodes
-// -- Triangle
-// -- Chart
-// Atlas: Shared vertices/edges
-// Chart: Separate vertices/edges
-
 #define NEW_INDEXING					// Use separate names for indexing
-//#define DEBUG_INDEXING					// Use separate classes for indexing
+#define DEBUG_INDEXING					// Use separate classes for indexing
 
 #endif // PRE_PROCESSING_INCLUDED

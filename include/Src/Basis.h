@@ -31,9 +31,29 @@ DAMAGE.
 #include <Misha/Exceptions.h>
 #include <Misha/RightTriangleQuadrature.h>
 #include "SimpleTriangleMesh.h"
+#ifdef NEW_INDEXING
+#include "Indices.h"
+#endif // NEW_INDEXING
 
 namespace MishaK
 {
+#ifdef NEW_INDEXING
+	template< typename GeometryReal >
+	struct TextureNodeInfo
+	{
+		TextureNodeInfo( void )
+			: tID(-1) , ci(static_cast< unsigned int >(-1) ) , cj( static_cast< unsigned int >(-1) ) , chartID( static_cast< unsigned int >(-1) ) , isInterior(false) {}
+		TextureNodeInfo( AtlasTriangleIndex tID , Point2D< GeometryReal > barycentricCoords , unsigned int ci , unsigned int cj , unsigned int chartID , bool isInterior )
+			: tID(tId) , barycentricCoords(barycentricCoords) , ci(ci) , cj(cj) , chartID(chartID) , isInterior(isInterior) {}
+		AtlasTriangleIndex tID;
+		Point< GeometryReal , 2 > barycentricCoords;
+		unsigned int ci , cj;
+		unsigned int chartID;
+		bool isInterior;
+
+		operator MeshSample< GeometryReal >() const { return MeshSample< GeometryReal >( static_cast< unsigned int >(tID) , barycentricCoords ); }
+	};
+#else // !NEW_INDEXING
 	template< typename GeometryReal >
 	struct TextureNodeInfo : public MeshSample< GeometryReal >
 	{
@@ -47,9 +67,10 @@ namespace MishaK
 		unsigned int chartID;
 		bool isInterior;
 	};
+#endif // NEW_INDEXING
 
 
-	class BilinearElementIndex
+	struct BilinearElementIndex
 	{
 	protected:
 		unsigned int v[4];
@@ -60,15 +81,24 @@ namespace MishaK
 		unsigned int  operator[]( unsigned int idx ) const { return v[idx]; }
 	};
 
-	class QuadraticElementIndex
+	struct QuadraticElementIndex
 	{
 	protected:
+#ifdef NEW_INDEXING
+		AtlasBoundaryVertexIndex v[6];
+	public:
+		QuadraticElementIndex( void ) { v[0] = v[1] = v[2] = v[3] = v[4] = v[5] = AtlasBoundaryVertexIndex(0); }
+		QuadraticElementIndex( AtlasBoundaryVertexIndex v0 , AtlasBoundaryVertexIndex v1 , AtlasBoundaryVertexIndex v2 , AtlasBoundaryVertexIndex v3 , AtlasBoundaryVertexIndex v4 , AtlasBoundaryVertexIndex v5 ){ v[0] = v0 , v[1] = v1 , v[2] = v2 , v[3] = v3 , v[4] = v4 , v[5] = v5; }
+		AtlasBoundaryVertexIndex &operator[]( unsigned int idx )       { return v[idx]; }
+		AtlasBoundaryVertexIndex  operator[]( unsigned int idx ) const { return v[idx]; }
+#else // !NEW_INDEXING
 		unsigned int v[6];
 	public:
 		QuadraticElementIndex( void ) { v[0] = v[1] = v[2] = v[3] = v[4] = v[5] = 0; }
 		QuadraticElementIndex( unsigned int v0 , unsigned int v1 , unsigned int v2 , unsigned int v3 , unsigned int v4 , unsigned int v5 ){ v[0] = v0 , v[1] = v1 , v[2] = v2 , v[3] = v3 , v[4] = v4 , v[5] = v5; }
 		unsigned int &operator[]( unsigned int idx )       { return v[idx]; }
 		unsigned int  operator[]( unsigned int idx ) const { return v[idx]; }
+#endif // NEW_INDEXING
 	};
 
 	template< typename GeometryReal >

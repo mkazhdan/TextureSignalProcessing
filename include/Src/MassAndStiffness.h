@@ -114,7 +114,7 @@ namespace MishaK
 				Point2D< GeometryReal > c = ( vertices[0] + vertices[1] + vertices[2] ) / 3;
 				for( unsigned int i=0 ; i<3 ; i++ )
 				{
-					SimplexIndex< 1 > eIndex = CornerEdgeIndex( i );
+					SimplexIndex< 1 > eIndex = OutgoingEdgeIndex( i );
 					eq[i] = EdgeEquation< GeometryReal >( vertices[ eIndex[0] ] , vertices[ eIndex[1] ] );
 					eq[i].makePositive(c);
 				}
@@ -190,9 +190,9 @@ namespace MishaK
 				for( unsigned int i=0 ; i<=2 ; i++ )
 				{
 #ifdef NEW_INDEXING
-					simplex[i] = atlasChart.vertex( ChartVertexIndex( atlasChart.triangle( ChartTriangleIndex(t) )[i] ) ) - gridChart.corner;
+					simplex[i] = atlasChart.vertex( ChartVertexIndex( atlasChart.triangleIndex( ChartTriangleIndex(t) )[i] ) ) - gridChart.corner;
 #else // !NEW_INDEXING
-					NEW_INDEXINGsimplex[i] = atlasChart.vertices[ atlasChart.triangles[t][i] ] - gridChart.corner;
+					simplex[i] = atlasChart.vertices[ atlasChart.triangles[t][i] ] - gridChart.corner;
 #endif // NEW_INDEXING
 					simplex[i][0] /= gridChart.cellSizeW , simplex[i][1] /= gridChart.cellSizeH;
 				}
@@ -231,16 +231,28 @@ namespace MishaK
 					if( gridChart.cellIndices[i].interior!=-1 )
 					{
 						unsigned int interiorIndex = gridChart.cellIndices[i].interior;
+#ifdef NEW_INDEXING
+						const std::vector< std::pair< ChartTriangleIndex , CellClippedTriangle< GeometryReal > > > &clippedTriangles = gridChart.clippedTriangles[i];
+#else // !NEW_INDEXING
 						const std::vector< std::pair< unsigned int , CellClippedTriangle< GeometryReal > > > &clippedTriangles = gridChart.clippedTriangles[i];
+#endif // NEW_INDEXING
 						if( !clippedTriangles.size() ) MK_THROW( "Expected triangles" );
 
 						if( clippedTriangles.size()==1 ) // The cell is covered by a single triangle
 						{
 							SquareMatrix< GeometryReal , 4 > polygonMass , polygonStiffness;
 
+#ifdef NEW_INDEXING
+							polygonMass = interior_cell_mass * area_scale[ static_cast< unsigned int >( clippedTriangles[0].first ) ];
+#else // !NEW_INDEXING
 							polygonMass = interior_cell_mass * area_scale[ clippedTriangles[0].first ];
+#endif // NEW_INDEXING
 							for( int k=0 ; k<4 ; k++ ) for( int l=0 ; l<4 ; l++ )
+#ifdef NEW_INDEXING
+								polygonStiffness(k,l) = SquareMatrix< GeometryReal , 2 >::Dot( g_inv[ static_cast< unsigned int >( clippedTriangles[0].first ) ] , interior_cell_stiffnesses[k][l] ) * area_scale[ static_cast< unsigned int >( clippedTriangles[0].first ) ];
+#else // !NEW_INDEXING
 								polygonStiffness(k,l) = SquareMatrix< GeometryReal , 2 >::Dot( g_inv[ clippedTriangles[0].first ] , interior_cell_stiffnesses[k][l] ) * area_scale[ clippedTriangles[0].first ];
+#endif // NEW_INDEXING
 							cellMass     [ interiorIndex ] += polygonMass;
 							cellStiffness[ interiorIndex ] += polygonStiffness;
 
@@ -248,7 +260,11 @@ namespace MishaK
 							{
 								SquareMatrix< GeometryReal , 4 > polygonDivergence;
 								for( int k=0 ; k<4 ; k++ ) for( int l=0 ; l<4 ; l++ )
+#ifdef NEW_INDEXING
+									polygonDivergence(l,k) = SquareMatrix< GeometryReal , 2 >::Dot( g_inv[ static_cast< unsigned int >( clippedTriangles[0].first ) ] , grad_edge_products[l][k] ) * area_scale[ static_cast< unsigned int >( clippedTriangles[0].first ) ];
+#else // !NEW_INDEXING
 									polygonDivergence(l,k) = SquareMatrix< GeometryReal , 2 >::Dot( g_inv[ clippedTriangles[0].first ] , grad_edge_products[l][k] ) * area_scale[ clippedTriangles[0].first ];
+#endif // NEW_INDEXING
 								cellDivergence[ interiorIndex ] += polygonDivergence;
 							}
 						}
@@ -259,7 +275,11 @@ namespace MishaK
 
 							for( unsigned int i=0 ; i<clippedTriangles.size() ; i++ )
 							{
+#ifdef NEW_INDEXING
+								unsigned int t = static_cast< unsigned int >( clippedTriangles[i].first );
+#else // !NEW_INDEXING
 								unsigned int t = clippedTriangles[i].first;
+#endif // NEW_INDEXING
 								CellClippedTriangle< GeometryReal > polygon = clippedTriangles[i].second;
 
 								SquareMatrix< GeometryReal , 2 > element_metric_inverse = g_inv[t] ;
@@ -343,44 +363,56 @@ namespace MishaK
 						auto TextureToCell = [&]( Point2D< GeometryReal > p ){ return Point2D< GeometryReal >( (GeometryReal)( p[0] / gridChart.cellSizeW ) - I[0] , (GeometryReal)( p[1] / gridChart.cellSizeH ) - I[1] ); };
 
 						unsigned int boundaryIndex = gridChart.cellIndices[i].boundary;
+#ifdef NEW_INDEXING
+						const std::vector< std::pair< ChartTriangleIndex , CellClippedTriangle< GeometryReal > > > &clippedTriangles = gridChart.clippedTriangles[i];
+#else // !NEW_INDEXING
 						const std::vector< std::pair< unsigned int , CellClippedTriangle< GeometryReal > > > &clippedTriangles = gridChart.clippedTriangles[i];
+#endif // NEW_INDEXING
 						if( !clippedTriangles.size() ) MK_THROW( "Expected triangles" );
 
 						for( unsigned int i=0 ; i<clippedTriangles.size() ; i++ )
 						{
+#ifdef NEW_INDEXING
+							unsigned int t = static_cast< unsigned int >( clippedTriangles[i].first );
+#else // !NEW_INDEXING
 							unsigned int t = clippedTriangles[i].first;
+#endif // NEW_INDEXING
 
 							Point2D< GeometryReal > tPos[3];
 #ifdef NEW_INDEXING
-							for( int i=0 ; i<3 ; i++ ) tPos[i] = atlasChart.vertex( ChartVertexIndex( atlasChart.triangle( ChartTriangleIndex(t) )[i] ) ) - gridChart.corner;
+							SimplexIndex< 2 , ChartVertexIndex > tri = atlasChart.triangleIndex( ChartTriangleIndex(t) );
+							for( unsigned int i=0 ; i<3 ; i++ ) tPos[i] = atlasChart.vertex( tri[i] ) - gridChart.corner;
 #else // !NEW_INDEXING
-							for( int i=0 ; i<3 ; i++ ) tPos[i] = atlasChart.vertices[ atlasChart.triangles[t][i] ] - gridChart.corner;
+							for( unsigned int i=0 ; i<3 ; i++ ) tPos[i] = atlasChart.vertices[ atlasChart.triangles[t][i] ] - gridChart.corner;
 #endif // NEW_INDEXING
-
-							AtlasIndexedTriangle< GeometryReal > atlasTriangle;
-							for( int k=0 ; k<3 ; k++ )
+							IndexedTriangle< GeometryReal > atlasTriangle;
+							for( unsigned int k=0 ; k<3 ; k++ )
 							{
 								atlasTriangle.vertices[k] = tPos[k];
-								atlasTriangle.atlasEdgeIndices[k] = atlasChart.atlasEdge( 3*t+k );
 #ifdef NEW_INDEXING
-								atlasTriangle.atlasVertexIndices[k] = atlasChart.triangle( ChartTriangleIndex(t ) )[k];
+								atlasTriangle.atlasEdgeIndices[k] = atlasChart.atlasEdge( GetChartHalfEdgeIndex( ChartTriangleIndex(t) , k ) );
+								atlasTriangle.vertexIndices[k] = atlasChart.triangleIndex( ChartTriangleIndex(t) )[k];
+								atlasTriangle.atlasVertexParentEdge[k] = AtlasEdgeIndex(-1);
 #else // !NEW_INDEXING
-								atlasTriangle.atlasVertexIndices[k] = atlasChart.triangles[t][k];
-#endif // NEW_INDEXING
+								atlasTriangle.atlasEdgeIndices[k] = atlasChart.atlasEdge( 3*t+k );
+								atlasTriangle.vertexIndices[k] = atlasChart.triangles[t][k];
 								atlasTriangle.atlasVertexParentEdge[k] = -1;
+#endif // NEW_INDEXING
 							}
 
-							std::vector< BoundaryIndexedTriangle< GeometryReal > > cellBoundaryTriangles = gridChart.boundaryTriangles[ boundaryIndex ];
+							const std::vector< BoundaryIndexedTriangle< GeometryReal > > & cellBoundaryTriangles = gridChart.boundaryTriangles[ boundaryIndex ];
+
 							// Iterate over all elements in the cell
-							for( int bt=0 ; bt<cellBoundaryTriangles.size() ; bt++ )
+							for( unsigned int bt=0 ; bt<cellBoundaryTriangles.size() ; bt++ )
 							{
 								BoundaryIndexedTriangle< GeometryReal > element = cellBoundaryTriangles[bt];
 								std::vector< Point2D< GeometryReal > > element_vertices(3);
 								for( int ii=0 ; ii<3 ; ii++ ) element_vertices[ii] = TextureToCell( element[ii] );
 								unsigned int boundaryTriangleId = element.id;
 
-								AtlasIndexedPolygon< GeometryReal > polygon;
-								SetAtlasIndexedPolygonFromBoundaryTriangle( element , polygon );
+								IndexedPolygon< GeometryReal > polygon;
+
+								SetIndexedPolygonFromBoundaryTriangle( element , polygon );
 
 								// Intersect the element with the atlas triangle
 								if( ClipPartiallyIndexedPolygonToIndexedTriangle( polygon , atlasTriangle ) )
@@ -404,7 +436,7 @@ namespace MishaK
 									Matrix< GeometryReal , 6 , 15 > polygonDivergence;
 									GeometryReal polygonArea = 0;
 
-									for( int p=2 ; p<polygon.vertices.size() ; p++ )
+									for( unsigned int p=2 ; p<polygon.size() ; p++ )
 									{
 										Point2D< GeometryReal > d[] = { polygon[p-1]-polygon[0] , polygon[p]-polygon[0] };
 
@@ -419,7 +451,7 @@ namespace MishaK
 											Point2D< GeometryReal > fragment_samples[Samples];
 											for( int s=0 ; s<Samples ; s++ )
 											{
-												fragment_samples[s] = polygon.vertices[0] + d[0] * (GeometryReal)TriangleIntegrator<Samples>::Positions[s][0] + d[1] * (GeometryReal)TriangleIntegrator<Samples>::Positions[s][1];
+												fragment_samples[s] = polygon[0] + d[0] * (GeometryReal)TriangleIntegrator<Samples>::Positions[s][0] + d[1] * (GeometryReal)TriangleIntegrator<Samples>::Positions[s][1];
 												if( !InUnitTriangle( fragment_samples[s] ) ) MK_THROW( "Boundary sample out of unit right triangle! (" , fragment_samples[s][0] , " " , fragment_samples[s][1] , ")" );
 												else
 												{
@@ -520,12 +552,12 @@ namespace MishaK
 			std::vector< Point2D< GeometryReal > > parametricVertices(3);
 			parametricVertices[0] = tPos[0] , parametricVertices[1] = tPos[1] , parametricVertices[2] = tPos[2];
 
-			AtlasIndexedTriangle< GeometryReal > atlasTriangle;
+			IndexedTriangle< GeometryReal > atlasTriangle;
 			for( int k=0 ; k<3 ; k++ )
 			{
 				atlasTriangle.vertices[k] = tPos[k];
 				atlasTriangle.atlasEdgeIndices[k] = atlasChart.atlasEdgeIndices[3 * t + k];
-				atlasTriangle.atlasVertexIndices[k] = atlasChart.triangles[t][k];
+				atlasTriangle.vertexIndices[k] = atlasChart.triangles[t][k];
 				atlasTriangle.atlasVertexParentEdge[k] = -1;
 			}
 #ifdef USE_RASTERIZER
@@ -654,8 +686,8 @@ namespace MishaK
 						for( int ii=0 ; ii<3 ; ii++ ) element_vertices[ii] = TextureToCell( element[ii] );
 						int boundaryTriangleId = element.id;
 
-						AtlasIndexedPolygon< GeometryReal > polygon;
-						SetAtlasIndexedPolygonFromBoundaryTriangle( element , polygon );
+						IndexedPolygon< GeometryReal > polygon;
+						SetIndexedPolygonFromBoundaryTriangle( element , polygon );
 
 						// Intersect the element with the atlas triangle
 						if( ClipPartiallyIndexedPolygonToIndexedTriangle( polygon , atlasTriangle ) )

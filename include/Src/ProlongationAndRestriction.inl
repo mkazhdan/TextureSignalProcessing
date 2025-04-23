@@ -77,15 +77,17 @@ void InitializeProlongation( int numInteriorTexels , int numFineNodes , int numC
 
 	std::vector<GeometryReal> auxiliaryNodesCumWeight(numAuxiliaryNodes, 0);
 
-	for (int i = 0; i < gridCharts.size(); i++) {
+	for( unsigned int i=0 ; i<gridCharts.size() ; i++ )
+	{
 		const GridChart< GeometryReal > &gridChart = gridCharts[i];
-		for (int j = 0; j < gridChart.auxiliaryNodes.size(); j++) {
+		for( unsigned int j=0 ; j<gridChart.auxiliaryNodes.size() ; j++ )
+		{
 			int auxiliaryID = gridChart.auxiliaryNodes[j].index - numInteriorTexels;
 			int nodeDegree = auxiliaryNodesDegree[auxiliaryID];
 			Point2D< GeometryReal > nodePosition = gridChart.auxiliaryNodes[j].position;
 			int corner[2] = { (int)floor(nodePosition[0] / gridChart.cellSizeW), (int)floor(nodePosition[1] / gridChart.cellSizeH) };
 			unsigned int cellId = gridChart.cellIndices( corner[0] , corner[1] ).combined;
-
+				
 			nodePosition[0] /= gridChart.cellSizeW;
 			nodePosition[1] /= gridChart.cellSizeH;
 			nodePosition[0] -= (GeometryReal)corner[0];
@@ -306,7 +308,6 @@ void InitializeAtlasHierachicalRestriction
 
 				GridNodeInfo startNodeInfo = coarseNodeInfo[lineCoarseStartIndex];
 				if( startNodeInfo.texelType!=TexelType::InteriorSupported ) MK_THROW( "Not an interior-supported teel" );
-
 				int ci = startNodeInfo.ci;
 				int cj = startNodeInfo.cj;
 				int chartID = startNodeInfo.chartID;

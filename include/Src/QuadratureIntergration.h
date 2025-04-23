@@ -240,7 +240,7 @@ namespace MishaK
 				Point2D< GeometryReal > c = ( vertices[0] + vertices[1] + vertices[2] ) / 3;
 				for( unsigned int i=0 ; i<3 ; i++ )
 				{
-					SimplexIndex< 1 > eIndex = CornerEdgeIndex( i );
+					SimplexIndex< 1 > eIndex = OutgoingEdgeIndex( i );
 					eq[i] = EdgeEquation< GeometryReal >( vertices[ eIndex[0] ] , vertices[ eIndex[1] ] );
 					eq[i].makePositive(c);
 				}
@@ -299,13 +299,14 @@ namespace MishaK
 		nodeRange.second[0] = gridChart.width , cellRange.second[0] = gridChart.width-1;
 		nodeRange.second[1] = gridChart.height , cellRange.second[1] = gridChart.height-1;
 
+
 		auto GetSimplex = [&]( unsigned int t )
 			{
 				Simplex< double , 2 , 2 > simplex;
 				for( unsigned int i=0 ; i<=2 ; i++ )
 				{
 #ifdef NEW_INDEXING
-					simplex[i] = atlasChart.vertex( ChartVertexIndex( atlasChart.triangle( ChartTriangleIndex(t) )[i] ) ) - gridChart.corner;
+					simplex[i] = atlasChart.vertex( ChartVertexIndex( atlasChart.triangleIndex( ChartTriangleIndex(t) )[i] ) ) - gridChart.corner;
 #else // !NEW_INDEXING
 					simplex[i] = atlasChart.vertices[ atlasChart.triangles[t][i] ] - gridChart.corner;
 #endif // NEW_INDEXING
@@ -321,9 +322,12 @@ namespace MishaK
 		for( unsigned int t=0 ; t<atlasChart.triangles.size() ; t++ )
 #endif // NEW_INDEXING
 		{
+#ifdef NEW_INDEXING
+			SimplexIndex< 2 , ChartVertexIndex > tri = atlasChart.triangleIndex( ChartTriangleIndex(t) );
+#endif // NEW_INDEXING
 			Point2D< GeometryReal > tPos[3];
 #ifdef NEW_INDEXING
-			for( unsigned int i=0 ; i<3 ; i++ ) tPos[i] = atlasChart.vertex( ChartVertexIndex( atlasChart.triangle( ChartTriangleIndex(t) )[i] ) ) - gridChart.corner;
+			for( unsigned int k=0 ; k<=2 ; k++ ) tPos[k] = atlasChart.vertex( tri[k] ) - gridChart.corner;
 #else // !NEW_INDEXING
 			for( int i=0 ; i<3 ; i++ ) tPos[i] = atlasChart.vertices[ atlasChart.triangles[t][i] ] - gridChart.corner;
 #endif // NEW_INDEXING
@@ -343,18 +347,19 @@ namespace MishaK
 			std::vector< Point2D< GeometryReal > > parametricVertices(3);
 			parametricVertices[0] = tPos[0], parametricVertices[1] = tPos[1], parametricVertices[2] = tPos[2];
 
-			AtlasIndexedTriangle< GeometryReal > atlasTriangle;
-			for( int k=0 ; k<3 ; k++ )
+			IndexedTriangle< GeometryReal > atlasTriangle;
+			for( unsigned int k=0 ; k<3 ; k++ )
 			{
 				atlasTriangle.vertices[k] = tPos[k];
 #ifdef NEW_INDEXING
-				atlasTriangle.atlasEdgeIndices[k] = atlasChart.atlasEdge( ChartHalfEdgeIndex( 3*static_cast< unsigned int >(t) + k ) );
-				atlasTriangle.atlasVertexIndices[k] = atlasChart.triangle( ChartTriangleIndex(t) )[k];
+				atlasTriangle.atlasEdgeIndices[k] = atlasChart.atlasEdge( GetChartHalfEdgeIndex( ChartTriangleIndex(t) , k ) );
+				atlasTriangle.vertexIndices[k] = tri[k];
+				atlasTriangle.atlasVertexParentEdge[k] = AtlasEdgeIndex(-1);
 #else // !NEW_INDEXING
 				atlasTriangle.atlasEdgeIndices[k] = atlasChart.atlasEdge( 3*t+k );
-				atlasTriangle.atlasVertexIndices[k] = atlasChart.triangles[t][k];
-#endif // NEW_INDEXING
+				atlasTriangle.vertexIndices[k] = atlasChart.triangles[t][k];
 				atlasTriangle.atlasVertexParentEdge[k] = -1;
+#endif // NEW_INDEXING
 			}
 
 #ifdef USE_RASTERIZER
@@ -462,24 +467,24 @@ namespace MishaK
 				// Boundary cell
 				else if( localBoundaryIndex!=-1 )
 				{
-					std::vector< BoundaryIndexedTriangle< GeometryReal > > cellBoundaryTriangles = gridChart.boundaryTriangles[localBoundaryIndex];
+					const std::vector< BoundaryIndexedTriangle< GeometryReal > > & cellBoundaryTriangles = gridChart.boundaryTriangles[ localBoundaryIndex ];
 
 					// Iterate over all elements in the cell
-					for( int bt=0 ; bt<cellBoundaryTriangles.size() ; bt++ )
+					for( unsigned int bt=0 ; bt<cellBoundaryTriangles.size() ; bt++ )
 					{
 						BoundaryIndexedTriangle< GeometryReal > element = cellBoundaryTriangles[bt];
 						std::vector< Point2D< GeometryReal > > element_vertices(3);
-						for( int ii=0 ; ii<3 ; ii++ ) element_vertices[ii] = TextureToCell( element[ii] );
+						for( unsigned int ii=0 ; ii<3 ; ii++ ) element_vertices[ii] = TextureToCell( element[ii] );
 
-						AtlasIndexedPolygon< GeometryReal > polygon;
-						SetAtlasIndexedPolygonFromBoundaryTriangle( element , polygon );
+
+						IndexedPolygon< GeometryReal > polygon;
+						SetIndexedPolygonFromBoundaryTriangle( element , polygon );
 
 						// Intersect the element with the atlas triangle
-						int clippingResult = ClipPartiallyIndexedPolygonToIndexedTriangle( polygon , atlasTriangle );
-						if( clippingResult>0 )
+						if( ClipPartiallyIndexedPolygonToIndexedTriangle( polygon , atlasTriangle ) )
 						{
 							// Convert the polygon vertices from the texture frame to the cell frame
-							for( int ii=0 ; ii<polygon.size() ; ii++ ) polygon[ii] = TextureToCell( polygon[ii] );
+							for( unsigned int ii=0 ; ii<polygon.size() ; ii++ ) polygon[ii] = TextureToCell( polygon[ii] );
 
 							SquareMatrix< GeometryReal , 2 > element_to_cell_differential , cell_to_element_differential;
 							Point2D< GeometryReal > dm[] = { element_vertices[1]-element_vertices[0] , element_vertices[2]-element_vertices[0] };
@@ -492,18 +497,21 @@ namespace MishaK
 							SquareMatrix< GeometryReal , 2 > element_metric = element_to_cell_differential.transpose() * cell_metric * element_to_cell_differential;
 							SquareMatrix< GeometryReal , 2 > element_metric_inverse = element_metric.inverse();
 							GeometryReal element_area = sqrt( element_metric.determinant() );
-
 							typename ElementSamples::Quadratic quadraticElementSample( fastIntegration ? 1 : (unsigned int)(polygon.size()-2)*Samples );
 							for( int x=0 ; x<2 ; x++ ) for( int y=0 ; y<2 ; y++ ) quadraticElementSample.tensor(x,y) = (typename ElementSamples::Real)element_metric_inverse(x,y);
 							const QuadraticElementIndex& triangleElementIndices = gridChart.boundaryTriangles[localBoundaryIndex][bt].indices;
-							for( int k=0 ; k<6 ; k++ )
+							for( unsigned int k=0 ; k<6 ; k++ )
 							{
+#ifdef NEW_INDEXING
+								int _fineBoundaryIndex = fineBoundaryIndex[ static_cast< unsigned int >( triangleElementIndices[k] ) ];
+#else // !NEW_INDEXING
 								int _fineBoundaryIndex = fineBoundaryIndex[ triangleElementIndices[k] ];
+#endif // NEW_INDEXING
 								if( _fineBoundaryIndex!=-1 ) quadraticElementSample.fineNodes[k] = _fineBoundaryIndex;
 								else MK_THROW( "Invalid fine boundary index" );
 							}
 
-							for( int p=2 ; p<polygon.size() ; p++ )
+							for( unsigned int p=2 ; p<polygon.size() ; p++ )
 							{
 								Point2D< GeometryReal > d[2] = { polygon[p-1]-polygon[0] , polygon[p]-polygon[0] };
 								SquareMatrix< GeometryReal , 2 > fragment_to_element_differential;
@@ -530,32 +538,7 @@ namespace MishaK
 										sampleData.pos = pos;
 									}
 								}
-								else
-								{
-									MK_WARN( "Element discarded due to zero mass. Triangle " , t , ". Boundary cell " , localBoundaryIndex , ". Element " , bt , ". Sub triangle " , p-2 );
-
-									printf( "Atlas triangle\n" );
-									printf( "%d \n" , 3 );
-									for( int v=0 ; v<3 ; v++ ) printf( "%f %f %f\n" , atlasTriangle.vertices[v][0] , atlasTriangle.vertices[v][1] , 0. );
-									printf( "%d %d %d\n" , atlasTriangle.atlasVertexIndices[0] , atlasTriangle.atlasVertexIndices[1] , atlasTriangle.atlasVertexIndices[2] );
-									printf( "%d %d %d\n" , atlasTriangle.atlasEdgeIndices[0] , atlasTriangle.atlasEdgeIndices[1] , atlasTriangle.atlasEdgeIndices[2] );
-									for( int _bt=0 ; _bt<cellBoundaryTriangles.size() ; _bt++ )
-									{
-										printf( "ELEMENT %d\n" , _bt );
-
-										BoundaryIndexedTriangle< GeometryReal > _element = cellBoundaryTriangles[_bt];
-										AtlasIndexedPolygon< GeometryReal > _polygon;
-										SetAtlasIndexedPolygonFromBoundaryTriangle( _element , _polygon );
-
-										printf( "Boundary triangle\n" );
-										printf( "%d \n" , 3 );
-										for( int v=0 ; v<3 ; v++ )printf( "%f %f %f\n" , _element.vertices[v][0] , _element.vertices[v][1] , 0. );
-										printf( "%d %d %d\n" , _element.atlasVertexIndices[0] , _element.atlasVertexIndices[1] , _element.atlasVertexIndices[2] );
-										printf( "%d %d %d\n" , _element.atlasEdgeIndices[0] , _element.atlasEdgeIndices[1] , _element.atlasEdgeIndices[2] );
-
-										ClipPartiallyIndexedPolygonToIndexedTriangle( _polygon , atlasTriangle );
-									}
-								}
+								else MK_WARN( "Element discarded due to zero mass. Triangle " , t , ". Boundary cell " , localBoundaryIndex , ". Element " , bt , ". Sub triangle " , p-2 );
 							}
 							if( fastIntegration ) quadraticElementSample[0].pos = Point2D< GeometryReal >( PolygonCenter( &polygon[0] , (unsigned int)polygon.size() ) );
 							{
@@ -563,7 +546,6 @@ namespace MishaK
 								elementSamples.quadratic.push_back( quadraticElementSample );
 							}
 						}
-						else if( clippingResult<0 ) MK_THROW( "Bad clipping result: " , clippingResult );
 					}
 				}
 #ifdef USE_RASTERIZER

@@ -477,9 +477,8 @@ namespace MishaK
 	}
 
 	template< typename GeometryReal >
-	class GridChart
+	struct GridChart
 	{
-	public:
 		Point2D< GeometryReal > corner;
 		int cornerCoords[2];
 		int centerOffset[2];
@@ -490,15 +489,37 @@ namespace MishaK
 		unsigned int combinedCellOffset;
 		unsigned int interiorCellOffset;
 
+#ifdef NO_GRID_INDEX_OFFSET
+#else // !NO_GRID_INDEX_OFFSET
 		unsigned int gridIndexOffset;
+#endif // NO_GRID_INDEX_OFFSET
 
 		Point2D< GeometryReal > nodePosition( unsigned int i , unsigned int j ) const { return Point2D< GeometryReal >( i*cellSizeW , j*cellSizeH ); }
 
+#ifdef NEW_INDEXING
+#ifdef NO_GRID_INDEX_OFFSET
+		GridNodeIndex nodeIndex( unsigned int i , unsigned int j ) const { return GridNodeIndex( width*j + i ); }
+#else // !NO_GRID_INDEX_OFFSET
+		GridNodeIndex nodeIndex( unsigned int i , unsigned int j ) const { return GridNodeIndex( gridIndexOffset + width*j + i ); }
+#endif // NO_GRID_INDEX_OFFSET
+		bool factorNodeIndex( GridNodeIndex g , unsigned int &i , unsigned int &j ) const
+#else //!NEW_INDEXING
+#ifdef NO_GRID_INDEX_OFFSET
+		unsigned int nodeIndex( unsigned int i , unsigned int j ) const { return width*j + i; }
+#else // !NO_GRID_INDEX_OFFSET
 		unsigned int nodeIndex( unsigned int i , unsigned int j ) const { return gridIndexOffset + width*j + i; }
+#endif // NO_GRID_INDEX_OFFSET
 		bool factorNodeIndex( unsigned int idx , unsigned int &i , unsigned int &j ) const
+#endif // NEW_INDEXING
 		{
+#ifdef NEW_INDEXING
+			unsigned int idx = static_cast< unsigned int >( g );
+#endif // NEW_INDEXING
+#ifdef NO_GRID_INDEX_OFFSET
+#else // !NO_GRID_INDEX_OFFSET
 			if( idx<gridIndexOffset ) return false;
 			idx -= gridIndexOffset;
+#endif // NO_GRID_INDEX_OFFSET
 			if( idx<width*height )
 			{
 				i = idx % width;
@@ -508,12 +529,35 @@ namespace MishaK
 			else return false;
 		}
 
+#ifdef NO_GRID_INDEX_OFFSET
+#ifdef NEW_INDEXING
+		GridEdgeIndex edgeIndex( unsigned int i , unsigned int j , unsigned int dir ) const { return width*height*dir + j*width + i; }
+#else // !NEW_INDEXING
+		unsigned int edgeIndex( unsigned int i , unsigned int j , unsigned int dir ) const { return width*height*dir + j*width + i; }
+#endif // NEW_INDEXING
+#else // !NO_GRID_INDEX_OFFSET
+#ifdef NEW_INDEXING
+		GridEdgeIndex edgeIndex( unsigned int i , unsigned int j , unsigned int dir ) const { return gridIndexOffset + width*height*dir + j*width + i; }
+#else // !NEW_INDEXING
 		unsigned int edgeIndex( unsigned int i , unsigned int j , unsigned int dir ) const { return gridIndexOffset + width*height*dir + j*width + i; }
+#endif // NEW_INDEXING
+#endif // NO_GRID_INDEX_OFFSET
+
+#ifdef NEW_INDEXING
+		bool factorEdgeIndex( GridEdgeIndex e , unsigned int &i , unsigned int &j , unsigned int &dir ) const
+#else // !NEW_INDEXING
 		bool factorEdgeIndex( unsigned int idx , unsigned int &i , unsigned int &j , unsigned int &dir ) const
+#endif // NEW_INDEXING
 		{
+#ifdef NEW_INDEXING
+			unsigned int idx = static_cast< unsigned int >( e );
+#endif // NEW_INDEXING
 			dir = 0;
+#ifdef NO_GRID_INDEX_OFFSET
+#else // !NO_GRID_INDEX_OFFSET
 			if( idx<gridIndexOffset ) return false;
 			idx -= gridIndexOffset;
+#endif // NO_GRID_INDEX_OFFSET
 			if( idx<width*height )
 			{
 				i = idx % width;
@@ -556,7 +600,7 @@ namespace MishaK
 		const size_t numInteriorCells( void ) const { return interiorCellIndexToCombinedCellIndex.size(); }
 		const size_t numBoundaryCells( void ) const { return boundaryCellIndexToCombinedCellIndex.size(); }
 
-		std::vector< std::vector<     AtlasIndexedPolygon< GeometryReal > > > boundaryPolygons;
+		std::vector< std::vector< IndexedPolygon< GeometryReal > > > boundaryPolygons;
 		std::vector< std::vector< BoundaryIndexedTriangle< GeometryReal > > > boundaryTriangles;
 
 		unsigned int numBoundaryTriangles;
@@ -565,10 +609,18 @@ namespace MishaK
 
 		Image< CellType > cellType;
 		Image< TexelType > texelType;
+#ifdef NEW_INDEXING
+		Image< AtlasTriangleIndex > triangleID;
+#else // !NEW_INDEXING
 		Image< unsigned int > triangleID;
+#endif // NEW_INDEXING
 		Image< Point2D< GeometryReal > > barycentricCoords;
 #ifdef PRE_CLIP_TRIANGLES
+#ifdef NEW_INDEXING
+		Image< std::vector< std::pair< ChartTriangleIndex , CellClippedTriangle< GeometryReal > > > > clippedTriangles;
+#else // !NEW_INDEXING
 		Image< std::vector< std::pair< unsigned int , CellClippedTriangle< GeometryReal > > > > clippedTriangles;
+#endif // NEW_INDEXING
 #endif // PRE_CLIP_TRIANGLES
 	};
 

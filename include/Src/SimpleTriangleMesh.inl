@@ -30,22 +30,17 @@ DAMAGE.
 // SimpleTriangleMesh //
 ////////////////////////
 
-inline SimplexIndex< 1 > CornerEdgeIndex( unsigned int k , bool flip )
+inline SimplexIndex< 1 > OutgoingEdgeIndex( unsigned int k , bool flip )
 {
-#ifdef NEW_HALF_EDGE
-	if( flip ) return SimplexIndex< 1 >( (k+2)%3 , (k+1)%3 );
-	else       return SimplexIndex< 1 >( (k+1)%3 , (k+2)%3 );
-#else // !NEW_HALF_EDGE
 	if( flip ) return SimplexIndex< 1 >( (k+1)%3 , k );
 	else       return SimplexIndex< 1 >( k , (k+1)%3 );
-#endif // NEW_HALF_EDGE
 }
 
 template< typename Real , unsigned int Dim >
 SimplexIndex< 1 > SimpleTriangleMesh< Real , Dim >::edgeIndex( unsigned int he , bool flip ) const
 {
 	unsigned int t = he/3 , k = he%3;
-	SimplexIndex< 1 > eIndex = CornerEdgeIndex( k , flip );
+	SimplexIndex< 1 > eIndex = OutgoingEdgeIndex( k , flip );
 	return SimplexIndex< 1 >( triangles[t][ eIndex[0] ] , triangles[t][ eIndex[1] ] );
 }
 

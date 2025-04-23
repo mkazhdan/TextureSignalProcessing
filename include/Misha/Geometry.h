@@ -1368,7 +1368,11 @@ namespace MishaK
 		void _processFaces( FaceFunctor F , unsigned int faceIndex , UInts ... faceIndices ) const;
 		void _init( unsigned int k )
 		{
+#ifdef NEW_GEOMETRY_CODE
+			if( !k ) for( unsigned int k=0 ; k<=K ; k++ ) idx[k] = static_cast< Index >( k );
+#else // !NEW_GEOMETRY_CODE
 			if( !k ) for( unsigned int k=0 ; k<=K ; k++ ) idx[k] = k;
+#endif // NEW_GEOMETRY_CODE
 			else MK_ERROR_OUT( "Should never be called" );
 		}
 		template< class ... Ints > void _init( unsigned int k , Index v , Ints ... values )
