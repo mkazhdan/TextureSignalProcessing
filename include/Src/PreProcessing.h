@@ -29,7 +29,6 @@ DAMAGE.
 #define PRE_PROCESSING_INCLUDED
 
 #define NEW_CODE					// General-purpose experimental code encapsulation
-//#define NO_GRID_INDEX_OFFSET		// DOES NOT WORK: Causes confusion about index re-use across charts when running LIC
 #define USE_RASTERIZER				// Use triangle/edge rasterization code
 #define REORDER_BOUNDARY			// Re-order the boundary edges so that they are sequential [probably not necessary]
 #define PRE_CLIP_TRIANGLES			// Clip and store triangles with cells [Requires USE_RASTERIZER]

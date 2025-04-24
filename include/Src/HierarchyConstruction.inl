@@ -884,10 +884,8 @@ void InitializeGridCharts
 		}
 		gridCharts[i].cellSizeW = cellSize[0];
 		gridCharts[i].cellSizeH = cellSize[1];
-#ifdef NO_GRID_INDEX_OFFSET
-#else // !NO_GRID_INDEX_OFFSET
-		gridCharts[i].gridIndexOffset = 2*approxGridSize*i;
-#endif // NO_GRID_INDEX_OFFSET
+		gridCharts[i].atlasWidth = _width;
+		gridCharts[i].atlasHeight = _height;
 		InitializeGridChartsActiveNodes( i , atlasCharts[i] , gridCharts[i] , nodeInfo , rasterLines , segmentedLines , threadTasks , numTexels , numInteriorTexels , numDeepTexels , numBoundaryTexels , numCells , numBoundaryCells , numInteriorCells , multigridBlockInfo );
 	}
 }

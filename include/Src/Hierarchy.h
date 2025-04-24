@@ -486,62 +486,39 @@ namespace MishaK
 		GeometryReal cellSizeH;
 		unsigned int width;
 		unsigned int height;
+		unsigned int atlasWidth;
+		unsigned int atlasHeight;
 		unsigned int combinedCellOffset;
 		unsigned int interiorCellOffset;
-
-#ifdef NO_GRID_INDEX_OFFSET
-#else // !NO_GRID_INDEX_OFFSET
-		unsigned int gridIndexOffset;
-#endif // NO_GRID_INDEX_OFFSET
 
 		Point2D< GeometryReal > nodePosition( unsigned int i , unsigned int j ) const { return Point2D< GeometryReal >( i*cellSizeW , j*cellSizeH ); }
 
 #ifdef NEW_INDEXING
-#ifdef NO_GRID_INDEX_OFFSET
-		GridNodeIndex nodeIndex( unsigned int i , unsigned int j ) const { return GridNodeIndex( width*j + i ); }
-#else // !NO_GRID_INDEX_OFFSET
-		GridNodeIndex nodeIndex( unsigned int i , unsigned int j ) const { return GridNodeIndex( gridIndexOffset + width*j + i ); }
-#endif // NO_GRID_INDEX_OFFSET
+		GridNodeIndex nodeIndex( unsigned int i , unsigned int j ) const { return GridNodeIndex( atlasWidth*(j+cornerCoords[1]) + (i+cornerCoords[0]) ); }
 		bool factorNodeIndex( GridNodeIndex g , unsigned int &i , unsigned int &j ) const
 #else //!NEW_INDEXING
-#ifdef NO_GRID_INDEX_OFFSET
 		unsigned int nodeIndex( unsigned int i , unsigned int j ) const { return width*j + i; }
-#else // !NO_GRID_INDEX_OFFSET
-		unsigned int nodeIndex( unsigned int i , unsigned int j ) const { return gridIndexOffset + width*j + i; }
-#endif // NO_GRID_INDEX_OFFSET
 		bool factorNodeIndex( unsigned int idx , unsigned int &i , unsigned int &j ) const
 #endif // NEW_INDEXING
 		{
 #ifdef NEW_INDEXING
 			unsigned int idx = static_cast< unsigned int >( g );
 #endif // NEW_INDEXING
-#ifdef NO_GRID_INDEX_OFFSET
-#else // !NO_GRID_INDEX_OFFSET
-			if( idx<gridIndexOffset ) return false;
-			idx -= gridIndexOffset;
-#endif // NO_GRID_INDEX_OFFSET
-			if( idx<width*height )
+			if( idx<atlasWidth*atlasHeight )
 			{
-				i = idx % width;
-				j = idx / width;
+				i = idx % atlasWidth , j = idx / atlasWidth;
+				if( i<cornerCoords[0] || j<cornerCoords[1] || i>=cornerCoords[0]+width || j>=cornerCoords[1]+height ) return false;
+				i -= cornerCoords[0] , j -= cornerCoords[1];
 				return true;
 			}
 			else return false;
 		}
 
-#ifdef NO_GRID_INDEX_OFFSET
 #ifdef NEW_INDEXING
-		GridEdgeIndex edgeIndex( unsigned int i , unsigned int j , unsigned int dir ) const { return width*height*dir + j*width + i; }
+		GridEdgeIndex edgeIndex( unsigned int i , unsigned int j , unsigned int dir ) const { return atlasWidth*atlasHeight*dir + (j+cornerCoords[1])*atlasWidth + (i+cornerCoords[0]); }
 #else // !NEW_INDEXING
-		unsigned int edgeIndex( unsigned int i , unsigned int j , unsigned int dir ) const { return width*height*dir + j*width + i; }
+		unsigned int edgeIndex( unsigned int i , unsigned int j , unsigned int dir ) const { return atlasWidth*atlasHeight*dir + (j+cornerCoords[1])*atlasWidth + (i+cornerCoords[0]); }
 #endif // NEW_INDEXING
-#else // !NO_GRID_INDEX_OFFSET
-#ifdef NEW_INDEXING
-		GridEdgeIndex edgeIndex( unsigned int i , unsigned int j , unsigned int dir ) const { return gridIndexOffset + width*height*dir + j*width + i; }
-#else // !NEW_INDEXING
-		unsigned int edgeIndex( unsigned int i , unsigned int j , unsigned int dir ) const { return gridIndexOffset + width*height*dir + j*width + i; }
-#endif // NEW_INDEXING
-#endif // NO_GRID_INDEX_OFFSET
 
 #ifdef NEW_INDEXING
 		bool factorEdgeIndex( GridEdgeIndex e , unsigned int &i , unsigned int &j , unsigned int &dir ) const
@@ -553,25 +530,22 @@ namespace MishaK
 			unsigned int idx = static_cast< unsigned int >( e );
 #endif // NEW_INDEXING
 			dir = 0;
-#ifdef NO_GRID_INDEX_OFFSET
-#else // !NO_GRID_INDEX_OFFSET
-			if( idx<gridIndexOffset ) return false;
-			idx -= gridIndexOffset;
-#endif // NO_GRID_INDEX_OFFSET
-			if( idx<width*height )
+			if( idx<atlasWidth*atlasHeight )
 			{
-				i = idx % width;
-				j = idx / width;
+				i = idx % atlasWidth , j = idx / atlasWidth;
+				if( i<cornerCoords[0] || j<cornerCoords[1] || i>=cornerCoords[0]+width || j>=cornerCoords[1]+height ) return false;
+				i -= cornerCoords[0] , j -= cornerCoords[1];
 				return true;
 			}
 			else
 			{
-				idx -= width*height;
+				idx -= atlasWidth*atlasHeight;
 				dir++;
-				if( idx<width*height )
+				if( idx<atlasWidth*atlasHeight )
 				{
-					i = idx % width;
-					j = idx / width;
+					i = idx % atlasWidth , j = idx / atlasWidth;
+					if( i<cornerCoords[0] || j<cornerCoords[1] || i>=cornerCoords[0]+width || j>=cornerCoords[1]+height ) return false;
+					i -= cornerCoords[0] , j -= cornerCoords[1];
 					return true;
 				}
 				else return false;
