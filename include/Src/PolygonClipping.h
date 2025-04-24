@@ -165,8 +165,8 @@ namespace MishaK
 		IndexedPolygon< GeometryReal > &polygon ,
 		const EdgeEquation< GeometryReal > &edgeEquation , 
 #ifdef NEW_INDEXING
-		AtlasEdgeIndex edgeIndex ,
-		ChartVertexIndex atlasVertexIndices[2]
+		AtlasMeshEdgeIndex edgeIndex ,
+		ChartMeshVertexIndex atlasVertexIndices[2]
 #else // !NEW_INDEXING
 		unsigned int edgeIndex,
 		unsigned int atlasVertexIndices[2]
@@ -175,9 +175,9 @@ namespace MishaK
 	{
 		std::vector< Point2D< GeometryReal > > outputVertices;
 #ifdef NEW_INDEXING
-		std::vector< ChartVertexIndex > outputVertexIndices; 
-		std::vector< AtlasEdgeIndex > outputEdgeIndices;
-		std::vector< AtlasEdgeIndex > outputParentVertexEdgeIndices;
+		std::vector< ChartMeshVertexIndex > outputVertexIndices; 
+		std::vector< AtlasMeshEdgeIndex > outputEdgeIndices;
+		std::vector< AtlasMeshEdgeIndex > outputParentVertexEdgeIndices;
 #else // !NEW_INDEXING
 		std::vector< unsigned int > outputVertexIndices; 
 		std::vector< unsigned int > outputEdgeIndices;
@@ -190,10 +190,10 @@ namespace MishaK
 
 		Point2D< GeometryReal > previousVertex = polygon.vertices[polygon.vertices.size() - 1];
 #ifdef NEW_INDEXING
-		ChartVertexIndex previousVertexIndex = polygon.vertexIndices[ polygon.vertices.size()-1 ];
-		AtlasEdgeIndex previousEdgeIndex = polygon.atlasEdgeIndices[ polygon.vertices.size()-2 ];
-		AtlasEdgeIndex     nextEdgeIndex = polygon.atlasEdgeIndices[ polygon.vertices.size()-1 ];
-		AtlasEdgeIndex previousVertexEdgeSupport = polygon.atlasVertexParentEdge[polygon.vertices.size() - 1];
+		ChartMeshVertexIndex previousVertexIndex = polygon.vertexIndices[ polygon.vertices.size()-1 ];
+		AtlasMeshEdgeIndex previousEdgeIndex = polygon.atlasEdgeIndices[ polygon.vertices.size()-2 ];
+		AtlasMeshEdgeIndex     nextEdgeIndex = polygon.atlasEdgeIndices[ polygon.vertices.size()-1 ];
+		AtlasMeshEdgeIndex previousVertexEdgeSupport = polygon.atlasVertexParentEdge[polygon.vertices.size() - 1];
 #else // !NEW_INDEXING
 		int previousVertexIndex = polygon.vertexIndices[polygon.vertices.size() - 1];
 		int previousEdgeIndex = polygon.atlasEdgeIndices[polygon.vertices.size() - 2];
@@ -207,8 +207,8 @@ namespace MishaK
 		bool emptyPolygon = true;
 
 #ifdef NEW_INDEXING
-		bool isCurrentVertexACorner = previousVertexIndex!=ChartVertexIndex(-1) && ( previousVertexIndex==atlasVertexIndices[0] || previousVertexIndex==atlasVertexIndices[1] );
-		bool isOnTheEdge = previousVertexEdgeSupport!=AtlasEdgeIndex(-1) && previousVertexEdgeSupport==edgeIndex;
+		bool isCurrentVertexACorner = previousVertexIndex!=ChartMeshVertexIndex(-1) && ( previousVertexIndex==atlasVertexIndices[0] || previousVertexIndex==atlasVertexIndices[1] );
+		bool isOnTheEdge = previousVertexEdgeSupport!=AtlasMeshEdgeIndex(-1) && previousVertexEdgeSupport==edgeIndex;
 #else // !NEW_INDEXING
 		bool isCurrentVertexACorner = previousVertexIndex != -1 && (previousVertexIndex == atlasVertexIndices[0] || previousVertexIndex == atlasVertexIndices[1]);
 		bool isOnTheEdge = previousVertexEdgeSupport != -1 && previousVertexEdgeSupport == edgeIndex;
@@ -228,21 +228,21 @@ namespace MishaK
 		{
 			Point2D< GeometryReal > currentVertex = polygon.vertices[i];
 #ifdef NEW_INDEXING
-			ChartVertexIndex currentVertexIndex = polygon.vertexIndices[i];
+			ChartMeshVertexIndex currentVertexIndex = polygon.vertexIndices[i];
 #else // !NEW_INDEXING
 			int currentVertexIndex = polygon.vertexIndices[i];
 #endif // NEW_INDEXING
 			int currentVertexType = -2;
 #ifdef NEW_INDEXING
-			AtlasEdgeIndex currentVertexEdgeSupport = polygon.atlasVertexParentEdge[i];
+			AtlasMeshEdgeIndex currentVertexEdgeSupport = polygon.atlasVertexParentEdge[i];
 #else // !NEW_INDEXING
 			int currentVertexEdgeSupport = polygon.atlasVertexParentEdge[i];
 #endif // NEW_INDEXING
 			GeometryReal currentLevel;
 
 #ifdef NEW_INDEXING
-			isCurrentVertexACorner = currentVertexIndex!=ChartVertexIndex(-1) && ( currentVertexIndex==atlasVertexIndices[0] || currentVertexIndex==atlasVertexIndices[1] );
-			isOnTheEdge = currentVertexEdgeSupport!=AtlasEdgeIndex(-1) && currentVertexEdgeSupport==edgeIndex;
+			isCurrentVertexACorner = currentVertexIndex!=ChartMeshVertexIndex(-1) && ( currentVertexIndex==atlasVertexIndices[0] || currentVertexIndex==atlasVertexIndices[1] );
+			isOnTheEdge = currentVertexEdgeSupport!=AtlasMeshEdgeIndex(-1) && currentVertexEdgeSupport==edgeIndex;
 #else // !NEW_INDEXING
 			isCurrentVertexACorner = currentVertexIndex != -1 && (currentVertexIndex == atlasVertexIndices[0] || currentVertexIndex == atlasVertexIndices[1]);
 			isOnTheEdge = currentVertexEdgeSupport != -1 && currentVertexEdgeSupport == edgeIndex;
@@ -277,7 +277,7 @@ namespace MishaK
 					Point2D< GeometryReal > intersection = previousVertex*alpha + currentVertex*(GeometryReal)( 1.-alpha );
 					outputVertices.push_back(intersection);
 #ifdef NEW_INDEXING
-					outputVertexIndices.push_back( ChartVertexIndex(-1) );
+					outputVertexIndices.push_back( ChartMeshVertexIndex(-1) );
 #else // !NEW_INDEXING
 					outputVertexIndices.push_back(-1);
 #endif // NEW_INDEXING
@@ -315,7 +315,7 @@ namespace MishaK
 					Point2D< GeometryReal > intersection = previousVertex*alpha + currentVertex*(GeometryReal)( 1.-alpha );
 					outputVertices.push_back(intersection);
 #ifdef NEW_INDEXING
-					outputVertexIndices.push_back( ChartVertexIndex(-1) );
+					outputVertexIndices.push_back( ChartMeshVertexIndex(-1) );
 #else // !NEW_INDEXING
 					outputVertexIndices.push_back(-1);
 #endif // NEW_INDEXING
@@ -356,7 +356,7 @@ namespace MishaK
 			//Check for non consecutive colinear edges
 			for( unsigned int i=0 ; i<polygon.atlasEdgeIndices.size() ; i++ )
 #ifdef NEW_INDEXING
-				if( polygon.atlasEdgeIndices[i]!=AtlasEdgeIndex(-1) && polygon.atlasEdgeIndices[i]==polygon.atlasEdgeIndices[ (i+1)%polygon.atlasEdgeIndices.size() ] )
+				if( polygon.atlasEdgeIndices[i]!=AtlasMeshEdgeIndex(-1) && polygon.atlasEdgeIndices[i]==polygon.atlasEdgeIndices[ (i+1)%polygon.atlasEdgeIndices.size() ] )
 #else // !NEW_INDEXING
 				if( polygon.atlasEdgeIndices[i]!=-1 && polygon.atlasEdgeIndices[i]==polygon.atlasEdgeIndices[ (i+1)%polygon.atlasEdgeIndices.size() ] )
 #endif // NEW_INDEXING
@@ -378,7 +378,7 @@ namespace MishaK
 			edgeEquation.makePositive( triangleCenter );
 
 #ifdef NEW_INDEXING
-			ChartVertexIndex vertexIndices[2] = { triangle.vertexIndices[ eIndex[0] ] , triangle.vertexIndices[ eIndex[1] ] };
+			ChartMeshVertexIndex vertexIndices[2] = { triangle.vertexIndices[ eIndex[0] ] , triangle.vertexIndices[ eIndex[1] ] };
 			ClipPartiallyIndexedPolygonToIndexedEdge( polygon , edgeEquation , triangle.atlasEdgeIndices[k] , vertexIndices );
 #else // !NEW_INDEXING
 			unsigned int edgeIndex = triangle.atlasEdgeIndices[k];
@@ -405,30 +405,39 @@ namespace MishaK
 
 	// Points in general positions
 	// Clipping a convex polygon with an edge equation associated to the given edge index
+#ifdef NEW_INDEXING
+	template< typename GeometryReal , typename MeshEdgesToKey /* = std::function< GridMeshIntersectionKey ( AtlasMeshEdgeIndex , AtlasMeshIndex ) > */ >
+#else // !NEW_INDEXING
 	template< typename GeometryReal >
+#endif // NEW_INDEXING
 	void ClipIndexedIntersectionPolygonToIndexedIntersectionEdge
 	(
 		IndexedIntersectionPolygon< GeometryReal > &polygon ,
 		const EdgeEquation< GeometryReal > &edgeEquation , 
 #ifdef NEW_INDEXING
-		GridOrAtlasEdgeIndex edgeIndex
+		AtlasGridOrMeshEdgeIndex edgeIndex ,
+		MeshEdgesToKey m2k
 #else // !NEW_INDEXING
 		unsigned int edgeIndex
 #endif // NEW_INDEXING
 	)
 	{
+#ifdef NEW_INDEXING
+		static_assert( std::is_convertible_v< MeshEdgesToKey , std::function< GridMeshIntersectionKey ( AtlasMeshEdgeIndex , AtlasMeshEdgeIndex ) > > , "MeshEdgesToKey poorly formed" );
+#endif // NEW_INDEXING
+
 		std::vector< Point2D< GeometryReal > > outputVertices;
 		std::vector< GridMeshIntersectionKey > outputCornerKeys;
 #ifdef NEW_INDEXING
-		std::vector< GridOrAtlasEdgeIndex > outputEdgeIndices;
+		std::vector< AtlasGridOrMeshEdgeIndex > outputEdgeIndices;
 #else // !NEW_INDEXING
 		std::vector< unsigned int > outputEdgeIndices;
 #endif // NEW_INDEXING
 
 		Point2D< GeometryReal > previousVertex = polygon.vertices[ polygon.vertices.size()-1 ];
-		GridMeshIntersectionKey previousVertexIndex = polygon.cornerKeys[ polygon.vertices.size()-1 ];
+		GridMeshIntersectionKey previousCornerKey = polygon.cornerKeys[ polygon.vertices.size()-1 ];
 #ifdef NEW_INDEXING
-		GridOrAtlasEdgeIndex previousEdgeIndex = polygon.outgoingEdgeIndices[ polygon.vertices.size()-1 ];
+		AtlasGridOrMeshEdgeIndex previousEdgeIndex = polygon.outgoingEdgeIndices[ polygon.vertices.size()-1 ];
 #else // !NEW_INDEXING
 		unsigned int previousEdgeIndex = polygon.outgoingEdgeIndices[ polygon.vertices.size()-1 ];
 #endif // NEW_INDEXING
@@ -446,7 +455,7 @@ namespace MishaK
 		for( unsigned int i=0 ; i<polygon.vertices.size() ; i++ )
 		{
 			Point2D< GeometryReal > currentVertex = polygon.vertices[i];
-			GridMeshIntersectionKey currentVertexIndex = polygon.cornerKeys[i];
+			GridMeshIntersectionKey currentCornerKey = polygon.cornerKeys[i];
 
 			GeometryReal currentLevel = edgeEquation( currentVertex );
 			bool isCurrentInterior = currentLevel > 0;
@@ -454,7 +463,7 @@ namespace MishaK
 			if( isPreviousInterior )
 			{
 				outputVertices.push_back( previousVertex );
-				outputCornerKeys.push_back( previousVertexIndex );
+				outputCornerKeys.push_back( previousCornerKey );
 				outputEdgeIndices.push_back( previousEdgeIndex );
 			}
 
@@ -463,15 +472,14 @@ namespace MishaK
 				GeometryReal alpha = -currentLevel / (previousLevel - currentLevel);
 				outputVertices.push_back( previousVertex * alpha + currentVertex * ( 1-alpha ) );
 #ifdef NEW_INDEXING
-				std::optional< AtlasEdgeIndex > a = edgeIndex.atlas();
-				if( a )
+				if( std::optional< AtlasMeshEdgeIndex > m = edgeIndex.mesh() )
 				{
 					// [WARNING] In the case that the previous edge index is of atlas type, we are creating an invalid GridMeshIntersectionKey
-					if     ( std::optional< GridEdgeIndex > g = previousEdgeIndex.grid() ) outputCornerKeys.push_back( GridMeshIntersectionKey( *g , *a ) );
-					else if( std::optional< GridEdgeIndex > _a = previousEdgeIndex.atlas() ) outputCornerKeys.push_back( GridMeshIntersectionKey( *_a , *a ) );
+					if     ( std::optional< AtlasGridEdgeIndex >  g = previousEdgeIndex.grid() ) outputCornerKeys.push_back( GridMeshIntersectionKey( * g , *m ) );
+					else if( std::optional< AtlasMeshEdgeIndex > _m = previousEdgeIndex.mesh() ) outputCornerKeys.push_back( m2k( *_m , *m ) );
 					else MK_ERROR_OUT( "Bad previous edge index" );
 				}
-				else MK_ERROR_OUT( "Expected atlas edge type" );
+				else MK_ERROR_OUT( "Expected mesh edge type" );
 #else // !NEW_INDEXING
 				outputCornerKeys.push_back( GridMeshIntersectionKey( previousEdgeIndex , edgeIndex ) );
 #endif // NEW_INDEXING
@@ -482,7 +490,7 @@ namespace MishaK
 
 			previousVertex = currentVertex;
 			previousLevel = currentLevel;
-			previousVertexIndex = currentVertexIndex;
+			previousCornerKey = currentCornerKey;
 			isPreviousInterior = isCurrentInterior;
 
 			previousEdgeIndex = polygon.outgoingEdgeIndices[i];
@@ -505,6 +513,27 @@ namespace MishaK
 
 		bool reverseOrientation = false;
 
+#ifdef NEW_INDEXING
+		std::pair< AtlasMeshEdgeIndex , AtlasMeshEdgeIndex > cornerEdges[6];
+		for( unsigned int k=0 ; k<=2 ; k++ )
+		{
+			std::optional< AtlasMeshEdgeIndex > m1 = triangle.outgoingEdgeIndices[k].mesh();
+			std::optional< AtlasMeshEdgeIndex > m2 = triangle.outgoingEdgeIndices[(k+2)%3].mesh();
+			if( !m1 || !m2 ) MK_ERROR_OUT( "Expected incident edges to be mesh edges" );
+			cornerEdges[2*k+0] = std::make_pair( *m1 , *m2 );
+			cornerEdges[2*k+1] = std::make_pair( *m2 , *m1 );
+		}
+
+		auto IntersectingMeshEdgesToCornerKey = [&]( AtlasMeshEdgeIndex m1 , AtlasMeshEdgeIndex m2 )
+			{
+				std::pair< AtlasMeshEdgeIndex , AtlasMeshEdgeIndex > m = std::make_pair( m1 , m2 );
+				for( unsigned int i=0 ; i<6 ; i++ ) if( m==cornerEdges[i] ) return triangle.cornerKeys[i/2];
+				MK_ERROR_OUT( "Could not match mesh edges: " , m1 , " : " , m2 );
+				return GridMeshIntersectionKey();
+			};
+
+#endif // NEW_INDEXING
+
 		// Clip the polygon to each edge of the triangle
 		for( unsigned int k=0 ; k<3 ; k++ )
 		{
@@ -519,9 +548,15 @@ namespace MishaK
 			reverseOrientation = edgeEquation.makePositive( triangleCenter );
 #endif // SANITY_CHECK
 
+#ifdef NEW_INDEXING
+			ClipIndexedIntersectionPolygonToIndexedIntersectionEdge( polygon , edgeEquation , triangle.outgoingEdgeIndices[k] , IntersectingMeshEdgesToCornerKey );
+#else // !NEW_INDEXING
 			ClipIndexedIntersectionPolygonToIndexedIntersectionEdge( polygon , edgeEquation , triangle.outgoingEdgeIndices[k] );
+#endif // NEW_INDEXING
 		}
 
+#ifdef NEW_INDEXING
+#else // !NEW_INDEXING
 		// Identify triangle corners
 		{
 			// [NOTE] In sequentially clipping the polygon to the triangle's edges, 
@@ -534,8 +569,8 @@ namespace MishaK
 			for( unsigned int k=0 ; k<3 ; k++ )
 			{
 #ifdef NEW_INDEXING
-				std::optional< AtlasEdgeIndex > a1 = triangle.outgoingEdgeIndices[k].atlas();
-				std::optional< AtlasEdgeIndex > a2 = triangle.outgoingEdgeIndices[(k+2)%3].atlas();
+				std::optional< AtlasMeshEdgeIndex > a1 = triangle.outgoingEdgeIndices[k].mesh();
+				std::optional< AtlasMeshEdgeIndex > a2 = triangle.outgoingEdgeIndices[(k+2)%3].mesh();
 				if( a1 && a2 )
 				{
 					cornerKeys[ 2*k+0 ].first = GridMeshIntersectionKey( *a1 , *a2 );
@@ -551,6 +586,7 @@ namespace MishaK
 			}
 			for( int i=0 ; i<polygon.cornerKeys.size() ; i++ ) for( int k=0 ; k<6 ; k++ ) if( polygon.cornerKeys[i]==cornerKeys[k].first ) polygon.cornerKeys[i] = cornerKeys[k].second;
 		}
+#endif // NEW_INDEXING
 
 		if( reverseOrientation )
 		{
@@ -558,7 +594,7 @@ namespace MishaK
 			std::vector< Point2D < GeometryReal > > reversedVertices(n);
 			std::vector< GridMeshIntersectionKey > reversedCornerKeys(n);
 #ifdef NEW_INDEXING
-			std::vector < GridOrAtlasEdgeIndex > reversedEdges(n);
+			std::vector < AtlasGridOrMeshEdgeIndex > reversedEdges(n);
 #else // !NEW_INDEXING
 			std::vector < unsigned int > reversedEdges(n);
 #endif // NEW_INDEXING

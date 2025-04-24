@@ -61,10 +61,10 @@ namespace MishaK
 	{
 		GridMeshIntersectionKey( void ) : _gridIndex(-1) , _meshIndex(-1){}
 #ifdef NEW_INDEXING
-		GridMeshIntersectionKey( GridEdgeIndex g , AtlasEdgeIndex m ) : _gridIndex( static_cast< unsigned int >(g) ) , _meshIndex( static_cast< unsigned int >(m) ){}
-		std::optional< ChartVertexIndex > chartVertex( void ) const { if( _gridIndex==-1 && _meshIndex!=-1 ) return ChartVertexIndex( _meshIndex ) ; else return std::nullopt; }
-		std::optional<    GridNodeIndex >    gridNode( void ) const { if( _meshIndex==-1 && _gridIndex!=-1 ) return    GridNodeIndex( _gridIndex ) ; else return std::nullopt; }
-		std::optional< std::pair< GridEdgeIndex , AtlasEdgeIndex > > intersection( void ) const { if( _meshIndex!=-1 && _gridIndex!=-1 ) return std::pair< GridEdgeIndex , AtlasEdgeIndex >( GridEdgeIndex( _gridIndex ) , AtlasEdgeIndex( _meshIndex ) ) ; else return std::nullopt; }
+		GridMeshIntersectionKey( AtlasGridEdgeIndex g , AtlasMeshEdgeIndex m ) : _gridIndex( static_cast< unsigned int >(g) ) , _meshIndex( static_cast< unsigned int >(m) ){}
+		std::optional< ChartMeshVertexIndex > chartVertex( void ) const { if( _gridIndex==-1 && _meshIndex!=-1 ) return ChartMeshVertexIndex( _meshIndex ) ; else return std::nullopt; }
+		std::optional<    AtlasGridNodeIndex >    gridNode( void ) const { if( _meshIndex==-1 && _gridIndex!=-1 ) return    AtlasGridNodeIndex( _gridIndex ) ; else return std::nullopt; }
+		std::optional< std::pair< AtlasGridEdgeIndex , AtlasMeshEdgeIndex > > intersection( void ) const { if( _meshIndex!=-1 && _gridIndex!=-1 ) return std::pair< AtlasGridEdgeIndex , AtlasMeshEdgeIndex >( AtlasGridEdgeIndex( _gridIndex ) , AtlasMeshEdgeIndex( _meshIndex ) ) ; else return std::nullopt; }
 #else // !NEW_INDEXING
 		GridMeshIntersectionKey( unsigned int g , unsigned int m ) : _gridIndex(g) , _meshIndex(m){}
 		std::optional< unsigned int > meshVertex( void ) const { if( _gridIndex==-1 && _meshIndex!=-1 ) return _meshIndex ; else return std::nullopt; }
@@ -77,8 +77,8 @@ namespace MishaK
 		bool operator != ( const GridMeshIntersectionKey &key ) const { return _gridIndex!=key._gridIndex || _meshIndex!=key._meshIndex; }
 
 #ifdef NEW_INDEXING
-		static GridMeshIntersectionKey    GridNodeKey(    GridNodeIndex g ){ return _Init( static_cast< unsigned int >(g) , -1 ); }
-		static GridMeshIntersectionKey ChartVertexKey( ChartVertexIndex m ){ return _Init( -1 , static_cast< unsigned int >(m) ); }
+		static GridMeshIntersectionKey    GridNodeKey(    AtlasGridNodeIndex g ){ return _Init( static_cast< unsigned int >(g) , -1 ); }
+		static GridMeshIntersectionKey ChartVertexKey( ChartMeshVertexIndex m ){ return _Init( -1 , static_cast< unsigned int >(m) ); }
 #else // !NEW_INDEXING
 		static GridMeshIntersectionKey GridNodeKey( unsigned int g ){ return GridMeshIntersectionKey( g , -1 ); }
 		static GridMeshIntersectionKey ChartVertexKey( unsigned int m ){ return GridMeshIntersectionKey( -1 , m ); }
@@ -103,9 +103,9 @@ namespace MishaK
 	{
 		unsigned int id;
 		Point2D< GeometryReal > vertices[3];
-		AtlasEdgeIndex atlasVertexParentEdge[3];
-		ChartVertexIndex vertexIndices[3];
-		AtlasEdgeIndex atlasEdgeIndices[3];
+		AtlasMeshEdgeIndex atlasVertexParentEdge[3];
+		ChartMeshVertexIndex vertexIndices[3];
+		AtlasMeshEdgeIndex atlasEdgeIndices[3];
 		QuadraticElementIndex indices;
 		Point2D< GeometryReal >& operator [] ( size_t idx ){ return vertices[idx]; }
 		const Point2D< GeometryReal >& operator [] ( size_t idx ) const { return vertices[idx]; }
@@ -117,9 +117,9 @@ namespace MishaK
 		template< typename T > using Array = std::conditional_t< N==-1 , std::vector< T > , std::array< T , N > >;
 		Array< Point2D < GeometryReal > > vertices;		// The positions of the vertices within the chart
 		Array< AtlasBoundaryVertexIndex > indices;		// The index of the boundary vertex
-		Array< ChartVertexIndex > vertexIndices;		// The index of the atlas/chart vertex (or -1 if it is not an atlas vertex)
-		Array< AtlasEdgeIndex > atlasVertexParentEdge;	// If this is a not an original mesh vertex, the index of the associated polygon edge 
-		Array< AtlasEdgeIndex > atlasEdgeIndices;		// If this is a boundary segment, the index of the associated polygon edge
+		Array< ChartMeshVertexIndex > vertexIndices;		// The index of the atlas/chart vertex (or -1 if it is not an atlas vertex)
+		Array< AtlasMeshEdgeIndex > atlasVertexParentEdge;	// If this is a not an original mesh vertex, the index of the associated polygon edge 
+		Array< AtlasMeshEdgeIndex > atlasEdgeIndices;		// If this is a boundary segment, the index of the associated polygon edge
 		size_t size( void ) const { return vertices.size(); }
 		Point2D< GeometryReal >& operator [] ( size_t idx ){ return vertices[idx]; }
 		const Point2D< GeometryReal >& operator [] ( size_t idx ) const { return vertices[idx]; }
@@ -165,7 +165,7 @@ namespace MishaK
 		Array< Point2D< GeometryReal > > vertices;
 		Array< GridMeshIntersectionKey > cornerKeys;
 #ifdef NEW_INDEXING
-		Array< GridOrAtlasEdgeIndex > outgoingEdgeIndices; // Could be an AtlasEdgeIndex or a GridEdgeIndex
+		Array< AtlasGridOrMeshEdgeIndex > outgoingEdgeIndices; // Could be an AtlasMeshEdgeIndex or a AtlasGridEdgeIndex
 #else // !NEW_INDEXING
 		Array< unsigned int > outgoingEdgeIndices;	// [???]
 #endif // NEW_INDEXING
@@ -203,9 +203,9 @@ namespace MishaK
 		GeometryReal startTime;
 		GeometryReal endTime;
 #ifdef NEW_INDEXING
-		ChartHalfEdgeIndex chartHalfEdge;
+		ChartMeshHalfEdgeIndex chartHalfEdge;
 
-		BoundarySegmentInfo( GeometryReal startTime=0 , GeometryReal endTime=1 , ChartHalfEdgeIndex chartHalfEdge=ChartHalfEdgeIndex(-1) )
+		BoundarySegmentInfo( GeometryReal startTime=0 , GeometryReal endTime=1 , ChartMeshHalfEdgeIndex chartHalfEdge=ChartMeshHalfEdgeIndex(-1) )
 			: startTime(startTime) , endTime(endTime) , chartHalfEdge(chartHalfEdge){}
 #else // !NEW_INDEXING
 		unsigned int chartHalfEdge;

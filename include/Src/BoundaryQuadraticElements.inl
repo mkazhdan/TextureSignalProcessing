@@ -69,10 +69,10 @@ IndexedIntersectionPolygon< GeometryReal > IndexedPolygonFromCell( unsigned int 
 	polygon.cornerKeys[3] = GridMeshIntersectionKey::GridNodeKey( gridChart.nodeIndex( i+0 , j+1 ) );
 
 #ifdef NEW_INDEXING
-	polygon.outgoingEdgeIndices[0] = GridOrAtlasEdgeIndex::FromGridEdgeIndex( gridChart.edgeIndex( i+0 , j+0 , 0 ) );
-	polygon.outgoingEdgeIndices[1] = GridOrAtlasEdgeIndex::FromGridEdgeIndex( gridChart.edgeIndex( i+1 , j+0 , 1 ) );
-	polygon.outgoingEdgeIndices[2] = GridOrAtlasEdgeIndex::FromGridEdgeIndex( gridChart.edgeIndex( i+0 , j+1 , 0 ) );
-	polygon.outgoingEdgeIndices[3] = GridOrAtlasEdgeIndex::FromGridEdgeIndex( gridChart.edgeIndex( i+0 , j+0 , 1 ) );
+	polygon.outgoingEdgeIndices[0] = AtlasGridOrMeshEdgeIndex::FromGrid( gridChart.edgeIndex( i+0 , j+0 , 0 ) );
+	polygon.outgoingEdgeIndices[1] = AtlasGridOrMeshEdgeIndex::FromGrid( gridChart.edgeIndex( i+1 , j+0 , 1 ) );
+	polygon.outgoingEdgeIndices[2] = AtlasGridOrMeshEdgeIndex::FromGrid( gridChart.edgeIndex( i+0 , j+1 , 0 ) );
+	polygon.outgoingEdgeIndices[3] = AtlasGridOrMeshEdgeIndex::FromGrid( gridChart.edgeIndex( i+0 , j+0 , 1 ) );
 #else // !NEW_INDEXING
 	polygon.outgoingEdgeIndices[0] = gridChart.edgeIndex( i+0 , j+0 , 0 );
 	polygon.outgoingEdgeIndices[1] = gridChart.edgeIndex( i+1 , j+0 , 1 );
@@ -90,7 +90,7 @@ void AddEdgeGridIntersection
 	Simplex< GeometryReal , 2 , 1 > edge ,
 	const GridChart< GeometryReal > &gridChart ,
 #ifdef NEW_INDEXING
-	AtlasEdgeIndex edgeIndex ,
+	AtlasMeshEdgeIndex edgeIndex ,
 #else // !NEW_INDEXING
 	int edgeIndex ,
 #endif // NEW_INDEXING
@@ -142,14 +142,14 @@ void InitializeChartBoundaryEdgeGridIntersections
 (
 	const AtlasChart< GeometryReal > & atlasChart ,
 #ifdef NEW_INDEXING
-	const std::map< AtlasVertexIndex , AtlasBoundaryVertexIndex > & atlasBoundaryVertexToIndex ,
+	const std::map< AtlasMeshVertexIndex , AtlasBoundaryVertexIndex > & atlasBoundaryVertexToIndex ,
 #else // !NEW_INDEXING
 	const std::map< unsigned int , unsigned int > & atlasBoundaryVertexToIndex ,
 #endif // NEW_INDEXING
 	GridChart< GeometryReal > & gridChart ,
 	unsigned int & boundarySize ,
 #ifdef NEW_INDEXING
-	std::map< AtlasHalfEdgeIndex , std::vector< IntersectionInfo< GeometryReal > > > &atlasBoundaryHalfEdgeToIntersectionInfos ,
+	std::map< AtlasMeshHalfEdgeIndex , std::vector< IntersectionInfo< GeometryReal > > > &atlasBoundaryHalfEdgeToIntersectionInfos ,
 #else // !NEW_INDEXING
 	std::map< unsigned int , std::vector< IntersectionInfo< GeometryReal > > > &atlasBoundaryHalfEdgeToIntersectionInfos ,
 #endif // NEW_INDEXING
@@ -160,8 +160,8 @@ void InitializeChartBoundaryEdgeGridIntersections
 	for( unsigned int b=0 ; b<atlasChart.boundaryHalfEdges.size() ; b++ )
 	{
 #ifdef NEW_INDEXING
-		ChartHalfEdgeIndex chartHalfEdge = atlasChart.boundaryHalfEdges[b];
-		AtlasHalfEdgeIndex atlasHalfEdge = atlasChart.atlasHalfEdge( chartHalfEdge );
+		ChartMeshHalfEdgeIndex chartHalfEdge = atlasChart.boundaryHalfEdges[b];
+		AtlasMeshHalfEdgeIndex atlasHalfEdge = atlasChart.atlasHalfEdge( chartHalfEdge );
 #else // !NEW_INDEXING
 		unsigned int chartHalfEdge = atlasChart.boundaryHalfEdges[b];
 		unsigned int atlasHalfEdge = atlasChart.atlasHalfEdge( chartHalfEdge );
@@ -171,8 +171,8 @@ void InitializeChartBoundaryEdgeGridIntersections
 		std::vector< IntersectionInfo< GeometryReal > > boundaryHalfEdgeIntersectionsInfo;
 
 #ifdef NEW_INDEXING
-		SimplexIndex< 1 , ChartVertexIndex > eIndex = atlasChart.edgeIndex( atlasChart.boundaryHalfEdges[b] );
-		Simplex< GeometryReal , 2 , 1 > edge( atlasChart.vertex( ChartVertexIndex( eIndex[0] ) ) - gridChart.corner , atlasChart.vertex( ChartVertexIndex( eIndex[1] ) ) - gridChart.corner );
+		SimplexIndex< 1 , ChartMeshVertexIndex > eIndex = atlasChart.edgeIndex( atlasChart.boundaryHalfEdges[b] );
+		Simplex< GeometryReal , 2 , 1 > edge( atlasChart.vertex( ChartMeshVertexIndex( eIndex[0] ) ) - gridChart.corner , atlasChart.vertex( ChartMeshVertexIndex( eIndex[1] ) ) - gridChart.corner );
 #else // !NEW_INDEXING
 		SimplexIndex< 1 > eIndex = atlasChart.edgeIndex( atlasChart.boundaryHalfEdges[b] );
 		Simplex< GeometryReal , 2 , 1 > edge( atlasChart.vertices[ eIndex[0] ] - gridChart.corner , atlasChart.vertices[ eIndex[1] ] - gridChart.corner );
@@ -200,7 +200,7 @@ void InitializeChartBoundaryEdgeGridIntersections
 				unsigned int index;
 #endif // NEW_INDEXING
 #ifdef NEW_INDEXING
-				if( std::optional< ChartVertexIndex > v = boundaryHalfEdgeIntersectionsInfo[i].intersectionKey.chartVertex() )	// Start/end vertex
+				if( std::optional< ChartMeshVertexIndex > v = boundaryHalfEdgeIntersectionsInfo[i].intersectionKey.chartVertex() )	// Start/end vertex
 #else // !NEW_INDEXING
 				if( std::optional< unsigned int > v = boundaryHalfEdgeIntersectionsInfo[i].intersectionKey.meshVertex() )	// Start/end vertex
 #endif // NEW_INDEXING
@@ -245,7 +245,7 @@ template< typename GeometryReal >
 void InitializeChartBoundaryPolygons
 (
 #ifdef NEW_INDEXING
-	const std::vector< AtlasHalfEdgeIndex > & oppositeHalfEdge ,
+	const std::vector< AtlasMeshHalfEdgeIndex > & oppositeHalfEdge ,
 #else // !NEW_INDEXING
 	const std::vector< unsigned int > &oppositeHalfEdge ,
 #endif // NEW_INDEXING
@@ -255,7 +255,7 @@ void InitializeChartBoundaryPolygons
 	unsigned int numBoundaryVertices ,
 	unsigned int numBoundaryNodes ,
 #ifdef NEW_INDEXING
-	const std::map< AtlasHalfEdgeIndex , std::vector< IntersectionInfo< GeometryReal > > > & atlasBoundaryHalfEdgeToIntersectionInfos ,
+	const std::map< AtlasMeshHalfEdgeIndex , std::vector< IntersectionInfo< GeometryReal > > > & atlasBoundaryHalfEdgeToIntersectionInfos ,
 #else // !NEW_INDEXING
 	const std::map< unsigned int , std::vector< IntersectionInfo< GeometryReal > > > & atlasBoundaryHalfEdgeToIntersectionInfos ,
 #endif // NEW_INDEXING
@@ -273,16 +273,16 @@ void InitializeChartBoundaryPolygons
 #endif // SEPARATE_POLYGONS
 
 #ifdef NEW_INDEXING
-	auto GetIndexedTriangle = [&]( ChartTriangleIndex t )
+	auto GetIndexedTriangle = [&]( ChartMeshTriangleIndex t )
 		{
 			IndexedIntersectionTriangle< GeometryReal > indexedTriangle;
-			SimplexIndex< 2 , ChartVertexIndex > tri = atlasChart.triangleIndex( t );
+			SimplexIndex< 2 , ChartMeshVertexIndex > tri = atlasChart.triangleIndex( t );
 
 			for( unsigned int k=0 ; k<3 ; k++ )
 			{
 				indexedTriangle.vertices[k] = atlasChart.vertex( tri[k] ) - gridChart.corner;
 				indexedTriangle.cornerKeys[k] = GridMeshIntersectionKey::ChartVertexKey( tri[k] );
-				indexedTriangle.outgoingEdgeIndices[k] = GridOrAtlasEdgeIndex::FromAtlasEdgeIndex( atlasChart.atlasEdge( GetChartHalfEdgeIndex( t , k ) ) );
+				indexedTriangle.outgoingEdgeIndices[k] = AtlasGridOrMeshEdgeIndex::FromMesh( atlasChart.atlasEdge( GetChartHalfEdgeIndex( t , k ) ) );
 			}
 			return indexedTriangle;
 		};
@@ -316,10 +316,10 @@ void InitializeChartBoundaryPolygons
 	nodeRange.second[1] = gridChart.height , cellRange.second[1] = gridChart.height-1;
 
 #ifdef NEW_INDEXING
-	auto GetSimplex = [&]( ChartTriangleIndex t )
+	auto GetSimplex = [&]( ChartMeshTriangleIndex t )
 		{
 			Simplex< double , 2 , 2 > simplex;
-			SimplexIndex< 2 , ChartVertexIndex > tri = atlasChart.triangleIndex( t );
+			SimplexIndex< 2 , ChartMeshVertexIndex > tri = atlasChart.triangleIndex( t );
 			for( unsigned int k=0 ; k<=2 ; k++ )
 			{
 				simplex[k] = atlasChart.vertex( tri[k] ) - gridChart.corner;
@@ -350,14 +350,14 @@ void InitializeChartBoundaryPolygons
 #endif // NEW_INDEXING
 	{
 #ifdef NEW_INDEXING
-		IndexedIntersectionTriangle< GeometryReal > indexedTriangle = GetIndexedTriangle( ChartTriangleIndex(t) );
+		IndexedIntersectionTriangle< GeometryReal > indexedTriangle = GetIndexedTriangle( ChartMeshTriangleIndex(t) );
 #else // !NEW_INDEXING
 		IndexedIntersectionTriangle< GeometryReal > indexedTriangle = GetIndexedTriangle( t );
 #endif // NEW_INDEXING
 #ifdef USE_RASTERIZER
 		// Compute the associated triangle in (shifted) texel coordinates
 #ifdef NEW_INDEXING
-		Simplex< double , 2 , 2 > simplex = GetSimplex( ChartTriangleIndex(t) );
+		Simplex< double , 2 , 2 > simplex = GetSimplex( ChartMeshTriangleIndex(t) );
 #else // !NEW_INDEXING
 		Simplex< double , 2 , 2 > simplex = GetSimplex( t );
 #endif // NEW_INDEXING
@@ -474,13 +474,13 @@ void InitializeChartBoundaryPolygons
 #endif // NEW_INDEXING
 					{
 #ifdef NEW_INDEXING
-						IndexedIntersectionTriangle< GeometryReal > indexedTriangle = GetIndexedTriangle( ChartTriangleIndex(t) );
+						IndexedIntersectionTriangle< GeometryReal > indexedTriangle = GetIndexedTriangle( ChartMeshTriangleIndex(t) );
 #else // !NEW_INDEXING
 						IndexedIntersectionTriangle< GeometryReal > indexedTriangle = GetIndexedTriangle( t );
 #endif // NEW_INDEXING
 						IndexedIntersectionPolygon< GeometryReal > cellPolygon = GetIndexedIntersectionPolygon( _idx[0] , _idx[1] );
 #ifdef NEW_INDEXING
-						if( ClipIndexedIntersectionPolygonToIndexedIntersectionTriangle( cellPolygon , indexedTriangle ) ) sStream << " " << atlasChart.atlasTriangle( ChartTriangleIndex(t) );
+						if( ClipIndexedIntersectionPolygonToIndexedIntersectionTriangle( cellPolygon , indexedTriangle ) ) sStream << " " << atlasChart.atlasTriangle( ChartMeshTriangleIndex(t) );
 #else // !NEW_INDEXING
 						if( ClipIndexedIntersectionPolygonToIndexedIntersectionTriangle( cellPolygon , indexedTriangle ) ) sStream << " " << atlasChart.atlasTriangle(t);
 #endif // NEW_INDEXING
@@ -497,7 +497,7 @@ void InitializeChartBoundaryPolygons
 
 		// For vertices on the original mesh, the index of the associated mesh vertex (-1 otherwise)
 #ifdef NEW_INDEXING
-		std::vector< std::vector< ChartVertexIndex > > loopAtlasVertexIndices( loopKeys.size() );
+		std::vector< std::vector< ChartMeshVertexIndex > > loopAtlasVertexIndices( loopKeys.size() );
 #else // !NEW_INDEXING
 		std::vector< std::vector< unsigned int > > loopAtlasVertexIndices( loopKeys.size() );
 #endif // NEW_INDEXING
@@ -508,7 +508,7 @@ void InitializeChartBoundaryPolygons
 			std::vector< GridMeshIntersectionKey > reducedLoop;		// The subset of vertices that are either grid nodes or boundary nodes
 			std::vector< NodeInfo< GeometryReal > > currentLoopNodes;
 #ifdef NEW_INDEXING
-			std::vector< ChartVertexIndex > currentAtlasVertexIndices;
+			std::vector< ChartMeshVertexIndex > currentAtlasVertexIndices;
 #else // !NEW_INDEXING
 			std::vector< unsigned int > currentAtlasVertexIndices;
 #endif // NEW_INDEXING
@@ -519,7 +519,7 @@ void InitializeChartBoundaryPolygons
 				GridMeshIntersectionKey currentVertexKey = loopKeys[i][j];
 
 #ifdef NEW_INDEXING
-				if( std::optional< GridNodeIndex > g = currentVertexKey.gridNode() )	// Texel node
+				if( std::optional< AtlasGridNodeIndex > g = currentVertexKey.gridNode() )	// Texel node
 #else // !NEW_INDEXING
 				if( std::optional< unsigned int > g = currentVertexKey.gridNode() )	// Texel node
 #endif // NEW_INDEXING
@@ -534,7 +534,7 @@ void InitializeChartBoundaryPolygons
 					reducedLoop.push_back( currentVertexKey );
 					currentLoopNodes.emplace_back( interiorTexelIndex , gridChart.nodePosition(pi,pj) );
 #ifdef NEW_INDEXING
-					currentAtlasVertexIndices.push_back( ChartVertexIndex(-1) );
+					currentAtlasVertexIndices.push_back( ChartMeshVertexIndex(-1) );
 #else // !NEW_INDEXING
 					currentAtlasVertexIndices.push_back(-1);
 #endif // NEW_INDEXING
@@ -549,11 +549,11 @@ void InitializeChartBoundaryPolygons
 						currentLoopNodes.back().index += numInteriorNodes;
 
 #ifdef NEW_INDEXING
-						if( std::optional< ChartVertexIndex > v = currentVertexKey.chartVertex() ) currentAtlasVertexIndices.push_back( *v );
-						else                                                                       currentAtlasVertexIndices.push_back( ChartVertexIndex(-1) );
+						if( std::optional< ChartMeshVertexIndex > v = currentVertexKey.chartVertex() ) currentAtlasVertexIndices.push_back( *v );
+						else                                                                       currentAtlasVertexIndices.push_back( ChartMeshVertexIndex(-1) );
 #else // !NEW_INDEXING
 #ifdef NEW_INDEXING
-						if( std::optional< ChartVertexIndex > v = currentVertexKey.chartVertex() ) currentAtlasVertexIndices.push_back( *v );
+						if( std::optional< ChartMeshVertexIndex > v = currentVertexKey.chartVertex() ) currentAtlasVertexIndices.push_back( *v );
 #else // !NEW_INDEXING
 						if( std::optional< unsigned int > v = currentVertexKey.meshVertex() ) currentAtlasVertexIndices.push_back( *v );
 #endif // NEW_INDEXING
@@ -570,8 +570,8 @@ void InitializeChartBoundaryPolygons
 
 		// Add the intermediate vertices for boundary segments
 #ifdef NEW_INDEXING
-		std::vector< std::vector< AtlasEdgeIndex > > loopAtlasEdges( loopKeys.size() );
-		std::vector< std::vector< AtlasEdgeIndex > > loopAtlasVertexParentEdges( loopKeys.size() );
+		std::vector< std::vector< AtlasMeshEdgeIndex > > loopAtlasEdges( loopKeys.size() );
+		std::vector< std::vector< AtlasMeshEdgeIndex > > loopAtlasVertexParentEdges( loopKeys.size() );
 #else // !NEW_INDEXING
 		std::vector< std::vector< unsigned int > > loopAtlasEdges( loopKeys.size() );
 		std::vector< std::vector< unsigned int > > loopAtlasVertexParentEdges( loopKeys.size() );
@@ -586,8 +586,8 @@ void InitializeChartBoundaryPolygons
 			std::vector< std::vector< GeometryReal > > timesToInsert;
 			std::vector< bool > isInsertionPos( loopKeys[i].size() , false );
 #ifdef NEW_INDEXING
-			std::vector< AtlasEdgeIndex > polygonAtlasEdgeIndex( loopKeys[i].size() , AtlasEdgeIndex(-1) );
-			std::vector< AtlasEdgeIndex > polygonAtlasVertexParentEdges( loopKeys[i].size() , AtlasEdgeIndex(-1) );	// The mesh edge the boundary vertex/node comes from
+			std::vector< AtlasMeshEdgeIndex > polygonAtlasEdgeIndex( loopKeys[i].size() , AtlasMeshEdgeIndex(-1) );
+			std::vector< AtlasMeshEdgeIndex > polygonAtlasVertexParentEdges( loopKeys[i].size() , AtlasMeshEdgeIndex(-1) );	// The mesh edge the boundary vertex/node comes from
 #else // !NEW_INDEXING
 			std::vector< unsigned int > polygonAtlasEdgeIndex( loopKeys[i].size() , -1 );
 			std::vector< unsigned int > polygonAtlasVertexParentEdges( loopKeys[i].size() , -1 );	// The mesh edge the boundary vertex/node comes from
@@ -599,7 +599,7 @@ void InitializeChartBoundaryPolygons
 				GridMeshIntersectionKey    nextVertexKey = loopKeys[i][(j+1) % loopKeys[i].size()];
 
 #ifdef NEW_INDEXING
-				if( std::optional< std::pair< GridEdgeIndex , AtlasEdgeIndex > > x = currentVertexKey.intersection() ) polygonAtlasVertexParentEdges[j] = x->second;
+				if( std::optional< std::pair< AtlasGridEdgeIndex , AtlasMeshEdgeIndex > > x = currentVertexKey.intersection() ) polygonAtlasVertexParentEdges[j] = x->second;
 #else // !NEW_INDEXING
 				if( std::optional< std::pair< unsigned int , unsigned int > > x = currentVertexKey.intersection() ) polygonAtlasVertexParentEdges[j] = x->second;
 #endif // NEW_INDEXING
@@ -617,8 +617,8 @@ void InitializeChartBoundaryPolygons
 						polygonAtlasEdgeIndex[j] = atlasChart.atlasEdge( segmentInfo.chartHalfEdge );
 
 #ifdef NEW_INDEXING
-						AtlasHalfEdgeIndex oppHalfEdge = oppositeHalfEdge[ static_cast< unsigned int >( atlasChart.atlasHalfEdge( segmentInfo.chartHalfEdge ) ) ];
-						if( oppHalfEdge!=AtlasHalfEdgeIndex(-1) )
+						AtlasMeshHalfEdgeIndex oppHalfEdge = oppositeHalfEdge[ static_cast< unsigned int >( atlasChart.atlasHalfEdge( segmentInfo.chartHalfEdge ) ) ];
+						if( oppHalfEdge!=AtlasMeshHalfEdgeIndex(-1) )
 #else // !NEW_INDEXING
 						unsigned int oppHalfEdge = oppositeHalfEdge[ atlasChart.atlasHalfEdge( segmentInfo.chartHalfEdge ) ];
 						if( oppHalfEdge!=-1 )
@@ -675,9 +675,9 @@ void InitializeChartBoundaryPolygons
 			unsigned int insertionCount = 0;
 			std::vector< NodeInfo< GeometryReal > > expandedLoopNodes;
 #ifdef NEW_INDEXING
-			std::vector< ChartVertexIndex > expandedLoopAtlasVertexIndices;
-			std::vector< AtlasEdgeIndex > expandedLoopAtlasEdgeIndex;
-			std::vector< AtlasEdgeIndex > expandedVertexParentEdgeIndex;
+			std::vector< ChartMeshVertexIndex > expandedLoopAtlasVertexIndices;
+			std::vector< AtlasMeshEdgeIndex > expandedLoopAtlasEdgeIndex;
+			std::vector< AtlasMeshEdgeIndex > expandedVertexParentEdgeIndex;
 #else // !NEW_INDEXING
 			std::vector< unsigned int > expandedLoopAtlasVertexIndices;
 			std::vector< unsigned int > expandedLoopAtlasEdgeIndex;
@@ -692,7 +692,7 @@ void InitializeChartBoundaryPolygons
 				expandedLoopAtlasVertexIndices.push_back( loopAtlasVertexIndices[i][j] );
 
 #ifdef NEW_INDEXING
-				AtlasEdgeIndex currentSegmentAtlasEdgeIndex = polygonAtlasEdgeIndex[j];
+				AtlasMeshEdgeIndex currentSegmentAtlasEdgeIndex = polygonAtlasEdgeIndex[j];
 				expandedLoopAtlasEdgeIndex.push_back( currentSegmentAtlasEdgeIndex );
 				expandedVertexParentEdgeIndex.push_back( polygonAtlasVertexParentEdges[j] );
 #else // !NEW_INDEXING
@@ -714,7 +714,7 @@ void InitializeChartBoundaryPolygons
 					Point2D< GeometryReal >    nextPos = loopNodes[i][ (j+1)%loopKeys[i].size() ].position;
 
 #ifdef NEW_INDEXING
-					if( currentSegmentAtlasEdgeIndex==AtlasEdgeIndex(-1) ) MK_THROW( "Invalid atlas edge index" );
+					if( currentSegmentAtlasEdgeIndex==AtlasMeshEdgeIndex(-1) ) MK_THROW( "Invalid atlas edge index" );
 #else // !NEW_INDEXING
 					if( currentSegmentAtlasEdgeIndex==-1 ) MK_THROW( "Invalid atlas edge index" );
 #endif // NEW_INDEXING
@@ -740,7 +740,7 @@ void InitializeChartBoundaryPolygons
 
 						expandedLoopNodes.emplace_back( _indices[k] + numInteriorNodes , interpolatedPos );
 #ifdef NEW_INDEXING
-						expandedLoopAtlasVertexIndices.push_back( ChartVertexIndex(-1) );
+						expandedLoopAtlasVertexIndices.push_back( ChartMeshVertexIndex(-1) );
 #else // !NEW_INDEXING
 						expandedLoopAtlasVertexIndices.push_back(-1);
 #endif // NEW_INDEXING
@@ -790,7 +790,7 @@ unsigned int InitializeBoundaryPolygons
 
 	// A map taking (atlas) boundary half-edge indices to their decomposition by grid edges
 #ifdef NEW_INDEXING
-	std::map< AtlasHalfEdgeIndex , std::vector< IntersectionInfo< GeometryReal > > > atlasBoundaryHalfEdgeToIntersectionInfos;
+	std::map< AtlasMeshHalfEdgeIndex , std::vector< IntersectionInfo< GeometryReal > > > atlasBoundaryHalfEdgeToIntersectionInfos;
 	#else // !NEW_INDEXING
 	std::map< unsigned int , std::vector< IntersectionInfo< GeometryReal > > > atlasBoundaryHalfEdgeToIntersectionInfos;
 #endif // NEW_INDEXING
@@ -866,7 +866,7 @@ void InitializeChartQuadraticElements
 					triangle.vertexIndices[v] = currentPolygon.vertexIndices[ currentPolygonVertex ];
 					triangle.atlasVertexParentEdge[v] = currentPolygon.atlasVertexParentEdge[ currentPolygonVertex ];
 #ifdef NEW_INDEXING
-					triangle.atlasEdgeIndices[v] = AtlasEdgeIndex(-1);
+					triangle.atlasEdgeIndices[v] = AtlasMeshEdgeIndex(-1);
 #else // !NEW_INDEXING
 					triangle.atlasEdgeIndices[v] = -1;
 #endif // NEW_INDEXING

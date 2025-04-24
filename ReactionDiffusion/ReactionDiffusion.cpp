@@ -888,7 +888,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::Init( void )
 		Pointer( FEM::CoordinateXForm< PreReal > ) xForms = rMesh.getCoordinateXForms();
 
 #ifdef NEW_INDEXING
-		for( unsigned int i=0 ; i<textureNodes.size() ; i++ ) if( textureNodes[i].tID!=AtlasTriangleIndex(-1) && !textureNodes[i].isInterior )
+		for( unsigned int i=0 ; i<textureNodes.size() ; i++ ) if( textureNodes[i].tID!=AtlasMeshTriangleIndex(-1) && !textureNodes[i].isInterior )
 #else // !NEW_INDEXING
 		for( unsigned int i=0 ; i<textureNodes.size() ; i++ ) if( textureNodes[i].tID!=-1 && !textureNodes[i].isInterior )
 #endif // NEW_INDEXING
@@ -905,7 +905,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::Init( void )
 			rMesh.exp(xForms, _p);
 
 #ifdef NEW_INDEXING
-			textureNodes[i].tID = AtlasTriangleIndex( _p.tIdx );
+			textureNodes[i].tID = AtlasMeshTriangleIndex( _p.tIdx );
 #else // !NEW_INDEXING
 			textureNodes[i].tID = _p.tIdx;
 #endif // NEW_INDEXING

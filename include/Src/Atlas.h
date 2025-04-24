@@ -51,12 +51,12 @@ namespace MishaK
 #endif // NEW_INDEXING
 	{
 #ifdef NEW_INDEXING
-		Point< GeometryReal , 2 > vertex( AtlasVertexIndex v ) const { return SimpleTriangleMesh< GeometryReal , 2 >::vertices[ static_cast< unsigned int >(v) ]; }
-		SimplexIndex< 2 , AtlasVertexIndex > triangle( AtlasTriangleIndex t ) const
+		Point< GeometryReal , 2 > vertex( AtlasMeshVertexIndex v ) const { return SimpleTriangleMesh< GeometryReal , 2 >::vertices[ static_cast< unsigned int >(v) ]; }
+		SimplexIndex< 2 , AtlasMeshVertexIndex > triangle( AtlasMeshTriangleIndex t ) const
 		{
 			SimplexIndex< 2 > _tri = SimpleTriangleMesh< GeometryReal , 2 >::triangles[ static_cast< unsigned int >(t) ]
-			SimplexIndex< 2 , AtlasVertexIndex > tri;
-			for( unsigned int k=0 ; k<=2 ; k++ ) tri[k] = AtlasVertexIndex( _tri[k] )
+			SimplexIndex< 2 , AtlasMeshVertexIndex > tri;
+			for( unsigned int k=0 ; k<=2 ; k++ ) tri[k] = AtlasMeshVertexIndex( _tri[k] )
 			return tri;
 		}
 		size_t numVertices( void ) const { return SimpleTriangleMesh< GeometryReal , 2 >::vertices.size(); }
@@ -68,21 +68,21 @@ namespace MishaK
 
 		// Returns the index of the chart the triangle has been assigned to
 #ifdef NEW_INDEXING
-		ChartIndex triangleToChart( AtlasTriangleIndex t ) const { return _triangleToChart[ static_cast< unsigned int >(t) ]; }
+		ChartIndex triangleToChart( AtlasMeshTriangleIndex t ) const { return _triangleToChart[ static_cast< unsigned int >(t) ]; }
 #else // !NEW_INDEXING
 		unsigned int triangleToChart( unsigned int t ) const { return _triangleToChart[t]; }
 #endif // NEW_INDEXING
 
 		// Returns the index of the edge associated with the half-edge
 #ifdef NEW_INDEXING
-		AtlasEdgeIndex halfEdgeToEdge( AtlasHalfEdgeIndex he ) const { return _halfEdgeToEdge[ static_cast< unsigned int >(he) ]; }
+		AtlasMeshEdgeIndex halfEdgeToEdge( AtlasMeshHalfEdgeIndex he ) const { return _halfEdgeToEdge[ static_cast< unsigned int >(he) ]; }
 #else // !NEW_INDEXING
 		unsigned int halfEdgeToEdge( unsigned int he ) const { return _halfEdgeToEdge[he]; }
 #endif // NEW_INDEXING
 
 		// Returns the index of the chart vertex as an atlas vertex
 #ifdef NEW_INDEXING
-		AtlasVertexIndex chartToAtlasVertex( ChartVertexIndex v ) const { return _chartToAtlasVertex[ static_cast< unsigned int >(v) ]; }
+		AtlasMeshVertexIndex chartToAtlasVertex( ChartMeshVertexIndex v ) const { return _chartToAtlasVertex[ static_cast< unsigned int >(v) ]; }
 #else // !NEW_INDEXING
 		unsigned int chartToAtlasVertex( unsigned int v ) const { return _chartToAtlasVertex[v]; }
 #endif // NEW_INDEXING
@@ -100,8 +100,8 @@ namespace MishaK
 		unsigned int _numCharts;
 #ifdef NEW_INDEXING
 		std::vector< ChartIndex > _triangleToChart;
-		std::vector< AtlasEdgeIndex > _halfEdgeToEdge;
-		std::vector< AtlasVertexIndex > _chartToAtlasVertex;
+		std::vector< AtlasMeshEdgeIndex > _halfEdgeToEdge;
+		std::vector< AtlasMeshVertexIndex > _chartToAtlasVertex;
 #else // !NEW_INDEXING
 		std::vector< unsigned int > _triangleToChart;
 		std::vector< unsigned int > _halfEdgeToEdge;
@@ -117,19 +117,19 @@ namespace MishaK
 #endif // NEW_INDEXING
 	{
 #ifdef NEW_INDEXING
-		Point< GeometryReal , 2 > vertex( ChartVertexIndex v ) const { return SimpleTriangleMesh< GeometryReal , 2 >::vertices[ static_cast< unsigned int >(v) ]; }
-		SimplexIndex< 2 , ChartVertexIndex > triangleIndex( ChartTriangleIndex t ) const
+		Point< GeometryReal , 2 > vertex( ChartMeshVertexIndex v ) const { return SimpleTriangleMesh< GeometryReal , 2 >::vertices[ static_cast< unsigned int >(v) ]; }
+		SimplexIndex< 2 , ChartMeshVertexIndex > triangleIndex( ChartMeshTriangleIndex t ) const
 		{
 			SimplexIndex< 2 > _tri = SimpleTriangleMesh< GeometryReal , 2 >::triangles[ static_cast< unsigned int >(t) ];
-			SimplexIndex< 2 , ChartVertexIndex > tri;
-			for( unsigned int k=0 ; k<=2 ; k++ ) tri[k] = ChartVertexIndex( _tri[k] );
+			SimplexIndex< 2 , ChartMeshVertexIndex > tri;
+			for( unsigned int k=0 ; k<=2 ; k++ ) tri[k] = ChartMeshVertexIndex( _tri[k] );
 			return tri;
 		}
-		SimplexIndex< 1 , ChartVertexIndex > edgeIndex( ChartHalfEdgeIndex he ) const
+		SimplexIndex< 1 , ChartMeshVertexIndex > edgeIndex( ChartMeshHalfEdgeIndex he ) const
 		{
 			SimplexIndex< 1 > _edge = SimpleTriangleMesh< GeometryReal , 2 >::edgeIndex( static_cast< unsigned int >(he) );
-			SimplexIndex< 1 , ChartVertexIndex > edge;
-			for( unsigned int k=0 ; k<=1 ; k++ ) edge[k] = ChartVertexIndex( _edge[k] );
+			SimplexIndex< 1 , ChartMeshVertexIndex > edge;
+			for( unsigned int k=0 ; k<=1 ; k++ ) edge[k] = ChartMeshVertexIndex( _edge[k] );
 			return edge;
 		}
 		size_t numVertices( void ) const { return SimpleTriangleMesh< GeometryReal , 2 >::vertices.size(); }
@@ -146,35 +146,35 @@ namespace MishaK
 
 		// The list of half edges on the boundary of the chart
 #ifdef NEW_INDEXING
-		std::vector< ChartHalfEdgeIndex > boundaryHalfEdges;
+		std::vector< ChartMeshHalfEdgeIndex > boundaryHalfEdges;
 #else // !NEW_INDEXING
 		std::vector< unsigned int > boundaryHalfEdges;
 #endif // NEW_INDEXING
 
 		// Returns the index of the atlas edge associated with the chart half-edge
 #ifdef NEW_INDEXING
-		AtlasEdgeIndex atlasEdge( ChartHalfEdgeIndex he ) const { return _chartHalfEdgeToAtlasEdge[ static_cast< unsigned int >(he) ]; }
+		AtlasMeshEdgeIndex atlasEdge( ChartMeshHalfEdgeIndex he ) const { return _chartHalfEdgeToAtlasEdge[ static_cast< unsigned int >(he) ]; }
 #else // !NEW_INDEXING
 		unsigned int atlasEdge( unsigned int he ) const { return _chartHalfEdgeToAtlasEdge[he]; }
 #endif // NEW_INDEXING
 
 		// Returns the index of the atlas half-edge associated with the chart half-edge
 #ifdef NEW_INDEXING
-		AtlasHalfEdgeIndex atlasHalfEdge( ChartHalfEdgeIndex he ) const { return AtlasHalfEdgeIndex( static_cast< unsigned int >( _chartToAtlasTriangle[static_cast< unsigned int >(he)/3] )*3 + (static_cast< unsigned int >(he)%3) ); }
+		AtlasMeshHalfEdgeIndex atlasHalfEdge( ChartMeshHalfEdgeIndex he ) const { return AtlasMeshHalfEdgeIndex( static_cast< unsigned int >( _chartToAtlasTriangle[static_cast< unsigned int >(he)/3] )*3 + (static_cast< unsigned int >(he)%3) ); }
 #else // !NEW_INDEXING
 		unsigned int atlasHalfEdge( unsigned int he ) const { return _chartToAtlasTriangle[he/3]*3 + (he%3); }
 #endif // NEW_INDEXING
 
 		// Returns the index of the chart vertex as an atlas vertex
 #ifdef NEW_INDEXING
-		AtlasVertexIndex atlasVertex( ChartVertexIndex v ) const { return _chartToAtlasVertex[ static_cast< unsigned int >(v) ]; }
+		AtlasMeshVertexIndex atlasVertex( ChartMeshVertexIndex v ) const { return _chartToAtlasVertex[ static_cast< unsigned int >(v) ]; }
 #else // !NEW_INDEXING
 		unsigned int atlasVertex( unsigned int v ) const { return _chartToAtlasVertex[v]; }
 #endif // NEW_INDEXING
 
 		// Returns the index of the triangle within the atlas
 #ifdef NEW_INDEXING
-		AtlasTriangleIndex atlasTriangle( ChartTriangleIndex t ) const { return _chartToAtlasTriangle[ static_cast< unsigned int >(t) ]; }
+		AtlasMeshTriangleIndex atlasTriangle( ChartMeshTriangleIndex t ) const { return _chartToAtlasTriangle[ static_cast< unsigned int >(t) ]; }
 #else // !NEW_INDEXING
 		unsigned int atlasTriangle( unsigned int t ) const { return _chartToAtlasTriangle[t]; }
 #endif // NEW_INDEXING
@@ -183,14 +183,14 @@ namespace MishaK
 		{
 			// The opposite half-edges (in the atlas mesh)
 #ifdef NEW_INDEXING
-			std::vector< AtlasHalfEdgeIndex > oppositeHalfEdges;
+			std::vector< AtlasMeshHalfEdgeIndex > oppositeHalfEdges;
 #else // !NEW_INDEXING
 			std::vector< unsigned int > oppositeHalfEdges;
 #endif // NEW_INDEXING
 
 			// A map assigning an index to atlas boundary vertices
 #ifdef NEW_INDEXING
-			std::map< AtlasVertexIndex , AtlasBoundaryVertexIndex > atlasBoundaryVertexToIndex;
+			std::map< AtlasMeshVertexIndex , AtlasBoundaryVertexIndex > atlasBoundaryVertexToIndex;
 #else // !NEW_INDEXING
 			std::map< unsigned int , unsigned int > atlasBoundaryVertexToIndex;
 #endif // NEW_INDEXING
@@ -211,9 +211,9 @@ namespace MishaK
 		friend AtlasMesh< GeometryReal >;
 
 #ifdef NEW_INDEXING
-		std::vector< AtlasEdgeIndex > _chartHalfEdgeToAtlasEdge;
-		std::vector< AtlasVertexIndex > _chartToAtlasVertex;
-		std::vector< AtlasTriangleIndex > _chartToAtlasTriangle;
+		std::vector< AtlasMeshEdgeIndex > _chartHalfEdgeToAtlasEdge;
+		std::vector< AtlasMeshVertexIndex > _chartToAtlasVertex;
+		std::vector< AtlasMeshTriangleIndex > _chartToAtlasTriangle;
 #else // !NEW_INDEXING
 		std::vector< unsigned int > _chartHalfEdgeToAtlasEdge;
 		std::vector< unsigned int > _chartToAtlasVertex;
@@ -225,14 +225,14 @@ namespace MishaK
 	struct IndexedVector2D
 	{
 #ifdef NEW_INDEXING
-		IndexedVector2D( Point2D< GeometryReal > p , ChartVertexIndex index , AtlasVertexIndex vertex ) : p(p) , index(index) , vertex(vertex){}
+		IndexedVector2D( Point2D< GeometryReal > p , ChartMeshVertexIndex index , AtlasMeshVertexIndex vertex ) : p(p) , index(index) , vertex(vertex){}
 #else // !NEW_INDEXING
 		IndexedVector2D( Point2D< GeometryReal > p , unsigned int index , unsigned int vertex ) : p(p) , index(index) , vertex(vertex){}
 #endif // NEW_INDEXING
 		Point2D< GeometryReal > p;
 #ifdef NEW_INDEXING
-		ChartVertexIndex index;
-		AtlasVertexIndex vertex;
+		ChartMeshVertexIndex index;
+		AtlasMeshVertexIndex vertex;
 #else // !NEW_INDEXING
 		unsigned int index;
 		unsigned int vertex;

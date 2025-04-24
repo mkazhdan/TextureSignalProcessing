@@ -190,7 +190,7 @@ namespace MishaK
 				for( unsigned int i=0 ; i<=2 ; i++ )
 				{
 #ifdef NEW_INDEXING
-					simplex[i] = atlasChart.vertex( ChartVertexIndex( atlasChart.triangleIndex( ChartTriangleIndex(t) )[i] ) ) - gridChart.corner;
+					simplex[i] = atlasChart.vertex( ChartMeshVertexIndex( atlasChart.triangleIndex( ChartMeshTriangleIndex(t) )[i] ) ) - gridChart.corner;
 #else // !NEW_INDEXING
 					simplex[i] = atlasChart.vertices[ atlasChart.triangles[t][i] ] - gridChart.corner;
 #endif // NEW_INDEXING
@@ -232,7 +232,7 @@ namespace MishaK
 					{
 						unsigned int interiorIndex = gridChart.cellIndices[i].interior;
 #ifdef NEW_INDEXING
-						const std::vector< std::pair< ChartTriangleIndex , CellClippedTriangle< GeometryReal > > > &clippedTriangles = gridChart.clippedTriangles[i];
+						const std::vector< std::pair< ChartMeshTriangleIndex , CellClippedTriangle< GeometryReal > > > &clippedTriangles = gridChart.clippedTriangles[i];
 #else // !NEW_INDEXING
 						const std::vector< std::pair< unsigned int , CellClippedTriangle< GeometryReal > > > &clippedTriangles = gridChart.clippedTriangles[i];
 #endif // NEW_INDEXING
@@ -364,7 +364,7 @@ namespace MishaK
 
 						unsigned int boundaryIndex = gridChart.cellIndices[i].boundary;
 #ifdef NEW_INDEXING
-						const std::vector< std::pair< ChartTriangleIndex , CellClippedTriangle< GeometryReal > > > &clippedTriangles = gridChart.clippedTriangles[i];
+						const std::vector< std::pair< ChartMeshTriangleIndex , CellClippedTriangle< GeometryReal > > > &clippedTriangles = gridChart.clippedTriangles[i];
 #else // !NEW_INDEXING
 						const std::vector< std::pair< unsigned int , CellClippedTriangle< GeometryReal > > > &clippedTriangles = gridChart.clippedTriangles[i];
 #endif // NEW_INDEXING
@@ -380,7 +380,7 @@ namespace MishaK
 
 							Point2D< GeometryReal > tPos[3];
 #ifdef NEW_INDEXING
-							SimplexIndex< 2 , ChartVertexIndex > tri = atlasChart.triangleIndex( ChartTriangleIndex(t) );
+							SimplexIndex< 2 , ChartMeshVertexIndex > tri = atlasChart.triangleIndex( ChartMeshTriangleIndex(t) );
 							for( unsigned int i=0 ; i<3 ; i++ ) tPos[i] = atlasChart.vertex( tri[i] ) - gridChart.corner;
 #else // !NEW_INDEXING
 							for( unsigned int i=0 ; i<3 ; i++ ) tPos[i] = atlasChart.vertices[ atlasChart.triangles[t][i] ] - gridChart.corner;
@@ -390,9 +390,9 @@ namespace MishaK
 							{
 								atlasTriangle.vertices[k] = tPos[k];
 #ifdef NEW_INDEXING
-								atlasTriangle.atlasEdgeIndices[k] = atlasChart.atlasEdge( GetChartHalfEdgeIndex( ChartTriangleIndex(t) , k ) );
-								atlasTriangle.vertexIndices[k] = atlasChart.triangleIndex( ChartTriangleIndex(t) )[k];
-								atlasTriangle.atlasVertexParentEdge[k] = AtlasEdgeIndex(-1);
+								atlasTriangle.atlasEdgeIndices[k] = atlasChart.atlasEdge( GetChartHalfEdgeIndex( ChartMeshTriangleIndex(t) , k ) );
+								atlasTriangle.vertexIndices[k] = atlasChart.triangleIndex( ChartMeshTriangleIndex(t) )[k];
+								atlasTriangle.atlasVertexParentEdge[k] = AtlasMeshEdgeIndex(-1);
 #else // !NEW_INDEXING
 								atlasTriangle.atlasEdgeIndices[k] = atlasChart.atlasEdge( 3*t+k );
 								atlasTriangle.vertexIndices[k] = atlasChart.triangles[t][k];

@@ -43,9 +43,9 @@ namespace MishaK
 	{
 		TextureNodeInfo( void )
 			: tID(-1) , ci(static_cast< unsigned int >(-1) ) , cj( static_cast< unsigned int >(-1) ) , chartID( static_cast< unsigned int >(-1) ) , isInterior(false) {}
-		TextureNodeInfo( AtlasTriangleIndex tID , Point2D< GeometryReal > barycentricCoords , unsigned int ci , unsigned int cj , unsigned int chartID , bool isInterior )
+		TextureNodeInfo( AtlasMeshTriangleIndex tID , Point2D< GeometryReal > barycentricCoords , unsigned int ci , unsigned int cj , unsigned int chartID , bool isInterior )
 			: tID(tId) , barycentricCoords(barycentricCoords) , ci(ci) , cj(cj) , chartID(chartID) , isInterior(isInterior) {}
-		AtlasTriangleIndex tID;
+		AtlasMeshTriangleIndex tID;
 		Point< GeometryReal , 2 > barycentricCoords;
 		unsigned int ci , cj;
 		unsigned int chartID;

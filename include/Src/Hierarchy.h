@@ -494,8 +494,8 @@ namespace MishaK
 		Point2D< GeometryReal > nodePosition( unsigned int i , unsigned int j ) const { return Point2D< GeometryReal >( i*cellSizeW , j*cellSizeH ); }
 
 #ifdef NEW_INDEXING
-		GridNodeIndex nodeIndex( unsigned int i , unsigned int j ) const { return GridNodeIndex( atlasWidth*(j+cornerCoords[1]) + (i+cornerCoords[0]) ); }
-		bool factorNodeIndex( GridNodeIndex g , unsigned int &i , unsigned int &j ) const
+		AtlasGridNodeIndex nodeIndex( unsigned int i , unsigned int j ) const { return AtlasGridNodeIndex( atlasWidth*(j+cornerCoords[1]) + (i+cornerCoords[0]) ); }
+		bool factorNodeIndex( AtlasGridNodeIndex g , unsigned int &i , unsigned int &j ) const
 #else //!NEW_INDEXING
 		unsigned int nodeIndex( unsigned int i , unsigned int j ) const { return width*j + i; }
 		bool factorNodeIndex( unsigned int idx , unsigned int &i , unsigned int &j ) const
@@ -515,13 +515,13 @@ namespace MishaK
 		}
 
 #ifdef NEW_INDEXING
-		GridEdgeIndex edgeIndex( unsigned int i , unsigned int j , unsigned int dir ) const { return atlasWidth*atlasHeight*dir + (j+cornerCoords[1])*atlasWidth + (i+cornerCoords[0]); }
+		AtlasGridEdgeIndex edgeIndex( unsigned int i , unsigned int j , unsigned int dir ) const { return AtlasGridEdgeIndex( atlasWidth*atlasHeight*dir + (j+cornerCoords[1])*atlasWidth + (i+cornerCoords[0]) ); }
 #else // !NEW_INDEXING
 		unsigned int edgeIndex( unsigned int i , unsigned int j , unsigned int dir ) const { return atlasWidth*atlasHeight*dir + (j+cornerCoords[1])*atlasWidth + (i+cornerCoords[0]); }
 #endif // NEW_INDEXING
 
 #ifdef NEW_INDEXING
-		bool factorEdgeIndex( GridEdgeIndex e , unsigned int &i , unsigned int &j , unsigned int &dir ) const
+		bool factorEdgeIndex( AtlasGridEdgeIndex e , unsigned int &i , unsigned int &j , unsigned int &dir ) const
 #else // !NEW_INDEXING
 		bool factorEdgeIndex( unsigned int idx , unsigned int &i , unsigned int &j , unsigned int &dir ) const
 #endif // NEW_INDEXING
@@ -584,14 +584,14 @@ namespace MishaK
 		Image< CellType > cellType;
 		Image< TexelType > texelType;
 #ifdef NEW_INDEXING
-		Image< AtlasTriangleIndex > triangleID;
+		Image< AtlasMeshTriangleIndex > triangleID;
 #else // !NEW_INDEXING
 		Image< unsigned int > triangleID;
 #endif // NEW_INDEXING
 		Image< Point2D< GeometryReal > > barycentricCoords;
 #ifdef PRE_CLIP_TRIANGLES
 #ifdef NEW_INDEXING
-		Image< std::vector< std::pair< ChartTriangleIndex , CellClippedTriangle< GeometryReal > > > > clippedTriangles;
+		Image< std::vector< std::pair< ChartMeshTriangleIndex , CellClippedTriangle< GeometryReal > > > > clippedTriangles;
 #else // !NEW_INDEXING
 		Image< std::vector< std::pair< unsigned int , CellClippedTriangle< GeometryReal > > > > clippedTriangles;
 #endif // NEW_INDEXING

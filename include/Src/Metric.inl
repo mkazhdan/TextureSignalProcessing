@@ -222,7 +222,7 @@ void InitializeParameterMetric
 #endif // NEW_INDEXING
 		{
 #ifdef NEW_INDEXING
-			AtlasTriangleIndex t = atlasCharts[i].atlasTriangle( ChartTriangleIndex(k) );
+			AtlasMeshTriangleIndex t = atlasCharts[i].atlasTriangle( ChartMeshTriangleIndex(k) );
 
 			SquareMatrix< GeometryReal , 2 > embedding_metric = embeddingMetric[ static_cast< unsigned int >(t) ];
 			Simplex< GeometryReal , 2 , 2 > simplex = mesh.textureTriangle( static_cast< unsigned int >(t) );

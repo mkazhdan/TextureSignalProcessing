@@ -306,7 +306,7 @@ namespace MishaK
 				for( unsigned int i=0 ; i<=2 ; i++ )
 				{
 #ifdef NEW_INDEXING
-					simplex[i] = atlasChart.vertex( ChartVertexIndex( atlasChart.triangleIndex( ChartTriangleIndex(t) )[i] ) ) - gridChart.corner;
+					simplex[i] = atlasChart.vertex( ChartMeshVertexIndex( atlasChart.triangleIndex( ChartMeshTriangleIndex(t) )[i] ) ) - gridChart.corner;
 #else // !NEW_INDEXING
 					simplex[i] = atlasChart.vertices[ atlasChart.triangles[t][i] ] - gridChart.corner;
 #endif // NEW_INDEXING
@@ -323,7 +323,7 @@ namespace MishaK
 #endif // NEW_INDEXING
 		{
 #ifdef NEW_INDEXING
-			SimplexIndex< 2 , ChartVertexIndex > tri = atlasChart.triangleIndex( ChartTriangleIndex(t) );
+			SimplexIndex< 2 , ChartMeshVertexIndex > tri = atlasChart.triangleIndex( ChartMeshTriangleIndex(t) );
 #endif // NEW_INDEXING
 			Point2D< GeometryReal > tPos[3];
 #ifdef NEW_INDEXING
@@ -352,9 +352,9 @@ namespace MishaK
 			{
 				atlasTriangle.vertices[k] = tPos[k];
 #ifdef NEW_INDEXING
-				atlasTriangle.atlasEdgeIndices[k] = atlasChart.atlasEdge( GetChartHalfEdgeIndex( ChartTriangleIndex(t) , k ) );
+				atlasTriangle.atlasEdgeIndices[k] = atlasChart.atlasEdge( GetChartHalfEdgeIndex( ChartMeshTriangleIndex(t) , k ) );
 				atlasTriangle.vertexIndices[k] = tri[k];
-				atlasTriangle.atlasVertexParentEdge[k] = AtlasEdgeIndex(-1);
+				atlasTriangle.atlasVertexParentEdge[k] = AtlasMeshEdgeIndex(-1);
 #else // !NEW_INDEXING
 				atlasTriangle.atlasEdgeIndices[k] = atlasChart.atlasEdge( 3*t+k );
 				atlasTriangle.vertexIndices[k] = atlasChart.triangles[t][k];
