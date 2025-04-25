@@ -1140,7 +1140,6 @@ void InitializeHierarchy
 )
 {
 	typename AtlasChart< GeometryReal >::AtlasInfo atlasInfo;
-
 	//(1) Initialize atlas charts
 	atlasCharts = AtlasChart< GeometryReal >::GetCharts( mesh , width , height , atlasInfo );
 

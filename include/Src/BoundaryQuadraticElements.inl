@@ -525,7 +525,7 @@ void InitializeChartBoundaryPolygons
 #endif // NEW_INDEXING
 				{
 					unsigned int pi , pj;
-					if( !gridChart.factorNodeIndex( *g , pi , pj ) ) MK_ERROR_OUT( "Could not factor node index" );
+					if( !gridChart.factorNodeIndex( *g , pi , pj ) ) MK_ERROR_OUT( "Could not factor node index: " , *g );
 
 					// Confirm that the texel is inside the chart
 					unsigned int interiorTexelIndex = gridChart.texelIndices(pi,pj).interiorOrCovered;

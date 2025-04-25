@@ -497,7 +497,7 @@ namespace MishaK
 		AtlasGridNodeIndex nodeIndex( unsigned int i , unsigned int j ) const { return AtlasGridNodeIndex( atlasWidth*(j+cornerCoords[1]) + (i+cornerCoords[0]) ); }
 		bool factorNodeIndex( AtlasGridNodeIndex g , unsigned int &i , unsigned int &j ) const
 #else //!NEW_INDEXING
-		unsigned int nodeIndex( unsigned int i , unsigned int j ) const { return width*j + i; }
+		unsigned int nodeIndex( unsigned int i , unsigned int j ) const { return atlasWidth*(j+cornerCoords[1]) + (i+cornerCoords[0]); }
 		bool factorNodeIndex( unsigned int idx , unsigned int &i , unsigned int &j ) const
 #endif // NEW_INDEXING
 		{

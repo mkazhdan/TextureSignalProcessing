@@ -47,7 +47,7 @@ DAMAGE.
 
 //#define SANITY_CHECK
 
-#define NEW_INDEXING					// Use separate names for indexing
-#define DEBUG_INDEXING					// Use separate classes for indexing
+//#define NEW_INDEXING					// Use separate names for indexing
+//#define DEBUG_INDEXING					// Use separate classes for indexing
 
 #endif // PRE_PROCESSING_INCLUDED
