@@ -930,8 +930,8 @@ void Stitching< PreReal , Real , TextureBitDepth >::ParseImages( void )
 		for( int e=0 ; e<edgePairs.size() ; e++ )
 		{
 			const SimplexIndex< 1 > &edgeCorners = edgePairs[e];
-			int ci[] = { textureNodes[ edgeCorners[0] ].ci , textureNodes[ edgeCorners[1] ].ci };
-			int cj[] = { textureNodes[ edgeCorners[0] ].cj , textureNodes[ edgeCorners[1] ].cj };
+			unsigned int ci[] = { textureNodes[ edgeCorners[0] ].ci , textureNodes[ edgeCorners[1] ].ci };
+			unsigned int cj[] = { textureNodes[ edgeCorners[0] ].cj , textureNodes[ edgeCorners[1] ].cj };
 			if( inputMask( ci[0] , cj[0] )!=-1 && inputMask( ci[0] , cj[0] )==inputMask( ci[1] , cj[1] ) ) edgeValues[e] = inputComposition( ci[1] , cj[1] ) - inputComposition( ci[0] , cj[0] );
 			else edgeValues[e] = Point3D< Real >(0, 0, 0);
 		}

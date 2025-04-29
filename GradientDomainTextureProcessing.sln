@@ -37,7 +37,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Misha", "Misha", "{7DA121C8
 		include\Misha\FEM.BasisInfo.inc = include\Misha\FEM.BasisInfo.inc
 		include\Misha\FEM.h = include\Misha\FEM.h
 		include\Misha\FEM.inl = include\Misha\FEM.inl
-		include\Misha\files.txt = include\Misha\files.txt
 		include\Misha\Geometry.h = include\Misha\Geometry.h
 		include\Misha\Geometry.inl = include\Misha\Geometry.inl
 		include\Misha\Image.h = include\Misha\Image.h
