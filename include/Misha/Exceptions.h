@@ -86,12 +86,7 @@ namespace MishaK
 		std::string _message;
 	};
 
-	template< typename ... Args >
-	void Throw( const char *fileName , int line , const char *functionName , const char *format , Args ... args )
-	{
-		throw Exception( fileName , line , functionName , format , args ... );
-	}
-
+	template< typename ... Args > void Throw( const char *fileName , int line , const char *functionName , const char *format , Args ... args ){ throw Exception( fileName , line , functionName , format , args ... ); }
 	template< typename ... Args >
 	void Warn( const char *fileName , int line , const char *functionName , const char *format , Args ... args )
 	{

@@ -1184,7 +1184,7 @@ void _main( int argc , char *argv[] , unsigned int bitDepth )
 	case 16: return _main< PreReal , Real , 16 >( argc , argv );
 	case 32: return _main< PreReal , Real , 32 >( argc , argv );
 	case 64: return _main< PreReal , Real , 64 >( argc , argv );
-	default: MK_ERROR_OUT( "Only bit depths of 8, 16, 32, and 64 supported: " , bitDepth );
+	default: MK_THROW( "Only bit depths of 8, 16, 32, and 64 supported: " , bitDepth );
 	}
 }
 
@@ -1205,7 +1205,7 @@ int main( int argc , char* argv[] )
 		return EXIT_FAILURE;
 	}
 #endif // NO_OPEN_GL_VISUALIZATION
-	if( MultiInput.set && !InMask.set ) MK_ERROR_OUT( "Input mask required for multi-input" );
+	if( MultiInput.set && !InMask.set ) MK_THROW( "Input mask required for multi-input" );
 
 	unsigned int bitDepth;
 	{
@@ -1225,7 +1225,7 @@ int main( int argc , char* argv[] )
 					ImageReader< 8 >::GetInfo( textureName , _width , _height , _channels , _bitDepth );
 					if( !numTextures ) width = _width , height = _height , channels = _channels , bitDepth = _bitDepth;
 					else if( width!=_width || height!=_height || channels!=_channels || bitDepth!=_bitDepth )
-						MK_ERROR_OUT( "Image properties don't match: (" , width , " " , height , " " , channels , " " , bitDepth , ") != (" , _width , " " , _height , " " , _channels , " " , _bitDepth , ")" );
+						MK_THROW( "Image properties don't match: (" , width , " " , height , " " , channels , " " , bitDepth , ") != (" , _width , " " , _height , " " , _channels , " " , _bitDepth , ")" );
 					numTextures++;
 				}
 				else break;

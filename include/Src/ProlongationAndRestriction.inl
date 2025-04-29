@@ -42,7 +42,7 @@ void InitializeProlongation( int numInteriorTexels , int numFineNodes , int numC
 		const GridChart< GeometryReal > &gridChart = gridCharts[i];
 		for (int j = 0; j < gridChart.texelIndices.size(); j++) {
 #if 1
-			MK_ERROR_OUT( "Method disabled" );
+			MK_THROW( "Method disabled" );
 #else
 			if (gridChart.texelIndices[j].cobmiend != -1 && gridChart.texelIndices[j].interiorOrCovered != -1) {
 				interiorTexelIndices[gridChart.texelIndices[j].combined] = gridChart.texelIndices[j].interiorOrCovered;

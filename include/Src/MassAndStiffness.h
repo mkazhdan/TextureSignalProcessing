@@ -949,7 +949,7 @@ namespace MishaK
 							boundaryBoundaryMassTriplets.push_back( Eigen::Triplet< MatrixReal >( fineBoundaryIndex[ indicesInterior[k] ] , fineBoundaryIndex[ indicesInterior[l] ] , (MatrixReal)cellMass[i](k,l) ) );
 							boundaryBoundaryStiffnessTriplets.push_back( Eigen::Triplet< MatrixReal >( fineBoundaryIndex[ indicesInterior[k] ] , fineBoundaryIndex[ indicesInterior[l] ] , (MatrixReal)cellStiffness[i](k,l) ) );
 						}
-						else MK_ERROR_OUT( "Expected supported index" );
+						else MK_THROW( "Expected supported index" );
 					}
 					if( computeCellBasedStiffness )
 					{
@@ -975,7 +975,7 @@ namespace MishaK
 						for( int l=0 ; l<4 ; l++ ) boundaryDeepDivergenceTriplets.push_back( Eigen::Triplet< MatrixReal >( currentNode , cellCoarseEdgeIndex[l] , (MatrixReal)cellDivergence[i](k,l) ) );
 					}
 				}
-				else MK_ERROR_OUT( "Expected supported index" );
+				else MK_THROW( "Expected supported index" );
 			}
 		}
 

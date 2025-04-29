@@ -177,7 +177,7 @@ void TexturedTriangleMesh< Real >::read( std::string meshName , bool verbose , d
 	surface.triangles.clear();
 	texture.triangles.clear();
 	ReadTexturedMesh( meshName , surface.vertices , texture.vertices , surface.triangles , texture.triangles );
-	if( surface.triangles.size()!=texture.triangles.size() ) MK_ERROR_OUT( "Triangle counts differ: " , surface.triangles.size() , " != " , texture.triangles.size() );
+	if( surface.triangles.size()!=texture.triangles.size() ) MK_THROW( "Triangle counts differ: " , surface.triangles.size() , " != " , texture.triangles.size() );
 
 	if( eps>0 ) CollapseVertices( surface.vertices , surface.triangles , eps );
 

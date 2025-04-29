@@ -71,10 +71,10 @@ namespace MishaK
 			int file_type;
 
 			try{ file_type = PLY::ReadPolygons( fileName , factory , inVertices , inFaces , Face::Properties , Face::NumProperties , vFlags , fFlags ); }
-			catch( const Exception & ){ MK_ERROR_OUT( "Failed to read ply file: " , fileName ); }
+			catch( const Exception & ){ MK_THROW( "Failed to read ply file: " , fileName ); }
 
-			if( !fFlags[0] ) MK_ERROR_OUT( "Failed to read face indices" );
-			if( !fFlags[1] ) MK_ERROR_OUT( "Failed to read face textures" );
+			if( !fFlags[0] ) MK_THROW( "Failed to read face indices" );
+			if( !fFlags[1] ) MK_THROW( "Failed to read face textures" );
 			delete[] vFlags;
 			delete[] fFlags;
 
@@ -110,8 +110,8 @@ namespace MishaK
 			}
 
 			for( unsigned int i=0 ; i<inFaces.size() ; i++ )
-				if( inFaces[i].nr_vertices!=(K+1) ) MK_ERROR_OUT( "Face is not a simplex" );
-				else if( inFaces[i].nr_uv_coordinates!=(K+1)*K ) MK_ERROR_OUT( "Unexpected number of texture coordinates: " , inFaces[i].nr_uv_coordinates , " != " , K+1 , " * " , K );
+				if( inFaces[i].nr_vertices!=(K+1) ) MK_THROW( "Face is not a simplex" );
+				else if( inFaces[i].nr_uv_coordinates!=(K+1)*K ) MK_THROW( "Unexpected number of texture coordinates: " , inFaces[i].nr_uv_coordinates , " != " , K+1 , " * " , K );
 
 			simplices.resize( inFaces.size() );
 			textureCoordinates.resize( inFaces.size()*(K+1) );
@@ -132,7 +132,7 @@ namespace MishaK
 			std::vector< Point2D< Real > > obj_textures;
 			std::vector< std::vector< ObjFaceIndex > > obj_faces;
 			std::ifstream in( fileName );
-			if( !in.is_open() ) MK_ERROR_OUT( "Could not open file for reading: " , fileName );
+			if( !in.is_open() ) MK_THROW( "Could not open file for reading: " , fileName );
 
 			std::string( line );
 			unsigned int count = 0;
@@ -198,7 +198,7 @@ namespace MishaK
 			{
 				unsigned int tCount = 0;
 				for( unsigned int i=0 ; i<obj_faces.size() ; i++ )
-					if( obj_faces[i].size()<3 ) MK_ERROR_OUT( "Expected at least three vertices" );
+					if( obj_faces[i].size()<3 ) MK_THROW( "Expected at least three vertices" );
 					else tCount += (unsigned int)obj_faces[i].size()-2;
 				if( tCount>obj_faces.size() )
 				{
@@ -236,14 +236,14 @@ namespace MishaK
 			{
 				if     ( obj_faces[i][j].vIndex>0 ) simplices[i][j] = obj_faces[i][j].vIndex-1;
 				else if( obj_faces[i][j].vIndex<0 ) simplices[i][j] = (int)obj_vertices.size() + obj_faces[i][j].vIndex;
-				else MK_ERROR_OUT( "Zero vertex index unexpected in .obj file: " , i );
+				else MK_THROW( "Zero vertex index unexpected in .obj file: " , i );
 
 				if     ( obj_faces[i][j].tIndex>0 ) textureCoordinates[3*i+j] = obj_textures[ obj_faces[i][j].tIndex-1 ];
 				else if( obj_faces[i][j].tIndex<0 ) textureCoordinates[3*i+j] = obj_textures[ (int)obj_textures.size() + obj_faces[i][j].tIndex ];
-				else MK_ERROR_OUT( "Zero texture index unexpected in .obj file: " , i );
+				else MK_THROW( "Zero texture index unexpected in .obj file: " , i );
 			}
 		}
-		else MK_ERROR_OUT( "Unrecognized file type: " , fileName , " -> " , ext );
+		else MK_THROW( "Unrecognized file type: " , fileName , " -> " , ext );
 	}
 
 	template< typename Index , typename Real , unsigned int Dim , unsigned int TDim >
@@ -274,11 +274,11 @@ namespace MishaK
 			int file_type;
 
 			try{ file_type = PLY::ReadPolygons( fileName , factory , inVertices , inFaces , Face::Properties , Face::NumProperties , vFlags , fFlags ); }
-			catch( const Exception & ){ MK_ERROR_OUT( "Failed to read ply file: " , fileName ); }
+			catch( const Exception & ){ MK_THROW( "Failed to read ply file: " , fileName ); }
 
 			bool perVertexTexture = factory.template plyValidReadProperties< 1 >( vFlags );
-			if( !fFlags[0] ) MK_ERROR_OUT( "Failed to read face indices" );
-			if( !fFlags[1] && !perVertexTexture ) MK_ERROR_OUT( "Failed to read face textures" );
+			if( !fFlags[0] ) MK_THROW( "Failed to read face indices" );
+			if( !fFlags[1] && !perVertexTexture ) MK_THROW( "Failed to read face textures" );
 			delete[] vFlags;
 			delete[] fFlags;
 
@@ -328,8 +328,8 @@ namespace MishaK
 			else
 			{
 				for( unsigned int i=0 ; i<inFaces.size() ; i++ )
-					if( inFaces[i].nr_vertices!=(K+1) ) MK_ERROR_OUT( "Face is not a simplex" );
-					else if( inFaces[i].nr_uv_coordinates!=(K+1)*K ) MK_ERROR_OUT( "Unexpected number of texture coordinates: " , inFaces[i].nr_uv_coordinates , " != " , K+1 , " * " , K );
+					if( inFaces[i].nr_vertices!=(K+1) ) MK_THROW( "Face is not a simplex" );
+					else if( inFaces[i].nr_uv_coordinates!=(K+1)*K ) MK_THROW( "Unexpected number of texture coordinates: " , inFaces[i].nr_uv_coordinates , " != " , K+1 , " * " , K );
 
 				for( unsigned int i=0 ; i<inFaces.size() ; i++ ) for( unsigned int k=0 ; k<=K ; k++ )
 				{
@@ -385,7 +385,7 @@ namespace MishaK
 			std::vector< Point2D< Real > > obj_textures;
 			std::vector< std::vector< ObjFaceIndex > > obj_faces;
 			std::ifstream in( fileName );
-			if( !in.is_open() ) MK_ERROR_OUT( "Could not open file for reading: " , fileName );
+			if( !in.is_open() ) MK_THROW( "Could not open file for reading: " , fileName );
 
 			std::string( line );
 			unsigned int count = 0;
@@ -453,7 +453,7 @@ namespace MishaK
 			{
 				unsigned int tCount = 0;
 				for( unsigned int i=0 ; i<obj_faces.size() ; i++ )
-					if( obj_faces[i].size()<3 ) MK_ERROR_OUT( "Expected at least three vertices" );
+					if( obj_faces[i].size()<3 ) MK_THROW( "Expected at least three vertices" );
 					else tCount += (unsigned int)obj_faces[i].size()-2;
 				if( tCount>obj_faces.size() )
 				{
@@ -491,14 +491,14 @@ namespace MishaK
 			{
 				if     ( obj_faces[i][j].vIndex>0 ) vSimplices[i][j] = obj_faces[i][j].vIndex-1;
 				else if( obj_faces[i][j].vIndex<0 ) vSimplices[i][j] = (int)obj_vertices.size() + obj_faces[i][j].vIndex;
-				else MK_ERROR_OUT( "Zero vertex index unexpected in .obj file: " , i );
+				else MK_THROW( "Zero vertex index unexpected in .obj file: " , i );
 
 				if     ( obj_faces[i][j].tIndex>0 ) tSimplices[i][j] = obj_faces[i][j].tIndex-1;
 				else if( obj_faces[i][j].tIndex<0 ) tSimplices[i][j] = (int)obj_textures.size() + obj_faces[i][j].tIndex;
-				else MK_ERROR_OUT( "Zero vertex index unexpected in .obj file: " , i );
+				else MK_THROW( "Zero vertex index unexpected in .obj file: " , i );
 			}
 		}
-		else MK_ERROR_OUT( "Unrecognized file type: " , fileName , " -> " , ext );
+		else MK_THROW( "Unrecognized file type: " , fileName , " -> " , ext );
 	}
 
 	template< typename Index , typename Real , unsigned int Dim >
@@ -563,7 +563,7 @@ namespace MishaK
 				};
 			range.process( Kernel );
 
-			if( !matches.size() ) MK_ERROR_OUT( "No matches found" );
+			if( !matches.size() ) MK_THROW( "No matches found" );
 
 			for( unsigned int j=0 ; j<matches.size() ; j++ ) old2new[ NewIndex( matches[j] ) ] = i;
 

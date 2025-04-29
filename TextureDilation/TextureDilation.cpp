@@ -134,7 +134,7 @@ int main( int argc , char* argv[] )
 	if( Output.set ) WriteTexture( Output.value , texture );
 	if( OutputTexturePositions.set )
 		if( SaveEXR( &texturePositions[0][0] , (int)texture.res(0) , (int)texture.res(1) , Dim , 0, OutputTexturePositions.value.c_str() , nullptr )!=TINYEXR_SUCCESS )
-			MK_ERROR_OUT( "Failed to save EXR file: " , OutputTexturePositions.value );
+			MK_THROW( "Failed to save EXR file: " , OutputTexturePositions.value );
 
 	return EXIT_SUCCESS;
 }

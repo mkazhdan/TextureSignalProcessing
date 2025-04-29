@@ -1046,7 +1046,7 @@ void InitializeAtlasHierachicalBoundaryCoefficients
 						boundary_offset_j[numBoundaryNeighbours] = 2 * lj;
 						numBoundaryNeighbours++;
 					}
-					else MK_ERROR_OUT( "Expected a supported index" );
+					else MK_THROW( "Expected a supported index" );
 				}
 			}
 		}
@@ -1133,7 +1133,7 @@ void InitializeAtlasHierachicalBoundaryCoefficients
 							}
 						}
 					}
-					else MK_ERROR_OUT( "Expected supported index" );
+					else MK_THROW( "Expected supported index" );
 				}
 			}
 		}

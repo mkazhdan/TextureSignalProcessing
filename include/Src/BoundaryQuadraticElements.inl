@@ -205,14 +205,14 @@ void InitializeChartBoundaryEdgeGridIntersections
 				if( std::optional< unsigned int > v = boundaryHalfEdgeIntersectionsInfo[i].intersectionKey.meshVertex() )	// Start/end vertex
 #endif // NEW_INDEXING
 				{
-					if( i!=0 && i!=boundaryHalfEdgeIntersectionsInfo.size()-1 ) MK_ERROR_OUT( "Expected boundary vertex" );
+					if( i!=0 && i!=boundaryHalfEdgeIntersectionsInfo.size()-1 ) MK_THROW( "Expected boundary vertex" );
 					auto iter = atlasBoundaryVertexToIndex.find( atlasChart.atlasVertex( *v ) );
 					if( iter==atlasBoundaryVertexToIndex.end() ) MK_THROW( "Boundary vertex not found" );
 					index = iter->second;
 				}
 				else
 				{
-					if( i==0 && i==boundaryHalfEdgeIntersectionsInfo.size()-1 ) MK_ERROR_OUT( "Expected interior vertex" );
+					if( i==0 && i==boundaryHalfEdgeIntersectionsInfo.size()-1 ) MK_THROW( "Expected interior vertex" );
 #ifdef NEW_INDEXING
 					index = AtlasBoundaryNodeIndex( boundarySize++ );
 #else // !NEW_INDEXING
@@ -521,7 +521,7 @@ void InitializeChartBoundaryPolygons
 #endif // NEW_INDEXING
 				{
 					unsigned int pi , pj;
-					if( !gridChart.factorNodeIndex( *g , pi , pj ) ) MK_ERROR_OUT( "Could not factor node index: " , *g );
+					if( !gridChart.factorNodeIndex( *g , pi , pj ) ) MK_THROW( "Could not factor node index: " , *g );
 
 					// Confirm that the texel is inside the chart
 					unsigned int interiorTexelIndex = gridChart.texelIndices(pi,pj).interiorOrCovered;

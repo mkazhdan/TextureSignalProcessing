@@ -162,7 +162,7 @@ const
 					if( edges[0].edgeIndex[0]==v ) return off;
 					else
 					{
-						MK_ERROR_OUT( "Could not find vertex: " , v );
+						MK_THROW( "Could not find vertex: " , v );
 						return static_cast< unsigned int >(-1);
 					}
 				}
@@ -174,7 +174,7 @@ const
 		for( unsigned int i=0 ; i<boundaryHalfEdges.size() ; i++ )
 		{
 			e = FindEdge( _boundaryHalfEdges[e].edgeIndex[1] , &_boundaryHalfEdges[0] , (unsigned int)_boundaryHalfEdges.size() , 0 );
-			if( _boundaryHalfEdges[e].processed ) MK_ERROR_OUT( "Edge already processed" );
+			if( _boundaryHalfEdges[e].processed ) MK_THROW( "Edge already processed" );
 			_boundaryHalfEdges[e].processed = true;
 			boundaryHalfEdges[e] = _boundaryHalfEdges[e].he;
 		}

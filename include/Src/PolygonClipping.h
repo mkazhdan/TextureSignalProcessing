@@ -477,9 +477,9 @@ namespace MishaK
 					// [WARNING] In the case that the previous edge index is of atlas type, we are creating an invalid GridMeshIntersectionKey
 					if     ( std::optional< AtlasGridEdgeIndex >  g = previousEdgeIndex.grid() ) outputCornerKeys.push_back( GridMeshIntersectionKey( * g , *m ) );
 					else if( std::optional< AtlasMeshEdgeIndex > _m = previousEdgeIndex.mesh() ) outputCornerKeys.push_back( m2k( *_m , *m ) );
-					else MK_ERROR_OUT( "Bad previous edge index" );
+					else MK_THROW( "Bad previous edge index" );
 				}
-				else MK_ERROR_OUT( "Expected mesh edge type" );
+				else MK_THROW( "Expected mesh edge type" );
 #else // !NEW_INDEXING
 				outputCornerKeys.push_back( GridMeshIntersectionKey( previousEdgeIndex , edgeIndex ) );
 #endif // NEW_INDEXING
@@ -519,7 +519,7 @@ namespace MishaK
 		{
 			std::optional< AtlasMeshEdgeIndex > m1 = triangle.outgoingEdgeIndices[k].mesh();
 			std::optional< AtlasMeshEdgeIndex > m2 = triangle.outgoingEdgeIndices[(k+2)%3].mesh();
-			if( !m1 || !m2 ) MK_ERROR_OUT( "Expected incident edges to be mesh edges" );
+			if( !m1 || !m2 ) MK_THROW( "Expected incident edges to be mesh edges" );
 			cornerEdges[2*k+0] = std::make_pair( *m1 , *m2 );
 			cornerEdges[2*k+1] = std::make_pair( *m2 , *m1 );
 		}
@@ -528,7 +528,7 @@ namespace MishaK
 			{
 				std::pair< AtlasMeshEdgeIndex , AtlasMeshEdgeIndex > m = std::make_pair( m1 , m2 );
 				for( unsigned int i=0 ; i<6 ; i++ ) if( m==cornerEdges[i] ) return triangle.cornerKeys[i/2];
-				MK_ERROR_OUT( "Could not match mesh edges: " , m1 , " : " , m2 );
+				MK_THROW( "Could not match mesh edges: " , m1 , " : " , m2 );
 				return GridMeshIntersectionKey();
 			};
 
@@ -543,7 +543,7 @@ namespace MishaK
 #ifdef SANITY_CHECK
 			bool _reverseOrientation = edgeEquation.makePositive( triangleCenter );
 			if( !k ) reverseOrientation = _reverseOrientation;
-			else if( reverseOrientation!=_reverseOrientation ) MK_ERROR_OUT( "Inconsistent orientation" );
+			else if( reverseOrientation!=_reverseOrientation ) MK_THROW( "Inconsistent orientation" );
 #else // !SANITY_CHECK
 			reverseOrientation = edgeEquation.makePositive( triangleCenter );
 #endif // SANITY_CHECK
@@ -576,7 +576,7 @@ namespace MishaK
 					cornerKeys[ 2*k+0 ].first = GridMeshIntersectionKey( *a1 , *a2 );
 					cornerKeys[ 2*k+1 ].first = GridMeshIntersectionKey( *a2 , *a1 );
 				}
-				else MK_ERROR_OUT( "Expected atlas edges" );
+				else MK_THROW( "Expected atlas edges" );
 #else // !NEW_INDEXING
 				cornerKeys[ 2*k+0 ].first = GridMeshIntersectionKey( triangle.outgoingEdgeIndices[ (k+2)%3 ] , triangle.outgoingEdgeIndices[k] );
 				cornerKeys[ 2*k+1 ].first = GridMeshIntersectionKey( triangle.outgoingEdgeIndices[k] , triangle.outgoingEdgeIndices[ (k+2)%3 ] );

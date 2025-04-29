@@ -78,7 +78,7 @@ namespace MishaK
 		{
 			ImageWriter< BitDepth >::Write( fileName , (const CType*)image() , image.res(0) , image.res(1) , 3 );
 		}
-		else MK_ERROR_OUT( "Bad data type " );
+		else MK_THROW( "Bad data type " );
 	}
 
 	template< unsigned int BitDepth , typename Data >
@@ -105,7 +105,7 @@ namespace MishaK
 		{
 			memcpy( (CType*)image() , pixels , sizeof( CType ) * image.res(0) * image.res(1) * 3 );
 		}
-		else MK_ERROR_OUT( "Bad data type " );
+		else MK_THROW( "Bad data type " );
 
 		delete[] pixels;
 	}

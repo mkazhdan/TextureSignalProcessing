@@ -1030,7 +1030,7 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::Init( void )
 	}
 	else lowFrequencyTexture = highFrequencyTexture;
 	if( lowFrequencyTexture.res(0)!=highFrequencyTexture.res(0) || lowFrequencyTexture.res(1)!=highFrequencyTexture.res(1) )
-		MK_ERROR_OUT( "Low/high texture resolutions don't match: " , lowFrequencyTexture.res(0) , " x " , lowFrequencyTexture.res(1) , " != " , highFrequencyTexture.res(0) , " x " , highFrequencyTexture.res(1) );
+		MK_THROW( "Low/high texture resolutions don't match: " , lowFrequencyTexture.res(0) , " x " , lowFrequencyTexture.res(1) , " != " , highFrequencyTexture.res(0) , " x " , highFrequencyTexture.res(1) );
 
 	textureWidth = highFrequencyTexture.res(0);
 	textureHeight = highFrequencyTexture.res(1);
@@ -1196,7 +1196,7 @@ void _main( int argc , char *argv[] , unsigned int bitDepth )
 	case 16: return _main< PreReal , Real , 16 >( argc , argv );
 	case 32: return _main< PreReal , Real , 32 >( argc , argv );
 	case 64: return _main< PreReal , Real , 64 >( argc , argv );
-	default: MK_ERROR_OUT( "Only bit depths of 8, 16, 32, and 64 supported: " , bitDepth );
+	default: MK_THROW( "Only bit depths of 8, 16, 32, and 64 supported: " , bitDepth );
 	}
 }
 
