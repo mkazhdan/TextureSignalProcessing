@@ -41,9 +41,9 @@ namespace MishaK
 	{
 #ifdef NEW_INDEXING
 		NodeInfo( void ) : index(-1){}
-		NodeInfo( AtlasBoundaryVertexIndex index , Point2D< GeometryReal > position ) : index(index) , position(position) {}
+		NodeInfo( AtlasBoundaryNodeIndex index , Point2D< GeometryReal > position ) : index(index) , position(position) {}
 
-		AtlasBoundaryVertexIndex index;
+		AtlasBoundaryNodeIndex index;
 		Point2D< GeometryReal > position;
 #else // !NEW_INDEXING
 		NodeInfo( void ) : index(-1){}
@@ -63,7 +63,7 @@ namespace MishaK
 #ifdef NEW_INDEXING
 		GridMeshIntersectionKey( AtlasGridEdgeIndex g , AtlasMeshEdgeIndex m ) : _gridIndex( static_cast< unsigned int >(g) ) , _meshIndex( static_cast< unsigned int >(m) ){}
 		std::optional< ChartMeshVertexIndex > chartVertex( void ) const { if( _gridIndex==-1 && _meshIndex!=-1 ) return ChartMeshVertexIndex( _meshIndex ) ; else return std::nullopt; }
-		std::optional<    AtlasGridNodeIndex >    gridNode( void ) const { if( _meshIndex==-1 && _gridIndex!=-1 ) return    AtlasGridNodeIndex( _gridIndex ) ; else return std::nullopt; }
+		std::optional<    AtlasGridVertexIndex >    gridNode( void ) const { if( _meshIndex==-1 && _gridIndex!=-1 ) return    AtlasGridVertexIndex( _gridIndex ) ; else return std::nullopt; }
 		std::optional< std::pair< AtlasGridEdgeIndex , AtlasMeshEdgeIndex > > intersection( void ) const { if( _meshIndex!=-1 && _gridIndex!=-1 ) return std::pair< AtlasGridEdgeIndex , AtlasMeshEdgeIndex >( AtlasGridEdgeIndex( _gridIndex ) , AtlasMeshEdgeIndex( _meshIndex ) ) ; else return std::nullopt; }
 #else // !NEW_INDEXING
 		GridMeshIntersectionKey( unsigned int g , unsigned int m ) : _gridIndex(g) , _meshIndex(m){}
@@ -77,7 +77,7 @@ namespace MishaK
 		bool operator != ( const GridMeshIntersectionKey &key ) const { return _gridIndex!=key._gridIndex || _meshIndex!=key._meshIndex; }
 
 #ifdef NEW_INDEXING
-		static GridMeshIntersectionKey    GridNodeKey(    AtlasGridNodeIndex g ){ return _Init( static_cast< unsigned int >(g) , -1 ); }
+		static GridMeshIntersectionKey    GridNodeKey(    AtlasGridVertexIndex g ){ return _Init( static_cast< unsigned int >(g) , -1 ); }
 		static GridMeshIntersectionKey ChartVertexKey( ChartMeshVertexIndex m ){ return _Init( -1 , static_cast< unsigned int >(m) ); }
 #else // !NEW_INDEXING
 		static GridMeshIntersectionKey GridNodeKey( unsigned int g ){ return GridMeshIntersectionKey( g , -1 ); }
@@ -115,8 +115,8 @@ namespace MishaK
 	struct _IndexedPolygon
 	{
 		template< typename T > using Array = std::conditional_t< N==-1 , std::vector< T > , std::array< T , N > >;
-		Array< Point2D < GeometryReal > > vertices;		// The positions of the vertices within the chart
-		Array< AtlasBoundaryVertexIndex > indices;		// The index of the boundary vertex
+		Array< Point2D < GeometryReal > > vertices;			// The positions of the vertices within the chart
+		Array< AtlasBoundaryNodeIndex > indices;			// The index of the boundary vertex
 		Array< ChartMeshVertexIndex > vertexIndices;		// The index of the atlas/chart vertex (or -1 if it is not an atlas vertex)
 		Array< AtlasMeshEdgeIndex > atlasVertexParentEdge;	// If this is a not an original mesh vertex, the index of the associated polygon edge 
 		Array< AtlasMeshEdgeIndex > atlasEdgeIndices;		// If this is a boundary segment, the index of the associated polygon edge
@@ -181,14 +181,14 @@ namespace MishaK
 		Point2D< GeometryReal > position;
 		GeometryReal time;
 #ifdef NEW_INDEXING
-		AtlasBoundaryVertexIndex index;
+		AtlasBoundaryNodeIndex index;
 #else // !NEW_INDEXING
 		unsigned int index;
 #endif // NEW_INDEXING
 
 		IntersectionInfo( void ) : index(-1){}
 #ifdef NEW_INDEXING
-		IntersectionInfo( GridMeshIntersectionKey intersectionKey , Point2D< GeometryReal > position , GeometryReal time , AtlasBoundaryVertexIndex index=AtlasBoundaryVertexIndex(-1) )
+		IntersectionInfo( GridMeshIntersectionKey intersectionKey , Point2D< GeometryReal > position , GeometryReal time , AtlasBoundaryNodeIndex index=AtlasBoundaryNodeIndex(-1) )
 #else // !NEW_INDEXING
 		IntersectionInfo( GridMeshIntersectionKey intersectionKey , Point2D< GeometryReal > position , GeometryReal time , unsigned int index=-1 )
 #endif // NEW_INDEXING

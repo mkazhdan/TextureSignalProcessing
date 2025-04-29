@@ -177,9 +177,9 @@ namespace MishaK
 
 			}
 		}
+		using Index = RegularGrid< 2 >::Index;
 #ifdef USE_RASTERIZER
 		using Range = RegularGrid< 2 >::Range;
-		using Index = RegularGrid< 2 >::Index;
 		Range cellRange;
 		cellRange.second[0] = gridChart.width-1;
 		cellRange.second[1] = gridChart.height-1;
@@ -390,7 +390,7 @@ namespace MishaK
 							{
 								atlasTriangle.vertices[k] = tPos[k];
 #ifdef NEW_INDEXING
-								atlasTriangle.atlasEdgeIndices[k] = atlasChart.atlasEdge( GetChartHalfEdgeIndex( ChartMeshTriangleIndex(t) , k ) );
+								atlasTriangle.atlasEdgeIndices[k] = atlasChart.atlasEdge( GetChartMeshHalfEdgeIndex( ChartMeshTriangleIndex(t) , k ) );
 								atlasTriangle.vertexIndices[k] = atlasChart.triangleIndex( ChartMeshTriangleIndex(t) )[k];
 								atlasTriangle.atlasVertexParentEdge[k] = AtlasMeshEdgeIndex(-1);
 #else // !NEW_INDEXING
@@ -532,10 +532,19 @@ namespace MishaK
 			);
 #else // !PRE_CLIP_TRIANGLES
 		//#pragma omp parallel for 
+#ifdef NEW_INDEXING
+		for( unsigned int t=0 ; t<atlasChart.numTriangles() ; t++ )
+#else // !NEW_INDEXING
 		for( int t=0 ; t<atlasChart.triangles.size() ; t++ )
+#endif // NEW_INDEXING
 		{
 			Point2D< GeometryReal > tPos[3];
+#ifdef NEW_INDEXING
+			SimplexIndex< 2 , ChartMeshVertexIndex > tri = atlasChart.triangleIndex( ChartMeshTriangleIndex(t) );
+			for( unsigned int i=0 ; i<3 ; i++ ) tPos[i] = atlasChart.vertex( tri[i] ) - gridChart.corner;
+#else // !NEW_INDEXING
 			for( int i=0 ; i<3 ; i++ ) tPos[i] = atlasChart.vertices[ atlasChart.triangles[t][i] ] - gridChart.corner;
+#endif // NEW_INDEXING
 
 			SquareMatrix< GeometryReal , 2 > texture_metric = texture_metrics[t];
 			SquareMatrix< GeometryReal , 2 > cell_metric = cell_to_texture_differential.transpose() * texture_metric * cell_to_texture_differential;
@@ -553,12 +562,18 @@ namespace MishaK
 			parametricVertices[0] = tPos[0] , parametricVertices[1] = tPos[1] , parametricVertices[2] = tPos[2];
 
 			IndexedTriangle< GeometryReal > atlasTriangle;
-			for( int k=0 ; k<3 ; k++ )
+			for( unsigned int k=0 ; k<3 ; k++ )
 			{
 				atlasTriangle.vertices[k] = tPos[k];
-				atlasTriangle.atlasEdgeIndices[k] = atlasChart.atlasEdgeIndices[3 * t + k];
+#ifdef NEW_INDEXING
+				atlasTriangle.atlasEdgeIndices[k] = atlasChart.atlasEdge( GetChartMeshHalfEdgeIndex( ChartMeshTriangleIndex(t) , k ) );
+				atlasTriangle.vertexIndices[k] = atlasChart.triangleIndex( ChartMeshTriangleIndex(t) )[k];
+				atlasTriangle.atlasVertexParentEdge[k] = AtlasMeshEdgeIndex( -1 );
+#else // !NEW_INDEXING
+				atlasTriangle.atlasEdgeIndices[k] = atlasChart.atlasEdge( 3*t+k );
 				atlasTriangle.vertexIndices[k] = atlasChart.triangles[t][k];
 				atlasTriangle.atlasVertexParentEdge[k] = -1;
+#endif // NEW_INDEXING
 			}
 #ifdef USE_RASTERIZER
 			auto Kernel = [&]( Index I )

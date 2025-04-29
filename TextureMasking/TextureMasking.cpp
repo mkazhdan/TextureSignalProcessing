@@ -51,11 +51,17 @@ CmdLineParameterArray< unsigned int , 2 >
 CmdLineParameter< double >
 	CollapseEpsilon( "collapse" , 0 );
 
+#ifdef NEW_CODE
+CmdLineParameter< unsigned int >
+	DilationRadius( "radius" , 0 );
+#endif // NEW_CODE
+
 CmdLineReadable
 	UseNearest( "nearest" ) ,
 	NodeAtCorner( "nodeAtCorner" ) ,
 	BoundaryOnly( "boundary" ) ,
-	ID( "id" );
+	ID( "id" ) ,
+	Verbose( "verbose" );
 
 CmdLineReadable* params[] =
 {
@@ -67,6 +73,10 @@ CmdLineReadable* params[] =
 	&NodeAtCorner ,
 	&CollapseEpsilon ,
 	&BoundaryOnly ,
+#ifdef NEW_CODE
+	&DilationRadius ,
+#endif // NEW_CODE
+	&Verbose ,
 	NULL
 };
 
@@ -77,10 +87,14 @@ void ShowUsage( const char* ex )
 	printf( "\t --%s <texture width, texture height> \n" , Resolution.name.c_str() );
 	printf( "\t[--%s <output texture>]\n" , Output.name.c_str() );
 	printf( "\t[--%s <collapse epsilon>=%g]\n" , CollapseEpsilon.name.c_str() , CollapseEpsilon.value );
+#ifdef NEW_CODE
+	printf( "\t[--%s <dilation radius>]\n" , DilationRadius.name.c_str() );
+#endif // NEW_CODE
 	printf( "\t[--%s]\n" , UseNearest.name.c_str() );
 	printf( "\t[--%s]\n" , NodeAtCorner.name.c_str() );
 	printf( "\t[--%s]\n" , BoundaryOnly.name.c_str() );
 	printf( "\t[--%s]\n" , ID.name.c_str() );
+	printf( "\t[--%s]\n" , Verbose.name.c_str() );
 }
 
 static const unsigned int K = 2;
@@ -94,6 +108,9 @@ RegularGrid< K , Point< double , 3 > > Execute
 	const std::vector< SimplexIndex< K > > & simplices
 )
 {
+	using Index = unsigned int;
+	using TexelInfo = typename Texels< NodeAtCellCenter , Index >::template TexelInfo< K >;
+
 	RegularGrid< K , Point< double , 3 > > mask( Resolution.values );
 
 	auto TextureSimplexFunctor = [&]( size_t sIdx )
@@ -115,11 +132,10 @@ RegularGrid< K , Point< double , 3 > > Execute
 
 		for( size_t i=0 ; i<mask.size() ; i++ ) mask[i] = Point< double , 3 >( 0. , 0. , 0. );
 
-		RegularGrid< K , Texels::TexelInfo > interiorTexels;
-		interiorTexels = Texels::GetNodeTexelInfo< NodeAtCellCenter >( simplices.size() , TextureSimplexFunctor , mask.res() );
-		for( size_t i=0 ; i<interiorTexels.size() ; i++ ) if( interiorTexels[i].sIdx!=-1 )
+		RegularGrid< K , TexelInfo > texelInfo = Texels< NodeAtCellCenter , Index >::GetNodeTexelInfo( simplices.size() , TextureSimplexFunctor , mask.res() , DilationRadius.value , Verbose.set );
+		for( size_t i=0 ; i<texelInfo.size() ; i++ ) if( texelInfo[i].sIdx!=-1 )
 		{
-			srand( interiorTexels[i].sIdx );
+			srand( texelInfo[i].sIdx );
 			mask[i] = RandomPoint();
 		}
 	}
@@ -129,18 +145,19 @@ RegularGrid< K , Point< double , 3 > > Execute
 
 		if( BoundaryOnly.set )
 		{
+			RegularGrid< K , typename Texels< NodeAtCellCenter , Index >::template TexelInfo< 1 > > activeTexels;
 			std::vector< Simplex< double , K , 1 > > edges( simplices.size()*(K+1) );
 			for( unsigned int i=0 ; i<simplices.size() ; i++ ) for( unsigned int k=0 ; k<=K ; k++ )
 			{
 				edges[ i*(K+1) + k ][0] = textureCoordinates[ i*(K+1) + k ];
 				edges[ i*(K+1) + k ][1] = textureCoordinates[ i*(K+1) + (k+1)%(K+1) ];
 			}
-			RegularGrid< K , std::vector< size_t > > activeTexels = Texels::GetSupportedSimplexIndices< Nearest , NodeAtCellCenter , 1 >( edges.size() , [&]( size_t e ){ return edges[e]; } , mask.res() );
-			for( size_t i=0 ; i<activeTexels.size() ; i++ ) if( activeTexels[i].size() ) mask[i] = Point< double , 3 >( 0. , 0. , 1. );
+			activeTexels = Texels< NodeAtCellCenter , Index >::template GetSupportedTexelInfo< Nearest , 1 >( edges.size() , [&]( size_t e ){ return edges[e]; } , mask.res() , DilationRadius.value , Verbose.set );
+			for( size_t i=0 ; i<activeTexels.size() ; i++ ) if( activeTexels[i].sIdx!=-1 ) mask[i] = Point< double , 3 >( 0. , 0. , 1. );
 		}
 		else
 		{
-			RegularGrid< K , Texels::TexelInfo > activeTexels = Texels::GetSupportedTexelInfo< Dim , Nearest , NodeAtCellCenter >( simplices.size() , [&]( size_t v ){ return vertices[v]; } , [&]( size_t s ){ return simplices[s]; } , TextureSimplexFunctor , mask.res() , 0 , false , false );
+			RegularGrid< K , TexelInfo > activeTexels = Texels< NodeAtCellCenter , Index >::template GetSupportedTexelInfo< Nearest >( simplices.size() , TextureSimplexFunctor , mask.res() , DilationRadius.value , Verbose.set );
 			for( size_t i=0 ; i<activeTexels.size() ; i++ ) if( activeTexels[i].sIdx!=-1 ) mask[i] = Point< double , 3 >( 0. , 0. , 1. );
 		}
 	}

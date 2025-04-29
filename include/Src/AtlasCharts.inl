@@ -225,7 +225,7 @@ AtlasChart< GeometryReal >::GetCharts
 		std::map< unsigned int , unsigned int > atlasBoundaryVertexToIndex;
 		mesh.setBoundaryVertexInfo( textureBoundaryHalfEdges , atlasBoundaryVertexToIndex );
 		for( auto iter=atlasBoundaryVertexToIndex.begin() ; iter!=atlasBoundaryVertexToIndex.end() ; iter++ )
-			atlasInfo.atlasBoundaryVertexToIndex[ AtlasMeshVertexIndex( iter->first ) ] = AtlasBoundaryVertexIndex( iter->second );
+			atlasInfo.atlasBoundaryVertexToIndex[ AtlasMeshVertexIndex( iter->first ) ] = AtlasBoundaryNodeIndex( iter->second );
 	}
 #else // !NEW_INDEXING
 	mesh.setBoundaryVertexInfo( textureBoundaryHalfEdges , atlasInfo.atlasBoundaryVertexToIndex );

@@ -494,8 +494,8 @@ namespace MishaK
 		Point2D< GeometryReal > nodePosition( unsigned int i , unsigned int j ) const { return Point2D< GeometryReal >( i*cellSizeW , j*cellSizeH ); }
 
 #ifdef NEW_INDEXING
-		AtlasGridNodeIndex nodeIndex( unsigned int i , unsigned int j ) const { return AtlasGridNodeIndex( atlasWidth*(j+cornerCoords[1]) + (i+cornerCoords[0]) ); }
-		bool factorNodeIndex( AtlasGridNodeIndex g , unsigned int &i , unsigned int &j ) const
+		AtlasGridVertexIndex nodeIndex( unsigned int i , unsigned int j ) const { return AtlasGridVertexIndex( atlasWidth*(j+cornerCoords[1]) + (i+cornerCoords[0]) ); }
+		bool factorNodeIndex( AtlasGridVertexIndex g , unsigned int &i , unsigned int &j ) const
 #else //!NEW_INDEXING
 		unsigned int nodeIndex( unsigned int i , unsigned int j ) const { return atlasWidth*(j+cornerCoords[1]) + (i+cornerCoords[0]); }
 		bool factorNodeIndex( unsigned int idx , unsigned int &i , unsigned int &j ) const

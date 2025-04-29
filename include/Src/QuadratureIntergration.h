@@ -291,7 +291,8 @@ namespace MishaK
 					center += c * a; 
 				}
 				return center / area;
-			};	
+			};
+
 #ifdef USE_RASTERIZER
 		using Range = RegularGrid< 2 >::Range;
 		using Index = RegularGrid< 2 >::Index;
@@ -352,7 +353,7 @@ namespace MishaK
 			{
 				atlasTriangle.vertices[k] = tPos[k];
 #ifdef NEW_INDEXING
-				atlasTriangle.atlasEdgeIndices[k] = atlasChart.atlasEdge( GetChartHalfEdgeIndex( ChartMeshTriangleIndex(t) , k ) );
+				atlasTriangle.atlasEdgeIndices[k] = atlasChart.atlasEdge( GetChartMeshHalfEdgeIndex( ChartMeshTriangleIndex(t) , k ) );
 				atlasTriangle.vertexIndices[k] = tri[k];
 				atlasTriangle.atlasVertexParentEdge[k] = AtlasMeshEdgeIndex(-1);
 #else // !NEW_INDEXING

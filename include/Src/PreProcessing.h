@@ -25,13 +25,22 @@ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING 
 ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
 DAMAGE.
 */
+
+// To do:
+// 1. Modify code to distinguish between grid-based indexing and normalized coordinates
+// 2. Add index types for cells/texels
+// 3. Add index/key types to distinguish atlas/hart grid indices
+// 4. Change GetTriangleIntegerBBox/GetEdgeIntegerBBox to return Range (requires disabling USE_RASERIZER)
 #ifndef PRE_PROCESSING_INCLUDED
 #define PRE_PROCESSING_INCLUDED
 
 #define NEW_CODE					// General-purpose experimental code encapsulation
 #define USE_RASTERIZER				// Use triangle/edge rasterization code
 #define REORDER_BOUNDARY			// Re-order the boundary edges so that they are sequential [probably not necessary]
-#define PRE_CLIP_TRIANGLES			// Clip and store triangles with cells [Requires USE_RASTERIZER]
+
+#ifdef USE_RASTERIZER
+#define PRE_CLIP_TRIANGLES			// Clip and store triangles with cells
+#endif // USE_RASTERIZER
 
 //#define SEPARATE_POLYGONS			// Keep the polygons obtained by clipping triangles to boundary cells separate
 
@@ -41,13 +50,12 @@ DAMAGE.
 
 
 //#define NO_OPEN_GL_VISUALIZATION		// Disable OpenGL visualization
-#define USE_TEXTURE_TRIANGLES			// Represent textures using a separate triangulation
 
 #define INSERTION_EPSILON 1e-12			// Separation from interval end-points required for insertion
 
 //#define SANITY_CHECK
 
-//#define NEW_INDEXING					// Use separate names for indexing
-//#define DEBUG_INDEXING					// Use separate classes for indexing
+#define NEW_INDEXING					// Use separate names for indexing
+#define DEBUG_INDEXING					// Use separate classes for indexing
 
 #endif // PRE_PROCESSING_INCLUDED

@@ -616,7 +616,7 @@ namespace MishaK
 #ifdef NEW_RASTERIZER
 #else // !NEW_RASTERIZER
 	template< typename GeometryReal >
-	void GetTriangleIntegerBBox( Point2D< GeometryReal > tPos[3] , const GeometryReal invCellSizeW , const GeometryReal invCellSizeH,  int minCorner[2], int maxCorner[2] )
+	void GetTriangleIntegerBBox( const Point2D< GeometryReal > tPos[3] , const GeometryReal invCellSizeW , const GeometryReal invCellSizeH,  int minCorner[2], int maxCorner[2] )
 	{
 		GeometryReal fminx = std::min< GeometryReal >( std::min< GeometryReal >( tPos[0][0] , tPos[1][0] ) , tPos[2][0]) ;
 		fminx = std::max< GeometryReal >( fminx , (GeometryReal)0. );
@@ -634,7 +634,7 @@ namespace MishaK
 	}
 
 	template< typename GeometryReal >
-	void GetEdgeIntegerBBox( Point2D< GeometryReal > tPos[3] , const GeometryReal invCellSizeW , const GeometryReal invCellSizeH , int minCorner[2] , int maxCorner[2] )
+	void GetEdgeIntegerBBox( const Point2D< GeometryReal > tPos[2] , const GeometryReal invCellSizeW , const GeometryReal invCellSizeH , int minCorner[2] , int maxCorner[2] )
 	{
 		GeometryReal fminx = std::min< GeometryReal >( tPos[0][0] , tPos[1][0] );
 		fminx = std::max< GeometryReal >( fminx , (GeometryReal)0. );

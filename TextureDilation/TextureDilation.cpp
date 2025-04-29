@@ -69,6 +69,10 @@ int main( int argc , char* argv[] )
 {
 	static const unsigned int K = 2;
 	static const unsigned int Dim = 3;
+	static const bool NodeAtCellCenter = true;
+	using Index = unsigned int;
+	using TexelInfo = typename Texels< NodeAtCellCenter , Index >::template TexelInfo< K >;
+
 
 	CmdLineParse( argc-1 , argv+1 , params );
 	if( !Input.set ){ ShowUsage( argv[0] ) ; return EXIT_FAILURE; }
@@ -93,11 +97,11 @@ int main( int argc , char* argv[] )
 	if( Verbose.set ) std::cout << "Texture resolution: " << texture.res(0) << " x " << texture.res(1) << std::endl;
 
 	timer.reset();
-	RegularGrid< 2 , Texels::TexelInfo > inputTexelInfo = Texels::GetSupportedTexelInfo< Dim , false , true >( simplices.size() , [&]( size_t v ){ return vertices[v]; } , [&]( size_t s ){ return simplices[s]; } , TextureSimplexFunctor , texture.res() , 0 , true , false );
+	RegularGrid< K , TexelInfo > inputTexelInfo = Texels< NodeAtCellCenter , Index >::GetSupportedTexelInfo< Dim , false >( simplices.size() , [&]( size_t v ){ return vertices[v]; } , [&]( size_t s ){ return simplices[s]; } , TextureSimplexFunctor , texture.res() , 0 , false );
 	if( Verbose.set ) std::cout << "Got input texels: " << timer() << std::endl;
 
 	timer.reset();
-	RegularGrid< 2 , Texels::TexelInfo > dilatedTexelInfo = Texels::GetSupportedTexelInfo< Dim , false , true >( simplices.size() , [&]( size_t v ){ return vertices[v]; } , [&]( size_t s ){ return simplices[s]; } , TextureSimplexFunctor , texture.res() , DilationRadius.value , true , Verbose.set );
+	RegularGrid< K , TexelInfo > dilatedTexelInfo = Texels< NodeAtCellCenter , Index >::GetSupportedTexelInfo< Dim , false >( simplices.size() , [&]( size_t v ){ return vertices[v]; } , [&]( size_t s ){ return simplices[s]; } , TextureSimplexFunctor , texture.res() , DilationRadius.value , Verbose.set );
 	if( Verbose.set ) std::cout << "Got dilated texels: " << timer() << std::endl;
 
 	auto GetSimplex = [&]( unsigned int si )
@@ -108,8 +112,8 @@ int main( int argc , char* argv[] )
 			return s;
 		};
 
-	auto SamplePosition = [&]( Texels::TexelInfo ti ){ return GetSimplex( ti.sIdx )( ti.bc ); };
-	auto SampleValue = [&]( Texels::TexelInfo ti ){ return texture( SamplePosition( ti ) ); };
+	auto SamplePosition = [&]( TexelInfo ti ){ return GetSimplex( ti.sIdx )( ti.bc ); };
+	auto SampleValue = [&]( TexelInfo ti ){ return texture( SamplePosition( ti ) ); };
 
 	timer.reset();
 	ThreadPool::ParallelFor
@@ -125,7 +129,7 @@ int main( int argc , char* argv[] )
 			for( unsigned int i=0 ; i<3 ; i++ ) s[i] = vertices[ simplices[sIdx][i] ];
 			return s;
 		};
-	RegularGrid< K , Point< float , Dim > > texturePositions = Texels::GetTexelPositions< float , Dim >( simplices.size() , SimplexEmbeddingFunctor , dilatedTexelInfo );
+	RegularGrid< K , Point< float , Dim > > texturePositions = Texels< NodeAtCellCenter , Index >::GetTexelPositions< float , Dim >( simplices.size() , SimplexEmbeddingFunctor , dilatedTexelInfo );
 
 	if( Output.set ) WriteTexture( Output.value , texture );
 	if( OutputTexturePositions.set )

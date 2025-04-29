@@ -85,12 +85,12 @@ namespace MishaK
 	{
 	protected:
 #ifdef NEW_INDEXING
-		AtlasBoundaryVertexIndex v[6];
+		AtlasBoundaryNodeIndex v[6];
 	public:
-		QuadraticElementIndex( void ) { v[0] = v[1] = v[2] = v[3] = v[4] = v[5] = AtlasBoundaryVertexIndex(0); }
-		QuadraticElementIndex( AtlasBoundaryVertexIndex v0 , AtlasBoundaryVertexIndex v1 , AtlasBoundaryVertexIndex v2 , AtlasBoundaryVertexIndex v3 , AtlasBoundaryVertexIndex v4 , AtlasBoundaryVertexIndex v5 ){ v[0] = v0 , v[1] = v1 , v[2] = v2 , v[3] = v3 , v[4] = v4 , v[5] = v5; }
-		AtlasBoundaryVertexIndex &operator[]( unsigned int idx )       { return v[idx]; }
-		AtlasBoundaryVertexIndex  operator[]( unsigned int idx ) const { return v[idx]; }
+		QuadraticElementIndex( void ) { v[0] = v[1] = v[2] = v[3] = v[4] = v[5] = AtlasBoundaryNodeIndex(0); }
+		QuadraticElementIndex( AtlasBoundaryNodeIndex v0 , AtlasBoundaryNodeIndex v1 , AtlasBoundaryNodeIndex v2 , AtlasBoundaryNodeIndex v3 , AtlasBoundaryNodeIndex v4 , AtlasBoundaryNodeIndex v5 ){ v[0] = v0 , v[1] = v1 , v[2] = v2 , v[3] = v3 , v[4] = v4 , v[5] = v5; }
+		AtlasBoundaryNodeIndex &operator[]( unsigned int idx )       { return v[idx]; }
+		AtlasBoundaryNodeIndex  operator[]( unsigned int idx ) const { return v[idx]; }
 #else // !NEW_INDEXING
 		unsigned int v[6];
 	public:
