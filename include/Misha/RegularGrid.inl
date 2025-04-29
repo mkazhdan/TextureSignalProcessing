@@ -30,8 +30,8 @@ DAMAGE.
 // RegularGridTypeData //
 /////////////////////////
 
-void RegularGridDataType<>::Write( FILE *fp , unsigned int dim , std::string name ){ fprintf( fp , "%d %s\n" , (int)dim , name.c_str() ); }
-bool RegularGridDataType<>::Read( FILE *fp , unsigned int dim , std::string name )
+inline void RegularGridDataType<>::Write( FILE *fp , unsigned int dim , std::string name ){ fprintf( fp , "%d %s\n" , (int)dim , name.c_str() ); }
+inline bool RegularGridDataType<>::Read( FILE *fp , unsigned int dim , std::string name )
 {
 	char line[1024];
 	int d;

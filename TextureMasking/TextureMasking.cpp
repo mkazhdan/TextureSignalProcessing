@@ -51,10 +51,8 @@ CmdLineParameterArray< unsigned int , 2 >
 CmdLineParameter< double >
 	CollapseEpsilon( "collapse" , 0 );
 
-#ifdef NEW_CODE
 CmdLineParameter< unsigned int >
 	DilationRadius( "radius" , 0 );
-#endif // NEW_CODE
 
 CmdLineReadable
 	UseNearest( "nearest" ) ,
@@ -73,9 +71,7 @@ CmdLineReadable* params[] =
 	&NodeAtCorner ,
 	&CollapseEpsilon ,
 	&BoundaryOnly ,
-#ifdef NEW_CODE
 	&DilationRadius ,
-#endif // NEW_CODE
 	&Verbose ,
 	NULL
 };
@@ -87,9 +83,7 @@ void ShowUsage( const char* ex )
 	printf( "\t --%s <texture width, texture height> \n" , Resolution.name.c_str() );
 	printf( "\t[--%s <output texture>]\n" , Output.name.c_str() );
 	printf( "\t[--%s <collapse epsilon>=%g]\n" , CollapseEpsilon.name.c_str() , CollapseEpsilon.value );
-#ifdef NEW_CODE
 	printf( "\t[--%s <dilation radius>]\n" , DilationRadius.name.c_str() );
-#endif // NEW_CODE
 	printf( "\t[--%s]\n" , UseNearest.name.c_str() );
 	printf( "\t[--%s]\n" , NodeAtCorner.name.c_str() );
 	printf( "\t[--%s]\n" , BoundaryOnly.name.c_str() );

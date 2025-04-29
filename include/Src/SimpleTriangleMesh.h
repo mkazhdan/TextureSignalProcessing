@@ -62,9 +62,6 @@ namespace MishaK
 		// Returns the edge-index associated with the half-edge
 		SimplexIndex< 1 > edgeIndex( unsigned int he , bool flip=false ) const;
 
-		void read ( std::string fileName );
-		void write( std::string fileName ) const;
-
 		Simplex< Real , Dim , 2 > triangle( unsigned int t ) const;
 
 		Real area( void ) const;
@@ -91,8 +88,7 @@ namespace MishaK
 		Simplex< Real , 3 , 2 > surfaceTriangle( unsigned int t ) const;
 		Simplex< Real , 2 , 2 > textureTriangle( unsigned int t ) const;
 
-		void write( std::string fileName ) const;
-		void read ( std::string meshName , bool verbose , double eps );
+		void read( std::string meshName , bool verbose , double eps );
 
 		// Sets the boundary half-edge information
 		void setBoundaryHalfEdgeInfo( std::vector< unsigned int > &textureBoundaryHalfEdges , std::vector< unsigned int > &oppositeSurfaceHalfEdges ) const;

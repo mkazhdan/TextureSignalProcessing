@@ -302,7 +302,12 @@ namespace MishaK
 	protected:
 		T *_coords;
 		unsigned int _dim;
-		void _resize( unsigned int dim ){ if( dim ){ _coords = new Real[dim] ; _dim = dim; } }
+		void _resize( unsigned int dim )
+		{
+			delete[] _coords;
+			_coords = new Real[dim];
+			_dim = dim;
+		}
 	};
 
 	template< typename T , unsigned int Dim , typename Real > Point< T , Dim , Real > operator * ( Real s , Point< T , Dim , Real > p ){ return p*s; }
@@ -1368,7 +1373,7 @@ namespace MishaK
 		void _processFaces( FaceFunctor F , unsigned int faceIndex , UInts ... faceIndices ) const;
 		void _init( unsigned int k )
 		{
-			if( !k ) for( unsigned int k=0 ; k<=K ; k++ ) idx[k] = k;
+			if( !k ) for( unsigned int k=0 ; k<=K ; k++ ) idx[k] = static_cast< Index >(k);
 			else MK_ERROR_OUT( "Should never be called" );
 		}
 		template< class ... Ints > void _init( unsigned int k , Index v , Ints ... values )

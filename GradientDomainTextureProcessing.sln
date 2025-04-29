@@ -26,6 +26,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Misha", "Misha", "{7DA121C8
 		include\Misha\Algebra.h = include\Misha\Algebra.h
 		include\Misha\Array.h = include\Misha\Array.h
 		include\Misha\Array.inl = include\Misha\Array.inl
+		include\Misha\Atomic.Geometry.h = include\Misha\Atomic.Geometry.h
 		include\Misha\Atomic.h = include\Misha\Atomic.h
 		include\Misha\BMP.h = include\Misha\BMP.h
 		include\Misha\BMP.inl = include\Misha\BMP.inl

@@ -29,6 +29,7 @@ DAMAGE.
 
 #include <Misha/Atomic.h>
 #include <Misha/Atomic.Geometry.h>
+#include "PolygonClipping.h"
 
 namespace MishaK
 {

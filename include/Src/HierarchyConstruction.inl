@@ -718,7 +718,7 @@ void InitializeGridChartsActiveNodes
 		}
 		cellIndices(i,j).combined = _combinedCellIndex++;
 #else // !USE_RASTERIZER
-		int globalTexelIndices[4] = { texelIndices(i,j).combined , texelIndices(i+1,j).combined , texelIndices(i+1,j+1).combined , texelIndices(i,j+1).combined };
+		unsigned int globalTexelIndices[4] = { texelIndices(i,j).combined , texelIndices(i+1,j).combined , texelIndices(i+1,j+1).combined , texelIndices(i,j+1).combined };
 		if( globalTexelIndices[0]!=-1 && globalTexelIndices[1]!=-1 && globalTexelIndices[2]!=-1 && globalTexelIndices[3] != -1 )
 			combinedCellCombinedBilinearElementIndices.push_back( BilinearElementIndex( globalTexelIndices[0] , globalTexelIndices[1] , globalTexelIndices[2] , globalTexelIndices[3] ) );
 		else MK_THROW( "Active cell adjacent to unactive node" );
@@ -734,7 +734,7 @@ void InitializeGridChartsActiveNodes
 			cellIndices(i,j).interior = _interiorCellIndex;
 			interiorCellIndexToCombinedCellIndex.push_back( _combinedCellIndex );
 
-			int globalTexelInteriorIndices[4] = { texelIndices(i,j).interiorOrCovered , texelIndices(i+1,j).interiorOrCovered , texelIndices(i+1,j+1).interiorOrCovered , texelIndices(i,j+1).interiorOrCovered };
+			unsigned int globalTexelInteriorIndices[4] = { texelIndices(i,j).interiorOrCovered , texelIndices(i+1,j).interiorOrCovered , texelIndices(i+1,j+1).interiorOrCovered , texelIndices(i,j+1).interiorOrCovered };
 			if( globalTexelInteriorIndices[0]!=-1 && globalTexelInteriorIndices[1]!=-1 && globalTexelInteriorIndices[2]!=-1 && globalTexelInteriorIndices[3]!=-1)
 			{
 				interiorCellInteriorBilinearElementIndices.push_back( BilinearElementIndex( globalTexelInteriorIndices[0] , globalTexelInteriorIndices[1] , globalTexelInteriorIndices[2] , globalTexelInteriorIndices[3] ) );
@@ -756,7 +756,7 @@ void InitializeGridChartsActiveNodes
 	{
 		bool firstSegment = true;
 		bool previousDeep = false;
-		int rasterStart = -1;
+		unsigned int rasterStart = -1;
 		for( unsigned int i=0 ; i<width ; i++ )
 		{
 			bool currentIsDeep = texelType(i,j)==TexelType::InteriorSupported;

@@ -1015,7 +1015,7 @@ void CellStiffnessToTexelStiffness
 	//Update Boundary Texels
 	Miscellany::Timer timer;
 	boundaryCellBasedStiffnessRHSMatrix.Multiply( &cellSharpenningMask[0] , &boundaryTexelValues[0] );
-	ThreadPool::ParallelFor( 0 , boundaryToSupported.size() , [&]( unsigned int , size_t i ){ texelModulatedStiffness[ boundaryToSupported[i] ] = boundaryTexelValues[i]; } );
+	ThreadPool::ParallelFor( 0 , indexConverter.numBoundary() , [&]( unsigned int , size_t i ){ texelModulatedStiffness[ indexConverter.boundaryToSupported(i) ] = boundaryTexelValues[i]; } );
 	if( verbose ) printf( "\tBoundary updated: %.3f(s) \n" , timer.elapsed() );
 	//Update Interior Texels
 

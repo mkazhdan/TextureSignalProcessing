@@ -44,7 +44,7 @@ namespace MishaK
 	struct Atomic< Matrix< Real , Cols , Rows > >
 	{
 		using Value = Matrix< Real , Cols , Rows >;
-		static void Add( volatile Value &a , const Value &b ){ for( unsigned int c=0 ; c<Cols ; c++ ) for( unsigned int r=0 ; r<Rows ; r++ ) Atomic< T >::Add( a(c,r) , b(c,r) ); }
+		static void Add( volatile Value &a , const Value &b ){ for( unsigned int c=0 ; c<Cols ; c++ ) for( unsigned int r=0 ; r<Rows ; r++ ) Atomic< Real >::Add( a(c,r) , b(c,r) ); }
 	};
 }
 

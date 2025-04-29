@@ -45,27 +45,6 @@ SimplexIndex< 1 > SimpleTriangleMesh< Real , Dim >::edgeIndex( unsigned int he ,
 }
 
 template< typename Real , unsigned int Dim >
-void SimpleTriangleMesh< Real , Dim >::read( std::string fileName )
-{
-	vertices.clear();
-	triangles.clear();
-	int file_type;
-	std::vector< PlyVertex > ply_vertices;
-	if ( !PlyReadTriangles( fileName.c_str() , ply_vertices , triangles , PlyVertex::ReadProperties , NULL , PlyVertex::ReadComponents, file_type ) )
-		MK_THROW( "Failed to read ply file: " , fileName );
-	vertices.resize( ply_vertices.size() );
-	for( int i=0 ; i<ply_vertices.size() ; i++ ) vertices[i] = ply_vertices[i].point;
-}
-
-template< typename Real , unsigned int Dim >
-void SimpleTriangleMesh< Real , Dim >::write( std::string fileName ) const
-{
-	std::vector< PlyVertex > ply_vertices( vertices.size() );
-	for( int i=0 ; i<vertices.size() ; i++ ) ply_vertices[i].point = vertices[i];
-	PlyWriteTriangles( fileName.c_str() , ply_vertices , triangles , PlyVertex::WriteProperties , PlyVertex::WriteComponents , PLY_BINARY_NATIVE );
-}
-
-template< typename Real , unsigned int Dim >
 Simplex< Real , Dim , 2 > SimpleTriangleMesh< Real , Dim >::triangle( unsigned int t ) const
 {
 	Simplex< Real , Dim , 2 > s;
@@ -189,26 +168,6 @@ std::vector< unsigned int > SimpleTriangleMesh< Real , Dim >::trianglesToCompone
 //////////////////////////
 template< typename Real >
 size_t TexturedTriangleMesh< Real >::numTriangles( void ) const { return surface.triangles.size(); }
-
-template< typename Real >
-void TexturedTriangleMesh< Real >::write( std::string fileName ) const
-{
-	std::vector< PlyTexturedFace< unsigned int , Real > > plyTexturedFaces( surface.triangles.size() );
-	for( int i=0 ; i<surface.triangles.size() ; i++ )
-	{
-		plyTexturedFaces[i].resize(3);
-		for( int j=0 ; j<3 ; j++ )
-		{
-			plyTexturedFaces[i][j] = surface.triangles[i][j];
-			plyTexturedFaces[i].texture(j) = texture.vertices[ texture.triangles[i][j] ];
-		}
-	}
-
-	std::vector< PlyVertex > vertices( surface.vertices.size() );
-	for( int i=0 ; i<vertices.size() ; i++ ) vertices[i] = surface.vertices[i];
-
-	PlyWritePolygons( fileName.c_str() , vertices , plyTexturedFaces , PlyVertex::WriteProperties , PlyVertex::WriteComponents , PlyTexturedFace< unsigned int , Real >::WriteProperties , PlyTexturedFace< unsigned int , Real >::WriteComponents , PLY_BINARY_NATIVE );
-}
 
 template< typename Real >
 void TexturedTriangleMesh< Real >::read( std::string meshName , bool verbose , double eps )

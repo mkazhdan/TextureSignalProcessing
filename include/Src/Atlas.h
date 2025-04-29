@@ -64,6 +64,7 @@ namespace MishaK
 #else // !NEW_INDEXING
 		using SimpleTriangleMesh< GeometryReal , 2 >::vertices;		// The chart coordinates
 		using SimpleTriangleMesh< GeometryReal , 2 >::triangles;	// The chart triangles
+		using SimpleTriangleMesh< GeometryReal , 2 >::edgeIndex;
 #endif // NEW_INDEXING
 
 		// Returns the index of the chart the triangle has been assigned to
