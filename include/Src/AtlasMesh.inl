@@ -57,7 +57,7 @@ void AtlasMesh< GeometryReal >::initialize
 			{
 #ifdef NEW_INDEXING
 				ChartMeshVertexIndex currentCorner = ChartMeshVertexIndex(-1);
-				IndexedVector2D< GeometryReal > idxP( tTriangle[k] , ChartMeshVertexIndex( (unsigned int)vertices.size() ) , AtlasMeshVertexIndex( inputMesh.surface.triangles[t][k] ) );
+				IndexedVector2D< GeometryReal > idxP( tTriangle[k] , ChartMeshVertexIndex( (unsigned int)SimpleTriangleMesh< GeometryReal , 2 >::vertices.size() ) , AtlasMeshVertexIndex( inputMesh.surface.triangles[t][k] ) );
 #else // !NEW_INDEXING
 				unsigned int currentCorner = static_cast< unsigned int >(-1);
 				IndexedVector2D< GeometryReal > idxP( tTriangle[k] , (int)vertices.size() , inputMesh.surface.triangles[t][k] );
@@ -68,12 +68,12 @@ void AtlasMesh< GeometryReal >::initialize
 					IndexedPointSet.insert( idxP );
 #ifdef NEW_INDEXING
 					_chartToAtlasVertex.push_back( AtlasMeshVertexIndex( inputMesh.surface.triangles[t][k] ) );
-					currentCorner = ChartMeshVertexIndex( (unsigned int)vertices.size() );
+					currentCorner = ChartMeshVertexIndex( (unsigned int)SimpleTriangleMesh< GeometryReal , 2 >::vertices.size() );
 #else // !NEW_INDEXING
 					_chartToAtlasVertex.push_back( inputMesh.surface.triangles[t][k] );
 					currentCorner = (unsigned int)vertices.size();
 #endif // NEW_INDEXING
-					vertices.push_back( tTriangle[k] );
+					SimpleTriangleMesh< GeometryReal , 2 >::vertices.push_back( tTriangle[k] );
 				}
 				else
 				{
@@ -86,7 +86,7 @@ void AtlasMesh< GeometryReal >::initialize
 				tri[k] = currentCorner;
 #endif // NEW_INDEXING
 			}
-			triangles.push_back( tri );
+			SimpleTriangleMesh< GeometryReal , 2 >::triangles.push_back( tri );
 		}
 	}
 
@@ -94,22 +94,22 @@ void AtlasMesh< GeometryReal >::initialize
 	{
 		// A map from vertex to pairs to half-edge indices
 		std::map< SimplexIndex< 1 > , unsigned int > edgeMap;
-		for( unsigned int he=0 ; he<triangles.size()*3 ; he++ )
+		for( unsigned int he=0 ; he<SimpleTriangleMesh< GeometryReal , 2 >::triangles.size()*3 ; he++ )
 		{
-			SimplexIndex< 1 > e = edgeIndex(he);
+			SimplexIndex< 1 > e = SimpleTriangleMesh< GeometryReal , 2 >::edgeIndex(he);
 			if( edgeMap.find(e)==edgeMap.end() ) edgeMap[e] = he;
 			else MK_THROW( "Non oriented manifold mesh" );	// If the same half-edge appears twice
 		}
 
 		unsigned int lastEdgeIndex = 0;
 #ifdef NEW_INDEXING
-		std::vector< AtlasMeshEdgeIndex > halfEdgeToEdgeIndex( 3 * triangles.size() , AtlasMeshEdgeIndex(-1) );
+		std::vector< AtlasMeshEdgeIndex > halfEdgeToEdgeIndex( 3 * SimpleTriangleMesh< GeometryReal , 2 >::triangles.size() , AtlasMeshEdgeIndex(-1) );
 #else // !NEW_INDEXING
 		std::vector< unsigned int > halfEdgeToEdgeIndex( 3 * triangles.size() , static_cast< unsigned int >(-1) );
 #endif // NEW_INDEXING
-		for( unsigned int he=0 ; he<triangles.size()*3 ; he++ )
+		for( unsigned int he=0 ; he<SimpleTriangleMesh< GeometryReal , 2 >::triangles.size()*3 ; he++ )
 		{
-			SimplexIndex< 1 > _e = edgeIndex( he , true );
+			SimplexIndex< 1 > _e = SimpleTriangleMesh< GeometryReal , 2 >::edgeIndex( he , true );
 
 			// Set the edge associated to both halves of the edge (once)
 			if( edgeMap.find(_e)!=edgeMap.end() ) // If the opposite edge exists
@@ -128,7 +128,7 @@ void AtlasMesh< GeometryReal >::initialize
 #endif // NEW_INDEXING
 		}
 #ifdef NEW_INDEXING
-		for( unsigned int he=0 ; he<triangles.size()*3 ; he++ ) if( halfEdgeToEdgeIndex[he]==AtlasMeshEdgeIndex(-1) ) MK_THROW( "Non indexed half edge" );
+		for( unsigned int he=0 ; he<SimpleTriangleMesh< GeometryReal , 2 >::triangles.size()*3 ; he++ ) if( halfEdgeToEdgeIndex[he]==AtlasMeshEdgeIndex(-1) ) MK_THROW( "Non indexed half edge" );
 #else // !NEW_INDEXING
 		for( unsigned int he=0 ; he<triangles.size()*3 ; he++ ) if( halfEdgeToEdgeIndex[he]==-1 ) MK_THROW( "Non indexed half edge" );
 #endif // NEW_INDEXING
@@ -140,16 +140,16 @@ void AtlasMesh< GeometryReal >::initialize
 template< typename GeometryReal >
 void AtlasMesh< GeometryReal >::jitter( unsigned int width , unsigned int height , GeometryReal epsilon )
 {
-	for( int i=0 ; i<vertices.size() ; i++ ) for( int c=0 ; c<2 ; c++ )
+	for( int i=0 ; i<SimpleTriangleMesh< GeometryReal , 2 >::vertices.size() ; i++ ) for( int c=0 ; c<2 ; c++ )
 	{
 		GeometryReal dimSize = c == 0 ? (GeometryReal)width : (GeometryReal)height;
-		GeometryReal scaled = vertices[i][c] * dimSize - (GeometryReal)0.5;
+		GeometryReal scaled = SimpleTriangleMesh< GeometryReal , 2 >::vertices[i][c] * dimSize - (GeometryReal)0.5;
 		GeometryReal offset = scaled - (GeometryReal)round(scaled);
 		if( fabs(offset)<epsilon )
 		{
 			if( offset>0 ) scaled = round(scaled) + epsilon*( (GeometryReal)1. + Random< GeometryReal >() );
 			else           scaled = round(scaled) - epsilon*( (GeometryReal)1. + Random< GeometryReal >() );
-			vertices[i][c] = (GeometryReal)(scaled + 0.5) / dimSize;
+			SimpleTriangleMesh< GeometryReal , 2 >::vertices[i][c] = (GeometryReal)(scaled + 0.5) / dimSize;
 		}
 	}
 }

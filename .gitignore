@@ -20,6 +20,7 @@ replicability_instructions.htm
 *.ipdb
 *.pdb
 *.log
+*.tmp
 include/Misha.V1/
 include/Src.V1/
 include/Src.V2/

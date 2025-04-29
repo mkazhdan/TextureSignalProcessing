@@ -47,9 +47,9 @@ const
 	}
 
 	// The map taking a vertex index in the atlas and giving the index of the corresponding vertex within the chart
-	std::vector< unsigned int > chartVertexID( vertices.size() , static_cast< unsigned int >(-1) );
+	std::vector< unsigned int > chartVertexID( SimpleTriangleMesh< GeometryReal , 2 >::vertices.size() , static_cast< unsigned int >(-1) );
 
-	for( unsigned int t=0 ; t<triangles.size() ; t++ )
+	for( unsigned int t=0 ; t<SimpleTriangleMesh< GeometryReal , 2 >::triangles.size() ; t++ )
 	{
 #ifdef NEW_INDEXING
 		AtlasChart< GeometryReal > &atlasChart = atlasCharts[ static_cast< unsigned int >( triangleToChart( AtlasMeshTriangleIndex( t ) ) ) ];
@@ -65,11 +65,11 @@ const
 #else // !NEW_INDEXING
 			atlasChart._chartHalfEdgeToAtlasEdge.push_back( halfEdgeToEdge( 3*t+k ) );
 #endif // NEW_INDEXING
-			unsigned int v = triangles[t][k];
+			unsigned int v = SimpleTriangleMesh< GeometryReal , 2 >::triangles[t][k];
 			if( chartVertexID[v]==-1 )
 			{
 				chartVertexID[v] = (unsigned int)atlasChart.vertices.size();
-				Point2D< GeometryReal > vertexPos = vertices[v];
+				Point2D< GeometryReal > vertexPos = SimpleTriangleMesh< GeometryReal , 2 >::vertices[v];
 				for( unsigned int c=0 ; c<2 ; c++ )
 				{
 					atlasChart.minCorner[c] = std::min< GeometryReal >( vertexPos[c] , atlasChart.minCorner[c] );

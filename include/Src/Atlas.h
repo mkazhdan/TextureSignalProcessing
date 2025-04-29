@@ -54,9 +54,9 @@ namespace MishaK
 		Point< GeometryReal , 2 > vertex( AtlasMeshVertexIndex v ) const { return SimpleTriangleMesh< GeometryReal , 2 >::vertices[ static_cast< unsigned int >(v) ]; }
 		SimplexIndex< 2 , AtlasMeshVertexIndex > triangle( AtlasMeshTriangleIndex t ) const
 		{
-			SimplexIndex< 2 > _tri = SimpleTriangleMesh< GeometryReal , 2 >::triangles[ static_cast< unsigned int >(t) ]
+			SimplexIndex< 2 > _tri = SimpleTriangleMesh< GeometryReal , 2 >::triangles[ static_cast< unsigned int >(t) ];
 			SimplexIndex< 2 , AtlasMeshVertexIndex > tri;
-			for( unsigned int k=0 ; k<=2 ; k++ ) tri[k] = AtlasMeshVertexIndex( _tri[k] )
+			for( unsigned int k=0 ; k<=2 ; k++ ) tri[k] = AtlasMeshVertexIndex( _tri[k] );
 			return tri;
 		}
 		size_t numVertices( void ) const { return SimpleTriangleMesh< GeometryReal , 2 >::vertices.size(); }

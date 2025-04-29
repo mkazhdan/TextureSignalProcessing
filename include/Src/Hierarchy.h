@@ -464,7 +464,11 @@ namespace MishaK
 		if     ( cellType==CellType::Exterior ) return std::string( "Exterior" );
 		else if( cellType==CellType::Boundary ) return std::string( "Boundary" );
 		else if( cellType==CellType::Interior ) return std::string( "Interior" );
-		else MK_THROW( "Unrecognized cell type" );
+		else
+		{
+			MK_THROW( "Unrecognized cell type" );
+			return std::string();
+		}
 	}
 
 	std::string TexelTypeName( TexelType texelType )
@@ -473,7 +477,11 @@ namespace MishaK
 		else if( texelType==TexelType::BoundarySupportedAndCovered ) return std::string( "Boundary and interior supported" );
 		else if( texelType==TexelType::BoundarySupported ) return std::string( "Boundary supported" );
 		else if( texelType==TexelType::InteriorSupported ) return std::string( "Interior supported" );
-		else MK_THROW( "Unrecognized texel type" );
+		else
+		{
+			MK_THROW( "Unrecognized texel type" );
+			return std::string();
+		}
 	}
 
 	template< typename GeometryReal >
