@@ -31,13 +31,10 @@ DAMAGE.
 #include <Misha/Exceptions.h>
 #include <Misha/RightTriangleQuadrature.h>
 #include "SimpleTriangleMesh.h"
-#ifdef NEW_INDEXING
 #include "Indices.h"
-#endif // NEW_INDEXING
 
 namespace MishaK
 {
-#ifdef NEW_INDEXING
 	template< typename GeometryReal >
 	struct TextureNodeInfo
 	{
@@ -53,22 +50,6 @@ namespace MishaK
 
 		operator MeshSample< GeometryReal >() const { return MeshSample< GeometryReal >( static_cast< unsigned int >(tID) , barycentricCoords ); }
 	};
-#else // !NEW_INDEXING
-	template< typename GeometryReal >
-	struct TextureNodeInfo : public MeshSample< GeometryReal >
-	{
-		using MeshSample< GeometryReal >::tID;
-		using MeshSample< GeometryReal >::barycentricCoords;
-		TextureNodeInfo( void )
-			: ci(static_cast< unsigned int >(-1) ) , cj( static_cast< unsigned int >(-1) ) , chartID( static_cast< unsigned int >(-1) ) , isInterior(false) {}
-		TextureNodeInfo( unsigned int tID , Point2D< GeometryReal > barycentricCoords , unsigned int ci , unsigned int cj , unsigned int chartID , bool isInterior )
-			: MeshSample< GeometryReal >( tID , barycentricCoords ) , ci(ci) , cj(cj) , chartID(chartID) , isInterior(isInterior) {}
-		unsigned int ci , cj;
-		unsigned int chartID;
-		bool isInterior;
-	};
-#endif // NEW_INDEXING
-
 
 	struct BilinearElementIndex
 	{
@@ -84,21 +65,12 @@ namespace MishaK
 	struct QuadraticElementIndex
 	{
 	protected:
-#ifdef NEW_INDEXING
 		AtlasInteriorOrBoundaryNodeIndex v[6];
 	public:
 		QuadraticElementIndex( void ) { v[0] = v[1] = v[2] = v[3] = v[4] = v[5] = AtlasInteriorOrBoundaryNodeIndex(0); }
 		QuadraticElementIndex( AtlasInteriorOrBoundaryNodeIndex v0 , AtlasInteriorOrBoundaryNodeIndex v1 , AtlasInteriorOrBoundaryNodeIndex v2 , AtlasInteriorOrBoundaryNodeIndex v3 , AtlasInteriorOrBoundaryNodeIndex v4 , AtlasInteriorOrBoundaryNodeIndex v5 ){ v[0] = v0 , v[1] = v1 , v[2] = v2 , v[3] = v3 , v[4] = v4 , v[5] = v5; }
 		AtlasInteriorOrBoundaryNodeIndex &operator[]( unsigned int idx )       { return v[idx]; }
 		AtlasInteriorOrBoundaryNodeIndex  operator[]( unsigned int idx ) const { return v[idx]; }
-#else // !NEW_INDEXING
-		unsigned int v[6];
-	public:
-		QuadraticElementIndex( void ) { v[0] = v[1] = v[2] = v[3] = v[4] = v[5] = 0; }
-		QuadraticElementIndex( unsigned int v0 , unsigned int v1 , unsigned int v2 , unsigned int v3 , unsigned int v4 , unsigned int v5 ){ v[0] = v0 , v[1] = v1 , v[2] = v2 , v[3] = v3 , v[4] = v4 , v[5] = v5; }
-		unsigned int &operator[]( unsigned int idx )       { return v[idx]; }
-		unsigned int  operator[]( unsigned int idx ) const { return v[idx]; }
-#endif // NEW_INDEXING
 	};
 
 	template< typename GeometryReal >

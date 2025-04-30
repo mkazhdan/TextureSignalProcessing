@@ -213,25 +213,13 @@ void InitializeParameterMetric
 	parameterMetric.resize( atlasCharts.size() );
 	for( unsigned int i=0 ; i<atlasCharts.size() ; i++ )
 	{
-#ifdef NEW_INDEXING
 		parameterMetric[i].resize( atlasCharts[i].numTriangles() );
 		for( unsigned int k=0 ; k<atlasCharts[i].numTriangles() ; k++ )
-#else // !NEW_INDEXING
-		parameterMetric[i].resize( atlasCharts[i].triangles.size() );
-		for( unsigned int k=0 ; k<atlasCharts[i].triangles.size() ; k++ )
-#endif // NEW_INDEXING
 		{
-#ifdef NEW_INDEXING
 			AtlasMeshTriangleIndex t = atlasCharts[i].atlasTriangle( ChartMeshTriangleIndex(k) );
 
 			SquareMatrix< GeometryReal , 2 > embedding_metric = embeddingMetric[ static_cast< unsigned int >(t) ];
 			Simplex< GeometryReal , 2 , 2 > simplex = mesh.textureTriangle( static_cast< unsigned int >(t) );
-#else // !NEW_INDEXING
-			unsigned int t = atlasCharts[i].atlasTriangle(k);
-
-			SquareMatrix< GeometryReal , 2 > embedding_metric = embeddingMetric[t];
-			Simplex< GeometryReal , 2 , 2 > simplex = mesh.textureTriangle( t );
-#endif // NEW_INDEXING
 			Point2D< GeometryReal > dp[2] = { simplex[1]-simplex[0] , simplex[2]-simplex[0] };
 
 			//Parametric map

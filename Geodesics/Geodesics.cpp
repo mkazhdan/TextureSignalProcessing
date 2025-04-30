@@ -695,11 +695,7 @@ void Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 
 	coarseBoundaryFineBoundaryProlongation = boundaryProlongation.coarseBoundaryFineBoundaryProlongation;
 	fineBoundaryCoarseBoundaryRestriction = boundaryProlongation.fineBoundaryCoarseBoundaryRestriction;
-#ifdef NEW_INDEXING
 	const std::vector< AtlasInteriorOrBoundaryNodeIndex > & fineBoundaryIndex = boundaryProlongation.fineBoundaryIndex;
-#else // !NEW_INDEXING
-	std::vector< unsigned int > fineBoundaryIndex = boundaryProlongation.fineBoundaryIndex;
-#endif // NEW_INDEXING
 	unsigned int numFineBoundaryNodes = boundaryProlongation.numFineBoundaryNodes;
 
 	gradientSamples.resize( interiorCellLines.size() );
@@ -841,28 +837,16 @@ void Geodesics< PreReal , Real >::Init( void )
 		rMesh.makeUnitArea();
 		Pointer( FEM::CoordinateXForm< PreReal > ) xForms = rMesh.getCoordinateXForms();
 
-#ifdef NEW_INDEXING
 		for( unsigned int i=0 ; i<textureNodes.size() ; i++ ) if( textureNodes[i].tID!=AtlasMeshTriangleIndex(-1) && !textureNodes[i].isInterior )
-#else // !NEW_INDEXING
-		for( int i=0 ; i<textureNodes.size() ; i++ ) if( textureNodes[i].tID!=-1 && !textureNodes[i].isInterior )
-#endif // NEW_INDEXING
 		{
 			FEM::HermiteSamplePoint< PreReal > _p;
-#ifdef NEW_INDEXING
 			_p.tIdx = static_cast< unsigned int >( textureNodes[i].tID );
-#else // !NEW_INDEXING
-			_p.tIdx = textureNodes[i].tID;
-#endif // NEW_INDEXING
 			_p.p = Point2D< PreReal >( (PreReal)1./3 , (PreReal)1./3 );
 			_p.v = textureNodes[i].barycentricCoords - _p.p;
 
 			rMesh.exp(xForms, _p);
 
-#ifdef NEW_INDEXING
 			textureNodes[i].tID = AtlasMeshTriangleIndex( _p.tIdx );
-#else // !NEW_INDEXING
-			textureNodes[i].tID = _p.tIdx;
-#endif // NEW_INDEXING
 			textureNodes[i].barycentricCoords = _p.p;
 		}
 	}

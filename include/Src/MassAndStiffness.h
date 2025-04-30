@@ -42,11 +42,7 @@ namespace MishaK
 		const AtlasChart< GeometryReal > &atlasChart ,
 		const GridChart< GeometryReal > &gridChart ,
 		const typename GridAtlas<>::IndexConverter & indexConverter ,
-#ifdef NEW_INDEXING
 		const std::vector< AtlasInteriorOrBoundaryNodeIndex >& fineBoundaryIndex ,
-#else // !NEW_INDEXING
-		const std::vector< unsigned int >& fineBoundaryIndex ,
-#endif // NEW_INDEXING
 		std::vector< MatrixReal >& deepMassCoefficients ,
 		std::vector< MatrixReal >& deepStiffnessCoefficients ,
 		std::vector< Eigen::Triplet< MatrixReal > >& boundaryBoundaryMassTriplets ,
@@ -59,11 +55,7 @@ namespace MishaK
 		std::vector< MatrixReal >& texelToCellCoeffs ,
 		std::vector< Eigen::Triplet< Point3D< MatrixReal > > > &boundaryCellStiffnessTriplets ,
 		bool computeDivergence ,
-#ifdef NEW_INDEXING
 		std::map< SimplexIndex< 1 > , AtlasInteriorOrBoundaryNodeIndex > & fineBoundaryEdgeIndex,
-#else // !NEW_INDEXING
-		std::map< SimplexIndex< 1 > , unsigned int > & fineBoundaryEdgeIndex,
-#endif // NEW_INDEXING
 		std::map< SimplexIndex< 1 > , unsigned int > & coarseEdgeIndex,
 		std::vector< Eigen::Triplet< MatrixReal > > & boundaryDeepDivergenceTriplets,
 		std::vector< Eigen::Triplet< MatrixReal > > & boundaryBoundaryDivergenceTriplets,
@@ -197,32 +189,19 @@ namespace MishaK
 				Simplex< double , 2 , 2 > simplex;
 				for( unsigned int i=0 ; i<=2 ; i++ )
 				{
-#ifdef NEW_INDEXING
 					simplex[i] = atlasChart.vertex( ChartMeshVertexIndex( atlasChart.triangleIndex( ChartMeshTriangleIndex(t) )[i] ) ) - gridChart.corner;
-#else // !NEW_INDEXING
-					simplex[i] = atlasChart.vertices[ atlasChart.triangles[t][i] ] - gridChart.corner;
-#endif // NEW_INDEXING
 					simplex[i][0] /= gridChart.cellSizeW , simplex[i][1] /= gridChart.cellSizeH;
 				}
 				return simplex;
 			};
 #endif // USE_RASTERIZER
 #ifdef PRE_CLIP_TRIANGLES
-#ifdef NEW_INDEXING
 		std::vector< SquareMatrix< GeometryReal , 2 > > g_inv( atlasChart.numTriangles() );
 		std::vector< GeometryReal > area_scale( atlasChart.numTriangles() );
-#else // !NEW_INDEXING
-		std::vector< SquareMatrix< GeometryReal , 2 > > g_inv( atlasChart.triangles.size() );
-		std::vector< GeometryReal > area_scale( atlasChart.triangles.size() );
-#endif // NEW_INDEXING
 
 		ThreadPool::ParallelFor
 			(
-#ifdef NEW_INDEXING
 				0 , atlasChart.numTriangles() ,
-#else // !NEW_INDEXING
-				0 , atlasChart.triangles.size() ,
-#endif // NEW_INDEXING
 				[&]( unsigned int , size_t t )
 				{
 					SquareMatrix< GeometryReal , 2 > cell_metric = cell_to_texture_differential.transpose() * texture_metrics[t] * cell_to_texture_differential;
@@ -239,28 +218,16 @@ namespace MishaK
 					if( gridChart.cellIndices[i].interior!=-1 )
 					{
 						unsigned int interiorIndex = gridChart.cellIndices[i].interior;
-#ifdef NEW_INDEXING
 						const std::vector< std::pair< ChartMeshTriangleIndex , CellClippedTriangle< GeometryReal > > > &clippedTriangles = gridChart.clippedTriangles[i];
-#else // !NEW_INDEXING
-						const std::vector< std::pair< unsigned int , CellClippedTriangle< GeometryReal > > > &clippedTriangles = gridChart.clippedTriangles[i];
-#endif // NEW_INDEXING
 						if( !clippedTriangles.size() ) MK_THROW( "Expected triangles" );
 
 						if( clippedTriangles.size()==1 ) // The cell is covered by a single triangle
 						{
 							SquareMatrix< GeometryReal , 4 > polygonMass , polygonStiffness;
 
-#ifdef NEW_INDEXING
 							polygonMass = interior_cell_mass * area_scale[ static_cast< unsigned int >( clippedTriangles[0].first ) ];
-#else // !NEW_INDEXING
-							polygonMass = interior_cell_mass * area_scale[ clippedTriangles[0].first ];
-#endif // NEW_INDEXING
 							for( int k=0 ; k<4 ; k++ ) for( int l=0 ; l<4 ; l++ )
-#ifdef NEW_INDEXING
 								polygonStiffness(k,l) = SquareMatrix< GeometryReal , 2 >::Dot( g_inv[ static_cast< unsigned int >( clippedTriangles[0].first ) ] , interior_cell_stiffnesses[k][l] ) * area_scale[ static_cast< unsigned int >( clippedTriangles[0].first ) ];
-#else // !NEW_INDEXING
-								polygonStiffness(k,l) = SquareMatrix< GeometryReal , 2 >::Dot( g_inv[ clippedTriangles[0].first ] , interior_cell_stiffnesses[k][l] ) * area_scale[ clippedTriangles[0].first ];
-#endif // NEW_INDEXING
 							cellMass     [ interiorIndex ] += polygonMass;
 							cellStiffness[ interiorIndex ] += polygonStiffness;
 
@@ -268,11 +235,7 @@ namespace MishaK
 							{
 								SquareMatrix< GeometryReal , 4 > polygonDivergence;
 								for( int k=0 ; k<4 ; k++ ) for( int l=0 ; l<4 ; l++ )
-#ifdef NEW_INDEXING
 									polygonDivergence(l,k) = SquareMatrix< GeometryReal , 2 >::Dot( g_inv[ static_cast< unsigned int >( clippedTriangles[0].first ) ] , grad_edge_products[l][k] ) * area_scale[ static_cast< unsigned int >( clippedTriangles[0].first ) ];
-#else // !NEW_INDEXING
-									polygonDivergence(l,k) = SquareMatrix< GeometryReal , 2 >::Dot( g_inv[ clippedTriangles[0].first ] , grad_edge_products[l][k] ) * area_scale[ clippedTriangles[0].first ];
-#endif // NEW_INDEXING
 								cellDivergence[ interiorIndex ] += polygonDivergence;
 							}
 						}
@@ -283,11 +246,7 @@ namespace MishaK
 
 							for( unsigned int i=0 ; i<clippedTriangles.size() ; i++ )
 							{
-#ifdef NEW_INDEXING
 								unsigned int t = static_cast< unsigned int >( clippedTriangles[i].first );
-#else // !NEW_INDEXING
-								unsigned int t = clippedTriangles[i].first;
-#endif // NEW_INDEXING
 								CellClippedTriangle< GeometryReal > polygon = clippedTriangles[i].second;
 
 								SquareMatrix< GeometryReal , 2 > element_metric_inverse = g_inv[t] ;
@@ -371,41 +330,23 @@ namespace MishaK
 						auto TextureToCell = [&]( Point2D< GeometryReal > p ){ return Point2D< GeometryReal >( (GeometryReal)( p[0] / gridChart.cellSizeW ) - I[0] , (GeometryReal)( p[1] / gridChart.cellSizeH ) - I[1] ); };
 
 						unsigned int boundaryIndex = gridChart.cellIndices[i].boundary;
-#ifdef NEW_INDEXING
 						const std::vector< std::pair< ChartMeshTriangleIndex , CellClippedTriangle< GeometryReal > > > &clippedTriangles = gridChart.clippedTriangles[i];
-#else // !NEW_INDEXING
-						const std::vector< std::pair< unsigned int , CellClippedTriangle< GeometryReal > > > &clippedTriangles = gridChart.clippedTriangles[i];
-#endif // NEW_INDEXING
 						if( !clippedTriangles.size() ) MK_THROW( "Expected triangles" );
 
 						for( unsigned int i=0 ; i<clippedTriangles.size() ; i++ )
 						{
-#ifdef NEW_INDEXING
 							unsigned int t = static_cast< unsigned int >( clippedTriangles[i].first );
-#else // !NEW_INDEXING
-							unsigned int t = clippedTriangles[i].first;
-#endif // NEW_INDEXING
 
 							Point2D< GeometryReal > tPos[3];
-#ifdef NEW_INDEXING
 							SimplexIndex< 2 , ChartMeshVertexIndex > tri = atlasChart.triangleIndex( ChartMeshTriangleIndex(t) );
 							for( unsigned int i=0 ; i<3 ; i++ ) tPos[i] = atlasChart.vertex( tri[i] ) - gridChart.corner;
-#else // !NEW_INDEXING
-							for( unsigned int i=0 ; i<3 ; i++ ) tPos[i] = atlasChart.vertices[ atlasChart.triangles[t][i] ] - gridChart.corner;
-#endif // NEW_INDEXING
 							IndexedTriangle< GeometryReal > atlasTriangle;
 							for( unsigned int k=0 ; k<3 ; k++ )
 							{
 								atlasTriangle.vertices[k] = tPos[k];
-#ifdef NEW_INDEXING
 								atlasTriangle.atlasEdgeIndices[k] = atlasChart.atlasEdge( GetChartMeshHalfEdgeIndex( ChartMeshTriangleIndex(t) , k ) );
 								atlasTriangle.vertexIndices[k] = atlasChart.triangleIndex( ChartMeshTriangleIndex(t) )[k];
 								atlasTriangle.atlasVertexParentEdge[k] = AtlasMeshEdgeIndex(-1);
-#else // !NEW_INDEXING
-								atlasTriangle.atlasEdgeIndices[k] = atlasChart.atlasEdge( 3*t+k );
-								atlasTriangle.vertexIndices[k] = atlasChart.triangles[t][k];
-								atlasTriangle.atlasVertexParentEdge[k] = -1;
-#endif // NEW_INDEXING
 							}
 
 							const std::vector< BoundaryIndexedTriangle< GeometryReal > > & cellBoundaryTriangles = gridChart.boundaryTriangles[ boundaryIndex ];
@@ -540,19 +481,11 @@ namespace MishaK
 			);
 #else // !PRE_CLIP_TRIANGLES
 		//#pragma omp parallel for 
-#ifdef NEW_INDEXING
 		for( unsigned int t=0 ; t<atlasChart.numTriangles() ; t++ )
-#else // !NEW_INDEXING
-		for( int t=0 ; t<atlasChart.triangles.size() ; t++ )
-#endif // NEW_INDEXING
 		{
 			Point2D< GeometryReal > tPos[3];
-#ifdef NEW_INDEXING
 			SimplexIndex< 2 , ChartMeshVertexIndex > tri = atlasChart.triangleIndex( ChartMeshTriangleIndex(t) );
 			for( unsigned int i=0 ; i<3 ; i++ ) tPos[i] = atlasChart.vertex( tri[i] ) - gridChart.corner;
-#else // !NEW_INDEXING
-			for( int i=0 ; i<3 ; i++ ) tPos[i] = atlasChart.vertices[ atlasChart.triangles[t][i] ] - gridChart.corner;
-#endif // NEW_INDEXING
 
 			SquareMatrix< GeometryReal , 2 > texture_metric = texture_metrics[t];
 			SquareMatrix< GeometryReal , 2 > cell_metric = cell_to_texture_differential.transpose() * texture_metric * cell_to_texture_differential;
@@ -573,15 +506,9 @@ namespace MishaK
 			for( unsigned int k=0 ; k<3 ; k++ )
 			{
 				atlasTriangle.vertices[k] = tPos[k];
-#ifdef NEW_INDEXING
 				atlasTriangle.atlasEdgeIndices[k] = atlasChart.atlasEdge( GetChartMeshHalfEdgeIndex( ChartMeshTriangleIndex(t) , k ) );
 				atlasTriangle.vertexIndices[k] = atlasChart.triangleIndex( ChartMeshTriangleIndex(t) )[k];
 				atlasTriangle.atlasVertexParentEdge[k] = AtlasMeshEdgeIndex( -1 );
-#else // !NEW_INDEXING
-				atlasTriangle.atlasEdgeIndices[k] = atlasChart.atlasEdge( 3*t+k );
-				atlasTriangle.vertexIndices[k] = atlasChart.triangles[t][k];
-				atlasTriangle.atlasVertexParentEdge[k] = -1;
-#endif // NEW_INDEXING
 			}
 #ifdef USE_RASTERIZER
 			auto Kernel = [&]( Index I )
@@ -954,30 +881,17 @@ namespace MishaK
 						}
 						else if( neighborBoundaryIndex!=-1 )
 						{
-#ifdef NEW_INDEXING
 							boundaryBoundaryMassTriplets.push_back( Eigen::Triplet< MatrixReal >( static_cast< unsigned int >( fineBoundaryIndex[ indicesInterior[k] ] ) , static_cast< unsigned int >( fineBoundaryIndex[ indicesInterior[l] ] ) , (MatrixReal)cellMass[i](k,l) ) );
 							boundaryBoundaryStiffnessTriplets.push_back( Eigen::Triplet< MatrixReal >( static_cast< unsigned int >( fineBoundaryIndex[ indicesInterior[k] ] ) , static_cast< unsigned int >( fineBoundaryIndex[ indicesInterior[l] ] ) , (MatrixReal)cellStiffness[i](k,l) ) );
-#else // !NEW_INDEXING
-							boundaryBoundaryMassTriplets.push_back( Eigen::Triplet< MatrixReal >( fineBoundaryIndex[ indicesInterior[k] ] , fineBoundaryIndex[ indicesInterior[l] ] , (MatrixReal)cellMass[i](k,l) ) );
-							boundaryBoundaryStiffnessTriplets.push_back( Eigen::Triplet< MatrixReal >( fineBoundaryIndex[ indicesInterior[k] ] , fineBoundaryIndex[ indicesInterior[l] ] , (MatrixReal)cellStiffness[i](k,l) ) );
-#endif // NEW_INDEXING
 						}
 						else MK_THROW( "Expected supported index" );
 					}
 					if( computeCellBasedStiffness )
 					{
 						// Add cell data
-#ifdef NEW_INDEXING
 						AtlasInteriorOrBoundaryNodeIndex _fineBoundaryIndex = fineBoundaryIndex[indicesInterior[k]];
-#else // !NEW_INDEXING
-						unsigned int _fineBoundaryIndex = fineBoundaryIndex[indicesInterior[k]];
-#endif // NEW_INDEXING
 						Point3D< MatrixReal > p( (MatrixReal)prod[0][k] , (MatrixReal)prod[1][k] , (MatrixReal)prod[2][k] );
-#ifdef NEW_INDEXING
 						boundaryCellStiffnessTriplets.push_back( Eigen::Triplet< Point3D< MatrixReal > >( static_cast< unsigned int >(_fineBoundaryIndex) , globalCellIndex , p ) );
-#else // !NEW_INDEXING
-						boundaryCellStiffnessTriplets.push_back( Eigen::Triplet< Point3D< MatrixReal > >( _fineBoundaryIndex , globalCellIndex , p ) );
-#endif // NEW_INDEXING
 					}
 					if( computeDivergence )
 					{
@@ -1010,18 +924,13 @@ namespace MishaK
 				int i = gridChart.boundaryTriangles[c][b].id;
 				const QuadraticElementIndex & indices = gridChart.boundaryTriangles[c][b].indices;
 				QuadraticElementIndex fineTriangleElementIndices;
-#ifdef NEW_INDEXING
 				for( unsigned int k=0 ; k<6 ; k++ ) fineTriangleElementIndices[k] = fineBoundaryIndex[ static_cast< unsigned int >(indices[k]) ];
-#else // !NEW_INDEXING
-				for( unsigned int k=0 ; k<6 ; k++ ) fineTriangleElementIndices[k] = fineBoundaryIndex[ indices[k] ];
-#endif // NEW_INDEXING
 
 				// Add cell data
 
 				if( computeCellBasedStiffness )
 				{
 					Point< GeometryReal , 6 > prod[3];
-#ifdef NEW_INDEXING
 					Point3D < GeometryReal > values[6] =
 					{
 						boundarySignal[ static_cast< unsigned int >( fineTriangleElementIndices[0] ) ],
@@ -1031,9 +940,6 @@ namespace MishaK
 						boundarySignal[ static_cast< unsigned int >( fineTriangleElementIndices[4] ) ],
 						boundarySignal[ static_cast< unsigned int >( fineTriangleElementIndices[5] ) ]
 					};
-#else // !NEW_INDEXING
-					Point3D < GeometryReal > values[6] = { boundarySignal[fineTriangleElementIndices[0]],boundarySignal[fineTriangleElementIndices[1]],boundarySignal[fineTriangleElementIndices[2]],boundarySignal[fineTriangleElementIndices[3]],boundarySignal[fineTriangleElementIndices[4]],boundarySignal[fineTriangleElementIndices[5]] };
-#endif // NEW_INDEXING
 					for( unsigned int cc=0 ; cc<3 ; cc++ )
 					{
 						Point< GeometryReal , 6 > v;
@@ -1049,22 +955,13 @@ namespace MishaK
 					for (int k = 0; k < 6; k++)
 					{
 						Point3D< MatrixReal > p( (MatrixReal)prod[0][k] , (MatrixReal)prod[1][k] , (MatrixReal)prod[2][k] );
-#ifdef NEW_INDEXING
 						boundaryCellStiffnessTriplets.push_back( Eigen::Triplet< Point3D< MatrixReal > >( static_cast< unsigned int >( fineTriangleElementIndices[k] ) , globalCellIndex , p ) );
-#else // !NEW_INDEXING
-						boundaryCellStiffnessTriplets.push_back( Eigen::Triplet< Point3D< MatrixReal > >( fineTriangleElementIndices[k] , globalCellIndex , p ) );
-#endif // NEW_INDEXING
 					}
 				}
 				for( unsigned int k=0 ; k<6 ; k++ ) for( unsigned int l=0 ; l<6 ; l++ )
 				{
-#ifdef NEW_INDEXING
 					boundaryBoundaryMassTriplets.push_back( Eigen::Triplet< MatrixReal >( static_cast< unsigned int >( fineTriangleElementIndices[k] ) ,  static_cast< unsigned int >( fineTriangleElementIndices[l] ) , (MatrixReal)triangleElementMass[i](l,k) ) );
 					boundaryBoundaryStiffnessTriplets.push_back(Eigen::Triplet< MatrixReal >( static_cast< unsigned int >( fineTriangleElementIndices[k] ) ,  static_cast< unsigned int >( fineTriangleElementIndices[l] ) , (MatrixReal)triangleElementStiffness[i](l,k) ) );
-#else // !NEW_INDEXING
-					boundaryBoundaryMassTriplets.push_back( Eigen::Triplet< MatrixReal >( fineTriangleElementIndices[k] , fineTriangleElementIndices[l] , (MatrixReal)triangleElementMass[i](l,k) ) );
-					boundaryBoundaryStiffnessTriplets.push_back(Eigen::Triplet< MatrixReal >( fineTriangleElementIndices[k] , fineTriangleElementIndices[l] , (MatrixReal)triangleElementStiffness[i](l,k) ) );
-#endif // NEW_INDEXING
 				}
 
 				if( computeDivergence )
@@ -1072,13 +969,8 @@ namespace MishaK
 					for( unsigned int k=1 ; k<6 ; k++ ) for( unsigned int l=0 ; l<k ; l++ )
 					{
 						int edgeId = (k*(k - 1)) / 2 + l;
-#ifdef NEW_INDEXING
 						AtlasInteriorOrBoundaryNodeIndex edgeSourceFineIndex = fineTriangleElementIndices[k];
 						AtlasInteriorOrBoundaryNodeIndex edgeTargetFineIndex = fineTriangleElementIndices[l];
-#else // !NEW_INDEXING
-						int edgeSourceFineIndex = fineTriangleElementIndices[k];
-						int edgeTargetFineIndex = fineTriangleElementIndices[l];
-#endif // NEW_INDEXING
 						MatrixReal edgeSign = (MatrixReal)1.;
 						if( edgeTargetFineIndex<edgeSourceFineIndex )
 						{
@@ -1086,22 +978,13 @@ namespace MishaK
 							edgeSign = (MatrixReal)-1.;
 						}
 						SimplexIndex< 1 > fineEdgeKey( edgeSourceFineIndex , edgeTargetFineIndex );
-#ifdef NEW_INDEXING
 						AtlasInteriorOrBoundaryNodeIndex _fineEdgeIndex = static_cast< AtlasInteriorOrBoundaryNodeIndex >(-1);
-#else // !NEW_INDEXING
-						unsigned int _fineEdgeIndex = static_cast< unsigned int >(-1);
-#endif // NEW_INDEXING
 						if( fineBoundaryEdgeIndex.find( fineEdgeKey )!=fineBoundaryEdgeIndex.end() ) _fineEdgeIndex = fineBoundaryEdgeIndex[fineEdgeKey];
 						else MK_THROW( "Fine edge not found" );
 						for( int n=0 ; n<6 ; n++ )
 						{
-#ifdef NEW_INDEXING
 							AtlasInteriorOrBoundaryNodeIndex fineNodeIndex = fineTriangleElementIndices[n];
 							boundaryBoundaryDivergenceTriplets.push_back( Eigen::Triplet< MatrixReal >( static_cast< unsigned int >(fineNodeIndex) , static_cast< unsigned int >(_fineEdgeIndex) , (MatrixReal)triangleElementDivergence[i](n,edgeId) * edgeSign ) );
-#else // !NEW_INDEXING
-							unsigned int fineNodeIndex = fineTriangleElementIndices[n];
-							boundaryBoundaryDivergenceTriplets.push_back( Eigen::Triplet< MatrixReal >( fineNodeIndex , _fineEdgeIndex , (MatrixReal)triangleElementDivergence[i](n,edgeId) * edgeSign ) );
-#endif // NEW_INDEXING
 						}
 					}
 				}
@@ -1115,11 +998,7 @@ namespace MishaK
 		const std::vector< std::vector< SquareMatrix< GeometryReal , 2 > > > &parameterMetric ,
 		const std::vector< AtlasChart< GeometryReal > > &atlasCharts ,
 		const GridAtlas< GeometryReal , MatrixReal > &gridAtlas ,
-#ifdef NEW_INDEXING
 		const std::vector< AtlasInteriorOrBoundaryNodeIndex > &fineBoundaryIndex ,
-#else // !NEW_INDEXING
-		const std::vector< unsigned int > &fineBoundaryIndex ,
-#endif // NEW_INDEXING
 		int numFineBoundaryNodes ,
 		std::vector< MatrixReal >& deepMassCoefficients ,
 		std::vector< MatrixReal >& deepStiffnessCoefficients ,
@@ -1133,11 +1012,7 @@ namespace MishaK
 		std::vector< MatrixReal >& texelToCellCoeffs ,
 		SparseMatrix< MatrixReal , int > boundaryCellBasedStiffnessRHSMatrix[3] ,
 		bool computeDivergence ,
-#ifdef NEW_INDEXING
 		std::map< SimplexIndex< 1 > , AtlasInteriorOrBoundaryNodeIndex > & fineBoundaryEdgeIndex,
-#else // !NEW_INDEXING
-		std::map< SimplexIndex< 1 > , unsigned int > & fineBoundaryEdgeIndex,
-#endif // NEW_INDEXING
 		std::map< SimplexIndex< 1 > , unsigned int > & coarseEdgeIndex,
 		std::vector< Eigen::Triplet< MatrixReal > > & boundaryDeepDivergenceTriplets,
 		std::vector< Eigen::Triplet< MatrixReal > > & boundaryBoundaryDivergenceTriplets,
@@ -1247,11 +1122,7 @@ namespace MishaK
 
 		std::vector< Eigen::Triplet< MatrixReal > > boundaryDivergenceTriplets;
 		std::vector< Eigen::Triplet< MatrixReal > > boundaryBoundaryDivergenceTriplets;
-#ifdef NEW_INDEXING		
 		std::map< SimplexIndex< 1 > , AtlasInteriorOrBoundaryNodeIndex > fineBoundaryEdgeIndex;
-#else // !NEW_INDEXING
-		std::map< SimplexIndex< 1 > , unsigned int > fineBoundaryEdgeIndex;
-#endif // NEW_INDEXING
 
 		if( computeDivergence ) InitializeFineBoundaryEdgeIndexing( boundaryProlongation.fineBoundaryIndex , fineBoundaryEdgeIndex , hierarchy.gridAtlases[0].gridCharts );
 
@@ -1294,11 +1165,7 @@ namespace MishaK
 		{
 			SparseMatrix< MatrixReal , int > fineBoundaryBoundaryDivergenceMatrix = SetSparseMatrix( boundaryBoundaryDivergenceTriplets , boundaryProlongation.numFineBoundaryNodes , (int)fineBoundaryEdgeIndex.size() , false );
 
-#ifdef NEW_INDEXING
 			std::map< SimplexIndex< 1 > , AtlasInteriorOrBoundaryNodeIndex > boundaryCoarseEdgeIndex;
-#else // !NEW_INDEXING
-			std::map< SimplexIndex< 1 > , unsigned int > boundaryCoarseEdgeIndex;
-#endif // NEW_INDEXING
 			std::vector< unsigned int > boundaryCoarseEdgeToGlobalEdge;
 
 			InitializeBoundaryEdgeIndexing( mass.boundaryBoundaryMatrix , hierarchy.gridAtlases[0].indexConverter , edgeIndex , boundaryCoarseEdgeToGlobalEdge , boundaryCoarseEdgeIndex );

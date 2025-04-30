@@ -222,11 +222,7 @@ namespace MishaK
 		const AtlasChart< GeometryReal > &atlasChart ,
 		const GridChart< GeometryReal > &gridChart ,
 		const std::vector< std::pair< unsigned int , unsigned int > >& interiorCellLineIndex ,
-#ifdef NEW_INDEXING
 		const std::vector< AtlasInteriorOrBoundaryNodeIndex >& fineBoundaryIndex ,
-#else // !NEW_INDEXING
-		const std::vector< unsigned int >& fineBoundaryIndex ,
-#endif // NEW_INDEXING
 		ElementSamples &elementSamples ,
 		std::mutex &element_samples_bilinear_mutex ,
 		std::mutex &element_samples_quadratic_mutex ,
@@ -311,32 +307,18 @@ namespace MishaK
 				Simplex< double , 2 , 2 > simplex;
 				for( unsigned int i=0 ; i<=2 ; i++ )
 				{
-#ifdef NEW_INDEXING
 					simplex[i] = atlasChart.vertex( ChartMeshVertexIndex( atlasChart.triangleIndex( ChartMeshTriangleIndex(t) )[i] ) ) - gridChart.corner;
-#else // !NEW_INDEXING
-					simplex[i] = atlasChart.vertices[ atlasChart.triangles[t][i] ] - gridChart.corner;
-#endif // NEW_INDEXING
 					simplex[i][0] /= gridChart.cellSizeW , simplex[i][1] /= gridChart.cellSizeH;
 				}
 				return simplex;
 			};
 #endif // USE_RASTERIZER
 
-#ifdef NEW_INDEXING
 		for( unsigned int t=0 ; t<atlasChart.numTriangles() ; t++ )
-#else // !NEW_INDEXING
-		for( unsigned int t=0 ; t<atlasChart.triangles.size() ; t++ )
-#endif // NEW_INDEXING
 		{
-#ifdef NEW_INDEXING
 			SimplexIndex< 2 , ChartMeshVertexIndex > tri = atlasChart.triangleIndex( ChartMeshTriangleIndex(t) );
-#endif // NEW_INDEXING
 			Point2D< GeometryReal > tPos[3];
-#ifdef NEW_INDEXING
 			for( unsigned int k=0 ; k<=2 ; k++ ) tPos[k] = atlasChart.vertex( tri[k] ) - gridChart.corner;
-#else // !NEW_INDEXING
-			for( int i=0 ; i<3 ; i++ ) tPos[i] = atlasChart.vertices[ atlasChart.triangles[t][i] ] - gridChart.corner;
-#endif // NEW_INDEXING
 
 			SquareMatrix< GeometryReal , 2 > texture_metric = texture_metrics[t];
 			SquareMatrix< GeometryReal , 2 > cell_metric = cell_to_texture_differential.transpose() * texture_metric * cell_to_texture_differential;
@@ -357,15 +339,9 @@ namespace MishaK
 			for( unsigned int k=0 ; k<3 ; k++ )
 			{
 				atlasTriangle.vertices[k] = tPos[k];
-#ifdef NEW_INDEXING
 				atlasTriangle.atlasEdgeIndices[k] = atlasChart.atlasEdge( GetChartMeshHalfEdgeIndex( ChartMeshTriangleIndex(t) , k ) );
 				atlasTriangle.vertexIndices[k] = tri[k];
 				atlasTriangle.atlasVertexParentEdge[k] = AtlasMeshEdgeIndex(-1);
-#else // !NEW_INDEXING
-				atlasTriangle.atlasEdgeIndices[k] = atlasChart.atlasEdge( 3*t+k );
-				atlasTriangle.vertexIndices[k] = atlasChart.triangles[t][k];
-				atlasTriangle.atlasVertexParentEdge[k] = -1;
-#endif // NEW_INDEXING
 			}
 
 #ifdef USE_RASTERIZER
@@ -508,13 +484,8 @@ namespace MishaK
 							const QuadraticElementIndex& triangleElementIndices = gridChart.boundaryTriangles[localBoundaryIndex][bt].indices;
 							for( unsigned int k=0 ; k<6 ; k++ )
 							{
-#ifdef NEW_INDEXING
 								AtlasInteriorOrBoundaryNodeIndex _fineBoundaryIndex = fineBoundaryIndex[ static_cast< unsigned int >( triangleElementIndices[k] ) ];
 								if( _fineBoundaryIndex!=static_cast< AtlasInteriorOrBoundaryNodeIndex >(-1) ) quadraticElementSample.fineNodes[k] = _fineBoundaryIndex;
-#else // !NEW_INDEXING
-								usngined int _fineBoundaryIndex = fineBoundaryIndex[ triangleElementIndices[k] ];
-								if( _fineBoundaryIndex!=-1 ) quadraticElementSample.fineNodes[k] = _fineBoundaryIndex;
-#endif // NEW_INDEXING
 								else MK_THROW( "Invalid fine boundary index" );
 							}
 
@@ -571,11 +542,7 @@ namespace MishaK
 		const std::vector< AtlasChart< GeometryReal > > &atlasCharts ,
 		const std::vector< GridChart< GeometryReal > > &gridCharts ,
 		const std::vector< std::pair< unsigned int , unsigned int > > &interiorCellLineIndex ,
-#ifdef NEW_INDEXING
 		const std::vector< AtlasInteriorOrBoundaryNodeIndex > &fineBoundaryIndex ,
-#else // !NEW_INDEXING
-		const std::vector< unsigned int > &fineBoundaryIndex ,
-#endif // NEW_INDEXING
 		ElementSamples &elementSamples ,
 		bool fastIntegration
 	)
@@ -738,7 +705,6 @@ namespace MishaK
 		{
 			const typename ElementSamples::Quadratic &sample = elementSamples.quadratic[i];
 			// The values of the potential at the vertices and edge mid-points
-#ifdef NEW_INDEXING
 			T cornerValues[] =
 			{
 				boundary_potential[ static_cast< unsigned int >(sample.fineNodes[0]) ] ,
@@ -748,16 +714,9 @@ namespace MishaK
 				boundary_potential[ static_cast< unsigned int >(sample.fineNodes[4]) ] ,
 				boundary_potential[ static_cast< unsigned int >(sample.fineNodes[5]) ]
 			};
-#else // !NEW_INDEXING
-			T cornerValues[] = { boundary_potential[ sample.fineNodes[0] ] , boundary_potential[ sample.fineNodes[1] ] , boundary_potential[ sample.fineNodes[2] ] , boundary_potential[ sample.fineNodes[3] ] , boundary_potential[ sample.fineNodes[4] ] , boundary_potential[ sample.fineNodes[5] ] };
-#endif // NEW_INDEXING
 			T rhsValues[] = { T() , T() , T() , T() , T() , T() };
 			IntegrateQuadratic< Real , T >( sample , SampleFunction , cornerValues , rhsValues );
-#ifdef NEW_INDEXING
 			for( unsigned int k=0 ; k<6 ; k++ ) boundary_rhs[ static_cast< unsigned int >( sample.fineNodes[k] ) ] += rhsValues[k];
-#else // !NEW_INDEXING
-			for( int k=0 ; k<6 ; k++ ) boundary_rhs[ sample.fineNodes[k] ] += rhsValues[k];
-#endif // NEW_INDEXING
 		}
 		if( verbose ) printf( "Integrated quadratic: %.2f(s)\n" , timer.elapsed() );
 	}

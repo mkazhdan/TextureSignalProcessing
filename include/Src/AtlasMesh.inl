@@ -34,15 +34,11 @@ void AtlasMesh< GeometryReal >::initialize
 )
 {
 	// Compute the mapping from triangles to charts
-#ifdef NEW_INDEXING
 	{
 		std::vector< unsigned int > triangleToChart = inputMesh.texture.trianglesToComponents( _numCharts );
 		_triangleToChart.resize( triangleToChart.size() );
 		for( unsigned int i=0 ; i<triangleToChart.size() ; i++ ) _triangleToChart[i] = ChartIndex( triangleToChart[i] );
 	}
-#else // !NEW_INDEXING
-	_triangleToChart = inputMesh.texture.trianglesToComponents( _numCharts );
-#endif // NEW_INDEXING
 
 	// Compute the 2D mesh(es)
 	{
@@ -55,24 +51,14 @@ void AtlasMesh< GeometryReal >::initialize
 			Simplex< GeometryReal , 2 , 2 > tTriangle = inputMesh.textureTriangle( t );
 			for( unsigned int k=0 ; k<3 ; k++ )
 			{
-#ifdef NEW_INDEXING
 				ChartMeshVertexIndex currentCorner = ChartMeshVertexIndex(-1);
 				IndexedVector2D< GeometryReal > idxP( tTriangle[k] , ChartMeshVertexIndex( (unsigned int)SimpleTriangleMesh< GeometryReal , 2 >::vertices.size() ) , AtlasMeshVertexIndex( inputMesh.surface.triangles[t][k] ) );
-#else // !NEW_INDEXING
-				unsigned int currentCorner = static_cast< unsigned int >(-1);
-				IndexedVector2D< GeometryReal > idxP( tTriangle[k] , (int)vertices.size() , inputMesh.surface.triangles[t][k] );
-#endif // NEW_INDEXING
 				it = IndexedPointSet.find( idxP );
 				if( it==IndexedPointSet.end() )
 				{
 					IndexedPointSet.insert( idxP );
-#ifdef NEW_INDEXING
 					_chartToAtlasVertex.push_back( AtlasMeshVertexIndex( inputMesh.surface.triangles[t][k] ) );
 					currentCorner = ChartMeshVertexIndex( (unsigned int)SimpleTriangleMesh< GeometryReal , 2 >::vertices.size() );
-#else // !NEW_INDEXING
-					_chartToAtlasVertex.push_back( inputMesh.surface.triangles[t][k] );
-					currentCorner = (unsigned int)vertices.size();
-#endif // NEW_INDEXING
 					SimpleTriangleMesh< GeometryReal , 2 >::vertices.push_back( tTriangle[k] );
 				}
 				else
@@ -80,11 +66,7 @@ void AtlasMesh< GeometryReal >::initialize
 					IndexedVector2D< GeometryReal > indexPoint = *it;
 					currentCorner = indexPoint.index;
 				}
-#ifdef NEW_INDEXING
 				tri[k] = static_cast< unsigned int >( currentCorner );
-#else // !NEW_INDEXING
-				tri[k] = currentCorner;
-#endif // NEW_INDEXING
 			}
 			SimpleTriangleMesh< GeometryReal , 2 >::triangles.push_back( tri );
 		}
@@ -102,11 +84,7 @@ void AtlasMesh< GeometryReal >::initialize
 		}
 
 		unsigned int lastEdgeIndex = 0;
-#ifdef NEW_INDEXING
 		std::vector< AtlasMeshEdgeIndex > halfEdgeToEdgeIndex( 3 * SimpleTriangleMesh< GeometryReal , 2 >::triangles.size() , AtlasMeshEdgeIndex(-1) );
-#else // !NEW_INDEXING
-		std::vector< unsigned int > halfEdgeToEdgeIndex( 3 * triangles.size() , static_cast< unsigned int >(-1) );
-#endif // NEW_INDEXING
 		for( unsigned int he=0 ; he<SimpleTriangleMesh< GeometryReal , 2 >::triangles.size()*3 ; he++ )
 		{
 			SimplexIndex< 1 > _e = SimpleTriangleMesh< GeometryReal , 2 >::edgeIndex( he , true );
@@ -115,23 +93,11 @@ void AtlasMesh< GeometryReal >::initialize
 			if( edgeMap.find(_e)!=edgeMap.end() ) // If the opposite edge exists
 			{
 				unsigned int _he = edgeMap[ _e ];
-#ifdef NEW_INDEXING
 				if( he<_he ) halfEdgeToEdgeIndex[ he ] = halfEdgeToEdgeIndex[ _he ] = AtlasMeshEdgeIndex( lastEdgeIndex++ );
-#else // !NEW_INDEXING
-				if( he<_he ) halfEdgeToEdgeIndex[ he ] = halfEdgeToEdgeIndex[ _he ] = lastEdgeIndex++;
-#endif // NEW_INDEXING
 			}
-#ifdef NEW_INDEXING
 			else halfEdgeToEdgeIndex[ he ] = AtlasMeshEdgeIndex( lastEdgeIndex++ );
-#else // !NEW_INDEXING
-			else halfEdgeToEdgeIndex[ he ] = lastEdgeIndex++;
-#endif // NEW_INDEXING
 		}
-#ifdef NEW_INDEXING
 		for( unsigned int he=0 ; he<SimpleTriangleMesh< GeometryReal , 2 >::triangles.size()*3 ; he++ ) if( halfEdgeToEdgeIndex[he]==AtlasMeshEdgeIndex(-1) ) MK_THROW( "Non indexed half edge" );
-#else // !NEW_INDEXING
-		for( unsigned int he=0 ; he<triangles.size()*3 ; he++ ) if( halfEdgeToEdgeIndex[he]==-1 ) MK_THROW( "Non indexed half edge" );
-#endif // NEW_INDEXING
 
 		_halfEdgeToEdge = halfEdgeToEdgeIndex;
 	}

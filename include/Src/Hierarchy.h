@@ -165,11 +165,7 @@ namespace MishaK
 			Real dualValues[6];				// The integrated values of the six incident quadratic basis functions, dualized
 		};
 		SquareMatrix< Real , 2 > tensor;	// The inverse metric tensor defined by the intersecting triangle
-#ifdef NEW_INDEXING
 		AtlasInteriorOrBoundaryNodeIndex fineNodes[6];
-#else // !NEW_INDEXING
-		int fineNodes[6];
-#endif // NEW_INDEXING
 
 		QuadraticElementScalarSample( void ) : _sampleNum(0) , _samples(NULL) {}
 		QuadraticElementScalarSample( unsigned int sz ) : _sampleNum(0) , _samples(NULL) { resize(sz); }
@@ -256,11 +252,7 @@ namespace MishaK
 			Point2D< Real > dualGradients[6];	// The integrated gradients of the six incident quadratic basis functions, dualized
 		};
 		SquareMatrix< Real , 2 > tensor;		// The inverse metric tensor defined by the intersecting triangle
-#ifdef NEW_INDEXING
 		AtlasInteriorOrBoundaryNodeIndex fineNodes[6];
-#else // !NEW_INDEXING
-		int fineNodes[6];
-#endif // NEW_INDEXING
 
 		QuadraticElementGradientSample( void ) : _sampleNum(0) , _samples(NULL) {}
 		QuadraticElementGradientSample( unsigned int sz ) : _sampleNum(0) , _samples(NULL) { resize(sz); }
@@ -432,17 +424,9 @@ namespace MishaK
 	struct AuxiliaryNode
 	{
 		Point2D< GeometryReal > position;
-#ifdef NEW_INDEXING
 		AtlasInteriorOrBoundaryNodeIndex index;
-#else // !NEW_INDEXING
-		unsigned int index;
-#endif // NEW_INDEXING
 
-#ifdef NEW_INDEXING
 		AuxiliaryNode( Point2D< GeometryReal > position=Point2D< GeometryReal >() , AtlasInteriorOrBoundaryNodeIndex index=static_cast< AtlasInteriorOrBoundaryNodeIndex >(-1) ) : position(position) , index(index) {}
-#else // !NEW_INDEXING
-		AuxiliaryNode( Point2D< GeometryReal > position=Point2D< GeometryReal >() , unsigned int index=-1 ) : position(position) , index(index) {}
-#endif // NEW_INDEXING
 	};
 
 	enum struct CellType
@@ -517,17 +501,10 @@ namespace MishaK
 
 		Point2D< GeometryReal > nodePosition( unsigned int i , unsigned int j ) const { return Point2D< GeometryReal >( i*cellSizeW , j*cellSizeH ); }
 
-#ifdef NEW_INDEXING
 		AtlasGridVertexIndex nodeIndex( unsigned int i , unsigned int j ) const { return AtlasGridVertexIndex( atlasWidth*(j+cornerCoords[1]) + (i+cornerCoords[0]) ); }
 		bool factorNodeIndex( AtlasGridVertexIndex g , unsigned int &i , unsigned int &j ) const
-#else //!NEW_INDEXING
-		unsigned int nodeIndex( unsigned int i , unsigned int j ) const { return atlasWidth*(j+cornerCoords[1]) + (i+cornerCoords[0]); }
-		bool factorNodeIndex( unsigned int idx , unsigned int &i , unsigned int &j ) const
-#endif // NEW_INDEXING
 		{
-#ifdef NEW_INDEXING
 			unsigned int idx = static_cast< unsigned int >( g );
-#endif // NEW_INDEXING
 			if( idx<atlasWidth*atlasHeight )
 			{
 				i = idx % atlasWidth , j = idx / atlasWidth;
@@ -538,21 +515,11 @@ namespace MishaK
 			else return false;
 		}
 
-#ifdef NEW_INDEXING
 		AtlasGridEdgeIndex edgeIndex( unsigned int i , unsigned int j , unsigned int dir ) const { return AtlasGridEdgeIndex( atlasWidth*atlasHeight*dir + (j+cornerCoords[1])*atlasWidth + (i+cornerCoords[0]) ); }
-#else // !NEW_INDEXING
-		unsigned int edgeIndex( unsigned int i , unsigned int j , unsigned int dir ) const { return atlasWidth*atlasHeight*dir + (j+cornerCoords[1])*atlasWidth + (i+cornerCoords[0]); }
-#endif // NEW_INDEXING
 
-#ifdef NEW_INDEXING
 		bool factorEdgeIndex( AtlasGridEdgeIndex e , unsigned int &i , unsigned int &j , unsigned int &dir ) const
-#else // !NEW_INDEXING
-		bool factorEdgeIndex( unsigned int idx , unsigned int &i , unsigned int &j , unsigned int &dir ) const
-#endif // NEW_INDEXING
 		{
-#ifdef NEW_INDEXING
 			unsigned int idx = static_cast< unsigned int >( e );
-#endif // NEW_INDEXING
 			dir = 0;
 			if( idx<atlasWidth*atlasHeight )
 			{
@@ -607,18 +574,10 @@ namespace MishaK
 
 		Image< CellType > cellType;
 		Image< TexelType > texelType;
-#ifdef NEW_INDEXING
 		Image< AtlasMeshTriangleIndex > triangleID;
-#else // !NEW_INDEXING
-		Image< unsigned int > triangleID;
-#endif // NEW_INDEXING
 		Image< Point2D< GeometryReal > > barycentricCoords;
 #ifdef PRE_CLIP_TRIANGLES
-#ifdef NEW_INDEXING
 		Image< std::vector< std::pair< ChartMeshTriangleIndex , CellClippedTriangle< GeometryReal > > > > clippedTriangles;
-#else // !NEW_INDEXING
-		Image< std::vector< std::pair< unsigned int , CellClippedTriangle< GeometryReal > > > > clippedTriangles;
-#endif // NEW_INDEXING
 #endif // PRE_CLIP_TRIANGLES
 	};
 

@@ -69,11 +69,7 @@ void InitializeProlongation( int numInteriorTexels , int numFineNodes , int numC
 		const GridChart< GeometryReal > &gridChart = gridCharts[i];
 		for( unsigned int j=0 ; j<gridChart.auxiliaryNodes.size(); j++ )
 		{
-#ifdef NEW_INDEXING
 			unsigned int auxiliaryID = static_cast< unsigned int >( gridChart.auxiliaryNodes[j].index ) - numInteriorTexels;
-#else // !NEW_INDEXING
-			unsigned int auxiliaryID = gridChart.auxiliaryNodes[j].index - numInteriorTexels;
-#endif // NEW_INDEXING
 			auxiliaryNodesDegree[auxiliaryID]++;
 		}
 	}
@@ -87,11 +83,7 @@ void InitializeProlongation( int numInteriorTexels , int numFineNodes , int numC
 		const GridChart< GeometryReal > &gridChart = gridCharts[i];
 		for( unsigned int j=0 ; j<gridChart.auxiliaryNodes.size() ; j++ )
 		{
-#ifdef NEW_INDEXING
 			unsigned int auxiliaryID = static_cast< unsigned int >( gridChart.auxiliaryNodes[j].index ) - numInteriorTexels;
-#else // !NEW_INDEXING
-			unsigned int auxiliaryID = gridChart.auxiliaryNodes[j].index - numInteriorTexels;
-#endif // NEW_INDEXING
 			unsigned int nodeDegree = auxiliaryNodesDegree[auxiliaryID];
 			Point2D< GeometryReal > nodePosition = gridChart.auxiliaryNodes[j].position;
 			int corner[2] = { (int)floor(nodePosition[0] / gridChart.cellSizeW), (int)floor(nodePosition[1] / gridChart.cellSizeH) };
@@ -113,15 +105,9 @@ void InitializeProlongation( int numInteriorTexels , int numFineNodes , int numC
 					if( nodeInfo[texelIndex].texelType==TexelType::InteriorSupported )
 						MK_THROW( "Interior-supported texel cannot be in the support of an auxiliary node. Weight " , texelWeight , " (B)" );
 					coveredNodes.insert(texelIndex);
-#ifdef NEW_INDEXING
 					if( static_cast< unsigned int >(gridChart.auxiliaryNodes[j].index)<numInteriorTexels || static_cast< unsigned int >(gridChart.auxiliaryNodes[j].index)>numFineNodes || texelIndex<0 || texelIndex>numCoarseNodes )
 						MK_THROW( "Out of bounds index" );
 					prolongationTriplets.push_back( Eigen::Triplet< MatrixReal >( static_cast< unsigned int >(gridChart.auxiliaryNodes[j].index) , texelIndex , (MatrixReal)texelWeight ) );
-#else // !NEW_INDEXING
-					if( gridChart.auxiliaryNodes[j].index<numInteriorTexels || gridChart.auxiliaryNodes[j].index>numFineNodes || texelIndex<0 || texelIndex>numCoarseNodes )
-						MK_THROW( "Out of bounds index" );
-					prolongationTriplets.push_back( Eigen::Triplet< MatrixReal >( gridChart.auxiliaryNodes[j].index , texelIndex , (MatrixReal)texelWeight ) );
-#endif // NEW_INDEXING
 				}
 			}
 		}
