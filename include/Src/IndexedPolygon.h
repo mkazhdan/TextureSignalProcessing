@@ -41,9 +41,9 @@ namespace MishaK
 	{
 #ifdef NEW_INDEXING
 		NodeInfo( void ) : index(-1){}
-		NodeInfo( AtlasBoundaryNodeIndex index , Point2D< GeometryReal > position ) : index(index) , position(position) {}
+		NodeInfo( AtlasInteriorOrBoundaryNodeIndex index , Point2D< GeometryReal > position ) : index(index) , position(position) {}
 
-		AtlasBoundaryNodeIndex index;
+		AtlasInteriorOrBoundaryNodeIndex index;
 		Point2D< GeometryReal > position;
 #else // !NEW_INDEXING
 		NodeInfo( void ) : index(-1){}
@@ -116,7 +116,7 @@ namespace MishaK
 	{
 		template< typename T > using Array = std::conditional_t< N==-1 , std::vector< T > , std::array< T , N > >;
 		Array< Point2D < GeometryReal > > vertices;			// The positions of the vertices within the chart
-		Array< AtlasBoundaryNodeIndex > indices;			// The index of the boundary vertex
+		Array< AtlasInteriorOrBoundaryNodeIndex > indices;			// The index of the boundary vertex
 		Array< ChartMeshVertexIndex > vertexIndices;		// The index of the atlas/chart vertex (or -1 if it is not an atlas vertex)
 		Array< AtlasMeshEdgeIndex > atlasVertexParentEdge;	// If this is a not an original mesh vertex, the index of the associated polygon edge 
 		Array< AtlasMeshEdgeIndex > atlasEdgeIndices;		// If this is a boundary segment, the index of the associated polygon edge
@@ -181,14 +181,14 @@ namespace MishaK
 		Point2D< GeometryReal > position;
 		GeometryReal time;
 #ifdef NEW_INDEXING
-		AtlasBoundaryNodeIndex index;
+		AtlasInteriorOrBoundaryNodeIndex index;
 #else // !NEW_INDEXING
 		unsigned int index;
 #endif // NEW_INDEXING
 
 		IntersectionInfo( void ) : index(-1){}
 #ifdef NEW_INDEXING
-		IntersectionInfo( GridMeshIntersectionKey intersectionKey , Point2D< GeometryReal > position , GeometryReal time , AtlasBoundaryNodeIndex index=AtlasBoundaryNodeIndex(-1) )
+		IntersectionInfo( GridMeshIntersectionKey intersectionKey , Point2D< GeometryReal > position , GeometryReal time , AtlasInteriorOrBoundaryNodeIndex index=AtlasInteriorOrBoundaryNodeIndex(-1) )
 #else // !NEW_INDEXING
 		IntersectionInfo( GridMeshIntersectionKey intersectionKey , Point2D< GeometryReal > position , GeometryReal time , unsigned int index=-1 )
 #endif // NEW_INDEXING

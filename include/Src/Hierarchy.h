@@ -165,7 +165,11 @@ namespace MishaK
 			Real dualValues[6];				// The integrated values of the six incident quadratic basis functions, dualized
 		};
 		SquareMatrix< Real , 2 > tensor;	// The inverse metric tensor defined by the intersecting triangle
+#ifdef NEW_INDEXING
+		AtlasInteriorOrBoundaryNodeIndex fineNodes[6];
+#else // !NEW_INDEXING
 		int fineNodes[6];
+#endif // NEW_INDEXING
 
 		QuadraticElementScalarSample( void ) : _sampleNum(0) , _samples(NULL) {}
 		QuadraticElementScalarSample( unsigned int sz ) : _sampleNum(0) , _samples(NULL) { resize(sz); }
@@ -252,7 +256,11 @@ namespace MishaK
 			Point2D< Real > dualGradients[6];	// The integrated gradients of the six incident quadratic basis functions, dualized
 		};
 		SquareMatrix< Real , 2 > tensor;		// The inverse metric tensor defined by the intersecting triangle
+#ifdef NEW_INDEXING
+		AtlasInteriorOrBoundaryNodeIndex fineNodes[6];
+#else // !NEW_INDEXING
 		int fineNodes[6];
+#endif // NEW_INDEXING
 
 		QuadraticElementGradientSample( void ) : _sampleNum(0) , _samples(NULL) {}
 		QuadraticElementGradientSample( unsigned int sz ) : _sampleNum(0) , _samples(NULL) { resize(sz); }
@@ -424,9 +432,17 @@ namespace MishaK
 	struct AuxiliaryNode
 	{
 		Point2D< GeometryReal > position;
+#ifdef NEW_INDEXING
+		AtlasInteriorOrBoundaryNodeIndex index;
+#else // !NEW_INDEXING
 		unsigned int index;
+#endif // NEW_INDEXING
 
+#ifdef NEW_INDEXING
+		AuxiliaryNode( Point2D< GeometryReal > position=Point2D< GeometryReal >() , AtlasInteriorOrBoundaryNodeIndex index=static_cast< AtlasInteriorOrBoundaryNodeIndex >(-1) ) : position(position) , index(index) {}
+#else // !NEW_INDEXING
 		AuxiliaryNode( Point2D< GeometryReal > position=Point2D< GeometryReal >() , unsigned int index=-1 ) : position(position) , index(index) {}
+#endif // NEW_INDEXING
 	};
 
 	enum struct CellType

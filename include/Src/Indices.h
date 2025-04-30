@@ -40,7 +40,7 @@ namespace MishaK
 		explicit operator unsigned int () const { return _idx; }
 
 		UnsignedIntIndex & operator += ( unsigned int off ){ _idx += off ; return *this; }
-		UnsignedIntIndex operator + ( unsigned int off ) const { return UnsignedIntIndex( _idx+off ); }
+		T operator + ( unsigned int off ) const { return T( _idx+off ); }
 
 		bool operator == ( const UnsignedIntIndex &I ) const { return _idx==I._idx; }
 		bool operator != ( const UnsignedIntIndex &I ) const { return _idx!=I._idx; }
@@ -51,31 +51,31 @@ namespace MishaK
 		unsigned int _idx;
 	};
 
-	struct             ChartIndex : public UnsignedIntIndex<             ChartIndex >{ using UnsignedIntIndex<             ChartIndex >::UnsignedIntIndex; };
-	struct AtlasMeshTriangleIndex : public UnsignedIntIndex< AtlasMeshTriangleIndex >{ using UnsignedIntIndex< AtlasMeshTriangleIndex >::UnsignedIntIndex; };
-	struct ChartMeshTriangleIndex : public UnsignedIntIndex< ChartMeshTriangleIndex >{ using UnsignedIntIndex< ChartMeshTriangleIndex >::UnsignedIntIndex; };
-	struct   AtlasMeshVertexIndex : public UnsignedIntIndex<   AtlasMeshVertexIndex >{ using UnsignedIntIndex<   AtlasMeshVertexIndex >::UnsignedIntIndex; };
-	struct   ChartMeshVertexIndex : public UnsignedIntIndex<   ChartMeshVertexIndex >{ using UnsignedIntIndex<   ChartMeshVertexIndex >::UnsignedIntIndex; };
-	struct   AtlasGridVertexIndex : public UnsignedIntIndex<   AtlasGridVertexIndex >{ using UnsignedIntIndex<   AtlasGridVertexIndex >::UnsignedIntIndex; };
-	struct     AtlasMeshEdgeIndex : public UnsignedIntIndex<     AtlasMeshEdgeIndex >{ using UnsignedIntIndex<     AtlasMeshEdgeIndex >::UnsignedIntIndex; };
-	struct     AtlasGridEdgeIndex : public UnsignedIntIndex<     AtlasGridEdgeIndex >{ using UnsignedIntIndex<     AtlasGridEdgeIndex >::UnsignedIntIndex; };
-	struct AtlasMeshHalfEdgeIndex : public UnsignedIntIndex< AtlasMeshHalfEdgeIndex >{ using UnsignedIntIndex< AtlasMeshHalfEdgeIndex >::UnsignedIntIndex; };
-	struct ChartMeshHalfEdgeIndex : public UnsignedIntIndex< ChartMeshHalfEdgeIndex >{ using UnsignedIntIndex< ChartMeshHalfEdgeIndex >::UnsignedIntIndex; };
-//	struct AtlasBoundaryNodeIndex : public UnsignedIntIndex< AtlasBoundaryNodeIndex >{ using UnsignedIntIndex< AtlasBoundaryNodeIndex >::UnsignedIntIndex; };
+	struct                       ChartIndex : public UnsignedIntIndex<                       ChartIndex >{ using UnsignedIntIndex<                       ChartIndex >::UnsignedIntIndex; };
+	struct           AtlasMeshTriangleIndex : public UnsignedIntIndex<           AtlasMeshTriangleIndex >{ using UnsignedIntIndex<           AtlasMeshTriangleIndex >::UnsignedIntIndex; };
+	struct           ChartMeshTriangleIndex : public UnsignedIntIndex<           ChartMeshTriangleIndex >{ using UnsignedIntIndex<           ChartMeshTriangleIndex >::UnsignedIntIndex; };
+	struct             AtlasMeshVertexIndex : public UnsignedIntIndex<             AtlasMeshVertexIndex >{ using UnsignedIntIndex<             AtlasMeshVertexIndex >::UnsignedIntIndex; };
+	struct             ChartMeshVertexIndex : public UnsignedIntIndex<             ChartMeshVertexIndex >{ using UnsignedIntIndex<             ChartMeshVertexIndex >::UnsignedIntIndex; };
+	struct             AtlasGridVertexIndex : public UnsignedIntIndex<             AtlasGridVertexIndex >{ using UnsignedIntIndex<             AtlasGridVertexIndex >::UnsignedIntIndex; };
+	struct               AtlasMeshEdgeIndex : public UnsignedIntIndex<               AtlasMeshEdgeIndex >{ using UnsignedIntIndex<               AtlasMeshEdgeIndex >::UnsignedIntIndex; };
+	struct               AtlasGridEdgeIndex : public UnsignedIntIndex<               AtlasGridEdgeIndex >{ using UnsignedIntIndex<               AtlasGridEdgeIndex >::UnsignedIntIndex; };
+	struct           AtlasMeshHalfEdgeIndex : public UnsignedIntIndex<           AtlasMeshHalfEdgeIndex >{ using UnsignedIntIndex<           AtlasMeshHalfEdgeIndex >::UnsignedIntIndex; };
+	struct           ChartMeshHalfEdgeIndex : public UnsignedIntIndex<           ChartMeshHalfEdgeIndex >{ using UnsignedIntIndex<           ChartMeshHalfEdgeIndex >::UnsignedIntIndex; };
+	struct AtlasInteriorOrBoundaryNodeIndex : public UnsignedIntIndex< AtlasInteriorOrBoundaryNodeIndex >{ using UnsignedIntIndex< AtlasInteriorOrBoundaryNodeIndex >::UnsignedIntIndex; };
 
 #else // !DEBUG_INDEXING
-	using             ChartIndex = unsigned int;
-	using AtlasMeshTriangleIndex = unsigned int;
-	using ChartMeshTriangleIndex = unsigned int;
-	using   AtlasMeshVertexIndex = unsigned int;
-	using   ChartMeshVertexIndex = unsigned int;
-	using   AtlasGridVertexIndex = unsigned int;
-	using AtlasMeshHalfEdgeIndex = unsigned int;
-	using ChartMeshHalfEdgeIndex = unsigned int;
-	using     AtlasMeshEdgeIndex = unsigned int;
-	using     AtlasGridEdgeIndex = unsigned int;
+	using                       ChartIndex = unsigned int;
+	using           AtlasMeshTriangleIndex = unsigned int;
+	using           ChartMeshTriangleIndex = unsigned int;
+	using             AtlasMeshVertexIndex = unsigned int;
+	using             ChartMeshVertexIndex = unsigned int;
+	using             AtlasGridVertexIndex = unsigned int;
+	using           AtlasMeshHalfEdgeIndex = unsigned int;
+	using           ChartMeshHalfEdgeIndex = unsigned int;
+	using               AtlasMeshEdgeIndex = unsigned int;
+	using               AtlasGridEdgeIndex = unsigned int;
+	using AtlasInteriorOrBoundaryNodeIndex = unsigned int;
 #endif // DEBUG_INDEXING
-	using   AtlasBoundaryNodeIndex = unsigned int;
 
 	struct AtlasGridOrMeshEdgeIndex
 	{

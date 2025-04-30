@@ -727,7 +727,11 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 
 	coarseBoundaryFineBoundaryProlongation = boundaryProlongation.coarseBoundaryFineBoundaryProlongation;
 	fineBoundaryCoarseBoundaryRestriction = boundaryProlongation.fineBoundaryCoarseBoundaryRestriction;
+#ifdef NEW_INDEXING
+	const std::vector< AtlasInteriorOrBoundaryNodeIndex > & fineBoundaryIndex = boundaryProlongation.fineBoundaryIndex;
+#else // !NEW_INDEXING
 	std::vector< unsigned int > fineBoundaryIndex = boundaryProlongation.fineBoundaryIndex;
+#endif // NEW_INDEXING
 	unsigned int numFineBoundaryNodes = boundaryProlongation.numFineBoundaryNodes;
 
 	scalarSamples.resize( interiorCellLines.size() );

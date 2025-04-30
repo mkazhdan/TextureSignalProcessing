@@ -29,23 +29,23 @@ DAMAGE.
 // To do:
 // 1. Modify code to distinguish between grid-based indexing and normalized coordinates
 // 2. Add index types for cells/texels
-// 3. Add index/key types to distinguish atlas/hart grid indices
+// 3. Add index/key types to distinguish atlas/chart grid indices
 // 4. Change GetTriangleIntegerBBox/GetEdgeIntegerBBox to return Range (requires disabling USE_RASERIZER)
 #ifndef PRE_PROCESSING_INCLUDED
 #define PRE_PROCESSING_INCLUDED
 
 #define NEW_CODE					// General-purpose experimental code encapsulation
-//#define NEW_INDEXING					// Use separate names for indexing
+#define NEW_INDEXING					// Use separate names for indexing
 //#define SANITY_CHECK				// Enables sanity checks for debugging purposes
 //#define NO_OPEN_GL_VISUALIZATION		// Disable OpenGL visualization
 
-//#define USE_RASTERIZER				// Use triangle/edge rasterization code
+#define USE_RASTERIZER				// Use triangle/edge rasterization code [CURRENTLY SLOWS THINGS DOWN]
 //#define REORDER_BOUNDARY			// Re-order the boundary edges so that they are sequential [NOT NECESSARY]
 
 //#define SEPARATE_POLYGONS			// Keep the polygons obtained by clipping triangles to boundary cells separate
 
 #ifdef USE_RASTERIZER
-#define PRE_CLIP_TRIANGLES			// Clip and store triangles with cells
+#define PRE_CLIP_TRIANGLES			// Clip and store triangles with cells [SLOW AND MEMORY EXPENSIVE]
 #endif // USE_RASTERIZER
 #ifdef NEW_INDEXING
 #define DEBUG_INDEXING					// Use separate classes for indexing

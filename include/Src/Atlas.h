@@ -191,7 +191,7 @@ namespace MishaK
 
 			// A map assigning an index to atlas boundary vertices
 #ifdef NEW_INDEXING
-			std::map< AtlasMeshVertexIndex , AtlasBoundaryNodeIndex > atlasBoundaryVertexToIndex;
+			std::map< AtlasMeshVertexIndex , AtlasInteriorOrBoundaryNodeIndex > atlasBoundaryVertexToIndex;
 #else // !NEW_INDEXING
 			std::map< unsigned int , unsigned int > atlasBoundaryVertexToIndex;
 #endif // NEW_INDEXING

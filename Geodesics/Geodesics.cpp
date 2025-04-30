@@ -695,7 +695,11 @@ void Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 
 	coarseBoundaryFineBoundaryProlongation = boundaryProlongation.coarseBoundaryFineBoundaryProlongation;
 	fineBoundaryCoarseBoundaryRestriction = boundaryProlongation.fineBoundaryCoarseBoundaryRestriction;
+#ifdef NEW_INDEXING
+	const std::vector< AtlasInteriorOrBoundaryNodeIndex > & fineBoundaryIndex = boundaryProlongation.fineBoundaryIndex;
+#else // !NEW_INDEXING
 	std::vector< unsigned int > fineBoundaryIndex = boundaryProlongation.fineBoundaryIndex;
+#endif // NEW_INDEXING
 	unsigned int numFineBoundaryNodes = boundaryProlongation.numFineBoundaryNodes;
 
 	gradientSamples.resize( interiorCellLines.size() );
