@@ -62,14 +62,12 @@ namespace MishaK
 	struct           AtlasMeshHalfEdgeIndex : public UnsignedIntIndex<           AtlasMeshHalfEdgeIndex >{ using UnsignedIntIndex<           AtlasMeshHalfEdgeIndex >::UnsignedIntIndex; };
 	struct           ChartMeshHalfEdgeIndex : public UnsignedIntIndex<           ChartMeshHalfEdgeIndex >{ using UnsignedIntIndex<           ChartMeshHalfEdgeIndex >::UnsignedIntIndex; };
 	struct AtlasInteriorOrBoundaryNodeIndex : public UnsignedIntIndex< AtlasInteriorOrBoundaryNodeIndex >{ using UnsignedIntIndex< AtlasInteriorOrBoundaryNodeIndex >::UnsignedIntIndex; };
-#ifdef NEW_CODE
 	struct           ChartInteriorCellIndex : public UnsignedIntIndex<           ChartInteriorCellIndex >{ using UnsignedIntIndex<           ChartInteriorCellIndex >::UnsignedIntIndex; };
 	struct           ChartBoundaryCellIndex : public UnsignedIntIndex<           ChartBoundaryCellIndex >{ using UnsignedIntIndex<           ChartBoundaryCellIndex >::UnsignedIntIndex; };
 	struct           ChartCombinedCellIndex : public UnsignedIntIndex<           ChartCombinedCellIndex >{ using UnsignedIntIndex<           ChartCombinedCellIndex >::UnsignedIntIndex; };
 	struct           AtlasInteriorCellIndex : public UnsignedIntIndex<           AtlasInteriorCellIndex >{ using UnsignedIntIndex<           AtlasInteriorCellIndex >::UnsignedIntIndex; };
 	struct           AtlasBoundaryCellIndex : public UnsignedIntIndex<           AtlasBoundaryCellIndex >{ using UnsignedIntIndex<           AtlasBoundaryCellIndex >::UnsignedIntIndex; };
 	struct           AtlasCombinedCellIndex : public UnsignedIntIndex<           AtlasCombinedCellIndex >{ using UnsignedIntIndex<           AtlasCombinedCellIndex >::UnsignedIntIndex; };
-#endif // NEW_CODE
 
 #else // !DEBUG_INDEXING
 	using                       ChartIndex = unsigned int;
@@ -83,14 +81,12 @@ namespace MishaK
 	using               AtlasMeshEdgeIndex = unsigned int;
 	using               AtlasGridEdgeIndex = unsigned int;
 	using AtlasInteriorOrBoundaryNodeIndex = unsigned int;
-#ifdef NEW_CODE
 	using           ChartInteriorCellIndex = unsigned int;
 	using           ChartBoundaryCellIndex = unsigned int;
 	using           ChartCombinedCellIndex = unsigned int;
 	using           AtlasInteriorCellIndex = unsigned int;
 	using           AtlasBoundaryCellIndex = unsigned int;
 	using           AtlasCombinedCellIndex = unsigned int;
-#endif // NEW_CODE
 #endif // DEBUG_INDEXING
 
 	struct AtlasGridOrMeshEdgeIndex

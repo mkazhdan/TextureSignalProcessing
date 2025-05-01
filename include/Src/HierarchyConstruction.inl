@@ -486,13 +486,8 @@ void InitializeGridChartsActiveNodes
 	}
 
 	// (5) Enumerate variables in raster order
-#ifdef NEW_CODE
 	gridChart.setCombinedCellOffset( combinedCellIndex );
 	gridChart.setInteriorCellOffset( interiorCellIndex );
-#else // !NEW_CODE
-	gridChart.combinedCellOffset = combinedCellIndex;
-	gridChart.interiorCellOffset = interiorCellIndex;
-#endif // NEW_CODE
 
 	Image< TexelIndex > & texelIndices = gridChart.texelIndices;
 	texelIndices.resize( width , height );
@@ -546,13 +541,8 @@ void InitializeGridChartsActiveNodes
 	std::vector< BilinearElementIndex > & interiorCellInteriorBilinearElementIndices = gridChart.interiorCellInteriorBilinearElementIndices;
 	std::vector< BilinearElementIndex > & interiorCellCombinedBilinearElementIndices = gridChart.interiorCellCombinedBilinearElementIndices;
 
-#ifdef NEW_CODE
 	std::vector< ChartCombinedCellIndex > & interiorCellIndexToCombinedCellIndex = gridChart.interiorCellIndexToCombinedCellIndex;
 	std::vector< ChartCombinedCellIndex > & boundaryCellIndexToCombinedCellIndex = gridChart.boundaryCellIndexToCombinedCellIndex;
-#else // !NEW_CODE
-	std::vector< unsigned int > & interiorCellIndexToCombinedCellIndex = gridChart.interiorCellIndexToCombinedCellIndex;
-	std::vector< unsigned int > & boundaryCellIndexToCombinedCellIndex = gridChart.boundaryCellIndexToCombinedCellIndex;
-#endif // NEW_CODE
 
 	unsigned int _combinedCellIndex = 0;
 	unsigned int _boundaryCellIndex = 0;
@@ -569,32 +559,18 @@ void InitializeGridChartsActiveNodes
 
 		if( gridChart.cellType(i,j)==CellType::Boundary )
 		{
-#ifdef NEW_CODE
 			cellIndices(i,j).boundary = static_cast< ChartBoundaryCellIndex >( _boundaryCellIndex++ );
 			boundaryCellIndexToCombinedCellIndex.push_back( static_cast< ChartCombinedCellIndex >(_combinedCellIndex ) );
-#else // !NEW_CODE
-			cellIndices(i,j).boundary = _boundaryCellIndex++;
-			boundaryCellIndexToCombinedCellIndex.push_back( _combinedCellIndex );
-#endif // NEW_CODE
 		}
 		else
 		{
-#ifdef NEW_CODE
 			cellIndices(i,j).interior = static_cast< ChartInteriorCellIndex >( _interiorCellIndex++ );
 			interiorCellIndexToCombinedCellIndex.push_back( static_cast< ChartCombinedCellIndex >(_combinedCellIndex ) );
-#else // !NEW_CODE
-			cellIndices(i,j).interior = _interiorCellIndex++;
-			interiorCellIndexToCombinedCellIndex.push_back( _combinedCellIndex );
-#endif // NEW_CODE
 
 			interiorCellInteriorBilinearElementIndices.emplace_back( texelIndices(i,j).interiorOrCovered , texelIndices(i+1,j).interiorOrCovered , texelIndices(i+1,j+1).interiorOrCovered , texelIndices(i,j+1).interiorOrCovered );
 			interiorCellCombinedBilinearElementIndices.emplace_back( texelIndices(i,j).combined , texelIndices(i+1,j).combined , texelIndices(i+1,j+1).combined , texelIndices(i,j+1).combined );
 		}
-#ifdef NEW_CODE
 		cellIndices(i,j).combined = static_cast< ChartCombinedCellIndex >( _combinedCellIndex++ );
-#else // !NEW_CODE
-		cellIndices(i,j).combined = _combinedCellIndex++;
-#endif // NEW_CODE
 #else // !USE_RASTERIZER
 		unsigned int globalTexelIndices[4] = { texelIndices(i,j).combined , texelIndices(i+1,j).combined , texelIndices(i+1,j+1).combined , texelIndices(i,j+1).combined };
 		if( globalTexelIndices[0]!=-1 && globalTexelIndices[1]!=-1 && globalTexelIndices[2]!=-1 && globalTexelIndices[3] != -1 )
@@ -603,24 +579,13 @@ void InitializeGridChartsActiveNodes
 
 		if( gridChart.cellType(i,j)==CellType::Boundary )
 		{
-#ifdef NEW_CODE
 			cellIndices(i,j).boundary = static_cast< ChartBoundaryCellIndex >( _boundaryCellIndex++ );
 			boundaryCellIndexToCombinedCellIndex.push_back( static_cast< ChartCombinedCellIndex >( _combinedCellIndex ) );
-#else // !NEW_CODE
-			cellIndices(i,j).boundary = _boundaryCellIndex;
-			boundaryCellIndexToCombinedCellIndex.push_back( _combinedCellIndex );
-			_boundaryCellIndex++;
-#endif // NEW_CODE
 		}
 		else
 		{
-#ifdef NEW_CODE
 			cellIndices(i,j).interior = static_cast< ChartInteriorCellIndex >( _interiorCellIndex++ );
 			interiorCellIndexToCombinedCellIndex.push_back( static_cast< ChartCombinedCellIndex >( _combinedCellIndex ) );
-#else // !NEW_CODE
-			cellIndices(i,j).interior = _interiorCellIndex;
-			interiorCellIndexToCombinedCellIndex.push_back( _combinedCellIndex );
-#endif // NEW_CODE
 
 			unsigned int globalTexelInteriorIndices[4] = { texelIndices(i,j).interiorOrCovered , texelIndices(i+1,j).interiorOrCovered , texelIndices(i+1,j+1).interiorOrCovered , texelIndices(i,j+1).interiorOrCovered };
 			if( globalTexelInteriorIndices[0]!=-1 && globalTexelInteriorIndices[1]!=-1 && globalTexelInteriorIndices[2]!=-1 && globalTexelInteriorIndices[3]!=-1)
@@ -629,16 +594,8 @@ void InitializeGridChartsActiveNodes
 				interiorCellCombinedBilinearElementIndices.push_back( BilinearElementIndex( globalTexelIndices[0] , globalTexelIndices[1] , globalTexelIndices[2] , globalTexelIndices[3] ) );
 			}
 			else MK_THROW( "Interior cell adjacent to non interior node" );
-#ifdef NEW_CODE
-#else // !NEW_CODE
-			_interiorCellIndex++;
-#endif // NEW_CODE
 		}
-#ifdef NEW_CODE
 		cellIndices(i,j).combined = static_cast< ChartCombinedCellIndex >( _combinedCellIndex++ );
-#else // !NEW_CODE
-		cellIndices(i,j).combined = _combinedCellIndex++;
-#endif // NEW_CODE
 #endif // USE_RASTERIZER
 	}
 

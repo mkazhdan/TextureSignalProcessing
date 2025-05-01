@@ -215,17 +215,9 @@ namespace MishaK
 				0 , gridChart.cellIndices.size() ,
 				[&]( unsigned int , size_t i )
 				{
-#ifdef NEW_CODE
-					if( gridChart.cellIndices[i].interior!=static_cast< ChartInteriorCellIndex >(-1) )
-#else // !NEW_CODE
-					if( gridChart.cellIndices[i].interior!=-1 )
-#endif // NEW_CODE
+					if( gridChart.cellIndices[i].interior!=ChartInteriorCellIndex(-1) )
 					{
-#ifdef NEW_CODE
 						ChartInteriorCellIndex interiorIndex = gridChart.cellIndices[i].interior;
-#else // !NEW_CODE
-						unsigned int interiorIndex = gridChart.cellIndices[i].interior;
-#endif // NEW_CODE
 						const std::vector< std::pair< ChartMeshTriangleIndex , CellClippedTriangle< GeometryReal > > > &clippedTriangles = gridChart.clippedTriangles[i];
 						if( !clippedTriangles.size() ) MK_THROW( "Expected triangles" );
 
@@ -236,24 +228,15 @@ namespace MishaK
 							polygonMass = interior_cell_mass * area_scale[ static_cast< unsigned int >( clippedTriangles[0].first ) ];
 							for( int k=0 ; k<4 ; k++ ) for( int l=0 ; l<4 ; l++ )
 								polygonStiffness(k,l) = SquareMatrix< GeometryReal , 2 >::Dot( g_inv[ static_cast< unsigned int >( clippedTriangles[0].first ) ] , interior_cell_stiffnesses[k][l] ) * area_scale[ static_cast< unsigned int >( clippedTriangles[0].first ) ];
-#ifdef NEW_CODE
 							cellMass     [ static_cast< unsigned int >(interiorIndex) ] += polygonMass;
 							cellStiffness[ static_cast< unsigned int >(interiorIndex) ] += polygonStiffness;
-#else // !NEW_CODE
-							cellMass     [ interiorIndex ] += polygonMass;
-							cellStiffness[ interiorIndex ] += polygonStiffness;
-#endif // NEW_CODE
 
 							if( computeDivergence )
 							{
 								SquareMatrix< GeometryReal , 4 > polygonDivergence;
 								for( unsigned int k=0 ; k<4 ; k++ ) for( unsigned int l=0 ; l<4 ; l++ )
 									polygonDivergence(l,k) = SquareMatrix< GeometryReal , 2 >::Dot( g_inv[ static_cast< unsigned int >( clippedTriangles[0].first ) ] , grad_edge_products[l][k] ) * area_scale[ static_cast< unsigned int >( clippedTriangles[0].first ) ];
-#ifdef NEW_CODE
 								cellDivergence[ static_cast< unsigned int >(interiorIndex) ] += polygonDivergence;
-#else // !NEW_CODE
-								cellDivergence[ interiorIndex ] += polygonDivergence;
-#endif // NEW_CODE
 							}
 						}
 						else // The cell is covered by multiple triangles
@@ -335,32 +318,18 @@ namespace MishaK
 										}
 									}
 								}
-#ifdef NEW_CODE
 								cellMass[ static_cast< unsigned int >(interiorIndex) ] += polygonMass;
 								cellStiffness[ static_cast< unsigned int >(interiorIndex) ] += polygonStiffness;
 								if( computeDivergence ) cellDivergence[ static_cast< unsigned int >(interiorIndex) ] += polygonDivergence;
-#else // !NEW_CODE
-								cellMass[ interiorIndex ] += polygonMass;
-								cellStiffness[ interiorIndex ] += polygonStiffness;
-								if( computeDivergence ) cellDivergence[ interiorIndex ] += polygonDivergence;
-#endif // NEW_CODE
 							}
 						}
 					}
-#ifdef NEW_CODE
-					else if( gridChart.cellIndices[i].boundary!=static_cast< ChartBoundaryCellIndex >(-1) )
-#else // !NEW_CODE
-					else if( gridChart.cellIndices[i].boundary!=-1 )
-#endif // NEW_CODE
+					else if( gridChart.cellIndices[i].boundary!=ChartBoundaryCellIndex(-1) )
 					{
 						Index I( i % gridChart.cellIndices.res(0) , i / gridChart.cellIndices.res(0) );
 						auto TextureToCell = [&]( Point2D< GeometryReal > p ){ return Point2D< GeometryReal >( (GeometryReal)( p[0] / gridChart.cellSizeW ) - I[0] , (GeometryReal)( p[1] / gridChart.cellSizeH ) - I[1] ); };
 
-#ifdef NEW_CODE
 						ChartBoundaryCellIndex boundaryIndex = gridChart.cellIndices[i].boundary;
-#else // !NEW_CODE
-						unsigned int boundaryIndex = gridChart.cellIndices[i].boundary;
-#endif // NEW_CODE
 						const std::vector< std::pair< ChartMeshTriangleIndex , CellClippedTriangle< GeometryReal > > > &clippedTriangles = gridChart.clippedTriangles[i];
 						if( !clippedTriangles.size() ) MK_THROW( "Expected triangles" );
 
@@ -380,11 +349,7 @@ namespace MishaK
 								atlasTriangle.atlasVertexParentEdge[k] = AtlasMeshEdgeIndex(-1);
 							}
 
-#ifdef NEW_CODE
 							const std::vector< BoundaryIndexedTriangle< GeometryReal > > & cellBoundaryTriangles = gridChart.boundaryTriangles[ static_cast< unsigned int >(boundaryIndex) ];
-#else // !NEW_CODE
-							const std::vector< BoundaryIndexedTriangle< GeometryReal > > & cellBoundaryTriangles = gridChart.boundaryTriangles[ boundaryIndex ];
-#endif // NEW_CODE
 
 							// Iterate over all elements in the cell
 							for( unsigned int bt=0 ; bt<cellBoundaryTriangles.size() ; bt++ )
@@ -555,52 +520,30 @@ namespace MishaK
 #endif // USE_RASTERIZER
 				auto TextureToCell = [&]( Point2D< GeometryReal > p ){ return Point2D< GeometryReal >( (GeometryReal)( p[0] / gridChart.cellSizeW ) - i , (GeometryReal)( p[1] / gridChart.cellSizeH ) - j ); };
 
-#ifdef NEW_CODE
 				ChartInteriorCellIndex localInteriorIndex = gridChart.cellIndices(i,j).interior;
 				ChartBoundaryCellIndex localBoundaryIndex = gridChart.cellIndices(i,j).boundary;
-				if( localInteriorIndex!=static_cast< ChartInteriorCellIndex >(-1) && localBoundaryIndex!=static_cast< ChartBoundaryCellIndex >(-1) ) MK_THROW( "Cell simultaneously interior and boundary" );
-#else // !NEW_CODE
-				int localInteriorIndex = gridChart.cellIndices(i,j).interior , localBoundaryIndex = gridChart.cellIndices(i,j).boundary;
-				if( localInteriorIndex!=-1 && localBoundaryIndex!=-1 ) MK_THROW( "Cell simultaneously interior and boundary" );
-#endif // NEW_CODE
+				if( localInteriorIndex!=ChartInteriorCellIndex(-1) && localBoundaryIndex!=ChartBoundaryCellIndex(-1) ) MK_THROW( "Cell simultaneously interior and boundary" );
 
 				// If the cell is entirely within the triangle...
-#ifdef NEW_CODE
-				if( CellInTriangle( i , j , parametricVertices ) && localInteriorIndex!=static_cast< ChartInteriorCellIndex >(-1) )
-#else // !NEW_CODE
-				if( CellInTriangle( i , j , parametricVertices ) && localInteriorIndex!=-1 )
-#endif // NEW_CODE
+				if( CellInTriangle( i , j , parametricVertices ) && localInteriorIndex!=ChartInteriorCellIndex(-1) )
 				{
 					SquareMatrix< GeometryReal , 4 > polygonMass , polygonStiffness;
 
 					polygonMass = interior_cell_mass * cell_area_scale_factor;
 					for( unsigned int k=0 ; k<4 ; k++ ) for( int l=0 ; l<4 ; l++ )
 						polygonStiffness(k,l) = SquareMatrix< GeometryReal , 2 >::Dot( cell_metric_inverse , interior_cell_stiffnesses[k][l] ) * cell_area_scale_factor;
-#ifdef NEW_CODE
 					cellMass     [ static_cast< unsigned int >(localInteriorIndex) ] += polygonMass;
 					cellStiffness[ static_cast< unsigned int >(localInteriorIndex) ] += polygonStiffness;
-#else // !NEW_CODE
-					cellMass     [ localInteriorIndex ] += polygonMass;
-					cellStiffness[ localInteriorIndex ] += polygonStiffness;
-#endif // NEW_CODE
 
 					if( computeDivergence )
 					{
 						SquareMatrix< GeometryReal , 4 > polygonDivergence;
 						for( unsigned int k=0 ; k<4 ; k++ ) for( int l=0 ; l<4 ; l++ )
 							polygonDivergence(l,k) = SquareMatrix< GeometryReal , 2 >::Dot( cell_metric_inverse , grad_edge_products[l][k] ) * cell_area_scale_factor;
-#ifdef NEW_CODE
 						cellDivergence[ static_cast< unsigned int >(localInteriorIndex) ] += polygonDivergence;
-#else // !NEW_CODE
-						cellDivergence[localInteriorIndex] += polygonDivergence;
-#endif // NEW_CODE
 					}
 				}
-#ifdef NEW_CODE
-				else if( localInteriorIndex!=static_cast< ChartInteriorCellIndex >(-1) )
-#else // !NEW_CODE
-				else if( localInteriorIndex!=-1 )
-#endif // NEW_CODE
+				else if( localInteriorIndex!=ChartInteriorCellIndex(-1) )
 				{
 					// For interior cells, the cell and the element are the same thing
 					auto TextureToElement = TextureToCell;
@@ -678,28 +621,14 @@ namespace MishaK
 								}
 							}
 						}
-#ifdef NEW_CODE
 						cellMass[ static_cast< unsigned int >(localInteriorIndex) ] += polygonMass;
 						cellStiffness[ static_cast< unsigned int >(localInteriorIndex) ] += polygonStiffness;
 						if( computeDivergence ) cellDivergence[ static_cast< unsigned int >(localInteriorIndex) ] += polygonDivergence;
-#else // !NEW_CODE
-						cellMass[localInteriorIndex] += polygonMass;
-						cellStiffness[localInteriorIndex] += polygonStiffness;
-						if( computeDivergence ) cellDivergence[localInteriorIndex] += polygonDivergence;
-#endif // NEW_CODE
 					}
 				}
-#ifdef NEW_CODE
-				else if( localBoundaryIndex!=static_cast< ChartBoundaryCellIndex >(-1) )
-#else // !NEW_CODE
-				else if( localBoundaryIndex!=-1 )
-#endif // NEW_CODE
+				else if( localBoundaryIndex!=ChartBoundaryCellIndex(-1) )
 				{
-#ifdef NEW_CODE
 					std::vector< BoundaryIndexedTriangle< GeometryReal > > cellBoundaryTriangles = gridChart.boundaryTriangles[ static_cast< unsigned int >( localBoundaryIndex ) ];
-#else // !NEW_CODE
-					std::vector< BoundaryIndexedTriangle< GeometryReal > > cellBoundaryTriangles = gridChart.boundaryTriangles[ localBoundaryIndex ];
-#endif // NEW_CODE
 					// Iterate over all elements in the cell
 					for( int bt=0 ; bt<cellBoundaryTriangles.size() ; bt++ )
 					{
@@ -896,13 +825,8 @@ namespace MishaK
 			const BilinearElementIndex & indicesGlobal   = gridChart.interiorCellCombinedBilinearElementIndices[i];
 			const BilinearElementIndex & indicesInterior = gridChart.interiorCellInteriorBilinearElementIndices[i];
 
-#ifdef NEW_CODE
 			ChartCombinedCellIndex localCellIndex = gridChart.interiorCellIndexToCombinedCellIndex[i];
 			AtlasCombinedCellIndex globalCellIndex = gridChart.chartToAtlasCombinedCellIndex( localCellIndex );
-#else // !NEW_CODE
-			int localCellIndex = gridChart.interiorCellIndexToCombinedCellIndex[i];
-			int globalCellIndex = localCellIndex + gridChart.combinedCellOffset;
-#endif // NEW_CODE
 
 			unsigned int cellCoarseEdgeIndex[4];
 			bool coarseEdgeIndexInitialized = false;
@@ -968,11 +892,7 @@ namespace MishaK
 						// Add cell data
 						AtlasInteriorOrBoundaryNodeIndex _fineBoundaryIndex = fineBoundaryIndex[indicesInterior[k]];
 						Point3D< MatrixReal > p( (MatrixReal)prod[0][k] , (MatrixReal)prod[1][k] , (MatrixReal)prod[2][k] );
-#ifdef NEW_CODE
 						boundaryCellStiffnessTriplets.push_back( Eigen::Triplet< Point3D< MatrixReal > >( static_cast< unsigned int >(_fineBoundaryIndex) , static_cast< unsigned int >(globalCellIndex) , p ) );
-#else // !NEW_CODE
-						boundaryCellStiffnessTriplets.push_back( Eigen::Triplet< Point3D< MatrixReal > >( static_cast< unsigned int >(_fineBoundaryIndex) , globalCellIndex , p ) );
-#endif // NEW_CODE
 					}
 					if( computeDivergence )
 					{
@@ -997,13 +917,8 @@ namespace MishaK
 
 		for( int c=0 ; c<gridChart.boundaryTriangles.size() ; c++ )
 		{
-#ifdef NEW_CODE
 			ChartCombinedCellIndex localCellIndex = gridChart.boundaryCellIndexToCombinedCellIndex[c];
 			AtlasCombinedCellIndex globalCellIndex = gridChart.chartToAtlasCombinedCellIndex( localCellIndex );
-#else // !NEW_CODE
-			int localCellIndex = gridChart.boundaryCellIndexToCombinedCellIndex[c];
-			int globalCellIndex = localCellIndex + gridChart.combinedCellOffset;
-#endif // NEW_CODE
 
 			for( unsigned int b=0 ; b<gridChart.boundaryTriangles[c].size() ; b++ )
 			{
@@ -1041,11 +956,7 @@ namespace MishaK
 					for( unsigned int k=0 ; k<6 ; k++ )
 					{
 						Point3D< MatrixReal > p( (MatrixReal)prod[0][k] , (MatrixReal)prod[1][k] , (MatrixReal)prod[2][k] );
-#ifdef NEW_CODE
 						boundaryCellStiffnessTriplets.push_back( Eigen::Triplet< Point3D< MatrixReal > >( static_cast< unsigned int >( fineTriangleElementIndices[k] ) , static_cast< unsigned int >( globalCellIndex ) , p ) );
-#else // !NEW_CODE
-						boundaryCellStiffnessTriplets.push_back( Eigen::Triplet< Point3D< MatrixReal > >( static_cast< unsigned int >( fineTriangleElementIndices[k] ) , globalCellIndex , p ) );
-#endif // NEW_CODE
 					}
 				}
 				for( unsigned int k=0 ; k<6 ; k++ ) for( unsigned int l=0 ; l<6 ; l++ )

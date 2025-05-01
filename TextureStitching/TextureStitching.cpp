@@ -1079,7 +1079,7 @@ void Stitching< PreReal , Real , TextureBitDepth >::Init( void )
 		rMesh.makeUnitArea();
 		Pointer( FEM::CoordinateXForm< PreReal > ) xForms = rMesh.getCoordinateXForms();
 
-		for( int i=0 ; i<textureNodes.size() ; i++ ) if( textureNodes[i].tID!=AtlasMeshTriangleIndex(-1) && !textureNodes[i].isInterior )
+		for( unsigned int i=0 ; i<textureNodes.size() ; i++ ) if( textureNodes[i].tID!=AtlasMeshTriangleIndex(-1) && !textureNodes[i].isInterior )
 		{
 			FEM::HermiteSamplePoint< PreReal > _p;
 			_p.tIdx = static_cast< unsigned int >( textureNodes[i].tID );

@@ -27,6 +27,8 @@ DAMAGE.
 */
 
 // To do:
+// -- Replace InteriorOrCovered -> Supported
+// -- Introduce auxiliary vector taking index type as accessors
 // 1. Modify code to distinguish between grid-based indexing and normalized coordinates
 // 2. Add index types for cells/texels
 // 3. Add index/key types to distinguish atlas/chart grid indices

@@ -47,18 +47,10 @@ namespace MishaK
 			interiorTexeltoCellLine[i].coeffOffset = rasterLines[i].coeffStartIndex;
 
 			if( gridCharts[chartID].cellType(ci-1,cj-1)!=CellType::Interior ) MK_THROW( "Non interior cell" );
-#ifdef NEW_CODE
 			interiorTexeltoCellLine[i].previousCellStartIndex = gridCharts[chartID].chartToAtlasCombinedCellIndex( gridCharts[chartID].cellIndices( ci-1 , cj-1 ).combined );
-#else // !NEW_CODE
-			interiorTexeltoCellLine[i].previousCellStartIndex = gridCharts[chartID].cellIndices(ci - 1, cj - 1).combined + gridCharts[chartID].combinedCellOffset;
-#endif // NEW_CODE
 
 			if( gridCharts[chartID].cellType(ci-1,cj)!=CellType::Interior ) MK_THROW( "Non interior cell" );
-#ifdef NEW_CODE
 			interiorTexeltoCellLine[i].nextCellStartIndex = gridCharts[chartID].chartToAtlasCombinedCellIndex( gridCharts[chartID].cellIndices( ci-1 , cj ).combined );
-#else // !NEW_CODE
-			interiorTexeltoCellLine[i].nextCellStartIndex = gridCharts[chartID].cellIndices(ci - 1, cj).combined + gridCharts[chartID].combinedCellOffset;
-#endif // NEW_CODE
 		}
 	}
 }
