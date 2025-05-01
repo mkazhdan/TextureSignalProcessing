@@ -175,7 +175,11 @@ public:
 
 	static unsigned int seedTexel;
 
+#ifdef NEW_CODE
+	static IndexVector< ChartIndex , AtlasChart< PreReal > > atlasCharts;
+#else // !NEW_CODE
 	static std::vector< AtlasChart< PreReal > > atlasCharts;
+#endif // NEW_CODE
 	static std::vector< std::vector< SquareMatrix< PreReal , 2 > > > parameterMetric;
 
 	static std::vector< SystemCoefficients< Real > > multigridCoefficients[2];
@@ -257,7 +261,11 @@ template< typename PreReal , typename Real > int																	GrayScottReacti
 template< typename PreReal , typename Real > bool																	GrayScottReactionDiffusion< PreReal , Real >::mouseSelectionActive = false;
 template< typename PreReal , typename Real > Padding																GrayScottReactionDiffusion< PreReal , Real >::padding;
 
+#ifdef NEW_CODE
+template< typename PreReal , typename Real > IndexVector< ChartIndex , AtlasChart< PreReal > >						GrayScottReactionDiffusion< PreReal , Real> ::atlasCharts;
+#else // !NEW_CODE
 template< typename PreReal , typename Real > std::vector< AtlasChart< PreReal > >									GrayScottReactionDiffusion< PreReal , Real> ::atlasCharts;
+#endif // NEW_CODE
 template< typename PreReal , typename Real > std::vector< std::vector< SquareMatrix< PreReal , 2 > > >				GrayScottReactionDiffusion< PreReal , Real >::parameterMetric;
 
 template< typename PreReal , typename Real > SparseMatrix< Real , int >												GrayScottReactionDiffusion< PreReal , Real >::mass;

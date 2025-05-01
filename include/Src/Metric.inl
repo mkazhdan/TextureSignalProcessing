@@ -206,17 +206,29 @@ void InitializeParameterMetric
 (
 	const TexturedTriangleMesh< GeometryReal > &mesh ,
 	const std::vector< SquareMatrix< GeometryReal , 2 > > &embeddingMetric ,
+#ifdef NEW_CODE
+	const IndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
+#else // !NEW_CODE
 	const std::vector< AtlasChart< GeometryReal > > &atlasCharts ,
+#endif // NEW_CODE
 	std::vector< std::vector< SquareMatrix< GeometryReal , 2 > > > &parameterMetric
 )
 {
 	parameterMetric.resize( atlasCharts.size() );
 	for( unsigned int i=0 ; i<atlasCharts.size() ; i++ )
 	{
+#ifdef NEW_CODE
+		const AtlasChart< GeometryReal > & atlasChart = atlasCharts[ ChartIndex(i) ];
+		parameterMetric[i].resize( atlasChart.numTriangles() );
+		for( unsigned int k=0 ; k<atlasChart.numTriangles() ; k++ )
+		{
+			AtlasMeshTriangleIndex t = atlasChart.atlasTriangle( ChartMeshTriangleIndex(k) );
+#else // !NEW_CODE
 		parameterMetric[i].resize( atlasCharts[i].numTriangles() );
 		for( unsigned int k=0 ; k<atlasCharts[i].numTriangles() ; k++ )
 		{
 			AtlasMeshTriangleIndex t = atlasCharts[i].atlasTriangle( ChartMeshTriangleIndex(k) );
+#endif // NEW_CODE
 
 			SquareMatrix< GeometryReal , 2 > embedding_metric = embeddingMetric[ static_cast< unsigned int >(t) ];
 			Simplex< GeometryReal , 2 , 2 > simplex = mesh.textureTriangle( static_cast< unsigned int >(t) );
@@ -241,7 +253,11 @@ void InitializeMetric
 (
 	TexturedTriangleMesh< GeometryReal > &mesh ,
 	int metricMode ,
+#ifdef NEW_CODE
+	const IndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
+#else // !NEW_CODE
 	const std::vector< AtlasChart< GeometryReal > > &atlasCharts ,
+#endif // NEW_CODE
 	std::vector< std::vector< SquareMatrix< GeometryReal , 2 > > > &parameterMetric
 )
 {
@@ -260,7 +276,11 @@ template< typename GeometryReal , typename LengthToAnisotropyFunctor >
 void InitializeAnisotropicMetric
 (
 	TexturedTriangleMesh< GeometryReal > &mesh ,
+#ifdef NEW_CODE
+	const IndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
+#else // !NEW_CODE
 	const std::vector< AtlasChart< GeometryReal > > &atlasCharts ,
+#endif // NEW_CODE
 	const std::vector< Point2D< GeometryReal > > &vf ,
 	const LengthToAnisotropyFunctor &LengthToAnisotropy ,
 	std::vector< std::vector< SquareMatrix< GeometryReal , 2 > > > &parameterMetric

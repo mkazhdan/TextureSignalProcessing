@@ -997,7 +997,11 @@ namespace MishaK
 	void InitializeMassAndStiffness
 	(
 		const std::vector< std::vector< SquareMatrix< GeometryReal , 2 > > > &parameterMetric ,
+#ifdef NEW_CODE
+		const IndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
+#else // !NEW_CODE
 		const std::vector< AtlasChart< GeometryReal > > &atlasCharts ,
+#endif // NEW_CODE
 		const GridAtlas< GeometryReal , MatrixReal > &gridAtlas ,
 		const std::vector< AtlasInteriorOrBoundaryNodeIndex > &fineBoundaryIndex ,
 		int numFineBoundaryNodes ,
@@ -1053,7 +1057,11 @@ namespace MishaK
 			{
 				InitializeChartMassAndStiffness< Samples >
 					(
+#ifdef NEW_CODE
+						parameterMetric[i] , atlasCharts[ ChartIndex(i) ] , gridCharts[i] , indexConverter , fineBoundaryIndex , deepMassCoefficients , deepStiffnessCoefficients , 
+#else // !NEW_CODE
 						parameterMetric[i] , atlasCharts[i] , gridCharts[i] , indexConverter , fineBoundaryIndex , deepMassCoefficients , deepStiffnessCoefficients , 
+#endif // NEW_CODE
 						_boundaryBoundaryMassTriplets[thread] , _boundaryBoundaryStiffnessTriplets[thread] ,
 						_boundaryDeepMassTriplets[thread] , _boundaryDeepStiffnessTriplets[thread] ,
 						computeCellBasedStiffness , inputSignal , boundarySignal , texelToCellCoeffs ,
@@ -1085,7 +1093,7 @@ namespace MishaK
 			for( int i=0 ; i<_boundaryCellStiffnessTriplets.size() ; i++ ) count += _boundaryCellStiffnessTriplets[i].size();
 			std::vector< Eigen::Triplet< MatrixReal > > boundaryCellStiffnessTriplets( count );
 
-			for( int c=0 ; c<3 ; c++ )
+			for( unsigned int c=0 ; c<3 ; c++ )
 			{
 				for( int i=0 , idx=0 ; i<_boundaryCellStiffnessTriplets.size() ; i++ ) for( int j=0 ; j<_boundaryCellStiffnessTriplets[i].size() ; j++ , idx++ )
 					boundaryCellStiffnessTriplets[idx] = Eigen::Triplet< MatrixReal >( _boundaryCellStiffnessTriplets[i][j].row() , _boundaryCellStiffnessTriplets[i][j].col() , _boundaryCellStiffnessTriplets[i][j].value()[c] );
@@ -1101,7 +1109,11 @@ namespace MishaK
 		SystemCoefficients< MatrixReal > &stiffness ,
 		const HierarchicalSystem< GeometryReal , MatrixReal > &hierarchy ,
 		const std::vector< std::vector< SquareMatrix< GeometryReal , 2 > > > &parameterMetric ,
+#ifdef NEW_CODE
+		const IndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
+#else // !NEW_CODE
 		const std::vector< AtlasChart< GeometryReal > > &atlasCharts ,
+#endif // NEW_CODE
 		const BoundaryProlongationData< MatrixReal > &boundaryProlongation ,
 		bool computeCellBasedStiffness ,
 		const std::vector< Point3D< MatrixReal > > &inputSignal ,
@@ -1194,7 +1206,11 @@ namespace MishaK
 		SystemCoefficients< MatrixReal > &stiffness ,
 		const HierarchicalSystem< GeometryReal , MatrixReal >& hierarchy ,
 		const std::vector< std::vector< SquareMatrix< GeometryReal , 2 > > > &parameterMetric ,
+#ifdef NEW_CODE
+		const IndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
+#else // !NEW_CODE
 		const std::vector< AtlasChart< GeometryReal > > &atlasCharts ,
+#endif //  NEW_CODE
 		const BoundaryProlongationData< MatrixReal > &boundaryProlongation ,
 		bool computeCellBasedStiffness ,
 		const std::vector< Point3D< MatrixReal > > &inputSignal ,

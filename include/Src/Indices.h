@@ -48,7 +48,6 @@ namespace MishaK
 
 		friend std::ostream &operator << ( std::ostream &os , const UnsignedIntIndex &I ){ return os << I._idx; }
 
-#ifdef NEW_CODE
 		template< typename Data >
 		struct IndexVector : protected std::vector< Data >
 		{
@@ -61,15 +60,12 @@ namespace MishaK
 			Data & operator[]( const T &t ){ return std::vector< Data >::operator[]( static_cast< unsigned int >(t) ); }
 			const Data & operator[]( const T &t ) const { return std::vector< Data >::operator[]( static_cast< unsigned int >(t) ); }
 		};
-#endif // NEW_CODE
 	protected:
 		unsigned int _idx;
 	};
 
-#ifdef NEW_CODE
 	template< typename T , typename Data >
 	using IndexVector = typename UnsignedIntIndex< T >::template IndexVector< Data >;
-#endif // NEW_CODE
 
 	struct                       ChartIndex : public UnsignedIntIndex<                       ChartIndex >{ using UnsignedIntIndex<                       ChartIndex >::UnsignedIntIndex; };
 	struct           AtlasMeshTriangleIndex : public UnsignedIntIndex<           AtlasMeshTriangleIndex >{ using UnsignedIntIndex<           AtlasMeshTriangleIndex >::UnsignedIntIndex; };
@@ -90,10 +86,8 @@ namespace MishaK
 	struct           AtlasCombinedCellIndex : public UnsignedIntIndex<           AtlasCombinedCellIndex >{ using UnsignedIntIndex<           AtlasCombinedCellIndex >::UnsignedIntIndex; };
 
 #else // !DEBUG_INDEXING
-#ifdef NEW_CODE
 	template< typename T , typename Data >
 	using IndexVector = std::vector< Data >;
-#endif // NEW_CODE
 
 	using                       ChartIndex = unsigned int;
 	using           AtlasMeshTriangleIndex = unsigned int;

@@ -540,7 +540,11 @@ namespace MishaK
 	void InitializeIntegration
 	(
 		const std::vector< std::vector< SquareMatrix< GeometryReal , 2 > > >& parameterMetric ,
+#ifdef NEW_CODE
+		const IndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
+#else // !NEW_CODE
 		const std::vector< AtlasChart< GeometryReal > > &atlasCharts ,
+#endif // NEW_CODE
 		const std::vector< GridChart< GeometryReal > > &gridCharts ,
 		const std::vector< std::pair< unsigned int , unsigned int > > &interiorCellLineIndex ,
 		const std::vector< AtlasInteriorOrBoundaryNodeIndex > &fineBoundaryIndex ,
@@ -554,7 +558,11 @@ namespace MishaK
 			0 , gridCharts.size() ,
 			[&]( unsigned int , size_t i )
 			{
+#ifdef NEW_CODE
+				InitializeIntegration< Samples >( parameterMetric[i] , atlasCharts[ ChartIndex(i) ] , gridCharts[i] , interiorCellLineIndex , fineBoundaryIndex , elementSamples , element_samples_bilinear_mutex , element_samples_quadratic_mutex , fastIntegration );
+#else // !NEW_CODE
 				InitializeIntegration< Samples >( parameterMetric[i] , atlasCharts[i] , gridCharts[i] , interiorCellLineIndex , fineBoundaryIndex , elementSamples , element_samples_bilinear_mutex , element_samples_quadratic_mutex , fastIntegration );
+#endif // NEW_CODE
 			}
 		);
 	}

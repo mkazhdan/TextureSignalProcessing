@@ -165,7 +165,11 @@ public:
 
 	static int impulseTexel;
 
+#ifdef NEW_CODE
+	static IndexVector< ChartIndex , AtlasChart< PreReal > > atlasCharts;
+#else // !NEW_CODE
 	static std::vector< AtlasChart< PreReal > > atlasCharts;
+#endif // NEW_CODE
 	static std::vector<std::vector< SquareMatrix< PreReal , 2 > > > parameterMetric;
 
 	static Real lineConvolutionRange;
@@ -260,7 +264,11 @@ template< typename PreReal , typename Real > unsigned int												LineConvolu
 
 template< typename PreReal , typename Real > TexturedMeshVisualization									LineConvolution< PreReal , Real >::visualization( true );
 
+#ifdef NEW_CODE
+template< typename PreReal , typename Real > IndexVector< ChartIndex , AtlasChart< PreReal > >			LineConvolution< PreReal , Real >::atlasCharts;
+#else // !NEW_CODE
 template< typename PreReal , typename Real > std::vector< AtlasChart< PreReal > >						LineConvolution< PreReal , Real >::atlasCharts;
+#endif // NEW_CODE
 template< typename PreReal , typename Real > std::vector< std::vector< SquareMatrix< PreReal , 2 > > >	LineConvolution< PreReal , Real >::parameterMetric;
 
 template< typename PreReal , typename Real > Padding													LineConvolution< PreReal , Real >::padding;

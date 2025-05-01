@@ -185,7 +185,11 @@ public:
 	static std::vector< Point3D< float > >textureNodePositions;
 	static std::vector< Point3D< float > >textureEdgePositions;
 
+#ifdef NEW_CODE
+	static IndexVector< ChartIndex , AtlasChart< PreReal > > atlasCharts;
+#else // !NEW_CODE
 	static std::vector< AtlasChart< PreReal > > atlasCharts;
+#endif // NEW_CODE
 
 	static std::vector< BilinearElementIndex > bilinearElementIndices;
 
@@ -341,7 +345,11 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth > std:
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > VCycleSolvers< typename Stitching< PreReal , Real , TextureBitDepth >::DirectSolver >		Stitching< PreReal , Real , TextureBitDepth >::vCycleSolvers;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > typename Stitching< PreReal , Real , TextureBitDepth >::DirectSolver				Stitching< PreReal , Real , TextureBitDepth >::directSolver;
 
+#ifdef NEW_CODE
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > IndexVector< ChartIndex , AtlasChart< PreReal > >				Stitching< PreReal , Real , TextureBitDepth >::atlasCharts;
+#else // !NEW_CODE
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< AtlasChart< PreReal > >							Stitching< PreReal , Real , TextureBitDepth >::atlasCharts;
+#endif // NEW_CODE
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Point3D< float > >									Stitching< PreReal , Real , TextureBitDepth >::textureNodePositions;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Point3D< float > >									Stitching< PreReal , Real , TextureBitDepth >::textureEdgePositions;

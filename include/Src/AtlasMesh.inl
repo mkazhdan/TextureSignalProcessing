@@ -37,11 +37,7 @@ void AtlasMesh< GeometryReal >::initialize
 	{
 		std::vector< unsigned int > triangleToChart = inputMesh.texture.trianglesToComponents( _numCharts );
 		_triangleToChart.resize( triangleToChart.size() );
-#ifdef NEW_CODE
 		for( unsigned int i=0 ; i<triangleToChart.size() ; i++ ) _triangleToChart[ AtlasMeshTriangleIndex(i) ] = ChartIndex( triangleToChart[i] );
-#else // !NEW_CODE
-		for( unsigned int i=0 ; i<triangleToChart.size() ; i++ ) _triangleToChart[i] = ChartIndex( triangleToChart[i] );
-#endif // NEW_CODE
 	}
 
 	// Compute the 2D mesh(es)
@@ -88,11 +84,7 @@ void AtlasMesh< GeometryReal >::initialize
 		}
 
 		unsigned int lastEdgeIndex = 0;
-#ifdef NEW_CODE
 		IndexVector< AtlasMeshHalfEdgeIndex , AtlasMeshEdgeIndex > halfEdgeToEdgeIndex( 3 * SimpleTriangleMesh< GeometryReal , 2 >::triangles.size() , AtlasMeshEdgeIndex(-1) );
-#else // !NEW_CODE
-		std::vector< AtlasMeshEdgeIndex > halfEdgeToEdgeIndex( 3 * SimpleTriangleMesh< GeometryReal , 2 >::triangles.size() , AtlasMeshEdgeIndex(-1) );
-#endif // NEW_CODE
 		for( unsigned int he=0 ; he<SimpleTriangleMesh< GeometryReal , 2 >::triangles.size()*3 ; he++ )
 		{
 			SimplexIndex< 1 > _e = SimpleTriangleMesh< GeometryReal , 2 >::edgeIndex( he , true );
@@ -101,23 +93,11 @@ void AtlasMesh< GeometryReal >::initialize
 			if( edgeMap.find(_e)!=edgeMap.end() ) // If the opposite edge exists
 			{
 				unsigned int _he = edgeMap[ _e ];
-#ifdef NEW_CODE
 				if( he<_he ) halfEdgeToEdgeIndex[ AtlasMeshHalfEdgeIndex(he) ] = halfEdgeToEdgeIndex[ AtlasMeshHalfEdgeIndex(_he) ] = AtlasMeshEdgeIndex( lastEdgeIndex++ );
-#else // !NEW_CODE
-				if( he<_he ) halfEdgeToEdgeIndex[ he ] = halfEdgeToEdgeIndex[ _he ] = AtlasMeshEdgeIndex( lastEdgeIndex++ );
-#endif // NEW_CODE
 			}
-#ifdef NEW_CODE
 			else halfEdgeToEdgeIndex[ AtlasMeshHalfEdgeIndex(he) ] = AtlasMeshEdgeIndex( lastEdgeIndex++ );
-#else // !NEW_CODE
-			else halfEdgeToEdgeIndex[ he ] = AtlasMeshEdgeIndex( lastEdgeIndex++ );
-#endif // NEW_CODE
 		}
-#ifdef NEW_CODE
 		for( unsigned int he=0 ; he<SimpleTriangleMesh< GeometryReal , 2 >::triangles.size()*3 ; he++ ) if( halfEdgeToEdgeIndex[ AtlasMeshHalfEdgeIndex(he) ]==AtlasMeshEdgeIndex(-1) ) MK_THROW( "Non indexed half edge" );
-#else // !NEW_CODE
-		for( unsigned int he=0 ; he<SimpleTriangleMesh< GeometryReal , 2 >::triangles.size()*3 ; he++ ) if( halfEdgeToEdgeIndex[he]==AtlasMeshEdgeIndex(-1) ) MK_THROW( "Non indexed half edge" );
-#endif // NEW_CODE
 
 		_halfEdgeToEdge = halfEdgeToEdgeIndex;
 	}
