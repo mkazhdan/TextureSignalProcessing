@@ -38,24 +38,52 @@ enum
 
 
 template< typename GeometryReal , typename LengthToAnisotropyFunctor >
-void InitializeVectorFieldMetric( const std::vector< SquareMatrix< GeometryReal , 2 > >& embeddingMetric , const std::vector< Point2D< GeometryReal > >& vf , const LengthToAnisotropyFunctor &LengthToAnisotropy , bool normalizeArea , std::vector< SquareMatrix< GeometryReal , 2 > >& outputMetric )
+void InitializeVectorFieldMetric
+(
+#ifdef NEW_CODE
+	const IndexVector< AtlasMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > >& embeddingMetric ,
+	const IndexVector< AtlasMeshTriangleIndex , Point2D< GeometryReal > >& vf ,
+#else // !NEW_CODE
+	const std::vector< SquareMatrix< GeometryReal , 2 > >& embeddingMetric ,
+	const std::vector< Point2D< GeometryReal > >& vf ,
+#endif // NEW_CODE
+	const LengthToAnisotropyFunctor &LengthToAnisotropy ,
+	bool normalizeArea ,
+#ifdef NEW_CODE
+	IndexVector< AtlasMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > >& outputMetric
+#else // !NEW_CODE
+	std::vector< SquareMatrix< GeometryReal , 2 > >& outputMetric
+#endif // NEW_CODE
+)
 {
 	int tCount = (int)embeddingMetric.size();
 
 	outputMetric.resize( embeddingMetric.size() );
 	GeometryReal totalMass = 0;
 
-	for( int t=0 ; t<tCount ; t++ )
+	for( unsigned int t=0 ; t<tCount ; t++ )
 	{
+#ifdef NEW_CODE
+		SquareMatrix< GeometryReal , 2 > g = embeddingMetric[ AtlasMeshTriangleIndex(t) ];
+#else // !NEW_CODE
 		SquareMatrix< GeometryReal , 2 > g = embeddingMetric[t];
+#endif // NEW_CODE
 		SquareMatrix< GeometryReal , 2 > gOrtho;
+#ifdef NEW_CODE
+		GeometryReal len2 = std::max< GeometryReal >( Point2D< GeometryReal >::Dot( vf[ AtlasMeshTriangleIndex(t) ] , embeddingMetric[ AtlasMeshTriangleIndex(t) ] * vf[ AtlasMeshTriangleIndex(t) ] ) , 0 );
+#else // !NEW_CODE
 		GeometryReal len2 = std::max< GeometryReal >( Point2D< GeometryReal >::Dot( vf[t] , embeddingMetric[t] * vf[t] ) , 0 );
+#endif // NEW_CODE
 		if( len2>0 )
 		{
 			// Construct an orthonormal frame with basis[0] pointing in the direction of vf
 			Point2D< GeometryReal > basis[2];
 			{
+#ifdef NEW_CODE
+				basis[0] = vf[ AtlasMeshTriangleIndex(t) ];
+#else // !NEW_CODE
 				basis[0] = vf[t];
+#endif // NEW_CODE
 				Point2D< GeometryReal > temp = g*basis[0];
 				basis[1] = Point2D< GeometryReal >( -temp[1] , temp[0] );
 				for( int e=0 ; e<2 ; e++ ) basis[e] /= sqrt( Point2D< GeometryReal >::Dot( basis[e] , g*basis[e] ) );
@@ -78,11 +106,21 @@ void InitializeVectorFieldMetric( const std::vector< SquareMatrix< GeometryReal 
 		// When the anisotropy is small we want to revert to the standard metric
 		// When the anisotropy is large we want to scale distances along the perpendicular direction
 		GeometryReal aniso = (GeometryReal)LengthToAnisotropy( sqrt(len2) );
+#ifdef NEW_CODE
+		outputMetric[ AtlasMeshTriangleIndex(t) ] = gOrtho*aniso + g;
+
+		totalMass += sqrt( outputMetric[ AtlasMeshTriangleIndex(t) ].determinant() ) / 2;
+#else // !NEW_CODE
 		outputMetric[t] = gOrtho*aniso + g;
 
 		totalMass += sqrt( outputMetric[t].determinant() ) / 2;
+#endif // NEW_CODE
 	}
+#ifdef NEW_CODE
+	if( normalizeArea ) for( int t=0 ; t<tCount ; t++ )	outputMetric[ AtlasMeshTriangleIndex(t) ] /= totalMass;
+#else // !NEW_CODE
 	if( normalizeArea ) for( int t=0 ; t<tCount ; t++ )	outputMetric[t] /= totalMass;
+#endif // NEW_CODE 
 }
 
 #define NORMALIZE_SURFACE_EMBEDDING
@@ -161,7 +199,11 @@ void InitializeEmbeddingMetric
 (
 	const TexturedTriangleMesh< GeometryReal > &mesh ,
 	bool normalizeArea ,
+#ifdef NEW_CODE
+	IndexVector< AtlasMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > & embeddingMetric
+#else // !NEW_CODE
 	std::vector< SquareMatrix< GeometryReal , 2 > > &embeddingMetric
+#endif // NEW_CODE
 )
 {
 	embeddingMetric.resize( mesh.numTriangles() );
@@ -172,10 +214,18 @@ void InitializeEmbeddingMetric
 	{
 		Simplex< GeometryReal , 3 , 2 > s = mesh.surfaceTriangle( t );
 		totalMass += s.measure();
+#ifdef NEW_CODE
+		embeddingMetric[ AtlasMeshTriangleIndex(t) ] = s.metric();
+#else // !NEW_CODE
 		embeddingMetric[t] = s.metric();
+#endif // NEW_CODE
 	}
 
+#ifdef NEW_CODE
+	if( normalizeArea ) for( int t=0 ; t<mesh.numTriangles() ; t++ ) embeddingMetric[ AtlasMeshTriangleIndex(t) ] /= totalMass;
+#else // !NEW_CODE
 	if( normalizeArea ) for( int t=0 ; t<mesh.numTriangles() ; t++ ) embeddingMetric[t] /= totalMass;
+#endif // NEW_CODE
 }
 
 template< typename GeometryReal >
@@ -183,7 +233,11 @@ void InitializeUniformMetric
 (
 	const TexturedTriangleMesh< GeometryReal > &mesh ,
 	bool normalizeArea ,
+#ifdef NEW_CODE
+	IndexVector< AtlasMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > &embeddingMetric
+#else // !NEW_CODE
 	std::vector< SquareMatrix< GeometryReal , 2 > > &embeddingMetric
+#endif // NEW_CODE
 )
 {
 	embeddingMetric.resize( mesh.numTriangles() );
@@ -195,42 +249,60 @@ void InitializeUniformMetric
 		Simplex< GeometryReal , 2 , 2 > s = mesh.textureTriangle( t );
 		SquareMatrix< GeometryReal , 2 > g = s.metric();
 		totalMass += s.measure();
+#ifdef NEW_CODE
+		embeddingMetric[ AtlasMeshTriangleIndex(t) ] = g;
+#else // !NEW_CODE
 		embeddingMetric[t] = g;
+#endif // NEW_CODE
 	}
 
+#ifdef NEW_CODE
+	if( normalizeArea ) for( unsigned int t=0 ; t<mesh.numTriangles() ; t++ ) embeddingMetric[ AtlasMeshTriangleIndex(t) ] /= totalMass;
+#else // !NEW_CODE
 	if( normalizeArea ) for( unsigned int t=0 ; t<mesh.numTriangles() ; t++ ) embeddingMetric[t] /= totalMass;
+#endif // NEW_CODE
 }
 
 template< typename GeometryReal >
 void InitializeParameterMetric
 (
 	const TexturedTriangleMesh< GeometryReal > &mesh ,
-	const std::vector< SquareMatrix< GeometryReal , 2 > > &embeddingMetric ,
 #ifdef NEW_CODE
-	const IndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
+	const IndexVector< AtlasMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > &embeddingMetric ,
 #else // !NEW_CODE
-	const std::vector< AtlasChart< GeometryReal > > &atlasCharts ,
+	const std::vector< SquareMatrix< GeometryReal , 2 > > &embeddingMetric ,
 #endif // NEW_CODE
+	const IndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
+#ifdef NEW_CODE
+	IndexVector< ChartIndex , IndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > > &parameterMetrics
+#else // !NEW_CODE
 	std::vector< std::vector< SquareMatrix< GeometryReal , 2 > > > &parameterMetric
+#endif // NEW_CODE
 )
 {
+#ifdef NEW_CODE
+	parameterMetrics.resize( atlasCharts.size() );
+#else // !NEW_CODE
 	parameterMetric.resize( atlasCharts.size() );
+#endif // NEW_CODE
 	for( unsigned int i=0 ; i<atlasCharts.size() ; i++ )
 	{
-#ifdef NEW_CODE
 		const AtlasChart< GeometryReal > & atlasChart = atlasCharts[ ChartIndex(i) ];
+#ifdef NEW_CODE
+		IndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > & parameterMetric = parameterMetrics[ ChartIndex(i) ];
+		parameterMetric.resize( atlasChart.numTriangles() );
+#else // !NEW_CODE
 		parameterMetric[i].resize( atlasChart.numTriangles() );
+#endif // NEW_CODE
 		for( unsigned int k=0 ; k<atlasChart.numTriangles() ; k++ )
 		{
 			AtlasMeshTriangleIndex t = atlasChart.atlasTriangle( ChartMeshTriangleIndex(k) );
-#else // !NEW_CODE
-		parameterMetric[i].resize( atlasCharts[i].numTriangles() );
-		for( unsigned int k=0 ; k<atlasCharts[i].numTriangles() ; k++ )
-		{
-			AtlasMeshTriangleIndex t = atlasCharts[i].atlasTriangle( ChartMeshTriangleIndex(k) );
-#endif // NEW_CODE
 
+#ifdef NEW_CODE
+			SquareMatrix< GeometryReal , 2 > embedding_metric = embeddingMetric[t];
+#else // !NEW_CODE
 			SquareMatrix< GeometryReal , 2 > embedding_metric = embeddingMetric[ static_cast< unsigned int >(t) ];
+#endif // NEW_CODE
 			Simplex< GeometryReal , 2 , 2 > simplex = mesh.textureTriangle( static_cast< unsigned int >(t) );
 			Point2D< GeometryReal > dp[2] = { simplex[1]-simplex[0] , simplex[2]-simplex[0] };
 
@@ -243,7 +315,11 @@ void InitializeParameterMetric
 
 			SquareMatrix< GeometryReal , 2 > inverse_parametric_map_differential = parametric_map_differential.inverse();
 			SquareMatrix< GeometryReal , 2 > parameter_metric = inverse_parametric_map_differential.transpose() * embedding_metric * inverse_parametric_map_differential;
+#ifdef NEW_CODE
+			parameterMetric[ ChartMeshTriangleIndex(k) ] = parameter_metric;
+#else // !NEW_CODE
 			parameterMetric[i][k] = parameter_metric;
+#endif // NEW_CODE
 		}
 	}
 }
@@ -253,16 +329,21 @@ void InitializeMetric
 (
 	TexturedTriangleMesh< GeometryReal > &mesh ,
 	int metricMode ,
-#ifdef NEW_CODE
 	const IndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
+#ifdef NEW_CODE
+	IndexVector< ChartIndex , IndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > > &parameterMetric
 #else // !NEW_CODE
-	const std::vector< AtlasChart< GeometryReal > > &atlasCharts ,
-#endif // NEW_CODE
 	std::vector< std::vector< SquareMatrix< GeometryReal , 2 > > > &parameterMetric
+#endif // NEW_CODE
 )
 {
+#ifdef NEW_CODE
+	IndexVector< AtlasMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > surfaceMetric;
+	IndexVector< AtlasMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > embeddingMetric;
+#else // !NEW_CODE
 	std::vector< SquareMatrix< GeometryReal , 2 > > surfaceMetric;
 	std::vector< SquareMatrix< GeometryReal , 2 > > embeddingMetric;
+#endif // NEW_CODE
 
 	InitializeEmbeddingMetric( mesh , true , embeddingMetric );
 
@@ -276,18 +357,27 @@ template< typename GeometryReal , typename LengthToAnisotropyFunctor >
 void InitializeAnisotropicMetric
 (
 	TexturedTriangleMesh< GeometryReal > &mesh ,
-#ifdef NEW_CODE
 	const IndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
+#ifdef NEW_CODE
+	const IndexVector< AtlasMeshTriangleIndex , Point2D< GeometryReal > > &vf ,
 #else // !NEW_CODE
-	const std::vector< AtlasChart< GeometryReal > > &atlasCharts ,
-#endif // NEW_CODE
 	const std::vector< Point2D< GeometryReal > > &vf ,
+#endif // NEW_CODE
 	const LengthToAnisotropyFunctor &LengthToAnisotropy ,
+#ifdef NEW_CODE
+	IndexVector< ChartIndex , IndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > > &parameterMetric
+#else // !NEW_CODE
 	std::vector< std::vector< SquareMatrix< GeometryReal , 2 > > > &parameterMetric
+#endif // NEW_CODE
 )
 {
+#ifdef NEW_CODE
+	IndexVector< AtlasMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > surfaceMetric;
+	IndexVector< AtlasMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > embeddingMetric;
+#else // !NEW_CODE
 	std::vector< SquareMatrix< GeometryReal , 2 > > surfaceMetric;
 	std::vector< SquareMatrix< GeometryReal , 2 > > embeddingMetric;
+#endif // NEW_CODE
 
 	InitializeEmbeddingMetric( mesh , true , embeddingMetric );
 	InitializeVectorFieldMetric( embeddingMetric , vf , LengthToAnisotropy , true , surfaceMetric );

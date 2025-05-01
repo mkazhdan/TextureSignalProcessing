@@ -59,6 +59,9 @@ namespace MishaK
 			void push_back( const Data &data ){ return std::vector< Data >::push_back(data); }
 			Data & operator[]( const T &t ){ return std::vector< Data >::operator[]( static_cast< unsigned int >(t) ); }
 			const Data & operator[]( const T &t ) const { return std::vector< Data >::operator[]( static_cast< unsigned int >(t) ); }
+
+			explicit operator const std::vector< Data > & () const { return *this; }
+			explicit operator       std::vector< Data > & ()       { return *this; }
 		};
 	protected:
 		unsigned int _idx;

@@ -146,12 +146,12 @@ public:
 
 	static unsigned int impulseTexel;
 
-#ifdef NEW_CODE
 	static IndexVector< ChartIndex , AtlasChart< PreReal > > atlasCharts;
+#ifdef NEW_CODE
+	static IndexVector< ChartIndex , IndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > > parameterMetric;
 #else // !NEW_CODE
-	static std::vector< AtlasChart< PreReal > > atlasCharts;
-#endif // NEW_CODE
 	static std::vector< std::vector< SquareMatrix< PreReal , 2 > > > parameterMetric;
+#endif // NEW_CODE
 
 	static Real smoothImpulseRange;
 	static Real geodesicDistanceRange;
@@ -228,12 +228,12 @@ template< typename PreReal , typename Real > int															Geodesics< PreRea
 template< typename PreReal , typename Real > bool															Geodesics< PreReal , Real >::mouseSelectionActive = false;
 template< typename PreReal , typename Real > Padding														Geodesics< PreReal , Real >::padding;
 
-#ifdef NEW_CODE
 template< typename PreReal , typename Real > IndexVector< ChartIndex , AtlasChart< PreReal > >				Geodesics< PreReal , Real >::atlasCharts;
+#ifdef NEW_CODE
+template< typename PreReal , typename Real > IndexVector< ChartIndex , IndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > >	Geodesics< PreReal , Real >::parameterMetric;
 #else // !NEW_CODE
-template< typename PreReal , typename Real > std::vector< AtlasChart< PreReal > >							Geodesics< PreReal , Real >::atlasCharts;
-#endif // NEW_CODE
 template< typename PreReal , typename Real > std::vector< std::vector< SquareMatrix< PreReal , 2 > > >		Geodesics< PreReal , Real >::parameterMetric;
+#endif // NEW_CODE
 
 template< typename PreReal , typename Real > SparseMatrix< Real , int >										Geodesics< PreReal , Real >::mass;
 template< typename PreReal , typename Real > SparseMatrix< Real , int >										Geodesics< PreReal , Real >::stiffness;

@@ -94,12 +94,20 @@ namespace MishaK
 	template< typename GeometryReal >
 	void InitializeGridAtlasInteriorCellLines
 	(
+#ifdef NEW_CODE
+		const IndexVector< ChartIndex , GridChart< GeometryReal > >& gridCharts ,
+#else // !NEW_CODE
 		const std::vector< GridChart< GeometryReal > >& gridCharts ,
+#endif // NEW_CODE
 		std::vector< InteriorCellLine >& interiorCellLines ,
 		std::vector< std::pair< unsigned int , unsigned int > >& interiorCellLineIndex
 	)
 	{
+#ifdef NEW_CODE
+		for( unsigned int i=0 ; i<gridCharts.size() ; i++ ) InitializeGridChartInteriorCellLines( gridCharts[ ChartIndex(i) ] , interiorCellLines , interiorCellLineIndex );
+#else // !NEW_CODE
 		for( int i=0 ; i<gridCharts.size() ; i++ ) InitializeGridChartInteriorCellLines( gridCharts[i] , interiorCellLines , interiorCellLineIndex );
+#endif //  NEW_CODE
 	}
 
 	//////////////////////////////////////
@@ -218,7 +226,11 @@ namespace MishaK
 	template< unsigned int Samples , typename GeometryReal , typename ElementSamples >
 	void InitializeIntegration
 	(
+#ifdef NEW_CODE
+		const IndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > &texture_metrics ,
+#else // !NEW_CODE
 		const std::vector< SquareMatrix< GeometryReal , 2 > > &texture_metrics ,
+#endif // NEW_CODE
 		const AtlasChart< GeometryReal > &atlasChart ,
 		const GridChart< GeometryReal > &gridChart ,
 		const std::vector< std::pair< unsigned int , unsigned int > >& interiorCellLineIndex ,
@@ -320,7 +332,11 @@ namespace MishaK
 			Point2D< GeometryReal > tPos[3];
 			for( unsigned int k=0 ; k<=2 ; k++ ) tPos[k] = atlasChart.vertex( tri[k] ) - gridChart.corner;
 
+#ifdef NEW_CODE
+			SquareMatrix< GeometryReal , 2 > texture_metric = texture_metrics[ ChartMeshTriangleIndex(t) ];
+#else // !NEW_CODE
 			SquareMatrix< GeometryReal , 2 > texture_metric = texture_metrics[t];
+#endif // NEW_CODE
 			SquareMatrix< GeometryReal , 2 > cell_metric = cell_to_texture_differential.transpose() * texture_metric * cell_to_texture_differential;
 			SquareMatrix< GeometryReal , 2 > cell_metric_inverse = cell_metric.inverse();
 			GeometryReal cell_area = (GeometryReal)sqrt( cell_metric.determinant() );
@@ -539,13 +555,17 @@ namespace MishaK
 	template< unsigned int Samples , typename GeometryReal , typename ElementSamples >
 	void InitializeIntegration
 	(
-		const std::vector< std::vector< SquareMatrix< GeometryReal , 2 > > >& parameterMetric ,
 #ifdef NEW_CODE
-		const IndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
+		const IndexVector< ChartIndex , IndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > >& parameterMetric ,
 #else // !NEW_CODE
-		const std::vector< AtlasChart< GeometryReal > > &atlasCharts ,
+		const std::vector< std::vector< SquareMatrix< GeometryReal , 2 > > >& parameterMetric ,
 #endif // NEW_CODE
+		const IndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
+#ifdef NEW_CODE
+		const IndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts ,
+#else // !NEW_CODE
 		const std::vector< GridChart< GeometryReal > > &gridCharts ,
+#endif // NEW_CODE
 		const std::vector< std::pair< unsigned int , unsigned int > > &interiorCellLineIndex ,
 		const std::vector< AtlasInteriorOrBoundaryNodeIndex > &fineBoundaryIndex ,
 		ElementSamples &elementSamples ,
@@ -559,9 +579,9 @@ namespace MishaK
 			[&]( unsigned int , size_t i )
 			{
 #ifdef NEW_CODE
-				InitializeIntegration< Samples >( parameterMetric[i] , atlasCharts[ ChartIndex(i) ] , gridCharts[i] , interiorCellLineIndex , fineBoundaryIndex , elementSamples , element_samples_bilinear_mutex , element_samples_quadratic_mutex , fastIntegration );
+				InitializeIntegration< Samples >( parameterMetric[ ChartIndex(i) ] , atlasCharts[ ChartIndex(i) ] , gridCharts[ ChartIndex(i) ] , interiorCellLineIndex , fineBoundaryIndex , elementSamples , element_samples_bilinear_mutex , element_samples_quadratic_mutex , fastIntegration );
 #else // !NEW_CODE
-				InitializeIntegration< Samples >( parameterMetric[i] , atlasCharts[i] , gridCharts[i] , interiorCellLineIndex , fineBoundaryIndex , elementSamples , element_samples_bilinear_mutex , element_samples_quadratic_mutex , fastIntegration );
+				InitializeIntegration< Samples >( parameterMetric[i] , atlasCharts[ ChartIndex(i) ] , gridCharts[i] , interiorCellLineIndex , fineBoundaryIndex , elementSamples , element_samples_bilinear_mutex , element_samples_quadratic_mutex , fastIntegration );
 #endif // NEW_CODE
 			}
 		);

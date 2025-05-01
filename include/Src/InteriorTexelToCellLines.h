@@ -34,13 +34,22 @@ namespace MishaK
 	{
 		const std::vector<RasterLine> & rasterLines = gridAtlas.rasterLines;
 		const std::vector<GridNodeInfo> & nodeInfo = gridAtlas.nodeInfo;
+#ifdef NEW_CODE
+		const IndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts = gridAtlas.gridCharts;
+#else // !NEW_CODE
 		const std::vector< GridChart< GeometryReal > > &gridCharts = gridAtlas.gridCharts;
-		interiorTexeltoCellLine.resize(rasterLines.size());
-		for (int i = 0; i < rasterLines.size(); i++) {
+#endif // NEW_CODE
+		interiorTexeltoCellLine.resize( rasterLines.size() );
+		for( unsigned int i=0 ; i<rasterLines.size() ; i++ )
+		{
 			int interiorTexelStart = rasterLines[i].lineStartIndex;
-			int ci = nodeInfo[interiorTexelStart].ci;
-			int cj = nodeInfo[interiorTexelStart].cj;
+			unsigned int ci = nodeInfo[interiorTexelStart].ci;
+			unsigned int cj = nodeInfo[interiorTexelStart].cj;
+#ifdef NEW_CODE
+			ChartIndex chartID = nodeInfo[interiorTexelStart].chartID;
+#else // !NEW_CODE
 			int chartID = nodeInfo[interiorTexelStart].chartID;
+#endif // NEW_CODE
 
 			interiorTexeltoCellLine[i].texelStartIndex = rasterLines[i].lineStartIndex;
 			interiorTexeltoCellLine[i].texelEndIndex = rasterLines[i].lineEndIndex;

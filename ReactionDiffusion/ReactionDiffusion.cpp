@@ -175,12 +175,12 @@ public:
 
 	static unsigned int seedTexel;
 
-#ifdef NEW_CODE
 	static IndexVector< ChartIndex , AtlasChart< PreReal > > atlasCharts;
+#ifdef NEW_CODE
+	static IndexVector< ChartIndex , IndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > > parameterMetric;
 #else // !NEW_CODE
-	static std::vector< AtlasChart< PreReal > > atlasCharts;
-#endif // NEW_CODE
 	static std::vector< std::vector< SquareMatrix< PreReal , 2 > > > parameterMetric;
+#endif // NEW_CODE
 
 	static std::vector< SystemCoefficients< Real > > multigridCoefficients[2];
 	static std::vector< MultigridLevelVariables< Real > > multigridVariables[2];
@@ -261,12 +261,12 @@ template< typename PreReal , typename Real > int																	GrayScottReacti
 template< typename PreReal , typename Real > bool																	GrayScottReactionDiffusion< PreReal , Real >::mouseSelectionActive = false;
 template< typename PreReal , typename Real > Padding																GrayScottReactionDiffusion< PreReal , Real >::padding;
 
-#ifdef NEW_CODE
 template< typename PreReal , typename Real > IndexVector< ChartIndex , AtlasChart< PreReal > >						GrayScottReactionDiffusion< PreReal , Real> ::atlasCharts;
+#ifdef NEW_CODE
+template< typename PreReal , typename Real > IndexVector< ChartIndex , IndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > >	GrayScottReactionDiffusion< PreReal , Real >::parameterMetric;
 #else // !NEW_CODE
-template< typename PreReal , typename Real > std::vector< AtlasChart< PreReal > >									GrayScottReactionDiffusion< PreReal , Real> ::atlasCharts;
-#endif // NEW_CODE
 template< typename PreReal , typename Real > std::vector< std::vector< SquareMatrix< PreReal , 2 > > >				GrayScottReactionDiffusion< PreReal , Real >::parameterMetric;
+#endif // NEW_CODE
 
 template< typename PreReal , typename Real > SparseMatrix< Real , int >												GrayScottReactionDiffusion< PreReal , Real >::mass;
 template< typename PreReal , typename Real > SparseMatrix< Real , int >												GrayScottReactionDiffusion< PreReal , Real >::stiffness;
@@ -598,17 +598,30 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 
 	if( VectorField.set )
 	{
+#ifdef NEW_CODE
+		IndexVector< AtlasMeshTriangleIndex , Point2D< PreReal > > vectorField;
+#else // !NEW_CODE
 		std::vector< Point2D< PreReal > > vectorField;
+#endif // NEW_CODE
 		// Read in the vector field
 		if( IntrinsicVectorField.set )
 		{
+#ifdef NEW_CODE
+			ReadVector( ( std::vector< Point2D< PreReal > > & )vectorField , VectorField.value );
+#else // !NEW_CODE
 			ReadVector( vectorField , VectorField.value );
+#endif // NEW_CODE
 			if( vectorField.size()!=mesh.numTriangles() ) MK_THROW( "Triangle and vector counts don't match: " , mesh.numTriangles() , " != " , vectorField.size() );
 		}
 		else
 		{
+#ifdef NEW_CODE
+			IndexVector< AtlasMeshTriangleIndex , Point3D< PreReal > > _vectorField;
+			ReadVector( ( std::vector< Point2D< PreReal > > & )_vectorField , VectorField.value );
+#else // !NEW_CODE
 			std::vector< Point3D< PreReal > > _vectorField;
 			ReadVector( _vectorField , VectorField.value );
+#endif // NEW_CODE
 			if( _vectorField.size()!=mesh.numTriangles() ) MK_THROW( "Triangle and vector counts don't match: " , mesh.numTriangles() , " != " , _vectorField.size() );
 			vectorField.resize( _vectorField.size() );
 			ThreadPool::ParallelFor
@@ -620,25 +633,43 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 						Point3D< PreReal > d[] = { s[1]-s[0] , s[2]-s[0] };
 						SquareMatrix< PreReal , 2 > Dot;
 						for( int j=0 ; j<2 ; j++ ) for( int k=0 ; k<2 ; k++ ) Dot(j,k) = Point3D< PreReal >::Dot( d[j] , d[k] );
+#ifdef NEW_CODE
+						Point2D< PreReal > dot( Point3D< PreReal >::Dot( d[0] , _vectorField[ AtlasMeshTriangleIndex(i) ] ) , Point3D< PreReal >::Dot( d[1] , _vectorField[ AtlasMeshTriangleIndex(i) ] ) );
+						vectorField[ AtlasMeshTriangleIndex(i) ] = Dot.inverse() * dot;
+#else // !NEW_CODE
 						Point2D< PreReal > dot( Point3D< PreReal >::Dot( d[0] , _vectorField[i] ) , Point3D< PreReal >::Dot( d[1] , _vectorField[i] ) );
 						vectorField[i] = Dot.inverse() * dot;
+#endif // NEW_CODE
 					}
 				);
 		}
 		// Normalize the vector-field to have unit-norm
 		{
+#ifdef NEW_CODE
+			IndexVector< AtlasMeshTriangleIndex , SquareMatrix< PreReal , 2 > > embeddingMetric;
+#else // !NEW_CODE
 			std::vector< SquareMatrix< PreReal , 2 > > embeddingMetric;
+#endif // NEW_CODE
 			InitializeEmbeddingMetric( mesh , true , embeddingMetric );
 			{
 				PreReal norm = 0 , area = 0;
 				for( int t=0 ; t<embeddingMetric.size() ; t++ )
 				{
+#ifdef NEW_CODE
+					PreReal a = (PreReal)sqrt( embeddingMetric[ AtlasMeshTriangleIndex(t) ].determinant() ) / 2.;
+					norm += Point2D< PreReal >::Dot( vectorField[ AtlasMeshTriangleIndex(t) ] , embeddingMetric[ AtlasMeshTriangleIndex(t) ] * vectorField[ AtlasMeshTriangleIndex(t) ] ) * a;
+#else // !NEW_CODE
 					PreReal a = (PreReal)sqrt( embeddingMetric[t].determinant() ) / 2.;
 					norm += Point2D< PreReal >::Dot( vectorField[t] , embeddingMetric[t]*vectorField[t] ) * a;
+#endif // NEW_CODE
 					area += a;
 				}
 				norm = sqrt( norm / area );
+#ifdef NEW_CODE
+				for( int t=0 ; t<embeddingMetric.size() ; t++ ) vectorField[ AtlasMeshTriangleIndex(t) ] /= norm;
+#else // !NEW_CODE
 				for( int t=0 ; t<embeddingMetric.size() ; t++ ) vectorField[t] /= norm;
+#endif // NEW_CODE
 			}
 		}
 		// Initialize the metric from the vector field
@@ -659,7 +690,11 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 	}
 
 	// Scale the metric so that the area is equal to the resolution
+#ifdef NEW_CODE
+	for( unsigned int i=0 ; i<parameterMetric.size() ; i++ ) for( unsigned int j=0 ; j<parameterMetric[ ChartIndex(i) ].size() ; j++ ) parameterMetric[ ChartIndex(i) ][ ChartMeshTriangleIndex(j) ] *= textureNodes.size() / 2;
+#else // !NEW_CODE
 	for( int i=0 ; i<parameterMetric.size() ; i++ ) for( int j=0 ; j<parameterMetric[i].size() ; j++ ) parameterMetric[i][j] *= textureNodes.size() / 2;
+#endif // NEW_CODE
 
 	timer.reset();
 	{

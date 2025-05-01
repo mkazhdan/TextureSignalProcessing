@@ -586,9 +586,14 @@ namespace MishaK
 
 	struct GridNodeInfo
 	{
+#ifdef NEW_CODE
+		ChartIndex chartID;
+#else // !NEW_CODE
+#pragma message( "[WARNING] Change to ChartIndex" );
 		int chartID;
-		int ci;
-		int cj;
+#endif // NEW_CODE
+		unsigned int ci;
+		unsigned int cj;
 		TexelType texelType;
 	};
 
@@ -619,7 +624,11 @@ namespace MishaK
 			size_t numDeep( void ) const { return _deepToSupported.size(); }
 		protected:
 			template< typename GeometryReal >
+#ifdef NEW_CODE
+			friend void InitializeIndexConverter( const IndexVector< ChartIndex , GridChart< GeometryReal > > & , unsigned int , IndexConverter & );
+#else // !NEW_CODE
 			friend void InitializeIndexConverter( const std::vector< GridChart< GeometryReal > > & , unsigned int , IndexConverter & );
+#endif // NEW_CODE
 
 			std::vector< std::pair< bool , unsigned int > > _supportedToBoundaryOrDeep;
 			std::vector< unsigned int > _boundaryToSupported;
@@ -633,7 +642,11 @@ namespace MishaK
 		std::vector< ThreadTask > threadTasks;
 		typename GridAtlas<>::IndexConverter indexConverter;
 		std::vector< GridNodeInfo > nodeInfo;
+#ifdef NEW_CODE
+		IndexVector< ChartIndex , GridChart< GeometryReal > > gridCharts;
+#else // !NEW_CODE
 		std::vector< GridChart< GeometryReal > > gridCharts;
+#endif // NEW_CODE
 		std::vector< SegmentedRasterLine > segmentedLines;
 		std::vector< RasterLine > rasterLines;
 		std::vector< RasterLine > restrictionLines;

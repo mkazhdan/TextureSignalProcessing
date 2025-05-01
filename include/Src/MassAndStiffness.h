@@ -38,7 +38,11 @@ namespace MishaK
 	template< unsigned int Samples , typename GeometryReal , typename MatrixReal >
 	void InitializeChartMassAndStiffness
 	(
+#ifdef NEW_CODE
+		const IndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > &texture_metrics ,
+#else // !NEW_CODE
 		const std::vector< SquareMatrix< GeometryReal , 2 > > &texture_metrics ,
+#endif // NEW_CODE
 		const AtlasChart< GeometryReal > &atlasChart ,
 		const GridChart< GeometryReal > &gridChart ,
 		const typename GridAtlas<>::IndexConverter & indexConverter ,
@@ -204,7 +208,11 @@ namespace MishaK
 				0 , atlasChart.numTriangles() ,
 				[&]( unsigned int , size_t t )
 				{
+#ifdef NEW_CODE
+					SquareMatrix< GeometryReal , 2 > cell_metric = cell_to_texture_differential.transpose() * texture_metrics[ ChartMeshTriangleIndex(t) ] * cell_to_texture_differential;
+#else // !NEW_CODE
 					SquareMatrix< GeometryReal , 2 > cell_metric = cell_to_texture_differential.transpose() * texture_metrics[t] * cell_to_texture_differential;
+#endif // NEW_CODE
 					g_inv[t] = cell_metric.inverse();
 					area_scale[t] = (GeometryReal)sqrt( cell_metric.determinant() );
 				}
@@ -377,7 +385,11 @@ namespace MishaK
 									// Convert the polygon vertices from the cell frame to the element frame
 									for( int ii=0 ; ii<polygon.size() ; ii++ ) polygon[ii] = CellToElement( polygon[ii] );
 
+#ifdef NEW_CODE
+									SquareMatrix< GeometryReal , 2 > cell_metric = cell_to_texture_differential.transpose() * texture_metrics[ ChartMeshTriangleIndex(t) ] * cell_to_texture_differential;
+#else // !NEW_CODE
 									SquareMatrix< GeometryReal , 2 > cell_metric = cell_to_texture_differential.transpose() * texture_metrics[t] * cell_to_texture_differential;
+#endif // NEW_CODE
 									SquareMatrix< GeometryReal , 2 > element_metric = element_to_cell_differential.transpose() * cell_metric * element_to_cell_differential;
 									SquareMatrix< GeometryReal , 2 > element_metric_inverse = element_metric.inverse();
 									GeometryReal element_area_scale_factor = sqrt( element_metric.determinant() );
@@ -487,7 +499,11 @@ namespace MishaK
 			SimplexIndex< 2 , ChartMeshVertexIndex > tri = atlasChart.triangleIndex( ChartMeshTriangleIndex(t) );
 			for( unsigned int i=0 ; i<3 ; i++ ) tPos[i] = atlasChart.vertex( tri[i] ) - gridChart.corner;
 
+#ifdef NEW_CODE
+			SquareMatrix< GeometryReal , 2 > texture_metric = texture_metrics[ ChartMeshTriangleIndex(t) ];
+#else // !NEW_CODE
 			SquareMatrix< GeometryReal , 2 > texture_metric = texture_metrics[t];
+#endif // NEW_CODE
 			SquareMatrix< GeometryReal , 2 > cell_metric = cell_to_texture_differential.transpose() * texture_metric * cell_to_texture_differential;
 			SquareMatrix< GeometryReal , 2 > cell_metric_inverse = cell_metric.inverse();
 			GeometryReal cell_area_scale_factor = (GeometryReal)sqrt( cell_metric.determinant() );
@@ -996,12 +1012,12 @@ namespace MishaK
 	template< unsigned int Samples , typename GeometryReal , typename MatrixReal >
 	void InitializeMassAndStiffness
 	(
-		const std::vector< std::vector< SquareMatrix< GeometryReal , 2 > > > &parameterMetric ,
 #ifdef NEW_CODE
-		const IndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
+		const IndexVector< ChartIndex , IndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > > &parameterMetric ,
 #else // !NEW_CODE
-		const std::vector< AtlasChart< GeometryReal > > &atlasCharts ,
+		const std::vector< std::vector< SquareMatrix< GeometryReal , 2 > > > &parameterMetric ,
 #endif // NEW_CODE
+		const IndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
 		const GridAtlas< GeometryReal , MatrixReal > &gridAtlas ,
 		const std::vector< AtlasInteriorOrBoundaryNodeIndex > &fineBoundaryIndex ,
 		int numFineBoundaryNodes ,
@@ -1032,7 +1048,11 @@ namespace MishaK
 				for( int i=0 ; i<inTriplets.size() ; i++ ) for( int j=0 ; j<inTriplets[i].size() ; j++ ) outTriplets.push_back( inTriplets[i][j] );
 			};
 
+#ifdef NEW_CODE
+		const IndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts = gridAtlas.gridCharts;
+#else // !NEW_CODE
 		const std::vector< GridChart< GeometryReal > > &gridCharts = gridAtlas.gridCharts;
+#endif // NEW_CODE
 		const typename GridAtlas<>::IndexConverter & indexConverter = gridAtlas.indexConverter;
 
 		if( computeCellBasedStiffness ) texelToCellCoeffs.resize( 3*4*gridAtlas.numDeepTexels );
@@ -1058,9 +1078,9 @@ namespace MishaK
 				InitializeChartMassAndStiffness< Samples >
 					(
 #ifdef NEW_CODE
-						parameterMetric[i] , atlasCharts[ ChartIndex(i) ] , gridCharts[i] , indexConverter , fineBoundaryIndex , deepMassCoefficients , deepStiffnessCoefficients , 
+						parameterMetric[ ChartIndex(i) ] , atlasCharts[ ChartIndex(i) ] , gridCharts[ ChartIndex(i) ] , indexConverter , fineBoundaryIndex , deepMassCoefficients , deepStiffnessCoefficients , 
 #else // !NEW_CODE
-						parameterMetric[i] , atlasCharts[i] , gridCharts[i] , indexConverter , fineBoundaryIndex , deepMassCoefficients , deepStiffnessCoefficients , 
+						parameterMetric[i] , atlasCharts[ ChartIndex(i) ] , gridCharts[i] , indexConverter , fineBoundaryIndex , deepMassCoefficients , deepStiffnessCoefficients , 
 #endif // NEW_CODE
 						_boundaryBoundaryMassTriplets[thread] , _boundaryBoundaryStiffnessTriplets[thread] ,
 						_boundaryDeepMassTriplets[thread] , _boundaryDeepStiffnessTriplets[thread] ,
@@ -1108,12 +1128,12 @@ namespace MishaK
 		SystemCoefficients< MatrixReal > &mass ,
 		SystemCoefficients< MatrixReal > &stiffness ,
 		const HierarchicalSystem< GeometryReal , MatrixReal > &hierarchy ,
-		const std::vector< std::vector< SquareMatrix< GeometryReal , 2 > > > &parameterMetric ,
 #ifdef NEW_CODE
-		const IndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
+		const IndexVector< ChartIndex , IndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > > &parameterMetric ,
 #else // !NEW_CODE
-		const std::vector< AtlasChart< GeometryReal > > &atlasCharts ,
+		const std::vector< std::vector< SquareMatrix< GeometryReal , 2 > > > &parameterMetric ,
 #endif // NEW_CODE
+		const IndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
 		const BoundaryProlongationData< MatrixReal > &boundaryProlongation ,
 		bool computeCellBasedStiffness ,
 		const std::vector< Point3D< MatrixReal > > &inputSignal ,
@@ -1205,12 +1225,12 @@ namespace MishaK
 		SystemCoefficients< MatrixReal > &mass ,
 		SystemCoefficients< MatrixReal > &stiffness ,
 		const HierarchicalSystem< GeometryReal , MatrixReal >& hierarchy ,
-		const std::vector< std::vector< SquareMatrix< GeometryReal , 2 > > > &parameterMetric ,
 #ifdef NEW_CODE
-		const IndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
+		const IndexVector< ChartIndex , IndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > > &parameterMetric ,
 #else // !NEW_CODE
-		const std::vector< AtlasChart< GeometryReal > > &atlasCharts ,
-#endif //  NEW_CODE
+		const std::vector< std::vector< SquareMatrix< GeometryReal , 2 > > > &parameterMetric ,
+#endif // NEW_CODE
+		const IndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
 		const BoundaryProlongationData< MatrixReal > &boundaryProlongation ,
 		bool computeCellBasedStiffness ,
 		const std::vector< Point3D< MatrixReal > > &inputSignal ,

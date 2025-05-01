@@ -210,11 +210,7 @@ public:
 	static std::vector< Point3D< float > > cellCenterPositions;
 	static std::vector< Point3D< float> >textureNodePositions;
 
-#ifdef NEW_CODE
 	static IndexVector< ChartIndex , AtlasChart< PreReal > > atlasCharts;
-#else // !NEW_CODE
-	static std::vector< AtlasChart< PreReal > > atlasCharts;
-#endif // NEW_CODE
 
 	static std::vector< BilinearElementIndex > bilinearElementIndices;
 	
@@ -285,7 +281,11 @@ public:
 	static void UpdateSolution(bool verbose = false, bool detailVerbose = false);
 	static void ComputeExactSolution( bool verbose=false );
 	static void InitializeSystem( int width , int height );
+#ifdef NEW_CODE
+	static void _InitializeSystem( IndexVector< ChartIndex , IndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > > &parameterMetric , BoundaryProlongationData< Real > &boundaryProlongation , std::vector< Point3D< Real > > &inputSignal , std::vector< Real >& texelToCellCoeffs );
+#else // !NEW_CODE
 	static void _InitializeSystem( std::vector<std::vector< SquareMatrix< PreReal , 2 > > > &parameterMetric , BoundaryProlongationData< Real > &boundaryProlongation , std::vector< Point3D< Real > > &inputSignal , std::vector< Real >& texelToCellCoeffs );
+#endif // NEW_CODE
 
 #ifdef NO_OPEN_GL_VISUALIZATION
 #else // !NO_OPEN_GL_VISUALIZATION
@@ -357,11 +357,7 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth > std:
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > VCycleSolvers< typename TextureFilter< PreReal , Real , TextureBitDepth >::DirectSolver >		TextureFilter< PreReal , Real , TextureBitDepth >::vCycleSolvers;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > typename TextureFilter< PreReal , Real , TextureBitDepth >::DirectSolver						TextureFilter< PreReal , Real , TextureBitDepth >::directSolver;
 
-#ifdef NEW_CODE
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > IndexVector< ChartIndex , AtlasChart< PreReal > >					TextureFilter< PreReal , Real , TextureBitDepth >::atlasCharts;
-#else // !NEW_CODE
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< AtlasChart< PreReal > >								TextureFilter< PreReal , Real , TextureBitDepth >::atlasCharts;
-#endif // NEW_CODE
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector<InteriorTexelToCellLine>								TextureFilter< PreReal , Real , TextureBitDepth >::interiorTexelToCellLines;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Point3D< Real > >										TextureFilter< PreReal , Real , TextureBitDepth >::interiorTexelToCellCoeffs;
@@ -805,7 +801,11 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::UpdateSolution( bool ver
 }
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth >
+#ifdef NEW_CODE
+void TextureFilter< PreReal , Real , TextureBitDepth >::_InitializeSystem( IndexVector< ChartIndex , IndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > > &parameterMetric , BoundaryProlongationData< Real > &boundaryProlongation , std::vector< Point3D< Real > > &inputSignal , std::vector< Real > &texelToCellCoeffs )
+#else // !NEW_CODE
 void TextureFilter< PreReal , Real , TextureBitDepth >::_InitializeSystem( std::vector< std::vector< SquareMatrix< PreReal , 2 > > > &parameterMetric , BoundaryProlongationData< Real > &boundaryProlongation , std::vector< Point3D< Real > > &inputSignal , std::vector< Real > &texelToCellCoeffs )
+#endif // NEW_CODE
 {
 	Miscellany::Timer timer;
 	{
@@ -843,7 +843,11 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::InitializeSystem( int wi
 	std::vector< Real > texelToCellCoeffs;
 
 	timer.reset();
+#ifdef NEW_CODE
+	IndexVector< ChartIndex , IndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > > parameterMetric;
+#else // !NEW_CODE
 	std::vector< std::vector< SquareMatrix< PreReal , 2 > > > parameterMetric;
+#endif // NEW_CODE
 	InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric );
 	_InitializeSystem( parameterMetric , boundaryProlongation , inputSignal , texelToCellCoeffs );
 
