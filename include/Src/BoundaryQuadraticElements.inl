@@ -215,7 +215,11 @@ void InitializeChartBoundaryPolygons
 	std::map< unsigned int , std::vector< std::vector< unsigned long long > > > cellPolygons;
 #else // !SEPARATE_POLYGONS
 	// An association of segments to individual cells of a chart
+#ifdef NEW_CODE
+	std::map< ChartBoundaryCellIndex , std::pair< Point< unsigned int , 2 > , std::vector< std::pair< GridMeshIntersectionKey , GridMeshIntersectionKey > > > > cellSegments;
+#else // !NEW_CODE
 	std::map< unsigned int , std::pair< Point< unsigned int , 2 > , std::vector< std::pair< GridMeshIntersectionKey , GridMeshIntersectionKey > > > > cellSegments;
+#endif // NEW_CODE
 #endif // SEPARATE_POLYGONS
 
 	auto GetIndexedTriangle = [&]( ChartMeshTriangleIndex t )
@@ -274,13 +278,21 @@ void InitializeChartBoundaryPolygons
 					if( ClipIndexedIntersectionPolygonToIndexedIntersectionTriangle( poly , indexedTriangle ) ) cellPolygons[ cellID ].push_back( poly.indices );
 					else MK_THROW( "Expected triangle to intersect cell" );
 #else // !SEPARATE_POLYGONS
+#ifdef NEW_CODE
+					cellSegments[cellID].first = Point< unsigned int , 2 >( I[0]+gridChart.cornerCoords[0] , I[1]+gridChart.cornerCoords[1] );
+#else // !NEW_CODE
 					cellSegments[ static_cast< unsigned int >(cellID) ].first = Point< unsigned int , 2 >( I[0]+gridChart.cornerCoords[0] , I[1]+gridChart.cornerCoords[1] );
+#endif // NEW_CODE
 
 					IndexedIntersectionPolygon< GeometryReal > poly = GetIndexedIntersectionPolygon( I[0] , I[1] );
 
 					if( ClipIndexedIntersectionPolygonToIndexedIntersectionTriangle( poly , indexedTriangle ) )
 						for( int s=0 ; s<poly.cornerKeys.size() ; s++ )
+#ifdef NEW_CODE
+							cellSegments[cellID].second.push_back( std::make_pair( poly.cornerKeys[s] , poly.cornerKeys[ (s+1) % poly.cornerKeys.size() ] ) );
+#else // !NEW_CODE
 							cellSegments[ static_cast< unsigned int >(cellID) ].second.push_back( std::make_pair( poly.cornerKeys[s] , poly.cornerKeys[ (s+1) % poly.cornerKeys.size() ] ) );
+#endif // NEW_CODE
 					else MK_THROW( "Expected triangle to intersect cell" );
 #endif // SEPARATE_POLYGONS
 				}
@@ -300,7 +312,11 @@ void InitializeChartBoundaryPolygons
 					Point< int , 2 > idx;
 					idx[0] = i+gridChart.cornerCoords[0];
 					idx[1] = j+gridChart.cornerCoords[1];
+#ifdef NEW_CODE
+					cellSegments[cellID].first = idx;
+#else // !NEW_CODE
 					cellSegments[ static_cast< unsigned int >(cellID) ].first = idx;
+#endif // NEW_CODE
 				}
 
 				IndexedIntersectionPolygon< GeometryReal > cellPolygon = GetIndexedIntersectionPolygon( i , j );
@@ -312,10 +328,18 @@ void InitializeChartBoundaryPolygons
 						{
 							Point2D< GeometryReal > p[] = { cellPolygon.vertices[s] , cellPolygon.vertices[ (s+1)%cellPolygon.vertices.size() ] };
 							if( Point2D< GeometryReal >::SquareNorm( p[0] - p[1] )<=1e-16 )
+#ifdef NEW_CODE
+								MK_WARN( "Short clipped edge @ texel: " , cellSegments[cellID].first[0] , " , " , cellSegments[cellID].first[1] , " : " , sqrt( Point2D< GeometryReal >::SquareNorm( p[0] - p[1] ) ) );
+#else // !NEW_CODE
 								MK_WARN( "Short clipped edge @ texel: " , cellSegments[ static_cast< unsigned int >(cellID) ].first[0] , " , " , cellSegments[ static_cast< unsigned int >(cellID) ].first[1] , " : " , sqrt( Point2D< GeometryReal >::SquareNorm( p[0] - p[1] ) ) );
+#endif // NEW_CODE
 						}
 						std::pair< GridMeshIntersectionKey , GridMeshIntersectionKey > edge( cellPolygon.cornerKeys[s] , cellPolygon.cornerKeys[ (s+1) % cellPolygon.cornerKeys.size() ] );
+#ifdef NEW_CODE
+						cellSegments[cellID].second.push_back( edge );
+#else // !NEW_CODE
 						cellSegments[ static_cast< unsigned int >(cellID) ].second.push_back( edge );
+#endif // NEW_CODE
 					}
 				}
 			}
@@ -333,7 +357,11 @@ void InitializeChartBoundaryPolygons
 #else // !SEPARATE_POLYGONS
 	for( auto cellIter=cellSegments.begin() ; cellIter!=cellSegments.end() ; cellIter++ )
 	{
+#ifdef NEW_CODE
+		ChartBoundaryCellIndex cellID = cellIter->first;
+#else // !NEW_CODE
 		unsigned int cellID = cellIter->first;
+#endif // NEW_CODE
 		std::vector< std::vector< GridMeshIntersectionKey > > loopKeys;
 
 		// Get the polygons corresponding to the intersection of the cell with the the texture triangles
@@ -345,10 +373,10 @@ void InitializeChartBoundaryPolygons
 			{
 				// Get a set of all edges
 				std::set< std::pair< GridMeshIntersectionKey , GridMeshIntersectionKey > > edgeSet;
-				for( int k=0 ; k<segments.size() ; k++ ) edgeSet.insert( segments[k] );
+				for( unsigned int k=0 ; k<segments.size() ; k++ ) edgeSet.insert( segments[k] );
 
 				// Keep just the ones that don't have an opposite
-				for( int k=0 ; k<segments.size() ; k++ )
+				for( unsigned int k=0 ; k<segments.size() ; k++ )
 				{
 					std::pair< GridMeshIntersectionKey , GridMeshIntersectionKey > oppositeKey = std::make_pair( segments[k].second , segments[k].first );
 					if( edgeSet.find( oppositeKey )==edgeSet.end() ) forwardMap[ segments[k].first ] = segments[k].second;
@@ -637,15 +665,27 @@ void InitializeChartQuadraticElements
 	unsigned int previouslyAddedNodes
 )
 {
+#ifdef NEW_CODE
+	const IndexVector< ChartBoundaryCellIndex , std::vector< IndexedPolygon< GeometryReal > > > & boundaryPolygons = gridChart.boundaryPolygons;
+#else // !NEW_CODE
 	const std::vector< std::vector< IndexedPolygon< GeometryReal > > > & boundaryPolygons = gridChart.boundaryPolygons;
+#endif // NEW_CODE
 	std::vector< std::vector< BoundaryIndexedTriangle< GeometryReal > > > & boundaryTriangles = gridChart.boundaryTriangles;
 	boundaryTriangles.resize( gridChart.numBoundaryCells() );
 	int numBoundaryTriangles = 0;
-	for( int i=0 ; i<boundaryPolygons.size() ; i++ )
+	for( unsigned int i=0 ; i<boundaryPolygons.size() ; i++ )
 	{
+#ifdef NEW_CODE
+		for( unsigned int j=0 ; j<boundaryPolygons[ ChartBoundaryCellIndex(i) ].size() ; j++ )
+#else // !NEW_CODE
 		for( int j=0 ; j<boundaryPolygons[i].size() ; j++ )
+#endif // NEW_CODE
 		{
+#ifdef NEW_CODE
+			const IndexedPolygon< GeometryReal > &currentPolygon = boundaryPolygons[ ChartBoundaryCellIndex(i) ][j];
+#else // !NEW_CODE
 			const IndexedPolygon< GeometryReal > &currentPolygon = boundaryPolygons[i][j];
+#endif // NEW_CODE
 			std::vector< SimplexIndex< 2 > > delanauyTriangles;
 			TriangulatePolygon( currentPolygon.vertices , delanauyTriangles );
 			if( delanauyTriangles.size()!=currentPolygon.vertices.size()-2 )

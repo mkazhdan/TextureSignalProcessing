@@ -556,7 +556,11 @@ namespace MishaK
 		const size_t numInteriorCells( void ) const { return interiorCellIndexToCombinedCellIndex.size(); }
 		const size_t numBoundaryCells( void ) const { return boundaryCellIndexToCombinedCellIndex.size(); }
 
+#ifdef NEW_CODE
+		IndexVector< ChartBoundaryCellIndex , std::vector< IndexedPolygon< GeometryReal > > > boundaryPolygons;
+#else // !NEW_CODE
 		std::vector< std::vector< IndexedPolygon< GeometryReal > > > boundaryPolygons;
+#endif // NEW_CODE
 		std::vector< std::vector< BoundaryIndexedTriangle< GeometryReal > > > boundaryTriangles;
 
 		unsigned int numBoundaryTriangles;
