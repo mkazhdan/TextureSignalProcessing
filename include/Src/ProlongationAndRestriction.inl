@@ -87,7 +87,11 @@ void InitializeProlongation( int numInteriorTexels , int numFineNodes , int numC
 			unsigned int nodeDegree = auxiliaryNodesDegree[auxiliaryID];
 			Point2D< GeometryReal > nodePosition = gridChart.auxiliaryNodes[j].position;
 			int corner[2] = { (int)floor(nodePosition[0] / gridChart.cellSizeW), (int)floor(nodePosition[1] / gridChart.cellSizeH) };
+#ifdef NEW_CODE
+			ChartCombinedCellIndex cellId = gridChart.cellIndices( corner[0] , corner[1] ).combined;
+#else // !NEW_CODE
 			unsigned int cellId = gridChart.cellIndices( corner[0] , corner[1] ).combined;
+#endif // NEW_CODE
 				
 			nodePosition[0] /= gridChart.cellSizeW;
 			nodePosition[1] /= gridChart.cellSizeH;
@@ -95,13 +99,17 @@ void InitializeProlongation( int numInteriorTexels , int numFineNodes , int numC
 			nodePosition[1] -= (GeometryReal)corner[1];
 			if( nodePosition[0] < 0-precision_error || nodePosition[0] > 1+precision_error || nodePosition[1] < 0-precision_error || nodePosition[1] > 1+precision_error )
 				MK_THROW( "Sample out of unit box: (" , nodePosition[0] , " " , nodePosition[1] , ")" );
-			for (int k = 0; k < 4; k++)
+			for( unsigned int k=0 ; k<4 ; k++ )
 			{
 				GeometryReal texelWeight = BilinearElementValue( k , nodePosition ) / nodeDegree;
 				if( fabs(texelWeight)>1e-11 )
 				{
 					auxiliaryNodesCumWeight[auxiliaryID] += texelWeight;
+#ifdef NEW_CODE
+					unsigned int texelIndex = gridChart.combinedCellCombinedBilinearElementIndices[ static_cast< unsigned int >(cellId) ][k];
+#else // !NEW_CODE
 					int texelIndex = gridChart.combinedCellCombinedBilinearElementIndices[cellId][k];
+#endif // NEW_CODE
 					if( nodeInfo[texelIndex].texelType==TexelType::InteriorSupported )
 						MK_THROW( "Interior-supported texel cannot be in the support of an auxiliary node. Weight " , texelWeight , " (B)" );
 					coveredNodes.insert(texelIndex);

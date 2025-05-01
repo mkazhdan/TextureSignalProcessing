@@ -120,8 +120,13 @@ namespace MishaK
 			Real dualValues[4];				// The integrated values of the four incident bilinear basis functions, dualized
 		};
 		SquareMatrix< Real , 2 > tensor;	// The inverse metric tensor defined by the intersecting triangle
+#ifdef NEW_CODE
+		unsigned int cellOffset;
+		bool operator < ( const BilinearElementScalarSample& sample ) const { return cellOffset<sample.cellOffset; }
+#else // !NEW_CODE
 		int cellOffset;
 		static bool Compare( const BilinearElementScalarSample& a , const BilinearElementScalarSample& b ){ return a.cellOffset<b.cellOffset; }
+#endif // NEW_CODE
 
 		BilinearElementScalarSample( void ) : _sampleNum(0) , _samples(NULL) {}
 		BilinearElementScalarSample( unsigned int sz ) : _sampleNum(0) , _samples(NULL) { resize(sz); }
@@ -132,6 +137,7 @@ namespace MishaK
 			tensor = bilinearElementScalarSample.tensor;
 			cellOffset = bilinearElementScalarSample.cellOffset;
 		}
+
 		BilinearElementScalarSample& operator = ( const BilinearElementScalarSample& bilinearElementScalarSample )
 		{
 			resize( bilinearElementScalarSample._sampleNum );
@@ -140,7 +146,9 @@ namespace MishaK
 			cellOffset = bilinearElementScalarSample.cellOffset;
 			return *this;
 		}
+
 		~BilinearElementScalarSample( void ){ resize(0); }
+
 		void resize( unsigned int sz )
 		{
 			if( _samples ){ delete[] _samples ; _samples = NULL; }
@@ -208,8 +216,13 @@ namespace MishaK
 			Point2D< Real > dualGradients[4];	// The integrated gradients of the four incident bilinear basis functions, dualized
 		};
 		SquareMatrix< Real , 2 > tensor;		// The inverse metric tensor defined by the intersecting triangle
+#ifdef NEW_CODE
+		unsigned int cellOffset;
+		bool operator < ( const BilinearElementGradientSample& sample ) const { return cellOffset < sample.cellOffset; }
+#else // !NEW_CODE
 		int cellOffset;
 		static bool Compare( const BilinearElementGradientSample& a , const BilinearElementGradientSample& b ){ return a.cellOffset<b.cellOffset; }
+#endif // NEW_CODE
 
 		BilinearElementGradientSample( void ) : _sampleNum(0) , _samples(NULL) {}
 		BilinearElementGradientSample( unsigned int sz ) : _sampleNum(0) , _samples(NULL) { resize(sz); }
@@ -295,7 +308,11 @@ namespace MishaK
 		std::vector< std::vector< Bilinear > > bilinear;
 		std::vector< Quadratic > quadratic;
 		void resize( size_t sz ){ bilinear.resize( sz ); }
+#ifdef NEW_CODE
+		void sort( void ){ for( int i=0 ; i<bilinear.size() ; i++ ) std::sort( bilinear[i].begin() , bilinear[i].end() ); }
+#else // !NEW_CODE
 		void sort( void ){ for( int i=0 ; i<bilinear.size() ; i++ ) std::sort( bilinear[i].begin() , bilinear[i].end() , Bilinear::Compare ); }
+#endif //NEW_CODE
 	};
 
 	template< typename _Real >
@@ -307,7 +324,11 @@ namespace MishaK
 		std::vector< std::vector< Bilinear > > bilinear;
 		std::vector< Quadratic > quadratic;
 		void resize( size_t sz ){ bilinear.resize( sz ); }
+#ifdef NEW_CODE
+		void sort( void ){ for( int i=0 ; i<bilinear.size() ; i++ ) std::sort( bilinear[i].begin() , bilinear[i].end() ); }
+#else // !NEW_CODE
 		void sort( void ){ for( int i=0 ; i<bilinear.size() ; i++ ) std::sort( bilinear[i].begin() , bilinear[i].end() , Bilinear::Compare ); }
+#endif // NEW_CODE
 	};
 
 	class RasterLine
@@ -409,9 +430,7 @@ namespace MishaK
 	class RestrictionLine
 	{
 	public:
-		RestrictionLine() {
-			startIndex = length = centerLineIndex = prevLineIndex = nextLineIndex = -1;
-		}
+		RestrictionLine() { startIndex = length = centerLineIndex = prevLineIndex = nextLineIndex = -1; }
 		int startIndex;
 		int length;
 		int centerLineIndex;
@@ -446,8 +465,15 @@ namespace MishaK
 
 	struct CellIndex
 	{
+#ifdef NEW_CODE
+		CellIndex( void ) : combined(static_cast< ChartCombinedCellIndex >(-1) ) , interior( static_cast< ChartInteriorCellIndex >(-1) ) , boundary( static_cast< ChartBoundaryCellIndex >(-1) ){}
+		ChartCombinedCellIndex combined;
+		ChartInteriorCellIndex interior;
+		ChartBoundaryCellIndex boundary;
+#else // !NEW_CODE
 		CellIndex( void ) : combined(-1) , interior(-1) , boundary(-1){}
 		unsigned int combined , interior , boundary;
+#endif // NEW_CODE
 	};
 
 	struct TexelIndex
@@ -496,8 +522,11 @@ namespace MishaK
 		unsigned int height;
 		unsigned int atlasWidth;
 		unsigned int atlasHeight;
+#ifdef NEW_CODE
+#else // !NEW_CODE
 		unsigned int combinedCellOffset;
 		unsigned int interiorCellOffset;
+#endif // NEW_CODE
 
 		Point2D< GeometryReal > nodePosition( unsigned int i , unsigned int j ) const { return Point2D< GeometryReal >( i*cellSizeW , j*cellSizeH ); }
 
@@ -559,8 +588,13 @@ namespace MishaK
 		std::vector< BilinearElementIndex > interiorCellCombinedBilinearElementIndices;
 
 		// Maps converting boundary/interiorl cell indices to combined cell indices
+#ifdef NEW_CODE
+		std::vector< ChartCombinedCellIndex > interiorCellIndexToCombinedCellIndex;
+		std::vector< ChartCombinedCellIndex > boundaryCellIndexToCombinedCellIndex;
+#else // !NEW_CODE
 		std::vector< unsigned int > interiorCellIndexToCombinedCellIndex;
 		std::vector< unsigned int > boundaryCellIndexToCombinedCellIndex;
+#endif // NEW_CODE
 
 		const size_t numInteriorCells( void ) const { return interiorCellIndexToCombinedCellIndex.size(); }
 		const size_t numBoundaryCells( void ) const { return boundaryCellIndexToCombinedCellIndex.size(); }
@@ -579,6 +613,21 @@ namespace MishaK
 #ifdef PRE_CLIP_TRIANGLES
 		Image< std::vector< std::pair< ChartMeshTriangleIndex , CellClippedTriangle< GeometryReal > > > > clippedTriangles;
 #endif // PRE_CLIP_TRIANGLES
+
+#ifdef NEW_CODE
+		AtlasInteriorCellIndex chartToAtlasInteriorCellIndex( ChartInteriorCellIndex idx ) const { return static_cast< AtlasInteriorCellIndex >( static_cast< unsigned int >(idx) + _interiorCellOffset ); }
+		ChartInteriorCellIndex atlasToChartInteriorCellIndex( AtlasInteriorCellIndex idx ) const { return static_cast< ChartInteriorCellIndex >( static_cast< unsigned int >(idx) - _interiorCellOffset ); }
+		AtlasCombinedCellIndex chartToAtlasCombinedCellIndex( ChartCombinedCellIndex idx ) const { return static_cast< AtlasCombinedCellIndex >( static_cast< unsigned int >(idx) + _combinedCellOffset ); }
+		ChartCombinedCellIndex atlasToChartCombinedCellIndex( AtlasCombinedCellIndex idx ) const { return static_cast< ChartCombinedCellIndex >( static_cast< unsigned int >(idx) - _combinedCellOffset ); }
+
+		// [WARNING] This should really be done through friendship
+		void setInteriorCellOffset( unsigned int interiorCellOffset ){ _interiorCellOffset = interiorCellOffset; }
+		void setCombinedCellOffset( unsigned int combinedCellOffset ){ _combinedCellOffset = combinedCellOffset; }
+	protected:
+		unsigned int _interiorCellOffset;
+		unsigned int _combinedCellOffset;
+#endif // NEW_CODE
+
 	};
 
 	class GridNodeInfo

@@ -267,20 +267,33 @@ void InitializeChartBoundaryPolygons
 			{
 				if( gridChart.cellType(I)==CellType::Boundary )
 				{
+#ifdef NEW_CODE
+					ChartBoundaryCellIndex cellID = gridChart.cellIndices(I).boundary;
+					if( cellID==static_cast< ChartBoundaryCellIndex >(-1) ) MK_THROW( "Boundary cell invalid ID" );
+#else // !NEW_CODE
 					unsigned int cellID = gridChart.cellIndices(I).boundary;
 					if( cellID==-1 ) MK_THROW( "Boundary cell invalid ID" );
+#endif // NEW_CODE
 #ifdef SEPARATE_POLYGONS
 					IndexedIntersectionPolygon< GeometryReal > poly = GetIndexedIntersectionPolygon( I[0] , I[1] );
 					if( ClipIndexedIntersectionPolygonToIndexedIntersectionTriangle( poly , indexedTriangle ) ) cellPolygons[ cellID ].push_back( poly.indices );
 					else MK_THROW( "Expected triangle to intersect cell" );
 #else // !SEPARATE_POLYGONS
+#ifdef NEW_CODE
+					cellSegments[ static_cast< unsigned int >(cellID) ].first = Point< unsigned int , 2 >( I[0]+gridChart.cornerCoords[0] , I[1]+gridChart.cornerCoords[1] );
+#else // !NEW_CODE
 					cellSegments[cellID].first = Point< unsigned int , 2 >( I[0]+gridChart.cornerCoords[0] , I[1]+gridChart.cornerCoords[1] );
+#endif // NEW_CODE
 
 					IndexedIntersectionPolygon< GeometryReal > poly = GetIndexedIntersectionPolygon( I[0] , I[1] );
 
 					if( ClipIndexedIntersectionPolygonToIndexedIntersectionTriangle( poly , indexedTriangle ) )
 						for( int s=0 ; s<poly.cornerKeys.size() ; s++ )
+#ifdef NEW_CODE
+							cellSegments[ static_cast< unsigned int >(cellID) ].second.push_back( std::make_pair( poly.cornerKeys[s] , poly.cornerKeys[ (s+1) % poly.cornerKeys.size() ] ) );
+#else // !NEW_CODE
 							cellSegments[cellID].second.push_back( std::make_pair( poly.cornerKeys[s] , poly.cornerKeys[ (s+1) % poly.cornerKeys.size() ] ) );
+#endif // NEW_CODE
 					else MK_THROW( "Expected triangle to intersect cell" );
 #endif // SEPARATE_POLYGONS
 				}
@@ -651,7 +664,11 @@ void InitializeChartQuadraticElements
 			if( delanauyTriangles.size()!=currentPolygon.vertices.size()-2 )
 			{
 				int localCellPos[2] = { -1,-1 };
+#ifdef NEW_CODE
+				for( unsigned int li=0 ; li<gridChart.cellIndices.res(0) ; li++ ) for( unsigned int lj=0 ; lj<gridChart.cellIndices.res(1) ; lj++ ) if( gridChart.cellIndices(li,lj).boundary==static_cast< ChartBoundaryCellIndex >(i) ) localCellPos[0] = li , localCellPos[1] = lj;
+#else // !NEW_CODE
 				for( unsigned int li=0 ; li<gridChart.cellIndices.res(0) ; li++ ) for( unsigned int lj=0 ; lj<gridChart.cellIndices.res(1) ; lj++ ) if( gridChart.cellIndices(li,lj).boundary==i ) localCellPos[0] = li , localCellPos[1] = lj;
+#endif // NEW_CODE
 				MK_WARN( "Unexpected number of triangles produced by delaunay triangulation at global cell ( " , gridChart.cornerCoords[0] + localCellPos[0] , " , " , gridChart.cornerCoords[1] + localCellPos[1] , " ). Polygon may self intersect! " , delanauyTriangles.size() , " != " , currentPolygon.vertices.size()-2 );
 			}
 
@@ -823,20 +840,30 @@ void InitializeCoarseBoundaryToFineBoundaryProlongation
 			unsigned int nodeDegree = auxiliaryNodesDegree[auxiliaryID];
 			Point2D< GeometryReal >nodePosition = gridChart.auxiliaryNodes[j].position;
 			int corner[2] = { (int)floor(nodePosition[0] / gridChart.cellSizeW), (int)floor(nodePosition[1] / gridChart.cellSizeH) };
+#ifdef NEW_CODE
+			ChartCombinedCellIndex cellID = gridChart.cellIndices( corner[0] , corner[1] ).combined;
+			if( cellID==static_cast< ChartCombinedCellIndex >(-1) ) MK_THROW( "Invalid cell index. Node position " , nodePosition[0] / gridChart.cellSizeW , " " , nodePosition[1] / gridChart.cellSizeH );
+#else // !NEW_CODE
 			unsigned int cellID = gridChart.cellIndices( corner[0] , corner[1] ).combined;
 			if( cellID==-1 ) MK_THROW( "Invalid cell index. Node position " , nodePosition[0] / gridChart.cellSizeW , " " , nodePosition[1] / gridChart.cellSizeH );
+#endif // NEW_CODE
 			nodePosition[0] /= gridChart.cellSizeW;
 			nodePosition[1] /= gridChart.cellSizeH;
 			nodePosition[0] -= (GeometryReal)corner[0];
 			nodePosition[1] -= (GeometryReal)corner[1];
 			if( nodePosition[0] < 0-precision_error || nodePosition[0] > 1+precision_error || nodePosition[1] < 0-precision_error || nodePosition[1] > 1+precision_error )
 				MK_THROW( "Sample out of unit box! (" , nodePosition[0] , " " , nodePosition[0] , ")" );
-			for (int k = 0; k < 4; k++)
+			for( unsigned int k=0 ; k<4 ; k++ )
 			{
 				MatrixReal texelWeight = (MatrixReal)BilinearElementValue(k, nodePosition) / nodeDegree;
-				if (fabs(texelWeight) > 1e-11) {
+				if( fabs(texelWeight)>1e-11 )
+				{
 					auxiliaryNodesCumWeight[auxiliaryID] += texelWeight;
+#ifdef NEW_CODE
+					unsigned int texelIndex = gridChart.combinedCellCombinedBilinearElementIndices[ static_cast< unsigned int >(cellID) ][k];
+#else // !NEW_CODE
 					int texelIndex = gridChart.combinedCellCombinedBilinearElementIndices[cellID][k];
+#endif // NEW_CODE
 					if( nodeInfo[texelIndex].texelType==TexelType::InteriorSupported )
 						MK_THROW( "Interior-supported texel cannot be in the support of an auxiliary node. Weight " , texelWeight , " (A)" );
 					if( static_cast< unsigned int >(gridChart.auxiliaryNodes[j].index)<numInteriorTexels || static_cast< unsigned int >(gridChart.auxiliaryNodes[j].index)>numFineNodes || texelIndex<0 || texelIndex>numCoarseNodes ) MK_THROW( "Out of bounds index" );

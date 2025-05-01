@@ -41,7 +41,7 @@ DAMAGE.
 //#define SANITY_CHECK				// Enables sanity checks for debugging purposes
 
 #define USE_RASTERIZER				// Use triangle/edge rasterization code [CURRENTLY SLOWS THINGS DOWN]
-//#define REORDER_BOUNDARY			// Re-order the boundary edges so that they are sequential [NOT NECESSARY]
+#define REORDER_BOUNDARY			// Re-order the boundary edges so that they are sequential [NOT NECESSARY]
 
 //#define SEPARATE_POLYGONS			// Keep the polygons obtained by clipping triangles to boundary cells separate
 
