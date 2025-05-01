@@ -307,13 +307,22 @@ void InitializeChartBoundaryPolygons
 		{
 			if( gridChart.cellType(i,j)==CellType::Boundary )
 			{
+#ifdef NEW_CODE
+				ChartBoundaryCellIndex cellID = gridChart.cellIndices(i,j).boundary;
+				if( cellID==static_cast< ChartBoundaryCellIndex >(-1) ) MK_THROW( "Boundary cell invalid ID" );
+#else // !NEW_CODE
 				int cellID = gridChart.cellIndices(i,j).boundary;
 				if( cellID==-1 ) MK_THROW( "Boundary cell invalid ID" );
+#endif // NEW_CODE
 				{
 					Point< int , 2 > idx;
 					idx[0] = i+gridChart.cornerCoords[0];
 					idx[1] = j+gridChart.cornerCoords[1];
+#ifdef NEW_CODE
+					cellSegments[ static_cast< unsigned int >(cellID) ].first = idx;
+#else // !NEW_CODE
 					cellSegments[cellID].first = idx;
+#endif // NEW_CODE
 				}
 
 				IndexedIntersectionPolygon< GeometryReal > cellPolygon = GetIndexedIntersectionPolygon( i , j );
@@ -325,10 +334,18 @@ void InitializeChartBoundaryPolygons
 						{
 							Point2D< GeometryReal > p[] = { cellPolygon.vertices[s] , cellPolygon.vertices[ (s+1)%cellPolygon.vertices.size() ] };
 							if( Point2D< GeometryReal >::SquareNorm( p[0] - p[1] )<=1e-16 )
+#ifdef NEW_CODE
+								MK_WARN( "Short clipped edge @ texel: " , cellSegments[ static_cast< unsigned int >(cellID) ].first[0] , " , " , cellSegments[ static_cast< unsigned int >(cellID) ].first[1] , " : " , sqrt( Point2D< GeometryReal >::SquareNorm( p[0] - p[1] ) ) );
+#else // !NEW_CODE
 								MK_WARN( "Short clipped edge @ texel: " , cellSegments[cellID].first[0] , " , " , cellSegments[cellID].first[1] , " : " , sqrt( Point2D< GeometryReal >::SquareNorm( p[0] - p[1] ) ) );
+#endif // NEW_CODE
 						}
 						std::pair< GridMeshIntersectionKey , GridMeshIntersectionKey > edge( cellPolygon.cornerKeys[s] , cellPolygon.cornerKeys[ (s+1) % cellPolygon.cornerKeys.size() ] );
+#ifdef NEW_CODE
+						cellSegments[ static_cast< unsigned int >(cellID) ].second.push_back( edge );
+#else // !NEW_CODE
 						cellSegments[cellID].second.push_back( edge );
+#endif // NEW_CODE
 					}
 				}
 			}

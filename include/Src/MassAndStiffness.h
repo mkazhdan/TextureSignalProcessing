@@ -555,29 +555,52 @@ namespace MishaK
 #endif // USE_RASTERIZER
 				auto TextureToCell = [&]( Point2D< GeometryReal > p ){ return Point2D< GeometryReal >( (GeometryReal)( p[0] / gridChart.cellSizeW ) - i , (GeometryReal)( p[1] / gridChart.cellSizeH ) - j ); };
 
+#ifdef NEW_CODE
+				ChartInteriorCellIndex localInteriorIndex = gridChart.cellIndices(i,j).interior;
+				ChartBoundaryCellIndex localBoundaryIndex = gridChart.cellIndices(i,j).boundary;
+				if( localInteriorIndex!=static_cast< ChartInteriorCellIndex >(-1) && localBoundaryIndex!=static_cast< ChartBoundaryCellIndex >(-1) ) MK_THROW( "Cell simultaneously interior and boundary" );
+#else // !NEW_CODE
 				int localInteriorIndex = gridChart.cellIndices(i,j).interior , localBoundaryIndex = gridChart.cellIndices(i,j).boundary;
 				if( localInteriorIndex!=-1 && localBoundaryIndex!=-1 ) MK_THROW( "Cell simultaneously interior and boundary" );
+#endif // NEW_CODE
 
 				// If the cell is entirely within the triangle...
+#ifdef NEW_CODE
+				if( CellInTriangle( i , j , parametricVertices ) && localInteriorIndex!=static_cast< ChartInteriorCellIndex >(-1) )
+#else // !NEW_CODE
 				if( CellInTriangle( i , j , parametricVertices ) && localInteriorIndex!=-1 )
+#endif // NEW_CODE
 				{
 					SquareMatrix< GeometryReal , 4 > polygonMass , polygonStiffness;
 
 					polygonMass = interior_cell_mass * cell_area_scale_factor;
-					for( int k=0 ; k<4 ; k++ ) for( int l=0 ; l<4 ; l++ )
+					for( unsigned int k=0 ; k<4 ; k++ ) for( int l=0 ; l<4 ; l++ )
 						polygonStiffness(k,l) = SquareMatrix< GeometryReal , 2 >::Dot( cell_metric_inverse , interior_cell_stiffnesses[k][l] ) * cell_area_scale_factor;
+#ifdef NEW_CODE
+					cellMass     [ static_cast< unsigned int >(localInteriorIndex) ] += polygonMass;
+					cellStiffness[ static_cast< unsigned int >(localInteriorIndex) ] += polygonStiffness;
+#else // !NEW_CODE
 					cellMass     [ localInteriorIndex ] += polygonMass;
 					cellStiffness[ localInteriorIndex ] += polygonStiffness;
+#endif // NEW_CODE
 
 					if( computeDivergence )
 					{
 						SquareMatrix< GeometryReal , 4 > polygonDivergence;
-						for( int k=0 ; k<4 ; k++ ) for( int l=0 ; l<4 ; l++ )
+						for( unsigned int k=0 ; k<4 ; k++ ) for( int l=0 ; l<4 ; l++ )
 							polygonDivergence(l,k) = SquareMatrix< GeometryReal , 2 >::Dot( cell_metric_inverse , grad_edge_products[l][k] ) * cell_area_scale_factor;
+#ifdef NEW_CODE
+						cellDivergence[ static_cast< unsigned int >(localInteriorIndex) ] += polygonDivergence;
+#else // !NEW_CODE
 						cellDivergence[localInteriorIndex] += polygonDivergence;
+#endif // NEW_CODE
 					}
 				}
+#ifdef NEW_CODE
+				else if( localInteriorIndex!=static_cast< ChartInteriorCellIndex >(-1) )
+#else // !NEW_CODE
 				else if( localInteriorIndex!=-1 )
+#endif // NEW_CODE
 				{
 					// For interior cells, the cell and the element are the same thing
 					auto TextureToElement = TextureToCell;
@@ -655,14 +678,28 @@ namespace MishaK
 								}
 							}
 						}
+#ifdef NEW_CODE
+						cellMass[ static_cast< unsigned int >(localInteriorIndex) ] += polygonMass;
+						cellStiffness[ static_cast< unsigned int >(localInteriorIndex) ] += polygonStiffness;
+						if( computeDivergence ) cellDivergence[ static_cast< unsigned int >(localInteriorIndex) ] += polygonDivergence;
+#else // !NEW_CODE
 						cellMass[localInteriorIndex] += polygonMass;
 						cellStiffness[localInteriorIndex] += polygonStiffness;
 						if( computeDivergence ) cellDivergence[localInteriorIndex] += polygonDivergence;
+#endif // NEW_CODE
 					}
 				}
+#ifdef NEW_CODE
+				else if( localBoundaryIndex!=static_cast< ChartBoundaryCellIndex >(-1) )
+#else // !NEW_CODE
 				else if( localBoundaryIndex!=-1 )
+#endif // NEW_CODE
 				{
+#ifdef NEW_CODE
+					std::vector< BoundaryIndexedTriangle< GeometryReal > > cellBoundaryTriangles = gridChart.boundaryTriangles[ static_cast< unsigned int >( localBoundaryIndex ) ];
+#else // !NEW_CODE
 					std::vector< BoundaryIndexedTriangle< GeometryReal > > cellBoundaryTriangles = gridChart.boundaryTriangles[ localBoundaryIndex ];
+#endif // NEW_CODE
 					// Iterate over all elements in the cell
 					for( int bt=0 ; bt<cellBoundaryTriangles.size() ; bt++ )
 					{
@@ -695,7 +732,7 @@ namespace MishaK
 							Matrix< GeometryReal , 6 , 15 > polygonDivergence;
 							GeometryReal polygonArea = 0;
 
-							for( int p=2 ; p<polygon.vertices.size() ; p++ )
+							for( unsigned int p=2 ; p<polygon.vertices.size() ; p++ )
 							{
 								Point2D< GeometryReal > d[] = { polygon[p-1]-polygon[0] , polygon[p]-polygon[0] };
 

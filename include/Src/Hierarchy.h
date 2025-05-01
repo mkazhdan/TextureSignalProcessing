@@ -411,8 +411,13 @@ namespace MishaK
 		int texelEndIndex;
 		int coeffOffset;
 		int length;
+#ifdef NEW_CODE
+		AtlasCombinedCellIndex previousCellStartIndex;
+		AtlasCombinedCellIndex     nextCellStartIndex;
+#else // !NEW_CODE
 		int previousCellStartIndex;
 		int nextCellStartIndex;
+#endif // NEW_CODE
 	};
 
 

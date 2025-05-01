@@ -973,15 +973,17 @@ void CellStiffnessToTexelStiffness
 
 	auto UpdateRow = [&](int r)
 	{
-		Data* out = texelModulatedStiffness.data() + interiorTexelToCellLines[r].texelStartIndex;
+		Data * out = texelModulatedStiffness.data() + interiorTexelToCellLines[r].texelStartIndex;
+#ifdef NEW_CODE
+		const Real * previousCellRow = cellSharpenningMask.data() + static_cast< unsigned int >( interiorTexelToCellLines[r].previousCellStartIndex );
+		const Real *     nextCellRow = cellSharpenningMask.data() + static_cast< unsigned int >( interiorTexelToCellLines[r].    nextCellStartIndex );
+#else // !NEW_CODE
 		const Real* previousCellRow = cellSharpenningMask.data() + interiorTexelToCellLines[r].previousCellStartIndex;
 		const Real* nextCellRow = cellSharpenningMask.data() + interiorTexelToCellLines[r].nextCellStartIndex;
+#endif // NEW_CODE
 		const Data * coeff = interiorTexelToCellCoeffs.data() + interiorTexelToCellLines[r].coeffOffset * 4;
-		int lineLenght = interiorTexelToCellLines[r].texelEndIndex - interiorTexelToCellLines[r].texelStartIndex + 1;
-		for (int i = 0; i < lineLenght; i++) {
-			out[i] = coeff[4 * i + 0] * previousCellRow[i] + coeff[4 * i + 1] * previousCellRow[i + 1] +
-				coeff[4 * i + 2] * nextCellRow[i] + coeff[4 * i + 3] * nextCellRow[i + 1];
-		}
+		int lineLength = interiorTexelToCellLines[r].texelEndIndex - interiorTexelToCellLines[r].texelStartIndex + 1;
+		for( int i=0 ; i<lineLength ; i++ ) out[i] = coeff[ 4*i+0 ] * previousCellRow[i] + coeff[ 4*i+1 ] * previousCellRow[i+1] + coeff[ 4*i+2 ] * nextCellRow[i] + coeff[ 4*i+3 ] * nextCellRow[i+1];
 	};
 
 	if( verbose ) timer.reset();
