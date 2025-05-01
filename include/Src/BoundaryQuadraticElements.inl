@@ -404,8 +404,8 @@ void InitializeChartBoundaryPolygons
 					if( !gridChart.factorNodeIndex( *g , pi , pj ) ) MK_THROW( "Could not factor node index: " , *g );
 
 					// Confirm that the texel is inside the chart
-					unsigned int interiorTexelIndex = gridChart.texelIndices(pi,pj).interiorOrCovered;
-					if( interiorTexelIndex==-1 ) MK_THROW( "Invalid texel: " , Point2D< int >( pi , pj ) , " -> " , gridChart.texelIndices(pi,pj).interiorOrCovered , " : " , gridChart.texelIndices(pi, pj).interior );
+					unsigned int interiorTexelIndex = gridChart.texelIndices(pi,pj).covered;
+					if( interiorTexelIndex==-1 ) MK_THROW( "Invalid texel: " , Point2D< int >( pi , pj ) , " -> " , gridChart.texelIndices(pi,pj).covered , " : " , gridChart.texelIndices(pi, pj).interior );
 
 					reducedLoop.push_back( currentVertexKey );
 					currentLoopNodes.emplace_back( static_cast< AtlasInteriorOrBoundaryNodeIndex >(interiorTexelIndex) , gridChart.nodePosition(pi,pj) );
@@ -767,16 +767,16 @@ void InitializeCoarseBoundaryToFineBoundaryProlongation
 		const GridChart< GeometryReal > &gridChart = gridAtlas.gridCharts[i];
 		for( int j=0 ; j<gridChart.texelIndices.size() ; j++ )
 		{
-			if( gridChart.texelIndices[j].interiorOrCovered!=-1 && gridChart.texelIndices[j].interior==-1 )
+			if( gridChart.texelIndices[j].covered!=-1 && gridChart.texelIndices[j].interior==-1 )
 			{ //Interior but not deep
 				int coarseGlobalIndex = gridChart.texelIndices[j].combined;
 
 				unsigned int boundaryIndex = indexConverter.supportedToBoundary( coarseGlobalIndex );
 				if( boundaryIndex!=-1 ) prolongationTriplets.emplace_back( lastFineBoundaryIndex , boundaryIndex , (MatrixReal)1. );
 				else MK_THROW( "Coarse node is not boundary. Global index " , coarseGlobalIndex , ". Boundary index " , boundaryIndex );
-				fineBoundaryIndex[ gridChart.texelIndices[j].interiorOrCovered ] = static_cast< AtlasInteriorOrBoundaryNodeIndex >( lastFineBoundaryIndex );
+				fineBoundaryIndex[ gridChart.texelIndices[j].covered ] = static_cast< AtlasInteriorOrBoundaryNodeIndex >( lastFineBoundaryIndex );
 				lastFineBoundaryIndex++;
-				boundaryFineToFullFine.push_back( gridChart.texelIndices[j].interiorOrCovered );
+				boundaryFineToFullFine.push_back( gridChart.texelIndices[j].covered );
 			}
 		}
 	}

@@ -27,7 +27,6 @@ DAMAGE.
 */
 
 // To do:
-// -- Replace InteriorOrCovered -> Supported
 // -- Introduce auxiliary vector taking index type as accessors
 // 1. Modify code to distinguish between grid-based indexing and normalized coordinates
 // 2. Add index types for cells/texels
@@ -42,7 +41,7 @@ DAMAGE.
 #define DEBUG_INDEXING					// Use separate classes to sanity check indexing
 //#define SANITY_CHECK				// Enables sanity checks for debugging purposes
 
-//#define USE_RASTERIZER				// Use triangle/edge rasterization code [SLOW]
+#define USE_RASTERIZER				// Use triangle/edge rasterization code [SLOW]
 #define REORDER_BOUNDARY			// Re-order the boundary edges so that they are sequential [NOT NECESSARY]
 
 //#define SEPARATE_POLYGONS			// Keep the polygons obtained by clipping triangles to boundary cells separate

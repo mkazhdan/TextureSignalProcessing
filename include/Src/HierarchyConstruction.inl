@@ -155,7 +155,7 @@ void InitializeGridChartsActiveNodes
 				Point3D< double > bc = simplex.barycentricCoordinates( Point2D< double >( I[0] , I[1] ) );
 				Point2D< GeometryReal > newBC = Point2D< GeometryReal >( Point2D< double >( bc[1] , bc[2] ) );
 
-				texelType(I) = TexelType::BoundarySupported;
+				texelType(I) = TexelType::BoundarySupportedAndUncovered;
 
 				if( chartTriangleID(I)==ChartMeshTriangleIndex(-1) )
 				{
@@ -294,7 +294,7 @@ void InitializeGridChartsActiveNodes
 			{
 				if( texelType(I)!=TexelType::BoundarySupportedAndCovered )
 				{
-					texelType(I) = TexelType::BoundarySupported;
+					texelType(I) = TexelType::BoundarySupportedAndUncovered;
 					Point3D< double > bc = simplex.barycentricCoordinates( Point2D< double >( I[0] , I[1] ) );
 					Point2D< GeometryReal > newBC = Point2D< GeometryReal >( Point2D< double >( bc[1] , bc[2] ) );
 
@@ -380,7 +380,7 @@ void InitializeGridChartsActiveNodes
 					nIndices[1] = std::min< int >( std::max< int >( 0 , nIndices[1] ) , height - 1 );
 					if( texelType( nIndices[0] , nIndices[1] )!=TexelType::BoundarySupportedAndCovered )
 					{
-						texelType(nIndices[0],nIndices[1]) = TexelType::BoundarySupported;
+						texelType(nIndices[0],nIndices[1]) = TexelType::BoundarySupportedAndUncovered;
 
 						Point2D< GeometryReal > texel_pos = Point2D< GeometryReal >( (GeometryReal)nIndices[0]*cellSizeW , (GeometryReal)nIndices[1]*cellSizeH ) - tPos[0];
 						Point2D< GeometryReal > barycentricCoord = barycentricMap*texel_pos;
@@ -418,7 +418,7 @@ void InitializeGridChartsActiveNodes
 				nIndices[1] = std::min<int>(std::max<int>(0, nIndices[1]), height - 1);
 				if( texelType( nIndices[0], nIndices[1] )!=TexelType::BoundarySupportedAndCovered )
 				{
-					texelType( nIndices[0] , nIndices[1] ) = TexelType::BoundarySupported;
+					texelType( nIndices[0] , nIndices[1] ) = TexelType::BoundarySupportedAndUncovered;
 
 					Point2D< GeometryReal > texel_pos = Point2D< GeometryReal >( (GeometryReal)nIndices[0]*cellSizeW , (GeometryReal)nIndices[1]*cellSizeH ) - tPos[0];
 					Point2D< GeometryReal > barycentricCoord = barycentricMap*texel_pos;
@@ -503,7 +503,7 @@ void InitializeGridChartsActiveNodes
 		currentNodeInfo.chartID = chartID;
 		currentNodeInfo.texelType = gridChart.texelType(i,j);
 		nodeInfo.push_back( currentNodeInfo );
-		if( IsCovered( gridChart.texelType(i,j) ) ) texelIndices(i,j).interiorOrCovered = interiorTexelIndex++;
+		if( IsCovered( gridChart.texelType(i,j) ) ) texelIndices(i,j).covered = interiorTexelIndex++;
 		if( IsBoundarySupported( gridChart.texelType(i,j) ) ) boundaryTexelIndex++;
 		if( gridChart.texelType(i,j)==TexelType::InteriorSupported ) texelIndices(i,j).interior = deepTexelIndex++;
 	}
@@ -524,7 +524,7 @@ void InitializeGridChartsActiveNodes
 				if( gridChart.cellType(I)==CellType::Interior )
 				{
 					unsigned int count = 0;
-					auto SubKernel = [&]( Index I ){ if( texelIndices(I).interiorOrCovered!=-1 ){ count++; } };
+					auto SubKernel = [&]( Index I ){ if( texelIndices(I).covered!=-1 ){ count++; } };
 					Range::NodesSupportedOnCell( I ).process( SubKernel );
 					if( count!=4 ) MK_THROW( "Interior cell adjacent to non interior node" );
 				}
@@ -567,7 +567,7 @@ void InitializeGridChartsActiveNodes
 			cellIndices(i,j).interior = static_cast< ChartInteriorCellIndex >( _interiorCellIndex++ );
 			interiorCellIndexToCombinedCellIndex.push_back( static_cast< ChartCombinedCellIndex >(_combinedCellIndex ) );
 
-			interiorCellInteriorBilinearElementIndices.emplace_back( texelIndices(i,j).interiorOrCovered , texelIndices(i+1,j).interiorOrCovered , texelIndices(i+1,j+1).interiorOrCovered , texelIndices(i,j+1).interiorOrCovered );
+			interiorCellInteriorBilinearElementIndices.emplace_back( texelIndices(i,j).covered , texelIndices(i+1,j).covered , texelIndices(i+1,j+1).covered , texelIndices(i,j+1).covered );
 			interiorCellCombinedBilinearElementIndices.emplace_back( texelIndices(i,j).combined , texelIndices(i+1,j).combined , texelIndices(i+1,j+1).combined , texelIndices(i,j+1).combined );
 		}
 		cellIndices(i,j).combined = static_cast< ChartCombinedCellIndex >( _combinedCellIndex++ );
@@ -587,7 +587,7 @@ void InitializeGridChartsActiveNodes
 			cellIndices(i,j).interior = static_cast< ChartInteriorCellIndex >( _interiorCellIndex++ );
 			interiorCellIndexToCombinedCellIndex.push_back( static_cast< ChartCombinedCellIndex >( _combinedCellIndex ) );
 
-			unsigned int globalTexelInteriorIndices[4] = { texelIndices(i,j).interiorOrCovered , texelIndices(i+1,j).interiorOrCovered , texelIndices(i+1,j+1).interiorOrCovered , texelIndices(i,j+1).interiorOrCovered };
+			unsigned int globalTexelInteriorIndices[4] = { texelIndices(i,j).covered , texelIndices(i+1,j).covered , texelIndices(i+1,j+1).covered , texelIndices(i,j+1).covered };
 			if( globalTexelInteriorIndices[0]!=-1 && globalTexelInteriorIndices[1]!=-1 && globalTexelInteriorIndices[2]!=-1 && globalTexelInteriorIndices[3]!=-1)
 			{
 				interiorCellInteriorBilinearElementIndices.push_back( BilinearElementIndex( globalTexelInteriorIndices[0] , globalTexelInteriorIndices[1] , globalTexelInteriorIndices[2] , globalTexelInteriorIndices[3] ) );

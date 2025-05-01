@@ -313,9 +313,8 @@ namespace MishaK
 		void sort( void ){ for( int i=0 ; i<bilinear.size() ; i++ ) std::sort( bilinear[i].begin() , bilinear[i].end() ); }
 	};
 
-	class RasterLine
+	struct RasterLine
 	{
-	public:
 		int lineStartIndex;
 		int lineEndIndex;
 		int prevLineIndex;
@@ -323,9 +322,8 @@ namespace MishaK
 		int coeffStartIndex;
 	};
 
-	class DeepLine
+	struct DeepLine
 	{
-	public:
 		int coarseLineStartIndex;
 		int coarseLineEndIndex;
 		int finePrevLineIndex;
@@ -333,31 +331,28 @@ namespace MishaK
 		int fineNextLineIndex;
 	};
 
-	class SegmentedRasterLine
+	struct SegmentedRasterLine
 	{
-	public:
-		std::vector<RasterLine> segments;
+		std::vector< RasterLine > segments;
 	};
 
-	class MultigridBlockInfo
+	struct MultigridBlockInfo
 	{
-	public:
-		MultigridBlockInfo( int p_blockWidth = 128, int p_blockHeight = 16, int p_paddingWidth = 2, int p_paddingHeight = 2 )
+		MultigridBlockInfo( unsigned int p_blockWidth=128 , unsigned int p_blockHeight=16 , unsigned int p_paddingWidth=2 , unsigned int p_paddingHeight=2 )
 		{
 			blockWidth = p_blockWidth;
 			blockHeight = p_blockHeight;
 			paddingWidth = p_paddingWidth;
 			paddingHeight = p_paddingHeight;
 		}
-		int blockWidth;
-		int blockHeight;
-		int paddingWidth;
-		int paddingHeight;
+		unsigned int blockWidth;
+		unsigned int blockHeight;
+		unsigned int paddingWidth;
+		unsigned int paddingHeight;
 	};
 
-	class BlockDeepSegment
+	struct BlockDeepSegment
 	{
-	public:
 		int currentStart;
 		int currentEnd;
 		int previousStart;
@@ -365,30 +360,27 @@ namespace MishaK
 		int deepStart;
 	};
 
-	class BlockDeepSegmentedLine
+	struct BlockDeepSegmentedLine
 	{
-	public:
 		std::vector<BlockDeepSegment> blockDeepSegments;
 	};
 
-	class BlockTask
+	struct BlockTask
 	{
-	public:
 		std::vector<BlockDeepSegmentedLine> blockPaddedSegmentedLines;
 		std::vector<BlockDeepSegmentedLine> blockDeepSegmentedLines;
 	};
-	class ThreadTask
+
+	struct ThreadTask
 	{
-	public:
 		int taskDeepTexels;
-		std::vector<BlockTask> blockTasks;
+		std::vector< BlockTask > blockTasks;
 	};
 
 	bool threadTaskComparison( const ThreadTask & task1 , const ThreadTask & task2 ){ return task1.taskDeepTexels < task2.taskDeepTexels; }
 
-	class InteriorTexelToCellLine
+	struct InteriorTexelToCellLine
 	{
-	public:
 		int texelStartIndex;
 		int texelEndIndex;
 		int coeffOffset;
@@ -398,9 +390,8 @@ namespace MishaK
 	};
 
 
-	class ProlongationLine
+	struct ProlongationLine
 	{
-	public:
 		int startIndex;
 		int length;
 		int centerLineIndex;
@@ -409,10 +400,9 @@ namespace MishaK
 		bool alignedStart;
 	};
 
-	class RestrictionLine
+	struct RestrictionLine
 	{
-	public:
-		RestrictionLine() { startIndex = length = centerLineIndex = prevLineIndex = nextLineIndex = -1; }
+		RestrictionLine( void ) { startIndex = length = centerLineIndex = prevLineIndex = nextLineIndex = -1; }
 		int startIndex;
 		int length;
 		int centerLineIndex;
@@ -440,14 +430,14 @@ namespace MishaK
 	enum struct TexelType
 	{
 		Unsupported ,					// No geometry passes through the support of the node
-		BoundarySupported ,				// The support of the texel includes boundary nodes
+		BoundarySupportedAndUncovered ,	// The support of the texel includes boundary nodes but the node is not covered by a triangle
 		BoundarySupportedAndCovered ,	// The support of the texel includes boundary nodes and the node is covered by a triangle
 		InteriorSupported				// The support of the texel consists of interior nodes
 	};
 
 	struct CellIndex
 	{
-		CellIndex( void ) : combined( static_cast< ChartCombinedCellIndex >(-1) ) , interior( static_cast< ChartInteriorCellIndex >(-1) ) , boundary( static_cast< ChartBoundaryCellIndex >(-1) ){}
+		CellIndex( void ) : combined(-1) , interior(-1) , boundary(-1){}
 		ChartCombinedCellIndex combined;
 		ChartInteriorCellIndex interior;
 		ChartBoundaryCellIndex boundary;
@@ -455,12 +445,12 @@ namespace MishaK
 
 	struct TexelIndex
 	{
-		TexelIndex( void ) : combined(-1) , interior(-1) , interiorOrCovered(-1){}
-		unsigned int combined , interior , interiorOrCovered;
+		TexelIndex( void ) : combined(-1) , interior(-1) , covered(-1){}
+		unsigned int combined , interior , covered;
 	};
 
 	bool IsCovered( TexelType texelType ){ return texelType==TexelType::BoundarySupportedAndCovered || texelType==TexelType::InteriorSupported; }
-	bool IsBoundarySupported( TexelType texelType ){ return texelType==TexelType::BoundarySupportedAndCovered || texelType==TexelType::BoundarySupported; }
+	bool IsBoundarySupported( TexelType texelType ){ return texelType==TexelType::BoundarySupportedAndCovered || texelType==TexelType::BoundarySupportedAndUncovered; }
 
 	std::string CellTypeName( CellType cellType )
 	{
@@ -477,8 +467,8 @@ namespace MishaK
 	std::string TexelTypeName( TexelType texelType )
 	{
 		if     ( texelType==TexelType::Unsupported ) return std::string( "Unsupported" );
-		else if( texelType==TexelType::BoundarySupportedAndCovered ) return std::string( "Boundary and interior supported" );
-		else if( texelType==TexelType::BoundarySupported ) return std::string( "Boundary supported" );
+		else if( texelType==TexelType::BoundarySupportedAndCovered ) return std::string( "Boundary supported and covered" );
+		else if( texelType==TexelType::BoundarySupportedAndUncovered ) return std::string( "Boundary supported and uncovered" );
 		else if( texelType==TexelType::InteriorSupported ) return std::string( "Interior supported" );
 		else
 		{
@@ -594,18 +584,16 @@ namespace MishaK
 		unsigned int _combinedCellOffset;
 	};
 
-	class GridNodeInfo
+	struct GridNodeInfo
 	{
-	public:
 		int chartID;
 		int ci;
 		int cj;
 		TexelType texelType;
 	};
 
-	class TexelLineInfo
+	struct TexelLineInfo
 	{
-	public:
 		TexelLineInfo() : lineIndex(-1) , offset(-1) {}
 		int lineIndex;
 		int offset;
@@ -684,9 +672,8 @@ namespace MishaK
 	};
 
 	template< typename GeometryReal , typename MatrixReal >
-	class HierarchicalSystem
+	struct HierarchicalSystem
 	{
-	public:
 		std::vector< GridAtlas< GeometryReal , MatrixReal > > gridAtlases;
 
 		std::vector< SparseMatrix< MatrixReal , int > > boundaryRestriction;
@@ -698,19 +685,17 @@ namespace MishaK
 	};
 
 
-	template< class Real >
-	class SystemCoefficients
+	template< typename Real >
+	struct SystemCoefficients
 	{
-	public:
 		std::vector< Real > deepCoefficients;
 		SparseMatrix< Real , int > boundaryDeepMatrix;
 		SparseMatrix< Real , int > boundaryBoundaryMatrix;
 	};
 
-	template< class DataType >
-	class MultigridLevelVariables
+	template< typename DataType >
+	struct MultigridLevelVariables
 	{
-	public:
 		std::vector< DataType > x;
 		std::vector< DataType > rhs;
 		std::vector< DataType > residual;
@@ -719,10 +704,9 @@ namespace MishaK
 		std::vector< DataType > variable_boundary_value;
 	};
 
-	template<class Real>
-	class MultigridLevelIndices
+	template< typename Real >
+	struct MultigridLevelIndices
 	{
-	public:
 		std::vector<ThreadTask> threadTasks;
 		std::vector< unsigned int > boundaryToSupported;
 		std::vector<SegmentedRasterLine> segmentedLines;
@@ -732,7 +716,7 @@ namespace MishaK
 		SparseMatrix<Real, int> boundaryRestriction;
 	};
 
-	template< class DirectSolver >
+	template< typename DirectSolver >
 	struct VCycleSolvers
 	{
 		std::vector< DirectSolver > boundary;

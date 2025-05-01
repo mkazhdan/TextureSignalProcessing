@@ -44,8 +44,8 @@ void InitializeProlongation( int numInteriorTexels , int numFineNodes , int numC
 #if 1
 			MK_THROW( "Method disabled" );
 #else
-			if (gridChart.texelIndices[j].cobmiend != -1 && gridChart.texelIndices[j].interiorOrCovered != -1) {
-				interiorTexelIndices[gridChart.texelIndices[j].combined] = gridChart.texelIndices[j].interiorOrCovered;
+			if (gridChart.texelIndices[j].cobmiend != -1 && gridChart.texelIndices[j].covered != -1) {
+				interiorTexelIndices[gridChart.texelIndices[j].combined] = gridChart.texelIndices[j].covered;
 			}
 #endif
 		}
