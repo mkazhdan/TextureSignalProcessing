@@ -52,6 +52,9 @@ namespace MishaK
 		template< typename Data >
 		struct IndexVector : protected std::vector< Data >
 		{
+			IndexVector( void ) : std::vector< Data >(){}
+			IndexVector( size_t sz ) : std::vector< Data >(sz){}
+			IndexVector( size_t sz , const Data &data ) : std::vector< Data >( sz , data ){}
 			size_t size( void ) const { return std::vector< Data >::size(); }
 			void resize( size_t sz ){ return std::vector< Data >::resize(sz); }
 			void push_back( const Data &data ){ return std::vector< Data >::push_back(data); }

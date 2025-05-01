@@ -56,13 +56,25 @@ namespace MishaK
 		size_t numTriangles( void ) const { return SimpleTriangleMesh< GeometryReal , 2 >::triangles.size(); }
 
 		// Returns the index of the chart the triangle has been assigned to
+#ifdef NEW_CODE
+		ChartIndex triangleToChart( AtlasMeshTriangleIndex t ) const { return _triangleToChart[t]; }
+#else // !NEW_CODE
 		ChartIndex triangleToChart( AtlasMeshTriangleIndex t ) const { return _triangleToChart[ static_cast< unsigned int >(t) ]; }
+#endif // NEW_CODE
 
 		// Returns the index of the edge associated with the half-edge
+#ifdef NEW_CODE
+		AtlasMeshEdgeIndex halfEdgeToEdge( AtlasMeshHalfEdgeIndex he ) const { return _halfEdgeToEdge[he]; }
+#else // !NEW_CODE
 		AtlasMeshEdgeIndex halfEdgeToEdge( AtlasMeshHalfEdgeIndex he ) const { return _halfEdgeToEdge[ static_cast< unsigned int >(he) ]; }
+#endif // NEW_CODE
 
 		// Returns the index of the chart vertex as an atlas vertex
+#ifdef NEW_CODE
+		AtlasMeshVertexIndex chartToAtlasVertex( ChartMeshVertexIndex v ) const { return _chartToAtlasVertex[v]; }
+#else // !NEW_CODE
 		AtlasMeshVertexIndex chartToAtlasVertex( ChartMeshVertexIndex v ) const { return _chartToAtlasVertex[ static_cast< unsigned int >(v) ]; }
+#endif // NEW_CODE
 
 		unsigned int numCharts( void ) const { return _numCharts; }
 
@@ -75,9 +87,15 @@ namespace MishaK
 
 	protected:
 		unsigned int _numCharts;
+#ifdef NEW_CODE
+		IndexVector< AtlasMeshTriangleIndex , ChartIndex > _triangleToChart;
+		IndexVector< AtlasMeshHalfEdgeIndex , AtlasMeshEdgeIndex > _halfEdgeToEdge;
+		IndexVector< ChartMeshVertexIndex , AtlasMeshVertexIndex > _chartToAtlasVertex;
+#else // !NEW_CODE
 		std::vector< ChartIndex > _triangleToChart;
 		std::vector< AtlasMeshEdgeIndex > _halfEdgeToEdge;
 		std::vector< AtlasMeshVertexIndex > _chartToAtlasVertex;
+#endif // NEW_CODE
 	};
 
 	template< typename GeometryReal >
@@ -110,21 +128,41 @@ namespace MishaK
 		std::vector< ChartMeshHalfEdgeIndex > boundaryHalfEdges;
 
 		// Returns the index of the atlas edge associated with the chart half-edge
+#ifdef NEW_CODE
+		AtlasMeshEdgeIndex atlasEdge( ChartMeshHalfEdgeIndex he ) const { return _chartHalfEdgeToAtlasEdge[he]; }
+#else // !NEW_CODE
 		AtlasMeshEdgeIndex atlasEdge( ChartMeshHalfEdgeIndex he ) const { return _chartHalfEdgeToAtlasEdge[ static_cast< unsigned int >(he) ]; }
+#endif // NEW_CODE
 
 		// Returns the index of the atlas half-edge associated with the chart half-edge
+#ifdef NEW_CODE
+		AtlasMeshHalfEdgeIndex atlasHalfEdge( ChartMeshHalfEdgeIndex he ) const { auto f = FactorChartMeshHalfEdgeIndex( he ) ; return GetAtlasMeshHalfEdgeIndex( _chartToAtlasTriangle[f.first] , f.second ); }
+#else // !NEW_CODE
 		AtlasMeshHalfEdgeIndex atlasHalfEdge( ChartMeshHalfEdgeIndex he ) const { return AtlasMeshHalfEdgeIndex( static_cast< unsigned int >( _chartToAtlasTriangle[static_cast< unsigned int >(he)/3] )*3 + (static_cast< unsigned int >(he)%3) ); }
+#endif // NEW_CODE
 
 		// Returns the index of the chart vertex as an atlas vertex
+#ifdef NEW_CODE
+		AtlasMeshVertexIndex atlasVertex( ChartMeshVertexIndex v ) const { return _chartToAtlasVertex[v]; }
+#else // !NEW_CODE
 		AtlasMeshVertexIndex atlasVertex( ChartMeshVertexIndex v ) const { return _chartToAtlasVertex[ static_cast< unsigned int >(v) ]; }
+#endif // NEW_CODE
 
 		// Returns the index of the triangle within the atlas
+#ifdef NEW_CODE
+		AtlasMeshTriangleIndex atlasTriangle( ChartMeshTriangleIndex t ) const { return _chartToAtlasTriangle[t]; }
+#else // !NEW_CODE
 		AtlasMeshTriangleIndex atlasTriangle( ChartMeshTriangleIndex t ) const { return _chartToAtlasTriangle[ static_cast< unsigned int >(t) ]; }
+#endif // NEW_CODE
 
 		struct AtlasInfo
 		{
 			// The opposite half-edges (in the atlas mesh)
+#ifdef NEW_CODE
+			IndexVector< AtlasMeshHalfEdgeIndex , AtlasMeshHalfEdgeIndex > oppositeHalfEdges;
+#else // !NEW_CODE
 			std::vector< AtlasMeshHalfEdgeIndex > oppositeHalfEdges;
+#endif // NEW_CODE
 
 			// A map assigning an index to atlas boundary vertices
 			std::map< AtlasMeshVertexIndex , AtlasInteriorOrBoundaryNodeIndex > atlasBoundaryVertexToIndex;
@@ -144,9 +182,15 @@ namespace MishaK
 	protected:
 		friend AtlasMesh< GeometryReal >;
 
+#ifdef NEW_CODE
+		IndexVector< ChartMeshHalfEdgeIndex , AtlasMeshEdgeIndex > _chartHalfEdgeToAtlasEdge;
+		IndexVector< ChartMeshVertexIndex , AtlasMeshVertexIndex > _chartToAtlasVertex;
+		IndexVector< ChartMeshTriangleIndex , AtlasMeshTriangleIndex > _chartToAtlasTriangle;
+#else // !NEW_CODE
 		std::vector< AtlasMeshEdgeIndex > _chartHalfEdgeToAtlasEdge;
 		std::vector< AtlasMeshVertexIndex > _chartToAtlasVertex;
 		std::vector< AtlasMeshTriangleIndex > _chartToAtlasTriangle;
+#endif // NEW_CODE
 	};
 
 	template< typename GeometryReal >

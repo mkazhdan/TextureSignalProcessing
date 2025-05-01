@@ -171,14 +171,22 @@ AtlasChart< GeometryReal >::GetCharts
 		std::vector< unsigned int > oppositeHalfEdges;
 		mesh.setBoundaryHalfEdgeInfo( textureBoundaryHalfEdges , oppositeHalfEdges );
 		atlasInfo.oppositeHalfEdges.resize( oppositeHalfEdges.size() );
+#ifdef NEW_CODE
+		for( unsigned int i=0 ; i<oppositeHalfEdges.size() ; i++ ) atlasInfo.oppositeHalfEdges[ AtlasMeshHalfEdgeIndex(i) ] = AtlasMeshHalfEdgeIndex( oppositeHalfEdges[i] );
+#else // !NEW_CODE
 		for( unsigned int i=0 ; i<oppositeHalfEdges.size() ; i++ ) atlasInfo.oppositeHalfEdges[i] = AtlasMeshHalfEdgeIndex( oppositeHalfEdges[i] );
+#endif // NEW_CODE
 	}
 	std::vector< bool > isTextureBoundaryHalfEdge( mesh.numTriangles()*3 , false );
 	for( unsigned int i=0 ; i<textureBoundaryHalfEdges.size() ; i++ ) isTextureBoundaryHalfEdge[ textureBoundaryHalfEdges[i] ] = true;
 
 	// Determine if the mesh is water-tight
 	atlasInfo.isClosed = true;
+#ifdef NEW_CODE
+	for( unsigned int i=0 ; i<atlasInfo.oppositeHalfEdges.size() ; i++ ) if( atlasInfo.oppositeHalfEdges[ AtlasMeshHalfEdgeIndex(i) ]==AtlasMeshHalfEdgeIndex(-1) ) atlasInfo.isClosed = false;
+#else // !NEW_CODE
 	for( unsigned int i=0 ; i<atlasInfo.oppositeHalfEdges.size() ; i++ ) if( static_cast< unsigned int >( atlasInfo.oppositeHalfEdges[i] )==-1 ) atlasInfo.isClosed = false;
+#endif // NEW_CODE
 
 	// Set the map taking the indices of surface vertices lying on the texture boundary to vertex indices
 	{

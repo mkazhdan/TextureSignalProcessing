@@ -198,7 +198,11 @@ void InitializeChartBoundaryEdgeGridIntersections
 template< typename GeometryReal >
 void InitializeChartBoundaryPolygons
 (
+#ifdef NEW_CODE
+	const IndexVector< AtlasMeshHalfEdgeIndex , AtlasMeshHalfEdgeIndex > & oppositeHalfEdge ,
+#else // !NEW_CODE
 	const std::vector< AtlasMeshHalfEdgeIndex > & oppositeHalfEdge ,
+#endif // NEW_CODE
 	const AtlasChart< GeometryReal > &atlasChart ,
 	GridChart< GeometryReal > &gridChart ,
 	unsigned int numInteriorNodes ,
@@ -489,7 +493,11 @@ void InitializeChartBoundaryPolygons
 						BoundarySegmentInfo< GeometryReal > segmentInfo = segmentToBoundarySegmentInfoIter->second;
 						polygonAtlasEdgeIndex[j] = atlasChart.atlasEdge( segmentInfo.chartHalfEdge );
 
+#ifdef NEW_CODE
+						AtlasMeshHalfEdgeIndex oppHalfEdge = oppositeHalfEdge[ atlasChart.atlasHalfEdge( segmentInfo.chartHalfEdge ) ];
+#else // !NEW_CODE
 						AtlasMeshHalfEdgeIndex oppHalfEdge = oppositeHalfEdge[ static_cast< unsigned int >( atlasChart.atlasHalfEdge( segmentInfo.chartHalfEdge ) ) ];
+#endif // NEW_CODE
 						if( oppHalfEdge!=AtlasMeshHalfEdgeIndex(-1) )
 						{
 							GeometryReal startTime = segmentInfo.startTime;
