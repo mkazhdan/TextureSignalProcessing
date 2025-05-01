@@ -281,11 +281,7 @@ public:
 	static void UpdateSolution(bool verbose = false, bool detailVerbose = false);
 	static void ComputeExactSolution( bool verbose=false );
 	static void InitializeSystem( int width , int height );
-#ifdef NEW_CODE
 	static void _InitializeSystem( IndexVector< ChartIndex , IndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > > &parameterMetric , BoundaryProlongationData< Real > &boundaryProlongation , std::vector< Point3D< Real > > &inputSignal , std::vector< Real >& texelToCellCoeffs );
-#else // !NEW_CODE
-	static void _InitializeSystem( std::vector<std::vector< SquareMatrix< PreReal , 2 > > > &parameterMetric , BoundaryProlongationData< Real > &boundaryProlongation , std::vector< Point3D< Real > > &inputSignal , std::vector< Real >& texelToCellCoeffs );
-#endif // NEW_CODE
 
 #ifdef NO_OPEN_GL_VISUALIZATION
 #else // !NO_OPEN_GL_VISUALIZATION
@@ -801,11 +797,7 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::UpdateSolution( bool ver
 }
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth >
-#ifdef NEW_CODE
 void TextureFilter< PreReal , Real , TextureBitDepth >::_InitializeSystem( IndexVector< ChartIndex , IndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > > &parameterMetric , BoundaryProlongationData< Real > &boundaryProlongation , std::vector< Point3D< Real > > &inputSignal , std::vector< Real > &texelToCellCoeffs )
-#else // !NEW_CODE
-void TextureFilter< PreReal , Real , TextureBitDepth >::_InitializeSystem( std::vector< std::vector< SquareMatrix< PreReal , 2 > > > &parameterMetric , BoundaryProlongationData< Real > &boundaryProlongation , std::vector< Point3D< Real > > &inputSignal , std::vector< Real > &texelToCellCoeffs )
-#endif // NEW_CODE
 {
 	Miscellany::Timer timer;
 	{
@@ -843,11 +835,7 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::InitializeSystem( int wi
 	std::vector< Real > texelToCellCoeffs;
 
 	timer.reset();
-#ifdef NEW_CODE
 	IndexVector< ChartIndex , IndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > > parameterMetric;
-#else // !NEW_CODE
-	std::vector< std::vector< SquareMatrix< PreReal , 2 > > > parameterMetric;
-#endif // NEW_CODE
 	InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric );
 	_InitializeSystem( parameterMetric , boundaryProlongation , inputSignal , texelToCellCoeffs );
 

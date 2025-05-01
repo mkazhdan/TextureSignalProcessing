@@ -270,11 +270,7 @@ public:
 	static void UpdateSolution( bool verbose=false , bool detailVerbose=false );
 	static void ComputeExactSolution( bool verbose=false );
 	static void InitializeSystem( int width , int height );
-#ifdef NEW_CODE
 	static void _InitializeSystem( IndexVector< ChartIndex , IndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > > &parameterMetric , BoundaryProlongationData< Real > &boundaryProlongation );
-#else // !NEW_CODE
-	static void _InitializeSystem( std::vector< std::vector< SquareMatrix< PreReal , 2 > > > &parameterMetric , BoundaryProlongationData< Real > &boundaryProlongation );
-#endif // NEW_CODE
 
 #ifdef NO_OPEN_GL_VISUALIZATION
 #else // !NO_OPEN_GL_VISUALIZATION
@@ -625,11 +621,7 @@ void Stitching< PreReal , Real , TextureBitDepth >::UpdateSolution( bool verbose
 }
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth >
-#ifdef NEW_CODE
 void Stitching< PreReal , Real , TextureBitDepth >::_InitializeSystem( IndexVector< ChartIndex , IndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > > &parameterMetric , BoundaryProlongationData< Real > &boundaryProlongation )
-#else // !NEW_CODE
-void Stitching< PreReal , Real , TextureBitDepth >::_InitializeSystem( std::vector< std::vector< SquareMatrix< PreReal , 2 > > > &parameterMetric , BoundaryProlongationData< Real > &boundaryProlongation )
-#endif // NEW_CODE
 {
 	// Unused parameters
 	std::vector< Point3D< Real > > inputSignal;
@@ -664,11 +656,7 @@ void Stitching< PreReal , Real , TextureBitDepth >::InitializeSystem( int width 
 	std::vector< Point3D< Real > > inputSignal;
 	std::vector< Real > texelToCellCoeffs;
 
-#ifdef NEW_CODE
 	IndexVector< ChartIndex , IndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > > parameterMetric;
-#else // !NEW_CODE
-	std::vector< std::vector< SquareMatrix< PreReal , 2 > > > parameterMetric;
-#endif //  NEW_CODE
 	InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric );
 	InitializeIntraChartEdgeIndexing( hierarchy.gridAtlases[0].gridCharts , edgeIndex );
 
@@ -764,11 +752,7 @@ Image< Point3D< unsigned char > > Stitching< PreReal , Real , TextureBitDepth >:
 	chartMask.resize( textureWidth , textureHeight );
 	for( unsigned int i=0 ; i<(unsigned int)textureWidth ; i++ ) for( unsigned int j=0 ; j<(unsigned int)textureHeight ; j++ ) chartMask(i,j) = Point3D< unsigned char >(0,0,0);
 
-#ifdef NEW_CODE
 	std::map< ChartIndex , Point3D< unsigned char > > chartColors;
-#else // !NEW_CODE
-	std::map< int , Point3D< unsigned char > > chartColors;
-#endif // NEW_CODE
 	auto ColorAlreadyUsed = [&]( Point3D< unsigned char > c )
 		{
 			for( auto iter=chartColors.begin() ; iter!=chartColors.end() ; iter++ )

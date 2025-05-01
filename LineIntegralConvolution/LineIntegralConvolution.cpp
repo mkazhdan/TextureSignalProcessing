@@ -166,11 +166,7 @@ public:
 	static int impulseTexel;
 
 	static IndexVector< ChartIndex , AtlasChart< PreReal > > atlasCharts;
-#ifdef NEW_CODE
 	static IndexVector< ChartIndex , IndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > > parameterMetric;
-#else // !NEW_CODE
-	static std::vector<std::vector< SquareMatrix< PreReal , 2 > > > parameterMetric;
-#endif // NEW_CODE
 
 	static Real lineConvolutionRange;
 	static Real modulationRange;
@@ -265,11 +261,7 @@ template< typename PreReal , typename Real > unsigned int												LineConvolu
 template< typename PreReal , typename Real > TexturedMeshVisualization									LineConvolution< PreReal , Real >::visualization( true );
 
 template< typename PreReal , typename Real > IndexVector< ChartIndex , AtlasChart< PreReal > >			LineConvolution< PreReal , Real >::atlasCharts;
-#ifdef NEW_CODE
 template< typename PreReal , typename Real > IndexVector< ChartIndex , IndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > >	LineConvolution< PreReal , Real >::parameterMetric;
-#else // !NEW_CODE
-template< typename PreReal , typename Real > std::vector< std::vector< SquareMatrix< PreReal , 2 > > >	LineConvolution< PreReal , Real >::parameterMetric;
-#endif // NEW_CODE
 
 template< typename PreReal , typename Real > Padding													LineConvolution< PreReal , Real >::padding;
 template< typename PreReal , typename Real > SparseMatrix< Real , int >									LineConvolution< PreReal , Real >::anisotropicMass;
@@ -570,31 +562,18 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 
 	//////////////////////////////////// 	Line Convolution coefficients
 	{
-#ifdef NEW_CODE
 		IndexVector< AtlasMeshTriangleIndex , Point2D< PreReal > > vectorField;
-#else // !NEW_CODE
-		std::vector< Point2D< PreReal > > vectorField;
-#endif // NEW_CODE
 		if( InVectorField.set )
 		{
 			if( IntrinsicVectorField.set )
 			{
-#ifdef NEW_CODE
 				ReadVector( ( std::vector< Point2D< PreReal > > & )vectorField , InVectorField.value );
-#else // !NEW_CODE
-				ReadVector( vectorField , InVectorField.value );
-#endif // NEW_CODE
 				if( vectorField.size()!=mesh.numTriangles() ) MK_THROW( "Triangle and vector counts don't match: " , mesh.numTriangles() , " != " , vectorField.size() );
 			}
 			else
 			{
-#ifdef NEW_CODE
 				IndexVector< AtlasMeshTriangleIndex , Point3D< PreReal > > _vectorField;
 				ReadVector( ( std::vector< Point2D< PreReal > > & )_vectorField , InVectorField.value );
-#else // !NEW_CODE
-				std::vector< Point3D< PreReal > > _vectorField;
-				ReadVector( _vectorField , InVectorField.value );
-#endif // NEW_CODE
 				if( _vectorField.size()!=mesh.numTriangles() ) MK_THROW( "Triangle and vector counts don't match: " , mesh.numTriangles() , " != " , _vectorField.size() );
 				vectorField.resize( _vectorField.size() );
 				ThreadPool::ParallelFor
@@ -606,13 +585,8 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 							Point3D< PreReal > d[] = { s[1]-s[0] , s[2]-s[0] };
 							SquareMatrix< PreReal , 2 > Dot;
 							for( unsigned int j=0 ; j<2 ; j++ ) for( unsigned int k=0 ; k<2 ; k++ ) Dot(j,k) = Point3D< PreReal >::Dot( d[j] , d[k] );
-#ifdef NEW_CODE
 							Point2D< PreReal > dot( Point3D< PreReal >::Dot( d[0] , _vectorField[ AtlasMeshTriangleIndex(i) ] ) , Point3D< PreReal >::Dot( d[1] , _vectorField[ AtlasMeshTriangleIndex(i) ] ) );
 							vectorField[ AtlasMeshTriangleIndex(i) ] = Dot.inverse() * dot;
-#else // !NEW_CODE
-							Point2D< PreReal > dot( Point3D< PreReal >::Dot( d[0] , _vectorField[i] ) , Point3D< PreReal >::Dot( d[1] , _vectorField[i] ) );
-							vectorField[i] = Dot.inverse() * dot;
-#endif // NEW_CODE
 						}
 					);
 			}
@@ -714,40 +688,23 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 			ThreadPool::ParallelFor
 				(
 					0 , principalCurvatures.size() ,
-#ifdef NEW_CODE
 					[&]( unsigned int , size_t t ){ vectorField[ AtlasMeshTriangleIndex(t) ] = principalCurvatures[t].dirs[ MinimalCurvature.set ? 0 : 1 ] * ( principalCurvatures[t].values[1] - principalCurvatures[t].values[0] ); }
-#else // !NEW_CODE
-					[&]( unsigned int , size_t t ){ vectorField[t] = principalCurvatures[t].dirs[ MinimalCurvature.set ? 0 : 1 ] * ( principalCurvatures[t].values[1] - principalCurvatures[t].values[0] ); }
-#endif // ENW_CODE
 				);
 		}
 		// Normalize the vector-field to have unit-norm
 		{
-#ifdef NEW_CODE
 			IndexVector< AtlasMeshTriangleIndex , SquareMatrix< PreReal , 2 > > embeddingMetric;
-#else // !NEW_CODE
-			std::vector< SquareMatrix< PreReal , 2 > > embeddingMetric;
-#endif // NEW_CODE
 			InitializeEmbeddingMetric( mesh , true , embeddingMetric );
 			{
 				PreReal norm = 0 , area = 0;
 				for( unsigned int t=0 ; t<embeddingMetric.size() ; t++ )
 				{
-#ifdef NEW_CODE
 					PreReal a = (PreReal)sqrt( embeddingMetric[ AtlasMeshTriangleIndex(t) ].determinant() ) / 2.;
 					norm += Point2D< PreReal >::Dot( vectorField[ AtlasMeshTriangleIndex(t) ] , embeddingMetric[ AtlasMeshTriangleIndex(t) ] * vectorField[ AtlasMeshTriangleIndex(t) ] ) * a;
-#else // !NEW_CODE
-					PreReal a = (PreReal)sqrt( embeddingMetric[t].determinant() ) / 2.;
-					norm += Point2D< PreReal >::Dot( vectorField[t] , embeddingMetric[t]*vectorField[t] ) * a;
-#endif // NEW_CODE
 					area += a;
 				}
 				norm = sqrt( norm / area );
-#ifdef NEW_CODE
 				for( unsigned int t=0 ; t<embeddingMetric.size() ; t++ ) vectorField[ AtlasMeshTriangleIndex(t) ] /= (Real)norm;
-#else // !NEW_CODE
-				for( unsigned int t=0 ; t<embeddingMetric.size() ; t++ ) vectorField[t] /= (Real)norm;
-#endif // NEW_CODE
 			}
 		}
 
@@ -755,56 +712,32 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 		{
 #if 1
 			std::cerr << "[WARNING] Forcing extrinsic output" << std::endl;
-#ifdef NEW_CODE
 			IndexVector< AtlasMeshTriangleIndex , Point3D< PreReal > > _vectorField( vectorField.size() );
-#else // !NEW_CODE
-			std::vector< Point3D< PreReal > > _vectorField( vectorField.size() );
-#endif // NEW_CODE
 			ThreadPool::ParallelFor
 				(
 					0 , mesh.numTriangles() ,
 					[&]( unsigned int , size_t i )
 					{
 						Simplex< PreReal , 3 , 2 > s = mesh.surfaceTriangle((unsigned int)i);
-#ifdef NEW_CODE
 						_vectorField[ AtlasMeshTriangleIndex(i) ] = (s[1]-s[0]) * vectorField[ AtlasMeshTriangleIndex(i) ][0] + (s[2]-s[0]) * vectorField[ AtlasMeshTriangleIndex(i) ][1];
-#else // !NEW_CODE
-						_vectorField[i] = (s[1]-s[0]) * vectorField[i][0] + (s[2]-s[0]) * vectorField[i][1];
-#endif // NEW_CODE
 					}
 				);
-#ifdef NEW_CODE
 			WriteVector( ( const std::vector< Point3D< PreReal > > & )_vectorField , OutVectorField.value );
-#else // !NEW_CODE
-			WriteVector( _vectorField , OutVectorField.value );
-#endif // NEW_CODE
 #else
 			if( IntrinsicVectorField.set ) WriteVector( vectorField , OutVectorField.value );
 			else
 			{
-#ifdef NEW_CODE
 				IndexVector< AtlasMeshTriangleIndex , Point3D< PreReal > > _vectorField( vectorField.size() );
-#else // !NEW_CODE
-				std::vector< Point3D< PreReal > > _vectorField( vectorField.size() );
-#endif // NEW_CODE
 				ThreadPool::ParallelFor
 				(
 					0 , mesh.numTriangles() ,
 					[&]( unsigned int , size_t i )
 					{
 						Simplex< PreReal , 3 , 2 > s = mesh.surfaceTriangle(i);
-#ifdef NEW_CODE
 						_vectorField[i] = (s[1]-s[0]) * vectorField[ AtlasMeshTriangleIndex(i) ][0] + (s[2]-s[0]) * vectorField[ AtlasMeshTriangleIndex(i) ][1];
-#else // !NEW_CODE
-						_vectorField[i] = (s[1]-s[0]) * vectorField[i][0] + (s[2]-s[0]) * vectorField[i][1];
-#endif // NEW_CODE
 					}
 				);
-#ifdef NEW_CODE
 				WriteVector( ( const std::vector< Point3D< PreReal > >& )_vectorField , OutVectorField.value );
-#else // !NEW_CODE
-				WriteVector( _vectorField , OutVectorField.value );
-#endif // NEW_CODE
 			}
 #endif
 		}
@@ -815,11 +748,7 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 			{
 				visualization.vectorField[i].tIdx = randomSamples[i].tIdx;
 				visualization.vectorField[i].p = Point2D< float >( randomSamples[i].p );
-#ifdef NEW_CODE
 				visualization.vectorField[i].v = Point2D< float >( vectorField[ AtlasMeshTriangleIndex( randomSamples[i].tIdx ) ] );
-#else // !NEW_CODE
-				visualization.vectorField[i].v = Point2D< float >( vectorField[ randomSamples[i].tIdx ] );
-#endif // NEW_CODE
 			}
 		}
 

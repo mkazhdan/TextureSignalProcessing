@@ -40,20 +40,12 @@ namespace MishaK
 	{
 		TextureNodeInfo( void )
 			: tID(-1) , ci( static_cast< unsigned int >(-1) ) , cj( static_cast< unsigned int >(-1) ) , chartID( static_cast< unsigned int >(-1) ) , isInterior(false) {}
-#ifdef NEW_CODE
 		TextureNodeInfo( AtlasMeshTriangleIndex tID , Point2D< GeometryReal > barycentricCoords , unsigned int ci , unsigned int cj , ChartIndex chartID , bool isInterior )
-#else // !NEW_CODE
-		TextureNodeInfo( AtlasMeshTriangleIndex tID , Point2D< GeometryReal > barycentricCoords , unsigned int ci , unsigned int cj , unsigned int chartID , bool isInterior )
-#endif // NEW_CODE
 			: tID(tID) , barycentricCoords(barycentricCoords) , ci(ci) , cj(cj) , chartID(chartID) , isInterior(isInterior) {}
 		AtlasMeshTriangleIndex tID;
 		Point< GeometryReal , 2 > barycentricCoords;
 		unsigned int ci , cj;
-#ifdef NEW_CODE
 		ChartIndex chartID;
-#else // !NEW_CODE
-		unsigned int chartID;
-#endif // NEW_CODE
 		bool isInterior;
 
 		operator MeshSample< GeometryReal >() const { return MeshSample< GeometryReal >( static_cast< unsigned int >(tID) , barycentricCoords ); }

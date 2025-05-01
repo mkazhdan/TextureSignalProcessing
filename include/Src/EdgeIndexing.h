@@ -73,21 +73,13 @@ namespace MishaK
 	template< typename GeometryReal >
 	void InitializeIntraChartEdgeIndexing
 	(
-#ifdef NEW_CODE
 		const IndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts ,
-#else // !NEW_CODE
-		const std::vector< GridChart< GeometryReal > > &gridCharts ,
-#endif // NEW_CODE
 		std::map< SimplexIndex< 1 > , unsigned int > &boundaryCoarseEdgeIndex
 	)
 	{
 		//Add edges within charts
 		unsigned int lastAddedEdgeIndex = 0;
-#ifdef NEW_CODE
 		for( unsigned int i=0 ; i<gridCharts.size() ; i++ ) InitializeIntraChartEdgeIndexing( boundaryCoarseEdgeIndex , gridCharts[ ChartIndex(i) ] , lastAddedEdgeIndex );
-#else // !NEW_CODE
-		for( int i=0 ; i<gridCharts.size() ; i++ ) InitializeIntraChartEdgeIndexing( boundaryCoarseEdgeIndex , gridCharts[i] , lastAddedEdgeIndex );
-#endif // NEW_CODE
 	}
 
 	template< typename MatrixReal >
@@ -176,19 +168,11 @@ namespace MishaK
 	(
 		const std::vector< AtlasInteriorOrBoundaryNodeIndex > &fineBoundaryNodeIndex ,
 		std::map< SimplexIndex< 1 > , AtlasInteriorOrBoundaryNodeIndex > &fineBoundaryEdgeIndex ,
-#ifdef NEW_CODE
 		const IndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts
-#else // !NEW_CODE
-		const std::vector< GridChart< GeometryReal > > &gridCharts
-#endif // NEW_CODE
 	)
 	{
 		unsigned int lastAddedEdgeIndex = 0;
-#ifdef NEW_CODE
 		for( unsigned int i=0 ; i<gridCharts.size() ; i++ ) InitializeFineBoundaryEdgeChartIndexing( fineBoundaryNodeIndex , fineBoundaryEdgeIndex , gridCharts[ ChartIndex(i) ] , lastAddedEdgeIndex );
-#else // !NEW_CODE
-		for( int i=0 ; i<gridCharts.size() ; i++ ) InitializeFineBoundaryEdgeChartIndexing( fineBoundaryNodeIndex , fineBoundaryEdgeIndex , gridCharts[i] , lastAddedEdgeIndex );
-#endif // NEW_CODE
 	}
 
 	template< typename MatrixReal >

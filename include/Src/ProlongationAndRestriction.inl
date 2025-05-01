@@ -36,11 +36,7 @@ void InitializeProlongation
 	unsigned int numInteriorTexels ,
 	unsigned int numFineNodes ,
 	unsigned int numCoarseNodes ,
-#ifdef NEW_CODE
 	const IndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts ,
-#else // !NEW_CODE
-	const std::vector< GridChart< GeometryReal > > &gridCharts ,
-#endif // NEW_CODE
 	const std::vector< GridNodeInfo > &nodeInfo ,
 	Eigen::SparseMatrix< MatrixReal > &prolongation
 )
@@ -51,11 +47,7 @@ void InitializeProlongation
 	std::vector< int > interiorTexelIndices(numCoarseNodes, -1);
 	for( unsigned int i=0 ; i<gridCharts.size() ; i++ )
 	{
-#ifdef NEW_CODE
 		const GridChart< GeometryReal > &gridChart = gridCharts[ ChartIndex(i) ];
-#else // !NEW_CODE
-		const GridChart< GeometryReal > &gridChart = gridCharts[i];
-#endif // NEW_CODE
 		for( unsigned int j=0 ; j<gridChart.texelIndices.size() ; j++ )
 		{
 #if 1
@@ -81,11 +73,7 @@ void InitializeProlongation
 
 	for( unsigned int i=0 ; i<gridCharts.size() ; i++ )
 	{
-#ifdef NEW_CODE
 		const GridChart< GeometryReal > &gridChart = gridCharts[ ChartIndex(i) ];
-#else // !NEW_CODE
-		const GridChart< GeometryReal > &gridChart = gridCharts[i];
-#endif // NEW_CODE
 		for( unsigned int j=0 ; j<gridChart.auxiliaryNodes.size(); j++ )
 		{
 			unsigned int auxiliaryID = static_cast< unsigned int >( gridChart.auxiliaryNodes[j].index ) - numInteriorTexels;
@@ -99,11 +87,7 @@ void InitializeProlongation
 
 	for( unsigned int i=0 ; i<gridCharts.size() ; i++ )
 	{
-#ifdef NEW_CODE
 		const GridChart< GeometryReal > &gridChart = gridCharts[ ChartIndex(i) ];
-#else // !NEW_CODE
-		const GridChart< GeometryReal > &gridChart = gridCharts[i];
-#endif // NEW_CODE
 		for( unsigned int j=0 ; j<gridChart.auxiliaryNodes.size() ; j++ )
 		{
 			unsigned int auxiliaryID = static_cast< unsigned int >( gridChart.auxiliaryNodes[j].index ) - numInteriorTexels;
@@ -152,13 +136,8 @@ void InitializeAtlasHierachicalProlongation( GridAtlas< GeometryReal , MatrixRea
 
 	for( unsigned int k=0 ; k<fineAtlas.gridCharts.size() ; k++ )
 	{
-#ifdef NEW_CODE
 		const GridChart< GeometryReal > &fineChart = fineAtlas.gridCharts[ ChartIndex(k) ];
 		const GridChart< GeometryReal > &coarseChart = coarseAtlas.gridCharts[ ChartIndex(k) ];
-#else // !NEW_CODE
-		const GridChart< GeometryReal > &fineChart = fineAtlas.gridCharts[k];
-		const GridChart< GeometryReal > &coarseChart = coarseAtlas.gridCharts[k];
-#endif // NEW_CODE
 		unsigned int width = fineChart.texelIndices.res(0);
 		for( unsigned int j=0 ; j<fineChart.texelIndices.res(1) ; j++ )
 		{
@@ -340,11 +319,7 @@ void InitializeAtlasHierachicalRestriction
 				int ci = startNodeInfo.ci;
 				int cj = startNodeInfo.cj;
 
-#ifdef NEW_CODE
 				ChartIndex chartID = startNodeInfo.chartID;
-#else // !NEW_CODE
-				unsigned int chartID = startNodeInfo.chartID;
-#endif // NEW_CODE
 				const GridChart< GeometryReal > &fineChart = fineAtlas.gridCharts[ chartID ];
 				const GridChart< GeometryReal > &coarseChart = coarseAtlas.gridCharts[ chartID ];
 
@@ -396,13 +371,8 @@ void InitializeAtlasHierachicalRestriction
 
 	for( unsigned int k=0 ; k<fineAtlas.gridCharts.size() ; k++ )
 	{
-#ifdef NEW_CODE
 		const GridChart< GeometryReal > &fineChart = fineAtlas.gridCharts[ ChartIndex(k) ];
 		const GridChart< GeometryReal > &coarseChart = coarseAtlas.gridCharts[ ChartIndex(k) ];
-#else // !NEW_CODE
-		const GridChart< GeometryReal > &fineChart = fineAtlas.gridCharts[k];
-		const GridChart< GeometryReal > &coarseChart = coarseAtlas.gridCharts[k];
-#endif // NEW_CODE
 
 		for( unsigned int fj=0 ; fj<fineChart.height ; fj++ ) for( unsigned int fi=0 ; fi<fineChart.width ; fi++ ) if( fineChart.texelIndices(fi,fj).combined!=-1 )
 		{

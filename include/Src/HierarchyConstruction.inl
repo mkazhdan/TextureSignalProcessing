@@ -30,11 +30,7 @@ DAMAGE.
 template< typename GeometryReal >
 void InitializeIndexConverter
 (
-#ifdef NEW_CODE
 	const IndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts ,
-#else // !NEW_CODE
-	const std::vector< GridChart< GeometryReal > > &gridCharts ,
-#endif // NEW_CODE
 	unsigned int numSupportedTexels ,
 	typename GridAtlas<>::IndexConverter & indexConverter
 ) 
@@ -44,7 +40,6 @@ void InitializeIndexConverter
 	unsigned int boundaryIndex = 0;
 	unsigned int deepIndex = 0;
 
-#ifdef NEW_CODE
 	for( unsigned int i=0 ; i<gridCharts.size() ; i++ )
 	{
 		const GridChart< GeometryReal > & gridChart = gridCharts[ ChartIndex(i) ];
@@ -64,23 +59,6 @@ void InitializeIndexConverter
 			globalIndex++;
 		}
 	}
-#else // !NEW_CODE
-	for( const GridChart< GeometryReal > &gridChart : gridCharts ) for( size_t i=0 ; i<gridChart.texelType.size() ; i++ ) if( gridChart.texelType[i]!=TexelType::Unsupported )
-	{
-		if( IsBoundarySupported( gridChart.texelType[i] ) )
-		{
-			indexConverter._boundaryToSupported.push_back( globalIndex );
-			indexConverter._supportedToBoundaryOrDeep[ globalIndex ] = std::pair< bool , unsigned int >( true , boundaryIndex++ );
-		}
-		else if( gridChart.texelType[i]==TexelType::InteriorSupported )
-		{
-			indexConverter._deepToSupported.push_back( globalIndex );
-			indexConverter._supportedToBoundaryOrDeep[ globalIndex ] = std::pair< bool , unsigned int >( false , deepIndex++ );
-		}
-		if( gridChart.texelIndices[i].combined!=globalIndex ) MK_THROW( "Unexpected global index: actual " , gridChart.texelIndices[i].combined , " , expected " , globalIndex );
-		globalIndex++;
-	}
-#endif // NEW_CODE
 }
 
 //Node type : inactive(-1) , exterior (0), interior boundary (1), interior deep (2) hybryd (both deep and boundary for the solver)(3).
@@ -88,11 +66,7 @@ void InitializeIndexConverter
 template< typename GeometryReal >
 void InitializeGridChartsActiveNodes
 (
-#ifdef NEW_CODE
 	ChartIndex chartID ,
-#else // !NEW_CODE
-	unsigned int chartID ,
-#endif // NEW_CODE
 	const AtlasChart< GeometryReal > & atlasChart ,
 	GridChart< GeometryReal > & gridChart ,
 	std::vector< GridNodeInfo > & nodeInfo ,
@@ -777,11 +751,7 @@ void InitializeGridCharts
 	unsigned int height ,
 	unsigned int level ,
 	std::vector< GridNodeInfo > &nodeInfo ,
-#ifdef NEW_CODE
 	IndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts ,
-#else // !NEW_CODE
-	std::vector< GridChart< GeometryReal > > &gridCharts ,
-#endif // NEW_CODE
 	std::vector< RasterLine > &rasterLines ,
 	std::vector< SegmentedRasterLine > &segmentedLines ,
 	std::vector< ThreadTask > &threadTasks ,
@@ -813,9 +783,7 @@ void InitializeGridCharts
 
 	for( unsigned int i=0 ; i<atlasCharts.size() ; i++ )
 	{
-#ifdef NEW_CODE
 		GridChart< GeometryReal > & gridChart = gridCharts[ ChartIndex(i) ];
-#endif // NEW_CODE
 		const AtlasChart< GeometryReal > & atlasChart = atlasCharts[ ChartIndex(i) ];
 		{
 			int halfSize[2][2];
@@ -823,71 +791,39 @@ void InitializeGridCharts
 			{
 				halfSize[c][0] = (int)ceil( ( atlasChart.gridOrigin[c] - atlasChart.minCorner[c] ) / cellSize[c] );
 				halfSize[c][1] = (int)ceil( ( atlasChart.maxCorner[c] - atlasChart.gridOrigin[c] ) / cellSize[c] );
-#ifdef NEW_CODE
 				gridChart.corner[c] = atlasChart.gridOrigin[c] - cellSize[c] * (GeometryReal)halfSize[c][0];
 				gridChart.centerOffset[c] = halfSize[c][0];
 				gridChart.cornerCoords[c] = atlasChart.originCoords[c] - halfSize[c][0];
-#else // !NEW_CODE
-				gridCharts[i].corner[c] = atlasChart.gridOrigin[c] - cellSize[c] * (GeometryReal)halfSize[c][0];
-				gridCharts[i].centerOffset[c] = halfSize[c][0];
-				gridCharts[i].cornerCoords[c] = atlasChart.originCoords[c] - halfSize[c][0];
-#endif // NEW_CODE
 			}
 
-#ifdef NEW_CODE
 			gridChart.width  = halfSize[0][0] + halfSize[0][1] + 1;
 			gridChart.height = halfSize[1][0] + halfSize[1][1] + 1;
-#else // !NEW_CODE
-			gridCharts[i].width  = halfSize[0][0] + halfSize[0][1] + 1;
-			gridCharts[i].height = halfSize[1][0] + halfSize[1][1] + 1;
-#endif // NEW_CODE
 		}
-#ifdef NEW_CODE
 		gridChart.cellSizeW = cellSize[0];
 		gridChart.cellSizeH = cellSize[1];
 		gridChart.atlasWidth = _width;
 		gridChart.atlasHeight = _height;
 		InitializeGridChartsActiveNodes( ChartIndex(i) , atlasChart , gridChart , nodeInfo , rasterLines , segmentedLines , threadTasks , numTexels , numInteriorTexels , numDeepTexels , numBoundaryTexels , numCells , numBoundaryCells , numInteriorCells , multigridBlockInfo );
-#else // !NEW_CODE
-		gridCharts[i].cellSizeW = cellSize[0];
-		gridCharts[i].cellSizeH = cellSize[1];
-		gridCharts[i].atlasWidth = _width;
-		gridCharts[i].atlasHeight = _height;
-		InitializeGridChartsActiveNodes( i , atlasChart , gridCharts[i] , nodeInfo , rasterLines , segmentedLines , threadTasks , numTexels , numInteriorTexels , numDeepTexels , numBoundaryTexels , numCells , numBoundaryCells , numInteriorCells , multigridBlockInfo );
-#endif // NEW_CODE
-
 	}
 }
 
 template< typename GeometryReal >
 void InitializeTextureNodes
 (
-#ifdef NEW_CODE
 	const IndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts ,
-#else // !NEW_CODE
-	const std::vector< GridChart< GeometryReal > > &gridCharts ,
-#endif // NEW_CODE
 	std::vector< TextureNodeInfo< GeometryReal > > &textureNodes
 )
 {
 	for( unsigned int c=0 ; c<gridCharts.size() ; c++ )
 	{
-#ifdef NEW_CODE
 		const GridChart< GeometryReal > &gridChart = gridCharts[ ChartIndex(c) ];
-#else // !NEW_CODE
-		const GridChart< GeometryReal > &gridChart = gridCharts[c];
-#endif // NEW_CODE
 		const Image< TexelIndex > & texelIndices = gridChart.texelIndices;
 		for( unsigned int j=0 ; j<gridChart.height ; j++ ) for( unsigned int i=0 ; i<gridChart.width ; i++ ) if( texelIndices(i,j).combined!=-1 )
 		{
 			TextureNodeInfo< GeometryReal > textureNode;
 			textureNode.ci = gridChart.cornerCoords[0] + i;
 			textureNode.cj = gridChart.cornerCoords[1] + j;
-#ifdef NEW_CODE
 			textureNode.chartID = ChartIndex(c);
-#else // !NEW_CODE
-			textureNode.chartID = c;
-#endif // NEW_CODE
 			textureNode.tID = gridChart.triangleID(i,j);
 			textureNode.barycentricCoords = gridChart.barycentricCoords(i, j);
 			textureNode.isInterior = IsCovered( gridChart.texelType(i,j) );
@@ -899,21 +835,13 @@ void InitializeTextureNodes
 template< typename GeometryReal >
 void InitializeCellNodes
 (
-#ifdef NEW_CODE
 	const IndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts ,
-#else // !NEW_CODE
-	const std::vector< GridChart< GeometryReal > > &gridCharts ,
-#endif // NEW_CODE
 	std::vector< BilinearElementIndex > &combinedCellCombinedBilinearElementIndices
 )
 {
 	for( unsigned int c=0 ; c<gridCharts.size() ; c++ )
 	{
-#ifdef NEW_CODE
 		const std::vector< BilinearElementIndex >& _combinedCellCombinedBilinearElementIndices = gridCharts[ ChartIndex(c) ].combinedCellCombinedBilinearElementIndices;
-#else // !NEW_CODE
-		const std::vector< BilinearElementIndex >& _combinedCellCombinedBilinearElementIndices = gridCharts[c].combinedCellCombinedBilinearElementIndices;
-#endif // NEW_CODE
 		combinedCellCombinedBilinearElementIndices.insert( combinedCellCombinedBilinearElementIndices.end() , _combinedCellCombinedBilinearElementIndices.begin() , _combinedCellCombinedBilinearElementIndices.end() );
 	}
 }
