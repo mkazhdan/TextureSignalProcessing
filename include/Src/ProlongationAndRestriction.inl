@@ -309,7 +309,13 @@ void InitializeAtlasHierachicalRestriction
 				int lineCoarseStartIndex = coarseRasterLines[i].lineStartIndex;
 				int lineCoarseLength = coarseRasterLines[i].lineEndIndex - lineCoarseStartIndex + 1;
 
+#ifdef NEW_CODE
+#pragma message( "[WARNING] What's going on here" );
+				MK_WARN_ONCE( "Transforming to interior texel index" );
+				restrictionLines[i].coeffStartIndex = ChartInteriorTexelIndex( lineCoarseStartIndex ); //global (NOT DEEP) variable index in the current level
+#else // !NEW_CODE
 				restrictionLines[i].coeffStartIndex = lineCoarseStartIndex; //global (NOT DEEP) variable index in the current level
+#endif // NEW_CODE
 
 				deepLines[i].coarseLineStartIndex = coarseRasterLines[i].coeffStartIndex;
 				deepLines[i].coarseLineEndIndex = coarseRasterLines[i].coeffStartIndex + lineCoarseLength - 1;
@@ -327,40 +333,56 @@ void InitializeAtlasHierachicalRestriction
 				int fj = (int)( fineChart.centerOffset[1] + 2.0 *(cj - coarseChart.centerOffset[1]) );
 				if( fi-1 < 0 || fi+1>(int)fineChart.width-1 || fj-1 < 0 || fj+1>(int)fineChart.height-1 ) MK_THROW( "Out of bounds node position" );
 
-				int fineCurrentLineStart = fineChart.texelIndices(fi, fj).combined;
+				int fineCurrentLineStart = fineChart.texelIndices(fi,fj).combined;
 				if (fineCurrentLineStart != -1) {
 					restrictionLines[i].lineStartIndex = fineCurrentLineStart;
 					restrictionLines[i].lineEndIndex = fineCurrentLineStart + 2 * (coarseRasterLines[i].lineEndIndex - lineCoarseStartIndex);
 
+#ifdef NEW_CODE
+					ChartInteriorTexelIndex fineCurrentDeep = fineChart.texelIndices(fi,fj).interior;
+					if( fineCurrentDeep!=ChartInteriorTexelIndex(-1) ) deepLines[i].fineCurrentLineIndex = fineCurrentDeep;
+#else // !NEW_CODE
 					int fineCurrentDeep = fineChart.texelIndices(fi, fj).interior;
 					if (fineCurrentDeep != -1) {
 						deepLines[i].fineCurrentLineIndex = fineCurrentDeep;
 					}
+#endif // NEW_CODE
 					else MK_THROW( "Invalid fine line start index" );
 				}
 				else MK_THROW( "Invalid fine line start index" );
 
-				int finePreviousLineStart = fineChart.texelIndices(fi, fj - 1).combined;
+				int finePreviousLineStart = fineChart.texelIndices(fi,fj-1).combined;
 				if (finePreviousLineStart != -1) {
 					restrictionLines[i].prevLineIndex = finePreviousLineStart;
 
-					int finePreviousDeep = fineChart.texelIndices(fi, fj - 1).interior;
+#ifdef NEW_CODE
+					ChartInteriorTexelIndex finePreviousDeep = fineChart.texelIndices(fi,fj-1).interior;
+					if( finePreviousDeep!=ChartInteriorTexelIndex(-1) ) deepLines[i].finePrevLineIndex = finePreviousDeep;
+#else // !NEW_CODE
+					int finePreviousDeep = fineChart.texelIndices(fi,fj-1).interior;
 					if (finePreviousDeep != -1) {
 						deepLines[i].finePrevLineIndex = finePreviousDeep;
 					}
+#endif // NEW_CODE
 					else MK_THROW( "Invalid fine line start index" );
 				}
 				else MK_THROW( "Invalid fine previous line start index" );
 
 
-				int fineNextLineStart = fineChart.texelIndices(fi, fj + 1).combined;
-				if (fineNextLineStart != -1) {
+				int fineNextLineStart = fineChart.texelIndices(fi,fj+1).combined;
+				if( fineNextLineStart!=-1 )
+				{
 					restrictionLines[i].nextLineIndex = fineNextLineStart;
 
+#ifdef NEW_CODE
+					ChartInteriorTexelIndex fineNextDeep = fineChart.texelIndices(fi,fj+1).interior;
+					if( fineNextDeep!=ChartInteriorTexelIndex(-1) ) deepLines[i].fineNextLineIndex = fineNextDeep;
+#else // !NEW_CODE
 					int fineNextDeep = fineChart.texelIndices(fi, fj + 1).interior;
 					if (fineNextDeep != -1) {
 						deepLines[i].fineNextLineIndex = fineNextDeep;
 					}
+#endif // NEW_CODE
 					else MK_THROW( "Invalid fine line start index" );
 				}
 				else MK_THROW( "Invalid fine next line start index" );

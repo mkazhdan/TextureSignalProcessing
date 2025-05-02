@@ -36,10 +36,17 @@ void DeepCoefficientRestriction( const std::vector< Real >& fineDeepCoefficients
 {
 	auto UpdateRow = [&]( int r )
 	{
-		const Real * prevLineCoeff = fineDeepCoefficients.data() + deepLines[r].finePrevLineIndex * 10;
-		const Real * currentLineCoeff = fineDeepCoefficients.data() + deepLines[r].fineCurrentLineIndex * 10;
-		const Real * nextLineCoeff = fineDeepCoefficients.data() + deepLines[r].fineNextLineIndex * 10;
-		Real * coarseLineCoeff = coarseDeepCoefficients.data() + deepLines[r].coarseLineStartIndex * 10;
+#ifdef NEW_CODE
+			const Real * prevLineCoeff = fineDeepCoefficients.data() + static_cast< unsigned int >(deepLines[r].finePrevLineIndex) * 10;
+			const Real * currentLineCoeff = fineDeepCoefficients.data() + static_cast< unsigned int >(deepLines[r].fineCurrentLineIndex) * 10;
+			const Real * nextLineCoeff = fineDeepCoefficients.data() + static_cast< unsigned int >(deepLines[r].fineNextLineIndex) * 10;
+			Real * coarseLineCoeff = coarseDeepCoefficients.data() + static_cast< unsigned int >(deepLines[r].coarseLineStartIndex) * 10;
+#else // !NEW_CODE
+			const Real * prevLineCoeff = fineDeepCoefficients.data() + deepLines[r].finePrevLineIndex * 10;
+			const Real * currentLineCoeff = fineDeepCoefficients.data() + deepLines[r].fineCurrentLineIndex * 10;
+			const Real * nextLineCoeff = fineDeepCoefficients.data() + deepLines[r].fineNextLineIndex * 10;
+			Real * coarseLineCoeff = coarseDeepCoefficients.data() + deepLines[r].coarseLineStartIndex * 10;
+#endif // NEW_CODE
 
 		int lineLength = deepLines[r].coarseLineEndIndex - deepLines[r].coarseLineStartIndex + 1;
 
@@ -200,14 +207,23 @@ void FullMatrixConstruction( const GridAtlas< GeometryReal , MatrixReal > &gridA
 	}
 
 	//Update deep
-	for (int r = 0; r < rasterLines.size(); r++) {
+	for( int r=0 ; r<rasterLines.size() ; r++ )
+	{
 		const RasterLine & currentLine = rasterLines[r];
+#ifdef NEW_CODE
+		ChartInteriorTexelIndex deepOffset = currentLine.coeffStartIndex;
+#else // !NEW_CODE
 		int deepOffset = currentLine.coeffStartIndex;
+#endif // NEW_CODE
 		int lineLength = currentLine.lineEndIndex - currentLine.lineStartIndex + 1;
 		int previousLineStart = currentLine.prevLineIndex;
 		int currentLineStart = currentLine.lineStartIndex;
 		int nextLineStart = currentLine.nextLineIndex;
+#ifdef NEW_CODE
+		const MatrixReal *coefficients = systemCoefficients.deepCoefficients.data() + static_cast< unsigned int >(deepOffset) * 10;
+#else // !NEW_CODE
 		const MatrixReal *coefficients = systemCoefficients.deepCoefficients.data() + deepOffset * 10;
+#endif // NEW_CODE
 		for (int i = 0; i < lineLength; i++) {
 			for (int k = 0; k < 9; k++) fullMatrix[currentLineStart][k].Value = coefficients[k];
 

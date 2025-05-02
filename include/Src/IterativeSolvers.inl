@@ -192,13 +192,17 @@ void Relaxation
 					const BlockDeepSegment & deepSegment = deepSegmentedLine.blockDeepSegments[s];
 					int length = deepSegment.currentEnd - deepSegment.currentStart + 1;
 
-					Data* _xCurrent = (Data*)x0.data() + deepSegment.currentStart;
-					const Data* _xPrevious = (Data*)x0.data() + deepSegment.previousStart;
-					const Data* _xNext = (Data*)x0.data() + deepSegment.nextStart;
-					const Data* _rhs = (Data*)rhs.data() + deepSegment.currentStart;
-					const Real* _deepCoefficients = &deepCoefficients[10 * deepSegment.deepStart];
+					Data * _xCurrent = (Data*)x0.data() + deepSegment.currentStart;
+					const Data * _xPrevious = (Data*)x0.data() + deepSegment.previousStart;
+					const Data * _xNext = (Data*)x0.data() + deepSegment.nextStart;
+					const Data * _rhs = (Data*)rhs.data() + deepSegment.currentStart;
+#ifdef NEW_CODE
+					const Real * _deepCoefficients = &deepCoefficients[ 10 * static_cast< unsigned int >(deepSegment.deepStart) ];
+#else // !NEW_CODE
+					const Real * _deepCoefficients = &deepCoefficients[10 * deepSegment.deepStart];
+#endif // NEW_CODE
 
-					for (int i = 0; i < length; _deepCoefficients += 10, i++)
+					for( int i=0 ; i<length ; _deepCoefficients+=10 , i++ )
 					{
 						_xCurrent[i] =
 							_rhs[i] * _deepCoefficients[4] -
@@ -297,13 +301,17 @@ void RelaxationAndResidual
 					const BlockDeepSegment & deepSegment = deepSegmentedLine.blockDeepSegments[s];
 					int length = deepSegment.currentEnd - deepSegment.currentStart + 1;
 
-					Data* _xCurrent = (Data*)x0.data() + deepSegment.currentStart;
-					const Data* _xPrevious = (Data*)x0.data() + deepSegment.previousStart;
-					const Data* _xNext = (Data*)x0.data() + deepSegment.nextStart;
-					const Data* _rhs = (Data*)rhs.data() + deepSegment.currentStart;
-					const Real* _deepCoefficients = &deepCoefficients[10 * deepSegment.deepStart];
+					Data * _xCurrent = (Data*)x0.data() + deepSegment.currentStart;
+					const Data * _xPrevious = (Data*)x0.data() + deepSegment.previousStart;
+					const Data * _xNext = (Data*)x0.data() + deepSegment.nextStart;
+					const Data * _rhs = (Data*)rhs.data() + deepSegment.currentStart;
+#ifdef NEW_CODE
+					const Real * _deepCoefficients = &deepCoefficients[ 10 * static_cast< unsigned int >(deepSegment.deepStart) ];
+#else // !NEW_CODE
+					const Real * _deepCoefficients = &deepCoefficients[10 * deepSegment.deepStart];
+#endif // NEW_CODE
 
-					for (int i = 0; i < length; _deepCoefficients += 10, i++)
+					for( int i=0 ; i<length ; _deepCoefficients+=10 , i++ )
 					{
 						_xCurrent[i] =
 							_rhs[i] * _deepCoefficients[4] -
@@ -326,14 +334,18 @@ void RelaxationAndResidual
 					const BlockDeepSegment & deepSegment = deepSegmentedLine.blockDeepSegments[s];
 					int length = deepSegment.currentEnd - deepSegment.currentStart + 1;
 
-					Data* _residual = (Data*)residual.data() + deepSegment.currentStart;
-					const Data* _xCurrent = (Data*)x0.data() + deepSegment.currentStart;
-					const Data* _xPrevious = (Data*)x0.data() + deepSegment.previousStart;
-					const Data* _xNext = (Data*)x0.data() + deepSegment.nextStart;
-					const Data* _rhs = (Data*)rhs.data() + deepSegment.currentStart;
-					const Real* _deepCoefficients = &deepCoefficients[10 * deepSegment.deepStart];
+					Data * _residual = (Data*)residual.data() + deepSegment.currentStart;
+					const Data * _xCurrent = (Data*)x0.data() + deepSegment.currentStart;
+					const Data * _xPrevious = (Data*)x0.data() + deepSegment.previousStart;
+					const Data * _xNext = (Data*)x0.data() + deepSegment.nextStart;
+					const Data * _rhs = (Data*)rhs.data() + deepSegment.currentStart;
+#ifdef NEW_CODE
+					const Real * _deepCoefficients = &deepCoefficients[10 * static_cast< unsigned int >(deepSegment.deepStart) ];
+#else // !NEW_CODE
+					const Real * _deepCoefficients = &deepCoefficients[10 * deepSegment.deepStart];
+#endif // NEW_CODE
 
-					for (int i = 0; i < length; _deepCoefficients += 10, i++)
+					for( int i=0 ; i<length ; _deepCoefficients+=10 , i++ )
 					{
 						_residual[i] = _rhs[i] -
 							(
@@ -676,8 +688,13 @@ void MultiplyBySystemMatrix_NoReciprocals
 		const Data* _inNext     = (Data*)in.data() + rasterLines[r].nextLineIndex;
 
 		int lineLength = ( rasterLines[r].lineEndIndex - rasterLines[r].lineStartIndex + 1 );
+#ifdef NEW_CODE
+		ChartInteriorTexelIndex lineDeepStart = rasterLines[r].coeffStartIndex;
+		const Real* _deepCoefficients = &systemCoefficients.deepCoefficients[10*static_cast< unsigned int >(lineDeepStart) ];
+#else // !NEW_CODE
 		int lineDeepStart = rasterLines[r].coeffStartIndex;
 		const Real* _deepCoefficients = &systemCoefficients.deepCoefficients[10*lineDeepStart];
+#endif // NEW_CODE
 		for( int i=0 ; i<lineLength ; _deepCoefficients+=10 , i++)
 		{
 			_out[i] =
@@ -976,7 +993,11 @@ void CellStiffnessToTexelStiffness
 		Data * out = texelModulatedStiffness.data() + interiorTexelToCellLines[r].texelStartIndex;
 		const Real * previousCellRow = cellSharpenningMask.data() + static_cast< unsigned int >( interiorTexelToCellLines[r].previousCellStartIndex );
 		const Real *     nextCellRow = cellSharpenningMask.data() + static_cast< unsigned int >( interiorTexelToCellLines[r].    nextCellStartIndex );
+#ifdef NEW_CODE
+		const Data * coeff = interiorTexelToCellCoeffs.data() + static_cast< unsigned int >(interiorTexelToCellLines[r].coeffOffset) * 4;
+#else // !NEW_CODE
 		const Data * coeff = interiorTexelToCellCoeffs.data() + interiorTexelToCellLines[r].coeffOffset * 4;
+#endif // NEW_CODE
 		int lineLength = interiorTexelToCellLines[r].texelEndIndex - interiorTexelToCellLines[r].texelStartIndex + 1;
 		for( int i=0 ; i<lineLength ; i++ ) out[i] = coeff[ 4*i+0 ] * previousCellRow[i] + coeff[ 4*i+1 ] * previousCellRow[i+1] + coeff[ 4*i+2 ] * nextCellRow[i] + coeff[ 4*i+3 ] * nextCellRow[i+1];
 	};

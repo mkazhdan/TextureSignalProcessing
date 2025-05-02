@@ -40,7 +40,13 @@ namespace MishaK
 		explicit operator unsigned int () const { return _idx; }
 
 		UnsignedIntIndex & operator += ( unsigned int off ){ _idx += off ; return *this; }
+		UnsignedIntIndex & operator -= ( unsigned int off ){ _idx -= off ; return *this; }
 		T operator + ( unsigned int off ) const { return T( _idx+off ); }
+		T operator - ( unsigned int off ) const { return T( _idx-off ); }
+
+#ifdef NEW_CODE
+		unsigned int operator - ( const UnsignedIntIndex &t ) const { return _idx - t._idx; }
+#endif // NEW_CODE
 
 		bool operator == ( const UnsignedIntIndex &I ) const { return _idx==I._idx; }
 		bool operator != ( const UnsignedIntIndex &I ) const { return _idx!=I._idx; }
@@ -53,11 +59,12 @@ namespace MishaK
 		{
 			IndexVector( void ) : std::vector< Data >(){}
 			IndexVector( size_t sz ) : std::vector< Data >(sz){}
-			IndexVector( size_t sz , const Data &data ) : std::vector< Data >( sz , data ){}
+			IndexVector( size_t sz , const Data & data ) : std::vector< Data >( sz , data ){}
 			size_t size( void ) const { return std::vector< Data >::size(); }
 			void resize( size_t sz ){ return std::vector< Data >::resize(sz); }
-			void push_back( const Data &data ){ return std::vector< Data >::push_back(data); }
-			Data & operator[]( const T &t ){ return std::vector< Data >::operator[]( static_cast< unsigned int >(t) ); }
+			void resize( size_t sz , const Data & data ){ return std::vector< Data >::resize( sz , data ); }
+			void push_back( const Data & data ){ return std::vector< Data >::push_back(data); }
+			Data & operator[]( const T & t ){ return std::vector< Data >::operator[]( static_cast< unsigned int >(t) ); }
 			const Data & operator[]( const T &t ) const { return std::vector< Data >::operator[]( static_cast< unsigned int >(t) ); }
 
 			explicit operator const std::vector< Data > & () const { return *this; }
@@ -69,6 +76,14 @@ namespace MishaK
 
 	template< typename T , typename Data >
 	using IndexVector = typename UnsignedIntIndex< T >::template IndexVector< Data >;
+
+#ifdef NEW_CODE
+	template< typename T , typename Data >
+	Data * operator + ( Data * data , const T & t ){ return data + static_cast< unsigned int >(t); }
+
+	template< typename T , typename Data >
+	const Data * operator + ( const Data * data , const T & t ){ return data + static_cast< unsigned int >(t); }
+#endif // NEW_CODE
 
 	struct                       ChartIndex : public UnsignedIntIndex<                       ChartIndex >{ using UnsignedIntIndex<                       ChartIndex >::UnsignedIntIndex; };
 	struct           AtlasMeshTriangleIndex : public UnsignedIntIndex<           AtlasMeshTriangleIndex >{ using UnsignedIntIndex<           AtlasMeshTriangleIndex >::UnsignedIntIndex; };
@@ -87,6 +102,12 @@ namespace MishaK
 	struct           AtlasInteriorCellIndex : public UnsignedIntIndex<           AtlasInteriorCellIndex >{ using UnsignedIntIndex<           AtlasInteriorCellIndex >::UnsignedIntIndex; };
 	struct           AtlasBoundaryCellIndex : public UnsignedIntIndex<           AtlasBoundaryCellIndex >{ using UnsignedIntIndex<           AtlasBoundaryCellIndex >::UnsignedIntIndex; };
 	struct           AtlasCombinedCellIndex : public UnsignedIntIndex<           AtlasCombinedCellIndex >{ using UnsignedIntIndex<           AtlasCombinedCellIndex >::UnsignedIntIndex; };
+	struct          ChartInteriorTexelIndex : public UnsignedIntIndex<          ChartInteriorTexelIndex >{ using UnsignedIntIndex<          ChartInteriorTexelIndex >::UnsignedIntIndex; };
+	struct           ChartCoveredTexelIndex : public UnsignedIntIndex<           ChartCoveredTexelIndex >{ using UnsignedIntIndex<           ChartCoveredTexelIndex >::UnsignedIntIndex; };
+	struct          ChartCombinedTexelIndex : public UnsignedIntIndex<          ChartCombinedTexelIndex >{ using UnsignedIntIndex<          ChartCombinedTexelIndex >::UnsignedIntIndex; };
+	struct          AtlasInteriorTexelIndex : public UnsignedIntIndex<          AtlasInteriorTexelIndex >{ using UnsignedIntIndex<          AtlasInteriorTexelIndex >::UnsignedIntIndex; };
+	struct           AtlasCoveredTexelIndex : public UnsignedIntIndex<           AtlasCoveredTexelIndex >{ using UnsignedIntIndex<           AtlasCoveredTexelIndex >::UnsignedIntIndex; };
+	struct          AtlasCombinedTexelIndex : public UnsignedIntIndex<          AtlasCombinedTexelIndex >{ using UnsignedIntIndex<          AtlasCombinedTexelIndex >::UnsignedIntIndex; };
 
 #else // !DEBUG_INDEXING
 	template< typename T , typename Data >
@@ -109,6 +130,12 @@ namespace MishaK
 	using           AtlasInteriorCellIndex = unsigned int;
 	using           AtlasBoundaryCellIndex = unsigned int;
 	using           AtlasCombinedCellIndex = unsigned int;
+	using          ChartInteriorTexelIndex = unsigned int;
+	using           ChartCoveredTexelIndex = unsigned int;
+	using          ChartCombinedTexelIndex = unsigned int;
+	using          AtlasInteriorTexelIndex = unsigned int;
+	using           AtlasCoveredTexelIndex = unsigned int;
+	using          AtlasCombinedTexelIndex = unsigned int;
 #endif // DEBUG_INDEXING
 
 	struct AtlasGridOrMeshEdgeIndex

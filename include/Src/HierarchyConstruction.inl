@@ -506,7 +506,11 @@ void InitializeGridChartsActiveNodes
 		nodeInfo.push_back( currentNodeInfo );
 		if( IsCovered( gridChart.texelType(i,j) ) ) texelIndices(i,j).covered = interiorTexelIndex++;
 		if( IsBoundarySupported( gridChart.texelType(i,j) ) ) boundaryTexelIndex++;
+#ifdef NEW_CODE
+		if( gridChart.texelType(i,j)==TexelType::InteriorSupported ) texelIndices(i,j).interior = ChartInteriorTexelIndex( deepTexelIndex++ );
+#else // !NEW_CODE
 		if( gridChart.texelType(i,j)==TexelType::InteriorSupported ) texelIndices(i,j).interior = deepTexelIndex++;
+#endif // NEW_CODE
 	}
 
 #ifdef USE_RASTERIZER
@@ -670,9 +674,13 @@ void InitializeGridChartsActiveNodes
 				int offset = blockHorizontalStart + 1;
 				int segmentStart = -1;
 				bool previousDeep = false;
-				while (offset <= blockHorizontalEnd - 1)
+				while (offset <= blockHorizontalEnd-1 )
 				{
+#ifdef NEW_CODE
+					bool currentDeep = texelIndices(offset,j).interior!=ChartInteriorTexelIndex(-1);
+#else // !NEW_CODE
 					bool currentDeep = (texelIndices(offset, j).interior != -1);
+#endif // NEW_CODE
 					if (currentDeep && !previousDeep) {//Start segment
 						segmentStart = offset;
 					}
@@ -701,14 +709,19 @@ void InitializeGridChartsActiveNodes
 
 				//Deep texel within rows[blockVerticalStart,blockVerticalEnd]column [blockHorizontalStart,blockHorizontalEnd] 
 				std::vector<BlockDeepSegmentedLine>  &  blockPaddedSegmentedLines = blockTask.blockPaddedSegmentedLines;
-				for (int j = blockVerticalStart; j <= blockVerticalEnd; j++) {
+				for( int j=blockVerticalStart ; j<=blockVerticalEnd ; j++ )
+				{
 					BlockDeepSegmentedLine segmentedLine;
 					int offset = blockHorizontalStart;
 					int segmentStart = -1;
 					bool previousDeep = false;
 					while (offset <= blockHorizontalEnd)
 					{
+#ifdef NEW_CODE
+						bool currentDeep = texelIndices(offset,j).interior!=ChartInteriorTexelIndex(-1);
+#else // !NEW_CODE
 						bool currentDeep = (texelIndices(offset, j).interior != -1);
+#endif // NEW_CODE
 						if (currentDeep && !previousDeep) {//Start segment
 							segmentStart = offset;
 						}

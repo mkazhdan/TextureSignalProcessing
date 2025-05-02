@@ -41,7 +41,12 @@ namespace MishaK
 		int prevEdgeRowStart;
 		int currEdgeRowStart;
 		int nextEdgeRowStart;
+#ifdef NEW_CODE
+#pragma message( "[WARNING] Is this the right type?" )
+		ChartInteriorTexelIndex deepCoefficientsStart;
+#else // !NEW_CODE
 		int deepCoefficientsStart;
+#endif // NEW_CODE
 		int texelStart;
 		int texelEnd;
 	};
@@ -54,7 +59,8 @@ namespace MishaK
 	)
 	{
 		divergenceRasterLines.resize(rasterLines.size());
-		for (int i = 0; i < rasterLines.size(); i++) {
+		for( unsigned int i=0 ; i<rasterLines.size() ; i++ )
+		{
 			const RasterLine & line = rasterLines[i];
 			DivegenceRasterLine & divLine = divergenceRasterLines[i];
 			divLine.texelStart = line.lineStartIndex;
@@ -89,7 +95,11 @@ namespace MishaK
 				const Data* currentRowEdges = edgeValues.data() + divergenceRasterLines[r].currEdgeRowStart;
 				const Data* nextRowEdges = edgeValues.data() + divergenceRasterLines[r].nextEdgeRowStart;
 
+#ifdef NEW_CODE
+				const Real * coeff = deepDivergenceCoefficients.data() + static_cast< unsigned int >(divergenceRasterLines[r].deepCoefficientsStart) * 12;
+#else // !NEW_CODE
 				const Real * coeff = deepDivergenceCoefficients.data() + divergenceRasterLines[r].deepCoefficientsStart * 12;
+#endif // NEW_CODE
 				int lineLenght = divergenceRasterLines[r].texelEnd - divergenceRasterLines[r].texelStart + 1;
 				for (int i = 0; i < lineLenght; coeff += 12, previousRowEdges += 2, currentRowEdges += 2, nextRowEdges += 2, i++) {
 					out[i] = previousRowEdges[0] * coeff[0] + previousRowEdges[1] * coeff[1] + previousRowEdges[2] * coeff[2] + previousRowEdges[3] * coeff[3] +

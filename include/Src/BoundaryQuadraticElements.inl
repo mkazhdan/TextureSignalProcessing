@@ -737,9 +737,8 @@ void InitializeBoundaryTriangulation
 }
 
 template< typename MatrixReal >
-class BoundaryProlongationData
+struct BoundaryProlongationData
 {
-public:
 	std::vector< AtlasInteriorOrBoundaryNodeIndex > fineBoundaryIndex;
 	unsigned int numFineBoundaryNodes;
 	SparseMatrix< MatrixReal , int > coarseBoundaryFineBoundaryProlongation;
@@ -760,15 +759,20 @@ void InitializeCoarseBoundaryToFineBoundaryProlongation
 	std::vector< Eigen::Triplet< MatrixReal > > prolongationTriplets;
 	const typename GridAtlas<>::IndexConverter & indexConverter = gridAtlas.indexConverter;
 
-	fineBoundaryIndex.resize( gridAtlas.numFineNodes , static_cast< AtlasInteriorOrBoundaryNodeIndex >(-1) );
+	fineBoundaryIndex.resize( gridAtlas.numFineNodes , AtlasInteriorOrBoundaryNodeIndex(-1) );
 	unsigned int lastFineBoundaryIndex = 0;
 	for( unsigned int i=0 ; i<gridAtlas.gridCharts.size() ; i++ )
 	{
 		const GridChart< GeometryReal > &gridChart = gridAtlas.gridCharts[ ChartIndex(i) ];
 		for( unsigned int j=0 ; j<gridChart.texelIndices.size() ; j++ )
 		{
+#ifdef NEW_CODE
+			if( gridChart.texelIndices[j].covered!=-1 && gridChart.texelIndices[j].interior==ChartInteriorTexelIndex(-1) )
+#else // !NEW_CODE
 			if( gridChart.texelIndices[j].covered!=-1 && gridChart.texelIndices[j].interior==-1 )
-			{ //Interior but not deep
+#endif // NEW_CODE
+			{
+				// Interior but not deep
 				int coarseGlobalIndex = gridChart.texelIndices[j].combined;
 
 				unsigned int boundaryIndex = indexConverter.supportedToBoundary( coarseGlobalIndex );
@@ -782,7 +786,7 @@ void InitializeCoarseBoundaryToFineBoundaryProlongation
 	}
 	for( unsigned int i=gridAtlas.numInteriorTexels ; i<gridAtlas.numFineNodes ; i++ )
 	{
-		fineBoundaryIndex[i] = static_cast< AtlasInteriorOrBoundaryNodeIndex >( lastFineBoundaryIndex++ );
+		fineBoundaryIndex[i] = AtlasInteriorOrBoundaryNodeIndex( lastFineBoundaryIndex++ );
 		boundaryFineToFullFine.push_back(i);
 	}
 

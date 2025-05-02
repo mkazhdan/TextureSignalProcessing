@@ -117,6 +117,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Src", "Src", "{02EA681E-C7D
 		include\Src\Hierarchy.h = include\Src\Hierarchy.h
 		include\Src\HierarchyConstruction.inl = include\Src\HierarchyConstruction.inl
 		include\Src\HSV.h = include\Src\HSV.h
+		include\Src\ImageIO.h = include\Src\ImageIO.h
 		include\Src\IndexedPolygon.h = include\Src\IndexedPolygon.h
 		include\Src\Indices.h = include\Src\Indices.h
 		include\Src\InteriorTexelToCellLines.h = include\Src\InteriorTexelToCellLines.h

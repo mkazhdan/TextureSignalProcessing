@@ -31,7 +31,6 @@ DAMAGE.
 #include <algorithm>
 #include <unordered_set>
 #include <Eigen/Sparse>
-#include <Misha/Image.h>
 #include <Misha/LinearSolvers.h>
 #include <Misha/RegularGrid.h>
 #include <Misha/Miscellany.h>
@@ -48,68 +47,10 @@ DAMAGE.
 #ifdef PRE_CLIP_TRIANGLES
 #include "PolygonClipping.h"
 #endif // PRE_CLIP_TRIANGLES
+#include "ImageIO.h"
 
 namespace MishaK
 {
-	template< typename Data > using Image = RegularGrid< 2 , Data >;
-
-	template< unsigned int BitDepth , typename Data >
-	void WriteImage( const Image< Data > &image , std::string fileName )
-	{
-		using CType = typename ImageChannel< BitDepth >::Type;
-		static const CType Scale = ~((CType )0);
-		if constexpr( std::is_same_v< Data , Point3D< double > > )
-		{
-			double scale = (double)Scale;
-			CType * pixels = new CType[ image.res(0)*image.res(1)*3 ];
-			for( unsigned int i=0 ; i<image.res(0) ; i++ ) for( unsigned int j=0 ; j<image.res(1) ; j++ ) for( int c=0 ; c<3 ; c++ ) pixels[ 3*(j*image.res(0)+i)+c ] = (CType)std::min< long long >( Scale , std::max< long long >( 0 , (long long)( image(i,j)[c] * scale + 0.5 ) ) );
-			ImageWriter< BitDepth >::Write( fileName , pixels , image.res(0) , image.res(1) , 3 );
-			delete[] pixels;
-		}
-		else if constexpr( std::is_same_v< Data , Point3D< float > > )
-		{
-			float scale = (float)Scale;
-			CType * pixels = new CType[ image.res(0) * image.res(1) * 3 ];
-			for( unsigned int i=0 ; i<image.res(0) ; i++ ) for( unsigned int j=0 ; j<image.res(1) ; j++ ) for( int c=0 ; c<3 ; c++ ) pixels[ 3*(j*image.res(0)+i)+c ] = (CType)std::min< long long >( Scale , std::max< long long >( 0 , (long long)( image(i,j)[c] * scale + 0.5f ) ) );
-			ImageWriter< BitDepth >::Write( fileName , pixels , image.res(0) , image.res(1) , 3 );
-			delete[] pixels;
-		}
-		else if constexpr( std::is_same_v< Data , Point3D< CType > > )
-		{
-			ImageWriter< BitDepth >::Write( fileName , (const CType*)image() , image.res(0) , image.res(1) , 3 );
-		}
-		else MK_THROW( "Bad data type " );
-	}
-
-	template< unsigned int BitDepth , typename Data >
-	void ReadImage( Image< Data > &image , std::string fileName )
-	{
-		using CType = typename ImageChannel< BitDepth >::Type;
-		static const CType Scale = ~((CType )0);
-		unsigned int width , height;
-		CType * pixels = ImageReader< BitDepth >::ReadColor( fileName , width , height );
-		if( !pixels ) MK_THROW( "Failed to read image: " , fileName );
-		image.resize( width , height );
-
-		if constexpr( std::is_same_v< Data , Point3D< double > > )
-		{
-			double scale = (double)Scale;
-			for( int i=0 ; i<(int)width ; i++ ) for( int j=0 ; j<(int)height ; j++ ) for( int c=0 ; c<3 ; c++ ) image(i,j)[c] = ( pixels[ (j*width+i)*3+c ] ) / scale;
-		}
-		else if constexpr( std::is_same_v< Data , Point3D< float > > )
-		{
-			float scale = (float)Scale;
-			for( int i=0 ; i<(int)width ; i++ ) for( int j=0 ; j<(int)height ; j++ ) for( int c=0 ; c<3 ; c++ ) image(i,j)[c] = ( pixels[ (j*width+i)*3+c ] ) / scale;
-		}
-		else if constexpr( std::is_same_v< Data , Point3D< CType > > )
-		{
-			memcpy( (CType*)image() , pixels , sizeof( CType ) * image.res(0) * image.res(1) * 3 );
-		}
-		else MK_THROW( "Bad data type " );
-
-		delete[] pixels;
-	}
-
 	template< typename Real >
 	struct BilinearElementScalarSample
 	{
@@ -319,16 +260,28 @@ namespace MishaK
 		int lineEndIndex;
 		int prevLineIndex;
 		int nextLineIndex;
+#ifdef NEW_CODE
+		ChartInteriorTexelIndex coeffStartIndex;
+#else // !NEW_CODE
 		int coeffStartIndex;
+#endif // NEW_CODE
 	};
 
 	struct DeepLine
 	{
+#ifdef NEW_CODE
+		ChartInteriorTexelIndex coarseLineStartIndex;
+		ChartInteriorTexelIndex coarseLineEndIndex;
+		ChartInteriorTexelIndex finePrevLineIndex;
+		ChartInteriorTexelIndex fineCurrentLineIndex;
+		ChartInteriorTexelIndex fineNextLineIndex;
+#else // !NEW_CODE
 		int coarseLineStartIndex;
 		int coarseLineEndIndex;
 		int finePrevLineIndex;
 		int fineCurrentLineIndex;
 		int fineNextLineIndex;
+#endif // NEW_CODE
 	};
 
 	struct SegmentedRasterLine
@@ -357,18 +310,22 @@ namespace MishaK
 		int currentEnd;
 		int previousStart;
 		int nextStart;
+#ifdef NEW_CODE
+		ChartInteriorTexelIndex deepStart;
+#else // !NEW_CODE
 		int deepStart;
+#endif // NEW_CODE
 	};
 
 	struct BlockDeepSegmentedLine
 	{
-		std::vector<BlockDeepSegment> blockDeepSegments;
+		std::vector< BlockDeepSegment > blockDeepSegments;
 	};
 
 	struct BlockTask
 	{
-		std::vector<BlockDeepSegmentedLine> blockPaddedSegmentedLines;
-		std::vector<BlockDeepSegmentedLine> blockDeepSegmentedLines;
+		std::vector< BlockDeepSegmentedLine > blockPaddedSegmentedLines;
+		std::vector< BlockDeepSegmentedLine > blockDeepSegmentedLines;
 	};
 
 	struct ThreadTask
@@ -383,7 +340,11 @@ namespace MishaK
 	{
 		int texelStartIndex;
 		int texelEndIndex;
+#ifdef NEW_CODE
+		ChartInteriorTexelIndex coeffOffset;
+#else // !NEW_CODE
 		int coeffOffset;
+#endif // NEW_CODE
 		int length;
 		AtlasCombinedCellIndex previousCellStartIndex;
 		AtlasCombinedCellIndex     nextCellStartIndex;
@@ -446,7 +407,12 @@ namespace MishaK
 	struct TexelIndex
 	{
 		TexelIndex( void ) : combined(-1) , interior(-1) , covered(-1){}
+#ifdef NEW_CODE
+		unsigned int combined , covered;
+		ChartInteriorTexelIndex interior;
+#else // !NEW_CODE
 		unsigned int combined , interior , covered;
+#endif // NEW_CODE
 	};
 
 	bool IsCovered( TexelType texelType ){ return texelType==TexelType::BoundarySupportedAndCovered || texelType==TexelType::InteriorSupported; }
