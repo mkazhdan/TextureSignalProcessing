@@ -610,7 +610,7 @@ unsigned int InitializeBoundaryPolygons
 	}
 
 	// Offset the auxiliary nodes' indices
-#pragma message( "[WARNING] is this the right auxiliary node type?" );
+#pragma message( "[WARNING] is this the right auxiliary node type?" )
 	for( unsigned int i=0 ; i<gridCharts.size() ; i++ ) for( unsigned int j=0 ; j<gridCharts[ ChartIndex(i) ].auxiliaryNodes.size() ; j++ ) gridCharts[ ChartIndex(i) ].auxiliaryNodes[j].index += static_cast< unsigned int >(endCoveredTexelIndex);
 
 	for( unsigned int i=0 ; i<gridCharts.size() ; i++ )
@@ -771,17 +771,10 @@ void InitializeCoarseBoundaryToFineBoundaryProlongation
 			{
 				// Interior but not deep
 
-#ifdef NEW_CODE
 				AtlasCombinedTexelIndex coarseGlobalIndex = gridChart.texelIndices[j].combined;
 
 				AtlasBoundaryTexelIndex boundaryIndex = indexConverter.combinedToBoundary( coarseGlobalIndex );
 				if( boundaryIndex!=AtlasBoundaryTexelIndex(-1) ) prolongationTriplets.emplace_back( lastFineBoundaryIndex , static_cast< unsigned int >(boundaryIndex) , (MatrixReal)1. );
-#else // !NEW_CODE
-				int coarseGlobalIndex = gridChart.texelIndices[j].combined;
-
-				unsigned int boundaryIndex = indexConverter.supportedToBoundary( coarseGlobalIndex );
-				if( boundaryIndex!=-1 ) prolongationTriplets.emplace_back( lastFineBoundaryIndex , boundaryIndex , (MatrixReal)1. );
-#endif // NEW_CODE
 				else MK_THROW( "Coarse node is not boundary. Global index " , coarseGlobalIndex , ". Boundary index " , boundaryIndex );
 				fineBoundaryIndex[ static_cast< unsigned int >(gridChart.texelIndices[j].covered) ] = static_cast< AtlasInteriorOrBoundaryNodeIndex >( lastFineBoundaryIndex );
 				lastFineBoundaryIndex++;
@@ -799,17 +792,9 @@ void InitializeCoarseBoundaryToFineBoundaryProlongation
 	numFineBoundaryNodes = lastFineBoundaryIndex;
 
 	const IndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts = gridAtlas.gridCharts;
-#ifdef NEW_CODE
 	const IndexVector< AtlasCombinedTexelIndex , GridNodeInfo > & nodeInfo = gridAtlas.nodeInfo;
-#else // !NEW_CODE
-	const std::vector< GridNodeInfo > & nodeInfo = gridAtlas.nodeInfo;
-#endif // NEW_CODE
 
 	int numFineNodes = gridAtlas.numFineNodes;
-#ifdef NEW_CODE
-#else // !NEW_CODE
-	int numCoarseNodes = gridAtlas.numTexels;
-#endif // NEW_CODE
 
 	std::vector< unsigned int > auxiliaryNodesDegree( numFineNodes - static_cast< unsigned int >(gridAtlas.endCoveredTexelIndex) , 0);
 
@@ -851,7 +836,6 @@ void InitializeCoarseBoundaryToFineBoundaryProlongation
 				if( fabs(texelWeight)>1e-11 )
 				{
 					auxiliaryNodesCumWeight[auxiliaryID] += texelWeight;
-#ifdef NEW_CODE
 					AtlasCombinedTexelIndex texelIndex = gridChart.combinedCellCombinedTexelBilinearElementIndices[cellID][k];
 					if( nodeInfo[texelIndex].texelType==TexelType::InteriorSupported )
 						MK_THROW( "Interior-supported texel cannot be in the support of an auxiliary node. Weight " , texelWeight , " (A)" );
@@ -861,17 +845,6 @@ void InitializeCoarseBoundaryToFineBoundaryProlongation
 					AtlasBoundaryTexelIndex boundaryIndex = indexConverter.combinedToBoundary( AtlasCombinedTexelIndex(texelIndex) );
 					if( boundaryIndex==AtlasBoundaryTexelIndex(-1) ) MK_THROW( "Coarse node is not boundary" );
 					prolongationTriplets.emplace_back( static_cast< unsigned int >(fineBoundaryID) , static_cast< unsigned int >(boundaryIndex) , texelWeight );
-#else // !NEW_CODE
-					unsigned int texelIndex = gridChart.combinedCellCombinedTexelBilinearElementIndices[cellID][k];
-					if( nodeInfo[texelIndex].texelType==TexelType::InteriorSupported )
-						MK_THROW( "Interior-supported texel cannot be in the support of an auxiliary node. Weight " , texelWeight , " (A)" );
-
-					if( static_cast< unsigned int >(gridChart.auxiliaryNodes[j].index)<static_cast< unsigned int >(gridAtlas.endCoveredTexelIndex) || static_cast< unsigned int >(gridChart.auxiliaryNodes[j].index)>numFineNodes || texelIndex<0 || texelIndex>numCoarseNodes ) MK_THROW( "Out of bounds index" );
-
-					unsigned int boundaryIndex = indexConverter.supportedToBoundary( texelIndex );
-					if( boundaryIndex==-1 ) MK_THROW( "Coarse node is not boundary" );
-					prolongationTriplets.emplace_back( static_cast< unsigned int >( fineBoundaryID ) , boundaryIndex , texelWeight );
-#endif // NEW_CODE
 				}
 			}
 		}

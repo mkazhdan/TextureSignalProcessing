@@ -31,28 +31,14 @@ template< typename GeometryReal >
 void InitializeIndexConverter
 (
 	const IndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts ,
-#ifdef NEW_CODE
 	AtlasCombinedTexelIndex endCombinedTexelIndex ,
-#else // !NEW_CODE
-	unsigned int numSupportedTexels ,
-#endif // NEW_CODE
 	typename GridAtlas<>::IndexConverter & indexConverter
 ) 
 {
-#ifdef NEW_CODE
 	indexConverter._combinedToBoundaryOrInterior.resize( static_cast< unsigned int >(endCombinedTexelIndex) );
 	AtlasCombinedTexelIndex combinedTexelIndex(0);
-#else // !NEW_CODE
-	indexConverter._supportedToBoundaryOrDeep.resize( numSupportedTexels );
-	unsigned int globalIndex = 0;
-#endif // NEW_CODE
-#ifdef NEW_CODE
 	AtlasBoundaryTexelIndex boundaryTexelIndex(0);
 	AtlasInteriorTexelIndex interiorTexelIndex(0);
-#else // !NEW_CODE
-	unsigned int boundaryIndex = 0;
-	unsigned int deepIndex = 0;
-#endif // NEW_CODE
 
 	for( unsigned int i=0 ; i<gridCharts.size() ; i++ )
 	{
@@ -61,31 +47,16 @@ void InitializeIndexConverter
 		{
 			if( IsBoundarySupported( gridChart.texelType[i] ) )
 			{
-#ifdef NEW_CODE
 				indexConverter._boundaryToCombined.push_back( combinedTexelIndex );
 				indexConverter._combinedToBoundaryOrInterior[ combinedTexelIndex ] = std::pair< bool , unsigned int >( true , static_cast< unsigned int >(boundaryTexelIndex++) );
-#else // !NEW_CODE
-				indexConverter._boundaryToSupported.push_back( globalIndex );
-				indexConverter._supportedToBoundaryOrDeep[ globalIndex ] = std::pair< bool , unsigned int >( true , boundaryIndex++ );
-#endif // NEW_CODE
 			}
 			else if( gridChart.texelType[i]==TexelType::InteriorSupported )
 			{
-#ifdef NEW_CODE
 				indexConverter._interiorToCombined.push_back( combinedTexelIndex );
 				indexConverter._combinedToBoundaryOrInterior[ combinedTexelIndex ] = std::pair< bool , unsigned int >( false , static_cast< unsigned int >(interiorTexelIndex++) );
-#else // !NEW_CODE
-				indexConverter._deepToSupported.push_back( globalIndex );
-				indexConverter._supportedToBoundaryOrDeep[ globalIndex ] = std::pair< bool , unsigned int >( false , deepIndex++ );
-#endif // NEW_CODE
 			}
-#ifdef NEW_CODE
 			if( gridChart.texelIndices[i].combined!=combinedTexelIndex ) MK_THROW( "Unexpected global index: actual " , gridChart.texelIndices[i].combined , " , expected " , combinedTexelIndex );
 			combinedTexelIndex++;
-#else // !NEW_CODE
-			if( gridChart.texelIndices[i].combined!=globalIndex ) MK_THROW( "Unexpected global index: actual " , gridChart.texelIndices[i].combined , " , expected " , globalIndex );
-			globalIndex++;
-#endif // NEW_CODE
 		}
 	}
 }
@@ -98,19 +69,11 @@ void InitializeGridChartsActiveNodes
 	ChartIndex chartID ,
 	const AtlasChart< GeometryReal > & atlasChart ,
 	GridChart< GeometryReal > & gridChart ,
-#ifdef NEW_CODE
 	IndexVector< AtlasCombinedTexelIndex , GridNodeInfo > & nodeInfo ,
-#else // !NEW_CODE
-	std::vector< GridNodeInfo > & nodeInfo ,
-#endif // NEW_CODE
 	std::vector< RasterLine > & rasterLines ,
 	std::vector< SegmentedRasterLine > & segmentedLines ,
 	std::vector< ThreadTask > & threadTasks ,
-#ifdef NEW_CODE
 	AtlasCombinedTexelIndex & endCombinedTexelIndex ,
-#else // !NEW_CODE
-	unsigned int & combinedTexelIndex ,
-#endif // NEW_CODE
 	AtlasCoveredTexelIndex & endCoveredTexelIndex ,
 	AtlasInteriorTexelIndex & endInteriorTexelIndex , 
 	AtlasBoundaryTexelIndex & endBoundaryTexelIndex ,
@@ -533,11 +496,7 @@ void InitializeGridChartsActiveNodes
 	// Set the texel indices
 	for( unsigned int j=0 ; j<height ; j++ ) for( unsigned int i=0 ; i<width ; i++ ) if( gridChart.texelType(i,j)!=TexelType::Unsupported )
 	{
-#ifdef NEW_CODE
 		texelIndices(i,j).combined = endCombinedTexelIndex++;
-#else // !NEW_CODE
-		texelIndices(i,j).combined = combinedTexelIndex++;
-#endif // NEW_CODE
 
 		GridNodeInfo currentNodeInfo;
 		currentNodeInfo.ci = i;
@@ -558,11 +517,7 @@ void InitializeGridChartsActiveNodes
 				if( gridChart.cellType(I)!=CellType::Exterior )
 				{
 					unsigned int count = 0;
-#ifdef NEW_CODE
 					auto SubKernel = [&]( Index I ){ if( texelIndices(I).combined!=AtlasCombinedTexelIndex(-1) ){ count++; } };
-#else // !NEW_CODE
-					auto SubKernel = [&]( Index I ){ if( texelIndices(I).combined!=-1 ){ count++; } };
-#endif // NEW_CODE
 					Range::NodesSupportedOnCell( I ).process( SubKernel );
 					if( count!=4 ) MK_THROW( "Active cell adjacent to inactive node" );
 
@@ -583,15 +538,9 @@ void InitializeGridChartsActiveNodes
 	Image< CellIndex > & cellIndices = gridChart.cellIndices;
 	cellIndices.resize( width-1 , height-1 );
 
-#ifdef NEW_CODE
 	IndexVector< ChartCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > > & combinedCellCombinedTexelBilinearElementIndices = gridChart.combinedCellCombinedTexelBilinearElementIndices;
 	IndexVector< ChartInteriorCellIndex , BilinearElementIndex< AtlasCoveredTexelIndex > > & interiorCellCoveredTexelBilinearElementIndices = gridChart.interiorCellCoveredTexelBilinearElementIndices;
 	IndexVector< ChartInteriorCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > > & interiorCellCombinedTexelBilinearElementIndices = gridChart.interiorCellCombinedTexelBilinearElementIndices;
-#else // !NEW_CODE
-	IndexVector< ChartCombinedCellIndex , BilinearElementIndex< unsigned int > > & combinedCellCombinedTexelBilinearElementIndices = gridChart.combinedCellCombinedTexelBilinearElementIndices;
-	IndexVector< ChartInteriorCellIndex , BilinearElementIndex< AtlasCoveredTexelIndex > > & interiorCellCoveredTexelBilinearElementIndices = gridChart.interiorCellCoveredTexelBilinearElementIndices;
-	IndexVector< ChartInteriorCellIndex , BilinearElementIndex< unsigned int > > & interiorCellCombinedTexelBilinearElementIndices = gridChart.interiorCellCombinedTexelBilinearElementIndices;
-#endif // NEW_CODE
 
 	std::vector< ChartCombinedCellIndex > & interiorCellIndexToCombinedCellIndex = gridChart.interiorCellIndexToCombinedCellIndex;
 	std::vector< ChartCombinedCellIndex > & boundaryCellIndexToCombinedCellIndex = gridChart.boundaryCellIndexToCombinedCellIndex;
@@ -624,15 +573,9 @@ void InitializeGridChartsActiveNodes
 		}
 		cellIndices(i,j).combined = _endCombinedCellIndex++;
 #else // !USE_RASTERIZER
-#ifdef NEW_CODE
 		AtlasCombinedTexelIndex globalTexelIndices[4] = { texelIndices(i,j).combined , texelIndices(i+1,j).combined , texelIndices(i+1,j+1).combined , texelIndices(i,j+1).combined };
 		if( globalTexelIndices[0]!=AtlasCombinedTexelIndex(-1) && globalTexelIndices[1]!=AtlasCombinedTexelIndex(-1) && globalTexelIndices[2]!=AtlasCombinedTexelIndex(-1) && globalTexelIndices[3]!=AtlasCombinedTexelIndex(-1) )
 			combinedCellCombinedTexelBilinearElementIndices.push_back( BilinearElementIndex< AtlasCombinedTexelIndex >( globalTexelIndices[0] , globalTexelIndices[1] , globalTexelIndices[2] , globalTexelIndices[3] ) );
-#else // !NEW_CODE
-		unsigned int globalTexelIndices[4] = { texelIndices(i,j).combined , texelIndices(i+1,j).combined , texelIndices(i+1,j+1).combined , texelIndices(i,j+1).combined };
-		if( globalTexelIndices[0]!=-1 && globalTexelIndices[1]!=-1 && globalTexelIndices[2]!=-1 && globalTexelIndices[3] != -1 )
-			combinedCellCombinedTexelBilinearElementIndices.push_back( BilinearElementIndex< unsigned int >( globalTexelIndices[0] , globalTexelIndices[1] , globalTexelIndices[2] , globalTexelIndices[3] ) );
-#endif // NEW_CODE
 		else MK_THROW( "Active cell adjacent to unactive node" );
 
 		if( gridChart.cellType(i,j)==CellType::Boundary )
@@ -649,11 +592,7 @@ void InitializeGridChartsActiveNodes
 			if( globalTexelInteriorIndices[0]!=AtlasCoveredTexelIndex(-1) && globalTexelInteriorIndices[1]!=AtlasCoveredTexelIndex(-1) && globalTexelInteriorIndices[2]!=AtlasCoveredTexelIndex(-1) && globalTexelInteriorIndices[3]!=AtlasCoveredTexelIndex(-1) )
 			{
 				interiorCellCoveredTexelBilinearElementIndices.push_back( BilinearElementIndex< AtlasCoveredTexelIndex >( globalTexelInteriorIndices[0] , globalTexelInteriorIndices[1] , globalTexelInteriorIndices[2] , globalTexelInteriorIndices[3] ) );
-#ifdef NEW_CODE
 				interiorCellCombinedTexelBilinearElementIndices.push_back( BilinearElementIndex< AtlasCombinedTexelIndex >( globalTexelIndices[0] , globalTexelIndices[1] , globalTexelIndices[2] , globalTexelIndices[3] ) );
-#else // !NEW_CODE
-				interiorCellCombinedTexelBilinearElementIndices.push_back( BilinearElementIndex< unsigned int >( globalTexelIndices[0] , globalTexelIndices[1] , globalTexelIndices[2] , globalTexelIndices[3] ) );
-#endif // NEW_CODE
 			}
 			else MK_THROW( "Interior cell adjacent to non interior node" );
 		}
@@ -693,11 +632,7 @@ void InitializeGridChartsActiveNodes
 				newLine.nextLineIndex   = texelIndices( rasterStart , j+1 ).combined;
 				newLine.coeffStartIndex = texelIndices( rasterStart , j   ).interior;
 
-#ifdef NEW_CODE
 				if( newLine.lineStartIndex==AtlasCombinedTexelIndex(-1) || newLine.lineEndIndex==AtlasCombinedTexelIndex(-1) || newLine.prevLineIndex==AtlasCombinedTexelIndex(-1) || newLine.nextLineIndex==AtlasCombinedTexelIndex(-1) ) MK_THROW( "Inavlid Indexing" );
-#else // !NEW_CODE
-				if( newLine.lineStartIndex==-1 || newLine.lineEndIndex==-1 || newLine.prevLineIndex==-1 || newLine.nextLineIndex==-1 ) MK_THROW( "Inavlid Indexing" );
-#endif // NEW_CODE
 				rasterLines.push_back( newLine );
 
 				SegmentedRasterLine & newSegmentLine = segmentedLines.back();
@@ -816,20 +751,12 @@ void InitializeGridCharts
 	unsigned int width , 
 	unsigned int height ,
 	unsigned int level ,
-#ifdef NEW_CODE
 	IndexVector< AtlasCombinedTexelIndex , GridNodeInfo > &nodeInfo ,
-#else // !NEW_CODE
-	std::vector< GridNodeInfo > &nodeInfo ,
-#endif // NEW_CODE
 	IndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts ,
 	std::vector< RasterLine > &rasterLines ,
 	std::vector< SegmentedRasterLine > &segmentedLines ,
 	std::vector< ThreadTask > &threadTasks ,
-#ifdef NEW_CODE
 	AtlasCombinedTexelIndex & endCombinedTexelIndex ,
-#else // !NEW_CODE
-	unsigned int &numTexels ,
-#endif // NEW_CODE
 	AtlasCoveredTexelIndex & endCoveredTexelIndex ,
 	AtlasInteriorTexelIndex & endInteriorTexelIndex ,
 	AtlasBoundaryTexelIndex & endBoundaryTexelIndex ,
@@ -841,11 +768,7 @@ void InitializeGridCharts
 {
 	gridCharts.resize( atlasCharts.size() );
 
-#ifdef NEW_CODE
 	endCombinedTexelIndex = AtlasCombinedTexelIndex(0);
-#else // !NEW_CODE
-	numTexels = 0;
-#endif // NEW_CODE
 	endCoveredTexelIndex = AtlasCoveredTexelIndex(0);
 	endInteriorTexelIndex = AtlasInteriorTexelIndex(0);
 	endBoundaryTexelIndex = AtlasBoundaryTexelIndex(0);
@@ -881,11 +804,7 @@ void InitializeGridCharts
 		gridChart.cellSizeH = cellSize[1];
 		gridChart.atlasWidth = _width;
 		gridChart.atlasHeight = _height;
-#ifdef NEW_CODE
 		InitializeGridChartsActiveNodes( ChartIndex(i) , atlasChart , gridChart , nodeInfo , rasterLines , segmentedLines , threadTasks , endCombinedTexelIndex , endCoveredTexelIndex , endInteriorTexelIndex , endBoundaryTexelIndex , endCombinedCellIndex , endBoundaryCellIndex , endInteriorCellIndex , multigridBlockInfo );
-#else // !NEW_CODE
-		InitializeGridChartsActiveNodes( ChartIndex(i) , atlasChart , gridChart , nodeInfo , rasterLines , segmentedLines , threadTasks , numTexels , endCoveredTexelIndex , endInteriorTexelIndex , endBoundaryTexelIndex , endCombinedCellIndex , endBoundaryCellIndex , endInteriorCellIndex , multigridBlockInfo );
-#endif // NEW_CODE
 	}
 }
 
@@ -900,11 +819,7 @@ void InitializeTextureNodes
 	{
 		const GridChart< GeometryReal > &gridChart = gridCharts[ ChartIndex(c) ];
 		const Image< TexelIndex > & texelIndices = gridChart.texelIndices;
-#ifdef NEW_CODE
 		for( unsigned int j=0 ; j<gridChart.height ; j++ ) for( unsigned int i=0 ; i<gridChart.width ; i++ ) if( texelIndices(i,j).combined!=AtlasCombinedTexelIndex(-1) )
-#else // !NEW_CODE
-		for( unsigned int j=0 ; j<gridChart.height ; j++ ) for( unsigned int i=0 ; i<gridChart.width ; i++ ) if( texelIndices(i,j).combined!=-1 )
-#endif // NEW_CODE
 		{
 			TextureNodeInfo< GeometryReal > textureNode;
 			textureNode.ci = gridChart.cornerCoords[0] + i;
@@ -922,20 +837,12 @@ template< typename GeometryReal >
 void InitializeCellNodes
 (
 	const IndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts ,
-#ifdef NEW_CODE
 	IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > > &combinedCellCombinedTexelBilinearElementIndices
-#else // !NEW_CODE
-	IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< unsigned int > > &combinedCellCombinedTexelBilinearElementIndices
-#endif // NEW_CODE
 )
 {
 	for( unsigned int c=0 ; c<gridCharts.size() ; c++ )
 	{
-#ifdef NEW_CODE
 		const IndexVector< ChartCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > >& _combinedCellCombinedTexelBilinearElementIndices = gridCharts[ ChartIndex(c) ].combinedCellCombinedTexelBilinearElementIndices;
-#else // !NEW_CODE
-		const IndexVector< ChartCombinedCellIndex , BilinearElementIndex< unsigned int > >& _combinedCellCombinedTexelBilinearElementIndices = gridCharts[ ChartIndex(c) ].combinedCellCombinedTexelBilinearElementIndices;
-#endif // NEW_CODE
 		combinedCellCombinedTexelBilinearElementIndices.insert( combinedCellCombinedTexelBilinearElementIndices.end() , _combinedCellCombinedTexelBilinearElementIndices.begin() , _combinedCellCombinedTexelBilinearElementIndices.end() );
 	}
 }
@@ -952,20 +859,12 @@ void InitializeAtlasHierachicalBoundaryCoefficients
 {
 	std::vector< Eigen::Triplet< MatrixReal > > prolongationTriplets;
 
-#ifdef NEW_CODE
 	const IndexVector< AtlasCombinedTexelIndex , GridNodeInfo > & coarseNodeInfo = coarseAtlas.nodeInfo;
-#else // !NEW_CODE
-	const std::vector< GridNodeInfo > & coarseNodeInfo = coarseAtlas.nodeInfo;
-#endif // NEW_CODE
 	const typename GridAtlas<>::IndexConverter & coarseIndexConverter = coarseAtlas.indexConverter;
 	const typename GridAtlas<>::IndexConverter & fineIndexConverter = fineAtlas.indexConverter;
 	for( unsigned int i=0 ; i<coarseIndexConverter.numBoundary() ; i++ )
 	{
-#ifdef NEW_CODE
 		const GridNodeInfo & currentNode = coarseNodeInfo[ coarseIndexConverter.boundaryToCombined( AtlasBoundaryTexelIndex(i) ) ];
-#else // !NEW_CODE
-		const GridNodeInfo & currentNode = coarseNodeInfo[ coarseIndexConverter.boundaryToSupported(i) ];
-#endif // NEW_CODE
 		const GridChart< GeometryReal > &coarseChart = coarseAtlas.gridCharts[ currentNode.chartID ];
 		const GridChart< GeometryReal > &fineChart = fineAtlas.gridCharts[ currentNode.chartID ];
 
@@ -979,11 +878,7 @@ void InitializeAtlasHierachicalBoundaryCoefficients
 		int cj = currentNode.cj;
 
 		int numBoundaryNeighbours = 0;// -1: not defined, 0: boundary, 1: interior 
-#ifdef NEW_CODE
 		AtlasBoundaryTexelIndex boundary_id[9];
-#else // !NEW_CODE
-		int boundary_id[9];
-#endif // NEW_CODE
 		int boundary_offset_i[9];
 		int boundary_offset_j[9];
 		for( int li=-1 ; li<=1 ; li++ ) for( int lj=-1 ; lj<=1 ; lj++ )
@@ -992,41 +887,22 @@ void InitializeAtlasHierachicalBoundaryCoefficients
 			int pj = cj + lj;
 			if( pi>=0 && pi<coarseChartWidth && pj>=0 && pj<coarseChartHeight )
 			{
-#ifdef NEW_CODE
 				AtlasCombinedTexelIndex coarseGlobalIndex = coarseChart.texelIndices(pi, pj).combined;
 				if( coarseGlobalIndex!=AtlasCombinedTexelIndex(-1) )
-#else // !NEW_CODE
-				unsigned int coarseGlobalIndex = coarseChart.texelIndices(pi, pj).combined;
-				if( coarseGlobalIndex!=-1 )
-#endif // NEW_CODE
 				{
-#ifdef NEW_CODE
 					AtlasBoundaryTexelIndex coarseBoundaryIndex = coarseIndexConverter.combinedToBoundary( coarseGlobalIndex );
 					AtlasInteriorTexelIndex coarseInteriorIndex = coarseIndexConverter.combinedToInterior( coarseGlobalIndex );
 					if( coarseInteriorIndex!=AtlasInteriorTexelIndex(-1) )
-#else // !NEW_CODE
-					unsigned int coarseBoundaryIndex = coarseIndexConverter.supportedToBoundary( coarseGlobalIndex );
-					unsigned int coarseDeepIndex = coarseIndexConverter.supportedToDeep( coarseGlobalIndex );
-					if( coarseDeepIndex!=-1 )
-#endif // NEW_CODE
 					{
 						//Deep
 						BoundaryDeepIndex bdIndex;
 						bdIndex.boundaryIndex = i;
 						bdIndex.deepGlobalIndex = coarseGlobalIndex;
-#ifdef NEW_CODE
 						bdIndex.interiorIndex = coarseInteriorIndex;
-#else // !NEW_CODE
-						bdIndex.deepIndex = coarseDeepIndex;
-#endif // NEW_CODE
 						bdIndex.offset = (1 - lj) * 3 + (1 - li);
 						boundaryDeepIndices.push_back(bdIndex);
 					}
-#ifdef NEW_CODE
 					else if( coarseBoundaryIndex!=AtlasBoundaryTexelIndex(-1) )
-#else // !NEW_CODE
-					else if( coarseBoundaryIndex!=-1 )
-#endif // NEW_CODE
 					{
 						//Boundary
 						boundary_id[ numBoundaryNeighbours ] = coarseBoundaryIndex;
@@ -1052,34 +928,16 @@ void InitializeAtlasHierachicalBoundaryCoefficients
 			int pj = fj + dj;
 			if( pi>=0 && pi<fineChartWidth && pj>=0 && pj<fineChartHeight )
 			{
-#ifdef NEW_CODE
 				AtlasCombinedTexelIndex fineGlobalIndex = fineChart.texelIndices(pi, pj).combined;
 				if( fineGlobalIndex!=AtlasCombinedTexelIndex(-1) )
-#else // !NEW_CODE
-				int fineGlobalIndex = fineChart.texelIndices(pi, pj).combined;
-				if( fineGlobalIndex!=-1 )
-#endif // NEW_CODE
 				{
-#ifdef NEW_CODE
 					AtlasBoundaryTexelIndex fineBoundaryIndex = fineIndexConverter.combinedToBoundary( fineGlobalIndex );
 					AtlasInteriorTexelIndex fineInteriorIndex = fineIndexConverter.combinedToInterior( fineGlobalIndex );
-#else // !NEW_CODE
-					unsigned int fineBoundaryIndex = fineIndexConverter.supportedToBoundary( fineGlobalIndex );
-					unsigned int fineDeepIndex = fineIndexConverter.supportedToDeep( fineGlobalIndex );
-#endif // NEW_CODE
 					MatrixReal weight = (MatrixReal)( 1.0 / (1.0 + std::abs(di) ) / ( 1.0 + std::abs(dj) ) );
-#ifdef NEW_CODE
 					if( fineBoundaryIndex!=AtlasBoundaryTexelIndex(-1) )
-#else // !NEW_CODE
-					if( fineBoundaryIndex!=-1 )
-#endif // NEW_CODE
 					{
 						// Boundary
-#ifdef NEW_CODE
 						prolongationTriplets.emplace_back( static_cast< unsigned int >(fineBoundaryIndex) , i , weight );
-#else // !NEW_CODE
-						prolongationTriplets.emplace_back( fineBoundaryIndex , i , weight );
-#endif // NEW_CODE
 
 						for( int ki=-1; ki<=1 ; ki++ ) for( int kj=-1 ; kj<=1 ; kj++ )
 						{
@@ -1087,21 +945,11 @@ void InitializeAtlasHierachicalBoundaryCoefficients
 							int qj = pj + kj;
 							if( qi>=0 && qi<fineChartWidth && qj>=0 && qj<fineChartHeight )
 							{
-#ifdef NEW_CODE
 								AtlasCombinedTexelIndex neighboutFineGlobalIndex = fineChart.texelIndices(qi, qj).combined;
 								if( neighboutFineGlobalIndex!=AtlasCombinedTexelIndex(-1) )
-#else // !NEW_CODE
-								int neighboutFineGlobalIndex = fineChart.texelIndices(qi, qj).combined;
-								if( neighboutFineGlobalIndex!=-1 )
-#endif // NEW_CODE
 								{
-#ifdef NEW_CODE
 									AtlasInteriorTexelIndex _fineInteriorIndex = fineIndexConverter.combinedToInterior( neighboutFineGlobalIndex );
 									if( _fineInteriorIndex!=AtlasInteriorTexelIndex(-1) )
-#else // !NEW_CODE
-									unsigned int _fineDeepIndex = fineIndexConverter.supportedToDeep( neighboutFineGlobalIndex );
-									if( _fineDeepIndex!=-1 )
-#endif // NEW_CODE
 									{
 										//Deep
 										int oi = di + ki;
@@ -1115,13 +963,8 @@ void InitializeAtlasHierachicalBoundaryCoefficients
 												MatrixReal weight2 = (MatrixReal)( 1.0 / (1.0 + diff_i ) / ( 1.0 + diff_j ) );
 												BoundaryBoundaryIndex< MatrixReal > bbIndex;
 												bbIndex.coarsePrincipalBoundaryIndex = i;
-#ifdef NEW_CODE
 												bbIndex.coarseSecondaryBoundaryIndex = boundary_id[n];
 												bbIndex.fineInteriorIndex = _fineInteriorIndex;
-#else // !NEW_CODE
-												bbIndex.coarseSecondaryBoundaryIndex = boundary_id[n];
-												bbIndex.fineDeepIndex = _fineDeepIndex;
-#endif // NEW_CODE
 												bbIndex.offset = (1 - kj) * 3 + (1 - ki);
 												bbIndex.weight = weight * weight2;
 												boundaryBoundaryIndices.push_back(bbIndex);
@@ -1132,11 +975,7 @@ void InitializeAtlasHierachicalBoundaryCoefficients
 							}
 						}
 					}
-#ifdef NEW_CODE
 					else if( fineInteriorIndex!=AtlasInteriorTexelIndex(-1) )
-#else // !NEW_CODE
-					else if( fineDeepIndex!=-1 )
-#endif // NEW_CODE
 					{
 						// Deep
 						for( int ki=-1 ; ki<=1 ; ki++ ) for( int kj=-1 ; kj<=1 ; kj++ )
@@ -1154,11 +993,7 @@ void InitializeAtlasHierachicalBoundaryCoefficients
 									BoundaryBoundaryIndex< MatrixReal > bbIndex;
 									bbIndex.coarsePrincipalBoundaryIndex = i;
 									bbIndex.coarseSecondaryBoundaryIndex = boundary_id[n];
-#ifdef NEW_CODE
 									bbIndex.fineInteriorIndex = fineInteriorIndex;
-#else // !NEW_CODE
-									bbIndex.fineDeepIndex = fineDeepIndex;
-#endif // NEW_CODE
 									bbIndex.offset = (1 + kj) * 3 + (1 + ki);
 									bbIndex.weight = weight * weight2;
 									boundaryBoundaryIndices.push_back(bbIndex);
@@ -1192,21 +1027,12 @@ void InitializeHierarchy
 
 	for( unsigned int l=0 ; l<levels ; l++ )
 	{
-#ifdef NEW_CODE
 		InitializeGridCharts( atlasCharts , width , height , l , gridAtlases[l].nodeInfo , gridAtlases[l].gridCharts , gridAtlases[l].rasterLines , gridAtlases[l].segmentedLines , gridAtlases[l].threadTasks , gridAtlases[l].endCombinedTexelIndex , gridAtlases[l].endCoveredTexelIndex , gridAtlases[l].endInteriorTexelIndex , gridAtlases[l].endBoundaryTexelIndex , gridAtlases[l].endCombinedCellIndex , gridAtlases[l].endBoundaryCellIndex , gridAtlases[l].endInteriorCellIndex , multigridBlockInfo );
 
 		if( static_cast< unsigned int >(gridAtlases[l].endCombinedTexelIndex)!=static_cast< unsigned int >(gridAtlases[l].endBoundaryTexelIndex)+static_cast< unsigned int >(gridAtlases[l].endInteriorTexelIndex) )
 			MK_THROW( "Boundary and deep texels does not form a partition: " , gridAtlases[l].endCombinedTexelIndex , " != " , gridAtlases[l].endBoundaryTexelIndex , " + " , gridAtlases[l].endInteriorTexelIndex );
 
 		InitializeIndexConverter( gridAtlases[l].gridCharts , gridAtlases[l].endCombinedTexelIndex , gridAtlases[l].indexConverter );
-#else // !NEW_CODE
-		InitializeGridCharts( atlasCharts , width , height , l , gridAtlases[l].nodeInfo , gridAtlases[l].gridCharts , gridAtlases[l].rasterLines , gridAtlases[l].segmentedLines , gridAtlases[l].threadTasks , gridAtlases[l].numTexels , gridAtlases[l].endCoveredTexelIndex , gridAtlases[l].endInteriorTexelIndex , gridAtlases[l].endBoundaryTexelIndex , gridAtlases[l].endCombinedCellIndex , gridAtlases[l].endBoundaryCellIndex , gridAtlases[l].endInteriorCellIndex , multigridBlockInfo );
-
-		if( gridAtlases[l].numTexels!=static_cast< unsigned int >(gridAtlases[l].endBoundaryTexelIndex)+static_cast< unsigned int >(gridAtlases[l].endInteriorTexelIndex) )
-			MK_THROW( "Boundary and deep texels does not form a partition: " , gridAtlases[l].numTexels , " != " , gridAtlases[l].endBoundaryTexelIndex , " + " , gridAtlases[l].endInteriorTexelIndex );
-
-		InitializeIndexConverter( gridAtlases[l].gridCharts , gridAtlases[l].numTexels , gridAtlases[l].indexConverter );
-#endif // NEW_CODE
 	}
 
 	hierarchy.boundaryRestriction.resize( levels-1 );
@@ -1234,11 +1060,7 @@ void InitializeHierarchy
 	unsigned int height ,
 	unsigned int levels ,
 	std::vector< TextureNodeInfo< GeometryReal > > &textureNodes ,
-#ifdef NEW_CODE
 	IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > > &cellNodes ,
-#else // !NEW_CODE
-	IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< unsigned int > > &cellNodes ,
-#endif // NEW_CODE
 	HierarchicalSystem< GeometryReal , MatrixReal > &hierarchy ,
 	IndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
 	const MultigridBlockInfo &multigridBlockInfo ,
@@ -1263,11 +1085,7 @@ void InitializeHierarchy
 	if( computeProlongation )
 	{
 		Eigen::SparseMatrix< MatrixReal > __prolongation;
-#ifdef NEW_CODE
 		InitializeProlongation( hierarchy.gridAtlases[0].endCoveredTexelIndex , hierarchy.gridAtlases[0].numFineNodes , hierarchy.gridAtlases[0].endCombinedTexelIndex , hierarchy.gridAtlases[0].gridCharts , hierarchy.gridAtlases[0].nodeInfo , __prolongation );
-#else // !NEW_CODE
-		InitializeProlongation( hierarchy.gridAtlases[0].endCoveredTexelIndex , hierarchy.gridAtlases[0].numFineNodes , hierarchy.gridAtlases[0].numTexels , hierarchy.gridAtlases[0].gridCharts , hierarchy.gridAtlases[0].nodeInfo , __prolongation );
-#endif // NEW_CODE
 		hierarchy.gridAtlases[0].coarseToFineNodeProlongation = __prolongation;
 	}
 }

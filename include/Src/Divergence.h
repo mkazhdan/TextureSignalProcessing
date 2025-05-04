@@ -43,22 +43,13 @@ namespace MishaK
 		int nextEdgeRowStart;
 #pragma message( "[WARNING] Is this the right type?" )
 		AtlasInteriorTexelIndex deepCoefficientsStart;
-#ifdef NEW_CODE
 		AtlasCombinedTexelIndex texelStart;
 		AtlasCombinedTexelIndex texelEnd;
-#else // !NEW_CODE
-		int texelStart;
-		int texelEnd;
-#endif // NEW_CODE
 	};
 
 	void InitializeDivergenceRasteLines
 	(
-#ifdef NEW_CODE
 		std::map< SimplexIndex< 1 , AtlasCombinedTexelIndex > , unsigned int > &coarseEdgeIndex ,
-#else // !NEW_CODE
-		std::map< SimplexIndex< 1 > , unsigned int > &coarseEdgeIndex ,
-#endif // NEW_CODE
 		const std::vector< RasterLine > &rasterLines ,
 		std::vector< DivegenceRasterLine > &divergenceRasterLines
 	)
@@ -71,27 +62,15 @@ namespace MishaK
 			divLine.texelStart = line.lineStartIndex;
 			divLine.texelEnd = line.lineEndIndex;
 			divLine.deepCoefficientsStart = line.coeffStartIndex;
-#ifdef NEW_CODE
 			SimplexIndex< 1 , AtlasCombinedTexelIndex > prevEdgeKey( line.prevLineIndex-1 , line.prevLineIndex );
-#else // !NEW_CODE
-			SimplexIndex< 1 > prevEdgeKey( line.prevLineIndex-1 , line.prevLineIndex );
-#endif // NEW_CODE
 			if( coarseEdgeIndex.find( prevEdgeKey )==coarseEdgeIndex.end() ) MK_THROW( "Edge not found" );
 			divLine.prevEdgeRowStart = coarseEdgeIndex[prevEdgeKey];
 
-#ifdef NEW_CODE
 			SimplexIndex< 1 , AtlasCombinedTexelIndex > currEdgeKey( line.lineStartIndex-1 , line.lineStartIndex );
-#else // !NEW_CODE
-			SimplexIndex< 1 > currEdgeKey( line.lineStartIndex-1 , line.lineStartIndex );
-#endif // NEW_CODE
 			if( coarseEdgeIndex.find(currEdgeKey)==coarseEdgeIndex.end() ) MK_THROW( "Edge not found" );
 			divLine.currEdgeRowStart = coarseEdgeIndex[currEdgeKey];
 
-#ifdef NEW_CODE
 			SimplexIndex< 1 , AtlasCombinedTexelIndex > nextEdgeKey( line.nextLineIndex-1 , line.nextLineIndex );
-#else // !NEW_CODE
-			SimplexIndex< 1 > nextEdgeKey( line.nextLineIndex-1 , line.nextLineIndex );
-#endif // NEW_CODE
 			if( coarseEdgeIndex.find(nextEdgeKey)==coarseEdgeIndex.end() ) MK_THROW( "Edge not found" );
 			divLine.nextEdgeRowStart = coarseEdgeIndex[nextEdgeKey];
 		}

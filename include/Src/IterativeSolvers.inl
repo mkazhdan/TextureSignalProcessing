@@ -29,30 +29,18 @@ DAMAGE.
 template< class Real , class Data , class Solver >
 void Relaxation
 (
-#ifdef NEW_CODE
 	const std::vector< Real > &deepCoefficients ,
 	const SparseMatrix< Real , int > &boundaryDeepMatrix ,
 	Solver &boundarySolver ,
 	const IndexVector< AtlasBoundaryTexelIndex , AtlasCombinedTexelIndex > &boundaryToCombined ,
-#else // !NEW_CODE
-	const std::vector< Real > &deepCoefficients , const SparseMatrix< Real , int > &boundaryDeepMatrix , Solver &boundarySolver , const std::vector< int > &boundaryToSupported ,
-#endif // NEW_CODE
 	const std::vector< SegmentedRasterLine > &segmentedLines ,
 	const std::vector< Data > &rhs , std::vector< Data > &x0 , std::vector< Data > &boundaryRHS , std::vector< Data > &boundarySolution , std::vector< Data > &variableBoundaryRHS ,
 	int numIterations=2 , bool boundaryFirst=true , bool verbose=false
 )
 {
-#ifdef NEW_CODE
 	unsigned int numBoundaryVariables = boundaryToCombined.size();
-#else // !NEW_CODE
-	int numBoundaryVariables = boundaryToSupported.size();
-#endif // NEW_CODE
 	
-#ifdef NEW_CODE
 	ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundaryRHS[i] = rhs[ boundaryToCombined[ AtlasBoundaryTexelIndex(i) ] ]; } );
-#else // !NEW_CODE
-	ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundaryRHS[i] = rhs[ boundaryToSupported[i] ]; } );
-#endif // NEW_CODE
 
 	Miscellany::Timer timer;
 
@@ -62,11 +50,7 @@ void Relaxation
 
 			if( verbose ) timer.reset();
 
-#ifdef NEW_CODE
 			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundarySolution[i] = x0[ boundaryToCombined[ AtlasBoundaryTexelIndex(i) ] ] ; variableBoundaryRHS[i] = boundaryRHS[i]; } );
-#else // !NEW_CODE
-			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundarySolution[i] = x0[ boundaryToSupported[i] ] ; variableBoundaryRHS[i] = boundaryRHS[i]; } );
-#endif // NEW_CODE
 
 			boundaryDeepMatrix.Multiply((Data*)&x0[0], (Data*)&variableBoundaryRHS[0], MULTIPLY_ADD | MULTIPLY_NEGATE);
 
@@ -76,11 +60,7 @@ void Relaxation
 			solve(boundarySolver,boundarySolution, variableBoundaryRHS);
 			if( verbose ) printf("\t Boundary update =  %.4f \n" , timer.elapsed() );
 
-#ifdef NEW_CODE
 			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ x0[ boundaryToCombined[ AtlasBoundaryTexelIndex(i) ] ] = boundarySolution[i]; } );
-#else // !NEW_CODE
-			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ x0[ boundaryToSupported[i] ] = boundarySolution[i]; } );
-#endif // NEW_CODE
 		}
 
 
@@ -166,11 +146,7 @@ void Relaxation
 	const std::vector< Real > &deepCoefficients ,
 	const SparseMatrix< Real , int > &boundaryDeepMatrix ,
 	Solver &boundarySolver ,
-#ifdef NEW_CODE
 	const IndexVector< AtlasBoundaryTexelIndex , AtlasCombinedTexelIndex > &boundaryToCombined ,
-#else // !NEW_CODE
-	const std::vector< unsigned int > &boundaryToSupported ,
-#endif // NEW_CODE
 	const std::vector< ThreadTask > &threadTasks ,
 	const std::vector< Data > &rhs ,
 	std::vector< Data > &x0 ,
@@ -184,15 +160,9 @@ void Relaxation
 {
 
 
-#ifdef NEW_CODE
 	unsigned int numBoundaryVariables = boundaryToCombined.size();
 
 	ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundaryRHS[i] = rhs[ static_cast< unsigned int >( boundaryToCombined[ AtlasBoundaryTexelIndex(i) ] ) ]; } );
-#else // !NEW_CODE
-	int numBoundaryVariables = (int)boundaryToSupported.size();
-
-	ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundaryRHS[i] = rhs[ boundaryToSupported[i] ]; } );
-#endif // NEW_CODE
 
 	Miscellany::Timer timer;
 
@@ -203,11 +173,7 @@ void Relaxation
 
 			if( verbose ) timer.reset();
 
-#ifdef NEW_CODE
 			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundarySolution[i] = x0[ static_cast< unsigned int >( boundaryToCombined[ AtlasBoundaryTexelIndex(i) ] ) ] ; variableBoundaryRHS[i] = boundaryRHS[i]; } );
-#else // !NEW_CODE
-			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundarySolution[i] = x0[ boundaryToSupported[i] ] ; variableBoundaryRHS[i] = boundaryRHS[i]; } );
-#endif // NEW_CODE
 
 			boundaryDeepMatrix.Multiply((Data*)&x0[0], (Data*)&variableBoundaryRHS[0], MULTIPLY_ADD | MULTIPLY_NEGATE);
 
@@ -217,11 +183,7 @@ void Relaxation
 			solve(boundarySolver, boundarySolution, variableBoundaryRHS);
 			if( verbose ) printf( "\t Boundary update =  %.4f\n" , timer.elapsed() );
 
-#ifdef NEW_CODE
 			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ x0[ static_cast< unsigned int >( boundaryToCombined[ AtlasBoundaryTexelIndex(i) ] ) ] = boundarySolution[i]; } );
-#else // !NEW_CODE
-			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ x0[ boundaryToSupported[i] ] = boundarySolution[i]; } );
-#endif // NEW_CODE
 		}
 
 
@@ -291,11 +253,7 @@ void RelaxationAndResidual
 	const std::vector< Real > &deepCoefficients ,
 	const SparseMatrix< Real , int > &boundaryDeepMatrix ,
 	Solver &boundarySolver ,
-#ifdef NEW_CODE
 	const IndexVector< AtlasBoundaryTexelIndex , AtlasCombinedTexelIndex > &boundaryToCombined ,
-#else // !NEW_CODE
-	const std::vector< unsigned int > &boundaryToSupported ,
-#endif // NEW_CODE
 	const std::vector< ThreadTask > &threadTasks ,
 	const std::vector< Data > &rhs ,
 	std::vector< Data > &x0 ,
@@ -308,15 +266,9 @@ void RelaxationAndResidual
 	bool verbose=false
 )
 {
-#ifdef NEW_CODE
 	unsigned int numBoundaryVariables = boundaryToCombined.size();
 
 	ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundaryRHS[i] = rhs[ static_cast< unsigned int >( boundaryToCombined[ AtlasBoundaryTexelIndex(i) ] ) ]; } );
-#else // !NEW_CODE
-	int numBoundaryVariables = (int)boundaryToSupported.size();
-
-	ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundaryRHS[i] = rhs[ boundaryToSupported[i] ]; } );
-#endif // NEW_CODE
 
 	Miscellany::Timer timer;
 	for( unsigned int it=0 ; it<numIterations ; it++ )
@@ -325,11 +277,7 @@ void RelaxationAndResidual
 
 			if( verbose ) timer.reset();
 
-#ifdef NEW_CODE
 			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundaryValue[i] = x0[ static_cast< unsigned int >( boundaryToCombined[ AtlasBoundaryTexelIndex(i) ] ) ] ; variableBoundaryRHS[i] = boundaryRHS[i]; } );
-#else // !NEW_CODE
-			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundaryValue[i] = x0[ boundaryToSupported[i] ] ; variableBoundaryRHS[i] = boundaryRHS[i]; } );
-#endif // NEW_CODE
 
 			boundaryDeepMatrix.Multiply((Data*)&x0[0], (Data*)&variableBoundaryRHS[0], MULTIPLY_ADD | MULTIPLY_NEGATE);
 			if( verbose ) printf( "\t Boundary initialization =  %.4f\n" , timer.elapsed() );
@@ -339,11 +287,7 @@ void RelaxationAndResidual
 			solve(boundarySolver, boundaryValue, variableBoundaryRHS);
 
 			if( verbose ) printf( "\t Boundary update =  %.4f\n" , timer.elapsed() );
-#ifdef NEW_CODE
 			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ x0[ static_cast< unsigned int >( boundaryToCombined[ AtlasBoundaryTexelIndex(i) ] ) ] = boundaryValue[i]; } );
-#else // !NEW_CODE
-			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ x0[ boundaryToSupported[i] ] = boundaryValue[i]; } );
-#endif // NEW_CODE
 		}
 
 		if( it%2==1 )
@@ -450,11 +394,7 @@ void RelaxationAndResidual
 		if( verbose ) timer.reset();
 		boundaryDeepMatrix.Multiply((Data*)&x0[0], (Data*)&boundaryRHS[0], MULTIPLY_ADD | MULTIPLY_NEGATE);
 		boundaryBoundaryMatrix.Multiply((Data*)&boundaryValue[0], (Data*)&boundaryRHS[0], MULTIPLY_ADD | MULTIPLY_NEGATE);
-#ifdef NEW_CODE
 		for( unsigned int i=0 ; i<numBoundaryVariables ; i++) residual[ static_cast< unsigned int >( boundaryToCombined[ AtlasBoundaryTexelIndex(i) ] ) ] = boundaryRHS[i];
-#else // !NEW_CODE
-		for (int i = 0; i < numBoundaryVariables; i++)residual[ boundaryToSupported[i] ] = boundaryRHS[i];
-#endif // NEW_CODE
 		if( verbose ) printf( "\t Boundary residual =  %.4f\n" , timer.elapsed() );
 	}
 }
@@ -466,26 +406,16 @@ void RelaxationAndResidual
 	const std::vector< Real > &deepCoefficients ,
 	const SparseMatrix< Real , int > &boundaryDeepMatrix ,
 	Solver &boundarySolver ,
-#ifdef NEW_CODE
 	const IndexVector< AtlasBoundaryTexelIndex , AtlasCombinedTexelIndex > &boundaryToCombined ,
-#else // !NEW_CODE
-	const std::vector< int > &boundaryToSupported ,
-#endif // NEW_CODE
 	const std::vector< SegmentedRasterLine > &segmentedLines ,
 	const std::vector< Data > &rhs , std::vector< Data > &x0 , std::vector< Data > &boundaryRHS , std::vector< Data > &boundaryValue , std::vector< Data > &variableBoundaryRHS ,
 	const SparseMatrix< Real , int > &boundaryBoundaryMatrix , std::vector< Data > &residual ,
 	int numIterations=2 , bool verbose=false
 )
 {
-#ifdef NEW_CODE
-	unsigned int numBoundaryVariables = boundaryToSupported.size();
+	unsigned int numBoundaryVariables = boundaryToCombined.size();
 
-	ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundaryRHS[i] = rhs[ boundaryToCombined[ AtlasBoundaryTexelIndex(i) ] ]; } );
-#else // !NEW_CODE
-	int numBoundaryVariables = boundaryToSupported.size();
-
-	ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundaryRHS[i] = rhs[ boundaryToSupported[i] ]; } );
-#endif // NEW_CODE
+	ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundaryRHS[i] = rhs[ static_cast< unsigned int >( boundaryToCombined[ AtlasBoundaryTexelIndex(i) ] ) ]; } );
 
 	Miscellany::Timer timer;
 	for (int it = 0; it < numIterations; it++) {
@@ -493,11 +423,7 @@ void RelaxationAndResidual
 
 			if( verbose ) timer.reset();
 
-#ifdef NEW_CODE
-			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundaryValue[i] = x0[ boundaryToSupported[ AtlasBoundaryTexelIndex(i) ] ] ; variableBoundaryRHS[i] = boundaryRHS[i] ; } );
-#else // !NEW_CODE
-			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundaryValue[i] = x0[ boundaryToSupported[i] ] ; variableBoundaryRHS[i] = boundaryRHS[i] ; } );
-#endif // NEW_CODE
+			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundaryValue[i] = x0[ static_cast< unsigned int >( boundaryToCombined[ AtlasBoundaryTexelIndex(i) ] ) ] ; variableBoundaryRHS[i] = boundaryRHS[i] ; } );
 
 			boundaryDeepMatrix.Multiply((Data*)&x0[0], (Data*)&variableBoundaryRHS[0], MULTIPLY_ADD | MULTIPLY_NEGATE);
 			if( verbose ) printf( "\t Boundary initialization =  %.4f\n" , timer.elapsed() );
@@ -506,11 +432,7 @@ void RelaxationAndResidual
 			solve(boundarySolver, boundaryValue, variableBoundaryRHS);
 
 			if( verbose ) printf( "\t Boundary update =  %.4f\n" , timer.elapsed() );
-#ifdef NEW_CODE
-			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ x0[ boundaryToSupported[ AtlasBoundaryTexelIndex(i) ] ] = boundaryValue[i]; } );
-#else // !NEW_CODE
-			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ x0[ boundaryToSupported[i] ] = boundaryValue[i]; } );
-#endif // NEW_CODE
+			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ x0[ static_cast< unsigned int >( boundaryToCombined[ AtlasBoundaryTexelIndex(i) ] ) ] = boundaryValue[i]; } );
 		}
 
 		if (it % 2 == 1) {//Update Interior
@@ -652,11 +574,7 @@ void RelaxationAndResidual
 		if( verbose ) timer.reset();
 		boundaryDeepMatrix.Multiply((Data*)&x0[0], (Data*)&boundaryRHS[0], MULTIPLY_ADD | MULTIPLY_NEGATE);
 		boundaryBoundaryMatrix.Multiply((Data*)&boundaryValue[0], (Data*)&boundaryRHS[0], MULTIPLY_ADD | MULTIPLY_NEGATE);
-#ifdef NEW_CODE
-		for( int i=0 ; i<numBoundaryVariables ; i++ ) residual[ boundaryToSupported[ AtlasBoundaryTexelIndex(i) ] ] = boundaryRHS[i];
-#else // !NEW_CODE
-		for( int i=0 ; i<numBoundaryVariables ; i++ ) residual[ boundaryToSupported[i] ] = boundaryRHS[i];
-#endif // NEW_CODE
+		for( int i=0 ; i<numBoundaryVariables ; i++ ) residual[ static_cast< unsigned int >( boundaryToCombined[ AtlasBoundaryTexelIndex(i) ] ) ] = boundaryRHS[i];
 		if( verbose ) printf( "\t Boundary residual =  %.4f\n" , timer.elapsed() );
 	}
 }
@@ -665,11 +583,7 @@ template< class Real , class Data , class DataReal=Real >
 void MultiplyBySystemMatrix
 (
 	const SystemCoefficients< Real > &systemCoefficients ,
-#ifdef NEW_CODE
 	const IndexVector< AtlasBoundaryTexelIndex , AtlasCombinedTexelIndex > &boundaryToCombined ,
-#else // !NEW_CODE
-	const std::vector< int > &boundaryToSupported ,
-#endif // NEW_CODE
 	const std::vector< RasterLine > &rasterLines ,
 	const std::vector< Data > &in ,
 	std::vector< Data > &out ,
@@ -678,19 +592,11 @@ void MultiplyBySystemMatrix
 {
 	Miscellany::Timer timer;
 
-#ifdef NEW_CODE
 	unsigned int numBoundaryVariables = boundaryToCombined.size();
-#else // !NEW_CODE
-	int numBoundaryVariables = boundaryToSupported.size();
-#endif // NEW_CODE
 
 	std::vector<Data> inBoundaryValues;
 	inBoundaryValues.resize(numBoundaryVariables);
-#ifdef NEW_CODE
 	for( int i=0 ; i<numBoundaryVariables ; i++ ) inBoundaryValues[i] = in[ boundaryToCombined[ AtlasBoundaryTexelIndex(i) ] ];
-#else // !NEW_CODE
-	for( int i=0 ; i<numBoundaryVariables ; i++ ) inBoundaryValues[i] = in[ boundaryToSupported[i] ];
-#endif // NEW_CODE
 
 	std::vector<Data> outBoundaryValues;
 	outBoundaryValues.resize(numBoundaryVariables);
@@ -700,11 +606,7 @@ void MultiplyBySystemMatrix
 	systemCoefficients.boundaryDeepMatrix.Multiply(&in[0], &outBoundaryValues[0], MULTIPLY_ADD);
 	if( verbose ) printf( "\t Multiply boundary =  %.4f\n" , timer.elapsed() );
 
-#ifdef NEW_CODE
 	ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ out[ boundaryToCombined[ AtlasBoundaryTexelIndex(i) ] ] = outBoundaryValues[i]; } );
-#else // !NEW_CODE
-	ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ out[ boundaryToSupported[i] ] = outBoundaryValues[i]; } );
-#endif // NEW_CODE
 
 	auto UpdateRow = [&](int r)
 	{
@@ -772,11 +674,7 @@ void MultiplyBySystemMatrix_NoReciprocals
 	// Pull out the boundary values from the input array
 	std::vector< Data > outBoundaryValues( numBoundaryVariables );
 	std::vector< Data >  inBoundaryValues( numBoundaryVariables );
-#ifdef NEW_CODE
 	for( unsigned int i=0 ; i<numBoundaryVariables ; i++ ) inBoundaryValues[i] = in[ static_cast< unsigned int >(indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex(i) ) ) ];
-#else // !NEW_CODE
-	for( unsigned int i=0 ; i<numBoundaryVariables ; i++ ) inBoundaryValues[i] = in[ indexConverter.boundaryToSupported(i) ];
-#endif // NEW_CODE
 
 	timer.reset();
 	//  Perform the boundary -> boundary multiplication
@@ -786,11 +684,7 @@ void MultiplyBySystemMatrix_NoReciprocals
 	if( verbose ) printf( "\tMultiply boundary = %.4f\n" , timer.elapsed() );
 
 	// Write the boundary values back into the output array
-#ifdef NEW_CODE
 	ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ out[ static_cast< unsigned int >(indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex((unsigned int)i) ) ) ] = outBoundaryValues[i]; } );
-#else // !NEW_CODE
-	ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ out[ indexConverter.boundaryToSupported((unsigned int)i) ] = outBoundaryValues[i]; } );
-#endif // NEW_CODE
 
 	// Perform the interior -> interior multiplication
 	auto UpdateRow = [&]( int r )
@@ -849,11 +743,7 @@ template< class Real , class Data >
 void ComputeSystemResidual
 (
 	const std::vector< Real > &deepCoefficients , const SparseMatrix< Real , int > &boundaryDeepMatrix , const SparseMatrix< Real , int > &boundaryBoundaryMatrix ,
-#ifdef NEW_CODE
 	const IndexVector< AtlasBoundaryTexelIndex , AtlasCombinedTexelIndex > &boundaryToCombined ,
-#else // !NEW_CODE
-	const std::vector< int > &boundaryToSupported ,
-#endif // NEW_CODE
 	const std::vector< RasterLine > &rasterLines ,
 	const std::vector< Data > &boundaryRHS , const std::vector< Data > &boundaryValues , const std::vector< Data > &in , const std::vector< Data > &rhs , std::vector< Data > &out ,
 	bool verbose=false
@@ -862,19 +752,11 @@ void ComputeSystemResidual
 	Miscellany::Timer timer;
 	//Boundary residual
 	{
-#ifdef NEW_CODE
 		unsigned int numBoundaryVariables = boundaryToCombined.size();
-#else // !NEW_CODE
-		int numBoundaryVariables = boundaryToSupported.size();
-#endif // NEW_CODE
 		if( verbose ) timer.reset();
 		boundaryDeepMatrix.Multiply((Data*)&in[0], (Data*)&boundaryRHS[0], MULTIPLY_ADD | MULTIPLY_NEGATE);
 		boundaryBoundaryMatrix.Multiply((Data*)&boundaryValues[0], (Data*)&boundaryRHS[0], MULTIPLY_ADD | MULTIPLY_NEGATE);
-#ifdef NEW_CODE
 		for( int i=0 ; i<numBoundaryVariables ; i++ ) out[ boundaryToCombined[ AtlasBoundaryTexelIndex(i) ] ] = boundaryRHS[i];
-#else // !NEW_CODE
-		for( int i=0 ; i<numBoundaryVariables ; i++ ) out[ boundaryToSupported[i] ] = boundaryRHS[i];
-#endif // NEW_CODE
 		if( verbose ) printf( "\t Residual Boundary =  %.4f \n" , timer.elapsed() );
 	}
 
@@ -927,11 +809,7 @@ template< class Real , class Data >
 void MultiplyByRestriction
 (
 	const SparseMatrix< Real , int > & __boundaryRestrictionMatrix ,
-#ifdef NEW_CODE
 	const IndexVector< AtlasBoundaryTexelIndex , AtlasCombinedTexelIndex > &boundaryToCombined ,
-#else // !NEW_CODE
-	const std::vector< unsigned int > &boundaryToSupported ,
-#endif // NEW_CODE
 	std::vector< Data > &boundaryValue ,
 	const std::vector< RasterLine > &restrictionLines ,
 	const std::vector< Data > &in ,
@@ -941,21 +819,13 @@ void MultiplyByRestriction
 {
 	Miscellany::Timer timer;
 
-#ifdef NEW_CODE
 	unsigned int numBoundaryVariables = (unsigned int)boundaryToCombined.size();
-#else // !NEW_CODE
-	unsigned int numBoundaryVariables = (unsigned int)boundaryToSupported.size();
-#endif // NEW_CODE
 
 	if( verbose ) timer.reset();
 	__boundaryRestrictionMatrix.Multiply((Data*)&in[0], (Data*)&boundaryValue[0]);
 	if( verbose ) printf( "\t Restriction boundary  %.4f \n" , timer.elapsed() );
 	
-#ifdef NEW_CODE
 	ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ out[ static_cast< unsigned int >( boundaryToCombined[ AtlasBoundaryTexelIndex(i) ] ) ] = boundaryValue[i]; } );
-#else // !NEW_CODE
-	ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ out[ boundaryToSupported[i] ] = boundaryValue[i]; } );
-#endif // NEW_CODE
 
 
 	auto UpdateRow = [&](int r)
@@ -1013,7 +883,8 @@ void MultiplyByProlongation
 		int lineLenght = prolongationLines[r].length;
 		int offset = prolongationLines[r].alignedStart ? 0 : 1;
 
-		if (prolongationLines[r].centerLineIndex != -1) {
+		if( prolongationLines[r].centerLineIndex!=AtlasCombinedTexelIndex(-1) )
+		{
 			const Data* _inCurrent = in.data() + prolongationLines[r].centerLineIndex;
 			for (int i = 0; i < lineLenght; i++) {
 				int prev = ((i + offset) / 2);
@@ -1021,7 +892,8 @@ void MultiplyByProlongation
 				_out[i] = (_inCurrent[prev] + _inCurrent[next]) * Real(0.5);
 			}
 		}
-		else {
+		else
+		{
 			const Data* _inPrevious = in.data() + prolongationLines[r].prevLineIndex;
 			const Data* _inNext = in.data() + prolongationLines[r].nextLineIndex;
 			for (int i = 0; i < lineLenght; i++) {
@@ -1063,11 +935,7 @@ void AddProlongation( const std::vector< ProlongationLine > &prolongationLines ,
 		int lineLength = prolongationLines[r].length;
 		int offset = prolongationLines[r].alignedStart ? 0 : 1;
 
-#ifdef NEW_CODE
 		if( prolongationLines[r].centerLineIndex!=AtlasCombinedTexelIndex(-1) )
-#else // !NEW_CODE
-		if( prolongationLines[r].centerLineIndex!=-1 )
-#endif // NEW_CODE
 		{
 			const Data* _inCurrent = in.data() + prolongationLines[r].centerLineIndex;
 			for( int i=0 ; i<lineLength; i++ )
@@ -1126,11 +994,7 @@ void CellStiffnessToTexelStiffness
 	//Update Boundary Texels
 	Miscellany::Timer timer;
 	ThreadPool::ParallelFor( 0 , Channels , [&]( unsigned int , size_t c ){ boundaryCellBasedStiffnessRHSMatrix[c].Multiply( &cellSharpenningMask[0] , &boundaryTexelValues[c][0] ); } );
-#ifdef NEW_CODE
 	ThreadPool::ParallelFor( 0 , indexConverter.numBoundary() , [&]( unsigned int , size_t i ){ for( int c=0 ; c<Channels ; c++ ) texelModulatedStiffness[ static_cast< unsigned int >( indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex(i) ) ) ][c] = boundaryTexelValues[c][i]; } );
-#else // !NEW_CODE
-	ThreadPool::ParallelFor( 0 , indexConverter.numBoundary() , [&]( unsigned int , size_t i ){ for( int c=0 ; c<Channels ; c++ ) texelModulatedStiffness[ indexConverter.boundaryToSupported(i) ][c] = boundaryTexelValues[c][i]; } );
-#endif // NEW_CODE
 	if( verbose ) printf( "\tBoundary updated: %.3f(s) \n" , timer.elapsed() );
 	//Update Interior Texels
 
@@ -1175,11 +1039,7 @@ void CellStiffnessToTexelStiffness
 	//Update Boundary Texels
 	Miscellany::Timer timer;
 	boundaryCellBasedStiffnessRHSMatrix.Multiply( &cellSharpenningMask[0] , &boundaryTexelValues[0] );
-#ifdef NEW_CODE
-	ThreadPool::ParallelFor( 0 , indexConverter.numBoundary() , [&]( unsigned int , size_t i ){ texelModulatedStiffness[ indexConverter.boundaryToCombined( AtlasboundaryTexelIndex(i) ) ] = boundaryTexelValues[i]; } );
-#else // !NEW_CODE
-	ThreadPool::ParallelFor( 0 , indexConverter.numBoundary() , [&]( unsigned int , size_t i ){ texelModulatedStiffness[ indexConverter.boundaryToSupported(i) ] = boundaryTexelValues[i]; } );
-#endif // NEW_CODE
+	ThreadPool::ParallelFor( 0 , indexConverter.numBoundary() , [&]( unsigned int , size_t i ){ texelModulatedStiffness[ indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex(i) ) ] = boundaryTexelValues[i]; } );
 	if( verbose ) printf( "\tBoundary updated: %.3f(s) \n" , timer.elapsed() );
 	//Update Interior Texels
 
@@ -1188,7 +1048,7 @@ void CellStiffnessToTexelStiffness
 		Real* out = texelModulatedStiffness.data() + interiorTexelToCellLines[r].texelStartIndex;
 		const Real* previousCellRow = cellSharpenningMask.data() + interiorTexelToCellLines[r].previousCellStartIndex;
 		const Real* nextCellRow = cellSharpenningMask.data() + interiorTexelToCellLines[r].nextCellStartIndex;
-		const Real * coeff = interiorTexelToCellCoeffs.data() + interiorTexelToCellLines[r].coeffOffset * 4;
+		const Real * coeff = interiorTexelToCellCoeffs.data() + static_cast< unsigned int >(interiorTexelToCellLines[r].coeffOffset) * 4;
 		int lineLenght = interiorTexelToCellLines[r].texelEndIndex - interiorTexelToCellLines[r].texelStartIndex + 1;
 		for (int i = 0; i < lineLenght; i++) {
 			out[i] = coeff[4 * i + 0] * previousCellRow[i] + coeff[4 * i + 1] * previousCellRow[i + 1] +
@@ -1236,19 +1096,11 @@ void VCycle( std::vector< MultigridLevelVariables< DataType > > &variables , con
 		if( verbose ) printf( "Level %d\n" , i );
 
 		Miscellany::Timer tmr;
-#ifdef NEW_CODE
 		RelaxationAndResidual( _coefficients.deepCoefficients , _coefficients.boundaryDeepMatrix , vCycleSolvers.boundary[i] , _indices.boundaryToCombined , _indices.threadTasks , _variables.rhs , _variables.x , _variables.boundary_rhs , _variables.boundary_value , _variables.variable_boundary_value , _coefficients.boundaryBoundaryMatrix , _variables.residual , 2 , detailVerbose );
-#else // !NEW_CODE
-		RelaxationAndResidual( _coefficients.deepCoefficients , _coefficients.boundaryDeepMatrix , vCycleSolvers.boundary[i] , _indices.boundaryToSupported , _indices.threadTasks , _variables.rhs , _variables.x , _variables.boundary_rhs , _variables.boundary_value , _variables.variable_boundary_value , _coefficients.boundaryBoundaryMatrix , _variables.residual , 2 , detailVerbose );
-#endif // NEW_CODE
 		if( verbose ) printf("Relaxation  + Residual %.4f\n" , tmr.elapsed() );
 
 		if( verbose ) tmr.reset();
-#ifdef NEW_CODE
 		MultiplyByRestriction( _indices.boundaryRestriction , nextLevelIndices.boundaryToCombined , nextLevelVariables.boundary_value , nextLevelIndices.restrictionLines, _variables.residual, nextLevelVariables.rhs , detailVerbose );
-#else // !NEW_CODE
-		MultiplyByRestriction( _indices.boundaryRestriction , nextLevelIndices.boundaryToSupported , nextLevelVariables.boundary_value , nextLevelIndices.restrictionLines, _variables.residual, nextLevelVariables.rhs , detailVerbose );
-#endif // NEW_CODE
 		if( verbose ) printf( "Restriction %.4f\n" , tmr.elapsed() );
 	}
 
@@ -1265,11 +1117,7 @@ void VCycle( std::vector< MultigridLevelVariables< DataType > > &variables , con
 			MultigridLevelVariables<DataType> & _variables = variables[i];
 
 			if( verbose ) tmr.reset();
-#ifdef NEW_CODE
 			Relaxation( _coefficients.deepCoefficients , _coefficients.boundaryDeepMatrix , vCycleSolvers.boundary[i] , _indices.boundaryToCombined , _indices.threadTasks , _variables.rhs , _variables.x , _variables.boundary_rhs , _variables.boundary_value , _variables.variable_boundary_value , 2 , true , detailVerbose );
-#else // !NEW_CODE
-			Relaxation( _coefficients.deepCoefficients , _coefficients.boundaryDeepMatrix , vCycleSolvers.boundary[i] , _indices.boundaryToSupported , _indices.threadTasks , _variables.rhs , _variables.x , _variables.boundary_rhs , _variables.boundary_value , _variables.variable_boundary_value , 2 , true , detailVerbose );
-#endif // NEW_CODE
 			if( verbose ) printf( "Gauss Seidel %.4f\n" , tmr.elapsed() );
 		}
 		else if( i==levels-1 )

@@ -256,17 +256,10 @@ namespace MishaK
 
 	struct RasterLine
 	{
-#ifdef NEW_CODE
 		AtlasCombinedTexelIndex lineStartIndex;
 		AtlasCombinedTexelIndex lineEndIndex;
 		AtlasCombinedTexelIndex prevLineIndex;
 		AtlasCombinedTexelIndex nextLineIndex;
-#else // !NEW_CODE
-		int lineStartIndex;
-		int lineEndIndex;
-		int prevLineIndex;
-		int nextLineIndex;
-#endif // NEW_CODE
 		AtlasInteriorTexelIndex coeffStartIndex;
 	};
 
@@ -301,17 +294,10 @@ namespace MishaK
 
 	struct BlockDeepSegment
 	{
-#ifdef NEW_CODE
 		AtlasCombinedTexelIndex currentStart;
 		AtlasCombinedTexelIndex currentEnd;
 		AtlasCombinedTexelIndex previousStart;
 		AtlasCombinedTexelIndex nextStart;
-#else // !NEW_CODE
-		int currentStart;
-		int currentEnd;
-		int previousStart;
-		int nextStart;
-#endif // NEW_CODE
 		AtlasInteriorTexelIndex deepStart;
 	};
 
@@ -336,13 +322,8 @@ namespace MishaK
 
 	struct InteriorTexelToCellLine
 	{
-#ifdef NEW_CODE
 		AtlasCombinedTexelIndex texelStartIndex;
 		AtlasCombinedTexelIndex texelEndIndex;
-#else // !NEW_CODE
-		int texelStartIndex;
-		int texelEndIndex;
-#endif // NEW_CODE
 		AtlasInteriorTexelIndex coeffOffset;
 		int length;
 		AtlasCombinedCellIndex previousCellStartIndex;
@@ -352,21 +333,11 @@ namespace MishaK
 
 	struct ProlongationLine
 	{
-#ifdef NEW_CODE
 		AtlasCombinedTexelIndex startIndex;
-#else // !NEW_CODE
-		int startIndex;
-#endif // NEW_CODE
-		int length;
-#ifdef NEW_CODE
 		AtlasCombinedTexelIndex centerLineIndex;
 		AtlasCombinedTexelIndex prevLineIndex;
 		AtlasCombinedTexelIndex nextLineIndex;
-#else // !NEW_CODE
-		int centerLineIndex;
-		int prevLineIndex;
-		int nextLineIndex;
-#endif // NEW_CODE
+		int length;
 		bool alignedStart;
 	};
 
@@ -416,11 +387,7 @@ namespace MishaK
 	struct TexelIndex
 	{
 		TexelIndex( void ) : combined(-1) , interior(-1) , covered(-1){}
-#ifdef NEW_CODE
 		AtlasCombinedTexelIndex combined;
-#else // !NEW_CODE
-		unsigned int combined;
-#endif // NEW_CODE
 		AtlasCoveredTexelIndex covered;
 		AtlasInteriorTexelIndex interior;
 	};
@@ -517,21 +484,13 @@ namespace MishaK
 		Image< CellIndex > cellIndices;
 
 		// The indices of the incident nodes
-#ifdef NEW_CODE
 		IndexVector< ChartCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > > combinedCellCombinedTexelBilinearElementIndices;
-#else // !NEW_CODE
-		IndexVector< ChartCombinedCellIndex , BilinearElementIndex< unsigned int > > combinedCellCombinedTexelBilinearElementIndices;
-#endif // NEW_CODE
 
 		// For interior cells, the indices of the incident interior nodes
 		IndexVector< ChartInteriorCellIndex , BilinearElementIndex< AtlasCoveredTexelIndex > > interiorCellCoveredTexelBilinearElementIndices;
 
 		// For interior cells, the indices of the incident nodes
-#ifdef NEW_CODE
 		IndexVector< ChartInteriorCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > > interiorCellCombinedTexelBilinearElementIndices;
-#else // !NEW_CODE
-		IndexVector< ChartInteriorCellIndex , BilinearElementIndex< unsigned int > > interiorCellCombinedTexelBilinearElementIndices;
-#endif // NEW_CODE
 
 		// Maps converting boundary/interiorl cell indices to combined cell indices
 		std::vector< ChartCombinedCellIndex > interiorCellIndexToCombinedCellIndex;
@@ -588,7 +547,6 @@ namespace MishaK
 	template<>
 	struct GridAtlas<>
 	{
-#ifdef NEW_CODE
 		struct IndexConverter
 		{
 			AtlasCombinedTexelIndex boundaryToCombined( AtlasBoundaryTexelIndex idx ) const { return _boundaryToCombined[idx]; }
@@ -604,39 +562,12 @@ namespace MishaK
 			size_t numInterior( void ) const { return _interiorToCombined.size(); }
 		protected:
 			template< typename GeometryReal >
-#ifdef NEW_CODE
 			friend void InitializeIndexConverter( const IndexVector< ChartIndex , GridChart< GeometryReal > > & , AtlasCombinedTexelIndex , IndexConverter & );
-#else // !NEW_CODE
-			friend void InitializeIndexConverter( const IndexVector< ChartIndex , GridChart< GeometryReal > > & , unsigned int , IndexConverter & );
-#endif // NEW_CODE
 
 			IndexVector< AtlasCombinedTexelIndex , std::pair< bool , unsigned int > > _combinedToBoundaryOrInterior;
 			IndexVector< AtlasBoundaryTexelIndex , AtlasCombinedTexelIndex > _boundaryToCombined;
 			IndexVector< AtlasInteriorTexelIndex , AtlasCombinedTexelIndex > _interiorToCombined;
 		};
-#else // !NEW_CODE
-		struct IndexConverter
-		{
-			unsigned int boundaryToSupported( unsigned int idx ) const { return _boundaryToSupported[idx]; }
-			unsigned int     deepToSupported( unsigned int idx ) const { return     _deepToSupported[idx]; }
-			unsigned int supportedToBoundary( unsigned int idx ) const { return _supportedToBoundaryOrDeep[idx].first ? _supportedToBoundaryOrDeep[idx].second : static_cast< unsigned int >(-1); }
-			unsigned int supportedToDeep    ( unsigned int idx ) const { return _supportedToBoundaryOrDeep[idx].first ? static_cast< unsigned int >(-1) : _supportedToBoundaryOrDeep[idx].second; }
-
-			const std::vector< unsigned int > &boundaryToSupported( void ) const { return _boundaryToSupported; }
-			const std::vector< unsigned int > &    deepToSupported( void ) const { return     _deepToSupported; }
-
-			size_t numSupported( void ) const { return _supportedToBoundaryOrDeep.size(); }
-			size_t numBoundary( void ) const { return _boundaryToSupported.size(); }
-			size_t numDeep( void ) const { return _deepToSupported.size(); }
-		protected:
-			template< typename GeometryReal >
-			friend void InitializeIndexConverter( const IndexVector< ChartIndex , GridChart< GeometryReal > > & , unsigned int , IndexConverter & );
-
-			std::vector< std::pair< bool , unsigned int > > _supportedToBoundaryOrDeep;
-			std::vector< unsigned int > _boundaryToSupported;
-			std::vector< unsigned int >     _deepToSupported;
-		};
-#endif // NEW_CODE
 	};
 
 	template< typename GeometryReal , typename MatrixReal >
@@ -644,11 +575,7 @@ namespace MishaK
 	{
 		std::vector< ThreadTask > threadTasks;
 		typename GridAtlas<>::IndexConverter indexConverter;
-#ifdef NEW_CODE
 		IndexVector< AtlasCombinedTexelIndex , GridNodeInfo > nodeInfo;
-#else // !NEW_CODE
-		std::vector< GridNodeInfo > nodeInfo;
-#endif // NEW_CODE
 		IndexVector< ChartIndex , GridChart< GeometryReal > > gridCharts;
 		std::vector< SegmentedRasterLine > segmentedLines;
 		std::vector< RasterLine > rasterLines;
@@ -657,11 +584,7 @@ namespace MishaK
 		std::vector< ProlongationLine > prolongationLines;
 		Eigen::SparseMatrix< MatrixReal > coarseToFineNodeProlongation;
 
-#ifdef NEW_CODE
 		AtlasCombinedTexelIndex endCombinedTexelIndex;
-#else // !NEW_CODE
-		unsigned int numTexels;
-#endif // NEW_CODE
 		AtlasCoveredTexelIndex endCoveredTexelIndex;
 		AtlasInteriorTexelIndex endInteriorTexelIndex;
 		AtlasBoundaryTexelIndex endBoundaryTexelIndex;
@@ -676,13 +599,8 @@ namespace MishaK
 	struct BoundaryDeepIndex
 	{
 		int boundaryIndex;
-#ifdef NEW_CODE
 		AtlasCombinedTexelIndex deepGlobalIndex;
 		AtlasInteriorTexelIndex interiorIndex;
-#else // !NEW_CODE
-		int deepGlobalIndex;
-		int deepIndex;
-#endif // NEW_CODE
 		int offset;
 	};
 
@@ -690,13 +608,8 @@ namespace MishaK
 	struct BoundaryBoundaryIndex
 	{
 		int coarsePrincipalBoundaryIndex;
-#ifdef NEW_CODE
 		AtlasBoundaryTexelIndex coarseSecondaryBoundaryIndex;
 		AtlasInteriorTexelIndex fineInteriorIndex;
-#else // !NEW_CODE
-		int coarseSecondaryBoundaryIndex;
-		int fineDeepIndex;
-#endif // NEW_CODE
 		int offset;
 		Real weight;
 	};
@@ -738,11 +651,7 @@ namespace MishaK
 	struct MultigridLevelIndices
 	{
 		std::vector< ThreadTask > threadTasks;
-#ifdef NEW_CODE
 		IndexVector< AtlasBoundaryTexelIndex , AtlasCombinedTexelIndex > boundaryToCombined;
-#else // !NEW_CODE
-		std::vector< unsigned int > boundaryToSupported;
-#endif // NEW_CODE
 		std::vector< SegmentedRasterLine > segmentedLines;
 		std::vector< RasterLine > rasterLines;
 		std::vector< RasterLine > restrictionLines;

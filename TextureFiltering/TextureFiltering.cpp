@@ -212,11 +212,7 @@ public:
 
 	static IndexVector< ChartIndex , AtlasChart< PreReal > > atlasCharts;
 
-#ifdef NEW_CODE
 	static IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > > bilinearElementIndices;
-#else // !NEW_CODE
-	static IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< unsigned int > > bilinearElementIndices;
-#endif // NEW_CODE
 	
 	static std::vector< TextureNodeInfo< PreReal > > textureNodes;
 
@@ -327,11 +323,7 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth > Real
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > Real																TextureFilter< PreReal , Real , TextureBitDepth >::gradientModulation;
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< TextureNodeInfo< PreReal > >							TextureFilter< PreReal , Real , TextureBitDepth >::textureNodes;
-#ifdef NEW_CODE
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > >	TextureFilter< PreReal , Real , TextureBitDepth >::bilinearElementIndices;
-#else // !NEW_CODE
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< unsigned int > >	TextureFilter< PreReal , Real , TextureBitDepth >::bilinearElementIndices;
-#endif // NEW_CODE
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > int																	TextureFilter< PreReal , Real , TextureBitDepth >::steps;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > char																TextureFilter< PreReal , Real , TextureBitDepth >::stepsString[1024];
@@ -853,11 +845,7 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::InitializeSystem( int wi
 	InitializeInteriorTexelToCellLines( interiorTexelToCellLines , hierarchy.gridAtlases[0] );
 
 	for( unsigned int c=0 ; c<3 ; c++ ) boundaryTexelStiffness[c].resize( hierarchy.gridAtlases[0].indexConverter.numBoundary() );
-#ifdef NEW_CODE
 	texelModulatedStiffness.resize( static_cast< unsigned int >(hierarchy.gridAtlases[0].endCombinedTexelIndex));
-#else // !NEW_CODE
-	texelModulatedStiffness.resize(hierarchy.gridAtlases[0].numTexels);
-#endif // NEW_CODE
 
 	if( UseDirectSolver.set )
 	{
@@ -872,11 +860,7 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::InitializeSystem( int wi
 		const typename GridAtlas<>::IndexConverter & indexConverter = hierarchy.gridAtlases[i].indexConverter;
 		const GridAtlas< PreReal , Real > &gridAtlas = hierarchy.gridAtlases[i];
 		multigridIndices[i].threadTasks = gridAtlas.threadTasks;
-#ifdef NEW_CODE
 		multigridIndices[i].boundaryToCombined = indexConverter.boundaryToCombined();
-#else // !NEW_CODE
-		multigridIndices[i].boundaryToSupported = indexConverter.boundaryToSupported();
-#endif // NEW_CODE
 		multigridIndices[i].segmentedLines = gridAtlas.segmentedLines;
 		multigridIndices[i].rasterLines = gridAtlas.rasterLines;
 		multigridIndices[i].restrictionLines = gridAtlas.restrictionLines;
@@ -893,15 +877,9 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::InitializeSystem( int wi
 	{
 		const typename GridAtlas<>::IndexConverter & indexConverter = hierarchy.gridAtlases[i].indexConverter;
 		MultigridLevelVariables< Point3D< Real > >& variables = multigridFilteringVariables[i];
-#ifdef NEW_CODE
 		variables.x.resize( indexConverter.numCombined() );
 		variables.rhs.resize( indexConverter.numCombined() );
 		variables.residual.resize( indexConverter.numCombined() );
-#else // !NEW_CODE
-		variables.x.resize(hierarchy.gridAtlases[i].numTexels);
-		variables.rhs.resize(hierarchy.gridAtlases[i].numTexels);
-		variables.residual.resize(hierarchy.gridAtlases[i].numTexels);
-#endif // NEW_CODE
 		variables.boundary_rhs.resize( indexConverter.numBoundary() );
 		variables.boundary_value.resize( indexConverter.numBoundary() );
 		variables.variable_boundary_value.resize( indexConverter.numBoundary() );
@@ -1125,17 +1103,10 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::Init( void )
 	for( int i=0 ; i<bilinearElementIndices.size() ; i++ )
 		cellCenterPositions[i] = Point3D< float >
 		(
-#ifdef NEW_CODE
 			textureNodePositions[ static_cast< unsigned int >( bilinearElementIndices[ AtlasCombinedCellIndex(i) ][0] ) ] +
 			textureNodePositions[ static_cast< unsigned int >( bilinearElementIndices[ AtlasCombinedCellIndex(i) ][1] ) ] +
 			textureNodePositions[ static_cast< unsigned int >( bilinearElementIndices[ AtlasCombinedCellIndex(i) ][2] ) ] +
 			textureNodePositions[ static_cast< unsigned int >( bilinearElementIndices[ AtlasCombinedCellIndex(i) ][3] ) ]
-#else // !NEW_CODE
-			textureNodePositions[ bilinearElementIndices[ AtlasCombinedCellIndex(i) ][0] ] +
-			textureNodePositions[ bilinearElementIndices[ AtlasCombinedCellIndex(i) ][1] ] +
-			textureNodePositions[ bilinearElementIndices[ AtlasCombinedCellIndex(i) ][2] ] +
-			textureNodePositions[ bilinearElementIndices[ AtlasCombinedCellIndex(i) ][3] ]
-#endif // NEW_CODE
 		) / 4.f;
 
 	if( true )

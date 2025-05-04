@@ -36,11 +36,7 @@ namespace MishaK
 	class InteriorCellLine
 	{
 	public:
-#ifdef NEW_CODE
 		AtlasCombinedTexelIndex prevLineIndex , nextLineIndex;
-#else // !NEW_CODE
-		unsigned int prevLineIndex , nextLineIndex;
-#endif // NEW_CODE
 		unsigned int length;
 	};
 
@@ -76,13 +72,8 @@ namespace MishaK
 					newLine.nextLineIndex = texelIndices( rasterStart , j+1 ).combined;
 					newLine.length = offset - rasterStart;
 
-#ifdef NEW_CODE
 					if( newLine.prevLineIndex==AtlasCombinedTexelIndex(-1) || newLine.nextLineIndex==AtlasCombinedTexelIndex(-1) ) MK_THROW( "Invalid indexing" );
 					int currentLine = (int)interiorCellLines.size();
-#else // !NEW_CODE
-					if( newLine.prevLineIndex==-1 || newLine.nextLineIndex==-1 ) MK_THROW( "Invalid indexing" );
-					int currentLine = (int)interiorCellLines.size();
-#endif // NEW_CODE
 
 					for( unsigned int k=0 ; k<offset-rasterStart ; k++ )
 					{
@@ -651,19 +642,11 @@ namespace MishaK
 		Miscellany::Timer timer;
 		auto UpdateRow = [&]( unsigned int r )
 			{
-#ifdef NEW_CODE
 				const T * _inPrevious = &potential[0] + interiorCellLines[r].prevLineIndex;
 				const T *     _inNext = &potential[0] + interiorCellLines[r].nextLineIndex;
 
 				T * _outPrevious = &rhs[0] + interiorCellLines[r].prevLineIndex;
 				T *     _outNext = &rhs[0] + interiorCellLines[r].nextLineIndex;
-#else // !NEW_CODE
-				const T* _inPrevious = &potential[ interiorCellLines[r].prevLineIndex ];
-				const T*     _inNext = &potential[ interiorCellLines[r].nextLineIndex ];
-
-				T* _outPrevious = &rhs[ interiorCellLines[r].prevLineIndex ];
-				T*     _outNext = &rhs[ interiorCellLines[r].nextLineIndex ];
-#endif // NEW_CODE
 
 				T cornerValues[4];
 				cornerValues[0] = *_inPrevious;

@@ -33,6 +33,7 @@ DAMAGE.
 // -- global -> combined
 // -- Change coefficient vector std::vector -> IndexVector (in IterativeSolvers.inl)
 // -- GridNodeInfo -> TexelInfo
+// -- Minimize static_cast< unsigned int >(...)
 // 1. Modify code to distinguish between grid-based indexing and normalized coordinates
 // 2. Add index types for cells/texels
 // 3. Add index/key types to distinguish atlas/chart grid indices

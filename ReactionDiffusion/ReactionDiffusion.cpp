@@ -164,11 +164,7 @@ public:
 
 	static HierarchicalSystem< PreReal , Real > hierarchy;
 
-#ifdef NEW_CODE
 	static IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > > bilinearElementIndices;
-#else // !NEW_CODE
-	static IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< unsigned int > > bilinearElementIndices;
-#endif // NEW_CODE
 
 	static std::vector< TextureNodeInfo< PreReal > > textureNodes;
 	static Image< int > nodeIndex;
@@ -276,11 +272,7 @@ template< typename PreReal , typename Real > Real																	GrayScottReact
 
 template< typename PreReal , typename Real > std::vector< TextureNodeInfo< PreReal > >								GrayScottReactionDiffusion< PreReal , Real >::textureNodes;
 template< typename PreReal , typename Real > Image< int >															GrayScottReactionDiffusion< PreReal , Real >::nodeIndex;
-#ifdef NEW_CODE
 template< typename PreReal , typename Real > IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > >	GrayScottReactionDiffusion< PreReal , Real >::bilinearElementIndices;
-#else // !NEW_CODE
-template< typename PreReal , typename Real > IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< unsigned int > >	GrayScottReactionDiffusion< PreReal , Real >::bilinearElementIndices;
-#endif // NEW_CODE
 
 template< typename PreReal , typename Real > int																	GrayScottReactionDiffusion< PreReal , Real >::steps;
 template< typename PreReal , typename Real > char																	GrayScottReactionDiffusion< PreReal , Real >::stepsString[1024];
@@ -334,11 +326,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::SetRightHandSide( void )
 	for( int ab=0 ; ab<2 ; ab++ ) ThreadPool::ParallelFor( 0 , ab_x.size() , [&]( unsigned int , size_t i ){ ab_x[i][ab] = multigridVariables[ab][0].x[i]; } );
 	const typename GridAtlas<>::IndexConverter & indexConverter = hierarchy.gridAtlases[0].indexConverter;
 
-#ifdef NEW_CODE
 	ThreadPool::ParallelFor( 0 , indexConverter.numBoundary() , [&]( unsigned int , size_t i ){ coarseBoundaryValues[i] = ab_x[ static_cast< unsigned int >(indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex(i) ) ) ]; } );
-#else // !NEW_CODE
-	ThreadPool::ParallelFor( 0 , indexConverter.numBoundary() , [&]( unsigned int , size_t i ){ coarseBoundaryValues[i] = ab_x[ indexConverter.boundaryToSupported(i) ]; } );
-#endif // NEW_CODE
 	coarseBoundaryFineBoundaryProlongation.Multiply( &coarseBoundaryValues[0] , &fineBoundaryValues[0] );
 
 	for( unsigned int ab=0 ; ab<2 ; ab++ ) MultiplyBySystemMatrix_NoReciprocals( massCoefficients , indexConverter , hierarchy.gridAtlases[0].rasterLines , multigridVariables[ab][0].x , multigridVariables[ab][0].rhs );
@@ -357,11 +345,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::SetRightHandSide( void )
 	for( int ab=0 ; ab<2 ; ab++ )
 	{
 		ThreadPool::ParallelFor( 0 , ab_rhs.size() , [&]( unsigned int , size_t i ){ multigridVariables[ab][0].rhs[i] += ab_rhs[i][ab]; } );
-#ifdef NEW_CODE
 		ThreadPool::ParallelFor( 0 , indexConverter.numBoundary() , [&]( unsigned int , size_t i ){ multigridVariables[ab][0].rhs[ static_cast< unsigned int >( indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex(i) ) ) ] += coarseBoundaryRHS[i][ab]; } );
-#else // !NEW_CODE
-		ThreadPool::ParallelFor( 0 , indexConverter.numBoundary() , [&]( unsigned int , size_t i ){ multigridVariables[ab][0].rhs[ indexConverter.boundaryToSupported(i) ] += coarseBoundaryRHS[i][ab]; } );
-#endif // NEW_CODE
 	}
 }
 
@@ -704,11 +688,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 		const typename GridAtlas<>::IndexConverter & indexConverter = hierarchy.gridAtlases[i].indexConverter;
 		const GridAtlas< PreReal , Real > &gridAtlas = hierarchy.gridAtlases[i];
 		multigridIndices[i].threadTasks = gridAtlas.threadTasks;
-#ifdef NEW_CODE
 		multigridIndices[i].boundaryToCombined = indexConverter.boundaryToCombined();
-#else // !NEW_CODE
-		multigridIndices[i].boundaryToSupported = indexConverter.boundaryToSupported();
-#endif // NEW_CODE
 		multigridIndices[i].segmentedLines = gridAtlas.segmentedLines;
 		multigridIndices[i].rasterLines = gridAtlas.rasterLines;
 		multigridIndices[i].restrictionLines = gridAtlas.restrictionLines;
@@ -731,15 +711,9 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 		{
 			const typename GridAtlas<>::IndexConverter & indexConverter = hierarchy.gridAtlases[i].indexConverter;
 			MultigridLevelVariables< Real >& variables = multigridVariables[ab][i];
-#ifdef NEW_CODE
 			variables.x.resize( indexConverter.numCombined() );
 			variables.rhs.resize( indexConverter.numCombined() );
 			variables.residual.resize( indexConverter.numCombined() );
-#else // !NEW_CODE
-		 	variables.x.resize( hierarchy.gridAtlases[i].numTexels );
-			variables.rhs.resize( hierarchy.gridAtlases[i].numTexels );
-		 	variables.residual.resize( hierarchy.gridAtlases[i].numTexels );
-#endif // NEW_CODE
 			variables.boundary_rhs.resize( indexConverter.numBoundary() );
 			variables.boundary_value.resize( indexConverter.numBoundary() );
 			variables.variable_boundary_value.resize( indexConverter.numBoundary() );
@@ -773,13 +747,8 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 		}
 	}
 	if( Verbose.set ) printf( "\tInitialized vector field integration: %.2f(s)\n" , timer.elapsed() );
-#ifdef NEW_CODE
 	coarseBoundaryValues.resize( static_cast< unsigned int >(hierarchy.gridAtlases[0].endCombinedTexelIndex) - static_cast< unsigned int >(hierarchy.gridAtlases[0].endInteriorTexelIndex) );
 	coarseBoundaryRHS.resize   ( static_cast< unsigned int >(hierarchy.gridAtlases[0].endCombinedTexelIndex) - static_cast< unsigned int >(hierarchy.gridAtlases[0].endInteriorTexelIndex) );
-#else // !NEW_CODE
-	coarseBoundaryValues.resize( hierarchy.gridAtlases[0].numTexels - static_cast< unsigned int >(hierarchy.gridAtlases[0].endInteriorTexelIndex) );
-	coarseBoundaryRHS.resize   ( hierarchy.gridAtlases[0].numTexels - static_cast< unsigned int >(hierarchy.gridAtlases[0].endInteriorTexelIndex) );
-#endif // NEW_CODE
 	fineBoundaryValues.resize( numFineBoundaryNodes );
 	fineBoundaryRHS.resize   ( numFineBoundaryNodes );
 
