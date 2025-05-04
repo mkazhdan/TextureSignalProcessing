@@ -261,7 +261,7 @@ namespace MishaK
 		int prevLineIndex;
 		int nextLineIndex;
 #ifdef NEW_CODE
-		ChartInteriorTexelIndex coeffStartIndex;
+		AtlasInteriorTexelIndex coeffStartIndex;
 #else // !NEW_CODE
 		int coeffStartIndex;
 #endif // NEW_CODE
@@ -270,11 +270,11 @@ namespace MishaK
 	struct DeepLine
 	{
 #ifdef NEW_CODE
-		ChartInteriorTexelIndex coarseLineStartIndex;
-		ChartInteriorTexelIndex coarseLineEndIndex;
-		ChartInteriorTexelIndex finePrevLineIndex;
-		ChartInteriorTexelIndex fineCurrentLineIndex;
-		ChartInteriorTexelIndex fineNextLineIndex;
+		AtlasInteriorTexelIndex coarseLineStartIndex;
+		AtlasInteriorTexelIndex coarseLineEndIndex;
+		AtlasInteriorTexelIndex finePrevLineIndex;
+		AtlasInteriorTexelIndex fineCurrentLineIndex;
+		AtlasInteriorTexelIndex fineNextLineIndex;
 #else // !NEW_CODE
 		int coarseLineStartIndex;
 		int coarseLineEndIndex;
@@ -311,7 +311,7 @@ namespace MishaK
 		int previousStart;
 		int nextStart;
 #ifdef NEW_CODE
-		ChartInteriorTexelIndex deepStart;
+		AtlasInteriorTexelIndex deepStart;
 #else // !NEW_CODE
 		int deepStart;
 #endif // NEW_CODE
@@ -341,7 +341,7 @@ namespace MishaK
 		int texelStartIndex;
 		int texelEndIndex;
 #ifdef NEW_CODE
-		ChartInteriorTexelIndex coeffOffset;
+		AtlasInteriorTexelIndex coeffOffset;
 #else // !NEW_CODE
 		int coeffOffset;
 #endif // NEW_CODE
@@ -409,7 +409,7 @@ namespace MishaK
 		TexelIndex( void ) : combined(-1) , interior(-1) , covered(-1){}
 #ifdef NEW_CODE
 		unsigned int combined , covered;
-		ChartInteriorTexelIndex interior;
+		AtlasInteriorTexelIndex interior;
 #else // !NEW_CODE
 		unsigned int combined , interior , covered;
 #endif // NEW_CODE
@@ -609,7 +609,11 @@ namespace MishaK
 
 		unsigned int numTexels;
 		unsigned int numInteriorTexels;
+#ifdef NEW_CODE
+		AtlasInteriorTexelIndex endInteriorTexelIndex;
+#else // !NEW_CODE
 		unsigned int numDeepTexels;
+#endif // NEW_CODE
 		unsigned int numBoundaryTexels;
 		unsigned int numCells;
 		unsigned int numBoundaryCells;

@@ -211,7 +211,7 @@ void FullMatrixConstruction( const GridAtlas< GeometryReal , MatrixReal > &gridA
 	{
 		const RasterLine & currentLine = rasterLines[r];
 #ifdef NEW_CODE
-		ChartInteriorTexelIndex deepOffset = currentLine.coeffStartIndex;
+		AtlasInteriorTexelIndex deepOffset = currentLine.coeffStartIndex;
 #else // !NEW_CODE
 		int deepOffset = currentLine.coeffStartIndex;
 #endif // NEW_CODE
@@ -272,18 +272,25 @@ void UpdateMultigridCoefficients( const HierarchicalSystem< GeometryReal , Matri
 
 	for (int i = 1; i < levels; i++)
 	{
-		if (verbose) printf("Level %d \n", i);
+		if( verbose ) printf("Level %d \n", i);
 
 		const GridAtlas< GeometryReal , MatrixReal > &gridAtlas = hierarchy.gridAtlases[i];
 		int numTexels = gridAtlas.numTexels;
+#ifdef NEW_CODE
+#else // !NEW_CODE
 		int numDeepTexels = gridAtlas.numDeepTexels;
+#endif // NEW_CODE
 		int numBoundaryTexels = gridAtlas.numBoundaryTexels;
 
 		const SystemCoefficients< MatrixReal > &fineCoefficients = multigridCoefficients[i-1];
 		SystemCoefficients< MatrixReal > &coarseCoefficients = multigridCoefficients[i];
 
 		// Deep restriction
+#ifdef NEW_CODE
+		coarseCoefficients.deepCoefficients.resize( static_cast< unsigned int >(gridAtlas.endInteriorTexelIndex) * 10 , 0 );
+#else // !NEW_CODE
 		coarseCoefficients.deepCoefficients.resize( numDeepTexels * 10 , 0 );
+#endif // NEW_CODE
 		if( verbose ) timer.reset();
 		DeepCoefficientRestriction( fineCoefficients.deepCoefficients , coarseCoefficients.deepCoefficients , gridAtlas.deepLines );
 		if( verbose ) printf( "Deep Deep Restriction %d  =  %.4f\n" , i , timer.elapsed() );
@@ -305,13 +312,20 @@ void UpdateMultigridCoefficients( const HierarchicalSystem< GeometryReal , Matri
 	{
 		if( verbose ) timer.reset();
 		//Set Deep coefficients to reciprocal
-		for (int i = 0; i < levels - 1; i++)
+		for( int i=0 ; i<levels-1 ; i++ )
 		{
 			std::vector< MatrixReal > &deepCoefficients = multigridCoefficients[i].deepCoefficients;
+#ifdef NEW_CODE
+#else // !NEW_CODE
 			int numDeepTexels = hierarchy.gridAtlases[i].numDeepTexels;
+#endif // NEW_CODE
 			ThreadPool::ParallelFor
 				(
+#ifdef NEW_CODE
+					0 , static_cast< unsigned int >( hierarchy.gridAtlases[i].endInteriorTexelIndex ) ,
+#else // !NEW_CODE
 					0 , numDeepTexels ,
+#endif // NEW_CODE
 					[&]( unsigned int , size_t ii )
 					{
 						MatrixReal centerValue = deepCoefficients[10 * ii + 4];

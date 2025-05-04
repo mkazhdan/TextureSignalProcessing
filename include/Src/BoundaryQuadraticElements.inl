@@ -767,7 +767,7 @@ void InitializeCoarseBoundaryToFineBoundaryProlongation
 		for( unsigned int j=0 ; j<gridChart.texelIndices.size() ; j++ )
 		{
 #ifdef NEW_CODE
-			if( gridChart.texelIndices[j].covered!=-1 && gridChart.texelIndices[j].interior==ChartInteriorTexelIndex(-1) )
+			if( gridChart.texelIndices[j].covered!=-1 && gridChart.texelIndices[j].interior==AtlasInteriorTexelIndex(-1) )
 #else // !NEW_CODE
 			if( gridChart.texelIndices[j].covered!=-1 && gridChart.texelIndices[j].interior==-1 )
 #endif // NEW_CODE

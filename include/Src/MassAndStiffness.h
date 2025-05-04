@@ -1031,7 +1031,11 @@ namespace MishaK
 		const IndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts = gridAtlas.gridCharts;
 		const typename GridAtlas<>::IndexConverter & indexConverter = gridAtlas.indexConverter;
 
+#ifdef NEW_CODE
+		if( computeCellBasedStiffness ) texelToCellCoeffs.resize( 3*4*static_cast< unsigned int >( gridAtlas.endInteriorTexelIndex) );
+#else // !NEW_CODE
 		if( computeCellBasedStiffness ) texelToCellCoeffs.resize( 3*4*gridAtlas.numDeepTexels );
+#endif // NEW_CODE
 
 		std::vector< Eigen::Triplet< MatrixReal > > boundaryBoundaryMassTriplets;
 		std::vector< Eigen::Triplet< MatrixReal > > boundaryBoundaryStiffnessTriplets;
@@ -1114,9 +1118,15 @@ namespace MishaK
 	)
 	{
 		//(2) Initialize mass and stiffness
+#ifdef NEW_CODE
+		mass.deepCoefficients.resize( 10 * static_cast< unsigned int >(hierarchy.gridAtlases[0].endInteriorTexelIndex) , 0 );
+		stiffness.deepCoefficients.resize( 10 * static_cast< unsigned int >(hierarchy.gridAtlases[0].endInteriorTexelIndex) , 0 );
+		if( computeDivergence ) deepDivergenceCoefficients.resize( 20 * static_cast< unsigned int >(hierarchy.gridAtlases[0].endInteriorTexelIndex) , 0 );
+#else // !NEW_CODE
 		mass.deepCoefficients.resize( 10*hierarchy.gridAtlases[0].numDeepTexels , 0 );
 		stiffness.deepCoefficients.resize( 10*hierarchy.gridAtlases[0].numDeepTexels , 0 );
 		if( computeDivergence ) deepDivergenceCoefficients.resize( 20*hierarchy.gridAtlases[0].numDeepTexels , 0 );
+#endif // NEW_CODE
 
 		SparseMatrix< MatrixReal , int > fineBoundaryBoundaryMassMatrix;
 		SparseMatrix< MatrixReal , int > fineBoundaryBoundaryStiffnessMatrix;

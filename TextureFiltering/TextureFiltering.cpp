@@ -839,8 +839,13 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::InitializeSystem( int wi
 	InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric );
 	_InitializeSystem( parameterMetric , boundaryProlongation , inputSignal , texelToCellCoeffs );
 
+#ifdef NEW_CODE
+	interiorTexelToCellCoeffs.resize( 4 * static_cast< unsigned int >(hierarchy.gridAtlases[0].endInteriorTexelIndex) );
+	for( unsigned int i=0 ; i<interiorTexelToCellCoeffs.size() ; i++ ) interiorTexelToCellCoeffs[i] = Point3D< Real >( Real(texelToCellCoeffs[3*i+0]) , Real(texelToCellCoeffs[3*i+1]) , Real(texelToCellCoeffs[3*i+2]) );
+#else // !NEW_CODE
 	interiorTexelToCellCoeffs.resize( 4*hierarchy.gridAtlases[0].numDeepTexels );
 	for( unsigned int i=0 ; i<4*hierarchy.gridAtlases[0].numDeepTexels ; i++ ) interiorTexelToCellCoeffs[i] = Point3D< Real >( Real(texelToCellCoeffs[3*i+0]) , Real(texelToCellCoeffs[3*i+1]) , Real(texelToCellCoeffs[3*i+2]) );
+#endif // NEW_CODE
 	
 	InitializeInteriorTexelToCellLines( interiorTexelToCellLines , hierarchy.gridAtlases[0] );
 

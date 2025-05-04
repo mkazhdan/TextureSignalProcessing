@@ -713,10 +713,15 @@ void Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 		}
 	}
 	if( Verbose.set ) std::cout << pMeter( "VF integration" ) << std::endl;
-	coarseBoundaryValues.resize(hierarchy.gridAtlases[0].numTexels - hierarchy.gridAtlases[0].numDeepTexels);
-	coarseBoundaryRHS.resize(hierarchy.gridAtlases[0].numTexels - hierarchy.gridAtlases[0].numDeepTexels);
-	fineBoundaryValues.resize(numFineBoundaryNodes);
-	fineBoundaryRHS.resize(numFineBoundaryNodes);
+#ifdef NEW_CODE
+	coarseBoundaryValues.resize( hierarchy.gridAtlases[0].numTexels - static_cast< unsigned int >(hierarchy.gridAtlases[0].endInteriorTexelIndex) );
+	coarseBoundaryRHS.resize( hierarchy.gridAtlases[0].numTexels - static_cast< unsigned int >(hierarchy.gridAtlases[0].endInteriorTexelIndex) );
+#else // !NEW_CODE
+	coarseBoundaryValues.resize( hierarchy.gridAtlases[0].numTexels - hierarchy.gridAtlases[0].numDeepTexels );
+	coarseBoundaryRHS.resize( hierarchy.gridAtlases[0].numTexels - hierarchy.gridAtlases[0].numDeepTexels );
+#endif // NEW_CODE
+	fineBoundaryValues.resize( numFineBoundaryNodes );
+	fineBoundaryRHS.resize( numFineBoundaryNodes );
 
 	gradientSamples.sort();
 }

@@ -43,7 +43,7 @@ namespace MishaK
 		int nextEdgeRowStart;
 #ifdef NEW_CODE
 #pragma message( "[WARNING] Is this the right type?" )
-		ChartInteriorTexelIndex deepCoefficientsStart;
+		AtlasInteriorTexelIndex deepCoefficientsStart;
 #else // !NEW_CODE
 		int deepCoefficientsStart;
 #endif // NEW_CODE

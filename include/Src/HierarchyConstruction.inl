@@ -75,7 +75,11 @@ void InitializeGridChartsActiveNodes
 	std::vector< ThreadTask > & threadTasks ,
 	unsigned int & combinedTexelIndex ,
 	unsigned int & interiorTexelIndex ,
+#ifdef NEW_CODE
+	AtlasInteriorTexelIndex & endInteriorTexelIndex , 
+#else // !NEW_CODE
 	unsigned int &     deepTexelIndex ,
+#endif // NEW_CODE
 	unsigned int & boundaryTexelIndex ,
 	unsigned int & combinedCellIndex ,
 	unsigned int & boundaryCellIndex ,
@@ -507,7 +511,7 @@ void InitializeGridChartsActiveNodes
 		if( IsCovered( gridChart.texelType(i,j) ) ) texelIndices(i,j).covered = interiorTexelIndex++;
 		if( IsBoundarySupported( gridChart.texelType(i,j) ) ) boundaryTexelIndex++;
 #ifdef NEW_CODE
-		if( gridChart.texelType(i,j)==TexelType::InteriorSupported ) texelIndices(i,j).interior = ChartInteriorTexelIndex( deepTexelIndex++ );
+		if( gridChart.texelType(i,j)==TexelType::InteriorSupported ) texelIndices(i,j).interior = endInteriorTexelIndex++;
 #else // !NEW_CODE
 		if( gridChart.texelType(i,j)==TexelType::InteriorSupported ) texelIndices(i,j).interior = deepTexelIndex++;
 #endif // NEW_CODE
@@ -677,7 +681,7 @@ void InitializeGridChartsActiveNodes
 				while (offset <= blockHorizontalEnd-1 )
 				{
 #ifdef NEW_CODE
-					bool currentDeep = texelIndices(offset,j).interior!=ChartInteriorTexelIndex(-1);
+					bool currentDeep = texelIndices(offset,j).interior!=AtlasInteriorTexelIndex(-1);
 #else // !NEW_CODE
 					bool currentDeep = (texelIndices(offset, j).interior != -1);
 #endif // NEW_CODE
@@ -718,7 +722,7 @@ void InitializeGridChartsActiveNodes
 					while (offset <= blockHorizontalEnd)
 					{
 #ifdef NEW_CODE
-						bool currentDeep = texelIndices(offset,j).interior!=ChartInteriorTexelIndex(-1);
+						bool currentDeep = texelIndices(offset,j).interior!=AtlasInteriorTexelIndex(-1);
 #else // !NEW_CODE
 						bool currentDeep = (texelIndices(offset, j).interior != -1);
 #endif // NEW_CODE
@@ -770,7 +774,11 @@ void InitializeGridCharts
 	std::vector< ThreadTask > &threadTasks ,
 	unsigned int &numTexels ,
 	unsigned int &numInteriorTexels ,
+#ifdef NEW_CODE
+	AtlasInteriorTexelIndex & endInteriorTexelIndex ,
+#else // !NEW_CODE
 	unsigned int &numDeepTexels ,
+#endif // NEW_CODE
 	unsigned int &numBoundaryTexels ,
 	unsigned int &numCells ,
 	unsigned int &numBoundaryCells ,
@@ -782,7 +790,11 @@ void InitializeGridCharts
 
 	numTexels = 0;
 	numInteriorTexels = 0;
+#ifdef NEW_CODE
+	endInteriorTexelIndex = AtlasInteriorTexelIndex(0);
+#else // !NEW_CODE
 	numDeepTexels = 0;
+#endif // NEW_CODE
 	numBoundaryTexels = 0;
 	numCells = 0;
 	numBoundaryCells = 0;
@@ -816,7 +828,11 @@ void InitializeGridCharts
 		gridChart.cellSizeH = cellSize[1];
 		gridChart.atlasWidth = _width;
 		gridChart.atlasHeight = _height;
+#ifdef NEW_CODE
+		InitializeGridChartsActiveNodes( ChartIndex(i) , atlasChart , gridChart , nodeInfo , rasterLines , segmentedLines , threadTasks , numTexels , numInteriorTexels , endInteriorTexelIndex , numBoundaryTexels , numCells , numBoundaryCells , numInteriorCells , multigridBlockInfo );
+#else // !NEW_CODE
 		InitializeGridChartsActiveNodes( ChartIndex(i) , atlasChart , gridChart , nodeInfo , rasterLines , segmentedLines , threadTasks , numTexels , numInteriorTexels , numDeepTexels , numBoundaryTexels , numCells , numBoundaryCells , numInteriorCells , multigridBlockInfo );
+#endif // NEW_CODE
 	}
 }
 
@@ -1037,10 +1053,19 @@ void InitializeHierarchy
 
 	for( unsigned int l=0 ; l<levels ; l++ )
 	{
+#ifdef NEW_CODE
+		InitializeGridCharts( atlasCharts , width , height , l , gridAtlases[l].nodeInfo , gridAtlases[l].gridCharts , gridAtlases[l].rasterLines , gridAtlases[l].segmentedLines , gridAtlases[l].threadTasks , gridAtlases[l].numTexels , gridAtlases[l].numInteriorTexels , gridAtlases[l].endInteriorTexelIndex , gridAtlases[l].numBoundaryTexels , gridAtlases[l].numCells , gridAtlases[l].numBoundaryCells , gridAtlases[l].numInteriorCells , multigridBlockInfo );
+#else // !NEW_CODE
 		InitializeGridCharts( atlasCharts , width , height , l , gridAtlases[l].nodeInfo , gridAtlases[l].gridCharts , gridAtlases[l].rasterLines , gridAtlases[l].segmentedLines , gridAtlases[l].threadTasks , gridAtlases[l].numTexels , gridAtlases[l].numInteriorTexels , gridAtlases[l].numDeepTexels , gridAtlases[l].numBoundaryTexels , gridAtlases[l].numCells , gridAtlases[l].numBoundaryCells , gridAtlases[l].numInteriorCells , multigridBlockInfo );
+#endif // NEW_CODE
 
+#ifdef NEW_CODE
+		if( gridAtlases[l].numTexels!=gridAtlases[l].numBoundaryTexels+static_cast< unsigned int >(gridAtlases[l].endInteriorTexelIndex) )
+			MK_THROW( "Boundary and deep texels does not form a partition: " , gridAtlases[l].numTexels , " != " , gridAtlases[l].numBoundaryTexels , " + " , gridAtlases[l].endInteriorTexelIndex );
+#else // !NEW_CODE
 		if( gridAtlases[l].numTexels!=gridAtlases[l].numBoundaryTexels+gridAtlases[l].numDeepTexels )
 			MK_THROW( "Boundary and deep texels does not form a partition: " , gridAtlases[l].numTexels , " != " , gridAtlases[l].numBoundaryTexels , " + " , gridAtlases[l].numDeepTexels );
+#endif // NEW_CODE
 
 		InitializeIndexConverter( gridAtlases[l].gridCharts , gridAtlases[l].numTexels , gridAtlases[l].indexConverter );
 	}

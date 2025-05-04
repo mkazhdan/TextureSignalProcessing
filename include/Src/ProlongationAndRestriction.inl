@@ -312,7 +312,7 @@ void InitializeAtlasHierachicalRestriction
 #ifdef NEW_CODE
 #pragma message( "[WARNING] What's going on here" );
 				MK_WARN_ONCE( "Transforming to interior texel index" );
-				restrictionLines[i].coeffStartIndex = ChartInteriorTexelIndex( lineCoarseStartIndex ); //global (NOT DEEP) variable index in the current level
+				restrictionLines[i].coeffStartIndex = AtlasInteriorTexelIndex( lineCoarseStartIndex ); //global (NOT DEEP) variable index in the current level
 #else // !NEW_CODE
 				restrictionLines[i].coeffStartIndex = lineCoarseStartIndex; //global (NOT DEEP) variable index in the current level
 #endif // NEW_CODE
@@ -334,13 +334,14 @@ void InitializeAtlasHierachicalRestriction
 				if( fi-1 < 0 || fi+1>(int)fineChart.width-1 || fj-1 < 0 || fj+1>(int)fineChart.height-1 ) MK_THROW( "Out of bounds node position" );
 
 				int fineCurrentLineStart = fineChart.texelIndices(fi,fj).combined;
-				if (fineCurrentLineStart != -1) {
+				if( fineCurrentLineStart!=-1 )
+				{
 					restrictionLines[i].lineStartIndex = fineCurrentLineStart;
 					restrictionLines[i].lineEndIndex = fineCurrentLineStart + 2 * (coarseRasterLines[i].lineEndIndex - lineCoarseStartIndex);
 
 #ifdef NEW_CODE
-					ChartInteriorTexelIndex fineCurrentDeep = fineChart.texelIndices(fi,fj).interior;
-					if( fineCurrentDeep!=ChartInteriorTexelIndex(-1) ) deepLines[i].fineCurrentLineIndex = fineCurrentDeep;
+					AtlasInteriorTexelIndex fineCurrentDeep = fineChart.texelIndices(fi,fj).interior;
+					if( fineCurrentDeep!=AtlasInteriorTexelIndex(-1) ) deepLines[i].fineCurrentLineIndex = fineCurrentDeep;
 #else // !NEW_CODE
 					int fineCurrentDeep = fineChart.texelIndices(fi, fj).interior;
 					if (fineCurrentDeep != -1) {
@@ -356,8 +357,8 @@ void InitializeAtlasHierachicalRestriction
 					restrictionLines[i].prevLineIndex = finePreviousLineStart;
 
 #ifdef NEW_CODE
-					ChartInteriorTexelIndex finePreviousDeep = fineChart.texelIndices(fi,fj-1).interior;
-					if( finePreviousDeep!=ChartInteriorTexelIndex(-1) ) deepLines[i].finePrevLineIndex = finePreviousDeep;
+					AtlasInteriorTexelIndex finePreviousDeep = fineChart.texelIndices(fi,fj-1).interior;
+					if( finePreviousDeep!=AtlasInteriorTexelIndex(-1) ) deepLines[i].finePrevLineIndex = finePreviousDeep;
 #else // !NEW_CODE
 					int finePreviousDeep = fineChart.texelIndices(fi,fj-1).interior;
 					if (finePreviousDeep != -1) {
@@ -375,8 +376,8 @@ void InitializeAtlasHierachicalRestriction
 					restrictionLines[i].nextLineIndex = fineNextLineStart;
 
 #ifdef NEW_CODE
-					ChartInteriorTexelIndex fineNextDeep = fineChart.texelIndices(fi,fj+1).interior;
-					if( fineNextDeep!=ChartInteriorTexelIndex(-1) ) deepLines[i].fineNextLineIndex = fineNextDeep;
+					AtlasInteriorTexelIndex fineNextDeep = fineChart.texelIndices(fi,fj+1).interior;
+					if( fineNextDeep!=AtlasInteriorTexelIndex(-1) ) deepLines[i].fineNextLineIndex = fineNextDeep;
 #else // !NEW_CODE
 					int fineNextDeep = fineChart.texelIndices(fi, fj + 1).interior;
 					if (fineNextDeep != -1) {

@@ -746,8 +746,13 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 		}
 	}
 	if( Verbose.set ) printf( "\tInitialized vector field integration: %.2f(s)\n" , timer.elapsed() );
+#ifdef NEW_CODE
+	coarseBoundaryValues.resize( hierarchy.gridAtlases[0].numTexels - static_cast< unsigned int >(hierarchy.gridAtlases[0].endInteriorTexelIndex) );
+	coarseBoundaryRHS.resize   ( hierarchy.gridAtlases[0].numTexels - static_cast< unsigned int >(hierarchy.gridAtlases[0].endInteriorTexelIndex) );
+#else // !NEW_CODE
 	coarseBoundaryValues.resize( hierarchy.gridAtlases[0].numTexels - hierarchy.gridAtlases[0].numDeepTexels );
 	coarseBoundaryRHS.resize   ( hierarchy.gridAtlases[0].numTexels - hierarchy.gridAtlases[0].numDeepTexels );
+#endif // NEW_CODE
 	fineBoundaryValues.resize( numFineBoundaryNodes );
 	fineBoundaryRHS.resize   ( numFineBoundaryNodes );
 

@@ -689,7 +689,7 @@ void MultiplyBySystemMatrix_NoReciprocals
 
 		int lineLength = ( rasterLines[r].lineEndIndex - rasterLines[r].lineStartIndex + 1 );
 #ifdef NEW_CODE
-		ChartInteriorTexelIndex lineDeepStart = rasterLines[r].coeffStartIndex;
+		AtlasInteriorTexelIndex lineDeepStart = rasterLines[r].coeffStartIndex;
 		const Real* _deepCoefficients = &systemCoefficients.deepCoefficients[10*static_cast< unsigned int >(lineDeepStart) ];
 #else // !NEW_CODE
 		int lineDeepStart = rasterLines[r].coeffStartIndex;

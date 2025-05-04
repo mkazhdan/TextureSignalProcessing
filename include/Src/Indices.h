@@ -46,6 +46,8 @@ namespace MishaK
 
 #ifdef NEW_CODE
 		unsigned int operator - ( const UnsignedIntIndex &t ) const { return _idx - t._idx; }
+		friend T & operator ++ ( T & t ){ t._idx++ ; return t; }
+		friend T operator ++ ( T &t , int ){ return T( t._idx++ ); }
 #endif // NEW_CODE
 
 		bool operator == ( const UnsignedIntIndex &I ) const { return _idx==I._idx; }
@@ -102,7 +104,6 @@ namespace MishaK
 	struct           AtlasInteriorCellIndex : public UnsignedIntIndex<           AtlasInteriorCellIndex >{ using UnsignedIntIndex<           AtlasInteriorCellIndex >::UnsignedIntIndex; };
 	struct           AtlasBoundaryCellIndex : public UnsignedIntIndex<           AtlasBoundaryCellIndex >{ using UnsignedIntIndex<           AtlasBoundaryCellIndex >::UnsignedIntIndex; };
 	struct           AtlasCombinedCellIndex : public UnsignedIntIndex<           AtlasCombinedCellIndex >{ using UnsignedIntIndex<           AtlasCombinedCellIndex >::UnsignedIntIndex; };
-	struct          ChartInteriorTexelIndex : public UnsignedIntIndex<          ChartInteriorTexelIndex >{ using UnsignedIntIndex<          ChartInteriorTexelIndex >::UnsignedIntIndex; };
 	struct           ChartCoveredTexelIndex : public UnsignedIntIndex<           ChartCoveredTexelIndex >{ using UnsignedIntIndex<           ChartCoveredTexelIndex >::UnsignedIntIndex; };
 	struct          ChartCombinedTexelIndex : public UnsignedIntIndex<          ChartCombinedTexelIndex >{ using UnsignedIntIndex<          ChartCombinedTexelIndex >::UnsignedIntIndex; };
 	struct          AtlasInteriorTexelIndex : public UnsignedIntIndex<          AtlasInteriorTexelIndex >{ using UnsignedIntIndex<          AtlasInteriorTexelIndex >::UnsignedIntIndex; };
@@ -130,7 +131,6 @@ namespace MishaK
 	using           AtlasInteriorCellIndex = unsigned int;
 	using           AtlasBoundaryCellIndex = unsigned int;
 	using           AtlasCombinedCellIndex = unsigned int;
-	using          ChartInteriorTexelIndex = unsigned int;
 	using           ChartCoveredTexelIndex = unsigned int;
 	using          ChartCombinedTexelIndex = unsigned int;
 	using          AtlasInteriorTexelIndex = unsigned int;
