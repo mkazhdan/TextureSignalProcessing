@@ -133,7 +133,11 @@ public:
 
 	static HierarchicalSystem< PreReal , Real > hierarchy;
 
+#ifdef NEW_CODE
+	static std::vector< BilinearElementIndex< unsigned int > > bilinearElementIndices;
+#else // !NEW_CODE
 	static std::vector< BilinearElementIndex > bilinearElementIndices;
+#endif // NEW_CODE
 
 	static std::vector< TextureNodeInfo< PreReal > > textureNodes;
 	static Image< int > nodeIndex;
@@ -238,7 +242,11 @@ template< typename PreReal , typename Real > Real															Geodesics< PreRe
 
 template< typename PreReal , typename Real > std::vector< TextureNodeInfo< PreReal > >						Geodesics< PreReal , Real >::textureNodes;
 template< typename PreReal , typename Real > Image<int>														Geodesics< PreReal , Real >::nodeIndex;
+#ifdef NEW_CODE
+template< typename PreReal , typename Real > std::vector< BilinearElementIndex< unsigned int > >			Geodesics< PreReal , Real >::bilinearElementIndices;
+#else // !NEW_CODE
 template< typename PreReal , typename Real > std::vector< BilinearElementIndex >							Geodesics< PreReal , Real >::bilinearElementIndices;
+#endif // NEW_CODE
 
 template< typename PreReal , typename Real > int															Geodesics< PreReal , Real >::steps;
 template< typename PreReal , typename Real > char															Geodesics< PreReal , Real >::stepsString[1024];

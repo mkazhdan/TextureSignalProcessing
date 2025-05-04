@@ -822,8 +822,13 @@ namespace MishaK
 		auto NeighbourOffset = [&]( int k , int l ){ return ( offset_j[l] - offset_j[k] + 1 ) * 3 + ( offset_i[l] - offset_i[k] + 1 ); };
 		for( int i=0 ; i<gridChart.interiorCellInteriorBilinearElementIndices.size() ; i++ )
 		{
+#ifdef NEW_CODE
+			const BilinearElementIndex< unsigned int > & indicesGlobal   = gridChart.interiorCellCombinedBilinearElementIndices[i];
+			const BilinearElementIndex< AtlasCoveredTexelIndex > & indicesInterior = gridChart.interiorCellInteriorBilinearElementIndices[i];
+#else // !NEW_CODE
 			const BilinearElementIndex & indicesGlobal   = gridChart.interiorCellCombinedBilinearElementIndices[i];
 			const BilinearElementIndex & indicesInterior = gridChart.interiorCellInteriorBilinearElementIndices[i];
+#endif // NEW_CODE
 
 			ChartCombinedCellIndex localCellIndex = gridChart.interiorCellIndexToCombinedCellIndex[i];
 			AtlasCombinedCellIndex globalCellIndex = gridChart.chartToAtlasCombinedCellIndex( localCellIndex );
@@ -882,15 +887,24 @@ namespace MishaK
 						}
 						else if( neighborBoundaryIndex!=-1 )
 						{
+#ifdef NEW_CODE
+							boundaryBoundaryMassTriplets.push_back( Eigen::Triplet< MatrixReal >( static_cast< unsigned int >( fineBoundaryIndex[ static_cast< unsigned int >(indicesInterior[k]) ] ) , static_cast< unsigned int >( fineBoundaryIndex[ static_cast< unsigned int >(indicesInterior[l]) ] ) , (MatrixReal)cellMass[i](k,l) ) );
+							boundaryBoundaryStiffnessTriplets.push_back( Eigen::Triplet< MatrixReal >( static_cast< unsigned int >( fineBoundaryIndex[ static_cast< unsigned int >(indicesInterior[k]) ] ) , static_cast< unsigned int >( fineBoundaryIndex[ static_cast< unsigned int >(indicesInterior[l]) ] ) , (MatrixReal)cellStiffness[i](k,l) ) );
+#else // !NEW_CODE
 							boundaryBoundaryMassTriplets.push_back( Eigen::Triplet< MatrixReal >( static_cast< unsigned int >( fineBoundaryIndex[ indicesInterior[k] ] ) , static_cast< unsigned int >( fineBoundaryIndex[ indicesInterior[l] ] ) , (MatrixReal)cellMass[i](k,l) ) );
 							boundaryBoundaryStiffnessTriplets.push_back( Eigen::Triplet< MatrixReal >( static_cast< unsigned int >( fineBoundaryIndex[ indicesInterior[k] ] ) , static_cast< unsigned int >( fineBoundaryIndex[ indicesInterior[l] ] ) , (MatrixReal)cellStiffness[i](k,l) ) );
+#endif // NEW_CODE
 						}
 						else MK_THROW( "Expected supported index" );
 					}
 					if( computeCellBasedStiffness )
 					{
 						// Add cell data
+#ifdef NEW_CODE
+						AtlasInteriorOrBoundaryNodeIndex _fineBoundaryIndex = fineBoundaryIndex[ static_cast< unsigned int >(indicesInterior[k]) ];
+#else // !NEW_CODE
 						AtlasInteriorOrBoundaryNodeIndex _fineBoundaryIndex = fineBoundaryIndex[indicesInterior[k]];
+#endif // NEW_CODE
 						Point3D< MatrixReal > p( (MatrixReal)prod[0][k] , (MatrixReal)prod[1][k] , (MatrixReal)prod[2][k] );
 						boundaryCellStiffnessTriplets.push_back( Eigen::Triplet< Point3D< MatrixReal > >( static_cast< unsigned int >(_fineBoundaryIndex) , static_cast< unsigned int >(globalCellIndex) , p ) );
 					}

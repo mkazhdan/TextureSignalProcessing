@@ -77,7 +77,12 @@ namespace MishaK
 
 					for( unsigned int k=0 ; k<offset-rasterStart ; k++ )
 					{
+#ifdef NEW_CODE
+//						if( gridChart.interiorCellInteriorBilinearElementIndices[localInteriorCellIndex][0]!=static_cast< unsigned int >(texelIndices( rasterStart+k , j ).covered) ) MK_THROW( "Unexpected corner ID" );
+						if( gridChart.interiorCellInteriorBilinearElementIndices[localInteriorCellIndex][0]!=texelIndices( rasterStart+k , j ).covered ) MK_THROW( "Unexpected corner ID" );
+#else // !NEW_CODE
 						if( (int)gridChart.interiorCellInteriorBilinearElementIndices[localInteriorCellIndex][0]!=texelIndices( rasterStart+k , j ).covered ) MK_THROW( "Unexpected corner ID" );
+#endif // NEW_CODE
 
 						interiorCellLineIndex.push_back( std::pair< int , int >( currentLine , k ) );
 						localInteriorCellIndex++;

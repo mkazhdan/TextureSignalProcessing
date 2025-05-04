@@ -56,12 +56,19 @@ namespace MishaK
 		//		1  
 		//		|  
 
-		for (int i = 0; i < gridChart.combinedCellCombinedBilinearElementIndices.size(); i++){
+		for( int i=0 ; i<gridChart.combinedCellCombinedBilinearElementIndices.size() ; i++ )
+		{
+#ifdef NEW_CODE
+			const BilinearElementIndex< unsigned int > & indices = gridChart.combinedCellCombinedBilinearElementIndices[i];
+#else // !NEW_CODE
 			const BilinearElementIndex & indices = gridChart.combinedCellCombinedBilinearElementIndices[i];
-			for (int k = 0; k < edgesPerCell; k++) {
+#endif // NEW_CODE
+			for( int k=0 ; k<edgesPerCell ; k++ )
+			{
 				int vIndices[2] = { (int)indices[ pairsToAdd[2*k] ] , (int)indices[ pairsToAdd[2*k+1] ] };
 				SimplexIndex< 1 > edgeKey( vIndices[0] , vIndices[1] );
-				if (boundaryCoarseEdgeIndex.find(edgeKey) == boundaryCoarseEdgeIndex.end()) {
+				if( boundaryCoarseEdgeIndex.find(edgeKey)==boundaryCoarseEdgeIndex.end() )
+				{
 					boundaryCoarseEdgeIndex[edgeKey] = lastAddedEdgeIndex;
 					lastAddedEdgeIndex++;
 				}

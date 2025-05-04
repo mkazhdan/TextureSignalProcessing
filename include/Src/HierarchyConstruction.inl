@@ -74,10 +74,11 @@ void InitializeGridChartsActiveNodes
 	std::vector< SegmentedRasterLine > & segmentedLines ,
 	std::vector< ThreadTask > & threadTasks ,
 	unsigned int & combinedTexelIndex ,
-	unsigned int & interiorTexelIndex ,
 #ifdef NEW_CODE
+	AtlasCoveredTexelIndex & endCoveredTexelIndex ,
 	AtlasInteriorTexelIndex & endInteriorTexelIndex , 
 #else // !NEW_CODE
+	unsigned int & interiorTexelIndex ,
 	unsigned int &     deepTexelIndex ,
 #endif // NEW_CODE
 	unsigned int & boundaryTexelIndex ,
@@ -508,7 +509,11 @@ void InitializeGridChartsActiveNodes
 		currentNodeInfo.chartID = chartID;
 		currentNodeInfo.texelType = gridChart.texelType(i,j);
 		nodeInfo.push_back( currentNodeInfo );
+#ifdef NEW_CODE
+		if( IsCovered( gridChart.texelType(i,j) ) ) texelIndices(i,j).covered = endCoveredTexelIndex++;
+#else // !NEW_CODE
 		if( IsCovered( gridChart.texelType(i,j) ) ) texelIndices(i,j).covered = interiorTexelIndex++;
+#endif // NEW_CODE
 		if( IsBoundarySupported( gridChart.texelType(i,j) ) ) boundaryTexelIndex++;
 #ifdef NEW_CODE
 		if( gridChart.texelType(i,j)==TexelType::InteriorSupported ) texelIndices(i,j).interior = endInteriorTexelIndex++;
@@ -533,7 +538,11 @@ void InitializeGridChartsActiveNodes
 				if( gridChart.cellType(I)==CellType::Interior )
 				{
 					unsigned int count = 0;
+#ifdef NEW_CODE
+					auto SubKernel = [&]( Index I ){ if( texelIndices(I).covered!=AtlasCoveredTexelIndex(-1) ){ count++; } };
+#else // !NEW_CODE
 					auto SubKernel = [&]( Index I ){ if( texelIndices(I).covered!=-1 ){ count++; } };
+#endif // NEW_CODE
 					Range::NodesSupportedOnCell( I ).process( SubKernel );
 					if( count!=4 ) MK_THROW( "Interior cell adjacent to non interior node" );
 				}
@@ -546,9 +555,15 @@ void InitializeGridChartsActiveNodes
 	Image< CellIndex > & cellIndices = gridChart.cellIndices;
 	cellIndices.resize( width-1 , height-1 );
 
+#ifdef NEW_CODE
+	std::vector< BilinearElementIndex< unsigned int > > & combinedCellCombinedBilinearElementIndices = gridChart.combinedCellCombinedBilinearElementIndices;
+	std::vector< BilinearElementIndex< AtlasCoveredTexelIndex > > & interiorCellInteriorBilinearElementIndices = gridChart.interiorCellInteriorBilinearElementIndices;
+	std::vector< BilinearElementIndex< unsigned int > > & interiorCellCombinedBilinearElementIndices = gridChart.interiorCellCombinedBilinearElementIndices;
+#else // !NEW_CODE
 	std::vector< BilinearElementIndex > & combinedCellCombinedBilinearElementIndices = gridChart.combinedCellCombinedBilinearElementIndices;
 	std::vector< BilinearElementIndex > & interiorCellInteriorBilinearElementIndices = gridChart.interiorCellInteriorBilinearElementIndices;
 	std::vector< BilinearElementIndex > & interiorCellCombinedBilinearElementIndices = gridChart.interiorCellCombinedBilinearElementIndices;
+#endif // NEW_CODE
 
 	std::vector< ChartCombinedCellIndex > & interiorCellIndexToCombinedCellIndex = gridChart.interiorCellIndexToCombinedCellIndex;
 	std::vector< ChartCombinedCellIndex > & boundaryCellIndexToCombinedCellIndex = gridChart.boundaryCellIndexToCombinedCellIndex;
@@ -596,8 +611,13 @@ void InitializeGridChartsActiveNodes
 			cellIndices(i,j).interior = ChartInteriorCellIndex( _interiorCellIndex++ );
 			interiorCellIndexToCombinedCellIndex.push_back( ChartCombinedCellIndex( _combinedCellIndex ) );
 
+#ifdef NEW_CODE
+			AtlasCoveredTexelIndex globalTexelInteriorIndices[4] = { texelIndices(i,j).covered , texelIndices(i+1,j).covered , texelIndices(i+1,j+1).covered , texelIndices(i,j+1).covered };
+			if( globalTexelInteriorIndices[0]!=AtlasCoveredTexelIndex(-1) && globalTexelInteriorIndices[1]!=AtlasCoveredTexelIndex(-1) && globalTexelInteriorIndices[2]!=AtlasCoveredTexelIndex(-1) && globalTexelInteriorIndices[3]!=AtlasCoveredTexelIndex(-1) )
+#else // !NEW_CODE
 			unsigned int globalTexelInteriorIndices[4] = { texelIndices(i,j).covered , texelIndices(i+1,j).covered , texelIndices(i+1,j+1).covered , texelIndices(i,j+1).covered };
 			if( globalTexelInteriorIndices[0]!=-1 && globalTexelInteriorIndices[1]!=-1 && globalTexelInteriorIndices[2]!=-1 && globalTexelInteriorIndices[3]!=-1)
+#endif // NEW_CODE
 			{
 				interiorCellInteriorBilinearElementIndices.push_back( BilinearElementIndex( globalTexelInteriorIndices[0] , globalTexelInteriorIndices[1] , globalTexelInteriorIndices[2] , globalTexelInteriorIndices[3] ) );
 				interiorCellCombinedBilinearElementIndices.push_back( BilinearElementIndex( globalTexelIndices[0] , globalTexelIndices[1] , globalTexelIndices[2] , globalTexelIndices[3] ) );
@@ -773,10 +793,11 @@ void InitializeGridCharts
 	std::vector< SegmentedRasterLine > &segmentedLines ,
 	std::vector< ThreadTask > &threadTasks ,
 	unsigned int &numTexels ,
-	unsigned int &numInteriorTexels ,
 #ifdef NEW_CODE
+	AtlasCoveredTexelIndex & endCoveredTexelIndex ,
 	AtlasInteriorTexelIndex & endInteriorTexelIndex ,
 #else // !NEW_CODE
+	unsigned int &numInteriorTexels ,
 	unsigned int &numDeepTexels ,
 #endif // NEW_CODE
 	unsigned int &numBoundaryTexels ,
@@ -789,10 +810,11 @@ void InitializeGridCharts
 	gridCharts.resize( atlasCharts.size() );
 
 	numTexels = 0;
-	numInteriorTexels = 0;
 #ifdef NEW_CODE
+	endCoveredTexelIndex = AtlasCoveredTexelIndex(0);
 	endInteriorTexelIndex = AtlasInteriorTexelIndex(0);
 #else // !NEW_CODE
+	numInteriorTexels = 0;
 	numDeepTexels = 0;
 #endif // NEW_CODE
 	numBoundaryTexels = 0;
@@ -829,7 +851,7 @@ void InitializeGridCharts
 		gridChart.atlasWidth = _width;
 		gridChart.atlasHeight = _height;
 #ifdef NEW_CODE
-		InitializeGridChartsActiveNodes( ChartIndex(i) , atlasChart , gridChart , nodeInfo , rasterLines , segmentedLines , threadTasks , numTexels , numInteriorTexels , endInteriorTexelIndex , numBoundaryTexels , numCells , numBoundaryCells , numInteriorCells , multigridBlockInfo );
+		InitializeGridChartsActiveNodes( ChartIndex(i) , atlasChart , gridChart , nodeInfo , rasterLines , segmentedLines , threadTasks , numTexels , endCoveredTexelIndex , endInteriorTexelIndex , numBoundaryTexels , numCells , numBoundaryCells , numInteriorCells , multigridBlockInfo );
 #else // !NEW_CODE
 		InitializeGridChartsActiveNodes( ChartIndex(i) , atlasChart , gridChart , nodeInfo , rasterLines , segmentedLines , threadTasks , numTexels , numInteriorTexels , numDeepTexels , numBoundaryTexels , numCells , numBoundaryCells , numInteriorCells , multigridBlockInfo );
 #endif // NEW_CODE
@@ -865,12 +887,20 @@ template< typename GeometryReal >
 void InitializeCellNodes
 (
 	const IndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts ,
+#ifdef NEW_CODE
+	std::vector< BilinearElementIndex< unsigned int > > &combinedCellCombinedBilinearElementIndices
+#else // !NEW_CODE
 	std::vector< BilinearElementIndex > &combinedCellCombinedBilinearElementIndices
+#endif // NEW_CODE
 )
 {
 	for( unsigned int c=0 ; c<gridCharts.size() ; c++ )
 	{
+#ifdef NEW_CODE
+		const std::vector< BilinearElementIndex< unsigned int > >& _combinedCellCombinedBilinearElementIndices = gridCharts[ ChartIndex(c) ].combinedCellCombinedBilinearElementIndices;
+#else // !NEW_CODE
 		const std::vector< BilinearElementIndex >& _combinedCellCombinedBilinearElementIndices = gridCharts[ ChartIndex(c) ].combinedCellCombinedBilinearElementIndices;
+#endif // NEW_CODE
 		combinedCellCombinedBilinearElementIndices.insert( combinedCellCombinedBilinearElementIndices.end() , _combinedCellCombinedBilinearElementIndices.begin() , _combinedCellCombinedBilinearElementIndices.end() );
 	}
 }
@@ -1054,7 +1084,7 @@ void InitializeHierarchy
 	for( unsigned int l=0 ; l<levels ; l++ )
 	{
 #ifdef NEW_CODE
-		InitializeGridCharts( atlasCharts , width , height , l , gridAtlases[l].nodeInfo , gridAtlases[l].gridCharts , gridAtlases[l].rasterLines , gridAtlases[l].segmentedLines , gridAtlases[l].threadTasks , gridAtlases[l].numTexels , gridAtlases[l].numInteriorTexels , gridAtlases[l].endInteriorTexelIndex , gridAtlases[l].numBoundaryTexels , gridAtlases[l].numCells , gridAtlases[l].numBoundaryCells , gridAtlases[l].numInteriorCells , multigridBlockInfo );
+		InitializeGridCharts( atlasCharts , width , height , l , gridAtlases[l].nodeInfo , gridAtlases[l].gridCharts , gridAtlases[l].rasterLines , gridAtlases[l].segmentedLines , gridAtlases[l].threadTasks , gridAtlases[l].numTexels , gridAtlases[l].endCoveredTexelIndex , gridAtlases[l].endInteriorTexelIndex , gridAtlases[l].numBoundaryTexels , gridAtlases[l].numCells , gridAtlases[l].numBoundaryCells , gridAtlases[l].numInteriorCells , multigridBlockInfo );
 #else // !NEW_CODE
 		InitializeGridCharts( atlasCharts , width , height , l , gridAtlases[l].nodeInfo , gridAtlases[l].gridCharts , gridAtlases[l].rasterLines , gridAtlases[l].segmentedLines , gridAtlases[l].threadTasks , gridAtlases[l].numTexels , gridAtlases[l].numInteriorTexels , gridAtlases[l].numDeepTexels , gridAtlases[l].numBoundaryTexels , gridAtlases[l].numCells , gridAtlases[l].numBoundaryCells , gridAtlases[l].numInteriorCells , multigridBlockInfo );
 #endif // NEW_CODE
@@ -1095,7 +1125,11 @@ void InitializeHierarchy
 	unsigned int height ,
 	unsigned int levels ,
 	std::vector< TextureNodeInfo< GeometryReal > > &textureNodes ,
+#ifdef NEW_CODE
+	std::vector< BilinearElementIndex< unsigned int > > &cellNodes ,
+#else // !NEW_CODE
 	std::vector< BilinearElementIndex > &cellNodes ,
+#endif // NEW_CODE
 	HierarchicalSystem< GeometryReal , MatrixReal > &hierarchy ,
 	IndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
 	const MultigridBlockInfo &multigridBlockInfo ,
@@ -1120,7 +1154,11 @@ void InitializeHierarchy
 	if( computeProlongation )
 	{
 		Eigen::SparseMatrix< MatrixReal > __prolongation;
+#ifdef NEW_CODE
+		InitializeProlongation( hierarchy.gridAtlases[0].endCoveredTexelIndex , hierarchy.gridAtlases[0].numFineNodes , hierarchy.gridAtlases[0].numTexels , hierarchy.gridAtlases[0].gridCharts , hierarchy.gridAtlases[0].nodeInfo , __prolongation );
+#else // !NEW_CODE
 		InitializeProlongation( hierarchy.gridAtlases[0].numInteriorTexels , hierarchy.gridAtlases[0].numFineNodes , hierarchy.gridAtlases[0].numTexels , hierarchy.gridAtlases[0].gridCharts , hierarchy.gridAtlases[0].nodeInfo , __prolongation );
+#endif // NEW_CODE
 		hierarchy.gridAtlases[0].coarseToFineNodeProlongation = __prolongation;
 	}
 }

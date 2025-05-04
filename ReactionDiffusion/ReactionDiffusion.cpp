@@ -164,7 +164,11 @@ public:
 
 	static HierarchicalSystem< PreReal , Real > hierarchy;
 
+#ifdef NEW_CODE
+	static std::vector< BilinearElementIndex< unsigned int > > bilinearElementIndices;
+#else // !NEW_CODE
 	static std::vector< BilinearElementIndex > bilinearElementIndices;
+#endif // NEW_CODE
 
 	static std::vector< TextureNodeInfo< PreReal > > textureNodes;
 	static Image< int > nodeIndex;
@@ -271,7 +275,11 @@ template< typename PreReal , typename Real > Real																	GrayScottReact
 
 template< typename PreReal , typename Real > std::vector< TextureNodeInfo< PreReal > >								GrayScottReactionDiffusion< PreReal , Real >::textureNodes;
 template< typename PreReal , typename Real > Image< int >															GrayScottReactionDiffusion< PreReal , Real >::nodeIndex;
+#ifdef NEW_CODE
+template< typename PreReal , typename Real > std::vector< BilinearElementIndex< unsigned int > >					GrayScottReactionDiffusion< PreReal , Real >::bilinearElementIndices;
+#else // !NEW_CODE
 template< typename PreReal , typename Real > std::vector< BilinearElementIndex >									GrayScottReactionDiffusion< PreReal , Real >::bilinearElementIndices;
+#endif // NEW_CODE
 
 template< typename PreReal , typename Real > int																	GrayScottReactionDiffusion< PreReal , Real >::steps;
 template< typename PreReal , typename Real > char																	GrayScottReactionDiffusion< PreReal , Real >::stepsString[1024];

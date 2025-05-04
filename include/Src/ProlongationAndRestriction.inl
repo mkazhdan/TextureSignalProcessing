@@ -33,7 +33,11 @@ DAMAGE.
 template< typename GeometryReal , typename MatrixReal >
 void InitializeProlongation
 (
+#ifdef NEW_CODE
+	AtlasCoveredTexelIndex endCoveredTexelIndex ,
+#else // !NEW_CODE
 	unsigned int numInteriorTexels ,
+#endif // NEW_CODE
 	unsigned int numFineNodes ,
 	unsigned int numCoarseNodes ,
 	const IndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts ,
@@ -68,7 +72,11 @@ void InitializeProlongation
 		}
 	}
 
+#ifdef NEW_CODE
+	unsigned int numAuxiliaryNodes = numFineNodes - static_cast< unsigned int >(endCoveredTexelIndex);
+#else // !NEW_CODE
 	unsigned int numAuxiliaryNodes = numFineNodes - numInteriorTexels;
+#endif // NEW_CODE
 	std::vector< unsigned int > auxiliaryNodesDegree( numAuxiliaryNodes , 0 );
 
 	for( unsigned int i=0 ; i<gridCharts.size() ; i++ )
@@ -76,7 +84,11 @@ void InitializeProlongation
 		const GridChart< GeometryReal > &gridChart = gridCharts[ ChartIndex(i) ];
 		for( unsigned int j=0 ; j<gridChart.auxiliaryNodes.size(); j++ )
 		{
+#ifdef NEW_CODE
+			unsigned int auxiliaryID = static_cast< unsigned int >( gridChart.auxiliaryNodes[j].index ) - static_cast< unsigned int >(endCoveredTexelIndex);
+#else // !NEW_CODE
 			unsigned int auxiliaryID = static_cast< unsigned int >( gridChart.auxiliaryNodes[j].index ) - numInteriorTexels;
+#endif // NEW_CODE
 			auxiliaryNodesDegree[auxiliaryID]++;
 		}
 	}
@@ -90,7 +102,11 @@ void InitializeProlongation
 		const GridChart< GeometryReal > &gridChart = gridCharts[ ChartIndex(i) ];
 		for( unsigned int j=0 ; j<gridChart.auxiliaryNodes.size() ; j++ )
 		{
+#ifdef NEW_CODE
+			unsigned int auxiliaryID = static_cast< unsigned int >( gridChart.auxiliaryNodes[j].index ) - static_cast< unsigned int >( endCoveredTexelIndex );
+#else // !NEW_CODE
 			unsigned int auxiliaryID = static_cast< unsigned int >( gridChart.auxiliaryNodes[j].index ) - numInteriorTexels;
+#endif // NEW_CODE
 			unsigned int nodeDegree = auxiliaryNodesDegree[auxiliaryID];
 			Point2D< GeometryReal > nodePosition = gridChart.auxiliaryNodes[j].position;
 			int corner[2] = { (int)floor(nodePosition[0] / gridChart.cellSizeW), (int)floor(nodePosition[1] / gridChart.cellSizeH) };
@@ -112,7 +128,11 @@ void InitializeProlongation
 					if( nodeInfo[texelIndex].texelType==TexelType::InteriorSupported )
 						MK_THROW( "Interior-supported texel cannot be in the support of an auxiliary node. Weight " , texelWeight , " (B)" );
 					coveredNodes.insert(texelIndex);
+#ifdef NEW_CODE
+					if( static_cast< unsigned int >(gridChart.auxiliaryNodes[j].index)<static_cast< unsigned int >(endCoveredTexelIndex) || static_cast< unsigned int >(gridChart.auxiliaryNodes[j].index)>numFineNodes || texelIndex<0 || texelIndex>numCoarseNodes )
+#else // !NEW_CODE
 					if( static_cast< unsigned int >(gridChart.auxiliaryNodes[j].index)<numInteriorTexels || static_cast< unsigned int >(gridChart.auxiliaryNodes[j].index)>numFineNodes || texelIndex<0 || texelIndex>numCoarseNodes )
+#endif // NEW_CODE
 						MK_THROW( "Out of bounds index" );
 					prolongationTriplets.push_back( Eigen::Triplet< MatrixReal >( static_cast< unsigned int >(gridChart.auxiliaryNodes[j].index) , texelIndex , (MatrixReal)texelWeight ) );
 				}

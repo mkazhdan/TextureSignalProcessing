@@ -187,7 +187,11 @@ public:
 
 	static IndexVector< ChartIndex , AtlasChart< PreReal > > atlasCharts;
 
+#ifdef NEW_CODE
+	static std::vector< BilinearElementIndex< unsigned int > > bilinearElementIndices;
+#else // !NEW_CODE
 	static std::vector< BilinearElementIndex > bilinearElementIndices;
+#endif // NEW_CODE
 
 	static std::vector< TextureNodeInfo< PreReal > > textureNodes;
 
@@ -311,7 +315,11 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth > Spar
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > Real															Stitching< PreReal , Real , TextureBitDepth >::interpolationWeight;
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< TextureNodeInfo< PreReal > >						Stitching< PreReal , Real , TextureBitDepth >::textureNodes;
+#ifdef NEW_CODE
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< BilinearElementIndex< unsigned int > >				Stitching< PreReal , Real , TextureBitDepth >::bilinearElementIndices;
+#else // !NEW_CODE
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< BilinearElementIndex >								Stitching< PreReal , Real , TextureBitDepth >::bilinearElementIndices;
+#endif // NEW_CODE
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > int																Stitching< PreReal , Real , TextureBitDepth >::steps;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > char															Stitching< PreReal , Real , TextureBitDepth >::stepsString[1024];

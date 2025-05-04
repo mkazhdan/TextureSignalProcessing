@@ -408,7 +408,8 @@ namespace MishaK
 	{
 		TexelIndex( void ) : combined(-1) , interior(-1) , covered(-1){}
 #ifdef NEW_CODE
-		unsigned int combined , covered;
+		unsigned int combined;
+		AtlasCoveredTexelIndex covered;
 		AtlasInteriorTexelIndex interior;
 #else // !NEW_CODE
 		unsigned int combined , interior , covered;
@@ -507,13 +508,26 @@ namespace MishaK
 		Image< CellIndex > cellIndices;
 
 		// The indices of the incident nodes
+#ifdef NEW_CODE
+#pragma message( "[WARNING] Turn these into IndexVector< ChartCombinedCellIndex , ...." )
+		std::vector< BilinearElementIndex< unsigned int > > combinedCellCombinedBilinearElementIndices;
+#else // !NEW_CODE
 		std::vector< BilinearElementIndex > combinedCellCombinedBilinearElementIndices;
+#endif // NEW_CODE
 
 		// For interior cells, the indices of the incident interior nodes
+#ifdef NEW_CODE
+		std::vector< BilinearElementIndex< AtlasCoveredTexelIndex > > interiorCellInteriorBilinearElementIndices;
+#else // !NEW_CODE
 		std::vector< BilinearElementIndex > interiorCellInteriorBilinearElementIndices;
+#endif // NEW_CODE
 
 		// For interior cells, the indices of the incident nodes
+#ifdef NEW_CODE
+		std::vector< BilinearElementIndex< unsigned int > > interiorCellCombinedBilinearElementIndices;
+#else // !NEW_CODE
 		std::vector< BilinearElementIndex > interiorCellCombinedBilinearElementIndices;
+#endif // NEW_CODE
 
 		// Maps converting boundary/interiorl cell indices to combined cell indices
 		std::vector< ChartCombinedCellIndex > interiorCellIndexToCombinedCellIndex;
@@ -608,10 +622,11 @@ namespace MishaK
 		Eigen::SparseMatrix< MatrixReal > coarseToFineNodeProlongation;
 
 		unsigned int numTexels;
-		unsigned int numInteriorTexels;
 #ifdef NEW_CODE
+		AtlasCoveredTexelIndex endCoveredTexelIndex;
 		AtlasInteriorTexelIndex endInteriorTexelIndex;
 #else // !NEW_CODE
+		unsigned int numInteriorTexels;
 		unsigned int numDeepTexels;
 #endif // NEW_CODE
 		unsigned int numBoundaryTexels;

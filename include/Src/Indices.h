@@ -104,7 +104,6 @@ namespace MishaK
 	struct           AtlasInteriorCellIndex : public UnsignedIntIndex<           AtlasInteriorCellIndex >{ using UnsignedIntIndex<           AtlasInteriorCellIndex >::UnsignedIntIndex; };
 	struct           AtlasBoundaryCellIndex : public UnsignedIntIndex<           AtlasBoundaryCellIndex >{ using UnsignedIntIndex<           AtlasBoundaryCellIndex >::UnsignedIntIndex; };
 	struct           AtlasCombinedCellIndex : public UnsignedIntIndex<           AtlasCombinedCellIndex >{ using UnsignedIntIndex<           AtlasCombinedCellIndex >::UnsignedIntIndex; };
-	struct           ChartCoveredTexelIndex : public UnsignedIntIndex<           ChartCoveredTexelIndex >{ using UnsignedIntIndex<           ChartCoveredTexelIndex >::UnsignedIntIndex; };
 	struct          ChartCombinedTexelIndex : public UnsignedIntIndex<          ChartCombinedTexelIndex >{ using UnsignedIntIndex<          ChartCombinedTexelIndex >::UnsignedIntIndex; };
 	struct          AtlasInteriorTexelIndex : public UnsignedIntIndex<          AtlasInteriorTexelIndex >{ using UnsignedIntIndex<          AtlasInteriorTexelIndex >::UnsignedIntIndex; };
 	struct           AtlasCoveredTexelIndex : public UnsignedIntIndex<           AtlasCoveredTexelIndex >{ using UnsignedIntIndex<           AtlasCoveredTexelIndex >::UnsignedIntIndex; };
@@ -131,7 +130,6 @@ namespace MishaK
 	using           AtlasInteriorCellIndex = unsigned int;
 	using           AtlasBoundaryCellIndex = unsigned int;
 	using           AtlasCombinedCellIndex = unsigned int;
-	using           ChartCoveredTexelIndex = unsigned int;
 	using          ChartCombinedTexelIndex = unsigned int;
 	using          AtlasInteriorTexelIndex = unsigned int;
 	using           AtlasCoveredTexelIndex = unsigned int;
