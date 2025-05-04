@@ -914,7 +914,11 @@ void InitializeCoarseBoundaryToFineBoundaryProlongation
 				if( fabs(texelWeight)>1e-11 )
 				{
 					auxiliaryNodesCumWeight[auxiliaryID] += texelWeight;
+#ifdef NEW_CODE
+					unsigned int texelIndex = gridChart.combinedCellCombinedTexelBilinearElementIndices[cellID][k];
+#else // !NEW_CODE
 					unsigned int texelIndex = gridChart.combinedCellCombinedBilinearElementIndices[ static_cast< unsigned int >(cellID) ][k];
+#endif // NEW_CODE
 					if( nodeInfo[texelIndex].texelType==TexelType::InteriorSupported )
 						MK_THROW( "Interior-supported texel cannot be in the support of an auxiliary node. Weight " , texelWeight , " (A)" );
 #ifdef NEW_CODE
@@ -931,8 +935,12 @@ void InitializeCoarseBoundaryToFineBoundaryProlongation
 		}
 	}
 
+#ifdef NEW_CODE
+	coarseBoundaryFineBoundaryProlongation = SetSparseMatrix( prolongationTriplets , numFineBoundaryNodes , static_cast< unsigned int >(gridAtlas.endBoundaryTexelIndex) , false );
+#else // !NEW_CODE
 	int numBoundaryTexels = gridAtlas.numBoundaryTexels;
 	coarseBoundaryFineBoundaryProlongation = SetSparseMatrix( prolongationTriplets , numFineBoundaryNodes , numBoundaryTexels , false );
+#endif // NEW_CODE
 }
 
 template< typename GeometryReal , typename MatrixReal >

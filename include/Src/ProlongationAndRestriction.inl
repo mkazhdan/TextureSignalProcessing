@@ -110,7 +110,7 @@ void InitializeProlongation
 			unsigned int nodeDegree = auxiliaryNodesDegree[auxiliaryID];
 			Point2D< GeometryReal > nodePosition = gridChart.auxiliaryNodes[j].position;
 			int corner[2] = { (int)floor(nodePosition[0] / gridChart.cellSizeW), (int)floor(nodePosition[1] / gridChart.cellSizeH) };
-			ChartCombinedCellIndex cellId = gridChart.cellIndices( corner[0] , corner[1] ).combined;
+			ChartCombinedCellIndex cellID = gridChart.cellIndices( corner[0] , corner[1] ).combined;
 				
 			nodePosition[0] /= gridChart.cellSizeW;
 			nodePosition[1] /= gridChart.cellSizeH;
@@ -124,7 +124,11 @@ void InitializeProlongation
 				if( fabs(texelWeight)>1e-11 )
 				{
 					auxiliaryNodesCumWeight[auxiliaryID] += texelWeight;
-					unsigned int texelIndex = gridChart.combinedCellCombinedBilinearElementIndices[ static_cast< unsigned int >(cellId) ][k];
+#ifdef NEW_CODE
+					unsigned int texelIndex = gridChart.combinedCellCombinedTexelBilinearElementIndices[cellID][k];
+#else // !NEW_CODE
+					unsigned int texelIndex = gridChart.combinedCellCombinedBilinearElementIndices[ static_cast< unsigned int >(cellID) ][k];
+#endif // NEW_CODE
 					if( nodeInfo[texelIndex].texelType==TexelType::InteriorSupported )
 						MK_THROW( "Interior-supported texel cannot be in the support of an auxiliary node. Weight " , texelWeight , " (B)" );
 					coveredNodes.insert(texelIndex);
@@ -469,5 +473,9 @@ void InitializeAtlasHierachicalRestriction
 		}
 	}
 
+#ifdef NEW_CODE
+	boundaryRestriction = SetSparseMatrix( boundaryRestrictionTriplets , static_cast< unsigned int >(coarseAtlas.endBoundaryTexelIndex) , fineAtlas.numTexels , false );
+#else // !NEW_CODE
 	boundaryRestriction = SetSparseMatrix( boundaryRestrictionTriplets , coarseAtlas.numBoundaryTexels , fineAtlas.numTexels , false );
+#endif // NEW_CODE
 }

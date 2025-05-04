@@ -152,7 +152,7 @@ public:
 
 	static HierarchicalSystem< PreReal , Real > hierarchy;
 #ifdef NEW_CODE
-	static std::vector< BilinearElementIndex< unsigned int > > bilinearElementIndices;
+	static IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< unsigned int > > bilinearElementIndices;
 #else // !NEW_CODE
 	static std::vector< BilinearElementIndex > bilinearElementIndices;
 #endif // NEW_CODE
@@ -277,7 +277,7 @@ template< typename PreReal , typename Real > SparseMatrix< Real , int >									
 template< typename PreReal , typename Real > std::vector< TextureNodeInfo< PreReal > >					LineConvolution< PreReal , Real >::textureNodes;
 template< typename PreReal , typename Real > Image< int >												LineConvolution< PreReal , Real >::nodeIndex;
 #ifdef NEW_CODE
-template< typename PreReal , typename Real > std::vector< BilinearElementIndex< unsigned int > >		LineConvolution< PreReal , Real >::bilinearElementIndices;
+template< typename PreReal , typename Real > IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< unsigned int > >	LineConvolution< PreReal , Real >::bilinearElementIndices;
 #else // !NEW_CODE
 template< typename PreReal , typename Real > std::vector< BilinearElementIndex >						LineConvolution< PreReal , Real >::bilinearElementIndices;
 #endif // NEW_CODE

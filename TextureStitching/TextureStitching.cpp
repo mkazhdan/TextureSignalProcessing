@@ -188,7 +188,7 @@ public:
 	static IndexVector< ChartIndex , AtlasChart< PreReal > > atlasCharts;
 
 #ifdef NEW_CODE
-	static std::vector< BilinearElementIndex< unsigned int > > bilinearElementIndices;
+	static IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< unsigned int > > bilinearElementIndices;
 #else // !NEW_CODE
 	static std::vector< BilinearElementIndex > bilinearElementIndices;
 #endif // NEW_CODE
@@ -316,7 +316,7 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth > Real
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< TextureNodeInfo< PreReal > >						Stitching< PreReal , Real , TextureBitDepth >::textureNodes;
 #ifdef NEW_CODE
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< BilinearElementIndex< unsigned int > >				Stitching< PreReal , Real , TextureBitDepth >::bilinearElementIndices;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< unsigned int > >	Stitching< PreReal , Real , TextureBitDepth >::bilinearElementIndices;
 #else // !NEW_CODE
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< BilinearElementIndex >								Stitching< PreReal , Real , TextureBitDepth >::bilinearElementIndices;
 #endif // NEW_CODE

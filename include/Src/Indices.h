@@ -69,6 +69,19 @@ namespace MishaK
 			Data & operator[]( const T & t ){ return std::vector< Data >::operator[]( static_cast< unsigned int >(t) ); }
 			const Data & operator[]( const T &t ) const { return std::vector< Data >::operator[]( static_cast< unsigned int >(t) ); }
 
+#ifdef NEW_CODE
+			typename std::vector< Data >::iterator begin( void ){ return std::vector< Data >::begin(); }
+			typename std::vector< Data >::iterator end( void ){ return std::vector< Data >::end(); }
+			typename std::vector< Data >::const_iterator begin( void ) const { return std::vector< Data >::begin(); }
+			typename std::vector< Data >::const_iterator end( void ) const { return std::vector< Data >::end(); }
+
+			template< class ... Args >
+			void emplace_back( Args && ... args ){ std::vector< Data >::emplace_back( std::forward< Args >(args) ... ); }
+
+			template< class InputIt >
+			typename std::vector< Data >::iterator insert( typename std::vector< Data >::const_iterator pos , InputIt first , InputIt last ){ return std::vector< Data >::insert( pos , first , last ); }
+#endif // NEW_CODE
+
 			explicit operator const std::vector< Data > & () const { return *this; }
 			explicit operator       std::vector< Data > & ()       { return *this; }
 		};
@@ -108,6 +121,7 @@ namespace MishaK
 	struct          AtlasInteriorTexelIndex : public UnsignedIntIndex<          AtlasInteriorTexelIndex >{ using UnsignedIntIndex<          AtlasInteriorTexelIndex >::UnsignedIntIndex; };
 	struct           AtlasCoveredTexelIndex : public UnsignedIntIndex<           AtlasCoveredTexelIndex >{ using UnsignedIntIndex<           AtlasCoveredTexelIndex >::UnsignedIntIndex; };
 	struct          AtlasCombinedTexelIndex : public UnsignedIntIndex<          AtlasCombinedTexelIndex >{ using UnsignedIntIndex<          AtlasCombinedTexelIndex >::UnsignedIntIndex; };
+	struct          AtlasBoundaryTexelIndex : public UnsignedIntIndex<          AtlasBoundaryTexelIndex >{ using UnsignedIntIndex<          AtlasBoundaryTexelIndex >::UnsignedIntIndex; };
 
 #else // !DEBUG_INDEXING
 	template< typename T , typename Data >
@@ -134,6 +148,7 @@ namespace MishaK
 	using          AtlasInteriorTexelIndex = unsigned int;
 	using           AtlasCoveredTexelIndex = unsigned int;
 	using          AtlasCombinedTexelIndex = unsigned int;
+	using          AtlasBoundaryTexelIndex = unsigned int;
 #endif // DEBUG_INDEXING
 
 	struct AtlasGridOrMeshEdgeIndex

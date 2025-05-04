@@ -279,8 +279,8 @@ void UpdateMultigridCoefficients( const HierarchicalSystem< GeometryReal , Matri
 #ifdef NEW_CODE
 #else // !NEW_CODE
 		int numDeepTexels = gridAtlas.numDeepTexels;
-#endif // NEW_CODE
 		int numBoundaryTexels = gridAtlas.numBoundaryTexels;
+#endif // NEW_CODE
 
 		const SystemCoefficients< MatrixReal > &fineCoefficients = multigridCoefficients[i-1];
 		SystemCoefficients< MatrixReal > &coarseCoefficients = multigridCoefficients[i];
@@ -297,12 +297,20 @@ void UpdateMultigridCoefficients( const HierarchicalSystem< GeometryReal , Matri
 
 		// Boundary Deep Matrix
 		if( verbose ) timer.reset();
+#ifdef NEW_CODE
+		BoundaryDeepMatrixConstruction( static_cast< unsigned int >(gridAtlas.endBoundaryTexelIndex) , numTexels , coarseCoefficients.deepCoefficients , hierarchy.boundaryDeepIndices[i] , coarseCoefficients.boundaryDeepMatrix );
+#else // !NEW_CODE
 		BoundaryDeepMatrixConstruction( numBoundaryTexels , numTexels , coarseCoefficients.deepCoefficients , hierarchy.boundaryDeepIndices[i] , coarseCoefficients.boundaryDeepMatrix );
+#endif // NEW_CODE
 		if( verbose ) printf( "Boundary Deep Restriction %d  =  %.4f \n" , i , timer.elapsed() );
 
 		// Boundary Boundary Matrix
 		if( verbose ) timer.reset();
+#ifdef NEW_CODE
+		BoundaryBoundaryMatrixConstruction( static_cast< unsigned int >(gridAtlas.endBoundaryTexelIndex) , fineCoefficients.deepCoefficients , fineCoefficients.boundaryBoundaryMatrix , hierarchy.boundaryCoarseFineProlongation[i] , hierarchy.boundaryFineCoarseRestriction[i-1] , hierarchy.boundaryBoundaryIndices[i] , coarseCoefficients.boundaryBoundaryMatrix );
+#else // !NEW_CODE
 		BoundaryBoundaryMatrixConstruction( numBoundaryTexels , fineCoefficients.deepCoefficients , fineCoefficients.boundaryBoundaryMatrix , hierarchy.boundaryCoarseFineProlongation[i] , hierarchy.boundaryFineCoarseRestriction[i-1] , hierarchy.boundaryBoundaryIndices[i] , coarseCoefficients.boundaryBoundaryMatrix );
+#endif // NEW_CODE
 		if( verbose ) printf( "Boundary Boundary Restriction %d  =  %.4f \n" , i , timer.elapsed() );
 
 		if( i==(levels-1) )	FullMatrixConstruction( gridAtlas , coarseCoefficients , coarseSystemMatrix );

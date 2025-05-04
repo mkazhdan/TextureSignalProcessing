@@ -134,7 +134,7 @@ public:
 	static HierarchicalSystem< PreReal , Real > hierarchy;
 
 #ifdef NEW_CODE
-	static std::vector< BilinearElementIndex< unsigned int > > bilinearElementIndices;
+	static IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< unsigned int > > bilinearElementIndices;
 #else // !NEW_CODE
 	static std::vector< BilinearElementIndex > bilinearElementIndices;
 #endif // NEW_CODE
@@ -191,7 +191,11 @@ public:
 	//Samples
 	static GradientElementSamples< Real > gradientSamples;
 	static std::vector<InteriorCellLine> interiorCellLines;
+#ifdef NEW_CODE
+	static IndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > > interiorCellLineIndex;
+#else // !NEW_CODE
 	static std::vector< std::pair< unsigned int , unsigned int > > interiorCellLineIndex;
+#endif // NEW_CODE
 
 	static unsigned char * outputBuffer;
 
@@ -243,7 +247,7 @@ template< typename PreReal , typename Real > Real															Geodesics< PreRe
 template< typename PreReal , typename Real > std::vector< TextureNodeInfo< PreReal > >						Geodesics< PreReal , Real >::textureNodes;
 template< typename PreReal , typename Real > Image<int>														Geodesics< PreReal , Real >::nodeIndex;
 #ifdef NEW_CODE
-template< typename PreReal , typename Real > std::vector< BilinearElementIndex< unsigned int > >			Geodesics< PreReal , Real >::bilinearElementIndices;
+template< typename PreReal , typename Real > IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< unsigned int > >	Geodesics< PreReal , Real >::bilinearElementIndices;
 #else // !NEW_CODE
 template< typename PreReal , typename Real > std::vector< BilinearElementIndex >							Geodesics< PreReal , Real >::bilinearElementIndices;
 #endif // NEW_CODE
@@ -273,7 +277,11 @@ template< typename PreReal , typename Real > typename Geodesics< PreReal , Real 
 //Samples
 template< typename PreReal , typename Real > GradientElementSamples< Real >									Geodesics< PreReal , Real >::gradientSamples;
 template< typename PreReal , typename Real > std::vector<InteriorCellLine>									Geodesics< PreReal , Real >::interiorCellLines;
+#ifdef NEW_CODE
+template< typename PreReal , typename Real > IndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > >	Geodesics< PreReal , Real >::interiorCellLineIndex;
+#else // !NEW_CODE
 template< typename PreReal , typename Real > std::vector< std::pair< unsigned int , unsigned int > >		Geodesics< PreReal , Real >::interiorCellLineIndex;
+#endif // NEW_CODE
 
 template< typename PreReal , typename Real > unsigned int													Geodesics< PreReal , Real >::impulseTexel = static_cast< unsigned int >(-1);
 template< typename PreReal , typename Real > std::vector<Point3D< float > >									Geodesics< PreReal , Real >::textureNodePositions;
@@ -697,8 +705,13 @@ void Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 //////////////////////////////////// Initialize cell samples
 
 	InitializeGridAtlasInteriorCellLines( hierarchy.gridAtlases[0].gridCharts , interiorCellLines , interiorCellLineIndex );
+#ifdef NEW_CODE
+	if( interiorCellLineIndex.size()!=static_cast< unsigned int >(hierarchy.gridAtlases[0].endInteriorCellIndex) )
+		MK_THROW( "Inconsistent number of interior cells: " , static_cast< unsigned int >(hierarchy.gridAtlases[0].endInteriorCellIndex) , " != " , interiorCellLineIndex.size() );
+#else // !NEW_CODE
 	if( interiorCellLineIndex.size()!=hierarchy.gridAtlases[0].numInteriorCells )
 		MK_THROW( "Inconsistent number of interior cells: " , hierarchy.gridAtlases[0].numInteriorCells , " != " , interiorCellLineIndex.size() );
+#endif // NEW_CODE
 	if( Verbose.set ) std::cout << pMeter( "Cell samples" ) << std::endl;
 
 	coarseBoundaryFineBoundaryProlongation = boundaryProlongation.coarseBoundaryFineBoundaryProlongation;

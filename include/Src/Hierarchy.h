@@ -509,22 +509,21 @@ namespace MishaK
 
 		// The indices of the incident nodes
 #ifdef NEW_CODE
-#pragma message( "[WARNING] Turn these into IndexVector< ChartCombinedCellIndex , ...." )
-		std::vector< BilinearElementIndex< unsigned int > > combinedCellCombinedBilinearElementIndices;
+		IndexVector< ChartCombinedCellIndex , BilinearElementIndex< unsigned int > > combinedCellCombinedTexelBilinearElementIndices;
 #else // !NEW_CODE
 		std::vector< BilinearElementIndex > combinedCellCombinedBilinearElementIndices;
 #endif // NEW_CODE
 
 		// For interior cells, the indices of the incident interior nodes
 #ifdef NEW_CODE
-		std::vector< BilinearElementIndex< AtlasCoveredTexelIndex > > interiorCellInteriorBilinearElementIndices;
+		IndexVector< ChartInteriorCellIndex , BilinearElementIndex< AtlasCoveredTexelIndex > > interiorCellCoveredTexelBilinearElementIndices;
 #else // !NEW_CODE
 		std::vector< BilinearElementIndex > interiorCellInteriorBilinearElementIndices;
 #endif // NEW_CODE
 
 		// For interior cells, the indices of the incident nodes
 #ifdef NEW_CODE
-		std::vector< BilinearElementIndex< unsigned int > > interiorCellCombinedBilinearElementIndices;
+		IndexVector< ChartInteriorCellIndex , BilinearElementIndex< unsigned int > > interiorCellCombinedTexelBilinearElementIndices;
 #else // !NEW_CODE
 		std::vector< BilinearElementIndex > interiorCellCombinedBilinearElementIndices;
 #endif // NEW_CODE
@@ -625,14 +624,18 @@ namespace MishaK
 #ifdef NEW_CODE
 		AtlasCoveredTexelIndex endCoveredTexelIndex;
 		AtlasInteriorTexelIndex endInteriorTexelIndex;
+		AtlasBoundaryTexelIndex endBoundaryTexelIndex;
+		AtlasCombinedCellIndex endCombinedCellIndex;
+		AtlasBoundaryCellIndex endBoundaryCellIndex;
+		AtlasInteriorCellIndex endInteriorCellIndex;
 #else // !NEW_CODE
 		unsigned int numInteriorTexels;
 		unsigned int numDeepTexels;
-#endif // NEW_CODE
 		unsigned int numBoundaryTexels;
 		unsigned int numCells;
 		unsigned int numBoundaryCells;
 		unsigned int numInteriorCells;
+#endif // NEW_CODE
 		unsigned int numBoundaryNodes;
 		unsigned int numMidPoints;
 		unsigned int numFineNodes;

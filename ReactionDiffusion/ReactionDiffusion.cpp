@@ -165,7 +165,7 @@ public:
 	static HierarchicalSystem< PreReal , Real > hierarchy;
 
 #ifdef NEW_CODE
-	static std::vector< BilinearElementIndex< unsigned int > > bilinearElementIndices;
+	static IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< unsigned int > > bilinearElementIndices;
 #else // !NEW_CODE
 	static std::vector< BilinearElementIndex > bilinearElementIndices;
 #endif // NEW_CODE
@@ -210,7 +210,12 @@ public:
 	//Samples
 	static ScalarElementSamples< Real > scalarSamples;
 	static std::vector< InteriorCellLine > interiorCellLines;
+
+#ifdef NEW_CODE
+	static IndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > > interiorCellLineIndex;
+#else // !NEW_CODE
 	static std::vector< std::pair< unsigned int , unsigned int > > interiorCellLineIndex;
+#endif // NEW_CODE
 
 	//Linear Operators
 	static SystemCoefficients< Real > massCoefficients;
@@ -276,7 +281,7 @@ template< typename PreReal , typename Real > Real																	GrayScottReact
 template< typename PreReal , typename Real > std::vector< TextureNodeInfo< PreReal > >								GrayScottReactionDiffusion< PreReal , Real >::textureNodes;
 template< typename PreReal , typename Real > Image< int >															GrayScottReactionDiffusion< PreReal , Real >::nodeIndex;
 #ifdef NEW_CODE
-template< typename PreReal , typename Real > std::vector< BilinearElementIndex< unsigned int > >					GrayScottReactionDiffusion< PreReal , Real >::bilinearElementIndices;
+template< typename PreReal , typename Real > IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< unsigned int > >	GrayScottReactionDiffusion< PreReal , Real >::bilinearElementIndices;
 #else // !NEW_CODE
 template< typename PreReal , typename Real > std::vector< BilinearElementIndex >									GrayScottReactionDiffusion< PreReal , Real >::bilinearElementIndices;
 #endif // NEW_CODE
@@ -299,7 +304,11 @@ template< typename PreReal , typename Real > typename GrayScottReactionDiffusion
 //Samples
 template< typename PreReal , typename Real > ScalarElementSamples< Real >											GrayScottReactionDiffusion< PreReal , Real >::scalarSamples;
 template< typename PreReal , typename Real > std::vector< InteriorCellLine >										GrayScottReactionDiffusion< PreReal , Real >::interiorCellLines;
+#ifdef NEW_CODE
+template< typename PreReal , typename Real > IndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > >	GrayScottReactionDiffusion< PreReal , Real >::interiorCellLineIndex;
+#else // !NEW_CODE
 template< typename PreReal , typename Real > std::vector< std::pair< unsigned int , unsigned int > >				GrayScottReactionDiffusion< PreReal , Real >::interiorCellLineIndex;
+#endif // NEW_CODE
 
 template< typename PreReal , typename Real > unsigned int															GrayScottReactionDiffusion< PreReal , Real >::seedTexel = -1;
 template< typename PreReal , typename Real > std::vector< Point3D< float > >										GrayScottReactionDiffusion< PreReal , Real >::textureNodePositions;
@@ -731,7 +740,11 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 	//////////////////////////////////// Initialize cell samples
 
 	InitializeGridAtlasInteriorCellLines( hierarchy.gridAtlases[0].gridCharts , interiorCellLines , interiorCellLineIndex );
+#ifdef NEW_CODE
+	if( interiorCellLineIndex.size()!=static_cast< unsigned int >(hierarchy.gridAtlases[0].endInteriorCellIndex) ) MK_THROW( "Inconsistent number of interior cells! Expected " , hierarchy.gridAtlases[0].endInteriorCellIndex , " . Result " , interiorCellLineIndex.size() , "." );
+#else // !NEW_CODE
 	if( interiorCellLineIndex.size()!=hierarchy.gridAtlases[0].numInteriorCells ) MK_THROW( "Inconsistent number of interior cells! Expected " , hierarchy.gridAtlases[0].numInteriorCells , " . Result " , interiorCellLineIndex.size() , "." );
+#endif // NEW_CODE
 
 	coarseBoundaryFineBoundaryProlongation = boundaryProlongation.coarseBoundaryFineBoundaryProlongation;
 	fineBoundaryCoarseBoundaryRestriction = boundaryProlongation.fineBoundaryCoarseBoundaryRestriction;

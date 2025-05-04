@@ -27,12 +27,12 @@ DAMAGE.
 */
 
 // To do:
+// -- "combined" -> ""
 // -- AtlasInteriorOrBoundaryNodeIndex -> AtlasCoveredOrBoundaryNodeIndex
-// -- interiorCellInteriorBilinearElementIndices -> interiorCellCoveredTexelBilinearElementIndices
 // 1. Modify code to distinguish between grid-based indexing and normalized coordinates
 // 2. Add index types for cells/texels
 // 3. Add index/key types to distinguish atlas/chart grid indices
-// 4. Change GetTriangleIntegerBBox/GetEdgeIntegerBBox to return Range (requires disabling USE_RASERIZER)
+// 4. Change GetTriangleIntegerBBox/GetEdgeIntegerBBox to return Range (requires disabling USE_RASTERIZER)
 #ifndef PRE_PROCESSING_INCLUDED
 #define PRE_PROCESSING_INCLUDED
 

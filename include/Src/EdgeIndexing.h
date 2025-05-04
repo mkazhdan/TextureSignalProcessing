@@ -56,10 +56,14 @@ namespace MishaK
 		//		1  
 		//		|  
 
+#ifdef NEW_CODE
+		for( unsigned int i=0 ; i<gridChart.combinedCellCombinedTexelBilinearElementIndices.size() ; i++ )
+#else // !NEW_CODE
 		for( int i=0 ; i<gridChart.combinedCellCombinedBilinearElementIndices.size() ; i++ )
+#endif // NEW_CODE
 		{
 #ifdef NEW_CODE
-			const BilinearElementIndex< unsigned int > & indices = gridChart.combinedCellCombinedBilinearElementIndices[i];
+			const BilinearElementIndex< unsigned int > & indices = gridChart.combinedCellCombinedTexelBilinearElementIndices[ ChartCombinedCellIndex(i) ];
 #else // !NEW_CODE
 			const BilinearElementIndex & indices = gridChart.combinedCellCombinedBilinearElementIndices[i];
 #endif // NEW_CODE

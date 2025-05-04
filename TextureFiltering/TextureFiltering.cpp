@@ -202,18 +202,18 @@ public:
 	static char interpolationStr[1024];
 #endif // NO_OPEN_GL_VISUALIZATION
 
-	static std::vector<Real> uniformTexelModulationMask;
-	static std::vector<Real> cellModulationMask;
-	static std::vector<Real> uniformCellModulationMask;
-	static std::vector<Real> texelStiffness[3];
+	static std::vector< Real > uniformTexelModulationMask;
+	static std::vector< Real > cellModulationMask;
+	static std::vector< Real > uniformCellModulationMask;
+	static std::vector< Real > texelStiffness[3];
 
 	static std::vector< Point3D< float > > cellCenterPositions;
-	static std::vector< Point3D< float> >textureNodePositions;
+	static std::vector< Point3D< float > > textureNodePositions;
 
 	static IndexVector< ChartIndex , AtlasChart< PreReal > > atlasCharts;
 
 #ifdef NEW_CODE
-	static std::vector< BilinearElementIndex< unsigned int > > bilinearElementIndices;
+	static IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< unsigned int > > bilinearElementIndices;
 #else // !NEW_CODE
 	static std::vector< BilinearElementIndex > bilinearElementIndices;
 #endif // NEW_CODE
@@ -328,7 +328,7 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth > Real
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< TextureNodeInfo< PreReal > >							TextureFilter< PreReal , Real , TextureBitDepth >::textureNodes;
 #ifdef NEW_CODE
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< BilinearElementIndex< unsigned int > >					TextureFilter< PreReal , Real , TextureBitDepth >::bilinearElementIndices;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< unsigned int > >	TextureFilter< PreReal , Real , TextureBitDepth >::bilinearElementIndices;
 #else // !NEW_CODE
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< BilinearElementIndex >									TextureFilter< PreReal , Real , TextureBitDepth >::bilinearElementIndices;
 #endif // NEW_CODE
@@ -1102,7 +1102,7 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::Init( void )
 		}
 	}
 
-	textureNodePositions.resize(textureNodes.size());
+	textureNodePositions.resize( textureNodes.size() );
 	for( int i=0 ; i<textureNodePositions.size() ; i++ ) textureNodePositions[i] = mesh.surface( textureNodes[i] );
 
 	uniformTexelModulationMask.resize( textureNodes.size() , 0.5 );
@@ -1116,10 +1116,17 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::Init( void )
 	for( int i=0 ; i<bilinearElementIndices.size() ; i++ )
 		cellCenterPositions[i] = Point3D< float >
 		(
+#ifdef NEW_CODE
+			textureNodePositions[ bilinearElementIndices[ AtlasCombinedCellIndex(i) ][0] ] +
+			textureNodePositions[ bilinearElementIndices[ AtlasCombinedCellIndex(i) ][1] ] +
+			textureNodePositions[ bilinearElementIndices[ AtlasCombinedCellIndex(i) ][2] ] +
+			textureNodePositions[ bilinearElementIndices[ AtlasCombinedCellIndex(i) ][3] ]
+#else // !NEW_CODE
 			textureNodePositions[ bilinearElementIndices[i][0] ] +
 			textureNodePositions[ bilinearElementIndices[i][1] ] +
 			textureNodePositions[ bilinearElementIndices[i][2] ] +
 			textureNodePositions[ bilinearElementIndices[i][3] ]
+#endif // NEW_CODE
 		) / 4.f;
 
 	if( true )

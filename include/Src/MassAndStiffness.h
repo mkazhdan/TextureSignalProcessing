@@ -820,11 +820,15 @@ namespace MishaK
 		//      +-10-+-11-+
 
 		auto NeighbourOffset = [&]( int k , int l ){ return ( offset_j[l] - offset_j[k] + 1 ) * 3 + ( offset_i[l] - offset_i[k] + 1 ); };
+#ifdef NEW_CODE
+		for( unsigned int i=0 ; i<gridChart.interiorCellCoveredTexelBilinearElementIndices.size() ; i++ )
+#else // !NEW_CODE
 		for( int i=0 ; i<gridChart.interiorCellInteriorBilinearElementIndices.size() ; i++ )
+#endif // NEW_CODE
 		{
 #ifdef NEW_CODE
-			const BilinearElementIndex< unsigned int > & indicesGlobal   = gridChart.interiorCellCombinedBilinearElementIndices[i];
-			const BilinearElementIndex< AtlasCoveredTexelIndex > & indicesInterior = gridChart.interiorCellInteriorBilinearElementIndices[i];
+			const BilinearElementIndex< unsigned int > & indicesGlobal = gridChart.interiorCellCombinedTexelBilinearElementIndices[ ChartInteriorCellIndex(i) ];
+			const BilinearElementIndex< AtlasCoveredTexelIndex > & indicesInterior = gridChart.interiorCellCoveredTexelBilinearElementIndices[ ChartInteriorCellIndex(i) ];
 #else // !NEW_CODE
 			const BilinearElementIndex & indicesGlobal   = gridChart.interiorCellCombinedBilinearElementIndices[i];
 			const BilinearElementIndex & indicesInterior = gridChart.interiorCellInteriorBilinearElementIndices[i];
@@ -1091,11 +1095,19 @@ namespace MishaK
 		MergeTriplets( _boundaryBoundaryDivergenceTriplets , boundaryBoundaryDivergenceTriplets );
 
 		int numTexels = gridAtlas.numTexels;
+#ifdef NEW_CODE
+#else // !NEW_CODE
 		int numBoundaryTexels = gridAtlas.numBoundaryTexels;
+#endif // NEW_CODE
 		boundaryBoundaryMassMatrix      = SetSparseMatrix( boundaryBoundaryMassTriplets , numFineBoundaryNodes , numFineBoundaryNodes , true );
 		boundaryBoundaryStiffnessMatrix = SetSparseMatrix( boundaryBoundaryStiffnessTriplets , numFineBoundaryNodes , numFineBoundaryNodes , true );
+#ifdef NEW_CODE
+		boundaryDeepMassMatrix          = SetSparseMatrix( boundaryDeepMassTriplets , static_cast< unsigned int >(gridAtlas.endBoundaryTexelIndex) , numTexels , false );
+		boundaryDeepStiffnessMatrix     = SetSparseMatrix( boundaryDeepStiffnessTriplets , static_cast< unsigned int >(gridAtlas.endBoundaryTexelIndex) , numTexels , false );
+#else // !NEW_CODE
 		boundaryDeepMassMatrix          = SetSparseMatrix( boundaryDeepMassTriplets , numBoundaryTexels , numTexels , false );
 		boundaryDeepStiffnessMatrix     = SetSparseMatrix( boundaryDeepStiffnessTriplets , numBoundaryTexels , numTexels , false );
+#endif // NEW_CODE
 
 		if( computeCellBasedStiffness )
 		{
@@ -1107,7 +1119,11 @@ namespace MishaK
 			{
 				for( int i=0 , idx=0 ; i<_boundaryCellStiffnessTriplets.size() ; i++ ) for( int j=0 ; j<_boundaryCellStiffnessTriplets[i].size() ; j++ , idx++ )
 					boundaryCellStiffnessTriplets[idx] = Eigen::Triplet< MatrixReal >( _boundaryCellStiffnessTriplets[i][j].row() , _boundaryCellStiffnessTriplets[i][j].col() , _boundaryCellStiffnessTriplets[i][j].value()[c] );
+#ifdef NEW_CODE
+				boundaryCellBasedStiffnessRHSMatrix[c] = SetSparseMatrix( boundaryCellStiffnessTriplets , numFineBoundaryNodes , static_cast< unsigned int >(gridAtlas.endCombinedCellIndex) , false );
+#else // !NEW_CODE
 				boundaryCellBasedStiffnessRHSMatrix[c] = SetSparseMatrix( boundaryCellStiffnessTriplets , numFineBoundaryNodes , gridAtlas.numCells , false );
+#endif // NEW_CODE
 			}
 		}
 	}
