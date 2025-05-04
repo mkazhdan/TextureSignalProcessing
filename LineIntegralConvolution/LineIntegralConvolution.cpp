@@ -152,9 +152,9 @@ public:
 
 	static HierarchicalSystem< PreReal , Real > hierarchy;
 #ifdef NEW_CODE
-	static IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< unsigned int > > bilinearElementIndices;
+	static IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > > bilinearElementIndices;
 #else // !NEW_CODE
-	static std::vector< BilinearElementIndex > bilinearElementIndices;
+	static IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< unsigned int > > bilinearElementIndices;
 #endif // NEW_CODE
 
 	static std::vector< TextureNodeInfo< PreReal > > textureNodes;
@@ -277,9 +277,9 @@ template< typename PreReal , typename Real > SparseMatrix< Real , int >									
 template< typename PreReal , typename Real > std::vector< TextureNodeInfo< PreReal > >					LineConvolution< PreReal , Real >::textureNodes;
 template< typename PreReal , typename Real > Image< int >												LineConvolution< PreReal , Real >::nodeIndex;
 #ifdef NEW_CODE
-template< typename PreReal , typename Real > IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< unsigned int > >	LineConvolution< PreReal , Real >::bilinearElementIndices;
+template< typename PreReal , typename Real > IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > >	LineConvolution< PreReal , Real >::bilinearElementIndices;
 #else // !NEW_CODE
-template< typename PreReal , typename Real > std::vector< BilinearElementIndex >						LineConvolution< PreReal , Real >::bilinearElementIndices;
+template< typename PreReal , typename Real > IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< unsigned int > >	LineConvolution< PreReal , Real >::bilinearElementIndices;
 #endif // NEW_CODE
 
 template< typename PreReal , typename Real > int														LineConvolution< PreReal , Real >::steps;
@@ -558,7 +558,11 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 	{
 		const GridAtlas< PreReal , Real > &gridAtlas = hierarchy.gridAtlases[i];
 		multigridIndices[i].threadTasks = gridAtlas.threadTasks;
+#ifdef NEW_CODE
+		multigridIndices[i].boundaryToCombined = gridAtlas.indexConverter.boundaryToCombined();
+#else // !NEW_CODE
 		multigridIndices[i].boundaryToSupported = gridAtlas.indexConverter.boundaryToSupported();
+#endif // NEW_CODE
 		multigridIndices[i].segmentedLines = gridAtlas.segmentedLines;
 		multigridIndices[i].rasterLines = gridAtlas.rasterLines;
 		multigridIndices[i].restrictionLines = gridAtlas.restrictionLines;
@@ -848,9 +852,15 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 	{
 		const typename GridAtlas<>::IndexConverter & indexConverter = hierarchy.gridAtlases[i].indexConverter;
 		MultigridLevelVariables< Point3D< Real > >& variables = multigridLineConvolutionVariables[i];
+#ifdef NEW_CODE
+		variables.x.resize( static_cast< unsigned int >(hierarchy.gridAtlases[i].endCombinedTexelIndex) );
+		variables.rhs.resize( static_cast< unsigned int >(hierarchy.gridAtlases[i].endCombinedTexelIndex) );
+		variables.residual.resize( static_cast< unsigned int >(hierarchy.gridAtlases[i].endCombinedTexelIndex) );
+#else // !NEW_CODE
 		variables.x.resize(hierarchy.gridAtlases[i].numTexels);
 		variables.rhs.resize(hierarchy.gridAtlases[i].numTexels);
 		variables.residual.resize(hierarchy.gridAtlases[i].numTexels);
+#endif // NEW_CODE
 		variables.boundary_rhs.resize( indexConverter.numBoundary() );
 		variables.boundary_value.resize( indexConverter.numBoundary() );
 		variables.variable_boundary_value.resize( indexConverter.numBoundary() );
@@ -861,9 +871,15 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 	{
 		const typename GridAtlas<>::IndexConverter & indexConverter = hierarchy.gridAtlases[i].indexConverter;
 		MultigridLevelVariables< Point3D< Real > >& variables = multigridModulationVariables[i];
+#ifdef NEW_CODE
+		variables.x.resize( static_cast< unsigned int >(hierarchy.gridAtlases[i].endCombinedTexelIndex) );
+		variables.rhs.resize( static_cast< unsigned int >(hierarchy.gridAtlases[i].endCombinedTexelIndex) );
+		variables.residual.resize( static_cast< unsigned int >(hierarchy.gridAtlases[i].endCombinedTexelIndex) );
+#else // !NEW_CODE
 		variables.x.resize(hierarchy.gridAtlases[i].numTexels);
 		variables.rhs.resize(hierarchy.gridAtlases[i].numTexels);
 		variables.residual.resize(hierarchy.gridAtlases[i].numTexels);
+#endif // NEW_CODE
 		variables.boundary_rhs.resize( indexConverter.numBoundary() );
 		variables.boundary_value.resize( indexConverter.numBoundary() );
 		variables.variable_boundary_value.resize( indexConverter.numBoundary() );

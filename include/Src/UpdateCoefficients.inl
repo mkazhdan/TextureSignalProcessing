@@ -36,17 +36,10 @@ void DeepCoefficientRestriction( const std::vector< Real >& fineDeepCoefficients
 {
 	auto UpdateRow = [&]( int r )
 	{
-#ifdef NEW_CODE
 			const Real * prevLineCoeff = fineDeepCoefficients.data() + static_cast< unsigned int >(deepLines[r].finePrevLineIndex) * 10;
 			const Real * currentLineCoeff = fineDeepCoefficients.data() + static_cast< unsigned int >(deepLines[r].fineCurrentLineIndex) * 10;
 			const Real * nextLineCoeff = fineDeepCoefficients.data() + static_cast< unsigned int >(deepLines[r].fineNextLineIndex) * 10;
 			Real * coarseLineCoeff = coarseDeepCoefficients.data() + static_cast< unsigned int >(deepLines[r].coarseLineStartIndex) * 10;
-#else // !NEW_CODE
-			const Real * prevLineCoeff = fineDeepCoefficients.data() + deepLines[r].finePrevLineIndex * 10;
-			const Real * currentLineCoeff = fineDeepCoefficients.data() + deepLines[r].fineCurrentLineIndex * 10;
-			const Real * nextLineCoeff = fineDeepCoefficients.data() + deepLines[r].fineNextLineIndex * 10;
-			Real * coarseLineCoeff = coarseDeepCoefficients.data() + deepLines[r].coarseLineStartIndex * 10;
-#endif // NEW_CODE
 
 		int lineLength = deepLines[r].coarseLineEndIndex - deepLines[r].coarseLineStartIndex + 1;
 
@@ -132,6 +125,15 @@ void DeepCoefficientRestriction( const std::vector< Real >& fineDeepCoefficients
 template< typename MatrixReal >
 void BoundaryDeepMatrixConstruction( int numBoundaryTexels , int numTexels , const std::vector< MatrixReal > &deepCoefficients , const std::vector< BoundaryDeepIndex > &boundaryDeepIndices , SparseMatrix< MatrixReal , int > &boundaryDeepMatrix )
 {
+#ifdef NEW_CODE
+	std::vector< Eigen::Triplet< MatrixReal > > boundaryInteriorTriplets;
+	for( int i=0 ; i<boundaryDeepIndices.size() ; i++ )
+	{
+		boundaryInteriorTriplets.push_back( Eigen::Triplet< MatrixReal >( boundaryDeepIndices[i].boundaryIndex , static_cast< unsigned int >(boundaryDeepIndices[i].deepGlobalIndex) , deepCoefficients[ 10*static_cast< unsigned int >(boundaryDeepIndices[i].interiorIndex) + boundaryDeepIndices[i].offset ] ) );
+		//NOTE: Deep coefficient is not multiplied by reciprocal yet.
+	}
+	boundaryDeepMatrix = SetSparseMatrix( boundaryInteriorTriplets , numBoundaryTexels , numTexels , false );
+#else // !NEW_CODE
 	std::vector< Eigen::Triplet< MatrixReal > > boundaryDeepTriplets;
 	for( int i=0 ; i<boundaryDeepIndices.size() ; i++ )
 	{
@@ -139,6 +141,7 @@ void BoundaryDeepMatrixConstruction( int numBoundaryTexels , int numTexels , con
 		//NOTE: Deep coefficient is not multiplied by reciprocal yet.
 	}
 	boundaryDeepMatrix = SetSparseMatrix( boundaryDeepTriplets , numBoundaryTexels , numTexels , false );
+#endif // NEW_CODE
 }
 
 template< typename MatrixReal >
@@ -155,7 +158,11 @@ void BoundaryBoundaryMatrixConstruction( int numBoundaryTexels , const std::vect
 	std::vector< Eigen::Triplet< MatrixReal > > boundaryBoundaryTriplets;
 	for( int i=0 ; i<boundaryBoundaryIndices.size() ; i++ )
 	{
+#ifdef NEW_CODE
+		boundaryBoundaryTriplets.push_back( Eigen::Triplet< MatrixReal >( boundaryBoundaryIndices[i].coarsePrincipalBoundaryIndex , static_cast< unsigned int >(boundaryBoundaryIndices[i].coarseSecondaryBoundaryIndex) , fineDeepCoefficients[ static_cast< unsigned int >(boundaryBoundaryIndices[i].fineInteriorIndex)*10 + boundaryBoundaryIndices[i].offset ] * boundaryBoundaryIndices[i].weight ) );
+#else // !NEW_CODE
 		boundaryBoundaryTriplets.push_back( Eigen::Triplet< MatrixReal >( boundaryBoundaryIndices[i].coarsePrincipalBoundaryIndex , boundaryBoundaryIndices[i].coarseSecondaryBoundaryIndex , fineDeepCoefficients[ boundaryBoundaryIndices[i].fineDeepIndex*10 + boundaryBoundaryIndices[i].offset ] * boundaryBoundaryIndices[i].weight ) );
+#endif // NEW_CODE
 		//NOTE: Deep coefficient is not multiplied by reciprocal yet.
 	}
 	if( verbose ) printf( "\t Triplets  =  %.4f\n" , timer.elapsed() );
@@ -172,22 +179,51 @@ void BoundaryBoundaryMatrixConstruction( int numBoundaryTexels , const std::vect
 template< typename GeometryReal , typename MatrixReal >
 void FullMatrixConstruction( const GridAtlas< GeometryReal , MatrixReal > &gridAtlas , const SystemCoefficients< MatrixReal > &systemCoefficients , SparseMatrix< MatrixReal , int > &fullMatrix )
 {
+#ifdef NEW_CODE
+	fullMatrix.resize( static_cast< unsigned int >(gridAtlas.endCombinedTexelIndex) );
+#else // !NEW_CODE
 	unsigned int numTexels = gridAtlas.numTexels;
 	fullMatrix.resize( numTexels );
+#endif // NEW_CODE
 	const typename GridAtlas<>::IndexConverter & indexConverter = gridAtlas.indexConverter;
 
 	//Add deep triplets
 	//Initalization deep
+#ifdef NEW_CODE
+	for( unsigned int i=0 ; i<indexConverter.numInterior() ; i++ ) fullMatrix.SetRowSize( static_cast< unsigned int >( indexConverter.interiorToCombined( AtlasInteriorTexelIndex(i) ) ) , 9 );
+#else // !NEW_CODE
 	for( unsigned int i=0 ; i<indexConverter.numDeep() ; i++ ) fullMatrix.SetRowSize( indexConverter.deepToSupported(i) , 9 );
+#endif // NEW_CODE
 
 	const std::vector<RasterLine> & rasterLines = gridAtlas.rasterLines;
-	for (int r = 0; r < rasterLines.size(); r++) {
+	for( int r=0 ; r<rasterLines.size() ; r++ )
+	{
 		const RasterLine & currentLine = rasterLines[r];
 		int lineLength = currentLine.lineEndIndex - currentLine.lineStartIndex + 1;
+#ifdef NEW_CODE
+		AtlasCombinedTexelIndex previousLineStart = currentLine.prevLineIndex;
+		AtlasCombinedTexelIndex currentLineStart = currentLine.lineStartIndex;
+		AtlasCombinedTexelIndex nextLineStart = currentLine.nextLineIndex;
+#else // !NEW_CODE
 		int previousLineStart = currentLine.prevLineIndex;
 		int currentLineStart = currentLine.lineStartIndex;
 		int nextLineStart = currentLine.nextLineIndex;
-		for (int i = 0; i < lineLength; i++) {
+#endif // NEW_CODE
+		for( int i=0 ; i<lineLength ; i++ )
+		{
+#ifdef NEW_CODE
+			fullMatrix[ static_cast< unsigned int >(currentLineStart) ][0].N = static_cast< unsigned int >(previousLineStart) - 1;
+			fullMatrix[ static_cast< unsigned int >(currentLineStart) ][1].N = static_cast< unsigned int >(previousLineStart);
+			fullMatrix[ static_cast< unsigned int >(currentLineStart) ][2].N = static_cast< unsigned int >(previousLineStart) + 1;
+
+			fullMatrix[ static_cast< unsigned int >(currentLineStart) ][3].N =  static_cast< unsigned int >(currentLineStart)  - 1;
+			fullMatrix[ static_cast< unsigned int >(currentLineStart) ][4].N =  static_cast< unsigned int >(currentLineStart) ;
+			fullMatrix[ static_cast< unsigned int >(currentLineStart) ][5].N =  static_cast< unsigned int >(currentLineStart)  + 1;
+
+			fullMatrix[ static_cast< unsigned int >(currentLineStart) ][6].N = static_cast< unsigned int >(nextLineStart) - 1;
+			fullMatrix[ static_cast< unsigned int >(currentLineStart) ][7].N = static_cast< unsigned int >(nextLineStart);
+			fullMatrix[ static_cast< unsigned int >(currentLineStart) ][8].N = static_cast< unsigned int >(nextLineStart) + 1;
+#else // !NEW_CODE
 			fullMatrix[currentLineStart][0].N = previousLineStart - 1;
 			fullMatrix[currentLineStart][1].N = previousLineStart;
 			fullMatrix[currentLineStart][2].N = previousLineStart + 1;
@@ -199,6 +235,7 @@ void FullMatrixConstruction( const GridAtlas< GeometryReal , MatrixReal > &gridA
 			fullMatrix[currentLineStart][6].N = nextLineStart - 1;
 			fullMatrix[currentLineStart][7].N = nextLineStart;
 			fullMatrix[currentLineStart][8].N = nextLineStart + 1;
+#endif // NEW_CODE
 
 			previousLineStart++;
 			currentLineStart++;
@@ -210,22 +247,25 @@ void FullMatrixConstruction( const GridAtlas< GeometryReal , MatrixReal > &gridA
 	for( int r=0 ; r<rasterLines.size() ; r++ )
 	{
 		const RasterLine & currentLine = rasterLines[r];
-#ifdef NEW_CODE
 		AtlasInteriorTexelIndex deepOffset = currentLine.coeffStartIndex;
-#else // !NEW_CODE
-		int deepOffset = currentLine.coeffStartIndex;
-#endif // NEW_CODE
 		int lineLength = currentLine.lineEndIndex - currentLine.lineStartIndex + 1;
+#ifdef NEW_CODE
+		AtlasCombinedTexelIndex previousLineStart = currentLine.prevLineIndex;
+		AtlasCombinedTexelIndex currentLineStart = currentLine.lineStartIndex;
+		AtlasCombinedTexelIndex nextLineStart = currentLine.nextLineIndex;
+#else // !NEW_CODE
 		int previousLineStart = currentLine.prevLineIndex;
 		int currentLineStart = currentLine.lineStartIndex;
 		int nextLineStart = currentLine.nextLineIndex;
-#ifdef NEW_CODE
-		const MatrixReal *coefficients = systemCoefficients.deepCoefficients.data() + static_cast< unsigned int >(deepOffset) * 10;
-#else // !NEW_CODE
-		const MatrixReal *coefficients = systemCoefficients.deepCoefficients.data() + deepOffset * 10;
 #endif // NEW_CODE
-		for (int i = 0; i < lineLength; i++) {
-			for (int k = 0; k < 9; k++) fullMatrix[currentLineStart][k].Value = coefficients[k];
+		const MatrixReal *coefficients = systemCoefficients.deepCoefficients.data() + static_cast< unsigned int >(deepOffset) * 10;
+		for( int i=0 ; i<lineLength ; i++ )
+		{
+#ifdef NEW_CODE
+			for( int k=0 ; k<9 ; k++ ) fullMatrix[ static_cast< unsigned int >(currentLineStart) ][k].Value = coefficients[k];
+#else // !NEW_CODE
+			for( int k=0 ; k<9 ; k++ ) fullMatrix[currentLineStart][k].Value = coefficients[k];
+#endif // NEW_CODE
 
 			previousLineStart++;
 			currentLineStart++;
@@ -237,17 +277,34 @@ void FullMatrixConstruction( const GridAtlas< GeometryReal , MatrixReal > &gridA
 	std::vector< Eigen::Triplet< MatrixReal > > boundaryTriplets;
 	for( unsigned int i=0 ; i<indexConverter.numBoundary() ; i++ )
 	{
+#ifdef NEW_CODE
+		AtlasCombinedTexelIndex globalIndex = indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex(i) );
+#else // !NEW_CODE
 		unsigned int globalIndex = indexConverter.boundaryToSupported(i);
+#endif // NEW_CODE
 		for( unsigned int j=0 ; j<systemCoefficients.boundaryDeepMatrix.RowSize(i) ; j++ )
+#ifdef NEW_CODE
+			boundaryTriplets.push_back( Eigen::Triplet< MatrixReal >( static_cast< unsigned int >( globalIndex ) , systemCoefficients.boundaryDeepMatrix[i][j].N , systemCoefficients.boundaryDeepMatrix[i][j].Value ) );
+#else // !NEW_CODE
 			boundaryTriplets.push_back( Eigen::Triplet< MatrixReal >( globalIndex , systemCoefficients.boundaryDeepMatrix[i][j].N , systemCoefficients.boundaryDeepMatrix[i][j].Value ) );
+#endif // NEW_CODE
 		for( unsigned int j=0 ; j<systemCoefficients.boundaryBoundaryMatrix.RowSize(i) ; j++ )
 		{
+#ifdef NEW_CODE
+			AtlasCombinedTexelIndex neighbourGlobalIndex = indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex( systemCoefficients.boundaryBoundaryMatrix[i][j].N ) );
+			boundaryTriplets.push_back( Eigen::Triplet< MatrixReal >( static_cast< unsigned int >(globalIndex) , static_cast< unsigned int >(neighbourGlobalIndex) , systemCoefficients.boundaryBoundaryMatrix[i][j].Value ) );
+#else // !NEW_CODE
 			unsigned int neighbourGlobalIndex = indexConverter.boundaryToSupported( systemCoefficients.boundaryBoundaryMatrix[i][j].N );
 			boundaryTriplets.push_back( Eigen::Triplet< MatrixReal >( globalIndex , neighbourGlobalIndex , systemCoefficients.boundaryBoundaryMatrix[i][j].Value ) );
+#endif // NEW_CODE
 		}
 	}
 
+#ifdef NEW_CODE
+	SparseMatrix< MatrixReal , int > boundaryMatrix = SetSparseMatrix( boundaryTriplets , static_cast< unsigned int >(gridAtlas.endCombinedTexelIndex) , static_cast< unsigned int >(gridAtlas.endCombinedTexelIndex) , false );
+#else // !NEW_CODE
 	SparseMatrix< MatrixReal , int > boundaryMatrix = SetSparseMatrix( boundaryTriplets , numTexels , numTexels , false );
+#endif // NEW_CODE
 
 	fullMatrix += boundaryMatrix;
 
@@ -275,22 +332,16 @@ void UpdateMultigridCoefficients( const HierarchicalSystem< GeometryReal , Matri
 		if( verbose ) printf("Level %d \n", i);
 
 		const GridAtlas< GeometryReal , MatrixReal > &gridAtlas = hierarchy.gridAtlases[i];
-		int numTexels = gridAtlas.numTexels;
 #ifdef NEW_CODE
 #else // !NEW_CODE
-		int numDeepTexels = gridAtlas.numDeepTexels;
-		int numBoundaryTexels = gridAtlas.numBoundaryTexels;
+		int numTexels = gridAtlas.numTexels;
 #endif // NEW_CODE
 
 		const SystemCoefficients< MatrixReal > &fineCoefficients = multigridCoefficients[i-1];
 		SystemCoefficients< MatrixReal > &coarseCoefficients = multigridCoefficients[i];
 
 		// Deep restriction
-#ifdef NEW_CODE
 		coarseCoefficients.deepCoefficients.resize( static_cast< unsigned int >(gridAtlas.endInteriorTexelIndex) * 10 , 0 );
-#else // !NEW_CODE
-		coarseCoefficients.deepCoefficients.resize( numDeepTexels * 10 , 0 );
-#endif // NEW_CODE
 		if( verbose ) timer.reset();
 		DeepCoefficientRestriction( fineCoefficients.deepCoefficients , coarseCoefficients.deepCoefficients , gridAtlas.deepLines );
 		if( verbose ) printf( "Deep Deep Restriction %d  =  %.4f\n" , i , timer.elapsed() );
@@ -298,19 +349,15 @@ void UpdateMultigridCoefficients( const HierarchicalSystem< GeometryReal , Matri
 		// Boundary Deep Matrix
 		if( verbose ) timer.reset();
 #ifdef NEW_CODE
-		BoundaryDeepMatrixConstruction( static_cast< unsigned int >(gridAtlas.endBoundaryTexelIndex) , numTexels , coarseCoefficients.deepCoefficients , hierarchy.boundaryDeepIndices[i] , coarseCoefficients.boundaryDeepMatrix );
+		BoundaryDeepMatrixConstruction( static_cast< unsigned int >(gridAtlas.endBoundaryTexelIndex) , static_cast< unsigned int >(gridAtlas.endCombinedTexelIndex) , coarseCoefficients.deepCoefficients , hierarchy.boundaryDeepIndices[i] , coarseCoefficients.boundaryDeepMatrix );
 #else // !NEW_CODE
-		BoundaryDeepMatrixConstruction( numBoundaryTexels , numTexels , coarseCoefficients.deepCoefficients , hierarchy.boundaryDeepIndices[i] , coarseCoefficients.boundaryDeepMatrix );
+		BoundaryDeepMatrixConstruction( static_cast< unsigned int >(gridAtlas.endBoundaryTexelIndex) , numTexels , coarseCoefficients.deepCoefficients , hierarchy.boundaryDeepIndices[i] , coarseCoefficients.boundaryDeepMatrix );
 #endif // NEW_CODE
 		if( verbose ) printf( "Boundary Deep Restriction %d  =  %.4f \n" , i , timer.elapsed() );
 
 		// Boundary Boundary Matrix
 		if( verbose ) timer.reset();
-#ifdef NEW_CODE
 		BoundaryBoundaryMatrixConstruction( static_cast< unsigned int >(gridAtlas.endBoundaryTexelIndex) , fineCoefficients.deepCoefficients , fineCoefficients.boundaryBoundaryMatrix , hierarchy.boundaryCoarseFineProlongation[i] , hierarchy.boundaryFineCoarseRestriction[i-1] , hierarchy.boundaryBoundaryIndices[i] , coarseCoefficients.boundaryBoundaryMatrix );
-#else // !NEW_CODE
-		BoundaryBoundaryMatrixConstruction( numBoundaryTexels , fineCoefficients.deepCoefficients , fineCoefficients.boundaryBoundaryMatrix , hierarchy.boundaryCoarseFineProlongation[i] , hierarchy.boundaryFineCoarseRestriction[i-1] , hierarchy.boundaryBoundaryIndices[i] , coarseCoefficients.boundaryBoundaryMatrix );
-#endif // NEW_CODE
 		if( verbose ) printf( "Boundary Boundary Restriction %d  =  %.4f \n" , i , timer.elapsed() );
 
 		if( i==(levels-1) )	FullMatrixConstruction( gridAtlas , coarseCoefficients , coarseSystemMatrix );
@@ -323,17 +370,9 @@ void UpdateMultigridCoefficients( const HierarchicalSystem< GeometryReal , Matri
 		for( int i=0 ; i<levels-1 ; i++ )
 		{
 			std::vector< MatrixReal > &deepCoefficients = multigridCoefficients[i].deepCoefficients;
-#ifdef NEW_CODE
-#else // !NEW_CODE
-			int numDeepTexels = hierarchy.gridAtlases[i].numDeepTexels;
-#endif // NEW_CODE
 			ThreadPool::ParallelFor
 				(
-#ifdef NEW_CODE
 					0 , static_cast< unsigned int >( hierarchy.gridAtlases[i].endInteriorTexelIndex ) ,
-#else // !NEW_CODE
-					0 , numDeepTexels ,
-#endif // NEW_CODE
 					[&]( unsigned int , size_t ii )
 					{
 						MatrixReal centerValue = deepCoefficients[10 * ii + 4];

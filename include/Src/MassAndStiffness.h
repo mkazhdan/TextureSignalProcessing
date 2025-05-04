@@ -56,7 +56,11 @@ namespace MishaK
 		std::vector< Eigen::Triplet< Point3D< MatrixReal > > > &boundaryCellStiffnessTriplets ,
 		bool computeDivergence ,
 		std::map< SimplexIndex< 1 > , AtlasInteriorOrBoundaryNodeIndex > & fineBoundaryEdgeIndex,
+#ifdef NEW_CODE
+		std::map< SimplexIndex< 1 , AtlasCombinedTexelIndex > , unsigned int > & coarseEdgeIndex,
+#else // !NEW_CODE
 		std::map< SimplexIndex< 1 > , unsigned int > & coarseEdgeIndex,
+#endif // NEW_CODE
 		std::vector< Eigen::Triplet< MatrixReal > > & boundaryDeepDivergenceTriplets,
 		std::vector< Eigen::Triplet< MatrixReal > > & boundaryBoundaryDivergenceTriplets,
 		std::vector< MatrixReal > & deepDivergenceCoefficients
@@ -820,19 +824,14 @@ namespace MishaK
 		//      +-10-+-11-+
 
 		auto NeighbourOffset = [&]( int k , int l ){ return ( offset_j[l] - offset_j[k] + 1 ) * 3 + ( offset_i[l] - offset_i[k] + 1 ); };
-#ifdef NEW_CODE
 		for( unsigned int i=0 ; i<gridChart.interiorCellCoveredTexelBilinearElementIndices.size() ; i++ )
-#else // !NEW_CODE
-		for( int i=0 ; i<gridChart.interiorCellInteriorBilinearElementIndices.size() ; i++ )
-#endif // NEW_CODE
 		{
 #ifdef NEW_CODE
-			const BilinearElementIndex< unsigned int > & indicesGlobal = gridChart.interiorCellCombinedTexelBilinearElementIndices[ ChartInteriorCellIndex(i) ];
-			const BilinearElementIndex< AtlasCoveredTexelIndex > & indicesInterior = gridChart.interiorCellCoveredTexelBilinearElementIndices[ ChartInteriorCellIndex(i) ];
+			const BilinearElementIndex< AtlasCombinedTexelIndex > & indicesGlobal = gridChart.interiorCellCombinedTexelBilinearElementIndices[ ChartInteriorCellIndex(i) ];
 #else // !NEW_CODE
-			const BilinearElementIndex & indicesGlobal   = gridChart.interiorCellCombinedBilinearElementIndices[i];
-			const BilinearElementIndex & indicesInterior = gridChart.interiorCellInteriorBilinearElementIndices[i];
+			const BilinearElementIndex< unsigned int > & indicesGlobal = gridChart.interiorCellCombinedTexelBilinearElementIndices[ ChartInteriorCellIndex(i) ];
 #endif // NEW_CODE
+			const BilinearElementIndex< AtlasCoveredTexelIndex > & indicesInterior = gridChart.interiorCellCoveredTexelBilinearElementIndices[ ChartInteriorCellIndex(i) ];
 
 			ChartCombinedCellIndex localCellIndex = gridChart.interiorCellIndexToCombinedCellIndex[i];
 			AtlasCombinedCellIndex globalCellIndex = gridChart.chartToAtlasCombinedCellIndex( localCellIndex );
@@ -843,7 +842,11 @@ namespace MishaK
 			Point< GeometryReal , 4 > prod[3];
 			if( computeCellBasedStiffness )
 			{
+#ifdef NEW_CODE
+				Point3D< GeometryReal > values[4] = { inputSignal[ static_cast< unsigned int >(indicesGlobal[0]) ] , inputSignal[ static_cast< unsigned int >(indicesGlobal[1]) ] , inputSignal[ static_cast< unsigned int >(indicesGlobal[2]) ] , inputSignal[ static_cast< unsigned int >(indicesGlobal[3]) ] };
+#else // !NEW_CODE
 				Point3D< GeometryReal > values[4] = { inputSignal[ indicesGlobal[0] ] , inputSignal[ indicesGlobal[1] ] , inputSignal[ indicesGlobal[2] ] , inputSignal[ indicesGlobal[3] ] };
+#endif // NEW_CODE
 				for( int c=0 ; c<3 ; c++ )
 				{
 					Point< GeometryReal , 4 > v;
@@ -858,29 +861,71 @@ namespace MishaK
 
 			for( int k=0 ; k<4 ; k++ )
 			{
+#ifdef NEW_CODE
+				AtlasCombinedTexelIndex currentNode = indicesGlobal[k];
+				AtlasBoundaryTexelIndex _currentBoundaryIndex = indexConverter.combinedToBoundary( currentNode );
+				AtlasInteriorTexelIndex _currentInteriorIndex = indexConverter.combinedToInterior( currentNode );
+				if( _currentInteriorIndex!=AtlasInteriorTexelIndex(-1) ) //Interior
+#else // !NEW_CODE
 				int currentNode = indicesGlobal[k];
 				unsigned int _currentBoundaryIndex = indexConverter.supportedToBoundary( currentNode );
 				unsigned int _currentDeepIndex = indexConverter.supportedToDeep( currentNode );
 				if( _currentDeepIndex!=-1 ) //Deep
+#endif // NEW_CODE
 				{
 					for( int l=0 ; l<4 ; l++ )
 					{
+#ifdef NEW_CODE
+						deepMassCoefficients[ 10*static_cast< unsigned int >(_currentInteriorIndex) + NeighbourOffset(k,l) ] = (MatrixReal)( cellMass[i](k,l) + deepMassCoefficients[ 10*static_cast< unsigned int >(_currentInteriorIndex) + NeighbourOffset(k,l) ] );
+						deepStiffnessCoefficients[ 10*static_cast< unsigned int >(_currentInteriorIndex) + NeighbourOffset(k,l) ] = (MatrixReal)( cellStiffness[i](k,l) + deepStiffnessCoefficients[ 10*static_cast< unsigned int >(_currentInteriorIndex) + NeighbourOffset(k,l) ] );
+#else // !NEW_CODE
 						deepMassCoefficients[ 10*_currentDeepIndex + NeighbourOffset(k,l) ] = (MatrixReal)( cellMass[i](k,l) + deepMassCoefficients[ 10*_currentDeepIndex + NeighbourOffset(k,l) ] );
 						deepStiffnessCoefficients[ 10*_currentDeepIndex + NeighbourOffset(k,l) ] = (MatrixReal)( cellStiffness[i](k,l) + deepStiffnessCoefficients[ 10*_currentDeepIndex + NeighbourOffset(k,l) ] );
+#endif // NEW_CODE
 					}
 					if( computeCellBasedStiffness )
 					{
 						//Add cell data
+#ifdef NEW_CODE
+						texelToCellCoeffs[ 3*( 4*static_cast< unsigned int >(_currentInteriorIndex) + cellOffset[k] ) + 0 ] = (MatrixReal)prod[0][k];
+						texelToCellCoeffs[ 3*( 4*static_cast< unsigned int >(_currentInteriorIndex) + cellOffset[k] ) + 1 ] = (MatrixReal)prod[1][k];
+						texelToCellCoeffs[ 3*( 4*static_cast< unsigned int >(_currentInteriorIndex) + cellOffset[k] ) + 2 ] = (MatrixReal)prod[2][k];
+#else // !NEW_CODE
 						texelToCellCoeffs[ 3*( 4*_currentDeepIndex + cellOffset[k] ) + 0 ] = (MatrixReal)prod[0][k];
 						texelToCellCoeffs[ 3*( 4*_currentDeepIndex + cellOffset[k] ) + 1 ] = (MatrixReal)prod[1][k];
 						texelToCellCoeffs[ 3*( 4*_currentDeepIndex + cellOffset[k] ) + 2 ] = (MatrixReal)prod[2][k];
+#endif // NEW_CODE
 					}
+#ifdef NEW_CODE
+					if( computeDivergence ) for( int l=0 ; l<4 ; l++ ) deepDivergenceCoefficients[ 12*static_cast< unsigned int >(_currentInteriorIndex) + reducedCellEdgeCornerOffset[4*l+k] ] = (MatrixReal)( cellDivergence[i](k,l) + deepDivergenceCoefficients[ 12*static_cast< unsigned int >(_currentInteriorIndex) + reducedCellEdgeCornerOffset[4*l+k] ] );
+#else // !NEW_CODE
 					if( computeDivergence ) for( int l=0 ; l<4 ; l++ ) deepDivergenceCoefficients[ 12*_currentDeepIndex + reducedCellEdgeCornerOffset[4*l+k] ] = (MatrixReal)( cellDivergence[i](k,l) + deepDivergenceCoefficients[ 12*_currentDeepIndex + reducedCellEdgeCornerOffset[4*l+k] ] );
+#endif // NEW_CODE
 				}
+#ifdef NEW_CODE
+				else if( _currentBoundaryIndex!=AtlasBoundaryTexelIndex(-1) )
+#else // !NEW_CODE
 				else if( _currentBoundaryIndex!=-1 )
+#endif // NEW_CODE
 				{
-					for( int l=0 ; l<4 ; l++ )
+					for( unsigned int l=0 ; l<4 ; l++ )
 					{
+#ifdef NEW_CODE
+						AtlasCombinedTexelIndex neighborNode = indicesGlobal[l];
+						AtlasBoundaryTexelIndex neighborBoundaryIndex = indexConverter.combinedToBoundary( neighborNode );
+						AtlasInteriorTexelIndex neighborInteriorIndex = indexConverter.combinedToInterior( neighborNode );
+						if( neighborInteriorIndex!=AtlasInteriorTexelIndex(-1) )
+						{
+							boundaryDeepMassTriplets.emplace_back( static_cast< unsigned int >(_currentBoundaryIndex) , static_cast< unsigned int >(neighborNode) , (MatrixReal)cellMass[i](k,l) );
+							boundaryDeepStiffnessTriplets.emplace_back( static_cast< unsigned int >(_currentBoundaryIndex) , static_cast< unsigned int >(neighborNode) , (MatrixReal)cellStiffness[i](k,l) );
+						}
+						else if( neighborBoundaryIndex!=AtlasBoundaryTexelIndex(-1) )
+						{
+							boundaryBoundaryMassTriplets.push_back( Eigen::Triplet< MatrixReal >( static_cast< unsigned int >( fineBoundaryIndex[ static_cast< unsigned int >(indicesInterior[k]) ] ) , static_cast< unsigned int >( fineBoundaryIndex[ static_cast< unsigned int >(indicesInterior[l]) ] ) , (MatrixReal)cellMass[i](k,l) ) );
+							boundaryBoundaryStiffnessTriplets.push_back( Eigen::Triplet< MatrixReal >( static_cast< unsigned int >( fineBoundaryIndex[ static_cast< unsigned int >(indicesInterior[k]) ] ) , static_cast< unsigned int >( fineBoundaryIndex[ static_cast< unsigned int >(indicesInterior[l]) ] ) , (MatrixReal)cellStiffness[i](k,l) ) );
+						}
+						else MK_THROW( "Expected supported index" );
+#else // !NEW_CODE
 						unsigned int neighborNode = indicesGlobal[l];
 						unsigned int neighborBoundaryIndex = indexConverter.supportedToBoundary( neighborNode );
 						unsigned int neighborDeepIndx = indexConverter.supportedToDeep( neighborNode );
@@ -891,24 +936,16 @@ namespace MishaK
 						}
 						else if( neighborBoundaryIndex!=-1 )
 						{
-#ifdef NEW_CODE
 							boundaryBoundaryMassTriplets.push_back( Eigen::Triplet< MatrixReal >( static_cast< unsigned int >( fineBoundaryIndex[ static_cast< unsigned int >(indicesInterior[k]) ] ) , static_cast< unsigned int >( fineBoundaryIndex[ static_cast< unsigned int >(indicesInterior[l]) ] ) , (MatrixReal)cellMass[i](k,l) ) );
 							boundaryBoundaryStiffnessTriplets.push_back( Eigen::Triplet< MatrixReal >( static_cast< unsigned int >( fineBoundaryIndex[ static_cast< unsigned int >(indicesInterior[k]) ] ) , static_cast< unsigned int >( fineBoundaryIndex[ static_cast< unsigned int >(indicesInterior[l]) ] ) , (MatrixReal)cellStiffness[i](k,l) ) );
-#else // !NEW_CODE
-							boundaryBoundaryMassTriplets.push_back( Eigen::Triplet< MatrixReal >( static_cast< unsigned int >( fineBoundaryIndex[ indicesInterior[k] ] ) , static_cast< unsigned int >( fineBoundaryIndex[ indicesInterior[l] ] ) , (MatrixReal)cellMass[i](k,l) ) );
-							boundaryBoundaryStiffnessTriplets.push_back( Eigen::Triplet< MatrixReal >( static_cast< unsigned int >( fineBoundaryIndex[ indicesInterior[k] ] ) , static_cast< unsigned int >( fineBoundaryIndex[ indicesInterior[l] ] ) , (MatrixReal)cellStiffness[i](k,l) ) );
-#endif // NEW_CODE
 						}
 						else MK_THROW( "Expected supported index" );
+#endif // NEW_CODE
 					}
 					if( computeCellBasedStiffness )
 					{
 						// Add cell data
-#ifdef NEW_CODE
 						AtlasInteriorOrBoundaryNodeIndex _fineBoundaryIndex = fineBoundaryIndex[ static_cast< unsigned int >(indicesInterior[k]) ];
-#else // !NEW_CODE
-						AtlasInteriorOrBoundaryNodeIndex _fineBoundaryIndex = fineBoundaryIndex[indicesInterior[k]];
-#endif // NEW_CODE
 						Point3D< MatrixReal > p( (MatrixReal)prod[0][k] , (MatrixReal)prod[1][k] , (MatrixReal)prod[2][k] );
 						boundaryCellStiffnessTriplets.push_back( Eigen::Triplet< Point3D< MatrixReal > >( static_cast< unsigned int >(_fineBoundaryIndex) , static_cast< unsigned int >(globalCellIndex) , p ) );
 					}
@@ -918,15 +955,25 @@ namespace MishaK
 						{
 							for( int l=0 ; l<4 ; l++ )
 							{
-								int edgeSourceCoarseIndex = indicesGlobal[reducedCellCornerPairs[2 * l]];
-								int edgeTargetCoarseIndex = indicesGlobal[reducedCellCornerPairs[2 * l + 1]];
+#ifdef NEW_CODE
+								AtlasCombinedTexelIndex edgeSourceCoarseIndex = indicesGlobal[reducedCellCornerPairs[ 2*l+0 ] ];
+								AtlasCombinedTexelIndex edgeTargetCoarseIndex = indicesGlobal[reducedCellCornerPairs[ 2*l+1 ] ];
+								SimplexIndex< 1 , AtlasCombinedTexelIndex > coarseEdgeKey( edgeSourceCoarseIndex , edgeTargetCoarseIndex );
+#else // !NEW_CODE
+								int edgeSourceCoarseIndex = indicesGlobal[reducedCellCornerPairs[ 2*l+0 ] ];
+								int edgeTargetCoarseIndex = indicesGlobal[reducedCellCornerPairs[ 2*l+1 ] ];
 								SimplexIndex< 1 > coarseEdgeKey( edgeSourceCoarseIndex , edgeTargetCoarseIndex );
+#endif // NEW_CODE
 								if( coarseEdgeIndex.find(coarseEdgeKey)==coarseEdgeIndex.end() ) MK_THROW( "Fine edge not found" );
 								cellCoarseEdgeIndex[l] = coarseEdgeIndex[coarseEdgeKey];
 							}
 							coarseEdgeIndexInitialized = true;
 						}
+#ifdef NEW_CODE
+						for( int l=0 ; l<4 ; l++ ) boundaryDeepDivergenceTriplets.push_back( Eigen::Triplet< MatrixReal >( static_cast< unsigned int >(currentNode) , cellCoarseEdgeIndex[l] , (MatrixReal)cellDivergence[i](k,l) ) );
+#else // !NEW_CODE
 						for( int l=0 ; l<4 ; l++ ) boundaryDeepDivergenceTriplets.push_back( Eigen::Triplet< MatrixReal >( currentNode , cellCoarseEdgeIndex[l] , (MatrixReal)cellDivergence[i](k,l) ) );
+#endif // NEW_CODE
 					}
 				}
 				else MK_THROW( "Expected supported index" );
@@ -1032,7 +1079,11 @@ namespace MishaK
 		SparseMatrix< MatrixReal , int > boundaryCellBasedStiffnessRHSMatrix[3] ,
 		bool computeDivergence ,
 		std::map< SimplexIndex< 1 > , AtlasInteriorOrBoundaryNodeIndex > & fineBoundaryEdgeIndex,
+#ifdef NEW_CODE
+		std::map< SimplexIndex< 1 , AtlasCombinedTexelIndex > , unsigned int > & coarseEdgeIndex,
+#else // !NEW_CODE
 		std::map< SimplexIndex< 1 > , unsigned int > & coarseEdgeIndex,
+#endif // NEW_CODE
 		std::vector< Eigen::Triplet< MatrixReal > > & boundaryDeepDivergenceTriplets,
 		std::vector< Eigen::Triplet< MatrixReal > > & boundaryBoundaryDivergenceTriplets,
 		std::vector< MatrixReal >& deepDivergenceCoefficients
@@ -1049,11 +1100,7 @@ namespace MishaK
 		const IndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts = gridAtlas.gridCharts;
 		const typename GridAtlas<>::IndexConverter & indexConverter = gridAtlas.indexConverter;
 
-#ifdef NEW_CODE
 		if( computeCellBasedStiffness ) texelToCellCoeffs.resize( 3*4*static_cast< unsigned int >( gridAtlas.endInteriorTexelIndex) );
-#else // !NEW_CODE
-		if( computeCellBasedStiffness ) texelToCellCoeffs.resize( 3*4*gridAtlas.numDeepTexels );
-#endif // NEW_CODE
 
 		std::vector< Eigen::Triplet< MatrixReal > > boundaryBoundaryMassTriplets;
 		std::vector< Eigen::Triplet< MatrixReal > > boundaryBoundaryStiffnessTriplets;
@@ -1075,13 +1122,27 @@ namespace MishaK
 			{
 				InitializeChartMassAndStiffness< Samples >
 					(
-						parameterMetric[ ChartIndex(i) ] , atlasCharts[ ChartIndex(i) ] , gridCharts[ ChartIndex(i) ] , indexConverter , fineBoundaryIndex , deepMassCoefficients , deepStiffnessCoefficients , 
-						_boundaryBoundaryMassTriplets[thread] , _boundaryBoundaryStiffnessTriplets[thread] ,
-						_boundaryDeepMassTriplets[thread] , _boundaryDeepStiffnessTriplets[thread] ,
-						computeCellBasedStiffness , inputSignal , boundarySignal , texelToCellCoeffs ,
+						parameterMetric[ ChartIndex(i) ] ,
+						atlasCharts[ ChartIndex(i) ] ,
+						gridCharts[ ChartIndex(i) ] ,
+						indexConverter ,
+						fineBoundaryIndex ,
+						deepMassCoefficients ,
+						deepStiffnessCoefficients , 
+						_boundaryBoundaryMassTriplets[thread] ,
+						_boundaryBoundaryStiffnessTriplets[thread] ,
+						_boundaryDeepMassTriplets[thread] ,
+						_boundaryDeepStiffnessTriplets[thread] ,
+						computeCellBasedStiffness ,
+						inputSignal ,
+						boundarySignal ,
+						texelToCellCoeffs ,
 						_boundaryCellStiffnessTriplets[thread] ,
-						computeDivergence , fineBoundaryEdgeIndex , coarseEdgeIndex ,
-						_boundaryDeepDivergenceTriplets[thread] , _boundaryBoundaryDivergenceTriplets[thread] ,
+						computeDivergence ,
+						fineBoundaryEdgeIndex ,
+						coarseEdgeIndex ,
+						_boundaryDeepDivergenceTriplets[thread] ,
+						_boundaryBoundaryDivergenceTriplets[thread] ,
 						deepDivergenceCoefficients
 					);
 			}
@@ -1094,19 +1155,18 @@ namespace MishaK
 		MergeTriplets( _boundaryDeepDivergenceTriplets , boundaryDeepDivergenceTriplets );
 		MergeTriplets( _boundaryBoundaryDivergenceTriplets , boundaryBoundaryDivergenceTriplets );
 
-		int numTexels = gridAtlas.numTexels;
 #ifdef NEW_CODE
 #else // !NEW_CODE
-		int numBoundaryTexels = gridAtlas.numBoundaryTexels;
+		int numTexels = gridAtlas.numTexels;
 #endif // NEW_CODE
 		boundaryBoundaryMassMatrix      = SetSparseMatrix( boundaryBoundaryMassTriplets , numFineBoundaryNodes , numFineBoundaryNodes , true );
 		boundaryBoundaryStiffnessMatrix = SetSparseMatrix( boundaryBoundaryStiffnessTriplets , numFineBoundaryNodes , numFineBoundaryNodes , true );
 #ifdef NEW_CODE
+		boundaryDeepMassMatrix          = SetSparseMatrix( boundaryDeepMassTriplets , static_cast< unsigned int >(gridAtlas.endBoundaryTexelIndex) , static_cast< unsigned int >(gridAtlas.endCombinedTexelIndex) , false );
+		boundaryDeepStiffnessMatrix     = SetSparseMatrix( boundaryDeepStiffnessTriplets , static_cast< unsigned int >(gridAtlas.endBoundaryTexelIndex) , static_cast< unsigned int >(gridAtlas.endCombinedTexelIndex) , false );
+#else // !NEW_CODE
 		boundaryDeepMassMatrix          = SetSparseMatrix( boundaryDeepMassTriplets , static_cast< unsigned int >(gridAtlas.endBoundaryTexelIndex) , numTexels , false );
 		boundaryDeepStiffnessMatrix     = SetSparseMatrix( boundaryDeepStiffnessTriplets , static_cast< unsigned int >(gridAtlas.endBoundaryTexelIndex) , numTexels , false );
-#else // !NEW_CODE
-		boundaryDeepMassMatrix          = SetSparseMatrix( boundaryDeepMassTriplets , numBoundaryTexels , numTexels , false );
-		boundaryDeepStiffnessMatrix     = SetSparseMatrix( boundaryDeepStiffnessTriplets , numBoundaryTexels , numTexels , false );
 #endif // NEW_CODE
 
 		if( computeCellBasedStiffness )
@@ -1119,11 +1179,7 @@ namespace MishaK
 			{
 				for( int i=0 , idx=0 ; i<_boundaryCellStiffnessTriplets.size() ; i++ ) for( int j=0 ; j<_boundaryCellStiffnessTriplets[i].size() ; j++ , idx++ )
 					boundaryCellStiffnessTriplets[idx] = Eigen::Triplet< MatrixReal >( _boundaryCellStiffnessTriplets[i][j].row() , _boundaryCellStiffnessTriplets[i][j].col() , _boundaryCellStiffnessTriplets[i][j].value()[c] );
-#ifdef NEW_CODE
 				boundaryCellBasedStiffnessRHSMatrix[c] = SetSparseMatrix( boundaryCellStiffnessTriplets , numFineBoundaryNodes , static_cast< unsigned int >(gridAtlas.endCombinedCellIndex) , false );
-#else // !NEW_CODE
-				boundaryCellBasedStiffnessRHSMatrix[c] = SetSparseMatrix( boundaryCellStiffnessTriplets , numFineBoundaryNodes , gridAtlas.numCells , false );
-#endif // NEW_CODE
 			}
 		}
 	}
@@ -1142,21 +1198,19 @@ namespace MishaK
 		std::vector< MatrixReal > &texelToCellCoeffs ,
 		SparseMatrix< MatrixReal , int > boundaryCellBasedStiffnessRHSMatrix[3] ,
 		bool computeDivergence ,
+#ifdef NEW_CODE
+		std::map< SimplexIndex< 1 , AtlasCombinedTexelIndex > , unsigned int > & edgeIndex ,
+#else // !NEW_CODE
 		std::map< SimplexIndex< 1 > , unsigned int > & edgeIndex ,
+#endif // NEW_CODE
 		SparseMatrix< MatrixReal , int > & boundaryDivergenceMatrix ,
 		std::vector< MatrixReal > & deepDivergenceCoefficients
 	)
 	{
 		//(2) Initialize mass and stiffness
-#ifdef NEW_CODE
 		mass.deepCoefficients.resize( 10 * static_cast< unsigned int >(hierarchy.gridAtlases[0].endInteriorTexelIndex) , 0 );
 		stiffness.deepCoefficients.resize( 10 * static_cast< unsigned int >(hierarchy.gridAtlases[0].endInteriorTexelIndex) , 0 );
 		if( computeDivergence ) deepDivergenceCoefficients.resize( 20 * static_cast< unsigned int >(hierarchy.gridAtlases[0].endInteriorTexelIndex) , 0 );
-#else // !NEW_CODE
-		mass.deepCoefficients.resize( 10*hierarchy.gridAtlases[0].numDeepTexels , 0 );
-		stiffness.deepCoefficients.resize( 10*hierarchy.gridAtlases[0].numDeepTexels , 0 );
-		if( computeDivergence ) deepDivergenceCoefficients.resize( 20*hierarchy.gridAtlases[0].numDeepTexels , 0 );
-#endif // NEW_CODE
 
 		SparseMatrix< MatrixReal , int > fineBoundaryBoundaryMassMatrix;
 		SparseMatrix< MatrixReal , int > fineBoundaryBoundaryStiffnessMatrix;
@@ -1177,7 +1231,11 @@ namespace MishaK
 			unsigned int numFineBoundaryNodes = boundaryProlongation.numFineBoundaryNodes;
 			std::vector< Point3D< MatrixReal > > coarseBoundarySignal;
 			coarseBoundarySignal.resize( numBoundaryTexels );
+#ifdef NEW_CODE
+			for( unsigned int i=0 ; i<numBoundaryTexels ; i++ ) coarseBoundarySignal[i] = inputSignal[ static_cast< unsigned int >( indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex(i) ) ) ];
+#else // !NEW_CODE
 			for( unsigned int i=0 ; i<numBoundaryTexels ; i++ ) coarseBoundarySignal[i] = inputSignal[ indexConverter.boundaryToSupported(i) ];
+#endif // NEW_CODE
 			fineBoundarySignal.resize( numFineBoundaryNodes );
 			boundaryProlongation.coarseBoundaryFineBoundaryProlongation.Multiply( &coarseBoundarySignal[0] , &fineBoundarySignal[0] );
 		}
@@ -1219,11 +1277,21 @@ namespace MishaK
 			const typename GridAtlas<>::IndexConverter & indexConverter = hierarchy.gridAtlases[0].indexConverter;
 			for( int i=0 ; i<boundaryBoundaryDivergenceMatrix.Rows() ; i++ )
 			{
+#ifdef NEW_CODE
+				AtlasCombinedTexelIndex supportedIndex = indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex(i) );
+				for( int j=0 ; j<boundaryBoundaryDivergenceMatrix.RowSize(i) ; j++ )
+					boundaryDivergenceTriplets.emplace_back( static_cast< unsigned int >(supportedIndex) , boundaryCoarseEdgeToGlobalEdge[ boundaryBoundaryDivergenceMatrix[i][j].N ] , boundaryBoundaryDivergenceMatrix[i][j].Value );
+#else // !NEW_CODE
 				unsigned int supportedIndex = indexConverter.boundaryToSupported(i);
 				for( int j=0 ; j<boundaryBoundaryDivergenceMatrix.RowSize(i) ; j++ )
 					boundaryDivergenceTriplets.emplace_back( supportedIndex , boundaryCoarseEdgeToGlobalEdge[ boundaryBoundaryDivergenceMatrix[i][j].N ] , boundaryBoundaryDivergenceMatrix[i][j].Value );
+#endif // NEW_CODE
 			}
+#ifdef NEW_CODE
+			boundaryDivergenceMatrix = SetSparseMatrix( boundaryDivergenceTriplets , static_cast< unsigned int >(hierarchy.gridAtlases[0].endCombinedTexelIndex) , (int)edgeIndex.size() , false );
+#else // !NEW_CODE
 			boundaryDivergenceMatrix = SetSparseMatrix( boundaryDivergenceTriplets , hierarchy.gridAtlases[0].numTexels , (int)edgeIndex.size() , false );
+#endif // NEW_CODE
 		}
 	}
 
@@ -1242,7 +1310,11 @@ namespace MishaK
 		SparseMatrix< MatrixReal , int > boundaryCellBasedStiffnessRHSMatrix[3]
 	)
 	{
+#ifdef NEW_CODE
+		std::map< SimplexIndex< 1 , AtlasCombinedTexelIndex > , unsigned int > edgeIndex;
+#else // !NEW_CODE
 		std::map< SimplexIndex< 1 > , unsigned int > edgeIndex;
+#endif // NEW_CODE
 		SparseMatrix< MatrixReal , int > boundaryDivergenceMatrix;
 		std::vector< MatrixReal > deepDivergenceCoefficients;
 		InitializeMassAndStiffness< Samples >( mass , stiffness , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , computeCellBasedStiffness , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , false , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients );

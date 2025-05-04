@@ -188,9 +188,9 @@ public:
 	static IndexVector< ChartIndex , AtlasChart< PreReal > > atlasCharts;
 
 #ifdef NEW_CODE
-	static IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< unsigned int > > bilinearElementIndices;
+	static IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > > bilinearElementIndices;
 #else // !NEW_CODE
-	static std::vector< BilinearElementIndex > bilinearElementIndices;
+	static IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< unsigned int > > bilinearElementIndices;
 #endif // NEW_CODE
 
 	static std::vector< TextureNodeInfo< PreReal > > textureNodes;
@@ -219,8 +219,13 @@ public:
 	static VCycleSolvers< DirectSolver > vCycleSolvers;
 	static DirectSolver directSolver;
 
+#ifdef NEW_CODE
+	static std::map< SimplexIndex< 1 , AtlasCombinedTexelIndex > , unsigned int > edgeIndex;
+	static std::vector< SimplexIndex< 1 , AtlasCombinedTexelIndex > > edgePairs;
+#else // !NEW_CODE
 	static std::map< SimplexIndex< 1 > , unsigned int > edgeIndex;
 	static std::vector< SimplexIndex< 1 > > edgePairs;
+#endif // NEW_CODE
 
 	static SparseMatrix< Real , int > boundaryDivergenceMatrix;
 
@@ -316,9 +321,9 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth > Real
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< TextureNodeInfo< PreReal > >						Stitching< PreReal , Real , TextureBitDepth >::textureNodes;
 #ifdef NEW_CODE
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< unsigned int > >	Stitching< PreReal , Real , TextureBitDepth >::bilinearElementIndices;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > >	Stitching< PreReal , Real , TextureBitDepth >::bilinearElementIndices;
 #else // !NEW_CODE
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< BilinearElementIndex >								Stitching< PreReal , Real , TextureBitDepth >::bilinearElementIndices;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< unsigned int > >	Stitching< PreReal , Real , TextureBitDepth >::bilinearElementIndices;
 #endif // NEW_CODE
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > int																Stitching< PreReal , Real , TextureBitDepth >::steps;
@@ -361,8 +366,13 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth > Syst
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > unsigned int													Stitching< PreReal , Real , TextureBitDepth >::updateCount = static_cast< unsigned int >(-1);
 
+#ifdef NEW_CODE
+template< typename PreReal , typename Real , unsigned int TextureBitDepth >  std::map< SimplexIndex< 1 , AtlasCombinedTexelIndex > , unsigned int >	Stitching< PreReal , Real , TextureBitDepth >::edgeIndex;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth >  std::vector< SimplexIndex< 1 , AtlasCombinedTexelIndex > >		Stitching< PreReal , Real , TextureBitDepth >::edgePairs;
+#else // !NEW_CODE
 template< typename PreReal , typename Real , unsigned int TextureBitDepth >  std::map< SimplexIndex< 1 > , unsigned int >					Stitching< PreReal , Real , TextureBitDepth >::edgeIndex;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth >  std::vector< SimplexIndex< 1 > >								Stitching< PreReal , Real , TextureBitDepth >::edgePairs;
+#endif // NEW_CODE
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth >  SparseMatrix< Real , int >										Stitching< PreReal , Real , TextureBitDepth >::boundaryDivergenceMatrix;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth >  std::vector< Real >											Stitching< PreReal , Real , TextureBitDepth >::deepDivergenceCoefficients;
@@ -629,7 +639,11 @@ void Stitching< PreReal , Real , TextureBitDepth >::UpdateSolution( bool verbose
 }
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth >
-void Stitching< PreReal , Real , TextureBitDepth >::_InitializeSystem( IndexVector< ChartIndex , IndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > > &parameterMetric , BoundaryProlongationData< Real > &boundaryProlongation )
+void Stitching< PreReal , Real , TextureBitDepth >::_InitializeSystem
+(
+	IndexVector< ChartIndex , IndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > > &parameterMetric ,
+	BoundaryProlongationData< Real > &boundaryProlongation
+)
 {
 	// Unused parameters
 	std::vector< Point3D< Real > > inputSignal;
@@ -693,7 +707,11 @@ void Stitching< PreReal , Real , TextureBitDepth >::InitializeSystem( int width 
 		const typename GridAtlas<>::IndexConverter & indexConverter = hierarchy.gridAtlases[i].indexConverter;
 		const GridAtlas< PreReal , Real > &gridAtlas = hierarchy.gridAtlases[i];
 		multigridIndices[i].threadTasks = gridAtlas.threadTasks;
+#ifdef NEW_CODE
+		multigridIndices[i].boundaryToCombined = indexConverter.boundaryToCombined();
+#else // !NEW_CODE
 		multigridIndices[i].boundaryToSupported = indexConverter.boundaryToSupported();
+#endif // NEW_CODE
 		multigridIndices[i].segmentedLines = gridAtlas.segmentedLines;
 		multigridIndices[i].rasterLines = gridAtlas.rasterLines;
 		multigridIndices[i].restrictionLines = gridAtlas.restrictionLines;
@@ -710,9 +728,15 @@ void Stitching< PreReal , Real , TextureBitDepth >::InitializeSystem( int width 
 	{
 		const typename GridAtlas<>::IndexConverter & indexConverter = hierarchy.gridAtlases[i].indexConverter;
 		MultigridLevelVariables< Point3D< Real > >& variables = multigridStitchingVariables[i];
+#ifdef NEW_CODE
+		variables.x.resize( indexConverter.numCombined() );
+		variables.rhs.resize( indexConverter.numCombined() );
+		variables.residual.resize( indexConverter.numCombined() );
+#else // !NEW_CODE
 		variables.x.resize( hierarchy.gridAtlases[i].numTexels );
 		variables.rhs.resize( hierarchy.gridAtlases[i].numTexels );
 		variables.residual.resize( hierarchy.gridAtlases[i].numTexels );
+#endif // NEW_CODE
 		variables.boundary_rhs.resize( indexConverter.numBoundary() );
 		variables.boundary_value.resize( indexConverter.numBoundary() );
 		variables.variable_boundary_value.resize( indexConverter.numBoundary() );
@@ -904,11 +928,17 @@ void Stitching< PreReal , Real , TextureBitDepth >::ParseImages( void )
 
 				Real weight[2];
 				Point3D< Real > value[2];
-				for( int k=0 ; k<2 ; k++ )
+				for( unsigned int k=0 ; k<2 ; k++ )
 				{
+#ifdef NEW_CODE
+					AtlasCombinedTexelIndex i = edgePairs[e][k];
+					weight[k] = textureConfidence( textureNodes[ static_cast< unsigned int >(i) ].ci , textureNodes[ static_cast< unsigned int >(i) ].cj );
+					value[k] = textureValues( textureNodes[ static_cast< unsigned int >(i) ].ci , textureNodes[ static_cast< unsigned int >(i) ].cj );
+#else // !NEW_CODE
 					unsigned int i = edgePairs[e][k];
 					weight[k] = textureConfidence( textureNodes[i].ci , textureNodes[i].cj );
 					value[k] = textureValues( textureNodes[i].ci , textureNodes[i].cj );
+#endif // NEW_CODE
 				}
 				Real eWeight = weight[0] * weight[1];
 				Point3D<Real> eValue = value[1] - value[0];
@@ -935,9 +965,15 @@ void Stitching< PreReal , Real , TextureBitDepth >::ParseImages( void )
 		}
 		for( int e=0 ; e<edgePairs.size() ; e++ )
 		{
+#ifdef NEW_CODE
+			const SimplexIndex< 1 , AtlasCombinedTexelIndex > &edgeCorners = edgePairs[e];
+			unsigned int ci[] = { textureNodes[ static_cast< unsigned int >(edgeCorners[0]) ].ci , textureNodes[ static_cast< unsigned int >(edgeCorners[1]) ].ci };
+			unsigned int cj[] = { textureNodes[ static_cast< unsigned int >(edgeCorners[0]) ].cj , textureNodes[ static_cast< unsigned int >(edgeCorners[1]) ].cj };
+#else // !NEW_CODE
 			const SimplexIndex< 1 > &edgeCorners = edgePairs[e];
 			unsigned int ci[] = { textureNodes[ edgeCorners[0] ].ci , textureNodes[ edgeCorners[1] ].ci };
 			unsigned int cj[] = { textureNodes[ edgeCorners[0] ].cj , textureNodes[ edgeCorners[1] ].cj };
+#endif // NEW_CODE
 			if( inputMask( ci[0] , cj[0] )!=-1 && inputMask( ci[0] , cj[0] )==inputMask( ci[1] , cj[1] ) ) edgeValues[e] = inputComposition( ci[1] , cj[1] ) - inputComposition( ci[0] , cj[0] );
 			else edgeValues[e] = Point3D< Real >(0, 0, 0);
 		}
@@ -1103,7 +1139,11 @@ void Stitching< PreReal , Real , TextureBitDepth >::Init( void )
 	for( int i=0 ; i<textureNodePositions.size() ; i++ ) textureNodePositions[i] = mesh.surface( textureNodes[i] );
 
 	textureEdgePositions.resize( edgePairs.size() );
+#ifdef NEW_CODE
+	for( int i=0 ; i<edgePairs.size() ; i++ ) textureEdgePositions[i] = ( textureNodePositions[ static_cast< unsigned int >(edgePairs[i][0]) ] + textureNodePositions[ static_cast< unsigned int >(edgePairs[i][1]) ] ) / 2;
+#else // !NEW_CODE
 	for( int i=0 ; i<edgePairs.size() ; i++ ) textureEdgePositions[i] = ( textureNodePositions[ edgePairs[i][0] ] + textureNodePositions[ edgePairs[i][1] ] ) / 2;
+#endif // NEW_CODE
 
 	{
 		unsigned int multiChartTexelCount = 0;

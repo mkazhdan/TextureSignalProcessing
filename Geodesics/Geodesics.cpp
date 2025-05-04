@@ -134,9 +134,9 @@ public:
 	static HierarchicalSystem< PreReal , Real > hierarchy;
 
 #ifdef NEW_CODE
-	static IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< unsigned int > > bilinearElementIndices;
+	static IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > > bilinearElementIndices;
 #else // !NEW_CODE
-	static std::vector< BilinearElementIndex > bilinearElementIndices;
+	static IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< unsigned int > > bilinearElementIndices;
 #endif // NEW_CODE
 
 	static std::vector< TextureNodeInfo< PreReal > > textureNodes;
@@ -158,11 +158,11 @@ public:
 
 	//Impulse Smoothing
 	static std::vector< SystemCoefficients< Real > > multigridSmoothImpulseCoefficients;
-	static std::vector<MultigridLevelVariables<Real>> multigridSmoothImpulseVariables;
+	static std::vector< MultigridLevelVariables< Real > > multigridSmoothImpulseVariables;
 	
 	//Geodesic Distance
 	static std::vector< SystemCoefficients< Real > > multigridGeodesicDistanceCoefficients;
-	static std::vector<MultigridLevelVariables<Real>> multigridGeodesicDistanceVariables;
+	static std::vector< MultigridLevelVariables< Real > > multigridGeodesicDistanceVariables;
 
 #if defined( USE_CHOLMOD )
 	typedef CholmodCholeskySolver< Real , 1 > DirectSolver;
@@ -181,21 +181,17 @@ public:
 
 	static std::vector<MultigridLevelIndices<Real>> multigridIndices;
 
-	static SparseMatrix<Real, int> coarseBoundaryFineBoundaryProlongation;
-	static SparseMatrix<Real, int> fineBoundaryCoarseBoundaryRestriction;
-	static std::vector<Real> coarseBoundaryValues;
-	static std::vector<Real> coarseBoundaryRHS;
-	static std::vector<Real> fineBoundaryValues;
-	static std::vector<Real> fineBoundaryRHS;
+	static SparseMatrix< Real , int > coarseBoundaryFineBoundaryProlongation;
+	static SparseMatrix< Real , int > fineBoundaryCoarseBoundaryRestriction;
+	static std::vector< Real > coarseBoundaryValues;
+	static std::vector< Real > coarseBoundaryRHS;
+	static std::vector< Real > fineBoundaryValues;
+	static std::vector< Real > fineBoundaryRHS;
 
 	//Samples
 	static GradientElementSamples< Real > gradientSamples;
 	static std::vector<InteriorCellLine> interiorCellLines;
-#ifdef NEW_CODE
 	static IndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > > interiorCellLineIndex;
-#else // !NEW_CODE
-	static std::vector< std::pair< unsigned int , unsigned int > > interiorCellLineIndex;
-#endif // NEW_CODE
 
 	static unsigned char * outputBuffer;
 
@@ -247,9 +243,9 @@ template< typename PreReal , typename Real > Real															Geodesics< PreRe
 template< typename PreReal , typename Real > std::vector< TextureNodeInfo< PreReal > >						Geodesics< PreReal , Real >::textureNodes;
 template< typename PreReal , typename Real > Image<int>														Geodesics< PreReal , Real >::nodeIndex;
 #ifdef NEW_CODE
-template< typename PreReal , typename Real > IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< unsigned int > >	Geodesics< PreReal , Real >::bilinearElementIndices;
+template< typename PreReal , typename Real > IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > >	Geodesics< PreReal , Real >::bilinearElementIndices;
 #else // !NEW_CODE
-template< typename PreReal , typename Real > std::vector< BilinearElementIndex >							Geodesics< PreReal , Real >::bilinearElementIndices;
+template< typename PreReal , typename Real > IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< unsigned int > >	Geodesics< PreReal , Real >::bilinearElementIndices;
 #endif // NEW_CODE
 
 template< typename PreReal , typename Real > int															Geodesics< PreReal , Real >::steps;
@@ -277,11 +273,7 @@ template< typename PreReal , typename Real > typename Geodesics< PreReal , Real 
 //Samples
 template< typename PreReal , typename Real > GradientElementSamples< Real >									Geodesics< PreReal , Real >::gradientSamples;
 template< typename PreReal , typename Real > std::vector<InteriorCellLine>									Geodesics< PreReal , Real >::interiorCellLines;
-#ifdef NEW_CODE
 template< typename PreReal , typename Real > IndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > >	Geodesics< PreReal , Real >::interiorCellLineIndex;
-#else // !NEW_CODE
-template< typename PreReal , typename Real > std::vector< std::pair< unsigned int , unsigned int > >		Geodesics< PreReal , Real >::interiorCellLineIndex;
-#endif // NEW_CODE
 
 template< typename PreReal , typename Real > unsigned int													Geodesics< PreReal , Real >::impulseTexel = static_cast< unsigned int >(-1);
 template< typename PreReal , typename Real > std::vector<Point3D< float > >									Geodesics< PreReal , Real >::textureNodePositions;
@@ -312,7 +304,11 @@ void Geodesics< PreReal , Real >::ComputeExactSolution( void )
 	ThreadPool::ParallelFor
 	(
 		0 , indexConverter.numBoundary() ,
+#ifdef NEW_CODE
+		[&]( unsigned int , size_t i ){ coarseBoundaryValues[i] = multigridSmoothImpulseVariables[0].x[ static_cast< unsigned int >( indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex(i) ) ) ]; }
+#else // !NEW_CODE
 		[&]( unsigned int , size_t i ){ coarseBoundaryValues[i] = multigridSmoothImpulseVariables[0].x[ indexConverter.boundaryToSupported(i) ]; }
+#endif // NEW_CODE
 	);
 	coarseBoundaryFineBoundaryProlongation.Multiply(&coarseBoundaryValues[0], &fineBoundaryValues[0]);
 
@@ -333,7 +329,11 @@ void Geodesics< PreReal , Real >::ComputeExactSolution( void )
 	ThreadPool::ParallelFor
 		(
 			0 , indexConverter.numBoundary() ,
+#ifdef NEW_CODE
+			[&]( unsigned int , size_t i ){ fineGeodesicDistanceRHS[ static_cast< unsigned int >( indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex(i) ) ) ] += coarseBoundaryRHS[i]; }
+#else // !NEW_CODE
 			[&]( unsigned int , size_t i ){ fineGeodesicDistanceRHS[ indexConverter.boundaryToSupported(i) ] += coarseBoundaryRHS[i]; }
+#endif // NEW_CODE
 		);
 
 	//(3) Update geodesic distance solution	
@@ -569,7 +569,11 @@ void Geodesics< PreReal , Real >::UpdateSolution( void )
 	ThreadPool::ParallelFor
 		(
 			0 , indexConverter.numBoundary() ,
+#ifdef NEW_CODE
+			[&]( unsigned int , size_t i ){ coarseBoundaryValues[i] = multigridSmoothImpulseVariables[0].x[ static_cast< unsigned int >( indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex(i) ) ) ]; }
+#else // !NEW_CODE
 			[&]( unsigned int , size_t i ){ coarseBoundaryValues[i] = multigridSmoothImpulseVariables[0].x[ indexConverter.boundaryToSupported(i) ]; }
+#endif // NEW_CODE
 		);
 	coarseBoundaryFineBoundaryProlongation.Multiply(&coarseBoundaryValues[0], &fineBoundaryValues[0]);
 
@@ -589,7 +593,11 @@ void Geodesics< PreReal , Real >::UpdateSolution( void )
 	ThreadPool::ParallelFor
 		(
 			0 , indexConverter.numBoundary() ,
+#ifdef NEW_CODE
+			[&]( unsigned int , size_t i ){ multigridGeodesicDistanceVariables[0].rhs[ static_cast< unsigned int >( indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex(i) ) ) ] += coarseBoundaryRHS[i]; }
+#else // !NEW_CODE
 			[&]( unsigned int , size_t i ){ multigridGeodesicDistanceVariables[0].rhs[ indexConverter.boundaryToSupported(i) ] += coarseBoundaryRHS[i]; }
+#endif // NEW_CODE
 		);
 
 
@@ -661,7 +669,11 @@ void Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 	{
 		const GridAtlas< PreReal , Real > &gridAtlas = hierarchy.gridAtlases[i];
 		multigridIndices[i].threadTasks = gridAtlas.threadTasks;
+#ifdef NEW_CODE
+		multigridIndices[i].boundaryToCombined = gridAtlas.indexConverter.boundaryToCombined();
+#else // !NEW_CODE
 		multigridIndices[i].boundaryToSupported = gridAtlas.indexConverter.boundaryToSupported();
+#endif // NEW_CODE
 		multigridIndices[i].segmentedLines = gridAtlas.segmentedLines;
 		multigridIndices[i].rasterLines = gridAtlas.rasterLines;
 		multigridIndices[i].restrictionLines = gridAtlas.restrictionLines;
@@ -681,9 +693,15 @@ void Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 	multigridSmoothImpulseVariables.resize(levels);
 	for (int i = 0; i < levels; i++) {
 		MultigridLevelVariables<Real> & variables = multigridSmoothImpulseVariables[i];
+#ifdef NEW_CODE
+		variables.x.resize( static_cast< unsigned int >( hierarchy.gridAtlases[i].endCombinedTexelIndex ) );
+		variables.rhs.resize( static_cast< unsigned int >( hierarchy.gridAtlases[i].endCombinedTexelIndex ) );
+		variables.residual.resize( static_cast< unsigned int >( hierarchy.gridAtlases[i].endCombinedTexelIndex ) );
+#else // !NEW_CODE
 		variables.x.resize(hierarchy.gridAtlases[i].numTexels);
 		variables.rhs.resize(hierarchy.gridAtlases[i].numTexels);
 		variables.residual.resize(hierarchy.gridAtlases[i].numTexels);
+#endif // NEW_CODE
 		variables.boundary_rhs.resize( hierarchy.gridAtlases[i].indexConverter.numBoundary() );
 		variables.boundary_value.resize( hierarchy.gridAtlases[i].indexConverter.numBoundary() );
 		variables.variable_boundary_value.resize( hierarchy.gridAtlases[i].indexConverter.numBoundary() );
@@ -693,9 +711,15 @@ void Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 	for( unsigned int i=0 ; i<levels ; i++ )
 	{
 		MultigridLevelVariables<Real> & variables = multigridGeodesicDistanceVariables[i];
+#ifdef NEW_CODE
+		variables.x.resize( static_cast< unsigned int >( hierarchy.gridAtlases[i].endCombinedTexelIndex ) );
+		variables.rhs.resize( static_cast< unsigned int >( hierarchy.gridAtlases[i].endCombinedTexelIndex ) );
+		variables.residual.resize( static_cast< unsigned int >( hierarchy.gridAtlases[i].endCombinedTexelIndex ) );
+#else // !NEW_CODE
 		variables.x.resize(hierarchy.gridAtlases[i].numTexels);
 		variables.rhs.resize(hierarchy.gridAtlases[i].numTexels);
 		variables.residual.resize(hierarchy.gridAtlases[i].numTexels);
+#endif // NEW_CODE
 		variables.boundary_rhs.resize( hierarchy.gridAtlases[i].indexConverter.numBoundary() );
 		variables.boundary_value.resize( hierarchy.gridAtlases[i].indexConverter.numBoundary() );
 		variables.variable_boundary_value.resize( hierarchy.gridAtlases[i].indexConverter.numBoundary() );
@@ -705,13 +729,8 @@ void Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 //////////////////////////////////// Initialize cell samples
 
 	InitializeGridAtlasInteriorCellLines( hierarchy.gridAtlases[0].gridCharts , interiorCellLines , interiorCellLineIndex );
-#ifdef NEW_CODE
 	if( interiorCellLineIndex.size()!=static_cast< unsigned int >(hierarchy.gridAtlases[0].endInteriorCellIndex) )
 		MK_THROW( "Inconsistent number of interior cells: " , static_cast< unsigned int >(hierarchy.gridAtlases[0].endInteriorCellIndex) , " != " , interiorCellLineIndex.size() );
-#else // !NEW_CODE
-	if( interiorCellLineIndex.size()!=hierarchy.gridAtlases[0].numInteriorCells )
-		MK_THROW( "Inconsistent number of interior cells: " , hierarchy.gridAtlases[0].numInteriorCells , " != " , interiorCellLineIndex.size() );
-#endif // NEW_CODE
 	if( Verbose.set ) std::cout << pMeter( "Cell samples" ) << std::endl;
 
 	coarseBoundaryFineBoundaryProlongation = boundaryProlongation.coarseBoundaryFineBoundaryProlongation;
@@ -735,11 +754,11 @@ void Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 	}
 	if( Verbose.set ) std::cout << pMeter( "VF integration" ) << std::endl;
 #ifdef NEW_CODE
+	coarseBoundaryValues.resize( static_cast< unsigned int >( hierarchy.gridAtlases[0].endCombinedTexelIndex ) - static_cast< unsigned int >( hierarchy.gridAtlases[0].endInteriorTexelIndex ) );
+	coarseBoundaryRHS.resize( static_cast< unsigned int >( hierarchy.gridAtlases[0].endCombinedTexelIndex ) - static_cast< unsigned int >( hierarchy.gridAtlases[0].endInteriorTexelIndex ) );
+#else // !NEW_CODE
 	coarseBoundaryValues.resize( hierarchy.gridAtlases[0].numTexels - static_cast< unsigned int >(hierarchy.gridAtlases[0].endInteriorTexelIndex) );
 	coarseBoundaryRHS.resize( hierarchy.gridAtlases[0].numTexels - static_cast< unsigned int >(hierarchy.gridAtlases[0].endInteriorTexelIndex) );
-#else // !NEW_CODE
-	coarseBoundaryValues.resize( hierarchy.gridAtlases[0].numTexels - hierarchy.gridAtlases[0].numDeepTexels );
-	coarseBoundaryRHS.resize( hierarchy.gridAtlases[0].numTexels - hierarchy.gridAtlases[0].numDeepTexels );
 #endif // NEW_CODE
 	fineBoundaryValues.resize( numFineBoundaryNodes );
 	fineBoundaryRHS.resize( numFineBoundaryNodes );

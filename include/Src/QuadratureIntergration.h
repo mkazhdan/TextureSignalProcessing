@@ -36,7 +36,11 @@ namespace MishaK
 	class InteriorCellLine
 	{
 	public:
+#ifdef NEW_CODE
+		AtlasCombinedTexelIndex prevLineIndex , nextLineIndex;
+#else // !NEW_CODE
 		unsigned int prevLineIndex , nextLineIndex;
+#endif // NEW_CODE
 		unsigned int length;
 	};
 
@@ -45,11 +49,7 @@ namespace MishaK
 	(
 		const GridChart< GeometryReal > &gridChart ,
 		std::vector< InteriorCellLine > &interiorCellLines ,
-#ifdef NEW_CODE
 		IndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > > &interiorCellLineIndex
-#else // !NEW_CODE
-		std::vector< std::pair< unsigned int , unsigned int > > &interiorCellLineIndex
-#endif // NEW_CODE
 	)
 	{
 		const Image< CellType >& cellType = gridChart.cellType;
@@ -57,11 +57,7 @@ namespace MishaK
 
 		const Image< TexelIndex > & texelIndices = gridChart.texelIndices;
 
-#ifdef NEW_CODE
 		ChartInteriorCellIndex localInteriorCellIndex(0);
-#else // !NEW_CODE
-		int localInteriorCellIndex = 0;
-#endif // NEW_CODE
 
 		for( unsigned int j=0 ; j<height ; j++ )
 		{
@@ -80,16 +76,17 @@ namespace MishaK
 					newLine.nextLineIndex = texelIndices( rasterStart , j+1 ).combined;
 					newLine.length = offset - rasterStart;
 
+#ifdef NEW_CODE
+					if( newLine.prevLineIndex==AtlasCombinedTexelIndex(-1) || newLine.nextLineIndex==AtlasCombinedTexelIndex(-1) ) MK_THROW( "Invalid indexing" );
+					int currentLine = (int)interiorCellLines.size();
+#else // !NEW_CODE
 					if( newLine.prevLineIndex==-1 || newLine.nextLineIndex==-1 ) MK_THROW( "Invalid indexing" );
 					int currentLine = (int)interiorCellLines.size();
+#endif // NEW_CODE
 
 					for( unsigned int k=0 ; k<offset-rasterStart ; k++ )
 					{
-#ifdef NEW_CODE
 						if( gridChart.interiorCellCoveredTexelBilinearElementIndices[localInteriorCellIndex][0]!=texelIndices( rasterStart+k , j ).covered ) MK_THROW( "Unexpected corner ID" );
-#else // !NEW_CODE
-						if( (int)gridChart.interiorCellInteriorBilinearElementIndices[localInteriorCellIndex][0]!=texelIndices( rasterStart+k , j ).covered ) MK_THROW( "Unexpected corner ID" );
-#endif // NEW_CODE
 
 						interiorCellLineIndex.push_back( std::pair< int , int >( currentLine , k ) );
 						localInteriorCellIndex++;
@@ -108,11 +105,7 @@ namespace MishaK
 	(
 		const IndexVector< ChartIndex , GridChart< GeometryReal > >& gridCharts ,
 		std::vector< InteriorCellLine >& interiorCellLines ,
-#ifdef NEW_CODE
 		IndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > >& interiorCellLineIndex
-#else // !NEW_CODE
-		std::vector< std::pair< unsigned int , unsigned int > >& interiorCellLineIndex
-#endif // NEW_CODE
 	)
 	{
 		for( unsigned int i=0 ; i<gridCharts.size() ; i++ ) InitializeGridChartInteriorCellLines( gridCharts[ ChartIndex(i) ] , interiorCellLines , interiorCellLineIndex );
@@ -237,11 +230,7 @@ namespace MishaK
 		const IndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > &texture_metrics ,
 		const AtlasChart< GeometryReal > &atlasChart ,
 		const GridChart< GeometryReal > &gridChart ,
-#ifdef NEW_CODE
 		const IndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > >& interiorCellLineIndex ,
-#else // !NEW_CODE
-		const std::vector< std::pair< unsigned int , unsigned int > >& interiorCellLineIndex ,
-#endif // NEW_CODE
 		const std::vector< AtlasInteriorOrBoundaryNodeIndex >& fineBoundaryIndex ,
 		ElementSamples &elementSamples ,
 		std::mutex &element_samples_bilinear_mutex ,
@@ -390,13 +379,8 @@ namespace MishaK
 					GeometryReal element_area = cell_area;
 
 					AtlasInteriorCellIndex globalInteriorIndex = gridChart.chartToAtlasInteriorCellIndex( localInteriorIndex );
-#ifdef NEW_CODE
 					unsigned int cellLineId = interiorCellLineIndex[globalInteriorIndex].first;
 					unsigned int cellLineOffset = interiorCellLineIndex[globalInteriorIndex].second;
-#else // !NEW_CODE
-					unsigned int cellLineId = interiorCellLineIndex[ static_cast< unsigned int >(globalInteriorIndex) ].first;
-					unsigned int cellLineOffset = interiorCellLineIndex[ static_cast< unsigned int >(globalInteriorIndex) ].second;
-#endif // NEW_CODE
 
 					typename ElementSamples::Bilinear bilinearElementSample( fastIntegration ? 1 : 2*Samples );
 					bilinearElementSample.cellOffset = cellLineOffset;
@@ -439,13 +423,8 @@ namespace MishaK
 						for( int ii=0 ; ii<polygon.size() ; ii++ ) polygon[ii] = TextureToElement( polygon[ii] );
 
 						AtlasInteriorCellIndex globalInteriorIndex = gridChart.chartToAtlasInteriorCellIndex( localInteriorIndex );
-#ifdef NEW_CODE
 						unsigned int cellLineId = interiorCellLineIndex[globalInteriorIndex].first;
 						unsigned int cellLineOffset = interiorCellLineIndex[globalInteriorIndex].second;
-#else // !NEW_CODE
-						unsigned int cellLineId = interiorCellLineIndex[ static_cast< unsigned int >(globalInteriorIndex) ].first;
-						unsigned int cellLineOffset = interiorCellLineIndex[ static_cast< unsigned int >(globalInteriorIndex) ].second;
-#endif // NEW_CODE
 
 						// There is a single sample for the whole polygon
 						typename ElementSamples::Bilinear bilinearElementSample( fastIntegration ? 1 : (polygon.size()-2)*Samples );
@@ -572,11 +551,7 @@ namespace MishaK
 		const IndexVector< ChartIndex , IndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > >& parameterMetric ,
 		const IndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
 		const IndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts ,
-#ifdef NEW_CODE
 		const IndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > > &interiorCellLineIndex ,
-#else // !NEW_CODE
-		const std::vector< std::pair< unsigned int , unsigned int > > &interiorCellLineIndex ,
-#endif // NEW_CODE
 		const std::vector< AtlasInteriorOrBoundaryNodeIndex > &fineBoundaryIndex ,
 		ElementSamples &elementSamples ,
 		bool fastIntegration
@@ -676,11 +651,19 @@ namespace MishaK
 		Miscellany::Timer timer;
 		auto UpdateRow = [&]( unsigned int r )
 			{
+#ifdef NEW_CODE
+				const T * _inPrevious = &potential[0] + interiorCellLines[r].prevLineIndex;
+				const T *     _inNext = &potential[0] + interiorCellLines[r].nextLineIndex;
+
+				T * _outPrevious = &rhs[0] + interiorCellLines[r].prevLineIndex;
+				T *     _outNext = &rhs[0] + interiorCellLines[r].nextLineIndex;
+#else // !NEW_CODE
 				const T* _inPrevious = &potential[ interiorCellLines[r].prevLineIndex ];
 				const T*     _inNext = &potential[ interiorCellLines[r].nextLineIndex ];
 
 				T* _outPrevious = &rhs[ interiorCellLines[r].prevLineIndex ];
 				T*     _outNext = &rhs[ interiorCellLines[r].nextLineIndex ];
+#endif // NEW_CODE
 
 				T cornerValues[4];
 				cornerValues[0] = *_inPrevious;

@@ -51,7 +51,6 @@ namespace MishaK
 		operator MeshSample< GeometryReal >() const { return MeshSample< GeometryReal >( static_cast< unsigned int >(tID) , barycentricCoords ); }
 	};
 
-#ifdef NEW_CODE
 	template< typename IndexType >
 	struct BilinearElementIndex
 	{
@@ -62,18 +61,6 @@ namespace MishaK
 	protected:
 		IndexType _v[4];
 	};
-#else // !NEW_CODE
-	struct BilinearElementIndex
-	{
-	protected:
-		unsigned int v[4];
-	public:
-		BilinearElementIndex( void ) { v[0] = v[1] = v[2] = v[3] = 0; }
-		BilinearElementIndex( unsigned int v0 , unsigned int v1 , unsigned int v2 , unsigned int v3 ) { v[0] = v0 , v[1] = v1 , v[2] = v2 , v[3] = v3; }
-		unsigned int &operator[]( unsigned int idx )       { return v[idx]; }
-		unsigned int  operator[]( unsigned int idx ) const { return v[idx]; }
-	};
-#endif // NEW_CODE
 
 	struct QuadraticElementIndex
 	{
