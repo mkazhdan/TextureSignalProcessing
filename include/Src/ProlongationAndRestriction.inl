@@ -36,8 +36,8 @@ void InitializeProlongation
 	AtlasCoveredTexelIndex endCoveredTexelIndex ,
 	unsigned int numFineNodes ,
 	AtlasCombinedTexelIndex endCoarseCombinedTexel ,
-	const IndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts ,
-	const IndexVector< AtlasCombinedTexelIndex , GridNodeInfo > &nodeInfo ,
+	const IndexVector< ChartIndex , GridChart< GeometryReal > > & gridCharts ,
+	const IndexVector< AtlasCombinedTexelIndex , TexelInfo > & texelInfo ,
 	Eigen::SparseMatrix< MatrixReal > &prolongation
 )
 {
@@ -53,20 +53,18 @@ void InitializeProlongation
 #if 1
 			MK_THROW( "Method disabled" );
 #else
-			if( gridChart.texelIndices[j].combiend!=-1 && gridChart.texelIndices[j].covered!=-1 ) interiorTexelIndices[ gridChart.texelIndices[j].combined ] = gridChart.texelIndices[j].covered;
+			if( gridChart.texelIndices[j].combined!=AtlasCombinedTexelIndex(-1) && gridChart.texelIndices[j].covered!=AtlasCoveredTexelIndex(-1) )
+				interiorTexelIndices[ gridChart.texelIndices[j].combined ] = gridChart.texelIndices[j].covered;
 #endif
 		}
 	}
 
-	for( int i=0 ; i<interiorTexelIndices.size() ; i++ )
+	for( int i=0 ; i<interiorTexelIndices.size() ; i++ ) if( interiorTexelIndices[i]!=-1 )
 	{
-		if( interiorTexelIndices[i]!=-1 )
-		{
-			if( interiorTexelIndices[i]<0 || interiorTexelIndices[i]>numFineNodes ) MK_THROW( "Out of bound index" );
-			prolongationTriplets.push_back( Eigen::Triplet< MatrixReal >( interiorTexelIndices[i] , i , (MatrixReal)1. ) );
+		if( interiorTexelIndices[i]<0 || interiorTexelIndices[i]>numFineNodes ) MK_THROW( "Out of bound index" );
+		prolongationTriplets.push_back( Eigen::Triplet< MatrixReal >( interiorTexelIndices[i] , i , (MatrixReal)1. ) );
 #pragma message( "[WARNING] AtlasInteriorTexelIndex -> AtlasCombinedTexelIndex" )
-			coveredNodes.insert( AtlasCombinedTexelIndex(i) );
-		}
+		coveredNodes.insert( AtlasCombinedTexelIndex(i) );
 	}
 
 	unsigned int numAuxiliaryNodes = numFineNodes - static_cast< unsigned int >(endCoveredTexelIndex);
@@ -84,7 +82,7 @@ void InitializeProlongation
 
 	GeometryReal precision_error = (GeometryReal)1e-10;
 
-	std::vector<GeometryReal> auxiliaryNodesCumWeight(numAuxiliaryNodes, 0);
+	std::vector< GeometryReal > auxiliaryNodesCumWeight(numAuxiliaryNodes, 0);
 
 	for( unsigned int i=0 ; i<gridCharts.size() ; i++ )
 	{
@@ -110,7 +108,7 @@ void InitializeProlongation
 				{
 					auxiliaryNodesCumWeight[auxiliaryID] += texelWeight;
 					AtlasCombinedTexelIndex texelIndex = gridChart.combinedCellCombinedTexelBilinearElementIndices[cellID][k];
-					if( nodeInfo[texelIndex].texelType==TexelType::InteriorSupported )
+					if( texelInfo[texelIndex].texelType==TexelType::InteriorSupported )
 						MK_THROW( "Interior-supported texel cannot be in the support of an auxiliary node. Weight " , texelWeight , " (B)" );
 					coveredNodes.insert( texelIndex );
 					if( static_cast< unsigned int >(gridChart.auxiliaryNodes[j].index)<static_cast< unsigned int >(endCoveredTexelIndex) || static_cast< unsigned int >(gridChart.auxiliaryNodes[j].index)>numFineNodes || texelIndex==AtlasCombinedTexelIndex(-1) || static_cast< unsigned int >(texelIndex)>static_cast< unsigned int >(endCoarseCombinedTexel) )
@@ -296,7 +294,7 @@ void InitializeAtlasHierachicalRestriction
 {
 	std::vector< Eigen::Triplet< MatrixReal > > boundaryRestrictionTriplets;
 
-	const IndexVector< AtlasCombinedTexelIndex , GridNodeInfo > & coarseNodeInfo = coarseAtlas.nodeInfo;
+	const IndexVector< AtlasCombinedTexelIndex , TexelInfo > & coarseTexelInfo = coarseAtlas.texelInfo;
 	const typename GridAtlas<>::IndexConverter & indexConverter = coarseAtlas.indexConverter;
 
 	const std::vector< RasterLine > &coarseRasterLines = coarseAtlas.rasterLines;
@@ -317,17 +315,17 @@ void InitializeAtlasHierachicalRestriction
 
 #pragma message( "[WARNING] What's going on here" )
 				MK_WARN_ONCE( "Transforming to interior texel index" );
-				restrictionLines[i].coeffStartIndex = AtlasInteriorTexelIndex( static_cast< unsigned int >(lineCoarseStartIndex) ); //global (NOT DEEP) variable index in the current level
+				restrictionLines[i].coeffStartIndex = AtlasInteriorTexelIndex( static_cast< unsigned int >(lineCoarseStartIndex) ); //combined (NOT DEEP) variable index in the current level
 
 				deepLines[i].coarseLineStartIndex = coarseRasterLines[i].coeffStartIndex;
 				deepLines[i].coarseLineEndIndex = coarseRasterLines[i].coeffStartIndex + lineCoarseLength - 1;
 
-				GridNodeInfo startNodeInfo = coarseNodeInfo[lineCoarseStartIndex];
-				if( startNodeInfo.texelType!=TexelType::InteriorSupported ) MK_THROW( "Not an interior-supported teel" );
-				int ci = startNodeInfo.ci;
-				int cj = startNodeInfo.cj;
+				TexelInfo startTexelInfo = coarseTexelInfo[lineCoarseStartIndex];
+				if( startTexelInfo.texelType!=TexelType::InteriorSupported ) MK_THROW( "Not an interior-supported teel" );
+				int ci = startTexelInfo.ci;
+				int cj = startTexelInfo.cj;
 
-				ChartIndex chartID = startNodeInfo.chartID;
+				ChartIndex chartID = startTexelInfo.chartID;
 				const GridChart< GeometryReal > &fineChart = fineAtlas.gridCharts[ chartID ];
 				const GridChart< GeometryReal > &coarseChart = coarseAtlas.gridCharts[ chartID ];
 
@@ -420,11 +418,11 @@ void InitializeAtlasHierachicalRestriction
 			}
 			for( int di=0 ; di<2 ; di++ ) for( int dj=0 ; dj<2 ; dj++ ) if( ci[di]!=-1 && cj[dj]!=-1)
 			{
-				AtlasCombinedTexelIndex coarseNodeGlobalIndex = coarseChart.texelIndices(ci[di], cj[dj]).combined;
-				if( coarseNodeGlobalIndex==AtlasCombinedTexelIndex(-1) ) MK_THROW( "Coarse texel is unactive! (D)" );
+				AtlasCombinedTexelIndex coarseCombinedTexel = coarseChart.texelIndices(ci[di], cj[dj]).combined;
+				if( coarseCombinedTexel==AtlasCombinedTexelIndex(-1) ) MK_THROW( "Coarse texel is unactive! (D)" );
 				else
 				{
-					AtlasBoundaryTexelIndex coarseBoundaryIndex = indexConverter.combinedToBoundary( coarseNodeGlobalIndex );
+					AtlasBoundaryTexelIndex coarseBoundaryIndex = indexConverter.combinedToBoundary( coarseCombinedTexel );
 					if( coarseBoundaryIndex!=AtlasBoundaryTexelIndex(-1) ) boundaryRestrictionTriplets.emplace_back( static_cast< unsigned int >(coarseBoundaryIndex) , static_cast< unsigned int >(fineChart.texelIndices(fi,fj).combined) , ci_weights[di] * cj_weights[dj] );
 				}
 			}

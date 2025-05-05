@@ -341,6 +341,8 @@ namespace MishaK
 		bool alignedStart;
 	};
 
+#ifdef NEW_CODE
+#else // !NEW_CODE
 	struct RestrictionLine
 	{
 		RestrictionLine( void ) { startIndex = length = centerLineIndex = prevLineIndex = nextLineIndex = -1; }
@@ -351,6 +353,7 @@ namespace MishaK
 		int nextLineIndex;
 		int outputStart;
 	};
+#endif // NEW_CODE
 
 	template< typename GeometryReal >
 	struct AuxiliaryNode
@@ -477,10 +480,10 @@ namespace MishaK
 			}
 		}
 
-		// Texel indices (global)
+		// Texel indices (atlas)
 		Image< TexelIndex > texelIndices;
 
-		// Cell indices (local)
+		// Cell indices (chart)
 		Image< CellIndex > cellIndices;
 
 		// The indices of the incident nodes
@@ -527,7 +530,7 @@ namespace MishaK
 		unsigned int _combinedCellOffset;
 	};
 
-	struct GridNodeInfo
+	struct TexelInfo
 	{
 		ChartIndex chartID;
 		unsigned int ci;
@@ -575,7 +578,7 @@ namespace MishaK
 	{
 		std::vector< ThreadTask > threadTasks;
 		typename GridAtlas<>::IndexConverter indexConverter;
-		IndexVector< AtlasCombinedTexelIndex , GridNodeInfo > nodeInfo;
+		IndexVector< AtlasCombinedTexelIndex , TexelInfo > texelInfo;
 		IndexVector< ChartIndex , GridChart< GeometryReal > > gridCharts;
 		std::vector< SegmentedRasterLine > segmentedLines;
 		std::vector< RasterLine > rasterLines;
@@ -591,26 +594,39 @@ namespace MishaK
 		AtlasCombinedCellIndex endCombinedCellIndex;
 		AtlasBoundaryCellIndex endBoundaryCellIndex;
 		AtlasInteriorCellIndex endInteriorCellIndex;
+
 		unsigned int numBoundaryNodes;
+#ifdef NEW_CODE
+		BoundaryMidPointIndex endMidPointIndex;
+#else // !NEW_CODE
 		unsigned int numMidPoints;
+#endif // NEW_CODE
 		unsigned int numFineNodes;
 	};
 
 	struct BoundaryDeepIndex
 	{
+#ifdef NEW_CODE
+		AtlasBoundaryTexelIndex boundaryIndex;
+#else // !NEW_CODE
 		int boundaryIndex;
-		AtlasCombinedTexelIndex deepGlobalIndex;
+#endif // NEW_CODE
+		AtlasCombinedTexelIndex combinedIndex;
 		AtlasInteriorTexelIndex interiorIndex;
-		int offset;
+		unsigned int offset;
 	};
 
 	template< typename Real >
 	struct BoundaryBoundaryIndex
 	{
+#ifdef NEW_CODE
+		AtlasBoundaryTexelIndex coarsePrincipalBoundaryIndex;
+#else // !NEW_CODE
 		int coarsePrincipalBoundaryIndex;
+#endif // NEW_CODE
 		AtlasBoundaryTexelIndex coarseSecondaryBoundaryIndex;
 		AtlasInteriorTexelIndex fineInteriorIndex;
-		int offset;
+		unsigned int offset;
 		Real weight;
 	};
 
@@ -623,8 +639,13 @@ namespace MishaK
 		std::vector< SparseMatrix< MatrixReal , int > > prolongation;
 		std::vector< SparseMatrix< MatrixReal , int > > boundaryCoarseFineProlongation;
 		std::vector< SparseMatrix< MatrixReal , int > > boundaryFineCoarseRestriction;
+#ifdef NEW_CODE
+		std::vector< IndexVector< AtlasBoundaryTexelIndex , BoundaryBoundaryIndex< MatrixReal > > > boundaryBoundaryIndices;
+		std::vector< IndexVector< AtlasBoundaryTexelIndex , BoundaryDeepIndex > > boundaryDeepIndices;
+#else // !NEW_CODE
 		std::vector< std::vector< BoundaryBoundaryIndex< MatrixReal > > > boundaryBoundaryIndices;
 		std::vector< std::vector< BoundaryDeepIndex > > boundaryDeepIndices;
+#endif // NEW_CODE
 	};
 
 

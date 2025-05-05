@@ -92,7 +92,7 @@ namespace MishaK
 	{
 		template< typename T > using Array = std::conditional_t< N==-1 , std::vector< T > , std::array< T , N > >;
 		Array< Point2D < GeometryReal > > vertices;			// The positions of the vertices within the chart
-		Array< AtlasInteriorOrBoundaryNodeIndex > indices;			// The index of the boundary vertex
+		Array< AtlasInteriorOrBoundaryNodeIndex > indices;	// The index of the boundary vertex
 		Array< ChartMeshVertexIndex > vertexIndices;		// The index of the atlas/chart vertex (or -1 if it is not an atlas vertex)
 		Array< AtlasMeshEdgeIndex > atlasVertexParentEdge;	// If this is a not an original mesh vertex, the index of the associated polygon edge 
 		Array< AtlasMeshEdgeIndex > atlasEdgeIndices;		// If this is a boundary segment, the index of the associated polygon edge

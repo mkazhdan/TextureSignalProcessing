@@ -123,19 +123,49 @@ void DeepCoefficientRestriction( const std::vector< Real >& fineDeepCoefficients
 }
 
 template< typename MatrixReal >
-void BoundaryDeepMatrixConstruction( int numBoundaryTexels , int numTexels , const std::vector< MatrixReal > &deepCoefficients , const std::vector< BoundaryDeepIndex > &boundaryDeepIndices , SparseMatrix< MatrixReal , int > &boundaryDeepMatrix )
+void BoundaryDeepMatrixConstruction
+(
+	int numBoundaryTexels ,
+	int numTexels ,
+	const std::vector< MatrixReal > &deepCoefficients ,
+#ifdef NEW_CODE
+	const IndexVector< AtlasBoundaryTexelIndex , BoundaryDeepIndex > &boundaryDeepIndices ,
+#else // !NEW_CODE
+	const std::vector< BoundaryDeepIndex > &boundaryDeepIndices ,
+#endif // NEW_CODE
+	SparseMatrix< MatrixReal , int > &boundaryDeepMatrix
+)
 {
 	std::vector< Eigen::Triplet< MatrixReal > > boundaryInteriorTriplets;
 	for( int i=0 ; i<boundaryDeepIndices.size() ; i++ )
 	{
-		boundaryInteriorTriplets.push_back( Eigen::Triplet< MatrixReal >( boundaryDeepIndices[i].boundaryIndex , static_cast< unsigned int >(boundaryDeepIndices[i].deepGlobalIndex) , deepCoefficients[ 10*static_cast< unsigned int >(boundaryDeepIndices[i].interiorIndex) + boundaryDeepIndices[i].offset ] ) );
+#ifdef NEW_CODE
+		const BoundaryDeepIndex & boundaryDeepIndex = boundaryDeepIndices[ AtlasBoundaryTexelIndex(i) ];
+		boundaryInteriorTriplets.push_back( Eigen::Triplet< MatrixReal >( static_cast< unsigned int >(boundaryDeepIndex.boundaryIndex) , static_cast< unsigned int >(boundaryDeepIndex.combinedIndex) , deepCoefficients[ 10*static_cast< unsigned int >(boundaryDeepIndex.interiorIndex) + boundaryDeepIndex.offset ] ) );
+#else // !NEW_CODE
+		boundaryInteriorTriplets.push_back( Eigen::Triplet< MatrixReal >( boundaryDeepIndices[i].boundaryIndex , static_cast< unsigned int >(boundaryDeepIndices[i].combinedIndex) , deepCoefficients[ 10*static_cast< unsigned int >(boundaryDeepIndices[i].interiorIndex) + boundaryDeepIndices[i].offset ] ) );
+#endif // NEW_CODE
 		//NOTE: Deep coefficient is not multiplied by reciprocal yet.
 	}
 	boundaryDeepMatrix = SetSparseMatrix( boundaryInteriorTriplets , numBoundaryTexels , numTexels , false );
 }
 
 template< typename MatrixReal >
-void BoundaryBoundaryMatrixConstruction( int numBoundaryTexels , const std::vector< MatrixReal > &fineDeepCoefficients , const SparseMatrix< MatrixReal , int > &fineBoundaryBoundaryMatrix , const SparseMatrix< MatrixReal , int > &boundaryCoarseFineProlongation , const SparseMatrix< MatrixReal , int > &boundaryFineCoarseRestriction , const std::vector< BoundaryBoundaryIndex< MatrixReal > > &boundaryBoundaryIndices , SparseMatrix< MatrixReal , int > &coarseBoundaryBoundaryMatrix , bool verbose=false )
+void BoundaryBoundaryMatrixConstruction
+(
+	unsigned int numBoundaryTexels ,
+	const std::vector< MatrixReal > & fineDeepCoefficients ,
+	const SparseMatrix< MatrixReal , int > & fineBoundaryBoundaryMatrix ,
+	const SparseMatrix< MatrixReal , int > & boundaryCoarseFineProlongation ,
+	const SparseMatrix< MatrixReal , int > & boundaryFineCoarseRestriction ,
+#ifdef NEW_CODE
+	const IndexVector< AtlasBoundaryTexelIndex , BoundaryBoundaryIndex< MatrixReal > > & boundaryBoundaryIndices ,
+#else // !NEW_CODE
+	const std::vector< BoundaryBoundaryIndex< MatrixReal > > &boundaryBoundaryIndices ,
+#endif // NEW_CODE
+	SparseMatrix< MatrixReal , int > &coarseBoundaryBoundaryMatrix ,
+	bool verbose=false
+)
 {
 	Miscellany::Timer timer;
 
@@ -148,7 +178,12 @@ void BoundaryBoundaryMatrixConstruction( int numBoundaryTexels , const std::vect
 	std::vector< Eigen::Triplet< MatrixReal > > boundaryBoundaryTriplets;
 	for( int i=0 ; i<boundaryBoundaryIndices.size() ; i++ )
 	{
+#ifdef NEW_CODE
+		const BoundaryBoundaryIndex< MatrixReal > & boundaryBoundaryIndex = boundaryBoundaryIndices[ AtlasBoundaryTexelIndex(i) ];
+		boundaryBoundaryTriplets.push_back( Eigen::Triplet< MatrixReal >( static_cast< unsigned int >(boundaryBoundaryIndex.coarsePrincipalBoundaryIndex) , static_cast< unsigned int >(boundaryBoundaryIndex.coarseSecondaryBoundaryIndex) , fineDeepCoefficients[ static_cast< unsigned int >(boundaryBoundaryIndex.fineInteriorIndex)*10 + boundaryBoundaryIndex.offset ] * boundaryBoundaryIndex.weight ) );
+#else // !NEW_CODE
 		boundaryBoundaryTriplets.push_back( Eigen::Triplet< MatrixReal >( boundaryBoundaryIndices[i].coarsePrincipalBoundaryIndex , static_cast< unsigned int >(boundaryBoundaryIndices[i].coarseSecondaryBoundaryIndex) , fineDeepCoefficients[ static_cast< unsigned int >(boundaryBoundaryIndices[i].fineInteriorIndex)*10 + boundaryBoundaryIndices[i].offset ] * boundaryBoundaryIndices[i].weight ) );
+#endif // NEW_CODE
 		//NOTE: Deep coefficient is not multiplied by reciprocal yet.
 	}
 	if( verbose ) printf( "\t Triplets  =  %.4f\n" , timer.elapsed() );
@@ -257,7 +292,7 @@ void UpdateMultigridCoefficients( const HierarchicalSystem< GeometryReal , Matri
 	SparseMatrix< MatrixReal , int > currentSystemMatrix;
 	Miscellany::Timer timer;
 
-	for (int i = 1; i < levels; i++)
+	for( unsigned int i=1 ; i<levels ; i++ )
 	{
 		if( verbose ) printf("Level %d \n", i);
 

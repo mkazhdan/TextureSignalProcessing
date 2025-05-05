@@ -121,7 +121,7 @@ public:
 	static int textureHeight;
 	static Real diffusionInterpolationWeight;
 	static Real geodesicInterpolationWeight;
-	static int levels;
+	static unsigned int levels;
 	static int updateCount;
 	
 	static int steps;
@@ -243,7 +243,7 @@ template< typename PreReal , typename Real > IndexVector< AtlasCombinedCellIndex
 template< typename PreReal , typename Real > int															Geodesics< PreReal , Real >::steps;
 template< typename PreReal , typename Real > char															Geodesics< PreReal , Real >::stepsString[1024];
 
-template< typename PreReal , typename Real > int															Geodesics< PreReal , Real >::levels;
+template< typename PreReal , typename Real > unsigned int													Geodesics< PreReal , Real >::levels;
 template< typename PreReal , typename Real > HierarchicalSystem< PreReal , Real >							Geodesics< PreReal , Real >::hierarchy;
 
 template< typename PreReal , typename Real > unsigned char *												Geodesics< PreReal , Real >::outputBuffer;
@@ -641,7 +641,7 @@ void Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 //////////////////////////////////// Initialize multigrid indices
 
 	multigridIndices.resize(levels);
-	for( int i=0 ; i<levels ; i++ )
+	for( unsigned int i=0 ; i<levels ; i++ )
 	{
 		const GridAtlas< PreReal , Real > &gridAtlas = hierarchy.gridAtlases[i];
 		multigridIndices[i].threadTasks = gridAtlas.threadTasks;
@@ -663,7 +663,8 @@ void Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 //////////////////////////////////// Initialize multigrid variables
 
 	multigridSmoothImpulseVariables.resize(levels);
-	for (int i = 0; i < levels; i++) {
+	for( unsigned int i=0 ; i<levels ; i++ )
+	{
 		MultigridLevelVariables<Real> & variables = multigridSmoothImpulseVariables[i];
 		variables.x.resize( static_cast< unsigned int >( hierarchy.gridAtlases[i].endCombinedTexelIndex ) );
 		variables.rhs.resize( static_cast< unsigned int >( hierarchy.gridAtlases[i].endCombinedTexelIndex ) );

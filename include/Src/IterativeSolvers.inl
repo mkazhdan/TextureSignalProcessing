@@ -34,8 +34,14 @@ void Relaxation
 	Solver &boundarySolver ,
 	const IndexVector< AtlasBoundaryTexelIndex , AtlasCombinedTexelIndex > &boundaryToCombined ,
 	const std::vector< SegmentedRasterLine > &segmentedLines ,
-	const std::vector< Data > &rhs , std::vector< Data > &x0 , std::vector< Data > &boundaryRHS , std::vector< Data > &boundarySolution , std::vector< Data > &variableBoundaryRHS ,
-	int numIterations=2 , bool boundaryFirst=true , bool verbose=false
+	const std::vector< Data > &rhs ,
+	std::vector< Data > &x0 ,
+	std::vector< Data > &boundaryRHS ,
+	std::vector< Data > &boundarySolution ,
+	std::vector< Data > &variableBoundaryRHS ,
+	int numIterations=2 ,
+	bool boundaryFirst=true ,
+	bool verbose=false
 )
 {
 	unsigned int numBoundaryVariables = boundaryToCombined.size();
@@ -45,33 +51,49 @@ void Relaxation
 	Miscellany::Timer timer;
 
 	int it_offset = boundaryFirst ? 0 : 1;
-	for (int it = 0; it < numIterations; it++){
-		if ((it + it_offset) % 2 == 0){//Update Boundary;
+	for( int it=0 ; it<numIterations ; it++ )
+	{
+		if( (it+it_offset)%2==0 )
+		{
+			/////////////////////
+			// Update Boundary //
+			/////////////////////
 
 			if( verbose ) timer.reset();
 
-			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundarySolution[i] = x0[ boundaryToCombined[ AtlasBoundaryTexelIndex(i) ] ] ; variableBoundaryRHS[i] = boundaryRHS[i]; } );
+			ThreadPool::ParallelFor
+			(
+				0 , numBoundaryVariables ,
+				[&]( unsigned int , size_t i )
+				{
+					boundarySolution[i] = x0[ boundaryToCombined[ AtlasBoundaryTexelIndex(i) ] ];
+					variableBoundaryRHS[i] = boundaryRHS[i];
+				}
+			);
 
-			boundaryDeepMatrix.Multiply((Data*)&x0[0], (Data*)&variableBoundaryRHS[0], MULTIPLY_ADD | MULTIPLY_NEGATE);
+			boundaryDeepMatrix.Multiply( (Data*)&x0[0] , (Data*)&variableBoundaryRHS[0] , MULTIPLY_ADD | MULTIPLY_NEGATE );
 
 			if( verbose ) printf("\t Boundary initialization =  %.4f \n" , timer.elapsed() );
 
 			if( verbose ) timer.reset();
-			solve(boundarySolver,boundarySolution, variableBoundaryRHS);
+			solve( boundarySolver , boundarySolution , variableBoundaryRHS );
 			if( verbose ) printf("\t Boundary update =  %.4f \n" , timer.elapsed() );
 
 			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ x0[ boundaryToCombined[ AtlasBoundaryTexelIndex(i) ] ] = boundarySolution[i]; } );
 		}
 
 
-		if ((it + it_offset) % 2 == 1) {//Update Interior
+		if( (it+it_offset)%2==1 )
+		{
+			/////////////////////
+			// Update Interior //
+			/////////////////////
 
-
-			auto UpdateRow = [&](int k)
+			auto UpdateRow = [&]( int k )
 			{
-				const std::vector<RasterLine> & rasterLines = segmentedLines[k].segments;
-				for (int r = 0; r < rasterLines.size(); r++) {
-
+				const std::vector< RasterLine > & rasterLines = segmentedLines[k].segments;
+				for( int r=0 ; r<rasterLines.size() ; r++ )
+				{
 					Data* _xCurrent = (Data*)x0.data() + rasterLines[r].lineStartIndex;
 					const Data* _xPrevious = (Data*)x0.data() + rasterLines[r].prevLineIndex;
 					const Data* _xNext = (Data*)x0.data() + rasterLines[r].nextLineIndex;
@@ -81,28 +103,29 @@ void Relaxation
 					int lineLength = (rasterLines[r].lineEndIndex - rasterLines[r].lineStartIndex + 1);
 					int lineDeepStart = rasterLines[r].coeffStartIndex;
 					const Real* _deepCoefficients = &deepCoefficients[10 * lineDeepStart];
-					for (int i = 0; i < lineLength; _deepCoefficients += 10, i++)
+					for( int i=0 ; i<lineLength ; _deepCoefficients+=10 , i++ )
 					{
 						_xCurrent[i] =
 							_rhs[i] * _deepCoefficients[4] -
 							(
-								_xPrevious[i - 1] * _deepCoefficients[0] +
-								_xPrevious[i + 0] * _deepCoefficients[1] +
-								_xPrevious[i + 1] * _deepCoefficients[2] +
-								_xCurrent[i - 1] * _deepCoefficients[3] +
-								_xCurrent[i + 1] * _deepCoefficients[5] +
-								_xNext[i - 1] * _deepCoefficients[6] +
-								_xNext[i + 0] * _deepCoefficients[7] +
-								_xNext[i + 1] * _deepCoefficients[8]
-								);
+								_xPrevious[i-1] * _deepCoefficients[0] +
+								_xPrevious[i+0] * _deepCoefficients[1] +
+								_xPrevious[i+1] * _deepCoefficients[2] +
+								_xCurrent [i-1] * _deepCoefficients[3] +
+								_xCurrent [i+1] * _deepCoefficients[5] +
+								_xNext    [i-1] * _deepCoefficients[6] +
+								_xNext    [i+0] * _deepCoefficients[7] +
+								_xNext    [i+1] * _deepCoefficients[8]
+							);
 					}
 				}
 			};
 
 
-			auto UpdateBlock = [&](int firstLine, int lastLine, int passes){
-				for (int r = firstLine; r < lastLine + passes - 1; r++) for (int p = 0; p < passes; p++) if (r - p >= firstLine && r - p < lastLine) UpdateRow(r - p);
-			};
+			auto UpdateBlock = [&]( int firstLine , int lastLine , int passes )
+				{
+					for( int r=firstLine ; r<lastLine+passes-1 ; r++ ) for( int p=0 ; p<passes ; p++ ) if( r-p>= firstLine && r-p<lastLine ) UpdateRow(r-p);
+				};
 
 			if( verbose ) timer.reset();
 
@@ -121,6 +144,7 @@ void Relaxation
 						UpdateBlock(firstLine, lastLine, 3);
 					}
 				);
+
 			ThreadPool::ParallelFor
 			(
 				0 , numBlocks/2 ,
@@ -156,20 +180,28 @@ void Relaxation
 	unsigned int numIterations=2 ,
 	bool boundaryFirst=true ,
 	bool verbose=false
-	)
+)
 {
 
 
-	unsigned int numBoundaryVariables = boundaryToCombined.size();
+	unsigned int numBoundaryVariables = (unsigned int)boundaryToCombined.size();
 
-	ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundaryRHS[i] = rhs[ static_cast< unsigned int >( boundaryToCombined[ AtlasBoundaryTexelIndex(i) ] ) ]; } );
+	ThreadPool::ParallelFor
+	(
+		0 , numBoundaryVariables ,
+		[&]( unsigned int , size_t i ){ boundaryRHS[i] = rhs[ static_cast< unsigned int >( boundaryToCombined[ AtlasBoundaryTexelIndex(i) ] ) ]; }
+	);
 
 	Miscellany::Timer timer;
 
 	int it_offset = boundaryFirst ? 0 : 1;
 	for( unsigned int it=0 ; it<numIterations ; it++ )
 	{
-		if ((it + it_offset) % 2 == 0) {//Update Boundary;
+		if( (it+it_offset)%2==0 )
+		{
+			/////////////////////
+			// Update Boundary //
+			/////////////////////
 
 			if( verbose ) timer.reset();
 
@@ -188,8 +220,11 @@ void Relaxation
 
 
 		if( (it+it_offset)%2==1 )
-		{//Update Interior
-			
+		{
+			/////////////////////
+			// Update Interior //
+			/////////////////////
+
 			if( verbose ) timer.reset();
 			auto UpdateRow = [&](const BlockDeepSegmentedLine & deepSegmentedLine){
 				for (int s = 0; s < deepSegmentedLine.blockDeepSegments.size(); s++) {
@@ -266,14 +301,18 @@ void RelaxationAndResidual
 	bool verbose=false
 )
 {
-	unsigned int numBoundaryVariables = boundaryToCombined.size();
+	unsigned int numBoundaryVariables = (unsigned int)boundaryToCombined.size();
 
 	ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundaryRHS[i] = rhs[ static_cast< unsigned int >( boundaryToCombined[ AtlasBoundaryTexelIndex(i) ] ) ]; } );
 
 	Miscellany::Timer timer;
 	for( unsigned int it=0 ; it<numIterations ; it++ )
 	{
-		if (it % 2 == 0) {//Update Boundary
+		if( it%2==0 )
+		{
+			/////////////////////
+			// Update Boundary //
+			/////////////////////
 
 			if( verbose ) timer.reset();
 
@@ -291,11 +330,12 @@ void RelaxationAndResidual
 		}
 
 		if( it%2==1 )
-		{//Update Interior
-
+		{
+			/////////////////////
+			// Update Interior //
+			/////////////////////
 
 			if( verbose ) timer.reset();
-
 
 			auto UpdateRow = [&](const BlockDeepSegmentedLine & deepSegmentedLine)
 				{
@@ -390,7 +430,10 @@ void RelaxationAndResidual
 		}
 	}
 
-	{//Compute boundary residual
+	{
+		///////////////////////////////
+		// Compute boundary residual //
+		///////////////////////////////
 		if( verbose ) timer.reset();
 		boundaryDeepMatrix.Multiply((Data*)&x0[0], (Data*)&boundaryRHS[0], MULTIPLY_ADD | MULTIPLY_NEGATE);
 		boundaryBoundaryMatrix.Multiply((Data*)&boundaryValue[0], (Data*)&boundaryRHS[0], MULTIPLY_ADD | MULTIPLY_NEGATE);
@@ -418,8 +461,13 @@ void RelaxationAndResidual
 	ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundaryRHS[i] = rhs[ static_cast< unsigned int >( boundaryToCombined[ AtlasBoundaryTexelIndex(i) ] ) ]; } );
 
 	Miscellany::Timer timer;
-	for (int it = 0; it < numIterations; it++) {
-		if (it % 2 == 0) {//Update Boundary
+	for( int it=0 ; it<numIterations ; it++ )
+	{
+		if( it%2==0 )
+		{
+			/////////////////////
+			// Update Boundary //
+			/////////////////////
 
 			if( verbose ) timer.reset();
 
@@ -435,7 +483,11 @@ void RelaxationAndResidual
 			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ x0[ static_cast< unsigned int >( boundaryToCombined[ AtlasBoundaryTexelIndex(i) ] ) ] = boundaryValue[i]; } );
 		}
 
-		if (it % 2 == 1) {//Update Interior
+		if( it%2==1 )
+		{
+			/////////////////////
+			// Update Interior //
+			/////////////////////
 
 										//static int GSIterations = 3;
 										//for (int r = 0; r < rasterLines.size() + GSIterations; r++)
@@ -570,7 +622,11 @@ void RelaxationAndResidual
 		}
 	}
 
-	{//Compute boundary residual
+	{
+		///////////////////////////////
+		// Compute boundary residual //
+		///////////////////////////////
+
 		if( verbose ) timer.reset();
 		boundaryDeepMatrix.Multiply((Data*)&x0[0], (Data*)&boundaryRHS[0], MULTIPLY_ADD | MULTIPLY_NEGATE);
 		boundaryBoundaryMatrix.Multiply((Data*)&boundaryValue[0], (Data*)&boundaryRHS[0], MULTIPLY_ADD | MULTIPLY_NEGATE);
@@ -1072,16 +1128,22 @@ void CellStiffnessToTexelStiffness
 }
 
 template< class Real , class DataType , class DirectSolver >
-void VCycle( std::vector< MultigridLevelVariables< DataType > > &variables , const std::vector< SystemCoefficients< Real > > &coefficients , const std::vector< MultigridLevelIndices< Real > > &indices , VCycleSolvers< DirectSolver > &vCycleSolvers , bool verbose , bool detailVerbose )
+void VCycle
+(
+	std::vector< MultigridLevelVariables< DataType > > &variables ,
+	const std::vector< SystemCoefficients< Real > > &coefficients ,
+	const std::vector< MultigridLevelIndices< Real > > &indices ,
+	VCycleSolvers< DirectSolver > &vCycleSolvers ,
+	bool verbose ,
+	bool detailVerbose
+)
 {
-	int levels = (int)variables.size();
+	unsigned int levels = (unsigned int)variables.size();
 
 	//Set x0[i = 1 : levels -1] = 0
 	Miscellany::Timer timer;
-	for (int i = 1; i < levels; i++){
-		memset(&variables[i].x[0], 0, variables[i].x.size() * sizeof(DataType));
-	}
-	if( verbose ) printf("Zero arrays %.4f \n" , timer.elapsed() );
+	for( unsigned int i=1 ; i<levels ; i++ ) memset( &variables[i].x[0] , 0 , variables[i].x.size() * sizeof(DataType) );
+	if( verbose ) printf( "Zero arrays %.4f\n" , timer.elapsed() );
 
 	//Reduction phase
 	for( unsigned int i=0 ; i<levels-1 ; i++ )
@@ -1105,10 +1167,10 @@ void VCycle( std::vector< MultigridLevelVariables< DataType > > &variables , con
 	}
 
 	// Prolongation phase
-	for( int i=levels-1 ; i>=0 ; i-- )
+	for( int i=(int)levels-1 ; i>=0 ; i-- )
 	{
 		if( verbose ) printf( "Level %d\n" , i );
-		if( i<levels-1 )
+		if( i<(int)levels-1 )
 		{
 			Miscellany::Timer tmr;
 
@@ -1120,7 +1182,7 @@ void VCycle( std::vector< MultigridLevelVariables< DataType > > &variables , con
 			Relaxation( _coefficients.deepCoefficients , _coefficients.boundaryDeepMatrix , vCycleSolvers.boundary[i] , _indices.boundaryToCombined , _indices.threadTasks , _variables.rhs , _variables.x , _variables.boundary_rhs , _variables.boundary_value , _variables.variable_boundary_value , 2 , true , detailVerbose );
 			if( verbose ) printf( "Gauss Seidel %.4f\n" , tmr.elapsed() );
 		}
-		else if( i==levels-1 )
+		else if( i==(int)levels-1 )
 		{
 			MultigridLevelVariables<DataType> & _variables = variables[i];
 			Miscellany::Timer tmr;

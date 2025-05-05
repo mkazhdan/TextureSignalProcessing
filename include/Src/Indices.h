@@ -36,7 +36,14 @@ namespace MishaK
 	template< typename T >
 	struct UnsignedIntIndex
 	{
+#ifdef NEW_CODE
+		template< typename I=unsigned int >
+		explicit UnsignedIntIndex( I idx=static_cast<I>(-1) )
+			: _idx(static_cast< unsigned int >(idx) )
+		{ static_assert( std::is_integral_v< I > , "[ERROR] Expected integral type" ); }
+#else // !NEW_CODE
 		explicit UnsignedIntIndex( unsigned int idx=-1 ) : _idx(idx){}
+#endif // NEW_CODE
 		explicit operator unsigned int () const { return _idx; }
 
 		UnsignedIntIndex & operator += ( unsigned int off ){ _idx += off ; return *this; }
@@ -94,27 +101,41 @@ namespace MishaK
 	template< typename T , typename Data >
 	const Data * operator + ( const Data * data , const T & t ){ return data + static_cast< unsigned int >(t); }
 
+	// Chart index
 	struct                       ChartIndex : public UnsignedIntIndex<                       ChartIndex >{ using UnsignedIntIndex<                       ChartIndex >::UnsignedIntIndex; };
+
+	// Mesh index types
 	struct           AtlasMeshTriangleIndex : public UnsignedIntIndex<           AtlasMeshTriangleIndex >{ using UnsignedIntIndex<           AtlasMeshTriangleIndex >::UnsignedIntIndex; };
 	struct           ChartMeshTriangleIndex : public UnsignedIntIndex<           ChartMeshTriangleIndex >{ using UnsignedIntIndex<           ChartMeshTriangleIndex >::UnsignedIntIndex; };
 	struct             AtlasMeshVertexIndex : public UnsignedIntIndex<             AtlasMeshVertexIndex >{ using UnsignedIntIndex<             AtlasMeshVertexIndex >::UnsignedIntIndex; };
 	struct             ChartMeshVertexIndex : public UnsignedIntIndex<             ChartMeshVertexIndex >{ using UnsignedIntIndex<             ChartMeshVertexIndex >::UnsignedIntIndex; };
-	struct             AtlasGridVertexIndex : public UnsignedIntIndex<             AtlasGridVertexIndex >{ using UnsignedIntIndex<             AtlasGridVertexIndex >::UnsignedIntIndex; };
 	struct               AtlasMeshEdgeIndex : public UnsignedIntIndex<               AtlasMeshEdgeIndex >{ using UnsignedIntIndex<               AtlasMeshEdgeIndex >::UnsignedIntIndex; };
-	struct               AtlasGridEdgeIndex : public UnsignedIntIndex<               AtlasGridEdgeIndex >{ using UnsignedIntIndex<               AtlasGridEdgeIndex >::UnsignedIntIndex; };
 	struct           AtlasMeshHalfEdgeIndex : public UnsignedIntIndex<           AtlasMeshHalfEdgeIndex >{ using UnsignedIntIndex<           AtlasMeshHalfEdgeIndex >::UnsignedIntIndex; };
 	struct           ChartMeshHalfEdgeIndex : public UnsignedIntIndex<           ChartMeshHalfEdgeIndex >{ using UnsignedIntIndex<           ChartMeshHalfEdgeIndex >::UnsignedIntIndex; };
+	struct     AtlasMeshBoundaryVertexIndex : public UnsignedIntIndex<     AtlasMeshBoundaryVertexIndex >{ using UnsignedIntIndex<     AtlasMeshBoundaryVertexIndex >::UnsignedIntIndex; };
+
+	// Grid index types
+	struct             AtlasGridVertexIndex : public UnsignedIntIndex<             AtlasGridVertexIndex >{ using UnsignedIntIndex<             AtlasGridVertexIndex >::UnsignedIntIndex; };
+	struct               AtlasGridEdgeIndex : public UnsignedIntIndex<               AtlasGridEdgeIndex >{ using UnsignedIntIndex<               AtlasGridEdgeIndex >::UnsignedIntIndex; };
+
 	struct AtlasInteriorOrBoundaryNodeIndex : public UnsignedIntIndex< AtlasInteriorOrBoundaryNodeIndex >{ using UnsignedIntIndex< AtlasInteriorOrBoundaryNodeIndex >::UnsignedIntIndex; };
+
+	// Cell index types
 	struct           ChartInteriorCellIndex : public UnsignedIntIndex<           ChartInteriorCellIndex >{ using UnsignedIntIndex<           ChartInteriorCellIndex >::UnsignedIntIndex; };
 	struct           ChartBoundaryCellIndex : public UnsignedIntIndex<           ChartBoundaryCellIndex >{ using UnsignedIntIndex<           ChartBoundaryCellIndex >::UnsignedIntIndex; };
 	struct           ChartCombinedCellIndex : public UnsignedIntIndex<           ChartCombinedCellIndex >{ using UnsignedIntIndex<           ChartCombinedCellIndex >::UnsignedIntIndex; };
 	struct           AtlasInteriorCellIndex : public UnsignedIntIndex<           AtlasInteriorCellIndex >{ using UnsignedIntIndex<           AtlasInteriorCellIndex >::UnsignedIntIndex; };
 	struct           AtlasBoundaryCellIndex : public UnsignedIntIndex<           AtlasBoundaryCellIndex >{ using UnsignedIntIndex<           AtlasBoundaryCellIndex >::UnsignedIntIndex; };
 	struct           AtlasCombinedCellIndex : public UnsignedIntIndex<           AtlasCombinedCellIndex >{ using UnsignedIntIndex<           AtlasCombinedCellIndex >::UnsignedIntIndex; };
+
+	// Texel index types
 	struct          AtlasInteriorTexelIndex : public UnsignedIntIndex<          AtlasInteriorTexelIndex >{ using UnsignedIntIndex<          AtlasInteriorTexelIndex >::UnsignedIntIndex; };
 	struct           AtlasCoveredTexelIndex : public UnsignedIntIndex<           AtlasCoveredTexelIndex >{ using UnsignedIntIndex<           AtlasCoveredTexelIndex >::UnsignedIntIndex; };
 	struct          AtlasBoundaryTexelIndex : public UnsignedIntIndex<          AtlasBoundaryTexelIndex >{ using UnsignedIntIndex<          AtlasBoundaryTexelIndex >::UnsignedIntIndex; };
 	struct          AtlasCombinedTexelIndex : public UnsignedIntIndex<          AtlasCombinedTexelIndex >{ using UnsignedIntIndex<          AtlasCombinedTexelIndex >::UnsignedIntIndex; };
+
+	// Boundary index types
+	struct            BoundaryMidPointIndex : public UnsignedIntIndex<            BoundaryMidPointIndex >{ using UnsignedIntIndex<            BoundaryMidPointIndex >::UnsignedIntIndex; };
 
 #else // !DEBUG_INDEXING
 	template< typename T , typename Data >
@@ -131,16 +152,24 @@ namespace MishaK
 	using               AtlasMeshEdgeIndex = unsigned int;
 	using               AtlasGridEdgeIndex = unsigned int;
 	using AtlasInteriorOrBoundaryNodeIndex = unsigned int;
+
+	// Cell types
 	using           ChartInteriorCellIndex = unsigned int;
 	using           ChartBoundaryCellIndex = unsigned int;
 	using           ChartCombinedCellIndex = unsigned int;
 	using           AtlasInteriorCellIndex = unsigned int;
 	using           AtlasBoundaryCellIndex = unsigned int;
 	using           AtlasCombinedCellIndex = unsigned int;
+
+	// Texel types
 	using          AtlasInteriorTexelIndex = unsigned int;
 	using           AtlasCoveredTexelIndex = unsigned int;
 	using          AtlasBoundaryTexelIndex = unsigned int;
 	using          AtlasCombinedTexelIndex = unsigned int;
+
+	// Boundary types
+	using             BoundaryMiPointIndex = unsigned int;
+
 #endif // DEBUG_INDEXING
 
 	struct AtlasGridOrMeshEdgeIndex

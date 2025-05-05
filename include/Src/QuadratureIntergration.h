@@ -53,7 +53,7 @@ namespace MishaK
 
 		const Image< TexelIndex > & texelIndices = gridChart.texelIndices;
 
-		ChartInteriorCellIndex localInteriorCellIndex(0);
+		ChartInteriorCellIndex chartInteriorCellIndex(0);
 
 		for( unsigned int j=0 ; j<height ; j++ )
 		{
@@ -77,10 +77,10 @@ namespace MishaK
 
 					for( unsigned int k=0 ; k<offset-rasterStart ; k++ )
 					{
-						if( gridChart.interiorCellCoveredTexelBilinearElementIndices[localInteriorCellIndex][0]!=texelIndices( rasterStart+k , j ).covered ) MK_THROW( "Unexpected corner ID" );
+						if( gridChart.interiorCellCoveredTexelBilinearElementIndices[chartInteriorCellIndex][0]!=texelIndices( rasterStart+k , j ).covered ) MK_THROW( "Unexpected corner ID" );
 
 						interiorCellLineIndex.push_back( std::pair< int , int >( currentLine , k ) );
-						localInteriorCellIndex++;
+						chartInteriorCellIndex++;
 					}
 
 					interiorCellLines.push_back( newLine );
@@ -356,22 +356,22 @@ namespace MishaK
 #endif // USE_RASTERIZER
 				auto TextureToCell = [&]( Point2D< GeometryReal > p ){ return Point2D< GeometryReal >( ( p[0] / gridChart.cellSizeW ) - i , ( p[1] / gridChart.cellSizeH ) - j ); };
 
-				ChartInteriorCellIndex localInteriorIndex = gridChart.cellIndices(i,j).interior;
-				ChartBoundaryCellIndex localBoundaryIndex = gridChart.cellIndices(i,j).boundary;
-				if( localInteriorIndex!=ChartInteriorCellIndex(-1) && localBoundaryIndex!=ChartBoundaryCellIndex(-1) ) MK_THROW( "Cell simultaneosly interior and boundary" );
+				ChartInteriorCellIndex chartInteriorIndex = gridChart.cellIndices(i,j).interior;
+				ChartBoundaryCellIndex chartBoundaryIndex = gridChart.cellIndices(i,j).boundary;
+				if( chartInteriorIndex!=ChartInteriorCellIndex(-1) && chartBoundaryIndex!=ChartBoundaryCellIndex(-1) ) MK_THROW( "Cell simultaneosly interior and boundary" );
 
 				// Interior cells
 				// If the cell is entirely interior to the triangle
-				if( CellInTriangle( i , j , parametricVertices ) && localInteriorIndex!=ChartInteriorCellIndex(-1) )
+				if( CellInTriangle( i , j , parametricVertices ) && chartInteriorIndex!=ChartInteriorCellIndex(-1) )
 				{
 					// For interior cells, the cell and the element are the same thing
 					auto TextureToElement = TextureToCell;
 					SquareMatrix< GeometryReal , 2 > element_metric = cell_metric , element_metric_inverse = cell_metric_inverse;
 					GeometryReal element_area = cell_area;
 
-					AtlasInteriorCellIndex globalInteriorIndex = gridChart.chartToAtlasInteriorCellIndex( localInteriorIndex );
-					unsigned int cellLineId = interiorCellLineIndex[globalInteriorIndex].first;
-					unsigned int cellLineOffset = interiorCellLineIndex[globalInteriorIndex].second;
+					AtlasInteriorCellIndex atlasInteriorIndex = gridChart.chartToAtlasInteriorCellIndex( chartInteriorIndex );
+					unsigned int cellLineId = interiorCellLineIndex[atlasInteriorIndex].first;
+					unsigned int cellLineOffset = interiorCellLineIndex[atlasInteriorIndex].second;
 
 					typename ElementSamples::Bilinear bilinearElementSample( fastIntegration ? 1 : 2*Samples );
 					bilinearElementSample.cellOffset = cellLineOffset;
@@ -397,7 +397,7 @@ namespace MishaK
 						elementSamples.bilinear[ cellLineId ].push_back( bilinearElementSample );
 					}
 				}
-				else if( localInteriorIndex!=ChartInteriorCellIndex(-1) )
+				else if( chartInteriorIndex!=ChartInteriorCellIndex(-1) )
 				{
 					// For interior cells, the cell and the element are the same thing
 					auto TextureToElement = TextureToCell;
@@ -413,9 +413,9 @@ namespace MishaK
 						// Transform the polygon vertices into the coordinate frame of the cell
 						for( int ii=0 ; ii<polygon.size() ; ii++ ) polygon[ii] = TextureToElement( polygon[ii] );
 
-						AtlasInteriorCellIndex globalInteriorIndex = gridChart.chartToAtlasInteriorCellIndex( localInteriorIndex );
-						unsigned int cellLineId = interiorCellLineIndex[globalInteriorIndex].first;
-						unsigned int cellLineOffset = interiorCellLineIndex[globalInteriorIndex].second;
+						AtlasInteriorCellIndex atlasInteriorIndex = gridChart.chartToAtlasInteriorCellIndex( chartInteriorIndex );
+						unsigned int cellLineId = interiorCellLineIndex[atlasInteriorIndex].first;
+						unsigned int cellLineOffset = interiorCellLineIndex[atlasInteriorIndex].second;
 
 						// There is a single sample for the whole polygon
 						typename ElementSamples::Bilinear bilinearElementSample( fastIntegration ? 1 : (polygon.size()-2)*Samples );
@@ -448,9 +448,9 @@ namespace MishaK
 					}
 				}
 				// Boundary cell
-				else if( localBoundaryIndex!=ChartBoundaryCellIndex(-1) )
+				else if( chartBoundaryIndex!=ChartBoundaryCellIndex(-1) )
 				{
-					const std::vector< BoundaryIndexedTriangle< GeometryReal > > & cellBoundaryTriangles = gridChart.boundaryTriangles[ static_cast< unsigned int >(localBoundaryIndex ) ];
+					const std::vector< BoundaryIndexedTriangle< GeometryReal > > & cellBoundaryTriangles = gridChart.boundaryTriangles[ static_cast< unsigned int >(chartBoundaryIndex ) ];
 
 					// Iterate over all elements in the cell
 					for( unsigned int bt=0 ; bt<cellBoundaryTriangles.size() ; bt++ )
@@ -482,7 +482,7 @@ namespace MishaK
 							GeometryReal element_area = sqrt( element_metric.determinant() );
 							typename ElementSamples::Quadratic quadraticElementSample( fastIntegration ? 1 : (unsigned int)(polygon.size()-2)*Samples );
 							for( int x=0 ; x<2 ; x++ ) for( int y=0 ; y<2 ; y++ ) quadraticElementSample.tensor(x,y) = (typename ElementSamples::Real)element_metric_inverse(x,y);
-							const QuadraticElementIndex& triangleElementIndices = gridChart.boundaryTriangles[ static_cast< unsigned int >(localBoundaryIndex) ][bt].indices;
+							const QuadraticElementIndex& triangleElementIndices = gridChart.boundaryTriangles[ static_cast< unsigned int >(chartBoundaryIndex) ][bt].indices;
 							for( unsigned int k=0 ; k<6 ; k++ )
 							{
 								AtlasInteriorOrBoundaryNodeIndex _fineBoundaryIndex = fineBoundaryIndex[ static_cast< unsigned int >( triangleElementIndices[k] ) ];
@@ -517,7 +517,7 @@ namespace MishaK
 										sampleData.pos = pos;
 									}
 								}
-								else MK_WARN( "Element discarded due to zero mass. Triangle " , t , ". Boundary cell " , localBoundaryIndex , ". Element " , bt , ". Sub triangle " , p-2 );
+								else MK_WARN( "Element discarded due to zero mass. Triangle " , t , ". Boundary cell " , chartBoundaryIndex , ". Element " , bt , ". Sub triangle " , p-2 );
 							}
 							if( fastIntegration ) quadraticElementSample[0].pos = Point2D< GeometryReal >( PolygonCenter( &polygon[0] , (unsigned int)polygon.size() ) );
 							{

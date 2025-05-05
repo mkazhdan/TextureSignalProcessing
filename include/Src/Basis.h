@@ -64,13 +64,12 @@ namespace MishaK
 
 	struct QuadraticElementIndex
 	{
+		QuadraticElementIndex( void ) { _v[0] = _v[1] = _v[2] = _v[3] = _v[4] = _v[5] = AtlasInteriorOrBoundaryNodeIndex(0); }
+		QuadraticElementIndex( AtlasInteriorOrBoundaryNodeIndex v0 , AtlasInteriorOrBoundaryNodeIndex v1 , AtlasInteriorOrBoundaryNodeIndex v2 , AtlasInteriorOrBoundaryNodeIndex v3 , AtlasInteriorOrBoundaryNodeIndex v4 , AtlasInteriorOrBoundaryNodeIndex v5 ){ _v[0] = v0 , _v[1] = v1 , _v[2] = v2 , _v[3] = v3 , _v[4] = v4 , _v[5] = v5; }
+		AtlasInteriorOrBoundaryNodeIndex &operator[]( unsigned int idx )       { return _v[idx]; }
+		AtlasInteriorOrBoundaryNodeIndex  operator[]( unsigned int idx ) const { return _v[idx]; }
 	protected:
-		AtlasInteriorOrBoundaryNodeIndex v[6];
-	public:
-		QuadraticElementIndex( void ) { v[0] = v[1] = v[2] = v[3] = v[4] = v[5] = AtlasInteriorOrBoundaryNodeIndex(0); }
-		QuadraticElementIndex( AtlasInteriorOrBoundaryNodeIndex v0 , AtlasInteriorOrBoundaryNodeIndex v1 , AtlasInteriorOrBoundaryNodeIndex v2 , AtlasInteriorOrBoundaryNodeIndex v3 , AtlasInteriorOrBoundaryNodeIndex v4 , AtlasInteriorOrBoundaryNodeIndex v5 ){ v[0] = v0 , v[1] = v1 , v[2] = v2 , v[3] = v3 , v[4] = v4 , v[5] = v5; }
-		AtlasInteriorOrBoundaryNodeIndex &operator[]( unsigned int idx )       { return v[idx]; }
-		AtlasInteriorOrBoundaryNodeIndex  operator[]( unsigned int idx ) const { return v[idx]; }
+		AtlasInteriorOrBoundaryNodeIndex _v[6];
 	};
 
 	template< typename GeometryReal >
