@@ -853,13 +853,8 @@ void InitializeAtlasHierachicalBoundaryCoefficients
 	const GridAtlas< GeometryReal , MatrixReal > &fineAtlas ,
 	GridAtlas< GeometryReal , MatrixReal > &coarseAtlas ,
 	SparseMatrix< MatrixReal , int > &boundaryCoarseFineProlongation ,
-#ifdef NEW_CODE
 	IndexVector< AtlasBoundaryTexelIndex , BoundaryDeepIndex > &boundaryDeepIndices ,
 	IndexVector< AtlasBoundaryTexelIndex , BoundaryBoundaryIndex< MatrixReal > > &boundaryBoundaryIndices
-#else // !NEW_CODE
-	std::vector< BoundaryDeepIndex > &boundaryDeepIndices ,
-	std::vector< BoundaryBoundaryIndex< MatrixReal > > &boundaryBoundaryIndices
-#endif // NEW_CODE
 )
 {
 	std::vector< Eigen::Triplet< MatrixReal > > prolongationTriplets;
@@ -901,11 +896,7 @@ void InitializeAtlasHierachicalBoundaryCoefficients
 					{
 						//Deep
 						BoundaryDeepIndex bdIndex;
-#ifdef NEW_CODE
 						bdIndex.boundaryIndex = AtlasBoundaryTexelIndex(i);
-#else // !NEW_CODE
-						bdIndex.boundaryIndex = i;
-#endif // NEW_CODE
 						bdIndex.combinedIndex = coarseCombinedIndex;
 						bdIndex.interiorIndex = coarseInteriorIndex;
 						bdIndex.offset = (1-lj)*3 + (1-li);
@@ -971,11 +962,7 @@ void InitializeAtlasHierachicalBoundaryCoefficients
 											{
 												MatrixReal weight2 = (MatrixReal)( 1.0 / (1.0 + diff_i ) / ( 1.0 + diff_j ) );
 												BoundaryBoundaryIndex< MatrixReal > bbIndex;
-#ifdef NEW_CODE
 												bbIndex.coarsePrincipalBoundaryIndex = AtlasBoundaryTexelIndex(i);
-#else // !NEW_CODE
-												bbIndex.coarsePrincipalBoundaryIndex = i;
-#endif // NEW_CODE
 												bbIndex.coarseSecondaryBoundaryIndex = boundary_id[n];
 												bbIndex.fineInteriorIndex = _fineInteriorIndex;
 												bbIndex.offset = (1 - kj) * 3 + (1 - ki);
@@ -1004,11 +991,7 @@ void InitializeAtlasHierachicalBoundaryCoefficients
 								{
 									MatrixReal weight2 = (MatrixReal)( 1.0 / ( 1.0 + diff_i ) / ( 1.0 + diff_j ) );
 									BoundaryBoundaryIndex< MatrixReal > bbIndex;
-#ifdef NEW_CODE
 									bbIndex.coarsePrincipalBoundaryIndex = AtlasBoundaryTexelIndex(i);
-#else // !NEW_CODE
-									bbIndex.coarsePrincipalBoundaryIndex = i;
-#endif // NEW_CODE
 									bbIndex.coarseSecondaryBoundaryIndex = boundary_id[n];
 									bbIndex.fineInteriorIndex = fineInteriorIndex;
 									bbIndex.offset = (1+kj) * 3 + (1+ki);

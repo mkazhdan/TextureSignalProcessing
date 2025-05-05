@@ -36,14 +36,10 @@ namespace MishaK
 	template< typename T >
 	struct UnsignedIntIndex
 	{
-#ifdef NEW_CODE
 		template< typename I=unsigned int >
 		explicit UnsignedIntIndex( I idx=static_cast<I>(-1) )
 			: _idx(static_cast< unsigned int >(idx) )
 		{ static_assert( std::is_integral_v< I > , "[ERROR] Expected integral type" ); }
-#else // !NEW_CODE
-		explicit UnsignedIntIndex( unsigned int idx=-1 ) : _idx(idx){}
-#endif // NEW_CODE
 		explicit operator unsigned int () const { return _idx; }
 
 		UnsignedIntIndex & operator += ( unsigned int off ){ _idx += off ; return *this; }

@@ -127,11 +127,7 @@ namespace MishaK
 			IndexVector< AtlasMeshHalfEdgeIndex , AtlasMeshHalfEdgeIndex > oppositeHalfEdges;
 
 			// A map assigning an index to atlas boundary vertices
-#ifdef NEW_CODE
 			std::map< AtlasMeshVertexIndex , AtlasMeshBoundaryVertexIndex > atlasMeshVertexToBoundaryVertex;
-#else // !NEW_CODE
-			std::map< AtlasMeshVertexIndex , AtlasInteriorOrBoundaryNodeIndex > atlasBoundaryVertexToIndex;
-#endif // NEW_CODE
 
 			// Is the atlas mesh water-tight
 			bool isClosed;

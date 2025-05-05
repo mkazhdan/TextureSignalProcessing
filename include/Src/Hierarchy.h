@@ -341,20 +341,6 @@ namespace MishaK
 		bool alignedStart;
 	};
 
-#ifdef NEW_CODE
-#else // !NEW_CODE
-	struct RestrictionLine
-	{
-		RestrictionLine( void ) { startIndex = length = centerLineIndex = prevLineIndex = nextLineIndex = -1; }
-		int startIndex;
-		int length;
-		int centerLineIndex;
-		int prevLineIndex;
-		int nextLineIndex;
-		int outputStart;
-	};
-#endif // NEW_CODE
-
 	template< typename GeometryReal >
 	struct AuxiliaryNode
 	{
@@ -596,21 +582,13 @@ namespace MishaK
 		AtlasInteriorCellIndex endInteriorCellIndex;
 
 		unsigned int numBoundaryNodes;
-#ifdef NEW_CODE
 		BoundaryMidPointIndex endMidPointIndex;
-#else // !NEW_CODE
-		unsigned int numMidPoints;
-#endif // NEW_CODE
 		unsigned int numFineNodes;
 	};
 
 	struct BoundaryDeepIndex
 	{
-#ifdef NEW_CODE
 		AtlasBoundaryTexelIndex boundaryIndex;
-#else // !NEW_CODE
-		int boundaryIndex;
-#endif // NEW_CODE
 		AtlasCombinedTexelIndex combinedIndex;
 		AtlasInteriorTexelIndex interiorIndex;
 		unsigned int offset;
@@ -619,11 +597,7 @@ namespace MishaK
 	template< typename Real >
 	struct BoundaryBoundaryIndex
 	{
-#ifdef NEW_CODE
 		AtlasBoundaryTexelIndex coarsePrincipalBoundaryIndex;
-#else // !NEW_CODE
-		int coarsePrincipalBoundaryIndex;
-#endif // NEW_CODE
 		AtlasBoundaryTexelIndex coarseSecondaryBoundaryIndex;
 		AtlasInteriorTexelIndex fineInteriorIndex;
 		unsigned int offset;
@@ -639,13 +613,8 @@ namespace MishaK
 		std::vector< SparseMatrix< MatrixReal , int > > prolongation;
 		std::vector< SparseMatrix< MatrixReal , int > > boundaryCoarseFineProlongation;
 		std::vector< SparseMatrix< MatrixReal , int > > boundaryFineCoarseRestriction;
-#ifdef NEW_CODE
 		std::vector< IndexVector< AtlasBoundaryTexelIndex , BoundaryBoundaryIndex< MatrixReal > > > boundaryBoundaryIndices;
 		std::vector< IndexVector< AtlasBoundaryTexelIndex , BoundaryDeepIndex > > boundaryDeepIndices;
-#else // !NEW_CODE
-		std::vector< std::vector< BoundaryBoundaryIndex< MatrixReal > > > boundaryBoundaryIndices;
-		std::vector< std::vector< BoundaryDeepIndex > > boundaryDeepIndices;
-#endif // NEW_CODE
 	};
 
 
