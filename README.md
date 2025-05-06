@@ -1,4 +1,4 @@
-<center><h2>Gradient Domain Texture Processing (Version 6.00)</h2></center>
+<center><h2>Gradient Domain Texture Processing (Version 6.06)</h2></center>
 <center>
 <a href="#LINKS">links</a>
 <a href="#EXECUTABLES">executables</a>
@@ -14,8 +14,8 @@ This software supports gradient-domain signal processing within a texture atlas.
 <LI>vector-field visualization akin to line-integral convolution,</LI>
 <LI>computation of single-source geodesics, and</LI>
 <LI>simulation of reaction-diffusion following the Gray-Scott model.</LI>
-<LI>masking of gutter/interior/boundary texels
 <LI>dilation of texture into the gutter
+<LI>masking of gutter/interior/boundary texels
 </UL>
 <hr>
 <a name="LINKS"><b>LINKS</b></a><br>
@@ -32,6 +32,7 @@ This software supports gradient-domain signal processing within a texture atlas.
 <B>Data:</B>
 <A HREF="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/TSP.Data.zip">ZIP</A><br>
 <b>Older Versions:</b>
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version6.00/">V6.00</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version5.01/">V5.01</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version5.00/">V5.00</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version4.75/">V4.75</a>,
@@ -144,10 +145,12 @@ The default value for this parameter is 6.
 The default value for this parameter is 100.
 </dd>
 
+<!--
 <dt>[<b>--dilateBounaries</b> &lt;<i>dilation radius</i>&gt;]</dt>
 <dd> This integer values gives the radius by which the boundaries of the segments should be dilated before stithing is performed.<BR>
 The default value for this parameter is -1, indicating no dilation.
 </dd>
+-->
 
 </dd><dt>[<b>--jitter</B> &lt;<i>random seed</i>&gt;]</dt>
 <dd> If specified, this integer value is used to seed the random number generation for jittering. (This is used to avoid singular situations when mesh vertices fall directly on edges in the texture grid. In such a situation, the executable will issue a warning <B>"Zero row at index ..."</B>.)
@@ -335,28 +338,6 @@ The default value for this parameter is 512.
 <dl>
 <details>
 <summary>
-<font size="+1"><b>TextureMasking</b></font>:
-Identifies the active texels within a texture mask of prescribed resolution, with gutter texels rendered in red, texels whose center are covered by a triangle in blue, and boundary texels in green.
-</summary>
-<dt><b>--in</b> &lt;<i>input mesh name</i>&gt;</dt>
-<dd> This string specifies the the name of the mesh.
-</dd>
-
-<dt><b>--res</b> &lt;<i>texture width and texture height</i>&gt;</dt>
-<dd> These two integers specify the width and height of the mask.
-
-<dt>[<b>--out</b> &lt;<i>output texture mask</i>&gt;]</dt>
-<dd> This string is the name of the file to which the texture mask will be written.</B>
-</dd>
-
-</details>
-</dl>
-</ul>
-
-<ul>
-<dl>
-<details>
-<summary>
 <font size="+1"><b>TextureDilation</b></font>:
 Dilates the texture by sampling across the chart seam and pulling interpolated texture values into the gutter texels.
 </summary>
@@ -374,8 +355,38 @@ The default value for this parameter is 0, indicating no dilation.
 </dd>
 
 <dt>[<b>--verbose</b>]</dt>
-<dd> If this flag is enabled, performance information is ptrinted to stdout.
+<dd> If this flag is enabled, performance information is printed to <CODE>stdout</CODE>.
 </dd>
+</dl>
+</ul>
+
+<ul>
+<dl>
+<details>
+<summary>
+<font size="+1"><b>TextureMasking</b></font>:
+Identifies the active texels within a texture mask of prescribed resolution, with gutter texels rendered in red and texels supporting a triangle rendered in blue.
+</summary>
+<dt><b>--in</b> &lt;<i>input mesh name</i>&gt;</dt>
+<dd> This string specifies the the name of the mesh.
+</dd>
+
+<dt><b>--res</b> &lt;<i>texture width and texture height</i>&gt;</dt>
+<dd> These two integers specify the width and height of the mask.
+</dd>
+
+<dt>[<b>--out</b> &lt;<i>output texture mask</i>&gt;]</dt>
+<dd> This string is the name of the file to which the texture mask will be written.</B>
+</dd>
+
+<dt>[<b>--id</b>]</dt>
+<dd> If this flag is enabled only texels whose center/node overlaps a triangle are rendered. Colors are assigned randomly to triangles and all centers/nodes covered by the same triangle are assigned the same color.
+</dd>
+
+
+</details>
+</dl>
+</ul>
 
 
 </details>
@@ -577,6 +588,18 @@ Here a "dots" pattern is written out to an image. (Empirically, we have found th
 <ul>
 <li> Add funcionality for dilating the texture map and masking out active texels.
 </ul>
+
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version5.01/">Version 6.05</a>:
+<ul>
+<li> Fixed off-by-half-pixel issue with texture rasterization.
+</ul>
+
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version5.01/">Version 6.06</a>:
+<ul>
+<LI> Cleaned up texture dilation
+<LI> Made non-template, header-only functions <code>inline</code>.
+</ul>
+
 
 </details>
 
