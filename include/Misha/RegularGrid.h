@@ -53,17 +53,17 @@ namespace MishaK
 	};
 
 	template<> struct RegularGridDataType< char >{ static const std::string Name ; static void Write( FILE *fp ){ RegularGridDataType<>::Write( fp , 1 , Name ); } ; static bool Read( FILE *fp ){ return RegularGridDataType<>::Read( fp , 1 , Name ); } };
-	const std::string RegularGridDataType< char >::Name = "CHAR";
+	inline const std::string RegularGridDataType< char >::Name = "CHAR";
 	template<> struct RegularGridDataType< unsigned char >{ static const std::string Name ; static void Write( FILE *fp ){ RegularGridDataType<>::Write( fp , 1 , Name ); } static bool Read( FILE *fp ){ return RegularGridDataType<>::Read( fp , 1 , Name ); } };
-	const std::string RegularGridDataType< unsigned char >::Name = "UNSIGNED_CHAR";
+	inline const std::string RegularGridDataType< unsigned char >::Name = "UNSIGNED_CHAR";
 	template<> struct RegularGridDataType< int >{ static const std::string Name ; static void Write( FILE *fp ){ RegularGridDataType<>::Write( fp , 1 , Name ); } static bool Read( FILE *fp ){ return RegularGridDataType<>::Read( fp , 1 , Name ); } };
-	const std::string RegularGridDataType< int >::Name = "INT";
+	inline const std::string RegularGridDataType< int >::Name = "INT";
 	template<> struct RegularGridDataType< unsigned int >{ static const std::string Name ; static void Write( FILE *fp ){ RegularGridDataType<>::Write( fp , 1 , Name ); } static bool Read( FILE *fp ){ return RegularGridDataType<>::Read( fp , 1 , Name ); } };
-	const std::string RegularGridDataType< unsigned int >::Name = "UNSIGNED_INT";
+	inline const std::string RegularGridDataType< unsigned int >::Name = "UNSIGNED_INT";
 	template<> struct RegularGridDataType< float >{ static const std::string Name ; static void Write( FILE *fp ){ RegularGridDataType<>::Write( fp , 1 , Name ); } static bool Read( FILE *fp ){ return RegularGridDataType<>::Read( fp , 1 , Name ); } };
-	const std::string RegularGridDataType< float >::Name = "FLOAT";
+	inline const std::string RegularGridDataType< float >::Name = "FLOAT";
 	template<> struct RegularGridDataType< double >{ static const std::string Name ; static void Write( FILE *fp ){ RegularGridDataType<>::Write( fp , 1 , Name ); } static bool Read( FILE *fp ){ return RegularGridDataType<>::Read( fp , 1 , Name ); } };
-	const std::string RegularGridDataType< double >::Name = "DOUBLE";
+	inline const std::string RegularGridDataType< double >::Name = "DOUBLE";
 
 	template< typename Real , unsigned int Dim > struct RegularGridDataType< Point< Real , Dim > >{ static const std::string Name ; static void Write( FILE *fp ){ RegularGridDataType<>::Write( fp , Dim , Name ); } static bool Read( FILE *fp ){ return RegularGridDataType<>::Read( fp , Dim , Name ); } };
 	template< typename Real , unsigned int Dim > const std::string RegularGridDataType< Point< Real , Dim > >::Name = RegularGridDataType< Real >::Name;
@@ -94,10 +94,15 @@ namespace MishaK
 			using std::pair< Index , Index >::first;
 			using std::pair< Index , Index >::second;
 
+			static Range CellsSupportedOnNode( Index I );
+			static Range NodesSupportedOnCell( Index I );
+
 			Range( void );
 			Range( Index I );
 			template< typename ... Ranges > static Range Intersect( Ranges ... rs );
+
 			Range dilate( unsigned int radius ) const;
+			Range dilate( unsigned int leftRadius , unsigned int rightRadius ) const;
 			bool empty( void ) const;
 			bool contains( Index I ) const;
 			size_t size( void ) const;

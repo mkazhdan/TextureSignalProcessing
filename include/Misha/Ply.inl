@@ -147,7 +147,13 @@ int Read
 		{
 			for( unsigned int i=0 ; i<vFactory.plyReadNum() ; i++)
 			{
+#if 1
+				GregTurk::PlyProperty prop;
+				if constexpr( VertexFactory::IsStaticallyAllocated() ) prop = vFactory.plyStaticReadProperty(i);
+				else                                                   prop = vFactory.plyReadProperty(i);
+#else
 				GregTurk::PlyProperty prop = vFactory.isStaticallyAllocated() ? vFactory.plyStaticReadProperty(i) : vFactory.plyReadProperty(i);
+#endif
 				int hasProperty = ply->get_property( elem_name , &prop );
 				if( vertexPropertiesFlag ) vertexPropertiesFlag[i] = (hasProperty!=0);
 			}
@@ -156,7 +162,11 @@ int Read
 			char *buffer = new char[ vFactory.bufferSize() ];
 			for( size_t j=0 ; j<num_elems ; j++ )
 			{
+#if 1
+				if( VertexFactory::IsStaticallyAllocated() ) ply->get_element( (void *)&vertices[j] );
+#else
 				if( vFactory.isStaticallyAllocated() ) ply->get_element( (void *)&vertices[j] );
+#endif
 				else
 				{
 					ply->get_element( (void *)buffer );
@@ -170,7 +180,13 @@ int Read
 		{
 			for( unsigned int i=0 ; i<vFactory.plyReadNum() ; i++)
 			{
+#if 1
+				GregTurk::PlyProperty prop;
+				if constexpr( VertexFactory::IsStaticallyAllocated() ) prop = vFactory.plyStaticReadProperty(i);
+				else                                                   prop = vFactory.plyReadProperty(i);
+#else
 				GregTurk::PlyProperty prop = vFactory.isStaticallyAllocated() ? vFactory.plyStaticReadProperty(i) : vFactory.plyReadProperty(i);
+#endif
 				int hasProperty = ply->get_property( elem_name , &prop );
 				if( vertexPropertiesFlag ) vertexPropertiesFlag[i] = (hasProperty!=0);
 			}
@@ -179,7 +195,11 @@ int Read
 			char *buffer = new char[ vFactory.bufferSize() ];
 			for( size_t j=0 ; j<num_elems ; j++ )
 			{
+#if 1
+				if( VertexFactory::IsStaticallyAllocated() ) ply->get_element( (void *)&vertices[j] );
+#else
 				if( vFactory.isStaticallyAllocated() ) ply->get_element( (void *)&vertices[j] );
+#endif
 				else
 				{
 					ply->get_element( (void *)buffer );
@@ -332,7 +352,13 @@ int ReadPolygons
 		{
 			for( unsigned int i=0 ; i<vFactory.plyReadNum() ; i++)
 			{
+#if 1
+				GregTurk::PlyProperty prop;
+				if constexpr( VertexFactory::IsStaticallyAllocated() ) prop = vFactory.plyStaticReadProperty(i);
+				else                                                   prop = vFactory.plyReadProperty(i);
+#else
 				GregTurk::PlyProperty prop = vFactory.isStaticallyAllocated() ? vFactory.plyStaticReadProperty(i) : vFactory.plyReadProperty(i);
+#endif
 				int hasProperty = ply->get_property( elem_name , &prop );
 				if( readFlags ) readFlags[i] = (hasProperty!=0);
 			}
@@ -341,7 +367,11 @@ int ReadPolygons
 			char *buffer = new char[ vFactory.bufferSize() ];
 			for( size_t j=0 ; j<num_elems ; j++ )
 			{
+#if 1
+				if( VertexFactory::IsStaticallyAllocated() ) ply->get_element( (void *)&vertices[j] );
+#else
 				if( vFactory.isStaticallyAllocated() ) ply->get_element( (void *)&vertices[j] );
+#endif
 				else
 				{
 					ply->get_element( (void *)buffer );
@@ -414,7 +444,13 @@ int ReadPolygons
 		{
 			for( unsigned int i=0 ; i<vFactory.plyReadNum() ; i++ )
 			{
+#if 1
+				GregTurk::PlyProperty prop;
+				if constexpr( VertexFactory::IsStaticallyAllocated() ) prop = vFactory.plyStaticReadProperty(i);
+				else                                                   prop = vFactory.plyReadProperty(i);
+#else
 				GregTurk::PlyProperty prop = vFactory.isStaticallyAllocated() ? vFactory.plyStaticReadProperty(i) : vFactory.plyReadProperty(i);
+#endif
 				int hasProperty = ply->get_property( elem_name , &prop );
 				if( vertexPropertiesFlag ) vertexPropertiesFlag[i] = (hasProperty!=0);
 			}
@@ -423,7 +459,11 @@ int ReadPolygons
 			char *buffer = new char[ vFactory.bufferSize() ];
 			for( size_t j=0 ; j<num_elems ; j++ )
 			{
+#if 1
+				if( VertexFactory::IsStaticallyAllocated() ) ply->get_element( (void *)&vertices[j] );
+#else
 				if( vFactory.isStaticallyAllocated() ) ply->get_element( (void *)&vertices[j] );
+#endif
 				else
 				{
 					ply->get_element( (void *)buffer );
@@ -539,7 +579,13 @@ void Write
 		ply->element_count( "vertex", nr_vertices );
 		for( unsigned int i=0 ; i<vFactory.plyWriteNum() ; i++ )
 		{
+#if 1
+			GregTurk::PlyProperty prop;
+			if constexpr( VertexFactory::IsStaticallyAllocated() ) prop = vFactory.plyStaticWriteProperty(i);
+			else                                                   prop = vFactory.plyWriteProperty(i);
+#else
 			GregTurk::PlyProperty prop = vFactory.isStaticallyAllocated() ? vFactory.plyStaticWriteProperty(i) : vFactory.plyWriteProperty(i);
+#endif
 			ply->describe_property( "vertex" , &prop );
 		}
 	}
@@ -563,7 +609,11 @@ void Write
 		char *buffer = new char[ vFactory.bufferSize() ];
 		for( size_t j=0 ; j<(int)vertices.size() ; j++ )
 		{
+#if 1
+			if( VertexFactory::IsStaticallyAllocated() ) ply->put_element( (void *)&vertices[j] );
+#else
 			if( vFactory.isStaticallyAllocated() ) ply->put_element( (void *)&vertices[j] );
+#endif
 			else
 			{
 				vFactory.toBuffer( vertices[j] , buffer );
@@ -634,7 +684,13 @@ void WriteVertices
 	ply->element_count( "vertex", nr_vertices );
 	for( unsigned int i=0 ; i<vFactory.plyWriteNum() ; i++ )
 	{
+#if 1
+		GregTurk::PlyProperty prop;
+		if constexpr( VertexFactory::IsStaticallyAllocated() ) prop = vFactory.plyStaticWriteProperty(i);
+		else                                                   prop = vFactory.plyWriteProperty(i);
+#else
 		GregTurk::PlyProperty prop = vFactory.isStaticallyAllocated() ? vFactory.plyStaticWriteProperty(i) : vFactory.plyWriteProperty(i);
+#endif
 		ply->describe_property( "vertex" , &prop );
 	}
 
@@ -693,7 +749,13 @@ void WritePolygons
 	ply->element_count( "vertex", nr_vertices );
 	for( unsigned int i=0 ; i<vFactory.plyWriteNum() ; i++)
 	{
+#if 1
+		GregTurk::PlyProperty prop;
+		if constexpr( VertexFactory::IsStaticallyAllocated() ) prop = vFactory.plyStaticWriteProperty(i);
+		else                                                   prop = vFactory.plyWriteProperty(i);
+#else
 		GregTurk::PlyProperty prop = vFactory.isStaticallyAllocated() ? vFactory.plyStaticWriteProperty(i) : vFactory.plyWriteProperty(i);
+#endif
 		ply->describe_property( "vertex" , &prop );
 	}
 	ply->element_count( "face" , nr_faces );
@@ -708,7 +770,11 @@ void WritePolygons
 	char *buffer = new char[ vFactory.bufferSize() ];
 	for( size_t j=0 ; j<(int)vertices.size() ; j++ )
 	{
+#if 1
+		if constexpr( VertexFactory::IsStaticallyAllocated() ) ply->put_element( (void *)&vertices[j] );
+#else
 		if( vFactory.isStaticallyAllocated() ) ply->put_element( (void *)&vertices[j] );
+#endif
 		else
 		{
 			vFactory.toBuffer( vertices[j] , buffer );
@@ -765,7 +831,13 @@ void WritePolygons
 	ply->element_count( "vertex", nr_vertices );
 	for( unsigned int i=0 ; i<vFactory.plyWriteNum() ; i++)
 	{
+#if 1
+		GregTurk::PlyProperty prop;
+		if constexpr( VertexFactory::IsStaticallyAllocated() ) prop = vFactory.plyStaticWriteProperty(i);
+		else                                                   prop = vFactory.plyWriteProperty(i);
+#else
 		GregTurk::PlyProperty prop = vFactory.isStaticallyAllocated() ? vFactory.plyStaticWriteProperty(i) : vFactory.plyWriteProperty(i);
+#endif
 		ply->describe_property( "vertex" , &prop );
 	}
 	ply->element_count( "face" , nr_faces );
@@ -780,7 +852,11 @@ void WritePolygons
 	char *buffer = new char[ vFactory.bufferSize() ];
 	for( size_t j=0 ; j<(int)vertices.size() ; j++ )
 	{
+#if 1
+		if( VertexFactory::IsStaticallyAllocated() ) ply->put_element( (void *)&vertices[j] );
+#else
 		if( vFactory.isStaticallyAllocated() ) ply->put_element( (void *)&vertices[j] );
+#endif
 		else
 		{
 			vFactory.toBuffer( vertices[j] , buffer );
@@ -817,7 +893,13 @@ void WritePoints
 	ply->element_count( "vertex", nr_vertices );
 	for( unsigned int i=0 ; i<vFactory.plyWriteNum() ; i++)
 	{
+#if 1
+		GregTurk::PlyProperty prop;
+		if constexpr( VertexFactory::IsStaticallyAllocated() ) prop = vFactory.plyStaticWriteProperty(i);
+		else                                                   prop = vFactory.plyWriteProperty(i);
+#else
 		GregTurk::PlyProperty prop = vFactory.isStaticallyAllocated() ? vFactory.plyStaticWriteProperty(i) : vFactory.plyWriteProperty(i);
+#endif
 		ply->describe_property( "vertex" , &prop );
 	}
 
@@ -830,7 +912,11 @@ void WritePoints
 	char *buffer = new char[ vFactory.bufferSize() ];
 	for( size_t j=0 ; j<(int)vertices.size() ; j++ )
 	{
+#if 1
+		if constexpr( VertexFactory::IsStaticallyAllocated() ) ply->put_element( (void *)&vertices[j] );
+#else
 		if( vFactory.isStaticallyAllocated() ) ply->put_element( (void *)&vertices[j] );
+#endif
 		else
 		{
 			vFactory.toBuffer( vertices[j] , buffer );
