@@ -78,6 +78,7 @@ CmdLineReadable Double( "double" );
 CmdLineReadable ApproximateIntegration( "approximateIntegration" );
 CmdLineReadable Dots( "dots" );
 CmdLineReadable Serial( "serial" );
+CmdLineReadable Run( "run" );
 
 CmdLineParameter< std::string > VectorField( "inVF" );
 CmdLineParameter< float > AnisotropyScale( "aScl" , 1.f );
@@ -97,6 +98,7 @@ CmdLineReadable* params[] =
 	&NoHelp ,
 	&VectorField , &IntrinsicVectorField , &AnisotropyScale , &AnisotropyExponent , 
 	&CollapseEpsilon ,
+	&Run ,
 	NULL
 };
 
@@ -136,6 +138,7 @@ void ShowUsage( const char* ex )
 	printf( "\t[--%s <anisotropy exponent>=%f]\n" , AnisotropyExponent.name.c_str() , AnisotropyExponent.value );
 	printf( "\t[--%s <collapse epsilon>=%g]\n" , CollapseEpsilon.name.c_str() , CollapseEpsilon.value );
 	printf( "\t[--%s]\n" , IntrinsicVectorField.name.c_str() );
+	printf( "\t[--%s]\n" , Run.name.c_str() );
 	printf( "\t[--%s]\n" , Serial.name.c_str() );
 
 	printf( "\t[--%s]\n" , NoHelp.name.c_str() );
@@ -570,7 +573,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 {
 	Miscellany::Timer timer;
 	MultigridBlockInfo multigridBlockInfo( MultigridBlockWidth.value , MultigridBlockHeight.value , MultigridPaddedWidth.value , MultigridPaddedHeight.value );
-	InitializeHierarchy( mesh , width , height , levels , textureNodes , bilinearElementIndices , hierarchy , atlasCharts , multigridBlockInfo , false );
+	InitializeHierarchy( mesh , width , height , levels , textureNodes , bilinearElementIndices , hierarchy , atlasCharts , multigridBlockInfo );
 	if( Verbose.set ) printf( "\tInitialized hierarchy: %.2f(s)\n" , timer.elapsed() );
 
 	//Initialize node index
@@ -917,6 +920,7 @@ template< typename PreReal , typename Real >
 void _main( int argc , char* argv[] )
 {
 	GrayScottReactionDiffusion< PreReal , Real >::Init();
+	if( Run.set ) GrayScottReactionDiffusion< PreReal , Real >::updateCount = -1;
 	if( !Output.set )
 	{
 		glutInitDisplayMode( GLUT_RGB | GLUT_DOUBLE );

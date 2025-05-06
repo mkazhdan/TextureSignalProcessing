@@ -75,6 +75,7 @@ CmdLineReadable DetailVerbose("detail");
 CmdLineReadable UseDirectSolver("useDirectSolver");
 CmdLineReadable IntrinsicVectorField( "intrinsicVF" );
 CmdLineReadable Serial( "serial" );
+CmdLineReadable Run( "run" );
 CmdLineReadable NoHelp( "noHelp" );
 
 CmdLineParameter< double > CollapseEpsilon( "collapse" , 0 );
@@ -89,6 +90,7 @@ CmdLineReadable* params[] =
 	&NoHelp , &AnisotropyExponent ,
 	&NormalSmoothingIterations , &NormalSmoothingInterpolation ,
 	&CollapseEpsilon ,
+	&Run ,
 	NULL
 };
 
@@ -127,6 +129,7 @@ void ShowUsage(const char* ex)
 	printf( "\t[--%s <normal smoothing interpolation>=%f]\n" , NormalSmoothingInterpolation.name.c_str() , NormalSmoothingInterpolation.value );
 	printf( "\t[--%s <anisotropy exponent>=%f]\n" , AnisotropyExponent.name.c_str() , AnisotropyExponent.value );
 	printf( "\t[--%s <collapse epsilon>=%g]\n" , CollapseEpsilon.name.c_str() , CollapseEpsilon.value );
+	printf( "\t[--%s]\n" , Run.name.c_str() );
 	printf( "\t[--%s]\n" , Serial.name.c_str() );
 	printf( "\t[--%s]\n" , NoHelp.name.c_str() );
 	printf( "\t[--%s]\n" , Double.name.c_str() );
@@ -528,7 +531,7 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 {
 	Miscellany::Timer timer;
 	MultigridBlockInfo multigridBlockInfo( MultigridBlockWidth.value , MultigridBlockHeight.value , MultigridPaddedWidth.value , MultigridPaddedHeight.value );
-	InitializeHierarchy( mesh , width , height , levels , textureNodes , bilinearElementIndices , hierarchy , atlasCharts , multigridBlockInfo , false );
+	InitializeHierarchy( mesh , width , height , levels , textureNodes , bilinearElementIndices , hierarchy , atlasCharts , multigridBlockInfo );
 	if( Verbose.set ) printf( "\tInitialized hierarchy: %.2f(s)\n" , timer.elapsed() );
 
 	//Initialize node index
@@ -1004,6 +1007,8 @@ template< typename PreReal , typename Real>
 void _main( int argc , char* argv[] )
 {
 	LineConvolution< PreReal , Real >::Init();
+
+	if( Run.set ) LineConvolution< PreReal , Real >::updateCount = -1;
 	if( !Output.set )
 	{
 		glutInitDisplayMode( GLUT_RGB | GLUT_DOUBLE );

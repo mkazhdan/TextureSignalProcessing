@@ -97,11 +97,11 @@ int main( int argc , char* argv[] )
 	if( Verbose.set ) std::cout << "Texture resolution: " << texture.res(0) << " x " << texture.res(1) << std::endl;
 
 	timer.reset();
-	RegularGrid< K , TexelInfo > inputTexelInfo = Texels< NodeAtCellCenter , Index >::GetSupportedTexelInfo< Dim , false >( simplices.size() , [&]( size_t v ){ return vertices[v]; } , [&]( size_t s ){ return simplices[s]; } , TextureSimplexFunctor , texture.res() , 0 , false );
+	RegularGrid< K , TexelInfo > inputTexelInfo = Texels< NodeAtCellCenter , Index >::template GetSupportedTexelInfo< Dim , false >( simplices.size() , [&]( size_t v ){ return vertices[v]; } , [&]( size_t s ){ return simplices[s]; } , TextureSimplexFunctor , texture.res() , 0 , false );
 	if( Verbose.set ) std::cout << "Got input texels: " << timer() << std::endl;
 
 	timer.reset();
-	RegularGrid< K , TexelInfo > dilatedTexelInfo = Texels< NodeAtCellCenter , Index >::GetSupportedTexelInfo< Dim , false >( simplices.size() , [&]( size_t v ){ return vertices[v]; } , [&]( size_t s ){ return simplices[s]; } , TextureSimplexFunctor , texture.res() , DilationRadius.value , Verbose.set );
+	RegularGrid< K , TexelInfo > dilatedTexelInfo = Texels< NodeAtCellCenter , Index >::template GetSupportedTexelInfo< Dim , false >( simplices.size() , [&]( size_t v ){ return vertices[v]; } , [&]( size_t s ){ return simplices[s]; } , TextureSimplexFunctor , texture.res() , DilationRadius.value , Verbose.set );
 	if( Verbose.set ) std::cout << "Got dilated texels: " << timer() << std::endl;
 
 	auto GetSimplex = [&]( unsigned int si )

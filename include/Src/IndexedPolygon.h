@@ -34,13 +34,14 @@ DAMAGE.
 
 namespace MishaK
 {
-	template< typename GeometryReal >
+#pragma message( "[WARNING] How is this different from an AuxiliaryNode?" )	// It is used to index both the auxiliary nodes and the covered texels
+	template< typename GeometryReal , typename IndexType >
 	struct NodeInfo
 	{
 		NodeInfo( void ) : index(-1){}
-		NodeInfo( AtlasInteriorOrBoundaryNodeIndex index , Point2D< GeometryReal > position ) : index(index) , position(position) {}
+		NodeInfo( IndexType index , Point2D< GeometryReal > position ) : index(index) , position(position) {}
 
-		AtlasInteriorOrBoundaryNodeIndex index;
+		IndexType index;
 		Point2D< GeometryReal > position;
 	};
 
@@ -52,7 +53,7 @@ namespace MishaK
 		GridMeshIntersectionKey( void ) : _gridIndex(-1) , _meshIndex(-1){}
 		GridMeshIntersectionKey( AtlasGridEdgeIndex g , AtlasMeshEdgeIndex m ) : _gridIndex( static_cast< unsigned int >(g) ) , _meshIndex( static_cast< unsigned int >(m) ){}
 		std::optional< ChartMeshVertexIndex > chartVertex( void ) const { if( _gridIndex==-1 && _meshIndex!=-1 ) return ChartMeshVertexIndex( _meshIndex ) ; else return std::nullopt; }
-		std::optional<    AtlasGridVertexIndex >    gridNode( void ) const { if( _meshIndex==-1 && _gridIndex!=-1 ) return    AtlasGridVertexIndex( _gridIndex ) ; else return std::nullopt; }
+		std::optional<    AtlasGridVertexIndex > gridNode( void ) const { if( _meshIndex==-1 && _gridIndex!=-1 ) return    AtlasGridVertexIndex( _gridIndex ) ; else return std::nullopt; }
 		std::optional< std::pair< AtlasGridEdgeIndex , AtlasMeshEdgeIndex > > intersection( void ) const { if( _meshIndex!=-1 && _gridIndex!=-1 ) return std::pair< AtlasGridEdgeIndex , AtlasMeshEdgeIndex >( AtlasGridEdgeIndex( _gridIndex ) , AtlasMeshEdgeIndex( _meshIndex ) ) ; else return std::nullopt; }
 
 		bool operator <  ( const GridMeshIntersectionKey &key ) const { return _gridIndex< key._gridIndex || ( _gridIndex==key._gridIndex && _meshIndex<key._meshIndex ); }
@@ -122,10 +123,18 @@ namespace MishaK
 		GridMeshIntersectionKey intersectionKey;
 		Point2D< GeometryReal > position;
 		GeometryReal time;
+#ifdef NEW_CODE
+		AtlasRefinedBoundaryVertexIndex index;
+#else // !NEW_CODE
 		AtlasInteriorOrBoundaryNodeIndex index;
+#endif // NEW_CODE
 
 		IntersectionInfo( void ) : index(-1){}
+#ifdef NEW_CODE
+		IntersectionInfo( GridMeshIntersectionKey intersectionKey , Point2D< GeometryReal > position , GeometryReal time , AtlasRefinedBoundaryVertexIndex index=AtlasRefinedBoundaryVertexIndex(-1) )
+#else // !NEW_CODE
 		IntersectionInfo( GridMeshIntersectionKey intersectionKey , Point2D< GeometryReal > position , GeometryReal time , AtlasInteriorOrBoundaryNodeIndex index=AtlasInteriorOrBoundaryNodeIndex(-1) )
+#endif // NEW_CODE
 			: intersectionKey(intersectionKey) , position(position) , time(time) , index(index){}
 
 		static bool CompareByTime( const IntersectionInfo< GeometryReal > &i0 , const IntersectionInfo< GeometryReal > &i1 ){ return i0.time < i1.time; };

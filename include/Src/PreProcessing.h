@@ -27,6 +27,7 @@ DAMAGE.
 */
 
 // To do:
+// -- Remove GridChart::cellType and GridChart::texelType
 // -- "combined" -> ""
 // -- supported -> covered
 // -- AtlasInteriorOrBoundaryNodeIndex -> AtlasCoveredOrBoundaryNodeIndex

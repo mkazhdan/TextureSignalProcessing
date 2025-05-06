@@ -347,7 +347,7 @@ namespace MishaK
 		Point2D< GeometryReal > position;
 		AtlasInteriorOrBoundaryNodeIndex index;
 
-		AuxiliaryNode( Point2D< GeometryReal > position=Point2D< GeometryReal >() , AtlasInteriorOrBoundaryNodeIndex index=static_cast< AtlasInteriorOrBoundaryNodeIndex >(-1) ) : position(position) , index(index) {}
+		AuxiliaryNode( Point2D< GeometryReal > position=Point2D< GeometryReal >() , AtlasInteriorOrBoundaryNodeIndex index=AtlasInteriorOrBoundaryNodeIndex(-1) ) : position(position) , index(index) {}
 	};
 
 	enum struct CellType
@@ -581,7 +581,11 @@ namespace MishaK
 		AtlasBoundaryCellIndex endBoundaryCellIndex;
 		AtlasInteriorCellIndex endInteriorCellIndex;
 
+#ifdef NEW_CODE
+		AtlasRefinedBoundaryVertexIndex endBoundaryVertexIndex;
+#else // !NEW_CODE
 		unsigned int numBoundaryNodes;
+#endif // NEW_CODE
 		BoundaryMidPointIndex endMidPointIndex;
 		unsigned int numFineNodes;
 	};

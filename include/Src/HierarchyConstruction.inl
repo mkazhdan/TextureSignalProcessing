@@ -1063,8 +1063,7 @@ void InitializeHierarchy
 	IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > > &cellNodes ,
 	HierarchicalSystem< GeometryReal , MatrixReal > &hierarchy ,
 	IndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
-	const MultigridBlockInfo &multigridBlockInfo ,
-	bool computeProlongation
+	const MultigridBlockInfo &multigridBlockInfo
 )
 {
 	typename AtlasChart< GeometryReal >::AtlasInfo atlasInfo;
@@ -1080,12 +1079,4 @@ void InitializeHierarchy
 
 	//(4) Initialize boundary triangulation
 	InitializeBoundaryTriangulation( hierarchy.gridAtlases[0] , atlasCharts , atlasInfo );
-
-	//(5) Unnnecesary
-	if( computeProlongation )
-	{
-		Eigen::SparseMatrix< MatrixReal > __prolongation;
-		InitializeProlongation( hierarchy.gridAtlases[0].endCoveredTexelIndex , hierarchy.gridAtlases[0].numFineNodes , hierarchy.gridAtlases[0].endCombinedTexelIndex , hierarchy.gridAtlases[0].gridCharts , hierarchy.gridAtlases[0].texelInfo , __prolongation );
-		hierarchy.gridAtlases[0].coarseToFineNodeProlongation = __prolongation;
-	}
 }

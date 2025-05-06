@@ -62,7 +62,7 @@ namespace MishaK
 			unsigned int rasterStart = -1;
 			while( offset<width )
 			{
-				bool currentIsInterior = cellType(offset, j)==CellType::Interior;
+				bool currentIsInterior = cellType(offset,j)==CellType::Interior;
 				if( ( offset==0 || offset==width-1 ) && currentIsInterior ) MK_THROW( "Unexpected interior cell" );
 				if(  currentIsInterior && !previousIsInterior ) rasterStart = offset; //Start raster line
 				if( !currentIsInterior &&  previousIsInterior ) //Terminate raster line

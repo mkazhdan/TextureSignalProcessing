@@ -31,104 +31,6 @@ DAMAGE.
 #include <Misha/MultiThreading.h>
 
 template< typename GeometryReal , typename MatrixReal >
-void InitializeProlongation
-(
-	AtlasCoveredTexelIndex endCoveredTexelIndex ,
-	unsigned int numFineNodes ,
-	AtlasCombinedTexelIndex endCoarseCombinedTexel ,
-	const IndexVector< ChartIndex , GridChart< GeometryReal > > & gridCharts ,
-	const IndexVector< AtlasCombinedTexelIndex , TexelInfo > & texelInfo ,
-	Eigen::SparseMatrix< MatrixReal > &prolongation
-)
-{
-	std::vector< Eigen::Triplet< MatrixReal > > prolongationTriplets;
-	std::set< AtlasCombinedTexelIndex > coveredNodes;
-
-	std::vector< int > interiorTexelIndices( static_cast< unsigned int >(endCoarseCombinedTexel) , -1);
-	for( unsigned int i=0 ; i<gridCharts.size() ; i++ )
-	{
-		const GridChart< GeometryReal > &gridChart = gridCharts[ ChartIndex(i) ];
-		for( unsigned int j=0 ; j<gridChart.texelIndices.size() ; j++ )
-		{
-#if 1
-			MK_THROW( "Method disabled" );
-#else
-			if( gridChart.texelIndices[j].combined!=AtlasCombinedTexelIndex(-1) && gridChart.texelIndices[j].covered!=AtlasCoveredTexelIndex(-1) )
-				interiorTexelIndices[ gridChart.texelIndices[j].combined ] = gridChart.texelIndices[j].covered;
-#endif
-		}
-	}
-
-	for( int i=0 ; i<interiorTexelIndices.size() ; i++ ) if( interiorTexelIndices[i]!=-1 )
-	{
-		if( interiorTexelIndices[i]<0 || interiorTexelIndices[i]>numFineNodes ) MK_THROW( "Out of bound index" );
-		prolongationTriplets.push_back( Eigen::Triplet< MatrixReal >( interiorTexelIndices[i] , i , (MatrixReal)1. ) );
-#pragma message( "[WARNING] AtlasInteriorTexelIndex -> AtlasCombinedTexelIndex" )
-		coveredNodes.insert( AtlasCombinedTexelIndex(i) );
-	}
-
-	unsigned int numAuxiliaryNodes = numFineNodes - static_cast< unsigned int >(endCoveredTexelIndex);
-	std::vector< unsigned int > auxiliaryNodesDegree( numAuxiliaryNodes , 0 );
-
-	for( unsigned int i=0 ; i<gridCharts.size() ; i++ )
-	{
-		const GridChart< GeometryReal > &gridChart = gridCharts[ ChartIndex(i) ];
-		for( unsigned int j=0 ; j<gridChart.auxiliaryNodes.size(); j++ )
-		{
-			unsigned int auxiliaryID = static_cast< unsigned int >( gridChart.auxiliaryNodes[j].index ) - static_cast< unsigned int >(endCoveredTexelIndex);
-			auxiliaryNodesDegree[auxiliaryID]++;
-		}
-	}
-
-	GeometryReal precision_error = (GeometryReal)1e-10;
-
-	std::vector< GeometryReal > auxiliaryNodesCumWeight(numAuxiliaryNodes, 0);
-
-	for( unsigned int i=0 ; i<gridCharts.size() ; i++ )
-	{
-		const GridChart< GeometryReal > &gridChart = gridCharts[ ChartIndex(i) ];
-		for( unsigned int j=0 ; j<gridChart.auxiliaryNodes.size() ; j++ )
-		{
-			unsigned int auxiliaryID = static_cast< unsigned int >( gridChart.auxiliaryNodes[j].index ) - static_cast< unsigned int >( endCoveredTexelIndex );
-			unsigned int nodeDegree = auxiliaryNodesDegree[auxiliaryID];
-			Point2D< GeometryReal > nodePosition = gridChart.auxiliaryNodes[j].position;
-			int corner[2] = { (int)floor(nodePosition[0] / gridChart.cellSizeW), (int)floor(nodePosition[1] / gridChart.cellSizeH) };
-			ChartCombinedCellIndex cellID = gridChart.cellIndices( corner[0] , corner[1] ).combined;
-				
-			nodePosition[0] /= gridChart.cellSizeW;
-			nodePosition[1] /= gridChart.cellSizeH;
-			nodePosition[0] -= (GeometryReal)corner[0];
-			nodePosition[1] -= (GeometryReal)corner[1];
-			if( nodePosition[0] < 0-precision_error || nodePosition[0] > 1+precision_error || nodePosition[1] < 0-precision_error || nodePosition[1] > 1+precision_error )
-				MK_THROW( "Sample out of unit box: (" , nodePosition[0] , " " , nodePosition[1] , ")" );
-			for( unsigned int k=0 ; k<4 ; k++ )
-			{
-				GeometryReal texelWeight = BilinearElementValue( k , nodePosition ) / nodeDegree;
-				if( fabs(texelWeight)>1e-11 )
-				{
-					auxiliaryNodesCumWeight[auxiliaryID] += texelWeight;
-					AtlasCombinedTexelIndex texelIndex = gridChart.combinedCellCombinedTexelBilinearElementIndices[cellID][k];
-					if( texelInfo[texelIndex].texelType==TexelType::InteriorSupported )
-						MK_THROW( "Interior-supported texel cannot be in the support of an auxiliary node. Weight " , texelWeight , " (B)" );
-					coveredNodes.insert( texelIndex );
-					if( static_cast< unsigned int >(gridChart.auxiliaryNodes[j].index)<static_cast< unsigned int >(endCoveredTexelIndex) || static_cast< unsigned int >(gridChart.auxiliaryNodes[j].index)>numFineNodes || texelIndex==AtlasCombinedTexelIndex(-1) || static_cast< unsigned int >(texelIndex)>static_cast< unsigned int >(endCoarseCombinedTexel) )
-						MK_THROW( "Out of bounds index" );
-					prolongationTriplets.push_back( Eigen::Triplet< MatrixReal >( static_cast< unsigned int >(gridChart.auxiliaryNodes[j].index) , static_cast< unsigned int >(texelIndex) , (MatrixReal)texelWeight ) );
-				}
-			}
-		}
-	}
-
-	for( int i=0 ; i<numAuxiliaryNodes ; i++ ) if( fabs( auxiliaryNodesCumWeight[i]-1.0 )>precision_error ) MK_THROW( "Cum weight out of precision " , auxiliaryNodesCumWeight[i] );
-
-	if( coveredNodes.size()!=static_cast< unsigned int >( endCoarseCombinedTexel ) ) MK_THROW( "Total active texels does not match total texels" );
-
-	printf( "Prolongation operator dimensions %d x %d \n" , numFineNodes , static_cast< unsigned int >( endCoarseCombinedTexel ) );
-	prolongation.resize( numFineNodes , static_cast< unsigned int >( endCoarseCombinedTexel ) );
-	prolongation.setFromTriplets( prolongationTriplets.begin() , prolongationTriplets.end() );
-}
-
-template< typename GeometryReal , typename MatrixReal >
 void InitializeAtlasHierachicalProlongation( GridAtlas< GeometryReal , MatrixReal > &fineAtlas , const GridAtlas< GeometryReal , MatrixReal > &coarseAtlas )
 {
 	std::vector<ProlongationLine> & prolongationLines = fineAtlas.prolongationLines;
@@ -313,8 +215,7 @@ void InitializeAtlasHierachicalRestriction
 				AtlasCombinedTexelIndex lineCoarseStartIndex = coarseRasterLines[i].lineStartIndex;
 				int lineCoarseLength = coarseRasterLines[i].lineEndIndex - lineCoarseStartIndex + 1;
 
-#pragma message( "[WARNING] What's going on here" )
-				MK_WARN_ONCE( "Transforming to interior texel index" );
+#pragma message( "[WARNING] Converting AtlasCombinedTexelIndex -> AtlasInteriorTexelIndex" )
 				restrictionLines[i].coeffStartIndex = AtlasInteriorTexelIndex( static_cast< unsigned int >(lineCoarseStartIndex) ); //combined (NOT DEEP) variable index in the current level
 
 				deepLines[i].coarseLineStartIndex = coarseRasterLines[i].coeffStartIndex;

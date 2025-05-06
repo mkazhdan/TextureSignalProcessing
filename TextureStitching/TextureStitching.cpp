@@ -80,6 +80,7 @@ CmdLineReadable DetailVerbose( "detail" );
 CmdLineReadable Double( "double" );
 CmdLineReadable MultiInput( "multi" );
 CmdLineReadable Serial( "serial" );
+CmdLineReadable Run( "run" );
 #ifdef NO_OPEN_GL_VISUALIZATION
 #else // !NO_OPEN_GL_VISUALIZATION
 CmdLineReadable Nearest( "nearest" );
@@ -102,6 +103,7 @@ CmdLineReadable* params[] =
 	&Nearest ,
 #endif // NO_OPEN_GL_VISUALIZATION
 	&CollapseEpsilon ,
+	&Run ,
 	NULL
 };
 
@@ -141,6 +143,7 @@ void ShowUsage( const char *ex )
 	printf( "\t[--%s <multigrid padded height>=%d]\n" , MultigridPaddedHeight.name.c_str() , MultigridPaddedHeight.value );
 	printf( "\t[--%s <collapse epsilon>=%g]\n" , CollapseEpsilon.name.c_str() , CollapseEpsilon.value );
 	printf( "\t[--%s]\n", Serial.name.c_str() );
+	printf( "\t[--%s]\n", Run.name.c_str() );
 	printf( "\t[--%s]\n", DetailVerbose.name.c_str() );
 	printf( "\t[--%s]\n" , NoHelp.name.c_str() );
 }
@@ -651,7 +654,7 @@ void Stitching< PreReal , Real , TextureBitDepth >::InitializeSystem( int width 
 {
 	Miscellany::Timer timer;
 	MultigridBlockInfo multigridBlockInfo( MultigridBlockWidth.value , MultigridBlockHeight.value , MultigridPaddedWidth.value , MultigridPaddedHeight.value );
-	InitializeHierarchy( mesh , width , height , levels , textureNodes , bilinearElementIndices , hierarchy , atlasCharts , multigridBlockInfo , false );
+	InitializeHierarchy( mesh , width , height , levels , textureNodes , bilinearElementIndices , hierarchy , atlasCharts , multigridBlockInfo );
 	if( Verbose.set ) printf( "\tInitialized hierarchy: %.2f(s)\n" , timer.elapsed() );
 
 	BoundaryProlongationData< Real > boundaryProlongation;
@@ -1120,7 +1123,7 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth >
 void _main( int argc , char *argv[] )
 {
 	Stitching< PreReal , Real , TextureBitDepth >::inputMode = MultiInput.set ? MULTIPLE_INPUT_MODE : SINGLE_INPUT_MODE;
-	Stitching< PreReal , Real , TextureBitDepth >::updateCount = 0;
+	Stitching< PreReal , Real , TextureBitDepth >::updateCount = Run.set ? static_cast< unsigned int >(-1) : 0;
 
 	Stitching< PreReal , Real , TextureBitDepth >::LoadTextures();
 	Stitching< PreReal , Real , TextureBitDepth >::Init();

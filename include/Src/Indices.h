@@ -29,6 +29,7 @@ DAMAGE.
 
 #include <optional>
 
+
 namespace MishaK
 {
 #ifdef DEBUG_INDEXING
@@ -40,6 +41,7 @@ namespace MishaK
 		explicit UnsignedIntIndex( I idx=static_cast<I>(-1) )
 			: _idx(static_cast< unsigned int >(idx) )
 		{ static_assert( std::is_integral_v< I > , "[ERROR] Expected integral type" ); }
+
 		explicit operator unsigned int () const { return _idx; }
 
 		UnsignedIntIndex & operator += ( unsigned int off ){ _idx += off ; return *this; }
@@ -133,6 +135,9 @@ namespace MishaK
 	// Boundary index types
 	struct            BoundaryMidPointIndex : public UnsignedIntIndex<            BoundaryMidPointIndex >{ using UnsignedIntIndex<            BoundaryMidPointIndex >::UnsignedIntIndex; };
 
+	// Auxilary node index type
+	struct  AtlasRefinedBoundaryVertexIndex : public UnsignedIntIndex<  AtlasRefinedBoundaryVertexIndex >{ using UnsignedIntIndex<  AtlasRefinedBoundaryVertexIndex >::UnsignedIntIndex; };
+
 #else // !DEBUG_INDEXING
 	template< typename T , typename Data >
 	using IndexVector = std::vector< Data >;
@@ -165,6 +170,9 @@ namespace MishaK
 
 	// Boundary types
 	using             BoundaryMiPointIndex = unsigned int;
+
+	// Auxiliary node index type
+	using AtlasRefinedMeshBoundaryVertexIndex = unsigned int;
 
 #endif // DEBUG_INDEXING
 
