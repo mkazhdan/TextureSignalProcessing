@@ -216,7 +216,7 @@ void InitializeAtlasHierachicalRestriction
 				int lineCoarseLength = coarseRasterLines[i].lineEndIndex - lineCoarseStartIndex + 1;
 
 #pragma message( "[WARNING] Converting AtlasCombinedTexelIndex -> AtlasInteriorTexelIndex" )
-				restrictionLines[i].coeffStartIndex = AtlasInteriorTexelIndex( static_cast< unsigned int >(lineCoarseStartIndex) ); //combined (NOT DEEP) variable index in the current level
+				restrictionLines[i].coeffStartIndex = AtlasInteriorTexelIndex( lineCoarseStartIndex ); //combined (NOT DEEP) variable index in the current level
 
 				deepLines[i].coarseLineStartIndex = coarseRasterLines[i].coeffStartIndex;
 				deepLines[i].coarseLineEndIndex = coarseRasterLines[i].coeffStartIndex + lineCoarseLength - 1;

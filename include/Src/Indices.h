@@ -37,10 +37,11 @@ namespace MishaK
 	template< typename T >
 	struct UnsignedIntIndex
 	{
-		template< typename I=unsigned int >
-		explicit UnsignedIntIndex( I idx=static_cast<I>(-1) )
-			: _idx(static_cast< unsigned int >(idx) )
-		{ static_assert( std::is_integral_v< I > , "[ERROR] Expected integral type" ); }
+		template< typename I=unsigned int , typename = std::enable_if_t< std::is_integral_v< I > > >
+		explicit UnsignedIntIndex( I idx=static_cast<I>(-1) ) : _idx( static_cast< unsigned int >(idx) ){}
+
+		template< typename _T >
+		explicit UnsignedIntIndex( const UnsignedIntIndex< _T > & t ) : _idx( static_cast< unsigned int >(t) ) {}
 
 		explicit operator unsigned int () const { return _idx; }
 
@@ -142,16 +143,21 @@ namespace MishaK
 	template< typename T , typename Data >
 	using IndexVector = std::vector< Data >;
 
+	// Chart index
 	using                       ChartIndex = unsigned int;
+
 	using           AtlasMeshTriangleIndex = unsigned int;
 	using           ChartMeshTriangleIndex = unsigned int;
 	using             AtlasMeshVertexIndex = unsigned int;
 	using             ChartMeshVertexIndex = unsigned int;
-	using             AtlasGridVertexIndex = unsigned int;
 	using           AtlasMeshHalfEdgeIndex = unsigned int;
 	using           ChartMeshHalfEdgeIndex = unsigned int;
 	using               AtlasMeshEdgeIndex = unsigned int;
+	using     AtlasMeshBoundaryVertexIndex = unsigned int;
+
+	using             AtlasGridVertexIndex = unsigned int;
 	using               AtlasGridEdgeIndex = unsigned int;
+
 	using AtlasInteriorOrBoundaryNodeIndex = unsigned int;
 
 	// Cell types
@@ -169,10 +175,10 @@ namespace MishaK
 	using          AtlasCombinedTexelIndex = unsigned int;
 
 	// Boundary types
-	using             BoundaryMiPointIndex = unsigned int;
+	using            BoundaryMidPointIndex = unsigned int;
 
 	// Auxiliary node index type
-	using AtlasRefinedMeshBoundaryVertexIndex = unsigned int;
+	using  AtlasRefinedBoundaryVertexIndex = unsigned int;
 
 #endif // DEBUG_INDEXING
 

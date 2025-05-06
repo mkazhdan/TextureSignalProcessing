@@ -123,18 +123,10 @@ namespace MishaK
 		GridMeshIntersectionKey intersectionKey;
 		Point2D< GeometryReal > position;
 		GeometryReal time;
-#ifdef NEW_CODE
 		AtlasRefinedBoundaryVertexIndex index;
-#else // !NEW_CODE
-		AtlasInteriorOrBoundaryNodeIndex index;
-#endif // NEW_CODE
 
 		IntersectionInfo( void ) : index(-1){}
-#ifdef NEW_CODE
 		IntersectionInfo( GridMeshIntersectionKey intersectionKey , Point2D< GeometryReal > position , GeometryReal time , AtlasRefinedBoundaryVertexIndex index=AtlasRefinedBoundaryVertexIndex(-1) )
-#else // !NEW_CODE
-		IntersectionInfo( GridMeshIntersectionKey intersectionKey , Point2D< GeometryReal > position , GeometryReal time , AtlasInteriorOrBoundaryNodeIndex index=AtlasInteriorOrBoundaryNodeIndex(-1) )
-#endif // NEW_CODE
 			: intersectionKey(intersectionKey) , position(position) , time(time) , index(index){}
 
 		static bool CompareByTime( const IntersectionInfo< GeometryReal > &i0 , const IntersectionInfo< GeometryReal > &i1 ){ return i0.time < i1.time; };

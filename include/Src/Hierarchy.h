@@ -581,11 +581,7 @@ namespace MishaK
 		AtlasBoundaryCellIndex endBoundaryCellIndex;
 		AtlasInteriorCellIndex endInteriorCellIndex;
 
-#ifdef NEW_CODE
 		AtlasRefinedBoundaryVertexIndex endBoundaryVertexIndex;
-#else // !NEW_CODE
-		unsigned int numBoundaryNodes;
-#endif // NEW_CODE
 		BoundaryMidPointIndex endMidPointIndex;
 		unsigned int numFineNodes;
 	};
