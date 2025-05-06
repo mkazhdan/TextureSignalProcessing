@@ -196,7 +196,7 @@ void InitializeAtlasHierachicalRestriction
 {
 	std::vector< Eigen::Triplet< MatrixReal > > boundaryRestrictionTriplets;
 
-	const IndexVector< AtlasCombinedTexelIndex , TexelInfo > & coarseTexelInfo = coarseAtlas.texelInfo;
+	const ExplicitIndexVector< AtlasCombinedTexelIndex , TexelInfo > & coarseTexelInfo = coarseAtlas.texelInfo;
 	const typename GridAtlas<>::IndexConverter & indexConverter = coarseAtlas.indexConverter;
 
 	const std::vector< RasterLine > &coarseRasterLines = coarseAtlas.rasterLines;

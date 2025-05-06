@@ -29,7 +29,7 @@ DAMAGE.
 
 
 template< typename GeometryReal >
-IndexVector< ChartIndex , AtlasChart< GeometryReal > >
+ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > >
 AtlasMesh< GeometryReal >::getCharts
 (
 	const std::vector< bool > &isBoundaryHalfEdge ,
@@ -38,7 +38,7 @@ AtlasMesh< GeometryReal >::getCharts
 )
 const
 {
-	IndexVector< ChartIndex , AtlasChart< GeometryReal > > atlasCharts( _numCharts );
+	ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > > atlasCharts( _numCharts );
 
 	for( unsigned int i=0 ; i<_numCharts ; i++ )
 	{
@@ -151,7 +151,7 @@ const
 
 
 template< typename GeometryReal >
-IndexVector< ChartIndex , AtlasChart< GeometryReal > >
+ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > >
 AtlasChart< GeometryReal >::GetCharts
 (
 	const TexturedTriangleMesh< GeometryReal > &mesh ,

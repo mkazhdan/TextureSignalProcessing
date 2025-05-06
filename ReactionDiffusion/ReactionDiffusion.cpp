@@ -167,7 +167,7 @@ public:
 
 	static HierarchicalSystem< PreReal , Real > hierarchy;
 
-	static IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > > bilinearElementIndices;
+	static ExplicitIndexVector< AtlasCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > > bilinearElementIndices;
 
 	static std::vector< TextureNodeInfo< PreReal > > textureNodes;
 	static Image< int > nodeIndex;
@@ -178,8 +178,8 @@ public:
 
 	static unsigned int seedTexel;
 
-	static IndexVector< ChartIndex , AtlasChart< PreReal > > atlasCharts;
-	static IndexVector< ChartIndex , IndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > > parameterMetric;
+	static ExplicitIndexVector< ChartIndex , AtlasChart< PreReal > > atlasCharts;
+	static ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > > parameterMetric;
 
 	static std::vector< SystemCoefficients< Real > > multigridCoefficients[2];
 	static std::vector< MultigridLevelVariables< Real > > multigridVariables[2];
@@ -210,7 +210,7 @@ public:
 	static ScalarElementSamples< Real > scalarSamples;
 	static std::vector< InteriorCellLine > interiorCellLines;
 
-	static IndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > > interiorCellLineIndex;
+	static ExplicitIndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > > interiorCellLineIndex;
 
 	//Linear Operators
 	static SystemCoefficients< Real > massCoefficients;
@@ -261,8 +261,8 @@ template< typename PreReal , typename Real > int																	GrayScottReacti
 template< typename PreReal , typename Real > bool																	GrayScottReactionDiffusion< PreReal , Real >::mouseSelectionActive = false;
 template< typename PreReal , typename Real > Padding																GrayScottReactionDiffusion< PreReal , Real >::padding;
 
-template< typename PreReal , typename Real > IndexVector< ChartIndex , AtlasChart< PreReal > >						GrayScottReactionDiffusion< PreReal , Real> ::atlasCharts;
-template< typename PreReal , typename Real > IndexVector< ChartIndex , IndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > >	GrayScottReactionDiffusion< PreReal , Real >::parameterMetric;
+template< typename PreReal , typename Real > ExplicitIndexVector< ChartIndex , AtlasChart< PreReal > >						GrayScottReactionDiffusion< PreReal , Real> ::atlasCharts;
+template< typename PreReal , typename Real > ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > >	GrayScottReactionDiffusion< PreReal , Real >::parameterMetric;
 
 template< typename PreReal , typename Real > SparseMatrix< Real , int >												GrayScottReactionDiffusion< PreReal , Real >::mass;
 template< typename PreReal , typename Real > SparseMatrix< Real , int >												GrayScottReactionDiffusion< PreReal , Real >::stiffness;
@@ -275,7 +275,7 @@ template< typename PreReal , typename Real > Real																	GrayScottReact
 
 template< typename PreReal , typename Real > std::vector< TextureNodeInfo< PreReal > >								GrayScottReactionDiffusion< PreReal , Real >::textureNodes;
 template< typename PreReal , typename Real > Image< int >															GrayScottReactionDiffusion< PreReal , Real >::nodeIndex;
-template< typename PreReal , typename Real > IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > >	GrayScottReactionDiffusion< PreReal , Real >::bilinearElementIndices;
+template< typename PreReal , typename Real > ExplicitIndexVector< AtlasCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > >	GrayScottReactionDiffusion< PreReal , Real >::bilinearElementIndices;
 
 template< typename PreReal , typename Real > int																	GrayScottReactionDiffusion< PreReal , Real >::steps;
 template< typename PreReal , typename Real > char																	GrayScottReactionDiffusion< PreReal , Real >::stepsString[1024];
@@ -295,7 +295,7 @@ template< typename PreReal , typename Real > typename GrayScottReactionDiffusion
 //Samples
 template< typename PreReal , typename Real > ScalarElementSamples< Real >											GrayScottReactionDiffusion< PreReal , Real >::scalarSamples;
 template< typename PreReal , typename Real > std::vector< InteriorCellLine >										GrayScottReactionDiffusion< PreReal , Real >::interiorCellLines;
-template< typename PreReal , typename Real > IndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > >	GrayScottReactionDiffusion< PreReal , Real >::interiorCellLineIndex;
+template< typename PreReal , typename Real > ExplicitIndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > >	GrayScottReactionDiffusion< PreReal , Real >::interiorCellLineIndex;
 
 template< typename PreReal , typename Real > unsigned int															GrayScottReactionDiffusion< PreReal , Real >::seedTexel = -1;
 template< typename PreReal , typename Real > std::vector< Point3D< float > >										GrayScottReactionDiffusion< PreReal , Real >::textureNodePositions;
@@ -594,7 +594,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 
 	if( VectorField.set )
 	{
-		IndexVector< AtlasMeshTriangleIndex , Point2D< PreReal > > vectorField;
+		ExplicitIndexVector< AtlasMeshTriangleIndex , Point2D< PreReal > > vectorField;
 		// Read in the vector field
 		if( IntrinsicVectorField.set )
 		{
@@ -603,7 +603,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 		}
 		else
 		{
-			IndexVector< AtlasMeshTriangleIndex , Point3D< PreReal > > _vectorField;
+			ExplicitIndexVector< AtlasMeshTriangleIndex , Point3D< PreReal > > _vectorField;
 			ReadVector( ( std::vector< Point2D< PreReal > > & )_vectorField , VectorField.value );
 			if( _vectorField.size()!=mesh.numTriangles() ) MK_THROW( "Triangle and vector counts don't match: " , mesh.numTriangles() , " != " , _vectorField.size() );
 			vectorField.resize( _vectorField.size() );
@@ -623,7 +623,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 		}
 		// Normalize the vector-field to have unit-norm
 		{
-			IndexVector< AtlasMeshTriangleIndex , SquareMatrix< PreReal , 2 > > embeddingMetric;
+			ExplicitIndexVector< AtlasMeshTriangleIndex , SquareMatrix< PreReal , 2 > > embeddingMetric;
 			InitializeEmbeddingMetric( mesh , true , embeddingMetric );
 			{
 				PreReal norm = 0 , area = 0;

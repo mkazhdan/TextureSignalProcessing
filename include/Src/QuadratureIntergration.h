@@ -45,7 +45,7 @@ namespace MishaK
 	(
 		const GridChart< GeometryReal > &gridChart ,
 		std::vector< InteriorCellLine > &interiorCellLines ,
-		IndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > > &interiorCellLineIndex
+		ExplicitIndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > > &interiorCellLineIndex
 	)
 	{
 		const Image< CellType >& cellType = gridChart.cellType;
@@ -94,9 +94,9 @@ namespace MishaK
 	template< typename GeometryReal >
 	void InitializeGridAtlasInteriorCellLines
 	(
-		const IndexVector< ChartIndex , GridChart< GeometryReal > >& gridCharts ,
+		const ExplicitIndexVector< ChartIndex , GridChart< GeometryReal > >& gridCharts ,
 		std::vector< InteriorCellLine >& interiorCellLines ,
-		IndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > >& interiorCellLineIndex
+		ExplicitIndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > >& interiorCellLineIndex
 	)
 	{
 		for( unsigned int i=0 ; i<gridCharts.size() ; i++ ) InitializeGridChartInteriorCellLines( gridCharts[ ChartIndex(i) ] , interiorCellLines , interiorCellLineIndex );
@@ -218,10 +218,10 @@ namespace MishaK
 	template< unsigned int Samples , typename GeometryReal , typename ElementSamples >
 	void InitializeIntegration
 	(
-		const IndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > &texture_metrics ,
+		const ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > &texture_metrics ,
 		const AtlasChart< GeometryReal > &atlasChart ,
 		const GridChart< GeometryReal > &gridChart ,
-		const IndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > >& interiorCellLineIndex ,
+		const ExplicitIndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > >& interiorCellLineIndex ,
 		const std::vector< AtlasInteriorOrBoundaryNodeIndex >& fineBoundaryIndex ,
 		ElementSamples &elementSamples ,
 		std::mutex &element_samples_bilinear_mutex ,
@@ -539,10 +539,10 @@ namespace MishaK
 	template< unsigned int Samples , typename GeometryReal , typename ElementSamples >
 	void InitializeIntegration
 	(
-		const IndexVector< ChartIndex , IndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > >& parameterMetric ,
-		const IndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
-		const IndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts ,
-		const IndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > > &interiorCellLineIndex ,
+		const ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > >& parameterMetric ,
+		const ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
+		const ExplicitIndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts ,
+		const ExplicitIndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > > &interiorCellLineIndex ,
 		const std::vector< AtlasInteriorOrBoundaryNodeIndex > &fineBoundaryIndex ,
 		ElementSamples &elementSamples ,
 		bool fastIntegration

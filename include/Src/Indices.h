@@ -34,6 +34,67 @@ namespace MishaK
 {
 #ifdef DEBUG_INDEXING
 	// A wrapper class for unsigned int that allows distinguishing between different types of indices
+#ifdef NEW_CODE
+	template< typename IndexType , typename Index >
+	struct ExplicitIndex
+	{
+		template< typename I=IndexType , typename = std::enable_if_t< std::is_integral_v< I > > >
+		explicit ExplicitIndex( I idx=I(-1) ) : _idx( static_cast< IndexType >(idx) ){}
+
+		template< typename _Index >
+		explicit ExplicitIndex( const ExplicitIndex< IndexType , _Index > & t ) : _idx( static_cast< IndexType >(t) ) {}
+
+		explicit operator IndexType () const { return _idx; }
+
+		ExplicitIndex & operator += ( IndexType off ){ _idx += off ; return *this; }
+		ExplicitIndex & operator -= ( IndexType off ){ _idx -= off ; return *this; }
+		Index operator + ( IndexType off ) const { return Index( _idx+off ); }
+		Index operator - ( IndexType off ) const { return Index( _idx-off ); }
+
+		IndexType operator - ( const ExplicitIndex &t ) const { return _idx - t._idx; }
+		friend Index & operator ++ ( Index & t ){ t._idx++ ; return t; }
+		friend Index operator ++ ( Index &t , int ){ return Index( t._idx++ ); }
+
+		bool operator == ( const ExplicitIndex &idx ) const { return _idx==idx._idx; }
+		bool operator != ( const ExplicitIndex &idx ) const { return _idx!=idx._idx; }
+		bool operator <  ( const ExplicitIndex &idx ) const { return _idx< idx._idx; }
+		bool operator <= ( const ExplicitIndex &idx ) const { return _idx<=idx._idx; }
+		bool operator >  ( const ExplicitIndex &idx ) const { return _idx> idx._idx; }
+		bool operator >= ( const ExplicitIndex &idx ) const { return _idx>=idx._idx; }
+
+		friend std::ostream &operator << ( std::ostream &os , const ExplicitIndex &I ){ return os << I._idx; }
+
+		template< typename Data >
+		struct ExplicitIndexVector : protected std::vector< Data >
+		{
+			ExplicitIndexVector( void ) : std::vector< Data >(){}
+			ExplicitIndexVector( size_t sz ) : std::vector< Data >(sz){}
+			ExplicitIndexVector( size_t sz , const Data & data ) : std::vector< Data >( sz , data ){}
+			size_t size( void ) const { return std::vector< Data >::size(); }
+			void resize( size_t sz ){ return std::vector< Data >::resize(sz); }
+			void resize( size_t sz , const Data & data ){ return std::vector< Data >::resize( sz , data ); }
+			void push_back( const Data & data ){ return std::vector< Data >::push_back(data); }
+			Data & operator[]( const Index & t ){ return std::vector< Data >::operator[]( static_cast< IndexType >(t) ); }
+			const Data & operator[]( const Index &t ) const { return std::vector< Data >::operator[]( static_cast< IndexType >(t) ); }
+
+			typename std::vector< Data >::iterator begin( void ){ return std::vector< Data >::begin(); }
+			typename std::vector< Data >::iterator end( void ){ return std::vector< Data >::end(); }
+			typename std::vector< Data >::const_iterator begin( void ) const { return std::vector< Data >::begin(); }
+			typename std::vector< Data >::const_iterator end( void ) const { return std::vector< Data >::end(); }
+
+			template< class ... Args >
+			void emplace_back( Args && ... args ){ std::vector< Data >::emplace_back( std::forward< Args >(args) ... ); }
+
+			template< class InputIt >
+			typename std::vector< Data >::iterator insert( typename std::vector< Data >::const_iterator pos , InputIt first , InputIt last ){ return std::vector< Data >::insert( pos , first , last ); }
+
+			explicit operator const std::vector< Data > & () const { return *this; }
+			explicit operator       std::vector< Data > & ()       { return *this; }
+		};
+	protected:
+		IndexType _idx;
+	};
+#else // !NEW_CODE
 	template< typename T >
 	struct UnsignedIntIndex
 	{
@@ -90,9 +151,15 @@ namespace MishaK
 	protected:
 		unsigned int _idx;
 	};
+#endif // NEW_CODE
 
+#ifdef NEW_CODE
+	template< typename T , typename Data >
+	using ExplicitIndexVector = typename ExplicitIndex< unsigned int , T >::template ExplicitIndexVector< Data >;
+#else // !NEW_CODE
 	template< typename T , typename Data >
 	using IndexVector = typename UnsignedIntIndex< T >::template IndexVector< Data >;
+#endif // NEW_CODE
 
 	template< typename T , typename Data >
 	Data * operator + ( Data * data , const T & t ){ return data + static_cast< unsigned int >(t); }
@@ -100,6 +167,46 @@ namespace MishaK
 	template< typename T , typename Data >
 	const Data * operator + ( const Data * data , const T & t ){ return data + static_cast< unsigned int >(t); }
 
+#ifdef NEW_CODE
+	// Chart index
+	struct                       ChartIndex : public ExplicitIndex< unsigned int ,                       ChartIndex >{ using ExplicitIndex< unsigned int ,                       ChartIndex >::ExplicitIndex; };
+
+	// Mesh index types
+	struct           AtlasMeshTriangleIndex : public ExplicitIndex< unsigned int ,           AtlasMeshTriangleIndex >{ using ExplicitIndex< unsigned int ,           AtlasMeshTriangleIndex >::ExplicitIndex; };
+	struct           ChartMeshTriangleIndex : public ExplicitIndex< unsigned int ,           ChartMeshTriangleIndex >{ using ExplicitIndex< unsigned int ,           ChartMeshTriangleIndex >::ExplicitIndex; };
+	struct             AtlasMeshVertexIndex : public ExplicitIndex< unsigned int ,             AtlasMeshVertexIndex >{ using ExplicitIndex< unsigned int ,             AtlasMeshVertexIndex >::ExplicitIndex; };
+	struct             ChartMeshVertexIndex : public ExplicitIndex< unsigned int ,             ChartMeshVertexIndex >{ using ExplicitIndex< unsigned int ,             ChartMeshVertexIndex >::ExplicitIndex; };
+	struct               AtlasMeshEdgeIndex : public ExplicitIndex< unsigned int ,               AtlasMeshEdgeIndex >{ using ExplicitIndex< unsigned int ,               AtlasMeshEdgeIndex >::ExplicitIndex; };
+	struct           AtlasMeshHalfEdgeIndex : public ExplicitIndex< unsigned int ,           AtlasMeshHalfEdgeIndex >{ using ExplicitIndex< unsigned int ,           AtlasMeshHalfEdgeIndex >::ExplicitIndex; };
+	struct           ChartMeshHalfEdgeIndex : public ExplicitIndex< unsigned int ,           ChartMeshHalfEdgeIndex >{ using ExplicitIndex< unsigned int ,           ChartMeshHalfEdgeIndex >::ExplicitIndex; };
+	struct     AtlasMeshBoundaryVertexIndex : public ExplicitIndex< unsigned int ,     AtlasMeshBoundaryVertexIndex >{ using ExplicitIndex< unsigned int ,     AtlasMeshBoundaryVertexIndex >::ExplicitIndex; };
+
+	// Grid index types
+	struct             AtlasGridVertexIndex : public ExplicitIndex< unsigned int ,             AtlasGridVertexIndex >{ using ExplicitIndex< unsigned int ,             AtlasGridVertexIndex >::ExplicitIndex; };
+	struct               AtlasGridEdgeIndex : public ExplicitIndex< unsigned int ,               AtlasGridEdgeIndex >{ using ExplicitIndex< unsigned int ,               AtlasGridEdgeIndex >::ExplicitIndex; };
+
+	struct AtlasInteriorOrBoundaryNodeIndex : public ExplicitIndex< unsigned int , AtlasInteriorOrBoundaryNodeIndex >{ using ExplicitIndex< unsigned int , AtlasInteriorOrBoundaryNodeIndex >::ExplicitIndex; };
+
+	// Cell index types
+	struct           ChartInteriorCellIndex : public ExplicitIndex< unsigned int ,           ChartInteriorCellIndex >{ using ExplicitIndex< unsigned int ,           ChartInteriorCellIndex >::ExplicitIndex; };
+	struct           ChartBoundaryCellIndex : public ExplicitIndex< unsigned int ,           ChartBoundaryCellIndex >{ using ExplicitIndex< unsigned int ,           ChartBoundaryCellIndex >::ExplicitIndex; };
+	struct           ChartCombinedCellIndex : public ExplicitIndex< unsigned int ,           ChartCombinedCellIndex >{ using ExplicitIndex< unsigned int ,           ChartCombinedCellIndex >::ExplicitIndex; };
+	struct           AtlasInteriorCellIndex : public ExplicitIndex< unsigned int ,           AtlasInteriorCellIndex >{ using ExplicitIndex< unsigned int ,           AtlasInteriorCellIndex >::ExplicitIndex; };
+	struct           AtlasBoundaryCellIndex : public ExplicitIndex< unsigned int ,           AtlasBoundaryCellIndex >{ using ExplicitIndex< unsigned int ,           AtlasBoundaryCellIndex >::ExplicitIndex; };
+	struct           AtlasCombinedCellIndex : public ExplicitIndex< unsigned int ,           AtlasCombinedCellIndex >{ using ExplicitIndex< unsigned int ,           AtlasCombinedCellIndex >::ExplicitIndex; };
+
+	// Texel index types
+	struct          AtlasInteriorTexelIndex : public ExplicitIndex< unsigned int ,          AtlasInteriorTexelIndex >{ using ExplicitIndex< unsigned int ,          AtlasInteriorTexelIndex >::ExplicitIndex; };
+	struct           AtlasCoveredTexelIndex : public ExplicitIndex< unsigned int ,           AtlasCoveredTexelIndex >{ using ExplicitIndex< unsigned int ,           AtlasCoveredTexelIndex >::ExplicitIndex; };
+	struct          AtlasBoundaryTexelIndex : public ExplicitIndex< unsigned int ,          AtlasBoundaryTexelIndex >{ using ExplicitIndex< unsigned int ,          AtlasBoundaryTexelIndex >::ExplicitIndex; };
+	struct          AtlasCombinedTexelIndex : public ExplicitIndex< unsigned int ,          AtlasCombinedTexelIndex >{ using ExplicitIndex< unsigned int ,          AtlasCombinedTexelIndex >::ExplicitIndex; };
+
+	// Boundary index types
+	struct            BoundaryMidPointIndex : public ExplicitIndex< unsigned int ,            BoundaryMidPointIndex >{ using ExplicitIndex< unsigned int ,            BoundaryMidPointIndex >::ExplicitIndex; };
+
+	// Auxilary node index type
+	struct  AtlasRefinedBoundaryVertexIndex : public ExplicitIndex< unsigned int ,  AtlasRefinedBoundaryVertexIndex >{ using ExplicitIndex< unsigned int ,  AtlasRefinedBoundaryVertexIndex >::ExplicitIndex; };
+#else // !NEW_CODE
 	// Chart index
 	struct                       ChartIndex : public UnsignedIntIndex<                       ChartIndex >{ using UnsignedIntIndex<                       ChartIndex >::UnsignedIntIndex; };
 
@@ -138,7 +245,7 @@ namespace MishaK
 
 	// Auxilary node index type
 	struct  AtlasRefinedBoundaryVertexIndex : public UnsignedIntIndex<  AtlasRefinedBoundaryVertexIndex >{ using UnsignedIntIndex<  AtlasRefinedBoundaryVertexIndex >::UnsignedIntIndex; };
-
+#endif // NEW_CODE
 #else // !DEBUG_INDEXING
 	template< typename T , typename Data >
 	using IndexVector = std::vector< Data >;

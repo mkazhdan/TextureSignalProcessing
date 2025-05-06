@@ -84,7 +84,7 @@ void AtlasMesh< GeometryReal >::initialize
 		}
 
 		unsigned int lastEdgeIndex = 0;
-		IndexVector< AtlasMeshHalfEdgeIndex , AtlasMeshEdgeIndex > halfEdgeToEdgeIndex( 3 * SimpleTriangleMesh< GeometryReal , 2 >::triangles.size() , AtlasMeshEdgeIndex(-1) );
+		ExplicitIndexVector< AtlasMeshHalfEdgeIndex , AtlasMeshEdgeIndex > halfEdgeToEdgeIndex( 3 * SimpleTriangleMesh< GeometryReal , 2 >::triangles.size() , AtlasMeshEdgeIndex(-1) );
 		for( unsigned int he=0 ; he<SimpleTriangleMesh< GeometryReal , 2 >::triangles.size()*3 ; he++ )
 		{
 			SimplexIndex< 1 > _e = SimpleTriangleMesh< GeometryReal , 2 >::edgeIndex( he , true );

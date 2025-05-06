@@ -30,7 +30,7 @@ DAMAGE.
 template< typename GeometryReal >
 void InitializeIndexConverter
 (
-	const IndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts ,
+	const ExplicitIndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts ,
 	AtlasCombinedTexelIndex endCombinedTexelIndex ,
 	typename GridAtlas<>::IndexConverter & indexConverter
 ) 
@@ -69,7 +69,7 @@ void InitializeGridChartsActiveNodes
 	ChartIndex chartID ,
 	const AtlasChart< GeometryReal > & atlasChart ,
 	GridChart< GeometryReal > & gridChart ,
-	IndexVector< AtlasCombinedTexelIndex , TexelInfo > & texelInfo ,
+	ExplicitIndexVector< AtlasCombinedTexelIndex , TexelInfo > & texelInfo ,
 	std::vector< RasterLine > & rasterLines ,
 	std::vector< SegmentedRasterLine > & segmentedLines ,
 	std::vector< ThreadTask > & threadTasks ,
@@ -538,9 +538,9 @@ void InitializeGridChartsActiveNodes
 	Image< CellIndex > & cellIndices = gridChart.cellIndices;
 	cellIndices.resize( width-1 , height-1 );
 
-	IndexVector< ChartCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > > & combinedCellCombinedTexelBilinearElementIndices = gridChart.combinedCellCombinedTexelBilinearElementIndices;
-	IndexVector< ChartInteriorCellIndex , BilinearElementIndex< AtlasCoveredTexelIndex > > & interiorCellCoveredTexelBilinearElementIndices = gridChart.interiorCellCoveredTexelBilinearElementIndices;
-	IndexVector< ChartInteriorCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > > & interiorCellCombinedTexelBilinearElementIndices = gridChart.interiorCellCombinedTexelBilinearElementIndices;
+	ExplicitIndexVector< ChartCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > > & combinedCellCombinedTexelBilinearElementIndices = gridChart.combinedCellCombinedTexelBilinearElementIndices;
+	ExplicitIndexVector< ChartInteriorCellIndex , BilinearElementIndex< AtlasCoveredTexelIndex > > & interiorCellCoveredTexelBilinearElementIndices = gridChart.interiorCellCoveredTexelBilinearElementIndices;
+	ExplicitIndexVector< ChartInteriorCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > > & interiorCellCombinedTexelBilinearElementIndices = gridChart.interiorCellCombinedTexelBilinearElementIndices;
 
 	std::vector< ChartCombinedCellIndex > & interiorCellIndexToCombinedCellIndex = gridChart.interiorCellIndexToCombinedCellIndex;
 	std::vector< ChartCombinedCellIndex > & boundaryCellIndexToCombinedCellIndex = gridChart.boundaryCellIndexToCombinedCellIndex;
@@ -747,12 +747,12 @@ void InitializeGridChartsActiveNodes
 template< typename GeometryReal >
 void InitializeGridCharts
 (
-	const IndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
+	const ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
 	unsigned int width , 
 	unsigned int height ,
 	unsigned int level ,
-	IndexVector< AtlasCombinedTexelIndex , TexelInfo > & texelInfo ,
-	IndexVector< ChartIndex , GridChart< GeometryReal > > & gridCharts ,
+	ExplicitIndexVector< AtlasCombinedTexelIndex , TexelInfo > & texelInfo ,
+	ExplicitIndexVector< ChartIndex , GridChart< GeometryReal > > & gridCharts ,
 	std::vector< RasterLine > &rasterLines ,
 	std::vector< SegmentedRasterLine > &segmentedLines ,
 	std::vector< ThreadTask > &threadTasks ,
@@ -811,7 +811,7 @@ void InitializeGridCharts
 template< typename GeometryReal >
 void InitializeTextureNodes
 (
-	const IndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts ,
+	const ExplicitIndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts ,
 	std::vector< TextureNodeInfo< GeometryReal > > &textureNodes
 )
 {
@@ -836,13 +836,13 @@ void InitializeTextureNodes
 template< typename GeometryReal >
 void InitializeCellNodes
 (
-	const IndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts ,
-	IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > > &combinedCellCombinedTexelBilinearElementIndices
+	const ExplicitIndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts ,
+	ExplicitIndexVector< AtlasCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > > &combinedCellCombinedTexelBilinearElementIndices
 )
 {
 	for( unsigned int c=0 ; c<gridCharts.size() ; c++ )
 	{
-		const IndexVector< ChartCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > >& _combinedCellCombinedTexelBilinearElementIndices = gridCharts[ ChartIndex(c) ].combinedCellCombinedTexelBilinearElementIndices;
+		const ExplicitIndexVector< ChartCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > >& _combinedCellCombinedTexelBilinearElementIndices = gridCharts[ ChartIndex(c) ].combinedCellCombinedTexelBilinearElementIndices;
 		combinedCellCombinedTexelBilinearElementIndices.insert( combinedCellCombinedTexelBilinearElementIndices.end() , _combinedCellCombinedTexelBilinearElementIndices.begin() , _combinedCellCombinedTexelBilinearElementIndices.end() );
 	}
 }
@@ -853,13 +853,13 @@ void InitializeAtlasHierachicalBoundaryCoefficients
 	const GridAtlas< GeometryReal , MatrixReal > &fineAtlas ,
 	GridAtlas< GeometryReal , MatrixReal > &coarseAtlas ,
 	SparseMatrix< MatrixReal , int > &boundaryCoarseFineProlongation ,
-	IndexVector< AtlasBoundaryTexelIndex , BoundaryDeepIndex > &boundaryDeepIndices ,
-	IndexVector< AtlasBoundaryTexelIndex , BoundaryBoundaryIndex< MatrixReal > > &boundaryBoundaryIndices
+	ExplicitIndexVector< AtlasBoundaryTexelIndex , BoundaryDeepIndex > &boundaryDeepIndices ,
+	ExplicitIndexVector< AtlasBoundaryTexelIndex , BoundaryBoundaryIndex< MatrixReal > > &boundaryBoundaryIndices
 )
 {
 	std::vector< Eigen::Triplet< MatrixReal > > prolongationTriplets;
 
-	const IndexVector< AtlasCombinedTexelIndex , TexelInfo > & coarseTexelInfo = coarseAtlas.texelInfo;
+	const ExplicitIndexVector< AtlasCombinedTexelIndex , TexelInfo > & coarseTexelInfo = coarseAtlas.texelInfo;
 	const typename GridAtlas<>::IndexConverter & coarseIndexConverter = coarseAtlas.indexConverter;
 	const typename GridAtlas<>::IndexConverter & fineIndexConverter = fineAtlas.indexConverter;
 	for( unsigned int i=0 ; i<coarseIndexConverter.numBoundary() ; i++ )
@@ -1017,7 +1017,7 @@ void InitializeHierarchy
 	unsigned int width ,
 	unsigned int height ,
 	HierarchicalSystem< GeometryReal , MatrixReal > &hierarchy ,
-	IndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
+	ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
 	unsigned int levels ,
 	const MultigridBlockInfo &multigridBlockInfo
 )
@@ -1060,9 +1060,9 @@ void InitializeHierarchy
 	unsigned int height ,
 	unsigned int levels ,
 	std::vector< TextureNodeInfo< GeometryReal > > &textureNodes ,
-	IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > > &cellNodes ,
+	ExplicitIndexVector< AtlasCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > > &cellNodes ,
 	HierarchicalSystem< GeometryReal , MatrixReal > &hierarchy ,
-	IndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
+	ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
 	const MultigridBlockInfo &multigridBlockInfo
 )
 {

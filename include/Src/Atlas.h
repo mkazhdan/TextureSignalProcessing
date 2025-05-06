@@ -71,13 +71,13 @@ namespace MishaK
 		// Displace vertex positions if they are too close to the axes
 		void jitter( unsigned int width , unsigned int height , GeometryReal epsilon=(GeometryReal)1e-6 );
 
-		IndexVector< ChartIndex , AtlasChart< GeometryReal > > getCharts( const std::vector< bool > &isBoundaryHalfEdge , unsigned int width , unsigned int height ) const;
+		ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > > getCharts( const std::vector< bool > &isBoundaryHalfEdge , unsigned int width , unsigned int height ) const;
 
 	protected:
 		unsigned int _numCharts;
-		IndexVector< AtlasMeshTriangleIndex , ChartIndex > _triangleToChart;
-		IndexVector< AtlasMeshHalfEdgeIndex , AtlasMeshEdgeIndex > _halfEdgeToEdge;
-		IndexVector< ChartMeshVertexIndex , AtlasMeshVertexIndex > _chartToAtlasVertex;
+		ExplicitIndexVector< AtlasMeshTriangleIndex , ChartIndex > _triangleToChart;
+		ExplicitIndexVector< AtlasMeshHalfEdgeIndex , AtlasMeshEdgeIndex > _halfEdgeToEdge;
+		ExplicitIndexVector< ChartMeshVertexIndex , AtlasMeshVertexIndex > _chartToAtlasVertex;
 	};
 
 	template< typename GeometryReal >
@@ -124,7 +124,7 @@ namespace MishaK
 		struct AtlasInfo
 		{
 			// The opposite half-edges (in the atlas mesh)
-			IndexVector< AtlasMeshHalfEdgeIndex , AtlasMeshHalfEdgeIndex > oppositeHalfEdges;
+			ExplicitIndexVector< AtlasMeshHalfEdgeIndex , AtlasMeshHalfEdgeIndex > oppositeHalfEdges;
 
 			// A map assigning an index to atlas boundary vertices
 			std::map< AtlasMeshVertexIndex , AtlasMeshBoundaryVertexIndex > atlasMeshVertexToBoundaryVertex;
@@ -133,7 +133,7 @@ namespace MishaK
 			bool isClosed;
 		};
 
-		static IndexVector< ChartIndex , AtlasChart< GeometryReal > > GetCharts
+		static ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > > GetCharts
 			(
 				const TexturedTriangleMesh< GeometryReal > &mesh ,
 				unsigned int width ,
@@ -144,9 +144,9 @@ namespace MishaK
 	protected:
 		friend AtlasMesh< GeometryReal >;
 
-		IndexVector< ChartMeshHalfEdgeIndex , AtlasMeshEdgeIndex > _chartHalfEdgeToAtlasEdge;
-		IndexVector< ChartMeshVertexIndex , AtlasMeshVertexIndex > _chartToAtlasVertex;
-		IndexVector< ChartMeshTriangleIndex , AtlasMeshTriangleIndex > _chartToAtlasTriangle;
+		ExplicitIndexVector< ChartMeshHalfEdgeIndex , AtlasMeshEdgeIndex > _chartHalfEdgeToAtlasEdge;
+		ExplicitIndexVector< ChartMeshVertexIndex , AtlasMeshVertexIndex > _chartToAtlasVertex;
+		ExplicitIndexVector< ChartMeshTriangleIndex , AtlasMeshTriangleIndex > _chartToAtlasTriangle;
 	};
 
 	template< typename GeometryReal >

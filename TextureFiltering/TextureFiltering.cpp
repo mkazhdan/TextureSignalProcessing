@@ -210,9 +210,9 @@ public:
 	static std::vector< Point3D< float > > cellCenterPositions;
 	static std::vector< Point3D< float > > textureNodePositions;
 
-	static IndexVector< ChartIndex , AtlasChart< PreReal > > atlasCharts;
+	static ExplicitIndexVector< ChartIndex , AtlasChart< PreReal > > atlasCharts;
 
-	static IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > > bilinearElementIndices;
+	static ExplicitIndexVector< AtlasCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > > bilinearElementIndices;
 	
 	static std::vector< TextureNodeInfo< PreReal > > textureNodes;
 
@@ -281,7 +281,7 @@ public:
 	static void UpdateSolution(bool verbose = false, bool detailVerbose = false);
 	static void ComputeExactSolution( bool verbose=false );
 	static void InitializeSystem( int width , int height );
-	static void _InitializeSystem( IndexVector< ChartIndex , IndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > > &parameterMetric , BoundaryProlongationData< Real > &boundaryProlongation , std::vector< Point3D< Real > > &inputSignal , std::vector< Real >& texelToCellCoeffs );
+	static void _InitializeSystem( ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > > &parameterMetric , BoundaryProlongationData< Real > &boundaryProlongation , std::vector< Point3D< Real > > &inputSignal , std::vector< Real >& texelToCellCoeffs );
 
 #ifdef NO_OPEN_GL_VISUALIZATION
 #else // !NO_OPEN_GL_VISUALIZATION
@@ -323,7 +323,7 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth > Real
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > Real																TextureFilter< PreReal , Real , TextureBitDepth >::gradientModulation;
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< TextureNodeInfo< PreReal > >							TextureFilter< PreReal , Real , TextureBitDepth >::textureNodes;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > >	TextureFilter< PreReal , Real , TextureBitDepth >::bilinearElementIndices;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > ExplicitIndexVector< AtlasCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > >	TextureFilter< PreReal , Real , TextureBitDepth >::bilinearElementIndices;
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > int																	TextureFilter< PreReal , Real , TextureBitDepth >::steps;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > char																TextureFilter< PreReal , Real , TextureBitDepth >::stepsString[1024];
@@ -353,7 +353,7 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth > std:
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > VCycleSolvers< typename TextureFilter< PreReal , Real , TextureBitDepth >::DirectSolver >		TextureFilter< PreReal , Real , TextureBitDepth >::vCycleSolvers;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > typename TextureFilter< PreReal , Real , TextureBitDepth >::DirectSolver						TextureFilter< PreReal , Real , TextureBitDepth >::directSolver;
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > IndexVector< ChartIndex , AtlasChart< PreReal > >					TextureFilter< PreReal , Real , TextureBitDepth >::atlasCharts;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > ExplicitIndexVector< ChartIndex , AtlasChart< PreReal > >					TextureFilter< PreReal , Real , TextureBitDepth >::atlasCharts;
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector<InteriorTexelToCellLine>								TextureFilter< PreReal , Real , TextureBitDepth >::interiorTexelToCellLines;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Point3D< Real > >										TextureFilter< PreReal , Real , TextureBitDepth >::interiorTexelToCellCoeffs;
@@ -797,7 +797,7 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::UpdateSolution( bool ver
 }
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth >
-void TextureFilter< PreReal , Real , TextureBitDepth >::_InitializeSystem( IndexVector< ChartIndex , IndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > > &parameterMetric , BoundaryProlongationData< Real > &boundaryProlongation , std::vector< Point3D< Real > > &inputSignal , std::vector< Real > &texelToCellCoeffs )
+void TextureFilter< PreReal , Real , TextureBitDepth >::_InitializeSystem( ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > > &parameterMetric , BoundaryProlongationData< Real > &boundaryProlongation , std::vector< Point3D< Real > > &inputSignal , std::vector< Real > &texelToCellCoeffs )
 {
 	Miscellany::Timer timer;
 	{
@@ -835,7 +835,7 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::InitializeSystem( int wi
 	std::vector< Real > texelToCellCoeffs;
 
 	timer.reset();
-	IndexVector< ChartIndex , IndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > > parameterMetric;
+	ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > > parameterMetric;
 	InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric );
 	_InitializeSystem( parameterMetric , boundaryProlongation , inputSignal , texelToCellCoeffs );
 

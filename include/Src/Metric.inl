@@ -40,11 +40,11 @@ enum
 template< typename GeometryReal , typename LengthToAnisotropyFunctor >
 void InitializeVectorFieldMetric
 (
-	const IndexVector< AtlasMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > >& embeddingMetric ,
-	const IndexVector< AtlasMeshTriangleIndex , Point2D< GeometryReal > >& vf ,
+	const ExplicitIndexVector< AtlasMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > >& embeddingMetric ,
+	const ExplicitIndexVector< AtlasMeshTriangleIndex , Point2D< GeometryReal > >& vf ,
 	const LengthToAnisotropyFunctor &LengthToAnisotropy ,
 	bool normalizeArea ,
-	IndexVector< AtlasMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > >& outputMetric
+	ExplicitIndexVector< AtlasMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > >& outputMetric
 )
 {
 	int tCount = (int)embeddingMetric.size();
@@ -168,7 +168,7 @@ void InitializeEmbeddingMetric
 (
 	const TexturedTriangleMesh< GeometryReal > &mesh ,
 	bool normalizeArea ,
-	IndexVector< AtlasMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > & embeddingMetric
+	ExplicitIndexVector< AtlasMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > & embeddingMetric
 )
 {
 	embeddingMetric.resize( mesh.numTriangles() );
@@ -190,7 +190,7 @@ void InitializeUniformMetric
 (
 	const TexturedTriangleMesh< GeometryReal > &mesh ,
 	bool normalizeArea ,
-	IndexVector< AtlasMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > &embeddingMetric
+	ExplicitIndexVector< AtlasMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > &embeddingMetric
 )
 {
 	embeddingMetric.resize( mesh.numTriangles() );
@@ -212,16 +212,16 @@ template< typename GeometryReal >
 void InitializeParameterMetric
 (
 	const TexturedTriangleMesh< GeometryReal > &mesh ,
-	const IndexVector< AtlasMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > &embeddingMetric ,
-	const IndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
-	IndexVector< ChartIndex , IndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > > &parameterMetrics
+	const ExplicitIndexVector< AtlasMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > &embeddingMetric ,
+	const ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
+	ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > > &parameterMetrics
 )
 {
 	parameterMetrics.resize( atlasCharts.size() );
 	for( unsigned int i=0 ; i<atlasCharts.size() ; i++ )
 	{
 		const AtlasChart< GeometryReal > & atlasChart = atlasCharts[ ChartIndex(i) ];
-		IndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > & parameterMetric = parameterMetrics[ ChartIndex(i) ];
+		ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > & parameterMetric = parameterMetrics[ ChartIndex(i) ];
 		parameterMetric.resize( atlasChart.numTriangles() );
 		for( unsigned int k=0 ; k<atlasChart.numTriangles() ; k++ )
 		{
@@ -250,12 +250,12 @@ void InitializeMetric
 (
 	TexturedTriangleMesh< GeometryReal > &mesh ,
 	int metricMode ,
-	const IndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
-	IndexVector< ChartIndex , IndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > > &parameterMetric
+	const ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
+	ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > > &parameterMetric
 )
 {
-	IndexVector< AtlasMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > surfaceMetric;
-	IndexVector< AtlasMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > embeddingMetric;
+	ExplicitIndexVector< AtlasMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > surfaceMetric;
+	ExplicitIndexVector< AtlasMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > embeddingMetric;
 
 	InitializeEmbeddingMetric( mesh , true , embeddingMetric );
 
@@ -269,14 +269,14 @@ template< typename GeometryReal , typename LengthToAnisotropyFunctor >
 void InitializeAnisotropicMetric
 (
 	TexturedTriangleMesh< GeometryReal > &mesh ,
-	const IndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
-	const IndexVector< AtlasMeshTriangleIndex , Point2D< GeometryReal > > &vf ,
+	const ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
+	const ExplicitIndexVector< AtlasMeshTriangleIndex , Point2D< GeometryReal > > &vf ,
 	const LengthToAnisotropyFunctor &LengthToAnisotropy ,
-	IndexVector< ChartIndex , IndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > > &parameterMetric
+	ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > > &parameterMetric
 )
 {
-	IndexVector< AtlasMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > surfaceMetric;
-	IndexVector< AtlasMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > embeddingMetric;
+	ExplicitIndexVector< AtlasMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > surfaceMetric;
+	ExplicitIndexVector< AtlasMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > embeddingMetric;
 
 	InitializeEmbeddingMetric( mesh , true , embeddingMetric );
 	InitializeVectorFieldMetric( embeddingMetric , vf , LengthToAnisotropy , true , surfaceMetric );

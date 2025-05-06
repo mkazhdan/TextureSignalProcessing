@@ -32,7 +32,7 @@ void Relaxation
 	const std::vector< Real > &deepCoefficients ,
 	const SparseMatrix< Real , int > &boundaryDeepMatrix ,
 	Solver &boundarySolver ,
-	const IndexVector< AtlasBoundaryTexelIndex , AtlasCombinedTexelIndex > &boundaryToCombined ,
+	const ExplicitIndexVector< AtlasBoundaryTexelIndex , AtlasCombinedTexelIndex > &boundaryToCombined ,
 	const std::vector< SegmentedRasterLine > &segmentedLines ,
 	const std::vector< Data > &rhs ,
 	std::vector< Data > &x0 ,
@@ -170,7 +170,7 @@ void Relaxation
 	const std::vector< Real > &deepCoefficients ,
 	const SparseMatrix< Real , int > &boundaryDeepMatrix ,
 	Solver &boundarySolver ,
-	const IndexVector< AtlasBoundaryTexelIndex , AtlasCombinedTexelIndex > &boundaryToCombined ,
+	const ExplicitIndexVector< AtlasBoundaryTexelIndex , AtlasCombinedTexelIndex > &boundaryToCombined ,
 	const std::vector< ThreadTask > &threadTasks ,
 	const std::vector< Data > &rhs ,
 	std::vector< Data > &x0 ,
@@ -288,7 +288,7 @@ void RelaxationAndResidual
 	const std::vector< Real > &deepCoefficients ,
 	const SparseMatrix< Real , int > &boundaryDeepMatrix ,
 	Solver &boundarySolver ,
-	const IndexVector< AtlasBoundaryTexelIndex , AtlasCombinedTexelIndex > &boundaryToCombined ,
+	const ExplicitIndexVector< AtlasBoundaryTexelIndex , AtlasCombinedTexelIndex > &boundaryToCombined ,
 	const std::vector< ThreadTask > &threadTasks ,
 	const std::vector< Data > &rhs ,
 	std::vector< Data > &x0 ,
@@ -449,7 +449,7 @@ void RelaxationAndResidual
 	const std::vector< Real > &deepCoefficients ,
 	const SparseMatrix< Real , int > &boundaryDeepMatrix ,
 	Solver &boundarySolver ,
-	const IndexVector< AtlasBoundaryTexelIndex , AtlasCombinedTexelIndex > &boundaryToCombined ,
+	const ExplicitIndexVector< AtlasBoundaryTexelIndex , AtlasCombinedTexelIndex > &boundaryToCombined ,
 	const std::vector< SegmentedRasterLine > &segmentedLines ,
 	const std::vector< Data > &rhs , std::vector< Data > &x0 , std::vector< Data > &boundaryRHS , std::vector< Data > &boundaryValue , std::vector< Data > &variableBoundaryRHS ,
 	const SparseMatrix< Real , int > &boundaryBoundaryMatrix , std::vector< Data > &residual ,
@@ -639,7 +639,7 @@ template< class Real , class Data , class DataReal=Real >
 void MultiplyBySystemMatrix
 (
 	const SystemCoefficients< Real > &systemCoefficients ,
-	const IndexVector< AtlasBoundaryTexelIndex , AtlasCombinedTexelIndex > &boundaryToCombined ,
+	const ExplicitIndexVector< AtlasBoundaryTexelIndex , AtlasCombinedTexelIndex > &boundaryToCombined ,
 	const std::vector< RasterLine > &rasterLines ,
 	const std::vector< Data > &in ,
 	std::vector< Data > &out ,
@@ -799,7 +799,7 @@ template< class Real , class Data >
 void ComputeSystemResidual
 (
 	const std::vector< Real > &deepCoefficients , const SparseMatrix< Real , int > &boundaryDeepMatrix , const SparseMatrix< Real , int > &boundaryBoundaryMatrix ,
-	const IndexVector< AtlasBoundaryTexelIndex , AtlasCombinedTexelIndex > &boundaryToCombined ,
+	const ExplicitIndexVector< AtlasBoundaryTexelIndex , AtlasCombinedTexelIndex > &boundaryToCombined ,
 	const std::vector< RasterLine > &rasterLines ,
 	const std::vector< Data > &boundaryRHS , const std::vector< Data > &boundaryValues , const std::vector< Data > &in , const std::vector< Data > &rhs , std::vector< Data > &out ,
 	bool verbose=false
@@ -865,7 +865,7 @@ template< class Real , class Data >
 void MultiplyByRestriction
 (
 	const SparseMatrix< Real , int > & __boundaryRestrictionMatrix ,
-	const IndexVector< AtlasBoundaryTexelIndex , AtlasCombinedTexelIndex > &boundaryToCombined ,
+	const ExplicitIndexVector< AtlasBoundaryTexelIndex , AtlasCombinedTexelIndex > &boundaryToCombined ,
 	std::vector< Data > &boundaryValue ,
 	const std::vector< RasterLine > &restrictionLines ,
 	const std::vector< Data > &in ,

@@ -27,6 +27,7 @@ DAMAGE.
 */
 
 // To do:
+// -- Pass in GridAtlas instead of its member data
 // -- Remove GridChart::cellType and GridChart::texelType
 // -- "combined" -> ""
 // -- supported -> covered

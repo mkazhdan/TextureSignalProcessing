@@ -76,7 +76,7 @@ namespace MishaK
 	template< typename GeometryReal >
 	void InitializeIntraChartEdgeIndexing
 	(
-		const IndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts ,
+		const ExplicitIndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts ,
 		std::map< SimplexIndex< 1 , AtlasCombinedTexelIndex > , unsigned int > &boundaryCoarseEdgeIndex
 	)
 	{
@@ -173,7 +173,7 @@ namespace MishaK
 	(
 		const std::vector< AtlasInteriorOrBoundaryNodeIndex > &fineBoundaryNodeIndex ,
 		std::map< SimplexIndex< 1 > , AtlasInteriorOrBoundaryNodeIndex > &fineBoundaryEdgeIndex ,
-		const IndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts
+		const ExplicitIndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts
 	)
 	{
 		unsigned int lastAddedEdgeIndex = 0;

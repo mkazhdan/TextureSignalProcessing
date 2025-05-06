@@ -473,13 +473,13 @@ namespace MishaK
 		Image< CellIndex > cellIndices;
 
 		// The indices of the incident nodes
-		IndexVector< ChartCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > > combinedCellCombinedTexelBilinearElementIndices;
+		ExplicitIndexVector< ChartCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > > combinedCellCombinedTexelBilinearElementIndices;
 
 		// For interior cells, the indices of the incident interior nodes
-		IndexVector< ChartInteriorCellIndex , BilinearElementIndex< AtlasCoveredTexelIndex > > interiorCellCoveredTexelBilinearElementIndices;
+		ExplicitIndexVector< ChartInteriorCellIndex , BilinearElementIndex< AtlasCoveredTexelIndex > > interiorCellCoveredTexelBilinearElementIndices;
 
 		// For interior cells, the indices of the incident nodes
-		IndexVector< ChartInteriorCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > > interiorCellCombinedTexelBilinearElementIndices;
+		ExplicitIndexVector< ChartInteriorCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > > interiorCellCombinedTexelBilinearElementIndices;
 
 		// Maps converting boundary/interiorl cell indices to combined cell indices
 		std::vector< ChartCombinedCellIndex > interiorCellIndexToCombinedCellIndex;
@@ -488,7 +488,7 @@ namespace MishaK
 		const size_t numInteriorCells( void ) const { return interiorCellIndexToCombinedCellIndex.size(); }
 		const size_t numBoundaryCells( void ) const { return boundaryCellIndexToCombinedCellIndex.size(); }
 
-		IndexVector< ChartBoundaryCellIndex , std::vector< IndexedPolygon< GeometryReal > > > boundaryPolygons;
+		ExplicitIndexVector< ChartBoundaryCellIndex , std::vector< IndexedPolygon< GeometryReal > > > boundaryPolygons;
 		std::vector< std::vector< BoundaryIndexedTriangle< GeometryReal > > > boundaryTriangles;
 
 		unsigned int numBoundaryTriangles;
@@ -543,19 +543,19 @@ namespace MishaK
 			AtlasBoundaryTexelIndex combinedToBoundary( AtlasCombinedTexelIndex idx ) const { return AtlasBoundaryTexelIndex( _combinedToBoundaryOrInterior[idx].first ? _combinedToBoundaryOrInterior[idx].second : static_cast< unsigned int >(-1) ); }
 			AtlasInteriorTexelIndex combinedToInterior( AtlasCombinedTexelIndex idx ) const { return AtlasInteriorTexelIndex( _combinedToBoundaryOrInterior[idx].first ? static_cast< unsigned int >(-1) : _combinedToBoundaryOrInterior[idx].second ); }
 
-			const IndexVector< AtlasBoundaryTexelIndex , AtlasCombinedTexelIndex > &boundaryToCombined( void ) const { return _boundaryToCombined; }
-			const IndexVector< AtlasInteriorTexelIndex , AtlasCombinedTexelIndex > &interiorToCombined( void ) const { return _interiorToCombined; }
+			const ExplicitIndexVector< AtlasBoundaryTexelIndex , AtlasCombinedTexelIndex > &boundaryToCombined( void ) const { return _boundaryToCombined; }
+			const ExplicitIndexVector< AtlasInteriorTexelIndex , AtlasCombinedTexelIndex > &interiorToCombined( void ) const { return _interiorToCombined; }
 
 			size_t numCombined( void ) const { return _combinedToBoundaryOrInterior.size(); }
 			size_t numBoundary( void ) const { return _boundaryToCombined.size(); }
 			size_t numInterior( void ) const { return _interiorToCombined.size(); }
 		protected:
 			template< typename GeometryReal >
-			friend void InitializeIndexConverter( const IndexVector< ChartIndex , GridChart< GeometryReal > > & , AtlasCombinedTexelIndex , IndexConverter & );
+			friend void InitializeIndexConverter( const ExplicitIndexVector< ChartIndex , GridChart< GeometryReal > > & , AtlasCombinedTexelIndex , IndexConverter & );
 
-			IndexVector< AtlasCombinedTexelIndex , std::pair< bool , unsigned int > > _combinedToBoundaryOrInterior;
-			IndexVector< AtlasBoundaryTexelIndex , AtlasCombinedTexelIndex > _boundaryToCombined;
-			IndexVector< AtlasInteriorTexelIndex , AtlasCombinedTexelIndex > _interiorToCombined;
+			ExplicitIndexVector< AtlasCombinedTexelIndex , std::pair< bool , unsigned int > > _combinedToBoundaryOrInterior;
+			ExplicitIndexVector< AtlasBoundaryTexelIndex , AtlasCombinedTexelIndex > _boundaryToCombined;
+			ExplicitIndexVector< AtlasInteriorTexelIndex , AtlasCombinedTexelIndex > _interiorToCombined;
 		};
 	};
 
@@ -564,8 +564,8 @@ namespace MishaK
 	{
 		std::vector< ThreadTask > threadTasks;
 		typename GridAtlas<>::IndexConverter indexConverter;
-		IndexVector< AtlasCombinedTexelIndex , TexelInfo > texelInfo;
-		IndexVector< ChartIndex , GridChart< GeometryReal > > gridCharts;
+		ExplicitIndexVector< AtlasCombinedTexelIndex , TexelInfo > texelInfo;
+		ExplicitIndexVector< ChartIndex , GridChart< GeometryReal > > gridCharts;
 		std::vector< SegmentedRasterLine > segmentedLines;
 		std::vector< RasterLine > rasterLines;
 		std::vector< RasterLine > restrictionLines;
@@ -613,8 +613,8 @@ namespace MishaK
 		std::vector< SparseMatrix< MatrixReal , int > > prolongation;
 		std::vector< SparseMatrix< MatrixReal , int > > boundaryCoarseFineProlongation;
 		std::vector< SparseMatrix< MatrixReal , int > > boundaryFineCoarseRestriction;
-		std::vector< IndexVector< AtlasBoundaryTexelIndex , BoundaryBoundaryIndex< MatrixReal > > > boundaryBoundaryIndices;
-		std::vector< IndexVector< AtlasBoundaryTexelIndex , BoundaryDeepIndex > > boundaryDeepIndices;
+		std::vector< ExplicitIndexVector< AtlasBoundaryTexelIndex , BoundaryBoundaryIndex< MatrixReal > > > boundaryBoundaryIndices;
+		std::vector< ExplicitIndexVector< AtlasBoundaryTexelIndex , BoundaryDeepIndex > > boundaryDeepIndices;
 	};
 
 
@@ -641,7 +641,7 @@ namespace MishaK
 	struct MultigridLevelIndices
 	{
 		std::vector< ThreadTask > threadTasks;
-		IndexVector< AtlasBoundaryTexelIndex , AtlasCombinedTexelIndex > boundaryToCombined;
+		ExplicitIndexVector< AtlasBoundaryTexelIndex , AtlasCombinedTexelIndex > boundaryToCombined;
 		std::vector< SegmentedRasterLine > segmentedLines;
 		std::vector< RasterLine > rasterLines;
 		std::vector< RasterLine > restrictionLines;

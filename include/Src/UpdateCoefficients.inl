@@ -128,7 +128,7 @@ void BoundaryDeepMatrixConstruction
 	int numBoundaryTexels ,
 	int numTexels ,
 	const std::vector< MatrixReal > &deepCoefficients ,
-	const IndexVector< AtlasBoundaryTexelIndex , BoundaryDeepIndex > &boundaryDeepIndices ,
+	const ExplicitIndexVector< AtlasBoundaryTexelIndex , BoundaryDeepIndex > &boundaryDeepIndices ,
 	SparseMatrix< MatrixReal , int > &boundaryDeepMatrix
 )
 {
@@ -150,7 +150,7 @@ void BoundaryBoundaryMatrixConstruction
 	const SparseMatrix< MatrixReal , int > & fineBoundaryBoundaryMatrix ,
 	const SparseMatrix< MatrixReal , int > & boundaryCoarseFineProlongation ,
 	const SparseMatrix< MatrixReal , int > & boundaryFineCoarseRestriction ,
-	const IndexVector< AtlasBoundaryTexelIndex , BoundaryBoundaryIndex< MatrixReal > > & boundaryBoundaryIndices ,
+	const ExplicitIndexVector< AtlasBoundaryTexelIndex , BoundaryBoundaryIndex< MatrixReal > > & boundaryBoundaryIndices ,
 	SparseMatrix< MatrixReal , int > &coarseBoundaryBoundaryMatrix ,
 	bool verbose=false
 )

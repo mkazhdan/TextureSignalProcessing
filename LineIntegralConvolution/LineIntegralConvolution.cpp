@@ -154,7 +154,7 @@ public:
 	static Padding padding;
 
 	static HierarchicalSystem< PreReal , Real > hierarchy;
-	static IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > > bilinearElementIndices;
+	static ExplicitIndexVector< AtlasCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > > bilinearElementIndices;
 
 	static std::vector< TextureNodeInfo< PreReal > > textureNodes;
 	static Image< int > nodeIndex;
@@ -168,8 +168,8 @@ public:
 
 	static int impulseTexel;
 
-	static IndexVector< ChartIndex , AtlasChart< PreReal > > atlasCharts;
-	static IndexVector< ChartIndex , IndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > > parameterMetric;
+	static ExplicitIndexVector< ChartIndex , AtlasChart< PreReal > > atlasCharts;
+	static ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > > parameterMetric;
 
 	static Real lineConvolutionRange;
 	static Real modulationRange;
@@ -263,8 +263,8 @@ template< typename PreReal , typename Real > unsigned int												LineConvolu
 
 template< typename PreReal , typename Real > TexturedMeshVisualization									LineConvolution< PreReal , Real >::visualization( true );
 
-template< typename PreReal , typename Real > IndexVector< ChartIndex , AtlasChart< PreReal > >			LineConvolution< PreReal , Real >::atlasCharts;
-template< typename PreReal , typename Real > IndexVector< ChartIndex , IndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > >	LineConvolution< PreReal , Real >::parameterMetric;
+template< typename PreReal , typename Real > ExplicitIndexVector< ChartIndex , AtlasChart< PreReal > >			LineConvolution< PreReal , Real >::atlasCharts;
+template< typename PreReal , typename Real > ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > >	LineConvolution< PreReal , Real >::parameterMetric;
 
 template< typename PreReal , typename Real > Padding													LineConvolution< PreReal , Real >::padding;
 template< typename PreReal , typename Real > SparseMatrix< Real , int >									LineConvolution< PreReal , Real >::anisotropicMass;
@@ -275,7 +275,7 @@ template< typename PreReal , typename Real > SparseMatrix< Real , int >									
 template< typename PreReal , typename Real > SparseMatrix< Real , int >									LineConvolution< PreReal , Real >::stiffness;
 template< typename PreReal , typename Real > std::vector< TextureNodeInfo< PreReal > >					LineConvolution< PreReal , Real >::textureNodes;
 template< typename PreReal , typename Real > Image< int >												LineConvolution< PreReal , Real >::nodeIndex;
-template< typename PreReal , typename Real > IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > >	LineConvolution< PreReal , Real >::bilinearElementIndices;
+template< typename PreReal , typename Real > ExplicitIndexVector< AtlasCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > >	LineConvolution< PreReal , Real >::bilinearElementIndices;
 
 template< typename PreReal , typename Real > int														LineConvolution< PreReal , Real >::steps;
 template< typename PreReal , typename Real > char														LineConvolution< PreReal , Real >::stepsString[1024];
@@ -565,7 +565,7 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 
 	//////////////////////////////////// 	Line Convolution coefficients
 	{
-		IndexVector< AtlasMeshTriangleIndex , Point2D< PreReal > > vectorField;
+		ExplicitIndexVector< AtlasMeshTriangleIndex , Point2D< PreReal > > vectorField;
 		if( InVectorField.set )
 		{
 			if( IntrinsicVectorField.set )
@@ -575,7 +575,7 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 			}
 			else
 			{
-				IndexVector< AtlasMeshTriangleIndex , Point3D< PreReal > > _vectorField;
+				ExplicitIndexVector< AtlasMeshTriangleIndex , Point3D< PreReal > > _vectorField;
 				ReadVector( ( std::vector< Point2D< PreReal > > & )_vectorField , InVectorField.value );
 				if( _vectorField.size()!=mesh.numTriangles() ) MK_THROW( "Triangle and vector counts don't match: " , mesh.numTriangles() , " != " , _vectorField.size() );
 				vectorField.resize( _vectorField.size() );
@@ -696,7 +696,7 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 		}
 		// Normalize the vector-field to have unit-norm
 		{
-			IndexVector< AtlasMeshTriangleIndex , SquareMatrix< PreReal , 2 > > embeddingMetric;
+			ExplicitIndexVector< AtlasMeshTriangleIndex , SquareMatrix< PreReal , 2 > > embeddingMetric;
 			InitializeEmbeddingMetric( mesh , true , embeddingMetric );
 			{
 				PreReal norm = 0 , area = 0;
@@ -715,7 +715,7 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 		{
 #if 1
 			std::cerr << "[WARNING] Forcing extrinsic output" << std::endl;
-			IndexVector< AtlasMeshTriangleIndex , Point3D< PreReal > > _vectorField( vectorField.size() );
+			ExplicitIndexVector< AtlasMeshTriangleIndex , Point3D< PreReal > > _vectorField( vectorField.size() );
 			ThreadPool::ParallelFor
 				(
 					0 , mesh.numTriangles() ,
@@ -730,7 +730,7 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 			if( IntrinsicVectorField.set ) WriteVector( vectorField , OutVectorField.value );
 			else
 			{
-				IndexVector< AtlasMeshTriangleIndex , Point3D< PreReal > > _vectorField( vectorField.size() );
+				ExplicitIndexVector< AtlasMeshTriangleIndex , Point3D< PreReal > > _vectorField( vectorField.size() );
 				ThreadPool::ParallelFor
 				(
 					0 , mesh.numTriangles() ,

@@ -133,7 +133,7 @@ public:
 
 	static HierarchicalSystem< PreReal , Real > hierarchy;
 
-	static IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > > bilinearElementIndices;
+	static ExplicitIndexVector< AtlasCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > > bilinearElementIndices;
 
 	static std::vector< TextureNodeInfo< PreReal > > textureNodes;
 	static Image< int > nodeIndex;
@@ -146,8 +146,8 @@ public:
 
 	static unsigned int impulseTexel;
 
-	static IndexVector< ChartIndex , AtlasChart< PreReal > > atlasCharts;
-	static IndexVector< ChartIndex , IndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > > parameterMetric;
+	static ExplicitIndexVector< ChartIndex , AtlasChart< PreReal > > atlasCharts;
+	static ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > > parameterMetric;
 
 	static Real smoothImpulseRange;
 	static Real geodesicDistanceRange;
@@ -187,7 +187,7 @@ public:
 	//Samples
 	static GradientElementSamples< Real > gradientSamples;
 	static std::vector<InteriorCellLine> interiorCellLines;
-	static IndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > > interiorCellLineIndex;
+	static ExplicitIndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > > interiorCellLineIndex;
 
 	static unsigned char * outputBuffer;
 
@@ -224,8 +224,8 @@ template< typename PreReal , typename Real > int															Geodesics< PreRea
 template< typename PreReal , typename Real > bool															Geodesics< PreReal , Real >::mouseSelectionActive = false;
 template< typename PreReal , typename Real > Padding														Geodesics< PreReal , Real >::padding;
 
-template< typename PreReal , typename Real > IndexVector< ChartIndex , AtlasChart< PreReal > >				Geodesics< PreReal , Real >::atlasCharts;
-template< typename PreReal , typename Real > IndexVector< ChartIndex , IndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > >	Geodesics< PreReal , Real >::parameterMetric;
+template< typename PreReal , typename Real > ExplicitIndexVector< ChartIndex , AtlasChart< PreReal > >				Geodesics< PreReal , Real >::atlasCharts;
+template< typename PreReal , typename Real > ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > >	Geodesics< PreReal , Real >::parameterMetric;
 
 template< typename PreReal , typename Real > SparseMatrix< Real , int >										Geodesics< PreReal , Real >::mass;
 template< typename PreReal , typename Real > SparseMatrix< Real , int >										Geodesics< PreReal , Real >::stiffness;
@@ -238,7 +238,7 @@ template< typename PreReal , typename Real > Real															Geodesics< PreRe
 
 template< typename PreReal , typename Real > std::vector< TextureNodeInfo< PreReal > >						Geodesics< PreReal , Real >::textureNodes;
 template< typename PreReal , typename Real > Image<int>														Geodesics< PreReal , Real >::nodeIndex;
-template< typename PreReal , typename Real > IndexVector< AtlasCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > >	Geodesics< PreReal , Real >::bilinearElementIndices;
+template< typename PreReal , typename Real > ExplicitIndexVector< AtlasCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > >	Geodesics< PreReal , Real >::bilinearElementIndices;
 
 template< typename PreReal , typename Real > int															Geodesics< PreReal , Real >::steps;
 template< typename PreReal , typename Real > char															Geodesics< PreReal , Real >::stepsString[1024];
@@ -265,7 +265,7 @@ template< typename PreReal , typename Real > typename Geodesics< PreReal , Real 
 //Samples
 template< typename PreReal , typename Real > GradientElementSamples< Real >									Geodesics< PreReal , Real >::gradientSamples;
 template< typename PreReal , typename Real > std::vector<InteriorCellLine>									Geodesics< PreReal , Real >::interiorCellLines;
-template< typename PreReal , typename Real > IndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > >	Geodesics< PreReal , Real >::interiorCellLineIndex;
+template< typename PreReal , typename Real > ExplicitIndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > >	Geodesics< PreReal , Real >::interiorCellLineIndex;
 
 template< typename PreReal , typename Real > unsigned int													Geodesics< PreReal , Real >::impulseTexel = static_cast< unsigned int >(-1);
 template< typename PreReal , typename Real > std::vector<Point3D< float > >									Geodesics< PreReal , Real >::textureNodePositions;
