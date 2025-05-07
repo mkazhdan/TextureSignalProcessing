@@ -30,6 +30,9 @@ DAMAGE.
 #include <Misha/Miscellany.h>
 #include <Misha/Exceptions.h>
 #include <Misha/RightTriangleQuadrature.h>
+#ifdef NEW_CODE
+#include <Misha/SimplexBasis.h>
+#endif // NEW_CODE
 #include "SimpleTriangleMesh.h"
 #include "Indices.h"
 
@@ -73,8 +76,11 @@ namespace MishaK
 	};
 
 	template< typename GeometryReal >
-	GeometryReal QuadraticElementValue( int elementIndex , Point2D< GeometryReal > pos )
+	GeometryReal QuadraticElementValue( unsigned int elementIndex , Point2D< GeometryReal > pos )
 	{
+#ifdef NEW_CODE
+		return static_cast< GeometryReal >( SimplexElements< 2 , 2 >::Element( elementIndex )( Point2D< double >(pos) ) );
+#else // !NEW_CODE
 		switch( elementIndex )
 		{
 		case 0:	return 2 * pos[0] * pos[0] + 4 * pos[0] * pos[1] + 2 * pos[1] * pos[1] - 3 * pos[0] - 3 * pos[1] + 1;
@@ -86,11 +92,16 @@ namespace MishaK
 		default: MK_THROW( "Element out of bounds" );
 		}
 		return (GeometryReal)0;
+#endif // NEW_CODE
 	}
 
 	template< typename GeometryReal >
 	Point2D< GeometryReal > QuadraticElementGradient( int elementIndex , Point2D< GeometryReal > pos )
 	{
+#ifdef NEW_CODE
+		const Point< Polynomial::Polynomial< 2 , 1 , double > , 2 > & d = SimplexElements< 2 , 2 >::Differential( elementIndex );
+		return Point2D< GeometryReal >( d[0]( Point2D< double >(pos) ) , d[1]( Point2D< double >(pos) ) );
+#else // !NEW_CODE
 		switch( elementIndex )
 		{
 		case 0: return Point2D< GeometryReal >( 4 * pos[0] + 4 * pos[1] - 3 , 4 * pos[0] + 4 * pos[1] - 3 );
@@ -102,6 +113,7 @@ namespace MishaK
 		default: MK_THROW( "Element out of bounds" );
 		}
 		return Point2D< GeometryReal >();
+#endif // NEW_CODE
 	}
 	template< typename GeometryReal >
 	void QuadraticElementValuesAndGradients( Point2D< GeometryReal > pos , GeometryReal values[] , Point2D< GeometryReal > gradients[] )
