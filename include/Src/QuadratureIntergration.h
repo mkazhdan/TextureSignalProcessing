@@ -450,11 +450,7 @@ namespace MishaK
 				// Boundary cell
 				else if( chartBoundaryIndex!=ChartBoundaryCellIndex(-1) )
 				{
-#ifdef NEW_CODE
 					const std::vector< BoundaryIndexedTriangle< GeometryReal > > & cellBoundaryTriangles = gridChart.boundaryTriangles[chartBoundaryIndex];
-#else // !NEW_CODE
-					const std::vector< BoundaryIndexedTriangle< GeometryReal > > & cellBoundaryTriangles = gridChart.boundaryTriangles[ static_cast< unsigned int >(chartBoundaryIndex ) ];
-#endif // NEW_CODE
 
 					// Iterate over all elements in the cell
 					for( unsigned int bt=0 ; bt<cellBoundaryTriangles.size() ; bt++ )
@@ -486,11 +482,7 @@ namespace MishaK
 							GeometryReal element_area = sqrt( element_metric.determinant() );
 							typename ElementSamples::Quadratic quadraticElementSample( fastIntegration ? 1 : (unsigned int)(polygon.size()-2)*Samples );
 							for( int x=0 ; x<2 ; x++ ) for( int y=0 ; y<2 ; y++ ) quadraticElementSample.tensor(x,y) = (typename ElementSamples::Real)element_metric_inverse(x,y);
-#ifdef NEW_CODE
 							const QuadraticElementIndex& triangleElementIndices = gridChart.boundaryTriangles[chartBoundaryIndex][bt].indices;
-#else // !NEW_CODE
-							const QuadraticElementIndex& triangleElementIndices = gridChart.boundaryTriangles[ static_cast< unsigned int >(chartBoundaryIndex) ][bt].indices;
-#endif // NEW_CODE
 							for( unsigned int k=0 ; k<6 ; k++ )
 							{
 								AtlasInteriorOrBoundaryNodeIndex _fineBoundaryIndex = fineBoundaryIndex[ static_cast< unsigned int >( triangleElementIndices[k] ) ];

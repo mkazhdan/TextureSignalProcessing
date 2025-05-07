@@ -1249,7 +1249,7 @@ FEM::CoordinateXForm< Real > FEM::RiemannianMesh< Real , Index >::flow( ConstPoi
 				int he = p.tIdx*3 + idx , ohe = _edgeMap.opposite( he );
 				if( opposite( he )==-1 )
 				{
-					MK_WARN_ONCE( "Hit boundary" );
+					if( !noWarning ) MK_WARN_ONCE( "Hit boundary" );
 					return xForm;
 				}
 

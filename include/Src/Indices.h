@@ -76,7 +76,8 @@ namespace MishaK
 	struct            BoundaryMidPointIndex : public ExplicitIndex< unsigned int ,            BoundaryMidPointIndex >{ using ExplicitIndex< unsigned int ,            BoundaryMidPointIndex >::ExplicitIndex; };
 
 	// Auxilary node index type
-	struct  AtlasRefinedBoundaryVertexIndex : public ExplicitIndex< unsigned int ,  AtlasRefinedBoundaryVertexIndex >{ using ExplicitIndex< unsigned int ,  AtlasRefinedBoundaryVertexIndex >::ExplicitIndex; };
+	struct ChartRefinedBoundaryTriangleIndex : public ExplicitIndex< unsigned int , ChartRefinedBoundaryTriangleIndex >{ using ExplicitIndex< unsigned int , ChartRefinedBoundaryTriangleIndex >::ExplicitIndex; };
+	struct   AtlasRefinedBoundaryVertexIndex : public ExplicitIndex< unsigned int ,   AtlasRefinedBoundaryVertexIndex >{ using ExplicitIndex< unsigned int ,   AtlasRefinedBoundaryVertexIndex >::ExplicitIndex; };
 
 #else // !DEBUG_INDEXING
 	template< typename T , typename Data >

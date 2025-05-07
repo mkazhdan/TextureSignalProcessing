@@ -150,20 +150,12 @@ namespace MishaK
 	)
 	{
 
-#ifdef NEW_CODE
 		for( unsigned int c=0 ; c<gridChart.boundaryTriangles.size() ; c++ )
 		{
 			const std::vector< BoundaryIndexedTriangle< GeometryReal > > & boundaryTriangles = gridChart.boundaryTriangles[ ChartBoundaryCellIndex(c) ];
 			for( unsigned int b=0 ; b<boundaryTriangles.size() ; b++ )
 			{
 				const QuadraticElementIndex & indices = boundaryTriangles[b].indices;
-#else // !NEW_CODE
-		for( int c=0 ; c<gridChart.boundaryTriangles.size() ; c++ )
-		{
-			for( unsigned int b=0 ; b<gridChart.boundaryTriangles[c].size() ; b++ )
-			{
-				const QuadraticElementIndex & indices = gridChart.boundaryTriangles[c][b].indices;
-#endif // NEW_CODE
 				AtlasInteriorOrBoundaryNodeIndex fineHexIndices[6];
 				for( unsigned int k=0 ; k<6 ; k++ ) fineHexIndices[k] = fineBoundaryNodeIndex[ static_cast< unsigned int >(indices[k]) ];
 				for( unsigned int k=1 ; k<6 ; k++ ) for( unsigned int l=0 ; l<k ; l++ )

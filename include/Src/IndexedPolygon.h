@@ -78,7 +78,7 @@ namespace MishaK
 	template< typename GeometryReal >
 	struct BoundaryIndexedTriangle
 	{
-		unsigned int id;
+		ChartRefinedBoundaryTriangleIndex id;
 		Point2D< GeometryReal > vertices[3];
 		AtlasMeshEdgeIndex atlasVertexParentEdge[3];
 		ChartMeshVertexIndex vertexIndices[3];
