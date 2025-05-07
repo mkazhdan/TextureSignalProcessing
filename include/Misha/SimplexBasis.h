@@ -173,9 +173,13 @@ namespace MishaK
 		static Point< double , Dim > NodePosition( unsigned int n );
 		static void FactorNodeIndex( unsigned int nodeIndex , unsigned int v[Degree] );
 		static unsigned int NodeIndex( const unsigned int v[Degree] );
+		template< typename ... UInt >
+		static unsigned int NodeIndex( unsigned int v , UInt...vs );
 
 		static const Polynomial::Polynomial< Dim , Degree , double > & Element( unsigned int n ){ static Data data ; return data.elements[n]; }
+		static const Polynomial::Polynomial< Dim , Degree , Point< double , NodeNum > , double > & Elements( void ){ static Data data ; return data.multiElement; }
 		static const Point< Polynomial::Polynomial< Dim   , Degree-1 , double > , Dim > & Differential( unsigned int n ){ static Data data ; return data.differentials[n]; }
+		static const Polynomial::Polynomial< Dim , Degree-1 , Point< Point< double , Dim > , NodeNum , double > , double > & Differentials( void ){ static Data data ; return data.multiDifferential; }
 		static const Point< Polynomial::Polynomial< Dim-1 , Degree-1 , double > , Dim > & FaceDifferential( unsigned int n , unsigned int f ){ static Data data ; return data.faceDifferentials[n][f]; }
 
 	protected:
@@ -187,6 +191,10 @@ namespace MishaK
 			Polynomial::Polynomial< Dim , Degree , double > elements[ NodeNum ];
 			Point< Polynomial::Polynomial< Dim   , Degree-1 , double > , Dim > differentials[ NodeNum ];
 			Point< Polynomial::Polynomial< Dim-1 , Degree-1 , double > , Dim > faceDifferentials[ NodeNum ][ Dim+1 ];
+
+			Polynomial::Polynomial< Dim , Degree , Point< double , NodeNum > , double > multiElement;
+			Polynomial::Polynomial< Dim , Degree-1 , Point< Point< double , Dim > , NodeNum , double > , double > multiDifferential;
+
 
 			Point< double , Dim > nodePosition( unsigned int ) const;
 		protected:

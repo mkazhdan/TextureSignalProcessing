@@ -414,7 +414,7 @@ namespace MishaK
 											Point2D< GeometryReal > sampleGradients[Samples][6] , _sampleGradients[Samples][6], __sampleGradients[Samples][6];
 											for( int s=0 ; s<Samples ; s++ )
 											{
-												QuadraticElementValuesAndGradients( fragment_samples[s] , sampleValues[s] , sampleGradients[s] );
+												QuadraticElement::ValuesAndDifferentials( fragment_samples[s] , sampleValues[s] , sampleGradients[s] );
 												for( int k=0 ; k<6 ; k++ )
 												{
 													sampleValues[s][k] *= _integrator_sampleWeight[s];
@@ -690,7 +690,7 @@ namespace MishaK
 									Point2D< GeometryReal > sampleGradients[Samples][6] , _sampleGradients[Samples][6], __sampleGradients[Samples][6];
 									for( int s=0 ; s<Samples ; s++ )
 									{
-										QuadraticElementValuesAndGradients( fragment_samples[s] , sampleValues[s] , sampleGradients[s] );
+										QuadraticElement::ValuesAndDifferentials( fragment_samples[s] , sampleValues[s] , sampleGradients[s] );
 										for( int k=0 ; k<6 ; k++ )
 										{
 											sampleValues[s][k] *= _integrator_sampleWeight[s];
@@ -922,8 +922,8 @@ namespace MishaK
 			for( unsigned int b=0 ; b<boundaryTriangles.size() ; b++ )
 			{
 				ChartRefinedBoundaryTriangleIndex boundaryTriangleIndex = boundaryTriangles[b].id;
-				const QuadraticElementIndex & indices = boundaryTriangles[b].indices;
-				QuadraticElementIndex fineTriangleElementIndices;
+				const QuadraticElement::Index & indices = boundaryTriangles[b].indices;
+				QuadraticElement::Index fineTriangleElementIndices;
 				for( unsigned int k=0 ; k<6 ; k++ ) fineTriangleElementIndices[k] = fineBoundaryIndex[ static_cast< unsigned int >(indices[k]) ];
 
 				// Add cell data

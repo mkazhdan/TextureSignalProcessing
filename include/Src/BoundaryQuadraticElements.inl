@@ -729,22 +729,6 @@ void InitializeChartQuadraticElements
 	}
 }
 
-#ifdef NEW_CODE
-#else // !NEW_CODE
-template< typename GeometryReal , typename MatrixReal >
-void InitializeBoundaryQuadraticElements
-(
-	GridAtlas< GeometryReal , MatrixReal > &gridAtlas
-)
-{
-	std::map< SimplexIndex< 1 > , BoundaryMidPointIndex > midPointMap;
-
-	gridAtlas.endMidPointIndex = BoundaryMidPointIndex(0);
-	for( unsigned int i=0 ; i<gridAtlas.gridCharts.size() ; i++ ) InitializeChartQuadraticElements( gridAtlas.gridCharts[ ChartIndex(i) ] , midPointMap , gridAtlas.endMidPointIndex , static_cast< unsigned int >(gridAtlas.endBoundaryVertexIndex) + static_cast< unsigned int >(gridAtlas.endCoveredTexelIndex) );
-	gridAtlas.numFineNodes = static_cast< unsigned int >( gridAtlas.endCoveredTexelIndex ) + static_cast< unsigned int >(gridAtlas.endBoundaryVertexIndex) + static_cast< unsigned int >(gridAtlas.endMidPointIndex);
-}
-#endif // NEW_CODE
-
 template< typename GeometryReal , typename MatrixReal >
 void InitializeBoundaryTriangulation
 (
@@ -757,15 +741,11 @@ void InitializeBoundaryTriangulation
 	InitializeBoundaryPolygons( gridAtlas , atlasCharts , atlasInfo );
 
 	// Add the (mid-edge) nodes, fuse, and create triangles
-#ifdef NEW_CODE
 	std::map< SimplexIndex< 1 > , BoundaryMidPointIndex > midPointMap;
 
 	gridAtlas.endMidPointIndex = BoundaryMidPointIndex(0);
 	for( unsigned int i=0 ; i<gridAtlas.gridCharts.size() ; i++ ) InitializeChartQuadraticElements( gridAtlas.gridCharts[ ChartIndex(i) ] , midPointMap , gridAtlas.endMidPointIndex , static_cast< unsigned int >(gridAtlas.endBoundaryVertexIndex) + static_cast< unsigned int >(gridAtlas.endCoveredTexelIndex) );
 	gridAtlas.numFineNodes = static_cast< unsigned int >( gridAtlas.endCoveredTexelIndex ) + static_cast< unsigned int >(gridAtlas.endBoundaryVertexIndex) + static_cast< unsigned int >(gridAtlas.endMidPointIndex);
-#else // !NEW_CODE
-	InitializeBoundaryQuadraticElements( gridAtlas );
-#endif // NEW_CODE
 }
 
 template< typename MatrixReal >

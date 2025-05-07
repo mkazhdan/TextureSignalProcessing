@@ -492,7 +492,8 @@ namespace MishaK
 	};
 
 	// Need forward declaration to support the characteristic polynomial
-	namespace Polynomial{ template< unsigned int Dim , unsigned int Degree , typename Real > class Polynomial; }
+//	namespace Polynomial{ template< unsigned int Dim , unsigned int Degree , typename T , typename Real=T > class Polynomial; }
+	namespace Polynomial{ template< unsigned int Dim , unsigned int Degree , typename T , typename Real > class Polynomial; }
 
 	template< class Real , int Dim >
 	class Matrix< Real , Dim , Dim > : public Algebra< Real , Matrix< Real , Dim , Dim > > , public InnerProductSpace< Real , Matrix< Real , Dim , Dim > >
@@ -572,12 +573,12 @@ namespace MishaK
 		Real trace( void ) const;
 		Matrix inverse( bool& success ) const;
 		Matrix inverse( void ) const;
-		class Polynomial::Polynomial< 1 , Dim , Real > characteristicPolynomial( void ) const;
+		class Polynomial::Polynomial< 1 , Dim , Real , Real > characteristicPolynomial( void ) const;
 
 		template< class Real2 > Point< Real2 , Dim-1 > operator () ( const Point< Real2 , Dim-1 >& v ) const;
 	protected:
 		friend Matrix< double , Dim+1 , Dim+1 >;
-		class Polynomial::Polynomial< 1 , Dim , Real > _characteristicPolynomial( Matrix< char , Dim , Dim > mask ) const;
+		class Polynomial::Polynomial< 1 , Dim , Real , Real > _characteristicPolynomial( Matrix< char , Dim , Dim > mask ) const;
 	};
 
 #if 0

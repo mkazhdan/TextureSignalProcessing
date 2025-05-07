@@ -332,27 +332,27 @@ inline Matrix< double , 2 , 2 > Matrix< double , 2 , 2 >::inverse( bool& success
 }
 
 template< class Real , int Dim >
-Polynomial::Polynomial< 1 , Dim , Real > Matrix< Real , Dim , Dim >::_characteristicPolynomial( Matrix< char , Dim , Dim > mask ) const
+Polynomial::Polynomial< 1 , Dim , Real , Real > Matrix< Real , Dim , Dim >::_characteristicPolynomial( Matrix< char , Dim , Dim > mask ) const
 {
 	if constexpr( Dim==1 )
 	{
-		if( mask.coords[0][0] ) return Polynomial::Polynomial< 1 , 1 , Real >( Point< Real , 2 >( coords[0][0] , (Real)-1 ) );
-		else                    return Polynomial::Polynomial< 1 , 1 , Real >( Point< Real , 2 >( coords[0][0] , (Real) 0 ) );
+		if( mask.coords[0][0] ) return Polynomial::Polynomial< 1 , 1 , Real , Real >( Point< Real , 2 >( coords[0][0] , (Real)-1 ) );
+		else                    return Polynomial::Polynomial< 1 , 1 , Real , Real >( Point< Real , 2 >( coords[0][0] , (Real) 0 ) );
 	}
 	else if constexpr( Dim==2 )
 	{
 		Polynomial::Polynomial< 1 , 1 , Real > c[2][2];
 		for( unsigned int i=0 ; i<2 ; i++ ) for( unsigned int j=0 ; j<2 ; j++ )
-			if( mask.coords[i][j] ) c[i][j] = Polynomial::Polynomial< 1 , 1 , Real >( Point< Real , 2 >( coords[i][j] , (Real)-1 ) );
-			else                    c[i][j] = Polynomial::Polynomial< 1 , 1 , Real >( Point< Real , 2 >( coords[i][j] , (Real) 0 ) );
+			if( mask.coords[i][j] ) c[i][j] = Polynomial::Polynomial< 1 , 1 , Real , Real >( Point< Real , 2 >( coords[i][j] , (Real)-1 ) );
+			else                    c[i][j] = Polynomial::Polynomial< 1 , 1 , Real , Real >( Point< Real , 2 >( coords[i][j] , (Real) 0 ) );
 		return c[0][0] * c[1][1] - c[0][1] * c[1][0];
 	}
 	else if constexpr( Dim==3 )
 	{
 		Polynomial::Polynomial< 1 , 1 , Real > c[3][3];
 		for( unsigned int i=0 ; i<3 ; i++ ) for( unsigned int j=0 ; j<3 ; j++ )
-			if( mask.coords[i][j] ) c[i][j] = Polynomial::Polynomial< 1 , 1 , Real >( Point< Real , 2 >( coords[i][j] , (Real)-1 ) );
-			else                    c[i][j] = Polynomial::Polynomial< 1 , 1 , Real >( Point< Real , 2 >( coords[i][j] , (Real) 0 ) );
+			if( mask.coords[i][j] ) c[i][j] = Polynomial::Polynomial< 1 , 1 , Real , Real >( Point< Real , 2 >( coords[i][j] , (Real)-1 ) );
+			else                    c[i][j] = Polynomial::Polynomial< 1 , 1 , Real , Real >( Point< Real , 2 >( coords[i][j] , (Real) 0 ) );
 		return
 			c[0][0]*( c[1][1]*c[2][2] - c[2][1]*c[1][2] ) +
 			c[1][0]*( c[2][1]*c[0][2] - c[0][1]*c[2][2] ) +
@@ -360,7 +360,7 @@ Polynomial::Polynomial< 1 , Dim , Real > Matrix< Real , Dim , Dim >::_characteri
 	}
 	else
 	{
-		Polynomial::Polynomial< 1 , Dim , Real > cPoly;
+		Polynomial::Polynomial< 1 , Dim , Real , Real > cPoly;
 
 		Matrix< Real , Dim-1 , Dim-1 > temp;
 		Matrix< char , Dim-1 , Dim-1 > _mask;
@@ -377,15 +377,15 @@ Polynomial::Polynomial< 1 , Dim , Real > Matrix< Real , Dim , Dim >::_characteri
 				ii++;
 			}
 			Real sign = c&1 ? (Real)-1 : (Real)1;
-			if( mask.coords[c][0] ) cPoly += temp._characteristicPolynomial( _mask ) * Polynomial::Polynomial< 1 , 1 , Real >( Point< Real , 2 >( coords[c][0] , (Real)-1) ) * sign;
-			else                    cPoly += temp._characteristicPolynomial( _mask ) * Polynomial::Polynomial< 1 , 1 , Real >( Point< Real , 2 >( coords[c][0] , (Real) 0) ) * sign;
+			if( mask.coords[c][0] ) cPoly += temp._characteristicPolynomial( _mask ) * Polynomial::Polynomial< 1 , 1 , Real , Real >( Point< Real , 2 >( coords[c][0] , (Real)-1) ) * sign;
+			else                    cPoly += temp._characteristicPolynomial( _mask ) * Polynomial::Polynomial< 1 , 1 , Real , Real >( Point< Real , 2 >( coords[c][0] , (Real) 0) ) * sign;
 		}
 		return cPoly;
 	}
 }
 
 template< class Real , int Dim >
-Polynomial::Polynomial< 1 , Dim , Real > Matrix< Real , Dim , Dim >::characteristicPolynomial( void ) const
+Polynomial::Polynomial< 1 , Dim , Real , Real > Matrix< Real , Dim , Dim >::characteristicPolynomial( void ) const
 {
 	Matrix< char , Dim , Dim > mask;
 	for( int i=0 ; i<Dim ; i++ ) for( int j=0 ; j<Dim ; j++ ) mask.coords[i][j] = i==j ? 1 : 0;

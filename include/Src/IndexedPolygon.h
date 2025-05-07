@@ -83,7 +83,7 @@ namespace MishaK
 		AtlasMeshEdgeIndex atlasVertexParentEdge[3];
 		ChartMeshVertexIndex vertexIndices[3];
 		AtlasMeshEdgeIndex atlasEdgeIndices[3];
-		QuadraticElementIndex indices;
+		QuadraticElement::Index indices;
 		Point2D< GeometryReal >& operator [] ( size_t idx ){ return vertices[idx]; }
 		const Point2D< GeometryReal >& operator [] ( size_t idx ) const { return vertices[idx]; }
 	};

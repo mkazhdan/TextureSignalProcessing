@@ -329,18 +329,26 @@ SimplexElements< Dim , Degree >::Data::Data( void )
 		Point< double , Dim > positions[ NodeNum ];
 		for( unsigned int i=0 ; i<NodeNum ; i++ ) positions[i] = nodePosition( i );
 
+		Point< double , NodeNum > multiCoefficients[ Polynomial::Polynomial< Dim , Degree , double >::NumCoefficients ];
 		Point< double , NodeNum > values;
 		for( unsigned int i=0 ; i<NodeNum ; i++ )
 		{
 			values[i] = 1;
 			Point< double , Polynomial::Polynomial< Dim , Degree , double >::NumCoefficients > coefficients( Polynomial::Polynomial< Dim , Degree , double >::EvaluationMatrix( positions ).inverse() * values );
-			elements[i] = Polynomial::Polynomial< Dim , Degree , double >( coefficients );
+
+			for( unsigned int n=0 ; n<Polynomial::Polynomial< Dim , Degree , double >::NumCoefficients ; n++ ) multiCoefficients[n][i] = coefficients[n];
+			elements[i] = Polynomial::Polynomial< Dim , Degree , double >( &coefficients[0] );
 			values[i] = 0;
 		}
+		multiElement = Polynomial::Polynomial< Dim , Degree , Point< double , NodeNum > , double >( multiCoefficients );
 	}
 
 	// Get the differentials
-	for( unsigned int i=0 ; i<NodeNum ; i++ ) for( int k=0 ; k<Dim ; k++ ) differentials[i][k] = elements[i].d( k );
+	for( unsigned int i=0 ; i<NodeNum ; i++ ) for( int k=0 ; k<Dim ; k++ )
+	{
+		differentials[i][k] = elements[i].d( k );
+		for( unsigned int n=0 ; n<Polynomial::Polynomial< Dim , Degree-1 , double >::NumCoefficients ; n++ ) multiDifferential[n][i][k] = differentials[i][k][n];
+	}
 
 	// Get the restriction of the differentials to the faces
 	{
@@ -512,7 +520,18 @@ unsigned int SimplexElements< Dim , Degree >::NodeIndex( const unsigned int v[De
 	unsigned int idx = 0;
 	for( int d=0 ; d<Degree ; d++ ) idx += _Choose( _v[d]+(Degree-1-d) , Degree-d );
 	return idx;
+}
 
+template< unsigned int Dim , unsigned int Degree > 
+template< typename ... UInt >
+unsigned int SimplexElements< Dim , Degree >::NodeIndex( const unsigned int v , UInt ... vs )
+{
+	static_assert( sizeof...(UInt)==Degree-1 , "[ERROR] Wrong number of indices" );
+	unsigned int _v[] = { v , static_cast< unsigned int >(vs)... };
+	std::sort( _v , _v + Degree , []( unsigned int v1 , unsigned int v2 ){ return v1>v2; } );
+	unsigned int idx = 0;
+	for( int d=0 ; d<Degree ; d++ ) idx += _Choose( _v[d]+(Degree-1-d) , Degree-d );
+	return idx;
 }
 
 template< unsigned int Dim , unsigned int Degree >

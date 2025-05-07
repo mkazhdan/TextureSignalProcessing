@@ -198,7 +198,7 @@ namespace MishaK
 	{
 		// Compute the integrated gradients of each quadratic basis functions in the frame of the cell, weighted by the area of the unit triangle
 		// Dualize the samples so that integration is simple a dot-product
-		for( int k=0 ; k<6 ; k++ ) sampleData.dualValues[k] += (Real)QuadraticElementValue( k , pos ) * fragment_quadrature_weight;
+		for( unsigned int k=0 ; k<6 ; k++ ) sampleData.dualValues[k] += (Real)QuadraticElement::Value( k , pos ) * fragment_quadrature_weight;
 	}
 
 	template< unsigned int Samples , typename Real >
@@ -212,7 +212,7 @@ namespace MishaK
 	{
 		// Compute the integrated gradients of each quadratic basis functions in the frame of the cell, weighted by the area of the unit triangle
 		// Dualize the samples so that integration is simple a dot-product
-		for( int k=0 ; k<6 ; k++ ) sampleData.dualGradients[k] += sample.tensor * Point2D< Real >( QuadraticElementGradient( k , pos ) * fragment_quadrature_weight );
+		for( unsigned int k=0 ; k<6 ; k++ ) sampleData.dualGradients[k] += sample.tensor * Point2D< Real >( QuadraticElement::Differential( k , pos ) * fragment_quadrature_weight );
 	}
 
 	template< unsigned int Samples , typename GeometryReal , typename ElementSamples >
@@ -482,7 +482,7 @@ namespace MishaK
 							GeometryReal element_area = sqrt( element_metric.determinant() );
 							typename ElementSamples::Quadratic quadraticElementSample( fastIntegration ? 1 : (unsigned int)(polygon.size()-2)*Samples );
 							for( int x=0 ; x<2 ; x++ ) for( int y=0 ; y<2 ; y++ ) quadraticElementSample.tensor(x,y) = (typename ElementSamples::Real)element_metric_inverse(x,y);
-							const QuadraticElementIndex& triangleElementIndices = gridChart.boundaryTriangles[chartBoundaryIndex][bt].indices;
+							const QuadraticElement::Index& triangleElementIndices = gridChart.boundaryTriangles[chartBoundaryIndex][bt].indices;
 							for( unsigned int k=0 ; k<6 ; k++ )
 							{
 								AtlasInteriorOrBoundaryNodeIndex _fineBoundaryIndex = fineBoundaryIndex[ static_cast< unsigned int >( triangleElementIndices[k] ) ];
@@ -605,7 +605,7 @@ namespace MishaK
 	{
 		for( int s=0 ; s<(int)sample.size() ; s++ )
 		{
-			T scalar = ValueFunction( QuadraticValue( cornerValues , sample[s].pos ) , sample.tensor );
+			T scalar = ValueFunction( QuadraticElement::Value( cornerValues , sample[s].pos ) , sample.tensor );
 			for( int k=0 ; k<6 ; k++ ) rhsValues[k] += scalar * sample[s].dualValues[k];
 		}
 	}
@@ -619,9 +619,9 @@ namespace MishaK
 		T rhsValues[]
 	)
 	{
-		for( int s=0 ; s<(int)sample.size() ; s++ )
+		for( unsigned int s=0 ; s<(int)sample.size() ; s++ )
 		{
-			Point2D< T > gradientVector = VectorFunction( QuadraticGradient( cornerValues , sample[s].pos ) , sample.tensor );
+			Point2D< T > gradientVector = VectorFunction( QuadraticElement::Differential( cornerValues , sample[s].pos ) , sample.tensor );
 			for( int k=0 ; k<6 ; k++ ) for( int d=0 ; d<2 ; d++ ) rhsValues[k] += gradientVector[d] * sample[s].dualGradients[k][d];
 		}
 	}

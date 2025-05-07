@@ -43,6 +43,8 @@ DAMAGE.
 #define NEW_CODE						// General-purpose experimental code encapsulation
 #define USE_VARIATIONAL_SHAPE_FUNCTIONS	// Use variational shape functions to define the system instead of a DT
 
+#define USE_SIMPLEX_BASIS				// Cleaner, but slower
+
 //#define NO_OPEN_GL_VISUALIZATION		// Disable OpenGL visualization
 #define DEBUG_INDEXING					// Use separate classes to sanity check indexing
 #define SANITY_CHECK					// Enables sanity checks for debugging purposes

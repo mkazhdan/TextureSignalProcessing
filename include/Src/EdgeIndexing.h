@@ -155,7 +155,7 @@ namespace MishaK
 			const std::vector< BoundaryIndexedTriangle< GeometryReal > > & boundaryTriangles = gridChart.boundaryTriangles[ ChartBoundaryCellIndex(c) ];
 			for( unsigned int b=0 ; b<boundaryTriangles.size() ; b++ )
 			{
-				const QuadraticElementIndex & indices = boundaryTriangles[b].indices;
+				const QuadraticElement::Index & indices = boundaryTriangles[b].indices;
 				AtlasInteriorOrBoundaryNodeIndex fineHexIndices[6];
 				for( unsigned int k=0 ; k<6 ; k++ ) fineHexIndices[k] = fineBoundaryNodeIndex[ static_cast< unsigned int >(indices[k]) ];
 				for( unsigned int k=1 ; k<6 ; k++ ) for( unsigned int l=0 ; l<k ; l++ )
