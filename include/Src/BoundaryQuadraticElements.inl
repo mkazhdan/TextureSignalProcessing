@@ -584,6 +584,15 @@ void InitializeChartBoundaryPolygons
 }
 
 
+#ifdef NEW_CODE
+template< typename GeometryReal , typename MatrixReal >
+void InitializeBoundaryPolygons
+(
+	GridAtlas< GeometryReal , MatrixReal > &gridAtlas ,
+	const ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
+	const typename AtlasChart< GeometryReal >::AtlasInfo &atlasInfo
+)
+#else // !NEW_CODE
 template< typename GeometryReal >
 AtlasRefinedBoundaryVertexIndex InitializeBoundaryPolygons
 (
@@ -592,17 +601,23 @@ AtlasRefinedBoundaryVertexIndex InitializeBoundaryPolygons
 	ExplicitIndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts ,
 	AtlasCoveredTexelIndex endCoveredTexelIndex
 )
+#endif // NEW_CODE
 {
+#ifdef NEW_CODE
+	ExplicitIndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts = gridAtlas.gridCharts;
+	gridAtlas.endBoundaryVertexIndex = AtlasRefinedBoundaryVertexIndex( atlasInfo.atlasMeshVertexToBoundaryVertex.size() );
+#else // !NEW_CODE
 	// Get the initial count of atlas vertices residing on the boundary
 	AtlasRefinedBoundaryVertexIndex endBoundaryVertex( atlasInfo.atlasMeshVertexToBoundaryVertex.size() );
+#endif // NEW_CODE
 
 	// A map taking (atlas) boundary half-edge indices to their decomposition by grid edges
 	std::map< AtlasMeshHalfEdgeIndex , std::vector< IntersectionInfo< GeometryReal > > > atlasBoundaryHalfEdgeToIntersectionInfos;
 
-	// A map taking a segment to the associated segment information
+	// Maps taking a segment to the associated segment information
 	std::vector< std::map< SimplexIndex< 1 , AtlasRefinedBoundaryVertexIndex > , BoundarySegmentInfo< GeometryReal > > > segmentToBoundarySegmentInfo( gridCharts.size() );
 
-	// A map taking an intersection key to the associated node information
+	// Maps taking an intersection key to the associated node information
 	std::vector< std::map< GridMeshIntersectionKey , NodeInfo< GeometryReal , AtlasRefinedBoundaryVertexIndex > > > gridMeshIntersectionKeyToNodeInfo( gridCharts.size() );
 
 	for( unsigned int i=0 ; i<gridCharts.size() ; i++ )
@@ -615,8 +630,13 @@ AtlasRefinedBoundaryVertexIndex InitializeBoundaryPolygons
 			atlasCharts[ ChartIndex(i) ] ,
 			atlasInfo.atlasMeshVertexToBoundaryVertex ,
 			gridCharts[ ChartIndex(i) ] ,
+#ifdef NEW_CODE
+			gridAtlas.endCoveredTexelIndex ,
+			gridAtlas.endBoundaryVertexIndex ,
+#else // !NEW_CODE
 			endCoveredTexelIndex ,
 			endBoundaryVertex ,
+#endif // NEW_CODE
 			atlasBoundaryHalfEdgeToIntersectionInfos ,
 			segmentToBoundarySegmentInfo[i] ,
 			gridMeshIntersectionKeyToNodeInfo[i]
@@ -632,9 +652,17 @@ AtlasRefinedBoundaryVertexIndex InitializeBoundaryPolygons
 				atlasInfo.oppositeHalfEdges ,
 				atlasCharts[ ChartIndex(i) ] ,
 				gridCharts[ ChartIndex(i) ] ,
+#ifdef NEW_CODE
+				gridAtlas.endCoveredTexelIndex ,
+#else // !NEW_CODE
 				endCoveredTexelIndex ,
+#endif // NEW_CODE
 				(unsigned int)atlasInfo.atlasMeshVertexToBoundaryVertex.size() ,
+#ifdef NEW_CODE
+				gridAtlas.endBoundaryVertexIndex ,
+#else // !NEW_CODE
 				endBoundaryVertex ,
+#endif // NEW_CODE
 				atlasBoundaryHalfEdgeToIntersectionInfos ,
 				segmentToBoundarySegmentInfo[i] ,
 				gridMeshIntersectionKeyToNodeInfo[i]
@@ -647,7 +675,10 @@ AtlasRefinedBoundaryVertexIndex InitializeBoundaryPolygons
 		}
 	}
 
+#ifdef NEW_CODE
+#else // !NEW_CODE
 	return endBoundaryVertex;
+#endif // NEW_CODE
 }
 
 template< typename GeometryReal >
@@ -660,7 +691,11 @@ void InitializeChartQuadraticElements
 )
 {
 	const ExplicitIndexVector< ChartBoundaryCellIndex , std::vector< IndexedPolygon< GeometryReal > > > & boundaryPolygons = gridChart.boundaryPolygons;
+#ifdef NEW_CODE
+	ExplicitIndexVector< ChartBoundaryCellIndex , std::vector< BoundaryIndexedTriangle< GeometryReal > > > & boundaryTriangles = gridChart.boundaryTriangles;
+#else // !NEW_CODE
 	std::vector< std::vector< BoundaryIndexedTriangle< GeometryReal > > > & boundaryTriangles = gridChart.boundaryTriangles;
+#endif // NEW_CODE
 	boundaryTriangles.resize( gridChart.numBoundaryCells() );
 	int numBoundaryTriangles = 0;
 	for( unsigned int i=0 ; i<boundaryPolygons.size() ; i++ )
@@ -726,24 +761,43 @@ void InitializeChartQuadraticElements
 				triangle.indices[3] = midVertexIndex[0];
 				triangle.indices[4] = midVertexIndex[1];
 				triangle.indices[5] = midVertexIndex[2];
+#ifdef NEW_CODE
+				boundaryTriangles[ ChartBoundaryCellIndex(i) ].push_back( triangle );
+#else // !NEW_CODE
 				boundaryTriangles[i].push_back( triangle );
+#endif // NEW_CODE
 			}
 		}
 	}
 	gridChart.numBoundaryTriangles = numBoundaryTriangles;
 }
 
+#ifdef NEW_CODE
+template< typename GeometryReal , typename MatrixReal >
+#else // !NEW_CODE
 template< typename GeometryReal >
+#endif // NEW_CODE
 void InitializeBoundaryQuadraticElements
 (
+#ifdef NEW_CODE
+	GridAtlas< GeometryReal , MatrixReal > &gridAtlas
+#else // !NEW_CODE
 	ExplicitIndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts ,
 	unsigned int previouslyAddedNodes ,
 	BoundaryMidPointIndex & endMidPointIndex
+#endif // NEW_CODE
 )
 {
-	endMidPointIndex = BoundaryMidPointIndex(0);
 	std::map< SimplexIndex< 1 > , BoundaryMidPointIndex > midPointMap;
+
+#ifdef NEW_CODE
+	gridAtlas.endMidPointIndex = BoundaryMidPointIndex(0);
+	for( unsigned int i=0 ; i<gridAtlas.gridCharts.size() ; i++ ) InitializeChartQuadraticElements( gridAtlas.gridCharts[ ChartIndex(i) ] , midPointMap , gridAtlas.endMidPointIndex , static_cast< unsigned int >(gridAtlas.endBoundaryVertexIndex) + static_cast< unsigned int >(gridAtlas.endCoveredTexelIndex) );
+	gridAtlas.numFineNodes = static_cast< unsigned int >( gridAtlas.endCoveredTexelIndex ) + static_cast< unsigned int >(gridAtlas.endBoundaryVertexIndex) + static_cast< unsigned int >(gridAtlas.endMidPointIndex);
+#else // !NEW_CODE
+	endMidPointIndex = BoundaryMidPointIndex(0);
 	for( unsigned int i=0 ; i<gridCharts.size() ; i++ ) InitializeChartQuadraticElements( gridCharts[ ChartIndex(i) ] , midPointMap , endMidPointIndex , previouslyAddedNodes );
+#endif // NEW_CODE
 }
 
 template< typename GeometryReal , typename MatrixReal >
@@ -754,9 +808,17 @@ void InitializeBoundaryTriangulation
 	typename AtlasChart< GeometryReal >::AtlasInfo &atlasInfo
 )
 {
+#ifdef NEW_CODE
+	// Add the vertices
+	InitializeBoundaryPolygons( gridAtlas , atlasCharts , atlasInfo );
+
+	// Add the (mid-edge) nodes and...
+	InitializeBoundaryQuadraticElements( gridAtlas );
+#else // !NEW_CODE
 	gridAtlas.endBoundaryVertexIndex = InitializeBoundaryPolygons( atlasCharts , atlasInfo , gridAtlas.gridCharts , gridAtlas.endCoveredTexelIndex );
 	InitializeBoundaryQuadraticElements( gridAtlas.gridCharts , static_cast< unsigned int >(gridAtlas.endBoundaryVertexIndex) + static_cast< unsigned int >(gridAtlas.endCoveredTexelIndex) , gridAtlas.endMidPointIndex );
 	gridAtlas.numFineNodes = static_cast< unsigned int >( gridAtlas.endCoveredTexelIndex ) + static_cast< unsigned int >(gridAtlas.endBoundaryVertexIndex) + static_cast< unsigned int >(gridAtlas.endMidPointIndex);
+#endif // NEW_CODE
 }
 
 template< typename MatrixReal >

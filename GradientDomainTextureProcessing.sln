@@ -34,6 +34,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Misha", "Misha", "{7DA121C8
 		include\Misha\CmdLineParser.h = include\Misha\CmdLineParser.h
 		include\Misha\CmdLineParser.inl = include\Misha\CmdLineParser.inl
 		include\Misha\Exceptions.h = include\Misha\Exceptions.h
+		include\Misha\ExplicitIndex.h = include\Misha\ExplicitIndex.h
 		include\Misha\FEM.BasisInfo.inc = include\Misha\FEM.BasisInfo.inc
 		include\Misha\FEM.h = include\Misha\FEM.h
 		include\Misha\FEM.inl = include\Misha\FEM.inl

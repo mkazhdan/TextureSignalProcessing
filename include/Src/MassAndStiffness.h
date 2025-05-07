@@ -62,8 +62,14 @@ namespace MishaK
 		std::vector< MatrixReal > & deepDivergenceCoefficients
 	)
 	{
+//#ifdef NEW_CODE
+#if 0
+		ExplicitIndexVector< ChartInteriorCellIndex , SquareMatrix< GeometryReal , 4 > > cellStiffness( gridChart.numInteriorCells() );
+		ExplicitIndexVector< ChartInteriorCellIndex , SquareMatrix< GeometryReal , 4 > > cellMass( gridChart.numInteriorCells() );
+#else // !NEW_CODE
 		std::vector< SquareMatrix< GeometryReal , 4 > > cellStiffness( gridChart.numInteriorCells() );
 		std::vector< SquareMatrix< GeometryReal , 4 > > cellMass( gridChart.numInteriorCells() );
+#endif // NEW_CODE
 
 		std::vector< SquareMatrix< GeometryReal , 6 > > triangleElementStiffness( gridChart.numBoundaryTriangles );
 		std::vector< SquareMatrix< GeometryReal , 6 > > triangleElementMass( gridChart.numBoundaryTriangles );
@@ -349,7 +355,11 @@ namespace MishaK
 								atlasTriangle.atlasVertexParentEdge[k] = AtlasMeshEdgeIndex(-1);
 							}
 
+#ifdef NEW_CODE
+							const std::vector< BoundaryIndexedTriangle< GeometryReal > > & cellBoundaryTriangles = gridChart.boundaryTriangles[boundaryIndex];
+#else // !NEW_CODE
 							const std::vector< BoundaryIndexedTriangle< GeometryReal > > & cellBoundaryTriangles = gridChart.boundaryTriangles[ static_cast< unsigned int >(boundaryIndex) ];
+#endif // NEW_CODE
 
 							// Iterate over all elements in the cell
 							for( unsigned int bt=0 ; bt<cellBoundaryTriangles.size() ; bt++ )
@@ -628,7 +638,11 @@ namespace MishaK
 				}
 				else if( boundaryIndex!=ChartBoundaryCellIndex(-1) )
 				{
+#ifdef NEW_CODE
+					const std::vector< BoundaryIndexedTriangle< GeometryReal > > & cellBoundaryTriangles = gridChart.boundaryTriangles[boundaryIndex];
+#else // !NEW_CODE
 					std::vector< BoundaryIndexedTriangle< GeometryReal > > cellBoundaryTriangles = gridChart.boundaryTriangles[ static_cast< unsigned int >( boundaryIndex ) ];
+#endif // NEW_CODE
 					// Iterate over all elements in the cell
 					for( int bt=0 ; bt<cellBoundaryTriangles.size() ; bt++ )
 					{
@@ -914,6 +928,17 @@ namespace MishaK
 			}
 		}
 
+#ifdef NEW_CODE
+		for( unsigned int c=0 ; c<gridChart.boundaryTriangles.size() ; c++ )
+		{
+			AtlasCombinedCellIndex cellIndex = gridChart.chartToAtlasCombinedCellIndex( gridChart.boundaryCellIndexToCombinedCellIndex[c] );
+
+			const std::vector< BoundaryIndexedTriangle< GeometryReal > > & boundaryTriangles = gridChart.boundaryTriangles[ ChartBoundaryCellIndex(c) ];
+			for( unsigned int b=0 ; b<boundaryTriangles.size() ; b++ )
+			{
+				unsigned int i = boundaryTriangles[b].id;
+				const QuadraticElementIndex & indices = boundaryTriangles[b].indices;
+#else // !NEW_CODE
 		for( int c=0 ; c<gridChart.boundaryTriangles.size() ; c++ )
 		{
 			AtlasCombinedCellIndex cellIndex = gridChart.chartToAtlasCombinedCellIndex( gridChart.boundaryCellIndexToCombinedCellIndex[c] );
@@ -922,6 +947,7 @@ namespace MishaK
 			{
 				int i = gridChart.boundaryTriangles[c][b].id;
 				const QuadraticElementIndex & indices = gridChart.boundaryTriangles[c][b].indices;
+#endif // NEW_CODE
 				QuadraticElementIndex fineTriangleElementIndices;
 				for( unsigned int k=0 ; k<6 ; k++ ) fineTriangleElementIndices[k] = fineBoundaryIndex[ static_cast< unsigned int >(indices[k]) ];
 

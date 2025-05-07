@@ -41,11 +41,12 @@ DAMAGE.
 #ifndef PRE_PROCESSING_INCLUDED
 #define PRE_PROCESSING_INCLUDED
 
-#define NEW_CODE					// General-purpose experimental code encapsulation
+#define NEW_CODE						// General-purpose experimental code encapsulation
+#define USE_VARIATIONAL_SHAPE_FUNCTIONS	// Use variational shape functions to define the system instead of a DT
 
 //#define NO_OPEN_GL_VISUALIZATION		// Disable OpenGL visualization
 #define DEBUG_INDEXING					// Use separate classes to sanity check indexing
-#define SANITY_CHECK				// Enables sanity checks for debugging purposes
+#define SANITY_CHECK					// Enables sanity checks for debugging purposes
 
 //#define USE_RASTERIZER				// Use triangle/edge rasterization code [SLOW]
 #define REORDER_BOUNDARY			// Re-order the boundary edges so that they are sequential [NOT NECESSARY]
