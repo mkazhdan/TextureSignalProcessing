@@ -92,20 +92,37 @@ namespace MishaK
 		const typename GridAtlas<>::IndexConverter & indexConverter ,
 		std::map< SimplexIndex< 1 , AtlasCombinedTexelIndex > , unsigned int > &coarseEdgeIndex ,
 		std::vector< unsigned int > &boundaryEdgeToGlobalEdge ,
+#ifdef NEW_CODE
+		std::map< SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex > , AtlasRefinedBoundaryEdgeIndex > &boundaryEdgeIndex
+#else // !NEW_CODE
 		std::map< SimplexIndex< 1 > , AtlasInteriorOrBoundaryNodeIndex > &boundaryEdgeIndex
+#endif // NEW_CODE
 	)
 	{
 		int lastAddedCoarseEdgeIndex = (int)coarseEdgeIndex.size();
+#ifdef NEW_CODE
+		AtlasRefinedBoundaryEdgeIndex endRefinedBoundaryEdgeIndex(0);
+#else // !NEW_CODE
 		int lastAddedBoundaryEdgeIndex = 0;
+#endif // NEW_CODE
 		for( int r=0 ; r<boundaryAdjancencyMatrix.Rows() ; r++ )
 		{
 			for( int c=0 ; c<boundaryAdjancencyMatrix.RowSize(r) ; c++ )
 			{
-				int bIndices[2] = {r,boundaryAdjancencyMatrix[r][c].N};
+#ifdef NEW_CODE
+				AtlasInteriorOrBoundaryNodeIndex bIndices[] = { AtlasInteriorOrBoundaryNodeIndex(r) , AtlasInteriorOrBoundaryNodeIndex(boundaryAdjancencyMatrix[r][c].N) };
+#else // !NEW_CODE
+				int bIndices[2] = { r , boundaryAdjancencyMatrix[r][c].N };
+#endif // NEW_CODE
 				if( bIndices[0]!=bIndices[1] )
 				{
+#ifdef NEW_CODE
+					SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex > bminKey( bIndices[0] , bIndices[1] );
+					SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex > bmaxKey( bIndices[1] , bIndices[0] );
+#else // !NEW_CODE
 					SimplexIndex< 1 > bminKey( bIndices[0] , bIndices[1] );
 					SimplexIndex< 1 > bmaxKey( bIndices[1] , bIndices[0] );
+#endif // NEW_CODE
 					if( boundaryEdgeIndex.find(bminKey)==boundaryEdgeIndex.end() && boundaryEdgeIndex.find(bmaxKey)==boundaryEdgeIndex.end() )
 					{
 						AtlasCombinedTexelIndex gIndices[2] = { indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex( bIndices[0] ) ) , indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex( bIndices[1] ) ) };
@@ -115,14 +132,22 @@ namespace MishaK
 						if( coarseEdgeIndex.find(minKey)!=coarseEdgeIndex.end() )
 						{
 							globalEdgeIndex = coarseEdgeIndex[minKey];
+#ifdef NEW_CODE
+							boundaryEdgeIndex[bminKey] = endRefinedBoundaryEdgeIndex++;
+#else // !NEW_CODE
 							boundaryEdgeIndex[bminKey] = static_cast< AtlasInteriorOrBoundaryNodeIndex >( lastAddedBoundaryEdgeIndex );
 							lastAddedBoundaryEdgeIndex++;
+#endif // NEW_CODE
 						}
 						else if( coarseEdgeIndex.find(maxKey)!=coarseEdgeIndex.end() )
 						{
 							globalEdgeIndex = coarseEdgeIndex[maxKey];
+#ifdef NEW_CODE
+							boundaryEdgeIndex[bmaxKey] = endRefinedBoundaryEdgeIndex++;
+#else // !NEW_CODE
 							boundaryEdgeIndex[bmaxKey] = static_cast< AtlasInteriorOrBoundaryNodeIndex >( lastAddedBoundaryEdgeIndex );
 							lastAddedBoundaryEdgeIndex++;
+#endif // NEW_CODE
 						}
 						else
 						{
@@ -130,8 +155,12 @@ namespace MishaK
 							globalEdgeIndex = lastAddedCoarseEdgeIndex;
 							lastAddedCoarseEdgeIndex++;
 
+#ifdef NEW_CODE
+							boundaryEdgeIndex[bminKey] = endRefinedBoundaryEdgeIndex++;
+#else // !NEW_CODE
 							boundaryEdgeIndex[bminKey] = static_cast< AtlasInteriorOrBoundaryNodeIndex >( lastAddedBoundaryEdgeIndex );
 							lastAddedBoundaryEdgeIndex++;
+#endif // NEW_CODE
 						}
 						boundaryEdgeToGlobalEdge.push_back(globalEdgeIndex);
 					}
@@ -140,13 +169,22 @@ namespace MishaK
 		}
 	}
 
+
 	template< typename GeometryReal >
 	void InitializeFineBoundaryEdgeChartIndexing
 	(
 		const std::vector< AtlasInteriorOrBoundaryNodeIndex > &fineBoundaryNodeIndex ,
+#ifdef NEW_CODE
+		std::map< SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex > , AtlasRefinedBoundaryEdgeIndex > &fineBoundaryEdgeIndex ,
+#else // !NEW_CODE
 		std::map< SimplexIndex< 1 > , AtlasInteriorOrBoundaryNodeIndex > &fineBoundaryEdgeIndex ,
+#endif // NEW_CODE
 		const GridChart< GeometryReal > &gridChart ,
+#ifdef NEW_CODE
+		AtlasRefinedBoundaryEdgeIndex & endRefinedBoundaryEdgeIndex
+#else // !NEW_CODE
 		unsigned int &lastAddedEdgeIndex
+#endif // NEW_CODE
 	)
 	{
 		for( unsigned int c=0 ; c<gridChart.boundaryTriangles.size() ; c++ )
@@ -159,49 +197,92 @@ namespace MishaK
 				for( unsigned int k=0 ; k<6 ; k++ ) fineHexIndices[k] = fineBoundaryNodeIndex[ static_cast< unsigned int >(indices[k]) ];
 				for( unsigned int k=1 ; k<6 ; k++ ) for( unsigned int l=0 ; l<k ; l++ )
 				{
-					AtlasInteriorOrBoundaryNodeIndex vIndices[2] = { fineHexIndices[k],fineHexIndices[l] };
-					if( vIndices[1]<vIndices[0] ) std::swap(vIndices[0], vIndices[1]);
+					AtlasInteriorOrBoundaryNodeIndex vIndices[2] = { fineHexIndices[k] , fineHexIndices[l] };
+					if( vIndices[1]<vIndices[0] ) std::swap( vIndices[0] , vIndices[1] );
+#ifdef NEW_CODE
+					SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex > edgeKey( vIndices[0] , vIndices[1] );
+					if( fineBoundaryEdgeIndex.find(edgeKey)==fineBoundaryEdgeIndex.end() ) fineBoundaryEdgeIndex[edgeKey] = endRefinedBoundaryEdgeIndex++;
+#else // !NEW_CODE
 					SimplexIndex< 1 > edgeKey( vIndices[0] , vIndices[1] );
 					if( fineBoundaryEdgeIndex.find(edgeKey)==fineBoundaryEdgeIndex.end() ) fineBoundaryEdgeIndex[edgeKey] = static_cast< AtlasInteriorOrBoundaryNodeIndex >( lastAddedEdgeIndex++ );
+#endif // NEW_CODE
 				}
 			}
 		}
 	}
 
+	// Create the index for all edges between element nodes
+	// -- Required for finite-differencing
 	template< typename GeometryReal >
 	void InitializeFineBoundaryEdgeIndexing
 	(
 		const std::vector< AtlasInteriorOrBoundaryNodeIndex > &fineBoundaryNodeIndex ,
+#ifdef NEW_CODE
+		std::map< SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex > , AtlasRefinedBoundaryEdgeIndex > &fineBoundaryEdgeIndex ,
+#else // !NEW_CODE
 		std::map< SimplexIndex< 1 > , AtlasInteriorOrBoundaryNodeIndex > &fineBoundaryEdgeIndex ,
+#endif // NEW_CODE
 		const ExplicitIndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts
 	)
 	{
+#ifdef NEW_CODE
+		AtlasRefinedBoundaryEdgeIndex endRefinedBoundaryEdgeIndex(0);
+		for( unsigned int i=0 ; i<gridCharts.size() ; i++ ) InitializeFineBoundaryEdgeChartIndexing( fineBoundaryNodeIndex , fineBoundaryEdgeIndex , gridCharts[ ChartIndex(i) ] , endRefinedBoundaryEdgeIndex );
+#else // !NEW_CODE
 		unsigned int lastAddedEdgeIndex = 0;
 		for( unsigned int i=0 ; i<gridCharts.size() ; i++ ) InitializeFineBoundaryEdgeChartIndexing( fineBoundaryNodeIndex , fineBoundaryEdgeIndex , gridCharts[ ChartIndex(i) ] , lastAddedEdgeIndex );
+#endif // NEW_CODE
 	}
 
 	template< typename MatrixReal >
 	void InitializeBoundaryCoarseToFineBoundaryOneFormProlongation
 	(
 		const SparseMatrix< MatrixReal , int > &boundaryCoarseToFineNodeProlongation ,
+#ifdef NEW_CODE
+		std::map< SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex > , AtlasRefinedBoundaryEdgeIndex > &boundaryCoarseEdgeIndex ,
+		std::map< SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex > , AtlasRefinedBoundaryEdgeIndex > &boundaryFineEdgeIndex ,
+#else // !NEW_CODE
 		std::map< SimplexIndex< 1 > , AtlasInteriorOrBoundaryNodeIndex > &boundaryCoarseEdgeIndex ,
 		std::map< SimplexIndex< 1 > , AtlasInteriorOrBoundaryNodeIndex > &boundaryFineEdgeIndex ,
+#endif // NEW_CODE
 		SparseMatrix< MatrixReal , int > &boundaryFineToBoundaryCoarseOneFormProlongation
 	)
 	{
 		std::vector< Eigen::Triplet< MatrixReal > > coarseToFineOneFormProlongation;
 		std::vector< std::vector< Eigen::Triplet< MatrixReal > > > _coarseToFineOneFormProlongation( ThreadPool::NumThreads() );
+#ifdef NEW_CODE
+		std::vector< std::pair< SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex > , AtlasRefinedBoundaryEdgeIndex > > _boundaryFineEdgeIndex;
+#else // !NEW_CODE
 		std::vector< std::pair< SimplexIndex< 1 > , AtlasInteriorOrBoundaryNodeIndex > > _boundaryFineEdgeIndex;
+#endif // NEW_CODE
 
 		// Transform the unordered_map into a vector of pairs for parallelization
 		_boundaryFineEdgeIndex.reserve( boundaryFineEdgeIndex.size() );
+#ifdef NEW_CODE
+		for( auto iter=boundaryFineEdgeIndex.begin() ; iter!=boundaryFineEdgeIndex.end() ; iter++ ) _boundaryFineEdgeIndex.push_back( std::make_pair( iter->first , iter->second ) );
+#else // !NEW_CODE
 		for( auto iter=boundaryFineEdgeIndex.begin() ; iter!=boundaryFineEdgeIndex.end() ; iter++ ) _boundaryFineEdgeIndex.push_back( std::pair< SimplexIndex< 1 > , AtlasInteriorOrBoundaryNodeIndex >( iter->first , iter->second ) );
+#endif // NEW_CODE
 
 		ThreadPool::ParallelFor
 		(
 			0 , _boundaryFineEdgeIndex.size() ,
 			[&]( unsigned int thread , size_t i )
 			{
+#ifdef NEW_CODE
+				AtlasRefinedBoundaryEdgeIndex fineEdgeId = _boundaryFineEdgeIndex[i].second;
+				SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex > fineEdgeCorners = _boundaryFineEdgeIndex[i].first;
+
+				for( unsigned int k=0 ; k<boundaryCoarseToFineNodeProlongation.RowSize( static_cast< unsigned int >(fineEdgeCorners[0]) ) ; k++ )
+				{
+					AtlasInteriorOrBoundaryNodeIndex coarseIndex1( boundaryCoarseToFineNodeProlongation[ static_cast< unsigned int >(fineEdgeCorners[0]) ][k].N );
+					MatrixReal coarseValue1 = boundaryCoarseToFineNodeProlongation[ static_cast< unsigned int >(fineEdgeCorners[0]) ][k].Value;
+
+					for( unsigned int l=0 ; l<boundaryCoarseToFineNodeProlongation.RowSize( static_cast< unsigned int >(fineEdgeCorners[1]) ) ; l++ )
+					{
+						AtlasInteriorOrBoundaryNodeIndex coarseIndex2( boundaryCoarseToFineNodeProlongation[ static_cast< unsigned int >(fineEdgeCorners[1]) ][l].N );
+						MatrixReal coarseValue2 = boundaryCoarseToFineNodeProlongation[ static_cast< unsigned int >(fineEdgeCorners[1]) ][l].Value;
+#else // !NEW_CODE
 				AtlasInteriorOrBoundaryNodeIndex fineEdgeId = _boundaryFineEdgeIndex[i].second;
 				SimplexIndex< 1 > fineEdgeCorners = _boundaryFineEdgeIndex[i].first;
 
@@ -214,26 +295,43 @@ namespace MishaK
 					{
 						int coarseIndex2 = boundaryCoarseToFineNodeProlongation[ fineEdgeCorners[1] ][l].N;
 						MatrixReal coarseValue2 = boundaryCoarseToFineNodeProlongation[ fineEdgeCorners[1] ][l].Value;
+#endif // NEW_CODE
 
 						if( coarseIndex1!=coarseIndex2 )
 						{
 							bool foundEdge = false;
+#ifdef NEW_CODE
+							SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex > coarseEdgeKey( coarseIndex1 , coarseIndex2 );
+#else // !NEW_CODE
 							SimplexIndex< 1 > coarseEdgeKey( coarseIndex1 , coarseIndex2 );
+#endif // NEW_CODE
 							auto coarseEdgePtr = boundaryCoarseEdgeIndex.find( coarseEdgeKey );
 							if( coarseEdgePtr!=boundaryCoarseEdgeIndex.end() )
 							{
 								foundEdge = true;
+#ifdef NEW_CODE
+								AtlasRefinedBoundaryEdgeIndex coarseEdgeId = coarseEdgePtr->second;
+#else // !NEW_CODE
 								AtlasInteriorOrBoundaryNodeIndex coarseEdgeId = coarseEdgePtr->second;
+#endif // NEW_CODE
 								_coarseToFineOneFormProlongation[thread].push_back( Eigen::Triplet< MatrixReal >( static_cast< unsigned int >(fineEdgeId) , static_cast< unsigned int >(coarseEdgeId) , coarseValue1 * coarseValue2 ) );
 							}
 							else
 							{
+#ifdef NEW_CODE
+								coarseEdgeKey = SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex >( coarseIndex2 , coarseIndex1 );
+#else // !NEW_CODE
 								coarseEdgeKey = SimplexIndex< 1 >( coarseIndex2 , coarseIndex1 );
+#endif // NEW_CODE
 								coarseEdgePtr = boundaryCoarseEdgeIndex.find(coarseEdgeKey);
 								if( coarseEdgePtr!=boundaryCoarseEdgeIndex.end() )
 								{
 									foundEdge = true;
+#ifdef NEW_CODE
+									AtlasRefinedBoundaryEdgeIndex coarseEdgeId = coarseEdgePtr->second;
+#else // !NEW_CODE
 									AtlasInteriorOrBoundaryNodeIndex coarseEdgeId = coarseEdgePtr->second;
+#endif // NEW_CODE
 									_coarseToFineOneFormProlongation[thread].push_back( Eigen::Triplet< MatrixReal >( static_cast< unsigned int >(fineEdgeId) , static_cast< unsigned int >(coarseEdgeId) , -coarseValue1 *coarseValue2 ) );
 								}
 							}

@@ -55,7 +55,11 @@ namespace MishaK
 		std::vector< MatrixReal >& texelToCellCoeffs ,
 		std::vector< Eigen::Triplet< Point3D< MatrixReal > > > &boundaryCellStiffnessTriplets ,
 		bool computeDivergence ,
+#ifdef NEW_CODE
+		std::map< SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex > , AtlasRefinedBoundaryEdgeIndex > & fineBoundaryEdgeIndex,
+#else // !NEW_CODE
 		std::map< SimplexIndex< 1 > , AtlasInteriorOrBoundaryNodeIndex > & fineBoundaryEdgeIndex,
+#endif // NEW_CODE
 		std::map< SimplexIndex< 1 , AtlasCombinedTexelIndex > , unsigned int > & coarseEdgeIndex,
 		std::vector< Eigen::Triplet< MatrixReal > > & boundaryDeepDivergenceTriplets,
 		std::vector< Eigen::Triplet< MatrixReal > > & boundaryBoundaryDivergenceTriplets,
@@ -964,28 +968,30 @@ namespace MishaK
 					boundaryBoundaryStiffnessTriplets.push_back(Eigen::Triplet< MatrixReal >( static_cast< unsigned int >( fineTriangleElementIndices[k] ) ,  static_cast< unsigned int >( fineTriangleElementIndices[l] ) , (MatrixReal)triangleElementStiffness[boundaryTriangleIndex](l,k) ) );
 				}
 
-				if( computeDivergence )
+				if( computeDivergence ) for( unsigned int k=1 ; k<6 ; k++ ) for( unsigned int l=0 ; l<k ; l++ )
 				{
-					for( unsigned int k=1 ; k<6 ; k++ ) for( unsigned int l=0 ; l<k ; l++ )
+					int edgeId = (k*(k - 1)) / 2 + l;
+					AtlasInteriorOrBoundaryNodeIndex edgeSourceFineIndex = fineTriangleElementIndices[k];
+					AtlasInteriorOrBoundaryNodeIndex edgeTargetFineIndex = fineTriangleElementIndices[l];
+					MatrixReal edgeSign = (MatrixReal)1.;
+					if( edgeTargetFineIndex<edgeSourceFineIndex )
 					{
-						int edgeId = (k*(k - 1)) / 2 + l;
-						AtlasInteriorOrBoundaryNodeIndex edgeSourceFineIndex = fineTriangleElementIndices[k];
-						AtlasInteriorOrBoundaryNodeIndex edgeTargetFineIndex = fineTriangleElementIndices[l];
-						MatrixReal edgeSign = (MatrixReal)1.;
-						if( edgeTargetFineIndex<edgeSourceFineIndex )
-						{
-							std::swap( edgeSourceFineIndex , edgeTargetFineIndex );
-							edgeSign = (MatrixReal)-1.;
-						}
-						SimplexIndex< 1 > fineEdgeKey( edgeSourceFineIndex , edgeTargetFineIndex );
-						AtlasInteriorOrBoundaryNodeIndex _fineEdgeIndex = static_cast< AtlasInteriorOrBoundaryNodeIndex >(-1);
-						if( fineBoundaryEdgeIndex.find( fineEdgeKey )!=fineBoundaryEdgeIndex.end() ) _fineEdgeIndex = fineBoundaryEdgeIndex[fineEdgeKey];
-						else MK_THROW( "Fine edge not found" );
-						for( int n=0 ; n<6 ; n++ )
-						{
-							AtlasInteriorOrBoundaryNodeIndex fineNodeIndex = fineTriangleElementIndices[n];
-							boundaryBoundaryDivergenceTriplets.push_back( Eigen::Triplet< MatrixReal >( static_cast< unsigned int >(fineNodeIndex) , static_cast< unsigned int >(_fineEdgeIndex) , (MatrixReal)triangleElementDivergence[boundaryTriangleIndex](n,edgeId) * edgeSign ) );
-						}
+						std::swap( edgeSourceFineIndex , edgeTargetFineIndex );
+						edgeSign = (MatrixReal)-1.;
+					}
+#ifdef NEW_CODE
+					SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex > fineEdgeKey( edgeSourceFineIndex , edgeTargetFineIndex );
+					AtlasRefinedBoundaryEdgeIndex _fineEdgeIndex = AtlasRefinedBoundaryEdgeIndex(-1);
+#else // !NEW_CODE
+					SimplexIndex< 1 > fineEdgeKey( edgeSourceFineIndex , edgeTargetFineIndex );
+					AtlasInteriorOrBoundaryNodeIndex _fineEdgeIndex = static_cast< AtlasInteriorOrBoundaryNodeIndex >(-1);
+#endif // NEW_CODE
+					if( fineBoundaryEdgeIndex.find( fineEdgeKey )!=fineBoundaryEdgeIndex.end() ) _fineEdgeIndex = fineBoundaryEdgeIndex[fineEdgeKey];
+					else MK_THROW( "Fine edge not found" );
+					for( int n=0 ; n<6 ; n++ )
+					{
+						AtlasInteriorOrBoundaryNodeIndex fineNodeIndex = fineTriangleElementIndices[n];
+						boundaryBoundaryDivergenceTriplets.push_back( Eigen::Triplet< MatrixReal >( static_cast< unsigned int >(fineNodeIndex) , static_cast< unsigned int >(_fineEdgeIndex) , (MatrixReal)triangleElementDivergence[boundaryTriangleIndex](n,edgeId) * edgeSign ) );
 					}
 				}
 			}
@@ -1012,7 +1018,11 @@ namespace MishaK
 		std::vector< MatrixReal >& texelToCellCoeffs ,
 		SparseMatrix< MatrixReal , int > boundaryCellBasedStiffnessRHSMatrix[3] ,
 		bool computeDivergence ,
+#ifdef NEW_CODE
+		std::map< SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex > , AtlasRefinedBoundaryEdgeIndex > & fineBoundaryEdgeIndex,
+#else // !NEW_CODE
 		std::map< SimplexIndex< 1 > , AtlasInteriorOrBoundaryNodeIndex > & fineBoundaryEdgeIndex,
+#endif // NEW_CODE
 		std::map< SimplexIndex< 1 , AtlasCombinedTexelIndex > , unsigned int > & coarseEdgeIndex,
 		std::vector< Eigen::Triplet< MatrixReal > > & boundaryDeepDivergenceTriplets,
 		std::vector< Eigen::Triplet< MatrixReal > > & boundaryBoundaryDivergenceTriplets,
@@ -1134,7 +1144,11 @@ namespace MishaK
 
 		std::vector< Eigen::Triplet< MatrixReal > > boundaryDivergenceTriplets;
 		std::vector< Eigen::Triplet< MatrixReal > > boundaryBoundaryDivergenceTriplets;
+#ifdef NEW_CODE
+		std::map< SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex > , AtlasRefinedBoundaryEdgeIndex > fineBoundaryEdgeIndex;
+#else // !NEW_CODE
 		std::map< SimplexIndex< 1 > , AtlasInteriorOrBoundaryNodeIndex > fineBoundaryEdgeIndex;
+#endif // NEW_CODE
 
 		if( computeDivergence ) InitializeFineBoundaryEdgeIndexing( boundaryProlongation.fineBoundaryIndex , fineBoundaryEdgeIndex , hierarchy.gridAtlases[0].gridCharts );
 
@@ -1177,7 +1191,11 @@ namespace MishaK
 		{
 			SparseMatrix< MatrixReal , int > fineBoundaryBoundaryDivergenceMatrix = SetSparseMatrix( boundaryBoundaryDivergenceTriplets , boundaryProlongation.numFineBoundaryNodes , (int)fineBoundaryEdgeIndex.size() , false );
 
+#ifdef NEW_CODE
+			std::map< SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex > , AtlasRefinedBoundaryEdgeIndex > boundaryCoarseEdgeIndex;
+#else // !NEW_CODE
 			std::map< SimplexIndex< 1 > , AtlasInteriorOrBoundaryNodeIndex > boundaryCoarseEdgeIndex;
+#endif // NEW_CODE
 			std::vector< unsigned int > boundaryCoarseEdgeToGlobalEdge;
 
 			InitializeBoundaryEdgeIndexing( mass.boundaryBoundaryMatrix , hierarchy.gridAtlases[0].indexConverter , edgeIndex , boundaryCoarseEdgeToGlobalEdge , boundaryCoarseEdgeIndex );
