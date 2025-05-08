@@ -47,7 +47,7 @@ void InitializeVectorFieldMetric
 	ExplicitIndexVector< AtlasMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > >& outputMetric
 )
 {
-	int tCount = (int)embeddingMetric.size();
+	unsigned int tCount = (unsigned int)embeddingMetric.size();
 
 	outputMetric.resize( embeddingMetric.size() );
 	GeometryReal totalMass = 0;
@@ -89,7 +89,7 @@ void InitializeVectorFieldMetric
 
 		totalMass += sqrt( outputMetric[ AtlasMeshTriangleIndex(t) ].determinant() ) / 2;
 	}
-	if( normalizeArea ) for( int t=0 ; t<tCount ; t++ )	outputMetric[ AtlasMeshTriangleIndex(t) ] /= totalMass;
+	if( normalizeArea ) for( unsigned int t=0 ; t<tCount ; t++ ) outputMetric[ AtlasMeshTriangleIndex(t) ] /= totalMass;
 }
 
 #define NORMALIZE_SURFACE_EMBEDDING

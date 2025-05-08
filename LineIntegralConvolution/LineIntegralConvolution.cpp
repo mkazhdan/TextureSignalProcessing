@@ -56,7 +56,7 @@ CmdLineParameter< float > SharpeningGradientModulation( "sharpModulation" , 100 
 CmdLineParameter< float > AnisotropyExponent( "aExp" , 0.f );
 CmdLineParameter< int   > NormalSmoothingIterations( "nIters" , 2 );
 CmdLineParameter< float > NormalSmoothingInterpolation( "nInterpolation" , 1e3f );
-CmdLineParameter< int   > Levels( "levels" , 4 );
+CmdLineParameter< unsigned int > Levels( "levels" , 4 );
 CmdLineParameter< int   > MatrixQuadrature( "mQuadrature" , 6 );
 
 
@@ -115,7 +115,7 @@ void ShowUsage(const char* ex)
 	printf( "\t[--%s]\n" , Verbose.name.c_str() );
 
 	printf( "\t[--%s <camera configuration file>\n" , CameraConfig.name.c_str());
-	printf( "\t[--%s <hierarchy levels>=%d]\n" , Levels.name.c_str() , Levels.value );
+	printf( "\t[--%s <hierarchy levels>=%d]\n" , Levels.name.c_str() , static_cast< int >(Levels.value) );
 	printf( "\t[--%s]\n" , DetailVerbose.name.c_str() );
 	printf( "\t[--%s <display mode>=%d]\n" , DisplayMode.name.c_str() , DisplayMode.value );
 	printf( "\t\t%d] One Region \n", ONE_REGION_DISPLAY);
@@ -938,7 +938,7 @@ template< typename PreReal , typename Real >
 void LineConvolution< PreReal , Real >::Init( void )
 {
 	sprintf( stepsString , "Steps: 0" );
-	levels = Levels.value;
+	levels = std::max< unsigned int >( Levels.value , 1 );
 	textureWidth = Width.value;
 	textureHeight = Height.value;
 	sharpeningGradientModulation = SharpeningGradientModulation.value;

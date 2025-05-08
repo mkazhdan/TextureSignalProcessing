@@ -124,7 +124,7 @@ namespace MishaK
 #ifdef USE_SIMPLEX_BASIS
 			Point< double , 6 > _values = SimplexElements< 2 , 2 >::Elements()( pos );
 			Point< Point< double , 2 > , 6 , double > _differentials = SimplexElements< 2 , 2 >::Differentials()( pos );
-			for( unsigned int i=0 ; i<6 ; i++ ) values[i] = _values[i] , differentials[i] = _differentials[i];
+			for( unsigned int i=0 ; i<6 ; i++ ) values[i] = _values[ _idx[i] ] , differentials[i] = _differentials[ _idx[i] ];
 #else // !USE_SIMPLEX_BASIS
 			Real xx = pos[0]*pos[0] , xy = pos[0]*pos[1] , yy = pos[1]*pos[1] , x=pos[0] , y=pos[1];
 			values[0] =  2*xx + 4*xy + 2*yy - 3*x - 3*y + 1 , differentials[0] = Point2D< Real >(  4*x + 4*y - 3 ,  4*x + 4*y - 3 );
@@ -142,7 +142,7 @@ namespace MishaK
 #ifdef USE_SIMPLEX_BASIS
 			T t{};
 			Point< double , 6 > eValues = SimplexElements< 2 , 2 >::Elements()( pos );
-			for( unsigned int i=0 ; i<6 ; i++ ) t += values[i] * eValues[i];
+			for( unsigned int i=0 ; i<6 ; i++ ) t += values[i] * eValues[ _idx[i] ];
 			return t;
 #else // !USE_SIMPLEX_BASIS
 			Real xx = pos[0] * pos[0] , xy = pos[0]*pos[1] , yy = pos[1] * pos[1] , x = pos[0] , y = pos[1];
@@ -162,7 +162,7 @@ namespace MishaK
 #ifdef USE_SIMPLEX_BASIS
 			Point2D< T > d;
 			Point< Point< double , 2 > , 6 , double > dValues = SimplexElements< 2 , 2 >::Differentials()( pos );
-			for( unsigned int i=0 ; i<6 ; i++ ) d[0] += values[i] * dValues[i][0] , d[1] += values[i] * dValues[i][1];
+			for( unsigned int i=0 ; i<6 ; i++ ) d[0] += values[i] * dValues[ _idx[i] ][0] , d[1] += values[i] * dValues[ _idx[i] ][1];
 			return d;
 #else // !USE_SIMPLEX_BASIS
 			Real x = pos[0] , y = pos[1];

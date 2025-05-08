@@ -65,12 +65,12 @@ namespace MishaK
 		ExplicitIndexVector< ChartInteriorCellIndex , SquareMatrix< GeometryReal , 4 > > cellStiffness( gridChart.numInteriorCells() );
 		ExplicitIndexVector< ChartInteriorCellIndex , SquareMatrix< GeometryReal , 4 > > cellMass( gridChart.numInteriorCells() );
 
-		ExplicitIndexVector< ChartRefinedBoundaryTriangleIndex , SquareMatrix< GeometryReal , 6 > > triangleElementStiffness( static_cast< unsigned int >(gridChart.endBoundaryTriangleIndex) );
-		ExplicitIndexVector< ChartRefinedBoundaryTriangleIndex , SquareMatrix< GeometryReal , 6 > > triangleElementMass( static_cast< unsigned int >(gridChart.endBoundaryTriangleIndex) );
+		ExplicitIndexVector< ChartBoundaryTriangleIndex , SquareMatrix< GeometryReal , 6 > > triangleElementStiffness( static_cast< unsigned int >(gridChart.endBoundaryTriangleIndex) );
+		ExplicitIndexVector< ChartBoundaryTriangleIndex , SquareMatrix< GeometryReal , 6 > > triangleElementMass( static_cast< unsigned int >(gridChart.endBoundaryTriangleIndex) );
 
 		ExplicitIndexVector< ChartInteriorCellIndex , SquareMatrix< GeometryReal , 4 > > cellDivergence;
 		if( computeDivergence ) cellDivergence.resize( gridChart.numInteriorCells() );
-		ExplicitIndexVector< ChartRefinedBoundaryTriangleIndex , Matrix< GeometryReal , 6 , 15 > > triangleElementDivergence;
+		ExplicitIndexVector< ChartBoundaryTriangleIndex , Matrix< GeometryReal , 6 , 15 > > triangleElementDivergence;
 		if( computeDivergence ) triangleElementDivergence.resize( static_cast< unsigned int >(gridChart.endBoundaryTriangleIndex) );
 
 		//// Rasterize
@@ -357,7 +357,7 @@ namespace MishaK
 								BoundaryIndexedTriangle< GeometryReal > element = cellBoundaryTriangles[bt];
 								std::vector< Point2D< GeometryReal > > element_vertices(3);
 								for( int ii=0 ; ii<3 ; ii++ ) element_vertices[ii] = TextureToCell( element[ii] );
-								ChartRefinedBoundaryTriangleIndex boundaryTriangleIndex = element.id;
+								ChartBoundaryTriangleIndex boundaryTriangleIndex = element.id;
 
 								IndexedPolygon< GeometryReal > polygon;
 
@@ -556,11 +556,11 @@ namespace MishaK
 					if( ClipTriangleToPrimalCell( polygon , i , j , gridChart.cellSizeW , gridChart.cellSizeH ) )
 					{
 						// Transform the polygon vertices into the coordinate frame of the cell
-						for( int ii=0 ; ii<polygon.size() ; ii++ ) polygon[ii] = TextureToElement( polygon[ii] );
+						for( unsigned int ii=0 ; ii<polygon.size() ; ii++ ) polygon[ii] = TextureToElement( polygon[ii] );
 						SquareMatrix< GeometryReal , 4 > polygonStiffness , polygonMass;
 						SquareMatrix< GeometryReal , 4 > polygonDivergence;
 
-						for( int p=2 ; p<polygon.size() ; p++ )
+						for( unsigned int p=2 ; p<polygon.size() ; p++ )
 						{
 							Point2D< GeometryReal > dm[2] = { polygon[p-1]-polygon[0] , polygon[p]-polygon[0] };
 
@@ -635,7 +635,7 @@ namespace MishaK
 						BoundaryIndexedTriangle< GeometryReal > element = cellBoundaryTriangles[bt];
 						std::vector< Point2D< GeometryReal > > element_vertices(3);
 						for( int ii=0 ; ii<3 ; ii++ ) element_vertices[ii] = TextureToCell( element[ii] );
-						ChartRefinedBoundaryTriangleIndex boundaryTriangleIndex = element.id;
+						ChartBoundaryTriangleIndex boundaryTriangleIndex = element.id;
 
 						IndexedPolygon< GeometryReal > polygon;
 						SetIndexedPolygonFromBoundaryTriangle( element , polygon );
@@ -921,7 +921,7 @@ namespace MishaK
 			const std::vector< BoundaryIndexedTriangle< GeometryReal > > & boundaryTriangles = gridChart.boundaryTriangles[ ChartBoundaryCellIndex(c) ];
 			for( unsigned int b=0 ; b<boundaryTriangles.size() ; b++ )
 			{
-				ChartRefinedBoundaryTriangleIndex boundaryTriangleIndex = boundaryTriangles[b].id;
+				ChartBoundaryTriangleIndex boundaryTriangleIndex = boundaryTriangles[b].id;
 				const QuadraticElement::Index & indices = boundaryTriangles[b].indices;
 				QuadraticElement::Index fineTriangleElementIndices;
 				for( unsigned int k=0 ; k<6 ; k++ ) fineTriangleElementIndices[k] = fineBoundaryIndex[ static_cast< unsigned int >(indices[k]) ];

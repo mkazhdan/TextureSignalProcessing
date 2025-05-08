@@ -265,7 +265,7 @@ void FullMatrixConstruction( const GridAtlas< GeometryReal , MatrixReal > &gridA
 template< typename GeometryReal , typename MatrixReal >
 void UpdateMultigridCoefficients( const HierarchicalSystem< GeometryReal , MatrixReal > &hierarchy , std::vector< SystemCoefficients< MatrixReal > > &multigridCoefficients , const SystemCoefficients< MatrixReal > &inputCoefficients , SparseMatrix< MatrixReal , int > &coarseSystemMatrix , bool useDeepReciprocals, bool verbose=false)
 {
-	int levels = (int)hierarchy.gridAtlases.size();
+	unsigned int levels = (unsigned int)hierarchy.gridAtlases.size();
 
 	multigridCoefficients.resize( levels );
 
@@ -308,7 +308,7 @@ void UpdateMultigridCoefficients( const HierarchicalSystem< GeometryReal , Matri
 	{
 		if( verbose ) timer.reset();
 		//Set Deep coefficients to reciprocal
-		for( int i=0 ; i<levels-1 ; i++ )
+		for( unsigned int i=0 ; i<levels-1 ; i++ )
 		{
 			std::vector< MatrixReal > &deepCoefficients = multigridCoefficients[i].deepCoefficients;
 			ThreadPool::ParallelFor

@@ -885,7 +885,7 @@ void InitializeAtlasHierachicalBoundaryCoefficients
 		{
 			int pi = ci + li;
 			int pj = cj + lj;
-			if( pi>=0 && pi<coarseChartWidth && pj>=0 && pj<coarseChartHeight )
+			if( pi>=0 && pi<(int)coarseChartWidth && pj>=0 && pj<(int)coarseChartHeight )
 			{
 				AtlasCombinedTexelIndex coarseCombinedIndex = coarseChart.texelIndices(pi, pj).combined;
 				if( coarseCombinedIndex!=AtlasCombinedTexelIndex(-1) )
@@ -926,7 +926,7 @@ void InitializeAtlasHierachicalBoundaryCoefficients
 		{
 			int pi = fi + di;
 			int pj = fj + dj;
-			if( pi>=0 && pi<fineChartWidth && pj>=0 && pj<fineChartHeight )
+			if( pi>=0 && pi<(int)fineChartWidth && pj>=0 && pj<(int)fineChartHeight )
 			{
 				AtlasCombinedTexelIndex fineCombinedIndex = fineChart.texelIndices(pi, pj).combined;
 				if( fineCombinedIndex!=AtlasCombinedTexelIndex(-1) )

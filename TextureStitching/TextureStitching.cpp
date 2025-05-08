@@ -59,7 +59,7 @@ CmdLineParameter< std::string > InputLowFrequency( "inLow" );
 CmdLineParameter< std::string > Output( "out" );
 CmdLineParameter< int   > OutputVCycles( "outVCycles" , 6 );
 CmdLineParameter< float > InterpolationWeight( "interpolation" , 1e2 );
-CmdLineParameter< int   > Levels( "levels" , 4 );
+CmdLineParameter< unsigned int > Levels( "levels" , 4 );
 CmdLineParameter< int   > MatrixQuadrature( "mQuadrature" , 6 );
 
 CmdLineParameter< int   > MultigridBlockHeight ( "mBlockH" ,  16 );
@@ -136,7 +136,7 @@ void ShowUsage( const char *ex )
 #else // !NO_OPEN_GL_VISUALIZATION
 	printf( "\t[--%s <camera configuration file>]\n" , CameraConfig.name.c_str() );
 #endif // NO_OPEN_GL_VISUALIZATION
-	printf( "\t[--%s <hierarchy levels>=%d]\n" , Levels.name.c_str(), Levels.value );
+	printf( "\t[--%s <hierarchy levels>=%d]\n" , Levels.name.c_str(), static_cast< int >(Levels.value) );
 	printf( "\t[--%s <multigrid block width>=%d]\n" , MultigridBlockWidth.name.c_str() , MultigridBlockWidth.value );
 	printf( "\t[--%s <multigrid block height>=%d]\n" , MultigridBlockHeight.name.c_str() , MultigridBlockHeight.value );
 	printf( "\t[--%s <multigrid padded width>=%d]\n" , MultigridPaddedWidth.name.c_str() , MultigridPaddedWidth.value );
@@ -157,7 +157,7 @@ public:
 	static int textureWidth;
 	static int textureHeight;
 	static Real interpolationWeight;
-	static int levels;
+	static unsigned int levels;
 
 	static HierarchicalSystem< PreReal , Real > hierarchy;
 	static bool rhsUpdated;
@@ -318,7 +318,7 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth > Expl
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > int																Stitching< PreReal , Real , TextureBitDepth >::steps;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > char															Stitching< PreReal , Real , TextureBitDepth >::stepsString[1024];
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > int																Stitching< PreReal , Real , TextureBitDepth >::levels;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > unsigned int													Stitching< PreReal , Real , TextureBitDepth >::levels;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > HierarchicalSystem< PreReal , Real >							Stitching< PreReal , Real , TextureBitDepth >::hierarchy;
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > bool															Stitching< PreReal , Real , TextureBitDepth >::rhsUpdated = true;
@@ -1038,7 +1038,7 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth >
 void Stitching< PreReal , Real , TextureBitDepth >::Init( void )
 {
 	sprintf( stepsString , "Steps: 0" );
-	levels = std::max< int >( Levels.value , 1 );
+	levels = std::max< unsigned int >( Levels.value , 1 );
 	interpolationWeight = InterpolationWeight.value;
 
 	mesh.read( In.values[0] , DetailVerbose.set , CollapseEpsilon.value );

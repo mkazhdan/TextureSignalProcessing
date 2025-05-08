@@ -149,7 +149,6 @@ namespace MishaK
 		unsigned int &lastAddedEdgeIndex
 	)
 	{
-
 		for( unsigned int c=0 ; c<gridChart.boundaryTriangles.size() ; c++ )
 		{
 			const std::vector< BoundaryIndexedTriangle< GeometryReal > > & boundaryTriangles = gridChart.boundaryTriangles[ ChartBoundaryCellIndex(c) ];

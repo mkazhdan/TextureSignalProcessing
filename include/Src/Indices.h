@@ -76,8 +76,8 @@ namespace MishaK
 	struct            BoundaryMidPointIndex : public ExplicitIndex< unsigned int ,            BoundaryMidPointIndex >{ using ExplicitIndex< unsigned int ,            BoundaryMidPointIndex >::ExplicitIndex; };
 
 	// Auxilary node index type
-	struct ChartRefinedBoundaryTriangleIndex : public ExplicitIndex< unsigned int , ChartRefinedBoundaryTriangleIndex >{ using ExplicitIndex< unsigned int , ChartRefinedBoundaryTriangleIndex >::ExplicitIndex; };
-	struct   AtlasRefinedBoundaryVertexIndex : public ExplicitIndex< unsigned int ,   AtlasRefinedBoundaryVertexIndex >{ using ExplicitIndex< unsigned int ,   AtlasRefinedBoundaryVertexIndex >::ExplicitIndex; };
+	struct       ChartBoundaryTriangleIndex : public ExplicitIndex< unsigned int ,       ChartBoundaryTriangleIndex >{ using ExplicitIndex< unsigned int ,       ChartBoundaryTriangleIndex >::ExplicitIndex; };
+	struct  AtlasRefinedBoundaryVertexIndex : public ExplicitIndex< unsigned int ,  AtlasRefinedBoundaryVertexIndex >{ using ExplicitIndex< unsigned int ,  AtlasRefinedBoundaryVertexIndex >::ExplicitIndex; };
 
 #else // !DEBUG_INDEXING
 	template< typename T , typename Data >
@@ -94,6 +94,7 @@ namespace MishaK
 	using           ChartMeshHalfEdgeIndex = unsigned int;
 	using               AtlasMeshEdgeIndex = unsigned int;
 	using     AtlasMeshBoundaryVertexIndex = unsigned int;
+	using       ChartBoundaryTriangleIndex = unsigned int;
 
 	using             AtlasGridVertexIndex = unsigned int;
 	using               AtlasGridEdgeIndex = unsigned int;
@@ -118,6 +119,7 @@ namespace MishaK
 	using            BoundaryMidPointIndex = unsigned int;
 
 	// Auxiliary node index type
+	using       ChartBoundaryTriangleIndex = unsigned int;
 	using  AtlasRefinedBoundaryVertexIndex = unsigned int;
 
 #endif // DEBUG_INDEXING

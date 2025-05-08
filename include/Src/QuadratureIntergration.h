@@ -222,7 +222,7 @@ namespace MishaK
 		const AtlasChart< GeometryReal > &atlasChart ,
 		const GridChart< GeometryReal > &gridChart ,
 		const ExplicitIndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > >& interiorCellLineIndex ,
-		const std::vector< AtlasInteriorOrBoundaryNodeIndex >& fineBoundaryIndex ,
+		const std::vector< AtlasInteriorOrBoundaryNodeIndex > &fineBoundaryIndex ,
 		ElementSamples &elementSamples ,
 		std::mutex &element_samples_bilinear_mutex ,
 		std::mutex &element_samples_quadratic_mutex ,
@@ -411,7 +411,7 @@ namespace MishaK
 					if( ClipTriangleToPrimalCell( polygon , i , j , gridChart.cellSizeW , gridChart.cellSizeH ) )
 					{
 						// Transform the polygon vertices into the coordinate frame of the cell
-						for( int ii=0 ; ii<polygon.size() ; ii++ ) polygon[ii] = TextureToElement( polygon[ii] );
+						for( unsigned int ii=0 ; ii<polygon.size() ; ii++ ) polygon[ii] = TextureToElement( polygon[ii] );
 
 						AtlasInteriorCellIndex atlasInteriorIndex = gridChart.chartToAtlasInteriorCellIndex( chartInteriorIndex );
 						unsigned int cellLineId = interiorCellLineIndex[atlasInteriorIndex].first;
@@ -422,7 +422,7 @@ namespace MishaK
 						bilinearElementSample.cellOffset = cellLineOffset;
 						for( int x=0 ; x<2 ; x++ ) for( int y=0 ; y<2 ; y++ ) bilinearElementSample.tensor(x,y) = (typename ElementSamples::Real)element_metric_inverse(x,y);
 
-						for( int p=2 ; p<polygon.size() ; p++ )
+						for( unsigned int p=2 ; p<polygon.size() ; p++ )
 						{
 							Point2D< GeometryReal > dm[2] = { polygon[p-1]-polygon[0] , polygon[p]-polygon[0] };
 							SquareMatrix< GeometryReal , 2 > fragment_to_element_differential;

@@ -68,7 +68,7 @@ CmdLineParameter< float > GradientModulation( "modulation" , 1.0 );
 #else // !NO_OPEN_GL_VISUALIZATION
 CmdLineParameter< int   > DisplayMode( "display" , FOUR_REGION_DISPLAY );
 #endif // 
-CmdLineParameter< int   > Levels("levels", 4);
+CmdLineParameter< unsigned int > Levels("levels", 4);
 CmdLineParameter< int   > MatrixQuadrature( "mQuadrature" , 6 );
 
 CmdLineParameter< int   > MultigridBlockHeight ( "mBlockH" , 16 );
@@ -149,7 +149,7 @@ void ShowUsage( const char* ex )
 	printf( "\t[--%s]\n" , Verbose.name.c_str() );
 
 	printf( "\t[--%s <camera configuration file>]\n" , CameraConfig.name.c_str() );
-	printf( "\t[--%s <hierarchy levels>=%d]\n" , Levels.name.c_str() , Levels.value );
+	printf( "\t[--%s <hierarchy levels>=%d]\n" , Levels.name.c_str() , static_cast< int >(Levels.value) );
 	printf( "\t[--%s]\n" , DetailVerbose.name.c_str() );
 #ifdef NO_OPEN_GL_VISUALIZATION
 #else // !NO_OPEN_GL_VISUALIZATION
@@ -185,7 +185,7 @@ public:
 	static int textureHeight;
 	static Real interpolationWeight;
 	static Real gradientModulation;
-	static int levels;
+	static unsigned int levels;
 
 	static HierarchicalSystem< PreReal , Real > hierarchy;
 	static bool gradientModulationUpdated;
@@ -327,7 +327,7 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth > Expl
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > int																	TextureFilter< PreReal , Real , TextureBitDepth >::steps;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > char																TextureFilter< PreReal , Real , TextureBitDepth >::stepsString[1024];
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > int																	TextureFilter< PreReal , Real , TextureBitDepth >::levels;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > unsigned int														TextureFilter< PreReal , Real , TextureBitDepth >::levels;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > HierarchicalSystem< PreReal , Real >								TextureFilter< PreReal , Real , TextureBitDepth >::hierarchy;
 
 
@@ -1002,7 +1002,7 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth >
 void TextureFilter< PreReal , Real , TextureBitDepth >::Init( void )
 {
 	sprintf( stepsString , "Steps: 0" );
-	levels = std::max<int>(Levels.value,1);
+	levels = std::max< unsigned int>( Levels.value , 1 );
 	interpolationWeight = InterpolationWeight.value;
 	gradientModulation = GradientModulation.value;
 

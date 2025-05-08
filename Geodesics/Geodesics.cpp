@@ -48,7 +48,7 @@ CmdLineParameter< std::string > Input( "in" );
 CmdLineParameter< int   > Width( "width" , 1024 );
 CmdLineParameter< int   > Height( "height" , 1024 );
 CmdLineParameter< float > DiffusionInterpolationWeight( "interpolation" , 1e3 );
-CmdLineParameter< int   > Levels( "levels" , 4 );
+CmdLineParameter< unsigned int > Levels( "levels" , 4 );
 CmdLineParameter< std::string > CameraConfig( "camera" );
 CmdLineReadable Serial( "serial" );
 CmdLineParameter< int   > DisplayMode( "display" , TWO_REGION_DISPLAY );
@@ -98,7 +98,7 @@ void ShowUsage( const char* ex )
 	printf( "\t[--%s]\n" , Verbose.name.c_str() );
 
 	printf( "\t[--%s <camera configuration file>]\n" , CameraConfig.name.c_str() );
-	printf( "\t[--%s <hierarchy levels>=%d]\n" , Levels.name.c_str() , Levels.value );
+	printf( "\t[--%s <hierarchy levels>=%d]\n" , Levels.name.c_str() , static_cast< unsigned int >(Levels.value) );
 	printf( "\t[--%s]\n" , DetailVerbose.name.c_str() );
 	printf( "\t[--%s <display mode>=%d]\n" , DisplayMode.name.c_str() , DisplayMode.value );
 	printf( "\t\t%d] One Region \n" , ONE_REGION_DISPLAY );
@@ -795,6 +795,7 @@ template< typename PreReal , typename Real >
 void Geodesics< PreReal , Real >::Init( void )
 {
 	sprintf( stepsString , "Steps: 0" );
+//	levels = std::max< unsigned int >( Levels.value , 1 );
 	levels = Levels.value;
 	diffusionInterpolationWeight = DiffusionInterpolationWeight.value;
 	textureWidth = Width.value;

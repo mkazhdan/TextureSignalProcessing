@@ -58,7 +58,7 @@ CmdLineParameter< float > Speed( "speed" , 10.f );
 CmdLineParameterArray< float , 2 > FeedKillRates( "fk" , StripeRates );
 CmdLineParameter< float > DiffusionScale( "diff" , 1.f );
 CmdLineParameter< float > SamplesFraction( "samples" );
-CmdLineParameter< int   > Levels( "levels" , 4 );
+CmdLineParameter< unsigned int > Levels( "levels" , 4 );
 CmdLineParameter< std::string > CameraConfig( "camera" );
 CmdLineParameter< int   > DisplayMode( "display" , TWO_REGION_DISPLAY );
 CmdLineParameter< int   > MatrixQuadrature( "mQuadrature" , 6 );
@@ -156,7 +156,7 @@ public:
 	static Real kill;
 	static Real feed;
 	static Real speed;
-	static int levels;
+	static unsigned int levels;
 	static int steps;
 	static char stepsString[];
 	static int whichConcentration;
@@ -279,7 +279,7 @@ template< typename PreReal , typename Real > ExplicitIndexVector< AtlasCombinedC
 
 template< typename PreReal , typename Real > int																	GrayScottReactionDiffusion< PreReal , Real >::steps;
 template< typename PreReal , typename Real > char																	GrayScottReactionDiffusion< PreReal , Real >::stepsString[1024];
-template< typename PreReal , typename Real > int																	GrayScottReactionDiffusion< PreReal , Real >::levels;
+template< typename PreReal , typename Real > unsigned int															GrayScottReactionDiffusion< PreReal , Real >::levels;
 template< typename PreReal , typename Real > HierarchicalSystem< PreReal , Real >									GrayScottReactionDiffusion< PreReal , Real >::hierarchy;
 
 template< typename PreReal , typename Real > unsigned char *														GrayScottReactionDiffusion< PreReal , Real >::outputBuffer;
@@ -612,7 +612,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 					0 , mesh.numTriangles() ,
 					[&]( unsigned int , size_t i )
 					{
-						Simplex< PreReal , 3 , 2 > s = mesh.surfaceTriangle(i);
+						Simplex< PreReal , 3 , 2 > s = mesh.surfaceTriangle( static_cast< unsigned int >(i) );
 						Point3D< PreReal > d[] = { s[1]-s[0] , s[2]-s[0] };
 						SquareMatrix< PreReal , 2 > Dot;
 						for( int j=0 ; j<2 ; j++ ) for( int k=0 ; k<2 ; k++ ) Dot(j,k) = Point3D< PreReal >::Dot( d[j] , d[k] );
@@ -843,7 +843,7 @@ template< typename PreReal , typename Real >
 void GrayScottReactionDiffusion< PreReal , Real >::Init( void )
 {
 	sprintf( stepsString , "Steps: 0" );
-	levels = Levels.value;
+	levels = std::max< unsigned int >( Levels.value , 1 );
 	feed = FeedKillRates.values[0];
 	kill = FeedKillRates.values[1];
 	speed = Speed.value;
