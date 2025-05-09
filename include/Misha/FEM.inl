@@ -1121,7 +1121,7 @@ FEM::CoordinateXForm< Real > FEM::RiemannianMesh< Real , Index >::exp( ConstPoin
 			int he = p.tIdx * 3 + idx , ohe = _edgeMap.opposite( he );
 			if( ohe==-1 )
 			{
-				MK_WARN_ONCE( "Hit boundary" );
+				if( !noWarning ) MK_WARN_ONCE( "Hit boundary" );
 				return xForm;
 			}
 
@@ -1166,7 +1166,7 @@ FEM::CoordinateXForm< Real > FEM::RiemannianMesh< Real , Index >::exp( ConstPoin
 			p.p += p.v*s ; p.v -= p.v*s;
 			if( opposite( he )==-1 )
 			{
-				MK_WARN_ONCE( "Hit boundary" );
+				if( !noWarning ) MK_WARN_ONCE( "Hit boundary" );
 				return xForm;
 			}
 
@@ -1249,7 +1249,7 @@ FEM::CoordinateXForm< Real > FEM::RiemannianMesh< Real , Index >::flow( ConstPoi
 				int he = p.tIdx*3 + idx , ohe = _edgeMap.opposite( he );
 				if( opposite( he )==-1 )
 				{
-					MK_WARN_ONCE( "Hit boundary" );
+					if( !noWarning ) MK_WARN_ONCE( "Hit boundary" );
 					return xForm;
 				}
 
