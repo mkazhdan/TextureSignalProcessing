@@ -123,7 +123,8 @@ void AddEdgeGridIntersection
 
 #ifdef SEPARATE_POLYGONS
 template< typename GeometryReal >
-void InitializeChartBoundaryTriangleGridIntersections
+void
+InitializeChartBoundaryTriangleGridIntersections
 (
 	const AtlasChart< GeometryReal > & atlasChart ,
 	const std::map< AtlasMeshVertexIndex , AtlasMeshBoundaryVertexIndex > & atlasMeshVertexToBoundaryVertex ,
@@ -168,7 +169,6 @@ void InitializeChartBoundaryTriangleGridIntersections
 	Range nodeRange , cellRange;
 	nodeRange.second[0] = gridChart.width  , cellRange.second[0] = gridChart.width-1;
 	nodeRange.second[1] = gridChart.height , cellRange.second[1] = gridChart.height-1;
-
 
 	for( unsigned int t=0 ; t<atlasChart.numTriangles() ; t++ )
 	{
@@ -388,7 +388,7 @@ GetChartBoundaryPolygons
 					if( cellID==ChartBoundaryCellIndex(-1) ) MK_THROW( "Boundary cell invalid ID" );
 #endif // SANITY_CHECK
 #ifdef SEPARATE_POLYGONS
-					std::vector< std::pair< ChartMeshTriangleIndex , std::vector< GridMeshIntersectionKey > > > &polygons = cellPolygons[cellID];
+					std::vector< std::pair< ChartMeshTriangleIndex , std::vector< GridMeshIntersectionKey > > > & polygons = cellPolygons[cellID];
 					IndexedIntersectionPolygon< GeometryReal > poly = GetIndexedIntersectionPolygon( I[0] , I[1] );
 					ClipIndexedIntersectionPolygonToIndexedIntersectionTriangle( poly , indexedTriangle );
 #ifdef SANITY_CHECK
