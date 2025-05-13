@@ -43,19 +43,18 @@ DAMAGE.
 #define NEW_CODE						// General-purpose experimental code encapsulation
 #define USE_VARIATIONAL_SHAPE_FUNCTIONS	// Use variational shape functions to define the system instead of a DT
 
-#define USE_SIMPLEX_BASIS				// Cleaner, but slower
 
 //#define NO_OPEN_GL_VISUALIZATION		// Disable OpenGL visualization
-#define DEBUG_INDEXING					// Use separate classes to sanity check indexing
-#define SANITY_CHECK					// Enables sanity checks for debugging purposes
+//#define DEBUG_INDEXING					// Use separate classes to sanity check indexing
+//#define SANITY_CHECK					// Enables sanity checks for debugging purposes
+//#define USE_SIMPLEX_BASIS				// Cleaner, but slower
 
-//#define USE_RASTERIZER				// Use triangle/edge rasterization code [SLOW]
-#define REORDER_BOUNDARY			// Re-order the boundary edges so that they are sequential [NOT NECESSARY]
+#define USE_RASTERIZER				// Use triangle/edge rasterization code [SLOW]
+//#define USE_RASTERIZER_1			// USE_RASTERIZER [HierarchyConstruction.inl], this is where the rasterization slow down is
 
 
 #ifdef USE_RASTERIZER
-//#define PRE_CLIP_TRIANGLES			// Clip and store triangles with cells [SLOW AND MEMORY EXPENSIVE]
-#define SEPARATE_POLYGONS			// Keep the polygons obtained by clipping triangles to boundary cells separate
+//#define SEPARATE_POLYGONS			// Keep the polygons obtained by clipping triangles to boundary cells separate
 #endif // USE_RASTERIZER
 
 #define USE_EIGEN

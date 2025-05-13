@@ -103,48 +103,6 @@ const
 		for( unsigned int he=0 ; he<atlasChart.numTriangles()*3 ; he++ )
 			if( isBoundaryHalfEdge[ static_cast< unsigned int >( atlasChart.atlasHalfEdge( ChartMeshHalfEdgeIndex(he) ) ) ] )
 				boundaryHalfEdges.push_back( ChartMeshHalfEdgeIndex(he) );
-
-#ifdef REORDER_BOUNDARY
-		// Re-orer the boundary edges so that they are in sequence
-		struct Edge
-		{
-			SimplexIndex< 1 , ChartMeshVertexIndex > edgeIndex;
-			ChartMeshHalfEdgeIndex he;
-			bool processed;
-		};
-		std::vector< Edge > _boundaryHalfEdges( boundaryHalfEdges.size() );
-		for( unsigned int i=0 ; i<boundaryHalfEdges.size() ; i++ )
-		{
-			_boundaryHalfEdges[i].he = boundaryHalfEdges[i];
-			_boundaryHalfEdges[i].edgeIndex = atlasChart.edgeIndex( boundaryHalfEdges[i] );
-			_boundaryHalfEdges[i].processed = false;
-		}
-		std::sort( _boundaryHalfEdges.begin() , _boundaryHalfEdges.end() , []( const Edge &e1 , const Edge &e2 ){ return e1.edgeIndex[0]<e2.edgeIndex[0]; } );
-
-		std::function< unsigned int ( ChartMeshVertexIndex , const Edge * , unsigned int , unsigned int ) > FindEdge = [&]( ChartMeshVertexIndex v , const Edge *edges , unsigned int sz , unsigned int off )
-			{
-				if( sz==1 )
-				{
-					if( edges[0].edgeIndex[0]==v ) return off;
-					else
-					{
-						MK_THROW( "Could not find vertex: " , v );
-						return static_cast< unsigned int >(-1);
-					}
-				}
-				else if( v<edges[sz/2].edgeIndex[0] ) return FindEdge( v , edges , sz/2 , off );
-				else return FindEdge( v , edges+(sz/2) , sz-(sz/2) , off+(sz/2) );
-			};
-		unsigned int e=0;
-
-		for( unsigned int i=0 ; i<boundaryHalfEdges.size() ; i++ )
-		{
-			e = FindEdge( _boundaryHalfEdges[e].edgeIndex[1] , &_boundaryHalfEdges[0] , (unsigned int)_boundaryHalfEdges.size() , 0 );
-			if( _boundaryHalfEdges[e].processed ) MK_THROW( "Edge already processed" );
-			_boundaryHalfEdges[e].processed = true;
-			boundaryHalfEdges[e] = _boundaryHalfEdges[e].he;
-		}
-#endif // REORDER_BOUNDARY
 	}
 	return atlasCharts;
 }

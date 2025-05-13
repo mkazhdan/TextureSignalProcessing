@@ -44,9 +44,6 @@ DAMAGE.
 #include <Misha/Atomic.Geometry.h>
 #endif // USE_RASTERIZER
 #include "IndexedPolygon.h"
-#ifdef PRE_CLIP_TRIANGLES
-#include "PolygonClipping.h"
-#endif // PRE_CLIP_TRIANGLES
 #include "ImageIO.h"
 
 namespace MishaK
@@ -498,9 +495,6 @@ namespace MishaK
 		Image< TexelType > texelType;
 		Image< AtlasMeshTriangleIndex > triangleID;
 		Image< Point2D< GeometryReal > > barycentricCoords;
-#ifdef PRE_CLIP_TRIANGLES
-		Image< std::vector< std::pair< ChartMeshTriangleIndex , CellClippedTriangle< GeometryReal > > > > clippedTriangles;
-#endif // PRE_CLIP_TRIANGLES
 
 		AtlasInteriorCellIndex chartToAtlasInteriorCellIndex( ChartInteriorCellIndex idx ) const { return static_cast< AtlasInteriorCellIndex >( static_cast< unsigned int >(idx) + _interiorCellOffset ); }
 		ChartInteriorCellIndex atlasToChartInteriorCellIndex( AtlasInteriorCellIndex idx ) const { return static_cast< ChartInteriorCellIndex >( static_cast< unsigned int >(idx) - _interiorCellOffset ); }

@@ -106,11 +106,6 @@ void InitializeGridChartsActiveNodes
 	Image< Point2D< GeometryReal > > &barycentricCoords = gridChart.barycentricCoords;
 	barycentricCoords.resize( width , height );
 
-#ifdef PRE_CLIP_TRIANGLES
-	Image< std::vector< std::pair< ChartMeshTriangleIndex , CellClippedTriangle< GeometryReal > > > > &clippedTriangles = gridChart.clippedTriangles;
-	clippedTriangles.resize( width-1 , height-1 );
-#endif // PRE_CLIP_TRIANGLES
-
 #ifdef USE_RASTERIZER
 	using Range = RegularGrid< 2 >::Range;
 	using Index = RegularGrid< 2 >::Index;
@@ -147,7 +142,7 @@ void InitializeGridChartsActiveNodes
 	//(1) Add interior texels
 #endif // USE_RASTERIZER
 
-#ifdef USE_RASTERIZER
+#ifdef USE_RASTERIZER_1
 	// Rasterize triangles into nodes/cells
 	for( unsigned int t=0 ; t<atlasChart.numTriangles() ; t++ )
 	{
@@ -183,23 +178,7 @@ void InitializeGridChartsActiveNodes
 		// Process texels whose support overlaps a triangle
 		Rasterizer2D::RasterizeSupports< false , false >( simplex , Kernel , nodeRange );
 
-#ifdef PRE_CLIP_TRIANGLES
-		{
-			Simplex< double , 2 , 2 > normalizedSimplex = GetTriangle( ChartMeshTriangleIndex(t) , false );
-
-			auto Kernel = [&]( Index I )
-				{
-					cellType(I) = CellType::Interior;
-					CellClippedTriangle poly( normalizedSimplex );
-					if( ClipTriangleToPrimalCell( poly , I[0] , I[1] , gridChart.cellSizeW , gridChart.cellSizeH ) ) clippedTriangles(I).push_back( std::make_pair( ChartMeshTriangleIndex(t) , poly ) );
-					else MK_THROW( "Expected triangle to intersect cell" );
-				};
-			// Process cells
-			Rasterizer2D::RasterizeSupports< true , true >( simplex , Kernel , cellRange );
-		}
-#else // !PRE_CLIP_TRIANGLES
 		Rasterizer2D::RasterizeSupports< true , true >( simplex , [&]( Index I ){ cellType(I)=CellType::Interior; } , cellRange );
-#endif // PRE_CLIP_TRIANGLES
 	}
 
 	// Over-write the node designation for nodes covered by a triangle
@@ -227,7 +206,7 @@ void InitializeGridChartsActiveNodes
 			};
 		nodeRange.process( Kernel );
 	}
-#else // !USE_RASTERIZER
+#else // !USE_RASTERIZER_1
 
 	for( unsigned int t=0 ; t<atlasChart.numTriangles() ; t++ )
 	{
@@ -245,7 +224,7 @@ void InitializeGridChartsActiveNodes
 #ifdef DEBUG_ATLAS
 				nodeOwner(I) = atlasChart.atlasTriangle(t);
 #endif // DEBUG_ATLAS
-				triangleID(I) = t;
+				chartTriangleID(I) = AtlasMeshTriangleIndex(t);
 				Point3D< double > bc = simplex.barycentricCoordinates( Point2D< double >( I[0] , I[1] ) );
 				barycentricCoords(I) = Point2D< double >( bc[1] , bc[2] );
 			};
@@ -288,9 +267,9 @@ void InitializeGridChartsActiveNodes
 		std::pair< ChartMeshTriangleIndex , unsigned int > tkIndex = FactorChartMeshHalfEdgeIndex( atlasChart.boundaryHalfEdges[e] );
 
 #ifdef USE_RASTERIZER
-		Simplex< double , 2 , 2 > simplex = GetTriangle( tIndex );
+		Simplex< double , 2 , 2 > simplex = GetTriangle( tkIndex.first );
 		Simplex< double , 2 , 1 > subSimplex;
-		subSimplex[0] = simplex[kIndex] , subSimplex[1] = simplex[(kIndex+1)%3];
+		subSimplex[0] = simplex[tkIndex.second] , subSimplex[1] = simplex[(tkIndex.second+1)%3];
 		auto Kernel = [&]( Index I )
 			{
 				if( texelType(I)!=TexelType::BoundarySupportedAndCovered )
@@ -300,22 +279,22 @@ void InitializeGridChartsActiveNodes
 					Point2D< GeometryReal > newBC = Point2D< GeometryReal >( Point2D< double >( bc[1] , bc[2] ) );
 
 					// If no triangle has been assigned, assign this one
-					if( triangleID(I)==-1 )
+					if( chartTriangleID(I)==AtlasMeshTriangleIndex(-1) )
 					{
-						triangleID(I) = tIndex;
+						chartTriangleID(I) = AtlasMeshTriangleIndex( tkIndex.first );
 						barycentricCoords(I) = newBC;
 					}
 					// Otherwise, update if closer
 					else
 					{
 						Point2D< GeometryReal > oldBC = barycentricCoords(I);
-						Simplex< double , 2 , 2 > oldSimplex = GetTriangle( triangleID(I) );
+						Simplex< double , 2 , 2 > oldSimplex = GetTriangle( chartTriangleID(I) );
 						Point< double , 2 > oldP = oldSimplex( oldBC ) , newP = simplex( newBC );
 						double oldD2 = Point< double , 2 >::SquareDistance( oldP , oldSimplex.nearest(oldP) );
 						double newD2 = Point< double , 2 >::SquareDistance( newP ,    simplex.nearest(newP) );
 						if( newD2<oldD2 )
 						{
-							triangleID(I) = tIndex;
+							chartTriangleID(I) = AtlasMeshTriangleIndex( tkIndex.first );
 							barycentricCoords(I) = newBC;
 						}
 					}
@@ -449,12 +428,12 @@ void InitializeGridChartsActiveNodes
 #endif // USE_RASTERIZER
 	}
 
-#ifdef USE_RASTERIZER
-#else // !USE_RASTERIZER
+#ifdef USE_RASTERIZER_1
+#else // !USE_RASTERIZER_1
 	//(3) Add interior cells
 	for( unsigned int j=0 ; j<height-1 ; j++ ) for( unsigned int i=0 ; i<width-1 ; i++ )
 		if( texelType(i,j)==TexelType::BoundarySupportedAndCovered && texelType(i+1,j)==TexelType::BoundarySupportedAndCovered && texelType(i,j+1)==TexelType::BoundarySupportedAndCovered && texelType(i+1,j+1)==TexelType::BoundarySupportedAndCovered && cellType(i,j)==CellType::Exterior ) cellType(i,j) = CellType::Interior;
-#endif // USE_RASTERIZER
+#endif // USE_RASTERIZER_1
 
 #ifdef USE_RASTERIZER
 	//(3) Mark deep nodes
@@ -475,7 +454,7 @@ void InitializeGridChartsActiveNodes
 		if( validDeepNode ) texelType(i,j) = TexelType::InteriorSupported;
 	}
 #endif // USE_RASTERIZER
-#endif // USE_RASTERIZER
+#endif // USE_RASTERIZER_1
 
 	// Transform from chart triangle indices to atlas triangle indices
 	{
@@ -510,6 +489,7 @@ void InitializeGridChartsActiveNodes
 	}
 
 #ifdef USE_RASTERIZER
+#ifdef SANITY_CHECK
 	// Sanity check: Confirm that all active/interior cells are incident on active/non-boundary nodes
 	{
 		auto Kernel = [&]( Index I )
@@ -532,6 +512,7 @@ void InitializeGridChartsActiveNodes
 			};
 		cellRange.process( Kernel );
 	}
+#endif // SANITY_CHECK
 #endif // USE_RASTERIZER
 
 
@@ -643,17 +624,10 @@ void InitializeGridChartsActiveNodes
 	}
 
 	// Initialize thread tasks
-#ifdef NEW_CODE
 	int blockHorizontalOffset = static_cast< int >(multigridBlockInfo.blockWidth) - static_cast< int >(multigridBlockInfo.paddingWidth);
 	int blockVerticalOffset = static_cast< int >(multigridBlockInfo.blockHeight) - static_cast< int >(multigridBlockInfo.paddingHeight);
 	int numHorizontalBlocks = ( static_cast< int >(width) - static_cast< int >(multigridBlockInfo.paddingWidth) - 1 ) / blockHorizontalOffset + 1;
 	int numVerticalBlocks = ( static_cast< int >(height) - static_cast< int >(multigridBlockInfo.paddingHeight) - 1 ) / blockVerticalOffset + 1;
-#else // !NEW_CODE
-	int blockHorizontalOffset = multigridBlockInfo.blockWidth - multigridBlockInfo.paddingWidth;
-	int blockVerticalOffset = multigridBlockInfo.blockHeight - multigridBlockInfo.paddingHeight;
-	int numHorizontalBlocks = ((width - multigridBlockInfo.paddingWidth - 1) / blockHorizontalOffset) + 1;
-	int numVerticalBlocks = ((height - multigridBlockInfo.paddingHeight - 1) / blockVerticalOffset) + 1;
-#endif // NEW_CODE
 
 	for( int bj=0 ; bj<numVerticalBlocks ; bj++ )
 	{

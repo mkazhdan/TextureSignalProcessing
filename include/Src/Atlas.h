@@ -172,8 +172,6 @@ namespace MishaK
 		}
 	};
 
-#ifdef PRE_CLIP_TRIANGLES
-#else // !PRE_CLIP_TRIANGLES
 	template< typename GeometryReal >
 	struct EdgeEquation
 	{
@@ -200,7 +198,6 @@ namespace MishaK
 		Point2D< GeometryReal > _n;
 		GeometryReal _offset;
 	};
-#endif // PRE_CLIP_TRIANGLES
 
 
 #include "AtlasMesh.inl"

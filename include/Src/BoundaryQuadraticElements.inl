@@ -331,7 +331,11 @@ GetChartBoundaryPolygons
 #else // !SEPARATE_POLYGONS
 	ExplicitIndexVector< ChartBoundaryCellIndex , std::vector< IndexedPolygon< GeometryReal > > > boundaryPolygons;
 	// An association of segments to individual cells of a chart
+#ifdef DEBUG_INDEXING
 	std::map< ChartBoundaryCellIndex , std::pair< Point< unsigned int , 2 > , std::vector< std::pair< GridMeshIntersectionKey , GridMeshIntersectionKey > > > > cellSegments;
+#else // !DEBUG_INDEXING
+	std::map< ChartBoundaryCellIndex , std::vector< std::pair< GridMeshIntersectionKey , GridMeshIntersectionKey > > > cellSegments;
+#endif // DEBUG_INDEXING
 #endif // SEPARATE_POLYGONS
 
 	auto GetIndexedTriangle = [&]( ChartMeshTriangleIndex t )
@@ -387,25 +391,24 @@ GetChartBoundaryPolygons
 #ifdef SANITY_CHECK
 					if( cellID==ChartBoundaryCellIndex(-1) ) MK_THROW( "Boundary cell invalid ID" );
 #endif // SANITY_CHECK
+					IndexedIntersectionPolygon< GeometryReal > poly = GetIndexedIntersectionPolygon( I[0] , I[1] );
+					ClipIndexedIntersectionPolygonToIndexedIntersectionTriangle( poly , indexedTriangle );
+#ifdef SANITY_CHECK
+					if( !poly.vertices.size() ) MK_THROW( "Expected triangle to intersect cell" );
+#endif // SANITY_CHECK
+
 #ifdef SEPARATE_POLYGONS
 					std::vector< std::pair< ChartMeshTriangleIndex , std::vector< GridMeshIntersectionKey > > > & polygons = cellPolygons[cellID];
-					IndexedIntersectionPolygon< GeometryReal > poly = GetIndexedIntersectionPolygon( I[0] , I[1] );
-					ClipIndexedIntersectionPolygonToIndexedIntersectionTriangle( poly , indexedTriangle );
-#ifdef SANITY_CHECK
-					if( !poly.vertices.size() ) MK_THROW( "Expected triangle to intersect cell" );
-#endif // SANITY_CHECK
 					polygons.emplace_back( ChartMeshTriangleIndex(t) , poly.cornerKeys );
 #else // !SEPARATE_POLYGONS
+#ifdef DEBUG_INDEXING
 					std::pair< Point< unsigned int , 2 > , std::vector< std::pair< GridMeshIntersectionKey , GridMeshIntersectionKey > > > &segments = cellSegments[cellID];
 					segments.first = Point< unsigned int , 2 >( I[0]+gridChart.cornerCoords[0] , I[1]+gridChart.cornerCoords[1] );
-
-					IndexedIntersectionPolygon< GeometryReal > poly = GetIndexedIntersectionPolygon( I[0] , I[1] );
-
-					ClipIndexedIntersectionPolygonToIndexedIntersectionTriangle( poly , indexedTriangle );
-#ifdef SANITY_CHECK
-					if( !poly.vertices.size() ) MK_THROW( "Expected triangle to intersect cell" );
-#endif // SANITY_CHECK
 					for( unsigned int s=0 ; s<poly.cornerKeys.size() ; s++ ) segments.second.push_back( std::make_pair( poly.cornerKeys[s] , poly.cornerKeys[ (s+1) % poly.cornerKeys.size() ] ) );
+#else // !DEBUG_INDEXING
+					std::vector< std::pair< GridMeshIntersectionKey , GridMeshIntersectionKey > > &segments = cellSegments[cellID];
+					for( unsigned int s=0 ; s<poly.cornerKeys.size() ; s++ ) segments.push_back( std::make_pair( poly.cornerKeys[s] , poly.cornerKeys[ (s+1) % poly.cornerKeys.size() ] ) );
+#endif //  DEBUG_INDEXING
 #endif // SEPARATE_POLYGONS
 				}
 			};
@@ -421,12 +424,18 @@ GetChartBoundaryPolygons
 				ChartBoundaryCellIndex cellID = gridChart.cellIndices(i,j).boundary;
 				if( cellID==ChartBoundaryCellIndex(-1) ) MK_THROW( "Boundary cell invalid ID" );
 
+#ifdef DEBUG_INDEXING
 				std::pair< Point< unsigned int , 2 > , std::vector< std::pair< GridMeshIntersectionKey , GridMeshIntersectionKey > > > &segments = cellSegments[cellID];
+#else // !DEBUG_INDEXING
+				std::vector< std::pair< GridMeshIntersectionKey , GridMeshIntersectionKey > > &segments = cellSegments[cellID];
+#endif // DEBUG_INDEXING
 				{
 					Point< int , 2 > idx;
 					idx[0] = i+gridChart.cornerCoords[0];
 					idx[1] = j+gridChart.cornerCoords[1];
+#ifdef DEBUG_INDEXING
 					segments.first = idx;
+#endif // DEBUG_INDEXING
 				}
 
 				IndexedIntersectionPolygon< GeometryReal > cellPolygon = GetIndexedIntersectionPolygon( i , j );
@@ -441,7 +450,11 @@ GetChartBoundaryPolygons
 								MK_WARN( "Short clipped edge @ texel: " , cellSegments[cellID].first[0] , " , " , cellSegments[cellID].first[1] , " : " , sqrt( Point2D< GeometryReal >::SquareNorm( p[0] - p[1] ) ) );
 						}
 						std::pair< GridMeshIntersectionKey , GridMeshIntersectionKey > edge( cellPolygon.cornerKeys[s] , cellPolygon.cornerKeys[ (s+1) % cellPolygon.cornerKeys.size() ] );
+#ifdef DEBUG_INDEXING
 						segments.second.push_back( edge );
+#else // !DEBUG_INDEXING
+						segments.push_back( edge );
+#endif // DEBUG_INDEXING
 					}
 				}
 			}
@@ -464,7 +477,11 @@ GetChartBoundaryPolygons
 
 		// Get the polygons corresponding to the intersection of the cell with the the texture triangles
 		{
+#ifdef DEBUG_INDEXING
 			const std::vector< std::pair< GridMeshIntersectionKey , GridMeshIntersectionKey > > & segments = cellIter->second.second;
+#else // !DEBUG_INDEXING
+			const std::vector< std::pair< GridMeshIntersectionKey , GridMeshIntersectionKey > > & segments = cellIter->second;
+#endif // DEBUG_INDEXING
 
 			// Extract the subset of boundary edges
 			std::map< GridMeshIntersectionKey , GridMeshIntersectionKey > forwardMap;
@@ -482,6 +499,7 @@ GetChartBoundaryPolygons
 			}
 
 			// Transform the boundary edges to boundary loops
+#ifdef DEBUG_INDEXING
 			try{ LoopVertices( forwardMap , loopKeys ); }
 			catch( const Exception & e )
 			{
@@ -503,6 +521,9 @@ GetChartBoundaryPolygons
 				}
 				MK_THROW( "While processing texel ( " , idx[0] , " , " , idx[1] , " ) -> " , cellID );
 			}
+#else // !DEBUG_INDEXING
+			LoopVertices( forwardMap , loopKeys );
+#endif // DEBUG_INDEXING
 		}
 #endif // SEPARATE_POLYGONS
 		// The position and index of boundary nodes/vertices

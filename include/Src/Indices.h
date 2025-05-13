@@ -82,7 +82,7 @@ namespace MishaK
 
 #else // !DEBUG_INDEXING
 	template< typename T , typename Data >
-	using IndexVector = std::vector< Data >;
+	using ExplicitIndexVector = std::vector< Data >;
 
 	// Chart index
 	using                       ChartIndex = unsigned int;
@@ -122,6 +122,7 @@ namespace MishaK
 	// Auxiliary node index type
 	using       ChartBoundaryTriangleIndex = unsigned int;
 	using  AtlasRefinedBoundaryVertexIndex = unsigned int;
+	using    AtlasRefinedBoundaryEdgeIndex = unsigned int;
 
 #endif // DEBUG_INDEXING
 

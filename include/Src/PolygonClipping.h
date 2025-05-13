@@ -34,35 +34,6 @@ DAMAGE.
 
 namespace MishaK
 {
-#ifdef PRE_CLIP_TRIANGLES
-	template< typename GeometryReal >
-	struct EdgeEquation
-	{
-		EdgeEquation( void ) : _offset(0) {}
-		EdgeEquation( Point2D< GeometryReal > v1 , Point2D< GeometryReal > v2 , bool normalize=false )
-		{
-			_n = v2 - v1;
-			_n = Point2D< GeometryReal >( -_n[1] , _n[0] );
-			if( normalize ) _n /= Point2D< GeometryReal >::Length( _n );
-			_offset = -Point2D< GeometryReal >::Dot( v1 , _n );
-		}
-		GeometryReal operator()( Point2D< GeometryReal > p ) const { return Point2D< GeometryReal >::Dot( _n , p ) + _offset; }
-		bool makePositive( Point2D< GeometryReal > p )
-		{
-			if( operator()( p )<0 )
-			{
-				_n = -_n;
-				_offset = -_offset;
-				return true;
-			}
-			else return false;
-		}
-	protected:
-		Point2D< GeometryReal > _n;
-		GeometryReal _offset;
-	};
-#endif // PRE_CLIP_TRIANGLES
-
 	template< typename GeometryReal >
 	struct CellClippedTriangle
 	{
