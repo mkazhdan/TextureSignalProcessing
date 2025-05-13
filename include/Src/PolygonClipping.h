@@ -427,7 +427,7 @@ namespace MishaK
 
 	// A function clipping the edges of a (convex) cell to the sides of a triangle
 	template< typename GeometryReal >
-	int ClipIndexedIntersectionPolygonToIndexedIntersectionTriangle
+	unsigned int ClipIndexedIntersectionPolygonToIndexedIntersectionTriangle
 	(
 		IndexedIntersectionPolygon< GeometryReal > &polygon ,
 		const IndexedIntersectionTriangle< GeometryReal > &triangle

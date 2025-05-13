@@ -642,13 +642,20 @@ void InitializeGridChartsActiveNodes
 		}
 	}
 
-	//Initialize thread tasks
+	// Initialize thread tasks
+#ifdef NEW_CODE
+	int blockHorizontalOffset = static_cast< int >(multigridBlockInfo.blockWidth) - static_cast< int >(multigridBlockInfo.paddingWidth);
+	int blockVerticalOffset = static_cast< int >(multigridBlockInfo.blockHeight) - static_cast< int >(multigridBlockInfo.paddingHeight);
+	int numHorizontalBlocks = ( static_cast< int >(width) - static_cast< int >(multigridBlockInfo.paddingWidth) - 1 ) / blockHorizontalOffset + 1;
+	int numVerticalBlocks = ( static_cast< int >(height) - static_cast< int >(multigridBlockInfo.paddingHeight) - 1 ) / blockVerticalOffset + 1;
+#else // !NEW_CODE
 	int blockHorizontalOffset = multigridBlockInfo.blockWidth - multigridBlockInfo.paddingWidth;
 	int blockVerticalOffset = multigridBlockInfo.blockHeight - multigridBlockInfo.paddingHeight;
 	int numHorizontalBlocks = ((width - multigridBlockInfo.paddingWidth - 1) / blockHorizontalOffset) + 1;
 	int numVerticalBlocks = ((height - multigridBlockInfo.paddingHeight - 1) / blockVerticalOffset) + 1;
+#endif // NEW_CODE
 
-	for( unsigned int bj=0 ; bj<numVerticalBlocks ; bj++ )
+	for( int bj=0 ; bj<numVerticalBlocks ; bj++ )
 	{
 		ThreadTask threadTask;
 		int taskDeepTexels = 0;
@@ -656,7 +663,7 @@ void InitializeGridChartsActiveNodes
 		int blockVerticalStart = bj*blockVerticalOffset;
 		int blockVerticalEnd = std::min<int>((bj + 1)*blockVerticalOffset + multigridBlockInfo.paddingHeight + 2 - 1, height - 1);
 
-		for( unsigned int bi=0 ; bi<numHorizontalBlocks ; bi++ )
+		for( int bi=0 ; bi<numHorizontalBlocks ; bi++ )
 		{
 			BlockTask blockTask;
 
@@ -665,7 +672,8 @@ void InitializeGridChartsActiveNodes
 
 			//Deep texel within rows[blockVerticalStart + 1,blockVerticalEnd - 1]column [blockHorizontalStart + 1,blockHorizontalEnd - 1] 
 			std::vector<BlockDeepSegmentedLine>  &  blockDeepSegmentedLines = blockTask.blockDeepSegmentedLines;
-			for (int j = blockVerticalStart + 1; j <= blockVerticalEnd - 1; j++) {
+			for( int j=blockVerticalStart+1 ; j<=blockVerticalEnd-1 ; j++ )
+			{
 				BlockDeepSegmentedLine segmentedLine;
 				int offset = blockHorizontalStart + 1;
 				int segmentStart = -1;
@@ -804,6 +812,7 @@ void InitializeGridCharts
 		gridChart.cellSizeH = cellSize[1];
 		gridChart.atlasWidth = _width;
 		gridChart.atlasHeight = _height;
+
 		InitializeGridChartsActiveNodes( ChartIndex(i) , atlasChart , gridChart , texelInfo , rasterLines , segmentedLines , threadTasks , endCombinedTexelIndex , endCoveredTexelIndex , endInteriorTexelIndex , endBoundaryTexelIndex , endCombinedCellIndex , endBoundaryCellIndex , endInteriorCellIndex , multigridBlockInfo );
 	}
 }
@@ -1029,8 +1038,10 @@ void InitializeHierarchy
 	{
 		InitializeGridCharts( atlasCharts , width , height , l , gridAtlases[l].texelInfo , gridAtlases[l].gridCharts , gridAtlases[l].rasterLines , gridAtlases[l].segmentedLines , gridAtlases[l].threadTasks , gridAtlases[l].endCombinedTexelIndex , gridAtlases[l].endCoveredTexelIndex , gridAtlases[l].endInteriorTexelIndex , gridAtlases[l].endBoundaryTexelIndex , gridAtlases[l].endCombinedCellIndex , gridAtlases[l].endBoundaryCellIndex , gridAtlases[l].endInteriorCellIndex , multigridBlockInfo );
 
+#ifdef SANITY_CHECK
 		if( static_cast< unsigned int >(gridAtlases[l].endCombinedTexelIndex)!=static_cast< unsigned int >(gridAtlases[l].endBoundaryTexelIndex)+static_cast< unsigned int >(gridAtlases[l].endInteriorTexelIndex) )
 			MK_THROW( "Boundary and deep texels does not form a partition: " , gridAtlases[l].endCombinedTexelIndex , " != " , gridAtlases[l].endBoundaryTexelIndex , " + " , gridAtlases[l].endInteriorTexelIndex );
+#endif // SANITY_CHECK
 
 		InitializeIndexConverter( gridAtlases[l].gridCharts , gridAtlases[l].endCombinedTexelIndex , gridAtlases[l].indexConverter );
 	}
@@ -1038,7 +1049,6 @@ void InitializeHierarchy
 	hierarchy.boundaryRestriction.resize( levels-1 );
 	for( unsigned int i=0 ; i<levels-1 ; i++ ) InitializeAtlasHierachicalRestriction( gridAtlases[i] , gridAtlases[i+1] , hierarchy.boundaryRestriction[i] );
 	for( unsigned int i=0 ; i<levels-1 ; i++ ) InitializeAtlasHierachicalProlongation( gridAtlases[i] , gridAtlases[i+1] );
-
 
 	hierarchy.boundaryCoarseFineProlongation.resize(levels);
 	hierarchy.boundaryFineCoarseRestriction.resize(levels);

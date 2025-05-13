@@ -331,33 +331,34 @@ namespace MishaK
 
 						ChartBoundaryCellIndex boundaryIndex = gridChart.cellIndices[i].boundary;
 						const std::vector< std::pair< ChartMeshTriangleIndex , CellClippedTriangle< GeometryReal > > > &clippedTriangles = gridChart.clippedTriangles[i];
+#ifdef SANITY_CHECK
 						if( !clippedTriangles.size() ) MK_THROW( "Expected triangles" );
-
+#endif // SANITY_CHECK
 						for( unsigned int i=0 ; i<clippedTriangles.size() ; i++ )
 						{
-							unsigned int t = static_cast< unsigned int >( clippedTriangles[i].first );
+							ChartMeshTriangleIndex tIdx = clippedTriangles[i].first;
 
 							Point2D< GeometryReal > tPos[3];
-							SimplexIndex< 2 , ChartMeshVertexIndex > tri = atlasChart.triangleIndex( ChartMeshTriangleIndex(t) );
+							SimplexIndex< 2 , ChartMeshVertexIndex > tri = atlasChart.triangleIndex( tIdx );
 							for( unsigned int i=0 ; i<3 ; i++ ) tPos[i] = atlasChart.vertex( tri[i] ) - gridChart.corner;
 							IndexedTriangle< GeometryReal > atlasTriangle;
 							for( unsigned int k=0 ; k<3 ; k++ )
 							{
 								atlasTriangle.vertices[k] = tPos[k];
-								atlasTriangle.atlasEdgeIndices[k] = atlasChart.atlasEdge( GetChartMeshHalfEdgeIndex( ChartMeshTriangleIndex(t) , k ) );
-								atlasTriangle.vertexIndices[k] = atlasChart.triangleIndex( ChartMeshTriangleIndex(t) )[k];
+								atlasTriangle.atlasEdgeIndices[k] = atlasChart.atlasEdge( GetChartMeshHalfEdgeIndex( tIdx , k ) );
+								atlasTriangle.vertexIndices[k] = atlasChart.triangleIndex( tIdx )[k];
 								atlasTriangle.atlasVertexParentEdge[k] = AtlasMeshEdgeIndex(-1);
 							}
 
 							const std::vector< BoundaryIndexedTriangle< GeometryReal > > & cellBoundaryTriangles = gridChart.boundaryTriangles[boundaryIndex];
 
-							// Iterate over all elements in the cell
+							// Iterate over all elements associated with the cell
 							for( unsigned int bt=0 ; bt<cellBoundaryTriangles.size() ; bt++ )
 							{
 								BoundaryIndexedTriangle< GeometryReal > element = cellBoundaryTriangles[bt];
 								std::vector< Point2D< GeometryReal > > element_vertices(3);
 								for( int ii=0 ; ii<3 ; ii++ ) element_vertices[ii] = TextureToCell( element[ii] );
-								ChartBoundaryTriangleIndex boundaryTriangleIndex = element.id;
+								ChartBoundaryTriangleIndex boundaryTriangleIndex = element.idx;
 
 								IndexedPolygon< GeometryReal > polygon;
 
@@ -366,6 +367,16 @@ namespace MishaK
 								// Intersect the element with the atlas triangle
 								if( ClipPartiallyIndexedPolygonToIndexedTriangle( polygon , atlasTriangle ) )
 								{
+#ifdef SEPARATE_POLYGONS
+#if 0
+#pragma omp critical
+									{
+										std::cout << element.sourceIdx << " : " << tIdx << std::endl;
+									}
+#else
+									MK_WARN_ONCE( "Don't need to clip triangles to elements" );
+#endif
+#endif // SEPARATE_POLYGONS
 									// Convert the polygon vertices from the texture frame to the cell frame
 									for( int ii=0 ; ii<polygon.size() ; ii++ ) polygon[ii] = TextureToCell( polygon[ii] );
 
@@ -377,7 +388,7 @@ namespace MishaK
 									// Convert the polygon vertices from the cell frame to the element frame
 									for( int ii=0 ; ii<polygon.size() ; ii++ ) polygon[ii] = CellToElement( polygon[ii] );
 
-									SquareMatrix< GeometryReal , 2 > cell_metric = cell_to_texture_differential.transpose() * texture_metrics[ ChartMeshTriangleIndex(t) ] * cell_to_texture_differential;
+									SquareMatrix< GeometryReal , 2 > cell_metric = cell_to_texture_differential.transpose() * texture_metrics[ tIdx ] * cell_to_texture_differential;
 									SquareMatrix< GeometryReal , 2 > element_metric = element_to_cell_differential.transpose() * cell_metric * element_to_cell_differential;
 									SquareMatrix< GeometryReal , 2 > element_metric_inverse = element_metric.inverse();
 									GeometryReal element_area_scale_factor = sqrt( element_metric.determinant() );
@@ -635,7 +646,7 @@ namespace MishaK
 						BoundaryIndexedTriangle< GeometryReal > element = cellBoundaryTriangles[bt];
 						std::vector< Point2D< GeometryReal > > element_vertices(3);
 						for( int ii=0 ; ii<3 ; ii++ ) element_vertices[ii] = TextureToCell( element[ii] );
-						ChartBoundaryTriangleIndex boundaryTriangleIndex = element.id;
+						ChartBoundaryTriangleIndex boundaryTriangleIndex = element.idx;
 
 						IndexedPolygon< GeometryReal > polygon;
 						SetIndexedPolygonFromBoundaryTriangle( element , polygon );
@@ -926,7 +937,7 @@ namespace MishaK
 			const std::vector< BoundaryIndexedTriangle< GeometryReal > > & boundaryTriangles = gridChart.boundaryTriangles[ ChartBoundaryCellIndex(c) ];
 			for( unsigned int b=0 ; b<boundaryTriangles.size() ; b++ )
 			{
-				ChartBoundaryTriangleIndex boundaryTriangleIndex = boundaryTriangles[b].id;
+				ChartBoundaryTriangleIndex boundaryTriangleIndex = boundaryTriangles[b].idx;
 				const QuadraticElement::Index & indices = boundaryTriangles[b].indices;
 				QuadraticElement::Index fineTriangleElementIndices;
 				for( unsigned int k=0 ; k<6 ; k++ ) fineTriangleElementIndices[k] = fineBoundaryIndex[ static_cast< unsigned int >(indices[k]) ];
@@ -981,7 +992,6 @@ namespace MishaK
 						edgeSign = (MatrixReal)-1.;
 					}
 
-#ifdef NEW_CODE
 					auto iter = fineBoundaryEdgeIndex.find( SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex >( edgeSourceFineIndex , edgeTargetFineIndex ) );
 					if( iter==fineBoundaryEdgeIndex.end() ) MK_THROW( "Fine edge not found" );
 					for( unsigned int n=0 ; n<6 ; n++ )
@@ -989,17 +999,6 @@ namespace MishaK
 						AtlasInteriorOrBoundaryNodeIndex fineNodeIndex = fineTriangleElementIndices[n];
 						boundaryBoundaryDivergenceTriplets.push_back( Eigen::Triplet< MatrixReal >( static_cast< unsigned int >(fineNodeIndex) , static_cast< unsigned int >(iter->second) , (MatrixReal)triangleElementDivergence[boundaryTriangleIndex](n,edgeId) * edgeSign ) );
 					}
-#else // !NEW_CODE
-					SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex > fineEdgeKey( edgeSourceFineIndex , edgeTargetFineIndex );
-					AtlasRefinedBoundaryEdgeIndex _fineEdgeIndex = AtlasRefinedBoundaryEdgeIndex(-1);
-					if( fineBoundaryEdgeIndex.find( fineEdgeKey )!=fineBoundaryEdgeIndex.end() ) _fineEdgeIndex = fineBoundaryEdgeIndex[fineEdgeKey];
-					else MK_THROW( "Fine edge not found" );
-					for( int n=0 ; n<6 ; n++ )
-					{
-						AtlasInteriorOrBoundaryNodeIndex fineNodeIndex = fineTriangleElementIndices[n];
-						boundaryBoundaryDivergenceTriplets.push_back( Eigen::Triplet< MatrixReal >( static_cast< unsigned int >(fineNodeIndex) , static_cast< unsigned int >(_fineEdgeIndex) , (MatrixReal)triangleElementDivergence[boundaryTriangleIndex](n,edgeId) * edgeSign ) );
-					}
-#endif // NEW_CODE
 				}
 			}
 		}
