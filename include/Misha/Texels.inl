@@ -667,7 +667,9 @@ Texels< NodeAtCellCenter , Index , Dim >::FlowTexelInfoToInterior
 	size_t simplexNum ,
 	VertexEmbeddingFunctor && VF ,
 	SimplexIndexFunctor && SIF ,
-	RegularGrid< Dim , TexelInfo< Dim > > &texelInfo
+	RegularGrid< Dim , TexelInfo< Dim > > &texelInfo ,
+	double eps ,
+	bool noWarning
 )
 {
 	static_assert( _IsValidVertexFunctor< VertexEmbeddingFunctor , EmbeddingDim >() , "[ERROR] VertexEmbeddingFunctor poorly formed" );
@@ -696,7 +698,7 @@ Texels< NodeAtCellCenter , Index , Dim >::FlowTexelInfoToInterior
 					for( unsigned int d=0 ; d<Dim ; d++ ) h.p[d] = 1./(Dim+1) , h.v[d] = texelInfo[i].bc[d+1] - 1./(Dim+1);
 
 					// Walk along the tangent direction
-					rMesh.exp( xForms , h );
+					rMesh.exp( xForms , h , eps , noWarning );
 					texelInfo[i].sIdx = h.tIdx;
 					texelInfo[i].bc[0] = 1.;
 					for( unsigned int d=0 ; d<Dim ; d++ ) texelInfo[i].bc[d+1] = h.p[d] , texelInfo[i].bc[0] -= h.p[d];

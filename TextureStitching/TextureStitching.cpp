@@ -1091,7 +1091,11 @@ void Stitching< PreReal , Real , TextureBitDepth >::Init( void )
 			_p.p = Point2D< PreReal >( (PreReal)1./3 , (PreReal)1./3 );
 			_p.v = textureNodes[i].barycentricCoords - _p.p;
 
+#ifdef SANITY_CHECK
+			rMesh.exp( xForms , _p , 0 , false );
+#else // !SANITY_CHECK
 			rMesh.exp( xForms , _p );
+#endif // SANITY_CHECK
 
 			textureNodes[i].tID = AtlasMeshTriangleIndex( _p.tIdx );
 			textureNodes[i].barycentricCoords = _p.p;
