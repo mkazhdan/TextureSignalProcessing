@@ -215,7 +215,7 @@ ExplicitIndexVector< ChartBoundaryCellIndex , std::vector< IndexedPolygon< Geome
 	ExplicitIndexVector< ChartBoundaryCellIndex , std::vector< IndexedPolygon< GeometryReal > > > boundaryPolygons;
 #ifdef SEPARATE_POLYGONS
 	// A mapping giving the clipped polygons, keyed off of cell index
-	std::map< unsigned int , std::vector< std::vector< unsigned long long > > > cellPolygons;
+	std::map< ChartBoundaryCellIndex , std::pair< Point< unsigned int , 2 > , std::vector< std::vector< GridMeshIntersectionKey > > > > cellPolygons;
 #else // !SEPARATE_POLYGONS
 	// An association of segments to individual cells of a chart
 	std::map< ChartBoundaryCellIndex , std::pair< Point< unsigned int , 2 > , std::vector< std::pair< GridMeshIntersectionKey , GridMeshIntersectionKey > > > > cellSegments;
@@ -271,20 +271,41 @@ ExplicitIndexVector< ChartBoundaryCellIndex , std::vector< IndexedPolygon< Geome
 				if( gridChart.cellType(I)==CellType::Boundary )
 				{
 					ChartBoundaryCellIndex cellID = gridChart.cellIndices(I).boundary;
+#ifdef SANITY_CHECK
 					if( cellID==ChartBoundaryCellIndex(-1) ) MK_THROW( "Boundary cell invalid ID" );
+#endif // SANITY_CHECK
+#ifdef NEW_CODE
+#ifdef SEPARATE_POLYGONS
+					std::pair< Point< unsigned int , 2 > , std::vector< std::vector< GridMeshIntersectionKey > > > &polygons = cellPolygons[cellID];
+					polygons.first = Point< unsigned int , 2 >( I[0]+gridChart.cornerCoords[0] , I[1]+gridChart.cornerCoords[1] );
+#else // !SEPARATE_POLYGONS
+					std::pair< Point< unsigned int , 2 > , std::vector< std::pair< GridMeshIntersectionKey , GridMeshIntersectionKey > > > &segments = cellSegments[cellID];
+					segments.first = Point< unsigned int , 2 >( I[0]+gridChart.cornerCoords[0] , I[1]+gridChart.cornerCoords[1] );
+#endif // SEPARATE_POLYGONS
+#endif // NEW_CODE
 #ifdef SEPARATE_POLYGONS
 					IndexedIntersectionPolygon< GeometryReal > poly = GetIndexedIntersectionPolygon( I[0] , I[1] );
-					if( ClipIndexedIntersectionPolygonToIndexedIntersectionTriangle( poly , indexedTriangle ) ) cellPolygons[ cellID ].push_back( poly.indices );
-					else MK_THROW( "Expected triangle to intersect cell" );
+#ifdef SANITY_CHECK
+					if( !ClipIndexedIntersectionPolygonToIndexedIntersectionTriangle( poly , indexedTriangle ) ) MK_THROW( "Expected triangle to intersect cell" );
+#endif // SANITY_CHECK
+					polygons.second.push_back( poly.indices );
 #else // !SEPARATE_POLYGONS
+#ifdef NEW_CODE
+#else // !NEW_CODE
 					cellSegments[cellID].first = Point< unsigned int , 2 >( I[0]+gridChart.cornerCoords[0] , I[1]+gridChart.cornerCoords[1] );
+#endif // NEW_CODE
 
 					IndexedIntersectionPolygon< GeometryReal > poly = GetIndexedIntersectionPolygon( I[0] , I[1] );
 
-					if( ClipIndexedIntersectionPolygonToIndexedIntersectionTriangle( poly , indexedTriangle ) )
-						for( int s=0 ; s<poly.cornerKeys.size() ; s++ )
-							cellSegments[cellID].second.push_back( std::make_pair( poly.cornerKeys[s] , poly.cornerKeys[ (s+1) % poly.cornerKeys.size() ] ) );
-					else MK_THROW( "Expected triangle to intersect cell" );
+#ifdef SANITY_CHECK
+					if( !ClipIndexedIntersectionPolygonToIndexedIntersectionTriangle( poly , indexedTriangle ) ) MK_THROW( "Expected triangle to intersect cell" );
+#endif // SANITY_CHECK
+					for( int s=0 ; s<poly.cornerKeys.size() ; s++ )
+#ifdef NEW_CODE
+						segments.second.push_back( std::make_pair( poly.cornerKeys[s] , poly.cornerKeys[ (s+1) % poly.cornerKeys.size() ] ) );
+#else // !NEW_CODE
+						cellSegments[cellID].second.push_back( std::make_pair( poly.cornerKeys[s] , poly.cornerKeys[ (s+1) % poly.cornerKeys.size() ] ) );
+#endif // NEW_CODE
 #endif // SEPARATE_POLYGONS
 				}
 			};
@@ -299,11 +320,19 @@ ExplicitIndexVector< ChartBoundaryCellIndex , std::vector< IndexedPolygon< Geome
 			{
 				ChartBoundaryCellIndex cellID = gridChart.cellIndices(i,j).boundary;
 				if( cellID==ChartBoundaryCellIndex(-1) ) MK_THROW( "Boundary cell invalid ID" );
+
+#ifdef NEW_CODE
+				std::pair< Point< unsigned int , 2 > , std::vector< std::pair< GridMeshIntersectionKey , GridMeshIntersectionKey > > > &segments = cellSegments[cellID];
+#endif // NEW_CODE
 				{
 					Point< int , 2 > idx;
 					idx[0] = i+gridChart.cornerCoords[0];
 					idx[1] = j+gridChart.cornerCoords[1];
+#ifdef NEW_CODE
+					segments.first = idx;
+#else // !NEW_CODE
 					cellSegments[cellID].first = idx;
+#endif // NEW_CODE
 				}
 
 				IndexedIntersectionPolygon< GeometryReal > cellPolygon = GetIndexedIntersectionPolygon( i , j );
@@ -318,7 +347,11 @@ ExplicitIndexVector< ChartBoundaryCellIndex , std::vector< IndexedPolygon< Geome
 								MK_WARN( "Short clipped edge @ texel: " , cellSegments[cellID].first[0] , " , " , cellSegments[cellID].first[1] , " : " , sqrt( Point2D< GeometryReal >::SquareNorm( p[0] - p[1] ) ) );
 						}
 						std::pair< GridMeshIntersectionKey , GridMeshIntersectionKey > edge( cellPolygon.cornerKeys[s] , cellPolygon.cornerKeys[ (s+1) % cellPolygon.cornerKeys.size() ] );
+#ifdef NEW_CODE
+						segments.second.push_back( edge );
+#else // !NEW_CODE
 						cellSegments[cellID].second.push_back( edge );
+#endif // NEW_CODE
 					}
 				}
 			}
