@@ -43,9 +43,7 @@ DAMAGE.
 #include <Misha/Atomic.Geometry.h>
 #include "IndexedPolygon.h"
 #include "ImageIO.h"
-#ifdef NEW_CODE
 #include "Basis.h"
-#endif // NEW_CODE
 
 namespace MishaK
 {
@@ -55,7 +53,6 @@ namespace MishaK
 		struct SampleData
 		{
 			Real dualValues[4];				// The integrated values of the four incident bilinear basis functions, dualized
-#ifdef NEW_CODE
 			SampleData( void ){ _weights[0] = _weights[1] = _weights[2] = _weights[3] = 0; dualValues[0] = dualValues[1] = dualValues[2] = dualValues[3] = 0; }
 			void init( Point2D< Real > p )
 			{
@@ -71,10 +68,6 @@ namespace MishaK
 			}
 		protected:
 			Real _weights[4];
-#else // !NEW_CODE
-			SampleData( void ){ memset( dualValues , 0 , sizeof(Real) * 4 ); }
-			Point2D< Real > pos;			// The sample position inside the element
-#endif // NEW_CODE
 		};
 		SquareMatrix< Real , 2 > tensor;	// The inverse metric tensor defined by the intersecting triangle
 		unsigned int cellOffset;
@@ -121,7 +114,6 @@ namespace MishaK
 		struct SampleData
 		{
 			Real dualValues[6];				// The integrated values of the six incident quadratic basis functions, dualized
-#ifdef NEW_CODE
 			SampleData( void )
 			{
 				_weights[0] = _weights[1] = _weights[2] = _weights[3] = _weights[4] = _weights[5] = 0;
@@ -144,10 +136,6 @@ namespace MishaK
 			}
 		protected:
 			Real _weights[6];
-#else // !NEW_CODE
-			SampleData( void ){ memset( dualValues , 0 , sizeof(Real) * 6 ); }
-			Point2D< Real > pos;			// The sample position inside the element
-#endif // NEW_CODE
 		};
 		SquareMatrix< Real , 2 > tensor;	// The inverse metric tensor defined by the intersecting triangle
 		AtlasInteriorOrBoundaryNodeIndex fineNodes[6];
@@ -190,7 +178,6 @@ namespace MishaK
 		struct SampleData
 		{
 			Point2D< Real > dualGradients[4];	// The integrated gradients of the four incident bilinear basis functions, dualized
-#ifdef NEW_CODE
 			void init( Point2D< Real > p )
 			{
 				_weights[0] = Point2D< Real >(   p[1] - 1 ,    p[0] - 1 );
@@ -209,9 +196,6 @@ namespace MishaK
 			}
 		protected:
 			Point2D< Real > _weights[4];
-#else // !NEW_CODE
-			Point2D< Real > pos;				// The sample position inside the element
-#endif // NEW_CODE
 		};
 		SquareMatrix< Real , 2 > tensor;		// The inverse metric tensor defined by the intersecting triangle
 		unsigned int cellOffset;
@@ -255,7 +239,6 @@ namespace MishaK
 		struct SampleData
 		{
 			Point2D< Real > dualGradients[6];	// The integrated gradients of the six incident quadratic basis functions, dualized
-#ifdef NEW_CODE
 			void init( Point2D< Real > p )
 			{
 				_weights[0] = Point2D< Real >(   4 * p[0] + 4 * p[1] - 3 ,   4 * p[1] + 4 * p[0] - 3 );
@@ -276,9 +259,6 @@ namespace MishaK
 			}
 		protected:
 			Point2D< Real > _weights[6];
-#else // !NEW_CODE
-			Point2D< Real > pos;				// The sample position inside the element
-#endif // NEW_CODE
 		};
 		SquareMatrix< Real , 2 > tensor;		// The inverse metric tensor defined by the intersecting triangle
 		AtlasInteriorOrBoundaryNodeIndex fineNodes[6];

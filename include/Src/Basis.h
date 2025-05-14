@@ -136,45 +136,6 @@ namespace MishaK
 #endif // USE_SIMPLEX_BASIS
 		}
 
-		template< class Real , typename T >
-		static T Value( const T values[6] , Point2D< Real > pos )
-		{
-#ifdef USE_SIMPLEX_BASIS
-			T t{};
-			Point< double , 6 > eValues = SimplexElements< 2 , 2 >::Elements()( pos );
-			for( unsigned int i=0 ; i<6 ; i++ ) t += values[i] * eValues[ _idx[i] ];
-			return t;
-#else // !USE_SIMPLEX_BASIS
-			Real xx = pos[0] * pos[0] , xy = pos[0]*pos[1] , yy = pos[1] * pos[1] , x = pos[0] , y = pos[1];
-			return
-				values[0] * (   2 * xx + 2 * yy + 4 * xy - 3 * x - 3 * y + 1 ) +
-				values[1] * (   2 * xx                   - 1 * x             ) +
-				values[2] * (            2 * yy                  - 1 * y     ) +
-				values[3] * (                     4 * xy                     ) +
-				values[4] * (          - 4 * yy - 4 * xy         + 4 * y     ) +
-				values[5] * ( - 4 * xx          - 4 * xy + 4 * x             ) ;
-#endif // USE_SIMPLEX_BASIS
-		}
-
-		template< class Real , typename T >
-		static Point2D< T > Differential( const T values[6] , Point2D< Real > pos )
-		{
-#ifdef USE_SIMPLEX_BASIS
-			Point2D< T > d;
-			Point< Point< double , 2 > , 6 , double > dValues = SimplexElements< 2 , 2 >::Differentials()( pos );
-			for( unsigned int i=0 ; i<6 ; i++ ) d[0] += values[i] * dValues[ _idx[i] ][0] , d[1] += values[i] * dValues[ _idx[i] ][1];
-			return d;
-#else // !USE_SIMPLEX_BASIS
-			Real x = pos[0] , y = pos[1];
-			return 
-				Point2D< T >( values[0] * (   4 * x + 4 * y - 3 ) , values[0] * (   4 * y + 4 * x - 3 ) ) +
-				Point2D< T >( values[1] * (   4 * x         - 1 ) , values[1] * (                   0 ) ) +
-				Point2D< T >( values[2] * (                   0 ) , values[2] * (   4 * y         - 1 ) ) +
-				Point2D< T >( values[3] * (           4 * y     ) , values[3] * (           4 * x     ) ) +
-				Point2D< T >( values[4] * (         - 4 * y     ) , values[4] * ( - 8 * y - 4 * x + 4 ) ) +
-				Point2D< T >( values[5] * ( - 8 * x - 4 * y + 4 ) , values[5] * (         - 4 * x     ) ) ;
-#endif // USE_SIMPLEX_BASIS
-		}
 #ifdef USE_SIMPLEX_BASIS
 	protected:
 		static const unsigned int _idx[];
@@ -193,7 +154,6 @@ namespace MishaK
 	};
 #endif // USE_SIMPLEX_BASIS
 
-#ifdef NEW_CODE
 	struct BilinearElement
 	{
 		template< class Real , typename T >
@@ -219,30 +179,6 @@ namespace MishaK
 		}
 
 	};
-#else // !NEW_CODE
-	template< class Real , typename T >
-	T BilinearValue( const T values[4] , Point2D< Real > pos )
-	{
-		Real x = pos[0] , y = pos[1];
-		return
-			values[0] * ( 1 - x ) * ( 1 - y ) +
-			values[1] * (     x ) * ( 1 - y ) +
-			values[2] * (     x ) * (     y ) +
-			values[3] * ( 1 - x ) * (     y ) ;
-	}
-	template< class Real , typename T >
-	Point2D< T > BilinearGradient( const T values[4] , Point2D< Real > pos )
-	{
-		Real x = pos[0] , y = pos[1];
-		return
-			Point2D< T >( values[0] * (   y - 1 ) , values[0] * (   x - 1 ) ) +
-			Point2D< T >( values[1] * ( - y + 1 ) , values[1] * ( - x     ) ) +
-			Point2D< T >( values[2] * (   y     ) , values[2] * (   x     ) ) +
-			Point2D< T >( values[3] * ( - y     ) , values[3] * ( - x + 1 ) ) ;
-	}
-#endif // NEW_CODE
-
-
 
 #ifdef USE_SIMPLEX_BASIS
 #else // !USE_SIMPLEX_BASIS
