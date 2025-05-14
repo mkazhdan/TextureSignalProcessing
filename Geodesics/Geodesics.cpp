@@ -133,7 +133,7 @@ public:
 
 	static HierarchicalSystem< PreReal , Real > hierarchy;
 
-	static ExplicitIndexVector< AtlasCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > > bilinearElementIndices;
+	static ExplicitIndexVector< AtlasCellIndex , BilinearElementIndex< AtlasTexelIndex > > bilinearElementIndices;
 
 	static std::vector< TextureNodeInfo< PreReal > > textureNodes;
 	static Image< int > nodeIndex;
@@ -238,7 +238,7 @@ template< typename PreReal , typename Real > Real															Geodesics< PreRe
 
 template< typename PreReal , typename Real > std::vector< TextureNodeInfo< PreReal > >						Geodesics< PreReal , Real >::textureNodes;
 template< typename PreReal , typename Real > Image<int>														Geodesics< PreReal , Real >::nodeIndex;
-template< typename PreReal , typename Real > ExplicitIndexVector< AtlasCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > >	Geodesics< PreReal , Real >::bilinearElementIndices;
+template< typename PreReal , typename Real > ExplicitIndexVector< AtlasCellIndex , BilinearElementIndex< AtlasTexelIndex > >	Geodesics< PreReal , Real >::bilinearElementIndices;
 
 template< typename PreReal , typename Real > int															Geodesics< PreReal , Real >::steps;
 template< typename PreReal , typename Real > char															Geodesics< PreReal , Real >::stepsString[1024];

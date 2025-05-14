@@ -604,6 +604,7 @@ Here a "dots" pattern is written out to an image. (Empirically, we have found th
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version7.00/">Version 7.00</a>:
 <ul>
 <LI> Modified to support non-bijectve texture maps.
+<LI> Removed dependence on <CODE>Triangle</CODE> code.
 </ul>
 
 

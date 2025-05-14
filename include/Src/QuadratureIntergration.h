@@ -36,7 +36,7 @@ namespace MishaK
 	class InteriorCellLine
 	{
 	public:
-		AtlasCombinedTexelIndex prevLineIndex , nextLineIndex;
+		AtlasTexelIndex prevLineIndex , nextLineIndex;
 		unsigned int length;
 	};
 
@@ -72,7 +72,7 @@ namespace MishaK
 					newLine.nextLineIndex = texelIndices( rasterStart , j+1 ).combined;
 					newLine.length = offset - rasterStart;
 
-					if( newLine.prevLineIndex==AtlasCombinedTexelIndex(-1) || newLine.nextLineIndex==AtlasCombinedTexelIndex(-1) ) MK_THROW( "Invalid indexing" );
+					if( newLine.prevLineIndex==AtlasTexelIndex(-1) || newLine.nextLineIndex==AtlasTexelIndex(-1) ) MK_THROW( "Invalid indexing" );
 					int currentLine = (int)interiorCellLines.size();
 
 					for( unsigned int k=0 ; k<offset-rasterStart ; k++ )

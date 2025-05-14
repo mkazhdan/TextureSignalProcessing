@@ -47,7 +47,7 @@ void InitializeAtlasHierachicalProlongation( GridAtlas< GeometryReal , MatrixRea
 			unsigned int rasterStart = -1;
 			while( offset<width )
 			{
-				bool currentIsValid = fineChart.texelIndices( offset , j ).combined!=AtlasCombinedTexelIndex(-1);
+				bool currentIsValid = fineChart.texelIndices( offset , j ).combined!=AtlasTexelIndex(-1);
 				if( currentIsValid && !previousIsValid ) rasterStart = offset; //Start raster line
 				if( ( !currentIsValid && previousIsValid)  || ( currentIsValid && offset==(width-1) ) )
 				{ //Terminate raster line
@@ -71,22 +71,22 @@ void InitializeAtlasHierachicalProlongation( GridAtlas< GeometryReal , MatrixRea
 
 					if( _fj%2==0 )
 					{
-						newLine.prevLineIndex = AtlasCombinedTexelIndex(-1);
-						newLine.nextLineIndex = AtlasCombinedTexelIndex(-1);
-						AtlasCombinedTexelIndex combinedIndex = coarseChart.texelIndices(ci,cj).combined;
-						if( combinedIndex==AtlasCombinedTexelIndex(-1) ) MK_THROW( "Coarse texel is inactive!(A)" );
+						newLine.prevLineIndex = AtlasTexelIndex(-1);
+						newLine.nextLineIndex = AtlasTexelIndex(-1);
+						AtlasTexelIndex combinedIndex = coarseChart.texelIndices(ci,cj).combined;
+						if( combinedIndex==AtlasTexelIndex(-1) ) MK_THROW( "Coarse texel is inactive!(A)" );
 						else newLine.centerLineIndex = combinedIndex;
 					}
 					else
 					{
-						newLine.centerLineIndex = AtlasCombinedTexelIndex(-1);
+						newLine.centerLineIndex = AtlasTexelIndex(-1);
 
-						AtlasCombinedTexelIndex combinedIndex = coarseChart.texelIndices(ci, cj).combined;
-						if( combinedIndex==AtlasCombinedTexelIndex(-1) ) MK_THROW( "Coarse texel is inactive!(B)" );
+						AtlasTexelIndex combinedIndex = coarseChart.texelIndices(ci, cj).combined;
+						if( combinedIndex==AtlasTexelIndex(-1) ) MK_THROW( "Coarse texel is inactive!(B)" );
 						else newLine.prevLineIndex = combinedIndex;
 
 						combinedIndex = coarseChart.texelIndices(ci, cj + 1).combined;
-						if( combinedIndex==AtlasCombinedTexelIndex(-1) ) MK_THROW( "Coarse texel is inactive!(C)" );
+						if( combinedIndex==AtlasTexelIndex(-1) ) MK_THROW( "Coarse texel is inactive!(C)" );
 						else newLine.nextLineIndex = combinedIndex;
 					}
 					prolongationLines.push_back( newLine );
@@ -104,12 +104,12 @@ void InitializeAtlasHierachicalProlongation( GridAtlas< GeometryReal , MatrixRea
 		for( int r=0 ; r<prolongationLines.size() ; r++ )
 		{
 			int lineLength = prolongationLines[r].length;
-			AtlasCombinedTexelIndex startIndex = prolongationLines[r].startIndex;
-			AtlasCombinedTexelIndex centerLineStart = prolongationLines[r].centerLineIndex;
-			AtlasCombinedTexelIndex previousLineStart = prolongationLines[r].prevLineIndex;
-			AtlasCombinedTexelIndex nextLineStart = prolongationLines[r].nextLineIndex;
+			AtlasTexelIndex startIndex = prolongationLines[r].startIndex;
+			AtlasTexelIndex centerLineStart = prolongationLines[r].centerLineIndex;
+			AtlasTexelIndex previousLineStart = prolongationLines[r].prevLineIndex;
+			AtlasTexelIndex nextLineStart = prolongationLines[r].nextLineIndex;
 			int offset = prolongationLines[r].alignedStart ? 0 : 1;
-			if( centerLineStart!=AtlasCombinedTexelIndex(-1) )
+			if( centerLineStart!=AtlasTexelIndex(-1) )
 			{
 				for( int i=0 ; i<lineLength ; i++ )
 				{
@@ -196,7 +196,7 @@ void InitializeAtlasHierachicalRestriction
 {
 	std::vector< Eigen::Triplet< MatrixReal > > boundaryRestrictionTriplets;
 
-	const ExplicitIndexVector< AtlasCombinedTexelIndex , TexelInfo > & coarseTexelInfo = coarseAtlas.texelInfo;
+	const ExplicitIndexVector< AtlasTexelIndex , TexelInfo > & coarseTexelInfo = coarseAtlas.texelInfo;
 	const typename GridAtlas<>::IndexConverter & indexConverter = coarseAtlas.indexConverter;
 
 	const std::vector< RasterLine > &coarseRasterLines = coarseAtlas.rasterLines;
@@ -212,11 +212,11 @@ void InitializeAtlasHierachicalRestriction
 			0 , coarseRasterLines.size() ,
 			[&]( unsigned int , size_t i )
 			{
-				AtlasCombinedTexelIndex lineCoarseStartIndex = coarseRasterLines[i].lineStartIndex;
+				AtlasTexelIndex lineCoarseStartIndex = coarseRasterLines[i].lineStartIndex;
 				int lineCoarseLength = coarseRasterLines[i].lineEndIndex - lineCoarseStartIndex + 1;
 
 #ifdef SANITY_CHECK
-#pragma message( "[WARNING] Converting AtlasCombinedTexelIndex -> AtlasInteriorTexelIndex" )
+#pragma message( "[WARNING] Converting AtlasTexelIndex -> AtlasInteriorTexelIndex" )
 #endif // SANITY_CHECK
 				restrictionLines[i].coeffStartIndex = AtlasInteriorTexelIndex( lineCoarseStartIndex ); //combined (NOT DEEP) variable index in the current level
 
@@ -236,8 +236,8 @@ void InitializeAtlasHierachicalRestriction
 				int fj = (int)( fineChart.centerOffset[1] + 2.0 *(cj - coarseChart.centerOffset[1]) );
 				if( fi-1 < 0 || fi+1>(int)fineChart.width-1 || fj-1 < 0 || fj+1>(int)fineChart.height-1 ) MK_THROW( "Out of bounds node position" );
 
-				AtlasCombinedTexelIndex fineCurrentLineStart = fineChart.texelIndices(fi,fj).combined;
-				if( fineCurrentLineStart!=AtlasCombinedTexelIndex(-1) )
+				AtlasTexelIndex fineCurrentLineStart = fineChart.texelIndices(fi,fj).combined;
+				if( fineCurrentLineStart!=AtlasTexelIndex(-1) )
 				{
 					restrictionLines[i].lineStartIndex = fineCurrentLineStart;
 					restrictionLines[i].lineEndIndex = fineCurrentLineStart + 2 * (coarseRasterLines[i].lineEndIndex - lineCoarseStartIndex);
@@ -248,8 +248,8 @@ void InitializeAtlasHierachicalRestriction
 				}
 				else MK_THROW( "Invalid fine line start index" );
 
-				AtlasCombinedTexelIndex finePreviousLineStart = fineChart.texelIndices(fi,fj-1).combined;
-				if( finePreviousLineStart!=AtlasCombinedTexelIndex(-1) )
+				AtlasTexelIndex finePreviousLineStart = fineChart.texelIndices(fi,fj-1).combined;
+				if( finePreviousLineStart!=AtlasTexelIndex(-1) )
 				{
 					restrictionLines[i].prevLineIndex = finePreviousLineStart;
 
@@ -260,8 +260,8 @@ void InitializeAtlasHierachicalRestriction
 				else MK_THROW( "Invalid fine previous line start index" );
 
 
-				AtlasCombinedTexelIndex fineNextLineStart = fineChart.texelIndices(fi,fj+1).combined;
-				if( fineNextLineStart!=AtlasCombinedTexelIndex(-1) )
+				AtlasTexelIndex fineNextLineStart = fineChart.texelIndices(fi,fj+1).combined;
+				if( fineNextLineStart!=AtlasTexelIndex(-1) )
 				{
 					restrictionLines[i].nextLineIndex = fineNextLineStart;
 
@@ -280,7 +280,7 @@ void InitializeAtlasHierachicalRestriction
 		const GridChart< GeometryReal > &fineChart = fineAtlas.gridCharts[ ChartIndex(k) ];
 		const GridChart< GeometryReal > &coarseChart = coarseAtlas.gridCharts[ ChartIndex(k) ];
 
-		for( unsigned int fj=0 ; fj<fineChart.height ; fj++ ) for( unsigned int fi=0 ; fi<fineChart.width ; fi++ ) if( fineChart.texelIndices(fi,fj).combined!=AtlasCombinedTexelIndex(-1) )
+		for( unsigned int fj=0 ; fj<fineChart.height ; fj++ ) for( unsigned int fi=0 ; fi<fineChart.width ; fi++ ) if( fineChart.texelIndices(fi,fj).combined!=AtlasTexelIndex(-1) )
 		{
 
 			int _fi = fi - fineChart.centerOffset[0];
@@ -321,8 +321,8 @@ void InitializeAtlasHierachicalRestriction
 			}
 			for( int di=0 ; di<2 ; di++ ) for( int dj=0 ; dj<2 ; dj++ ) if( ci[di]!=-1 && cj[dj]!=-1)
 			{
-				AtlasCombinedTexelIndex coarseCombinedTexel = coarseChart.texelIndices(ci[di], cj[dj]).combined;
-				if( coarseCombinedTexel==AtlasCombinedTexelIndex(-1) ) MK_THROW( "Coarse texel is unactive! (D)" );
+				AtlasTexelIndex coarseCombinedTexel = coarseChart.texelIndices(ci[di], cj[dj]).combined;
+				if( coarseCombinedTexel==AtlasTexelIndex(-1) ) MK_THROW( "Coarse texel is unactive! (D)" );
 				else
 				{
 					AtlasBoundaryTexelIndex coarseBoundaryIndex = indexConverter.combinedToBoundary( coarseCombinedTexel );

@@ -81,7 +81,6 @@ namespace MishaK
 			if constexpr( K==2 )
 			{
 				size_t faceNum = inFaces.size();
-				MinimalAreaTriangulation< Real , Dim > mat;
 				for( unsigned int i=(unsigned int)inFaces.size() ; i!=0 ; i-- )
 				{
 					Face &face = inFaces[i-1];
@@ -92,7 +91,7 @@ namespace MishaK
 						std::vector< Point< Real , Dim > > _vertices( face.size() );
 						std::vector< SimplexIndex< K > > _triangles;
 						for( unsigned int j=0 ; j<(unsigned int)face.size() ; j++ ) _vertices[j] = inVertices[ face[j] ];
-						mat.GetTriangulation( _vertices , _triangles );
+						MinimalAreaTriangulation::GetTriangulation( _vertices , _triangles );
 
 						auto TriangleToFace = [&]( SimplexIndex< K > si )
 							{
@@ -202,8 +201,6 @@ namespace MishaK
 					else tCount += (unsigned int)obj_faces[i].size()-2;
 				if( tCount>obj_faces.size() )
 				{
-					MinimalAreaTriangulation< Real , 3 > mat;
-
 					obj_faces.reserve( tCount );
 					for( unsigned int i=(unsigned int)obj_faces.size() ; i!=0 ; i-- )
 					{
@@ -214,7 +211,7 @@ namespace MishaK
 							std::vector< Point3D< Real > > _vertices( face.size() );
 							std::vector< SimplexIndex< 2 > > triangles;
 							for( unsigned int j=0 ; j<face.size() ; j++ ) _vertices[j] = vertices[ ObjIndexToArrayIndex( obj_vertices.size() , face[j].vIndex ) ];
-							mat.GetTriangulation( _vertices , triangles );
+							MinimalAreaTriangulation::GetTriangulation( _vertices , triangles );
 
 							auto TriangleToOBJFace = [&]( SimplexIndex< 2 > tri )
 								{
@@ -285,7 +282,6 @@ namespace MishaK
 			if constexpr( K==2 )
 			{
 				size_t faceNum = inFaces.size();
-				MinimalAreaTriangulation< Real , Dim > mat;
 				for( unsigned int i=(unsigned int)inFaces.size() ; i!=0 ; i-- )
 				{
 					Face &face = inFaces[i-1];
@@ -296,7 +292,7 @@ namespace MishaK
 						std::vector< Point< Real , Dim > > _vertices( face.size() );
 						std::vector< SimplexIndex< K > > _triangles;
 						for( unsigned int j=0 ; j<(unsigned int)face.size() ; j++ ) _vertices[j] = inVertices[ face[j] ].template get<0>();
-						mat.GetTriangulation( _vertices , _triangles );
+						MinimalAreaTriangulation::GetTriangulation( _vertices , _triangles );
 
 						auto TriangleToFace = [&]( SimplexIndex< K > si )
 							{
@@ -457,8 +453,6 @@ namespace MishaK
 					else tCount += (unsigned int)obj_faces[i].size()-2;
 				if( tCount>obj_faces.size() )
 				{
-					MinimalAreaTriangulation< Real , 3 > mat;
-
 					obj_faces.reserve( tCount );
 					for( unsigned int i=(unsigned int)obj_faces.size() ; i!=0 ; i-- )
 					{
@@ -469,7 +463,7 @@ namespace MishaK
 							std::vector< Point3D< Real > > _vertices( face.size() );
 							std::vector< SimplexIndex< 2 > > triangles;
 							for( unsigned int j=0 ; j<face.size() ; j++ ) _vertices[j] = vertices[ ObjIndexToArrayIndex( obj_vertices.size() , face[j].vIndex ) ];
-							mat.GetTriangulation( _vertices , triangles );
+							MinimalAreaTriangulation::GetTriangulation( _vertices , triangles );
 
 							auto TriangleToOBJFace = [&]( SimplexIndex< 2 > tri )
 								{

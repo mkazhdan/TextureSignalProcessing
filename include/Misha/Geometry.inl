@@ -285,7 +285,7 @@ Matrix< Real , Dim , Dim > Matrix< Real , Dim , Dim >::inverse( bool& success ) 
 		for( int j=i+1 ; j<Dim ; j++ ) if( fabs( xForm(i,j) )>v ) p = j , v = (Real)fabs( xForm(i,j) );
 		if( v==(Real)0. )
 		{
-//			fprintf( stderr , "[WARNING] Failed to invert matrix\n" );
+			//			fprintf( stderr , "[WARNING] Failed to invert matrix\n" );
 			success = false;
 			return Matrix();
 		}
@@ -557,11 +557,11 @@ Point3D< Real > RandomTrianglePoint( const Point3D< Real >& v1 , const Point3D< 
 *///////////////////////////////////////////////////////////////////////////////
 template<typename BaryCoords, typename DataType>
 inline DataType BarycentricInterpolate(const BaryCoords &coords
-        , const DataType &d0, const DataType &d1, const DataType &d2)
+	, const DataType &d0, const DataType &d1, const DataType &d2)
 {
-    // Use barycentric coordinates normalized w/ L1 norm
-    return (coords[0] * d0  + coords[1] * d1 + coords[2] * d2)
-           / (coords[0] + coords[1] + coords[2]);
+	// Use barycentric coordinates normalized w/ L1 norm
+	return (coords[0] * d0  + coords[1] * d1 + coords[2] * d2)
+		/ (coords[0] + coords[1] + coords[2]);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -573,27 +573,27 @@ inline DataType BarycentricInterpolate(const BaryCoords &coords
 *///////////////////////////////////////////////////////////////////////////////
 template<typename PointType, typename Real>
 inline void Circumcircle(const PointType &p0, const PointType &p1
-        , const PointType &p2, PointType &center, Real &radius)
+	, const PointType &p2, PointType &center, Real &radius)
 {
-    Point3D<Real> e[3];
-    e[0] = Point3D<Real>(p2 - p1);
-    e[1] = Point3D<Real>(p0 - p2);
-    e[2] = Point3D<Real>(p1 - p0);
-    Real a2 = SquareLength(e[0]);
-    Real b2 = SquareLength(e[1]);
-    Real c2 = SquareLength(e[2]);
-    Real a = sqrt(a2);
-    Real b = sqrt(b2);
-    Real c = sqrt(c2);
-    Real doubleA = Length(Point3D<Real>::CrossProduct(e[0], e[1]));
-    // Radius =  (a * b * c) / (4A)
-    // (a, b, and c are edge lengths, A is area)
-    radius = (a * b * c) / (2 * doubleA);
-    // Circumcenter Barycentric Coordinates:
-    //  (a^2 (b^2 + c^2 - a^2), b^2 (c^2 + a^2 - b^2), c^2 (a^2 + b^2 - c^2))
-    Point3D<Real> centerBaryCoords(a2 * (b2 + c2 - a2), b2 * (c2 + a2 - b2)
-                                 , c2 * (a2 + b2 - c2));
-    center = BarycentricInterpolate(centerBaryCoords, p0, p1, p2);
+	Point3D<Real> e[3];
+	e[0] = Point3D<Real>(p2 - p1);
+	e[1] = Point3D<Real>(p0 - p2);
+	e[2] = Point3D<Real>(p1 - p0);
+	Real a2 = SquareLength(e[0]);
+	Real b2 = SquareLength(e[1]);
+	Real c2 = SquareLength(e[2]);
+	Real a = sqrt(a2);
+	Real b = sqrt(b2);
+	Real c = sqrt(c2);
+	Real doubleA = Length(Point3D<Real>::CrossProduct(e[0], e[1]));
+	// Radius =  (a * b * c) / (4A)
+	// (a, b, and c are edge lengths, A is area)
+	radius = (a * b * c) / (2 * doubleA);
+	// Circumcenter Barycentric Coordinates:
+	//  (a^2 (b^2 + c^2 - a^2), b^2 (c^2 + a^2 - b^2), c^2 (a^2 + b^2 - c^2))
+	Point3D<Real> centerBaryCoords(a2 * (b2 + c2 - a2), b2 * (c2 + a2 - b2)
+		, c2 * (a2 + b2 - c2));
+	center = BarycentricInterpolate(centerBaryCoords, p0, p1, p2);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -605,22 +605,22 @@ inline void Circumcircle(const PointType &p0, const PointType &p1
 *///////////////////////////////////////////////////////////////////////////////
 template<typename PointType, typename Real>
 inline void Incircle(const PointType &p0, const PointType &p1
-        , const PointType &p2, PointType &center, Real &radius)
+	, const PointType &p2, PointType &center, Real &radius)
 {
-    Point3D<Real> e[3];
-    e[0] = Point3D<Real>(p2 - p1);
-    e[1] = Point3D<Real>(p0 - p2);
-    e[2] = Point3D<Real>(p1 - p0);
-    Real a = Length(e[0]);
-    Real b = Length(e[1]);
-    Real c = Length(e[2]);
-    Real doubleA = Length(Point3D<Real>::CrossProduct(e[0], e[1]));
-    // Radius =  (2A) / (a + b + c)
-    // (a, b, and c are edge lengths, A is area)
-    radius = doubleA / (a + b + c);
-    // Incenter Barycentric Coordinates: (a, b, c)
-    Point3D<Real> centerBaryCoords(a, b, c);
-    center = BarycentricInterpolate(centerBaryCoords, p0, p1, p2);
+	Point3D<Real> e[3];
+	e[0] = Point3D<Real>(p2 - p1);
+	e[1] = Point3D<Real>(p0 - p2);
+	e[2] = Point3D<Real>(p1 - p0);
+	Real a = Length(e[0]);
+	Real b = Length(e[1]);
+	Real c = Length(e[2]);
+	Real doubleA = Length(Point3D<Real>::CrossProduct(e[0], e[1]));
+	// Radius =  (2A) / (a + b + c)
+	// (a, b, and c are edge lengths, A is area)
+	radius = doubleA / (a + b + c);
+	// Incenter Barycentric Coordinates: (a, b, c)
+	Point3D<Real> centerBaryCoords(a, b, c);
+	center = BarycentricInterpolate(centerBaryCoords, p0, p1, p2);
 }
 
 template< class Real >
@@ -838,11 +838,11 @@ void SimplexIndex< K , Index >::split( const Real values[K+1] , std::vector< Ver
 	// Pick some intersection of the hyper-plane with a simplex edge
 	unsigned int v1=-1 , v2=-1;
 	auto InitializationFunction = [&]( void )
-	{
-		Real t1 = values[v1] / ( values[v1] - values[v2] ) , t2 = (Real)( 1. - t1 );
-		vertices.push_back( vertices[ idx[v2] ]*t1 + vertices[ idx[v1] ]*t2 );
-		return (Index)( vertices.size()-1 );
-	};
+		{
+			Real t1 = values[v1] / ( values[v1] - values[v2] ) , t2 = (Real)( 1. - t1 );
+			vertices.push_back( vertices[ idx[v2] ]*t1 + vertices[ idx[v1] ]*t2 );
+			return (Index)( vertices.size()-1 );
+		};
 	for( unsigned int i=0 ; i<K ; i++ ) for( unsigned int j=i+1 ; j<=K ; j++ ) if( values[i]*values[j]<0 ) v1 = i , v2 = j;
 	Index midPointIndex = edgeTable( idx[v1] , idx[v2] , InitializationFunction ); 
 
@@ -900,6 +900,158 @@ bool SimplexIndex< K , Index >::sort( const Index indices[] )
 //////////////////////////////
 // MinimalAreaTriangulation //
 //////////////////////////////
+#ifdef NEW_MAT_CODE
+template< typename Real , unsigned int Dim >
+double MinimalAreaTriangulation::_Area( Point< Real , Dim > v0 , Point< Real , Dim > v1 , Point< Real , Dim > v2 )
+{
+	Point< Real , Dim > d[] = { v1-v0 , v2-v0 };
+	SquareMatrix< double , 2 > M;
+	for( int i=0 ; i<2 ; i++ ) for( int j=0 ; j<2 ; j++ ) M(i,j) = Point< Real , Dim >::Dot( d[i] , d[j] );
+	return sqrt( std::max< double >( 0 , M.determinant() ) ) / 2.;
+}
+
+template< typename Index , typename AreaFunctor /*=std::function< double (unsigned int , unsigned int ,  unsigned int ) > */ >
+void MinimalAreaTriangulation::GetTriangulation( const AreaFunctor & AF , unsigned int vNum , std::vector< SimplexIndex< 2 , Index > >& triangles )
+{
+	static_assert( std::is_convertible_v< AreaFunctor , std::function< double (unsigned int,unsigned int,unsigned int) > > , "[ERROR] AreaFunctor poorly formed" );
+	if( vNum<3 ) MK_ERROR_OUT( "Expected at least three vertices: " , vNum );
+
+	triangles.resize( vNum-2 );
+
+	if( vNum==3 )
+	{
+		triangles[0][0]=0;
+		triangles[0][1]=1;
+		triangles[0][2]=2;
+		return;
+	}
+	else if( vNum==4 )
+	{
+		SimplexIndex< 2 , Index > tIndex[2][2];
+		double area[] = { 0 , 0 };
+
+		tIndex[0][0][0]=0;
+		tIndex[0][0][1]=1;
+		tIndex[0][0][2]=2;
+		tIndex[0][1][0]=2;
+		tIndex[0][1][1]=3;
+		tIndex[0][1][2]=0;
+
+		tIndex[1][0][0]=0;
+		tIndex[1][0][1]=1;
+		tIndex[1][0][2]=3;
+		tIndex[1][1][0]=3;
+		tIndex[1][1][1]=1;
+		tIndex[1][1][2]=2;
+
+		for( int i=0 ; i<2 ; i++ ) for( int j=0 ; j<2 ; j++ ) area[i] += AF( tIndex[i][j][0] , tIndex[i][j][1] , tIndex[i][j][2] );
+
+		if( area[0]>area[1] ) triangles[0] = tIndex[1][0] , triangles[1] = tIndex[1][1];
+		else                  triangles[0] = tIndex[0][0] , triangles[1] = tIndex[0][1];
+		return;
+	}
+
+	MinimalAreaTriangulation mat;
+	unsigned int eCount = vNum;
+	mat._bestTriangulation = new double[eCount*eCount];
+	mat._midPoint = new unsigned int[eCount*eCount];
+	for( unsigned int i=0 ; i<eCount*eCount ; i++ ) mat._bestTriangulation[i] = -1 , mat._midPoint[i] = -1;
+	mat._getArea( 0 , 1 , AF , vNum );
+	unsigned int idx = 0;
+	mat._getTriangulation( 0 , 1 , AF , vNum , triangles , idx );
+}
+
+template< class Real , unsigned int Dim , typename Index >
+void MinimalAreaTriangulation::GetTriangulation( const std::vector< Point< Real , Dim > >& vertices , std::vector< SimplexIndex< 2 , Index > >& triangles )
+{
+	return GetTriangulation( [&]( unsigned int i , unsigned int j , unsigned int k ){ return _Area( vertices[i] , vertices[j] , vertices[k] ); } , static_cast< unsigned int >( vertices.size() ) , triangles );
+}
+
+template< typename AreaFunctor /*=std::function< double (unsigned int , unsigned int ,  unsigned int ) > */ >
+double MinimalAreaTriangulation::GetArea( const AreaFunctor & AF , unsigned int vNum )
+{
+	static_assert( std::is_convertible_v< AreaFunctor , std::function< double (unsigned int,unsigned int,unsigned int) > > , "[ERROR] AreaFunctor poorly formed" );
+	if( vNum<3 ) MK_ERROR_OUT( "Expected at least three vertices: " , vNum );
+
+	MinimalAreaTriangulation mat;
+	unsigned int eCount = vNum;
+	mat._bestTriangulation = new double[eCount*eCount];
+	mat._midPoint = new unsigned int[eCount*eCount];
+	for( int i=0 ; i<eCount*eCount ; i++ ) mat._bestTriangulation[i]=-1 , mat._midPoint[i] = -1;
+	return mat._getArea( 0 , 1 , AF , vNum );
+}
+
+template< class Real , unsigned int Dim >
+double MinimalAreaTriangulation::GetArea( const std::vector< Point< Real , Dim > > &vertices )
+{
+	return GetArea( [&]( unsigned int i , unsigned int j , unsigned int k ){ return _Area( vertices[i] , vertices[j] , vertices[k] ); } , vertices.size() );
+}
+
+template< typename Index , typename AreaFunctor /*=std::function< double (unsigned int , unsigned int ,  unsigned int ) > */ >
+void MinimalAreaTriangulation::_getTriangulation( unsigned int i , unsigned int j , const AreaFunctor & AF , unsigned int vNum , std::vector< SimplexIndex< 2 , Index > > &triangles , unsigned int &idx )
+{
+	SimplexIndex< 2 , Index > tIndex;
+	unsigned int eCount = vNum;
+	unsigned int ii = i;
+	if( i<j ) ii += eCount;
+	if( j+1>=ii ) return;
+	ii = _midPoint[i*eCount+j];
+	if( ii>=0 )
+	{
+		tIndex[0] = (Index)i;
+		tIndex[1] = (Index)j;
+		tIndex[2] = (Index)ii;
+		triangles[idx++] = tIndex;
+		_getTriangulation( i , ii , AF , vNum , triangles , idx );
+		_getTriangulation( ii , j , AF , vNum , triangles , idx );
+	}
+}
+
+template< typename AreaFunctor /*=std::function< double (unsigned int , unsigned int ,  unsigned int ) > */ >
+double MinimalAreaTriangulation::_getArea( unsigned int i , unsigned int j , const AreaFunctor & AF , unsigned int vNum )
+{
+	double a = std::numeric_limits< double >::infinity() , temp;
+	unsigned int eCount = vNum;
+	unsigned int idx = i*eCount+j;
+	unsigned int ii = i;
+	if( i<j ) ii += eCount;
+	if( j+1>=ii)
+	{
+		_bestTriangulation[idx]=0;
+		return 0;
+	}
+	unsigned int mid=-1;
+	for( unsigned int r=j+1 ; r<ii ; r++ )
+	{
+		unsigned int rr=r%eCount;
+		unsigned int idx1=i*eCount+rr , idx2=rr*eCount+j;
+
+		temp = AF( rr , i , j );
+
+		if( _bestTriangulation[idx1]>0 )
+		{
+			temp += _bestTriangulation[idx1];
+			if( temp>a ) continue;
+			if( _bestTriangulation[idx2]>0 ) temp += _bestTriangulation[idx2];
+			else temp += _getArea( rr , j , AF , vNum );
+		}
+		else
+		{
+			if( _bestTriangulation[idx2]>0 ) temp += _bestTriangulation[idx2];
+			else temp += _getArea( rr , j , AF , vNum );
+			if( temp>a ) continue;
+			temp += _getArea( i , rr , AF , vNum );
+		}
+
+		if( temp<a ) a = temp , mid = rr;
+	}
+	_bestTriangulation[idx]=a;
+	_midPoint[idx]=mid;
+
+	return a;
+}
+
+#else // !NEW_MAT_CODE
 template< typename Real , unsigned int Dim >
 double MinimalAreaTriangulation< Real , Dim >::_Area( Point< Real , Dim > v0 , Point< Real , Dim > v1 , Point< Real , Dim > v2 )
 {
@@ -908,16 +1060,19 @@ double MinimalAreaTriangulation< Real , Dim >::_Area( Point< Real , Dim > v0 , P
 	for( int i=0 ; i<2 ; i++ ) for( int j=0 ; j<2 ; j++ ) M(i,j) = Point< Real , Dim >::Dot( d[i] , d[j] );
 	return sqrt( std::max< double >( 0 , M.determinant() ) ) / 2.;
 }
+
 template< class Real , unsigned int Dim >
-MinimalAreaTriangulation< Real , Dim >::MinimalAreaTriangulation( void ) : _bestTriangulation(NULL) , _midPoint(NULL) {}
+MinimalAreaTriangulation< Real , Dim >::MinimalAreaTriangulation( void ) : _bestTriangulation(nullptr) , _midPoint(nullptr) {}
+
 template< class Real , unsigned int Dim >
 MinimalAreaTriangulation< Real , Dim >::~MinimalAreaTriangulation( void )
 {
-	if( _bestTriangulation ) delete[] _bestTriangulation;
-	if( _midPoint ) delete[] _midPoint;
-	_bestTriangulation=NULL;
-	_midPoint=NULL;
+	delete[] _bestTriangulation;
+	delete[] _midPoint;
+	_bestTriangulation = nullptr;
+	_midPoint = nullptr;
 }
+
 template< class Real , unsigned int Dim >
 template< typename Index >
 void MinimalAreaTriangulation< Real , Dim >::GetTriangulation( const std::vector< Point< Real , Dim > >& vertices , std::vector< SimplexIndex< 2 , Index > >& triangles )
@@ -956,37 +1111,32 @@ void MinimalAreaTriangulation< Real , Dim >::GetTriangulation( const std::vector
 		return;
 	}
 
-	if( _bestTriangulation ) delete[] _bestTriangulation;
-	if( _midPoint ) delete[] _midPoint;
-	_bestTriangulation = NULL;
-	_midPoint = NULL;
+	MinimalAreaTriangulation mat;
 	size_t eCount=vertices.size();
-	_bestTriangulation = new double[eCount*eCount];
-	_midPoint = new size_t[eCount*eCount];
-	for( unsigned int i=0 ; i<eCount*eCount ; i++ ) _bestTriangulation[i] = -1 , _midPoint[i] = -1;
-	_GetArea( 0 , 1 , vertices );
+	mat._bestTriangulation = new double[eCount*eCount];
+	mat._midPoint = new size_t[eCount*eCount];
+	for( unsigned int i=0 ; i<eCount*eCount ; i++ ) mat._bestTriangulation[i] = -1 , mat._midPoint[i] = -1;
+	mat._getArea( 0 , 1 , vertices );
 	//	triangles.clear();
 	size_t idx = 0;
 	//	GetTriangulation(0,1,vertices,triangles);
-	_GetTriangulation( 0 , 1 , vertices , triangles , idx );
+	mat._getTriangulation( 0 , 1 , vertices , triangles , idx );
 }
 
 template< class Real , unsigned int Dim >
-double MinimalAreaTriangulation< Real , Dim >::GetArea( const std::vector< Point< Real , Dim > > &vertices)
+double MinimalAreaTriangulation< Real , Dim >::GetArea( const std::vector< Point< Real , Dim > > &vertices )
 {
-	if( _bestTriangulation ) delete[] _bestTriangulation;
-	if( _midPoint ) delete[] _midPoint;
-	_bestTriangulation = NULL;
-	_midPoint = NULL;
+	MinimalAreaTriangulation mat;
 	size_t eCount = vertices.size();
-	_bestTriangulation = new double[eCount*eCount];
-	_midPoint = new size_t[eCount*eCount];
-	for( int i=0 ; i<eCount*eCount ; i++ ) _bestTriangulation[i]=-1 , _midPoint[i] = -1;
-	return _GetArea( 0 , 1 , vertices );
+	mat._bestTriangulation = new double[eCount*eCount];
+	mat._midPoint = new size_t[eCount*eCount];
+	for( int i=0 ; i<eCount*eCount ; i++ ) mat._bestTriangulation[i]=-1 , mat._midPoint[i] = -1;
+	return mat._getArea( 0 , 1 , vertices );
 }
+
 template< typename Real , unsigned int Dim >
 template< typename Index >
-void MinimalAreaTriangulation< Real , Dim >::_GetTriangulation( size_t i , size_t j , const std::vector< Point< Real , Dim > > &vertices , std::vector< SimplexIndex< 2 , Index > > &triangles , size_t &idx )
+void MinimalAreaTriangulation< Real , Dim >::_getTriangulation( size_t i , size_t j , const std::vector< Point< Real , Dim > > &vertices , std::vector< SimplexIndex< 2 , Index > > &triangles , size_t &idx )
 {
 	SimplexIndex< 2 , Index > tIndex;
 	size_t eCount = vertices.size();
@@ -1000,15 +1150,15 @@ void MinimalAreaTriangulation< Real , Dim >::_GetTriangulation( size_t i , size_
 		tIndex[1] = (Index)j;
 		tIndex[2] = (Index)ii;
 		triangles[idx++] = tIndex;
-		_GetTriangulation( i , ii , vertices , triangles , idx );
-		_GetTriangulation( ii , j , vertices , triangles , idx );
+		_getTriangulation( i , ii , vertices , triangles , idx );
+		_getTriangulation( ii , j , vertices , triangles , idx );
 	}
 }
 
 template< class Real , unsigned int Dim >
-double MinimalAreaTriangulation< Real , Dim >::_GetArea( size_t i , size_t j , const std::vector< Point< Real , Dim > > &vertices)
+double MinimalAreaTriangulation< Real , Dim >::_getArea( size_t i , size_t j , const std::vector< Point< Real , Dim > > &vertices )
 {
-	double a=FLT_MAX , temp;
+	double a = std::numeric_limits< double >::infinity() , temp;
 	size_t eCount = vertices.size();
 	size_t idx = i*eCount+j;
 	size_t ii = i;
@@ -1030,14 +1180,14 @@ double MinimalAreaTriangulation< Real , Dim >::_GetArea( size_t i , size_t j , c
 			temp += _bestTriangulation[idx1];
 			if( temp>a ) continue;
 			if( _bestTriangulation[idx2]>0 ) temp += _bestTriangulation[idx2];
-			else temp += _GetArea( rr , j , vertices );
+			else temp += _getArea( rr , j , vertices );
 		}
 		else
 		{
 			if( _bestTriangulation[idx2]>0 ) temp += _bestTriangulation[idx2];
-			else temp += _GetArea( rr , j , vertices );
+			else temp += _getArea( rr , j , vertices );
 			if( temp>a ) continue;
-			temp += _GetArea( i , rr , vertices );
+			temp += _getArea( i , rr , vertices );
 		}
 
 		if( temp<a ) a = temp , mid = rr;
@@ -1047,6 +1197,7 @@ double MinimalAreaTriangulation< Real , Dim >::_GetArea( size_t i , size_t j , c
 
 	return a;
 }
+#endif // NEW_MAT_CODE
 
 //////////////////////
 // EarTriangulation //
@@ -1191,14 +1342,14 @@ void EarTriangulation::GetTriangulation( const std::vector< Point< Real , 2 > > 
 	{
 		if( !earVertices.size() )
 		{
-//			MK_WARN( "Expected an ear vertex: " , PolygonSize() );
+			//			MK_WARN( "Expected an ear vertex: " , PolygonSize() );
 			ProcessPolygon( [&]( PolygonVertex *v ){ if( ( v->isEar = IsEar( v ) ) ) earVertices.push_back(v); } );
 			if( !earVertices.size() )
 			{
-//				ProcessPolygon( [&]( PolygonVertex *v ){ std::cout << v->idx << " : " << vertices[ v->idx ] << std::endl; }  );
-//				ProcessPolygon( [&]( PolygonVertex *v ){ poly.push_back( v->idx ); }  );
-//				MK_ERROR_OUT( "Could not find ears" );
-//std::cout << polys.size() << std::endl;
+				//				ProcessPolygon( [&]( PolygonVertex *v ){ std::cout << v->idx << " : " << vertices[ v->idx ] << std::endl; }  );
+				//				ProcessPolygon( [&]( PolygonVertex *v ){ poly.push_back( v->idx ); }  );
+				//				MK_ERROR_OUT( "Could not find ears" );
+				//std::cout << polys.size() << std::endl;
 				return;
 			}
 		}

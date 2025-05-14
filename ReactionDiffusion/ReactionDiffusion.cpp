@@ -167,7 +167,7 @@ public:
 
 	static HierarchicalSystem< PreReal , Real > hierarchy;
 
-	static ExplicitIndexVector< AtlasCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > > bilinearElementIndices;
+	static ExplicitIndexVector< AtlasCellIndex , BilinearElementIndex< AtlasTexelIndex > > bilinearElementIndices;
 
 	static std::vector< TextureNodeInfo< PreReal > > textureNodes;
 	static Image< int > nodeIndex;
@@ -275,7 +275,7 @@ template< typename PreReal , typename Real > Real																	GrayScottReact
 
 template< typename PreReal , typename Real > std::vector< TextureNodeInfo< PreReal > >								GrayScottReactionDiffusion< PreReal , Real >::textureNodes;
 template< typename PreReal , typename Real > Image< int >															GrayScottReactionDiffusion< PreReal , Real >::nodeIndex;
-template< typename PreReal , typename Real > ExplicitIndexVector< AtlasCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > >	GrayScottReactionDiffusion< PreReal , Real >::bilinearElementIndices;
+template< typename PreReal , typename Real > ExplicitIndexVector< AtlasCellIndex , BilinearElementIndex< AtlasTexelIndex > >	GrayScottReactionDiffusion< PreReal , Real >::bilinearElementIndices;
 
 template< typename PreReal , typename Real > int																	GrayScottReactionDiffusion< PreReal , Real >::steps;
 template< typename PreReal , typename Real > char																	GrayScottReactionDiffusion< PreReal , Real >::stepsString[1024];

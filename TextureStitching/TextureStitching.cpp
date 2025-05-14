@@ -190,7 +190,7 @@ public:
 
 	static ExplicitIndexVector< ChartIndex , AtlasChart< PreReal > > atlasCharts;
 
-	static ExplicitIndexVector< AtlasCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > > bilinearElementIndices;
+	static ExplicitIndexVector< AtlasCellIndex , BilinearElementIndex< AtlasTexelIndex > > bilinearElementIndices;
 
 	static std::vector< TextureNodeInfo< PreReal > > textureNodes;
 
@@ -218,8 +218,8 @@ public:
 	static VCycleSolvers< DirectSolver > vCycleSolvers;
 	static DirectSolver directSolver;
 
-	static std::map< SimplexIndex< 1 , AtlasCombinedTexelIndex > , unsigned int > edgeIndex;
-	static std::vector< SimplexIndex< 1 , AtlasCombinedTexelIndex > > edgePairs;
+	static std::map< SimplexIndex< 1 , AtlasTexelIndex > , unsigned int > edgeIndex;
+	static std::vector< SimplexIndex< 1 , AtlasTexelIndex > > edgePairs;
 
 	static SparseMatrix< Real , int > boundaryDivergenceMatrix;
 
@@ -314,7 +314,7 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth > Spar
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > Real															Stitching< PreReal , Real , TextureBitDepth >::interpolationWeight;
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< TextureNodeInfo< PreReal > >						Stitching< PreReal , Real , TextureBitDepth >::textureNodes;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > ExplicitIndexVector< AtlasCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > >	Stitching< PreReal , Real , TextureBitDepth >::bilinearElementIndices;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > ExplicitIndexVector< AtlasCellIndex , BilinearElementIndex< AtlasTexelIndex > >	Stitching< PreReal , Real , TextureBitDepth >::bilinearElementIndices;
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > int																Stitching< PreReal , Real , TextureBitDepth >::steps;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > char															Stitching< PreReal , Real , TextureBitDepth >::stepsString[1024];
@@ -356,8 +356,8 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth > Syst
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > unsigned int													Stitching< PreReal , Real , TextureBitDepth >::updateCount = static_cast< unsigned int >(-1);
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth >  std::map< SimplexIndex< 1 , AtlasCombinedTexelIndex > , unsigned int >	Stitching< PreReal , Real , TextureBitDepth >::edgeIndex;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth >  std::vector< SimplexIndex< 1 , AtlasCombinedTexelIndex > >		Stitching< PreReal , Real , TextureBitDepth >::edgePairs;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth >  std::map< SimplexIndex< 1 , AtlasTexelIndex > , unsigned int >	Stitching< PreReal , Real , TextureBitDepth >::edgeIndex;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth >  std::vector< SimplexIndex< 1 , AtlasTexelIndex > >		Stitching< PreReal , Real , TextureBitDepth >::edgePairs;
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth >  SparseMatrix< Real , int >										Stitching< PreReal , Real , TextureBitDepth >::boundaryDivergenceMatrix;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth >  std::vector< Real >											Stitching< PreReal , Real , TextureBitDepth >::deepDivergenceCoefficients;
@@ -909,7 +909,7 @@ void Stitching< PreReal , Real , TextureBitDepth >::ParseImages( void )
 				Point3D< Real > value[2];
 				for( unsigned int k=0 ; k<2 ; k++ )
 				{
-					AtlasCombinedTexelIndex i = edgePairs[e][k];
+					AtlasTexelIndex i = edgePairs[e][k];
 					weight[k] = textureConfidence( textureNodes[ static_cast< unsigned int >(i) ].ci , textureNodes[ static_cast< unsigned int >(i) ].cj );
 					value[k] = textureValues( textureNodes[ static_cast< unsigned int >(i) ].ci , textureNodes[ static_cast< unsigned int >(i) ].cj );
 				}
@@ -938,7 +938,7 @@ void Stitching< PreReal , Real , TextureBitDepth >::ParseImages( void )
 		}
 		for( int e=0 ; e<edgePairs.size() ; e++ )
 		{
-			const SimplexIndex< 1 , AtlasCombinedTexelIndex > &edgeCorners = edgePairs[e];
+			const SimplexIndex< 1 , AtlasTexelIndex > &edgeCorners = edgePairs[e];
 			unsigned int ci[] = { textureNodes[ static_cast< unsigned int >(edgeCorners[0]) ].ci , textureNodes[ static_cast< unsigned int >(edgeCorners[1]) ].ci };
 			unsigned int cj[] = { textureNodes[ static_cast< unsigned int >(edgeCorners[0]) ].cj , textureNodes[ static_cast< unsigned int >(edgeCorners[1]) ].cj };
 			if( inputMask( ci[0] , cj[0] )!=-1 && inputMask( ci[0] , cj[0] )==inputMask( ci[1] , cj[1] ) ) edgeValues[e] = inputComposition( ci[1] , cj[1] ) - inputComposition( ci[0] , cj[0] );

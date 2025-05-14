@@ -154,7 +154,7 @@ public:
 	static Padding padding;
 
 	static HierarchicalSystem< PreReal , Real > hierarchy;
-	static ExplicitIndexVector< AtlasCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > > bilinearElementIndices;
+	static ExplicitIndexVector< AtlasCellIndex , BilinearElementIndex< AtlasTexelIndex > > bilinearElementIndices;
 
 	static std::vector< TextureNodeInfo< PreReal > > textureNodes;
 	static Image< int > nodeIndex;
@@ -275,7 +275,7 @@ template< typename PreReal , typename Real > SparseMatrix< Real , int >									
 template< typename PreReal , typename Real > SparseMatrix< Real , int >									LineConvolution< PreReal , Real >::stiffness;
 template< typename PreReal , typename Real > std::vector< TextureNodeInfo< PreReal > >					LineConvolution< PreReal , Real >::textureNodes;
 template< typename PreReal , typename Real > Image< int >												LineConvolution< PreReal , Real >::nodeIndex;
-template< typename PreReal , typename Real > ExplicitIndexVector< AtlasCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > >	LineConvolution< PreReal , Real >::bilinearElementIndices;
+template< typename PreReal , typename Real > ExplicitIndexVector< AtlasCellIndex , BilinearElementIndex< AtlasTexelIndex > >	LineConvolution< PreReal , Real >::bilinearElementIndices;
 
 template< typename PreReal , typename Real > int														LineConvolution< PreReal , Real >::steps;
 template< typename PreReal , typename Real > char														LineConvolution< PreReal , Real >::stepsString[1024];
@@ -597,6 +597,8 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 		}
 		else
 		{
+			pMeter.reset();
+
 			// Compute the principal curvatures
 			std::vector< PrincipalCurvature< PreReal > > principalCurvatures;
 			std::vector< Point3D< PreReal > > normals( mesh.surface.vertices.size() );
@@ -609,7 +611,6 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 			for( unsigned int i=0 ; i<normals.size() ; i++ ) normals[i] /= Point3D< PreReal >::Length( normals[i] );
 			// Smooth the normals
 			{
-				Miscellany::PerformanceMeter pMeter( '.' );
 
 				SparseMatrix< PreReal , int > M , _M = rMesh.template massMatrix< FEM::BASIS_0_WHITNEY >() , _S = rMesh.template stiffnessMatrix< FEM::BASIS_0_WHITNEY >();
 				M.resize( 2*normals.size() );
@@ -682,9 +683,9 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 							}
 						);
 					}
-				}		
-				if( Verbose.set ) std::cout << pMeter( "Smoothed normals" ) << std::endl;
+				}
 			}
+			if( Verbose.set ) std::cout << pMeter( "Smoothed normals" ) << std::endl;
 			InitializePrincipalCurvatureDirection( mesh , normals , principalCurvatures );
 
 			// Set the vector-field to the principal curvature direction times the umbilicity

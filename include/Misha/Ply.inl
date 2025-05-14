@@ -267,7 +267,6 @@ int ReadTriangles
 	std::vector< std::string > *comments
 )
 {
-	MinimalAreaTriangulation< Real , Dim > MAT;
 	std::vector< std::vector< Index > > polygons;
 	int file_type = ReadPolygons( fileName , vFactory , vertices , polygons , vertexPropertiesFlag , comments );
 	std::vector< Point3D< Real > > poly;
@@ -278,7 +277,11 @@ int ReadTriangles
 	{
 		poly.resize( polygons[i].size( ) );
 		for( unsigned int j=0 ; j<polygons[i].size() ; j++ ) poly[j] = VertexToPointFunctor( vertices[ polygons[i][j] ] );
-		MAT.GetTriangulation( poly , tris );
+#ifdef NEW_MAT_CODE
+		MinimalAreaTriangulation::GetTriangulation( poly , tris );
+#else // !NEW_MAT_CODE
+		MinimalAreaTriangulation< Real , Dim >::GetTriangulation( poly , tris );
+#endif // NEW_MAT_CODE
 		for( unsigned int j=0 ; j<tris.size() ; j++ )
 		{
 			SimplexIndex< 2 , Index > tri;

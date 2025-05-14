@@ -33,12 +33,12 @@ namespace MishaK
 	void InitializeInteriorTexelToCellLines( std::vector< InteriorTexelToCellLine > &interiorTexeltoCellLine , const GridAtlas< GeometryReal , MatrixReal > &gridAtlas )
 	{
 		const std::vector<RasterLine> & rasterLines = gridAtlas.rasterLines;
-		const ExplicitIndexVector< AtlasCombinedTexelIndex , TexelInfo > & texelInfo = gridAtlas.texelInfo;
+		const ExplicitIndexVector< AtlasTexelIndex , TexelInfo > & texelInfo = gridAtlas.texelInfo;
 		const ExplicitIndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts = gridAtlas.gridCharts;
 		interiorTexeltoCellLine.resize( rasterLines.size() );
 		for( unsigned int i=0 ; i<rasterLines.size() ; i++ )
 		{
-			AtlasCombinedTexelIndex interiorTexelStart = rasterLines[i].lineStartIndex;
+			AtlasTexelIndex interiorTexelStart = rasterLines[i].lineStartIndex;
 			unsigned int ci = texelInfo[interiorTexelStart].ci;
 			unsigned int cj = texelInfo[interiorTexelStart].cj;
 			ChartIndex chartID = texelInfo[interiorTexelStart].chartID;

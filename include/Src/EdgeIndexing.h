@@ -37,7 +37,7 @@ namespace MishaK
 	template< typename GeometryReal >
 	void InitializeIntraChartEdgeIndexing
 	(
-		std::map< SimplexIndex< 1 , AtlasCombinedTexelIndex > , unsigned int > &boundaryCoarseEdgeIndex ,
+		std::map< SimplexIndex< 1 , AtlasTexelIndex > , unsigned int > &boundaryCoarseEdgeIndex ,
 		const GridChart< GeometryReal > &gridChart ,
 		unsigned int &lastAddedEdgeIndex
 	)
@@ -58,11 +58,11 @@ namespace MishaK
 
 		for( unsigned int i=0 ; i<gridChart.combinedCellCombinedTexelBilinearElementIndices.size() ; i++ )
 		{
-			const BilinearElementIndex< AtlasCombinedTexelIndex > & indices = gridChart.combinedCellCombinedTexelBilinearElementIndices[ ChartCombinedCellIndex(i) ];
+			const BilinearElementIndex< AtlasTexelIndex > & indices = gridChart.combinedCellCombinedTexelBilinearElementIndices[ ChartCellIndex(i) ];
 			for( int k=0 ; k<edgesPerCell ; k++ )
 			{
-				AtlasCombinedTexelIndex vIndices[2] = { indices[ pairsToAdd[2*k] ] , indices[ pairsToAdd[2*k+1] ] };
-				SimplexIndex< 1 , AtlasCombinedTexelIndex > edgeKey( vIndices[0] , vIndices[1] );
+				AtlasTexelIndex vIndices[2] = { indices[ pairsToAdd[2*k] ] , indices[ pairsToAdd[2*k+1] ] };
+				SimplexIndex< 1 , AtlasTexelIndex > edgeKey( vIndices[0] , vIndices[1] );
 				if( boundaryCoarseEdgeIndex.find(edgeKey)==boundaryCoarseEdgeIndex.end() )
 				{
 					boundaryCoarseEdgeIndex[edgeKey] = lastAddedEdgeIndex;
@@ -77,7 +77,7 @@ namespace MishaK
 	void InitializeIntraChartEdgeIndexing
 	(
 		const ExplicitIndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts ,
-		std::map< SimplexIndex< 1 , AtlasCombinedTexelIndex > , unsigned int > &boundaryCoarseEdgeIndex
+		std::map< SimplexIndex< 1 , AtlasTexelIndex > , unsigned int > &boundaryCoarseEdgeIndex
 	)
 	{
 		//Add edges within charts
@@ -90,7 +90,7 @@ namespace MishaK
 	(
 		const SparseMatrix< MatrixReal , int > &boundaryAdjancencyMatrix ,
 		const typename GridAtlas<>::IndexConverter & indexConverter ,
-		std::map< SimplexIndex< 1 , AtlasCombinedTexelIndex > , unsigned int > &coarseEdgeIndex ,
+		std::map< SimplexIndex< 1 , AtlasTexelIndex > , unsigned int > &coarseEdgeIndex ,
 		std::vector< unsigned int > &boundaryEdgeToGlobalEdge ,
 		std::map< SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex > , AtlasRefinedBoundaryEdgeIndex > &boundaryEdgeIndex
 	)
@@ -108,9 +108,9 @@ namespace MishaK
 					SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex > bmaxKey( bIndices[1] , bIndices[0] );
 					if( boundaryEdgeIndex.find(bminKey)==boundaryEdgeIndex.end() && boundaryEdgeIndex.find(bmaxKey)==boundaryEdgeIndex.end() )
 					{
-						AtlasCombinedTexelIndex gIndices[2] = { indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex( bIndices[0] ) ) , indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex( bIndices[1] ) ) };
-						SimplexIndex< 1 , AtlasCombinedTexelIndex > minKey( gIndices[0] , gIndices[1] );
-						SimplexIndex< 1 , AtlasCombinedTexelIndex > maxKey( gIndices[1] , gIndices[0] );
+						AtlasTexelIndex gIndices[2] = { indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex( bIndices[0] ) ) , indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex( bIndices[1] ) ) };
+						SimplexIndex< 1 , AtlasTexelIndex > minKey( gIndices[0] , gIndices[1] );
+						SimplexIndex< 1 , AtlasTexelIndex > maxKey( gIndices[1] , gIndices[0] );
 						int globalEdgeIndex = -1;
 						if( coarseEdgeIndex.find(minKey)!=coarseEdgeIndex.end() )
 						{

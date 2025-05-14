@@ -28,11 +28,7 @@ DAMAGE.
 
 // To do:
 // -- Use analytic integration
-// -- Pass in GridAtlas instead of its member data
 // -- Remove GridChart::cellType and GridChart::texelType
-// -- "combined" -> ""
-// -- supported -> covered
-// -- AtlasInteriorOrBoundaryNodeIndex -> AtlasCoveredOrBoundaryNodeIndex
 // -- Change coefficient vector std::vector -> IndexVector (in IterativeSolvers.inl)
 // -- Minimize static_cast< unsigned int >(...)
 // 1. Modify code to distinguish between grid-based indexing and normalized coordinates

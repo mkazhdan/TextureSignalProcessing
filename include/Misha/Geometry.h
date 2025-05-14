@@ -30,8 +30,9 @@ DAMAGE.
 #define GEOMETRY_INCLUDED
 
 #define NEW_GEOMETRY_CODE
+#define NEW_MAT_CODE
 
-#include <concepts>
+//#include <concepts>
 #include <cmath>
 #include <cassert>
 #include <complex>
@@ -1519,22 +1520,74 @@ namespace MishaK
 	template< class Real > Point3D< Real > NearestPointOnTriangle( Point3D< Real > point , const Point3D< Real > triangle[3] , Real* b );
 	template< class Real > Point3D< Real > NearestPointOnEdge( Point3D< Real > point , const Point3D< Real > edge[2] , Real& b0 , Real& b1 );
 
-	template< class Real , unsigned int Dim >
-	class MinimalAreaTriangulation
+#ifdef NEW_MAT_CODE
+	struct MinimalAreaTriangulation
 	{
+		template< class Real , unsigned int Dim >
+		static double GetArea( const std::vector< Point< Real , Dim > > &vertices );
+
+		template< typename AreaFunctor /*=std::function< double (unsigned int , unsigned int ,  unsigned int ) > */ >
+		static double GetArea( const AreaFunctor & AF , unsigned int vNum );
+
+		template< class Real , unsigned int Dim , typename Index >
+		static void GetTriangulation( const std::vector< Point< Real , Dim > > &vertices , std::vector< SimplexIndex< 2 , Index > > &triangles );
+
+		template< typename Index , typename AreaFunctor /*=std::function< double (unsigned int , unsigned int ,  unsigned int ) > */ >
+		static void GetTriangulation( const AreaFunctor & AF , unsigned int vNum , std::vector< SimplexIndex< 2 , Index > > &triangles );
+
+	protected:
+		template< class Real , unsigned int Dim >
 		static double _Area( Point< Real , Dim > v0 , Point< Real , Dim > v1 , Point< Real , Dim > v2 );
+
+		MinimalAreaTriangulation( void ) : _bestTriangulation(nullptr) , _midPoint(nullptr){}
+		~MinimalAreaTriangulation( void ) { delete[] _bestTriangulation ; delete[] _midPoint; }
+
 		double *_bestTriangulation;
-		size_t *_midPoint;
-		double _GetArea( size_t i , size_t j , const std::vector< Point< Real , Dim > > &vertices );
+		unsigned int *_midPoint;
+
+		template< typename AreaFunctor /*=std::function< double (unsigned int , unsigned int ,  unsigned int ) > */ >
+		double _getArea( unsigned int i , unsigned int j , const AreaFunctor & AF , unsigned int vNum );
+
+		template< typename Index , typename AreaFunctor /*=std::function< double (unsigned int , unsigned int ,  unsigned int ) > */ >
+		void _getTriangulation( unsigned int i , unsigned int j , const AreaFunctor & AF , unsigned int vNum , std::vector< SimplexIndex< 2 , Index > > &triangles , unsigned int &idx );
+	};
+#else // !NEW_MAT_CODE
+	template< class Real , unsigned int Dim >
+	struct MinimalAreaTriangulation
+	{
+		static double GetArea( const std::vector< Point< Real , Dim > > &vertices );
+
+		template< typename AreaFunctor /*=std::function< double (unsigned int , unsigned int ,  unsigned int ) > */ >
+		static double GetArea( const AreaFunctor & AF , unsigned int vNum );
+
 		template< typename Index >
-		void _GetTriangulation( size_t i , size_t j , const std::vector< Point< Real , Dim > > &vertices,std::vector< SimplexIndex< 2 , Index > > &triangles , size_t &idx );
-	public:
+		static void GetTriangulation( const std::vector< Point< Real , Dim > > &vertices , std::vector< SimplexIndex< 2 , Index > > &triangles );
+
+		template< typename Index , typename AreaFunctor /*=std::function< double (unsigned int , unsigned int ,  unsigned int ) > */ >
+		static void GetTriangulation( const AreaFunctor & AF , unsigned int vNum , std::vector< SimplexIndex< 2 , Index > > &triangles );
+
+	protected:
+		static double _Area( Point< Real , Dim > v0 , Point< Real , Dim > v1 , Point< Real , Dim > v2 );
+
 		MinimalAreaTriangulation( void );
 		~MinimalAreaTriangulation( void );
-		double GetArea( const std::vector< Point< Real , Dim > > &vertices);
+
+		double *_bestTriangulation;
+		size_t *_midPoint;
+
+		template< typename AreaFunctor /*=std::function< double (unsigned int , unsigned int ,  unsigned int ) > */ >
+		double _getArea( size_t i , size_t j , const AreaFunctor & AF , unsigned int vNum );
+
+		double _getArea( size_t i , size_t j , const std::vector< Point< Real , Dim > > &vertices );
+
+
+		template< typename Index , typename AreaFunctor /*=std::function< double (unsigned int , unsigned int ,  unsigned int ) > */ >
+		void _getTriangulation( size_t i , size_t j , const AreaFunctor & AF , unsigned int vNum , std::vector< SimplexIndex< 2 , Index > > &triangles , size_t &idx );
+
 		template< typename Index >
-		void GetTriangulation( const std::vector< Point< Real , Dim > > &vertices , std::vector< SimplexIndex< 2 , Index > > &triangles );
+		void _getTriangulation( size_t i , size_t j , const std::vector< Point< Real , Dim > > &vertices , std::vector< SimplexIndex< 2 , Index > > &triangles , size_t &idx );
 	};
+#endif // NEW_MAT_CODE
 
 	struct EarTriangulation
 	{

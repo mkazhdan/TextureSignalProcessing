@@ -84,15 +84,15 @@ void AddEdgeGridIntersection
 	GeometryReal fmin[2] , fmax[2];
 	for( unsigned int dir=0 ; dir<2 ; dir++ )
 	{
-		fmin[dir] = std::max< GeometryReal >( 0.f , std::min< GeometryReal >( edge[0][dir] , edge[1][dir] ) );
-		fmax[dir] = std::min< GeometryReal >( 1.f , std::max< GeometryReal >( edge[0][dir] , edge[1][dir] ) );
+		fmin[dir] = std::min< GeometryReal >( 1.f , std::max< GeometryReal >( 0.f , std::min< GeometryReal >( edge[0][dir] , edge[1][dir] ) ) );
+		fmax[dir] = std::max< GeometryReal >( 0.f , std::min< GeometryReal >( 1.f , std::max< GeometryReal >( edge[0][dir] , edge[1][dir] ) ) );
 	}
 
-	int imin[2] , imax[2];
-	imin[0] = static_cast< int >( floor( fmin[0] / gridChart.cellSizeW ) );
-	imin[1] = static_cast< int >( floor( fmin[1] / gridChart.cellSizeH ) );
-	imax[0] = static_cast< int >( floor( fmax[0] / gridChart.cellSizeW ) );
-	imax[1] = static_cast< int >( floor( fmax[1] / gridChart.cellSizeH ) );
+	unsigned int imin[2] , imax[2];
+	imin[0] = static_cast< unsigned int >( floor( fmin[0] / gridChart.cellSizeW ) );
+	imin[1] = static_cast< unsigned int >( floor( fmin[1] / gridChart.cellSizeH ) );
+	imax[0] = static_cast< unsigned int >( floor( fmax[0] / gridChart.cellSizeW ) );
+	imax[1] = static_cast< unsigned int >( floor( fmax[1] / gridChart.cellSizeH ) );
 
 	for( unsigned int dir=0 ; dir<2 ; dir++ ) for( unsigned int s=imin[dir] ; s<=imax[dir] ; s++ )
 	{
@@ -706,34 +706,34 @@ void InitializeChartQuadraticElements
 		for( unsigned int j=0 ; j<boundaryPolygons[ ChartBoundaryCellIndex(i) ].size() ; j++ )
 		{
 			const IndexedPolygon< GeometryReal > &currentPolygon = boundaryPolygons[ ChartBoundaryCellIndex(i) ][j].second;
-			std::vector< SimplexIndex< 2 > > delanauyTriangles;
-			TriangulatePolygon( currentPolygon.vertices , delanauyTriangles );
-			if( delanauyTriangles.size()!=currentPolygon.vertices.size()-2 )
+			std::vector< SimplexIndex< 2 > > polyTriangles;
+			TriangulateConvexPolygon( currentPolygon.vertices , polyTriangles );
+			if( polyTriangles.size()!=currentPolygon.vertices.size()-2 )
 			{
-				int localCellPos[2] = { -1,-1 };
+				unsigned int localCellPos[] = { static_cast< unsigned int >(-1) , static_cast< unsigned int >(-1) };
 				for( unsigned int li=0 ; li<gridChart.cellIndices.res(0) ; li++ ) for( unsigned int lj=0 ; lj<gridChart.cellIndices.res(1) ; lj++ ) if( gridChart.cellIndices(li,lj).boundary==static_cast< ChartBoundaryCellIndex >(i) ) localCellPos[0] = li , localCellPos[1] = lj;
-				MK_WARN( "Unexpected number of triangles produced by delaunay triangulation at combined cell ( " , gridChart.cornerCoords[0] + localCellPos[0] , " , " , gridChart.cornerCoords[1] + localCellPos[1] , " ). Polygon may self intersect! " , delanauyTriangles.size() , " != " , currentPolygon.vertices.size()-2 );
+				MK_WARN( "Unexpected number of triangles produced by convex polygon triangulation at combined cell ( " , gridChart.cornerCoords[0] + localCellPos[0] , " , " , gridChart.cornerCoords[1] + localCellPos[1] , " ). Polygon may self intersect! " , polyTriangles.size() , " != " , currentPolygon.vertices.size()-2 );
 			}
 
-			for( int k=0 ; k<delanauyTriangles.size() ; k++ )
+			for( unsigned int k=0 ; k<polyTriangles.size() ; k++ )
 			{
 				BoundaryIndexedTriangle< GeometryReal > triangle;
 				for( unsigned int v=0 ; v<3 ; v++ )
 				{
-					int currentPolygonVertex = delanauyTriangles[k][v];
+					unsigned int currentPolygonVertex = polyTriangles[k][v];
 					triangle.indices[v] = currentPolygon.indices[ currentPolygonVertex ];
 					triangle.vertices[v] = currentPolygon.vertices[ currentPolygonVertex ];
 					triangle.vertexIndices[v] = currentPolygon.vertexIndices[ currentPolygonVertex ];
 					triangle.atlasVertexParentEdge[v] = currentPolygon.atlasVertexParentEdge[ currentPolygonVertex ];
 					triangle.atlasEdgeIndices[v] = AtlasMeshEdgeIndex(-1);
 					unsigned int nextPolygonVertex = (currentPolygonVertex + 1) % currentPolygon.vertices.size();
-					if( delanauyTriangles[k][(v + 1) % 3] == nextPolygonVertex )
+					if( polyTriangles[k][(v + 1) % 3] == nextPolygonVertex )
 					{
 						//preserve orientation
 						triangle.atlasEdgeIndices[v] = currentPolygon.atlasEdgeIndices[currentPolygonVertex];
 					}
 					unsigned int previousPolygonVertex = (unsigned int)( (currentPolygonVertex + currentPolygon.vertices.size() - 1) % currentPolygon.vertices.size() );
-					if( delanauyTriangles[k][(v + 1) % 3] == previousPolygonVertex )
+					if( polyTriangles[k][(v + 1) % 3] == previousPolygonVertex )
 					{
 						//reverse orientation
 						triangle.atlasEdgeIndices[v] = currentPolygon.atlasEdgeIndices[previousPolygonVertex];
@@ -826,7 +826,7 @@ void InitializeCoarseBoundaryToFineBoundaryProlongation
 				// Boundary and covered //
 				//////////////////////////
 
-				AtlasCombinedTexelIndex coarseCombinedIndex = gridChart.texelIndices[j].combined;
+				AtlasTexelIndex coarseCombinedIndex = gridChart.texelIndices[j].combined;
 
 				AtlasBoundaryTexelIndex boundaryIndex = indexConverter.combinedToBoundary( coarseCombinedIndex );
 				if( boundaryIndex==AtlasBoundaryTexelIndex(-1) ) MK_THROW( "Coarse node is not boundary. Combined index " , coarseCombinedIndex , ". Boundary index " , boundaryIndex );
@@ -846,7 +846,7 @@ void InitializeCoarseBoundaryToFineBoundaryProlongation
 	if( verbose ) printf( "Fine boundary elements %d\n" , numFineBoundaryNodes );
 
 	const ExplicitIndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts = gridAtlas.gridCharts;
-	const ExplicitIndexVector< AtlasCombinedTexelIndex , TexelInfo > & texelInfo = gridAtlas.texelInfo;
+	const ExplicitIndexVector< AtlasTexelIndex , TexelInfo > & texelInfo = gridAtlas.texelInfo;
 
 	unsigned int numFineNodes = gridAtlas.numFineNodes;
 
@@ -876,8 +876,8 @@ void InitializeCoarseBoundaryToFineBoundaryProlongation
 			unsigned int nodeDegree = auxiliaryNodesDegree[auxiliaryID];
 			Point2D< GeometryReal >nodePosition = gridChart.auxiliaryNodes[j].position;
 			int corner[2] = { (int)floor(nodePosition[0] / gridChart.cellSizeW), (int)floor(nodePosition[1] / gridChart.cellSizeH) };
-			ChartCombinedCellIndex cellID = gridChart.cellIndices( corner[0] , corner[1] ).combined;
-			if( cellID==ChartCombinedCellIndex(-1) ) MK_THROW( "Invalid cell index. Node position " , nodePosition[0] / gridChart.cellSizeW , " " , nodePosition[1] / gridChart.cellSizeH );
+			ChartCellIndex cellID = gridChart.cellIndices( corner[0] , corner[1] ).combined;
+			if( cellID==ChartCellIndex(-1) ) MK_THROW( "Invalid cell index. Node position " , nodePosition[0] / gridChart.cellSizeW , " " , nodePosition[1] / gridChart.cellSizeH );
 			nodePosition[0] /= gridChart.cellSizeW;
 			nodePosition[1] /= gridChart.cellSizeH;
 			nodePosition[0] -= (GeometryReal)corner[0];
@@ -890,13 +890,13 @@ void InitializeCoarseBoundaryToFineBoundaryProlongation
 				if( fabs(texelWeight)>1e-11 )
 				{
 					auxiliaryNodesCumWeight[auxiliaryID] += texelWeight;
-					AtlasCombinedTexelIndex texelIndex = gridChart.combinedCellCombinedTexelBilinearElementIndices[cellID][k];
+					AtlasTexelIndex texelIndex = gridChart.combinedCellCombinedTexelBilinearElementIndices[cellID][k];
 					if( texelInfo[texelIndex].texelType==TexelType::InteriorSupported )
 						MK_THROW( "Interior-supported texel cannot be in the support of an auxiliary node. Weight " , texelWeight , " (A)" );
 
-					if( static_cast< unsigned int >(gridChart.auxiliaryNodes[j].index)<static_cast< unsigned int >(gridAtlas.endCoveredTexelIndex) || static_cast< unsigned int >(gridChart.auxiliaryNodes[j].index)>numFineNodes || texelIndex==AtlasCombinedTexelIndex(-1) || static_cast< unsigned int >(texelIndex)>static_cast< unsigned int >(gridAtlas.endCombinedTexelIndex) ) MK_THROW( "Out of bounds index" );
+					if( static_cast< unsigned int >(gridChart.auxiliaryNodes[j].index)<static_cast< unsigned int >(gridAtlas.endCoveredTexelIndex) || static_cast< unsigned int >(gridChart.auxiliaryNodes[j].index)>numFineNodes || texelIndex==AtlasTexelIndex(-1) || static_cast< unsigned int >(texelIndex)>static_cast< unsigned int >(gridAtlas.endCombinedTexelIndex) ) MK_THROW( "Out of bounds index" );
 
-					AtlasBoundaryTexelIndex boundaryIndex = indexConverter.combinedToBoundary( AtlasCombinedTexelIndex(texelIndex) );
+					AtlasBoundaryTexelIndex boundaryIndex = indexConverter.combinedToBoundary( AtlasTexelIndex(texelIndex) );
 					if( boundaryIndex==AtlasBoundaryTexelIndex(-1) ) MK_THROW( "Coarse node is not boundary" );
 					prolongationTriplets.emplace_back( static_cast< unsigned int >(fineBoundaryID) , static_cast< unsigned int >(boundaryIndex) , texelWeight );
 				}

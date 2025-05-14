@@ -61,16 +61,16 @@ namespace MishaK
 	// Cell index types
 	struct           ChartInteriorCellIndex : public ExplicitIndex< unsigned int ,           ChartInteriorCellIndex >{ using ExplicitIndex< unsigned int ,           ChartInteriorCellIndex >::ExplicitIndex; };
 	struct           ChartBoundaryCellIndex : public ExplicitIndex< unsigned int ,           ChartBoundaryCellIndex >{ using ExplicitIndex< unsigned int ,           ChartBoundaryCellIndex >::ExplicitIndex; };
-	struct           ChartCombinedCellIndex : public ExplicitIndex< unsigned int ,           ChartCombinedCellIndex >{ using ExplicitIndex< unsigned int ,           ChartCombinedCellIndex >::ExplicitIndex; };
+	struct                   ChartCellIndex : public ExplicitIndex< unsigned int ,                   ChartCellIndex >{ using ExplicitIndex< unsigned int ,                   ChartCellIndex >::ExplicitIndex; };
 	struct           AtlasInteriorCellIndex : public ExplicitIndex< unsigned int ,           AtlasInteriorCellIndex >{ using ExplicitIndex< unsigned int ,           AtlasInteriorCellIndex >::ExplicitIndex; };
 	struct           AtlasBoundaryCellIndex : public ExplicitIndex< unsigned int ,           AtlasBoundaryCellIndex >{ using ExplicitIndex< unsigned int ,           AtlasBoundaryCellIndex >::ExplicitIndex; };
-	struct           AtlasCombinedCellIndex : public ExplicitIndex< unsigned int ,           AtlasCombinedCellIndex >{ using ExplicitIndex< unsigned int ,           AtlasCombinedCellIndex >::ExplicitIndex; };
+	struct                   AtlasCellIndex : public ExplicitIndex< unsigned int ,                   AtlasCellIndex >{ using ExplicitIndex< unsigned int ,                   AtlasCellIndex >::ExplicitIndex; };
 
 	// Texel index types
 	struct          AtlasInteriorTexelIndex : public ExplicitIndex< unsigned int ,          AtlasInteriorTexelIndex >{ using ExplicitIndex< unsigned int ,          AtlasInteriorTexelIndex >::ExplicitIndex; };
 	struct           AtlasCoveredTexelIndex : public ExplicitIndex< unsigned int ,           AtlasCoveredTexelIndex >{ using ExplicitIndex< unsigned int ,           AtlasCoveredTexelIndex >::ExplicitIndex; };
 	struct          AtlasBoundaryTexelIndex : public ExplicitIndex< unsigned int ,          AtlasBoundaryTexelIndex >{ using ExplicitIndex< unsigned int ,          AtlasBoundaryTexelIndex >::ExplicitIndex; };
-	struct          AtlasCombinedTexelIndex : public ExplicitIndex< unsigned int ,          AtlasCombinedTexelIndex >{ using ExplicitIndex< unsigned int ,          AtlasCombinedTexelIndex >::ExplicitIndex; };
+	struct                  AtlasTexelIndex : public ExplicitIndex< unsigned int ,                  AtlasTexelIndex >{ using ExplicitIndex< unsigned int ,                  AtlasTexelIndex >::ExplicitIndex; };
 
 	// Boundary index types
 	struct            BoundaryMidPointIndex : public ExplicitIndex< unsigned int ,            BoundaryMidPointIndex >{ using ExplicitIndex< unsigned int ,            BoundaryMidPointIndex >::ExplicitIndex; };
@@ -105,16 +105,16 @@ namespace MishaK
 	// Cell types
 	using           ChartInteriorCellIndex = unsigned int;
 	using           ChartBoundaryCellIndex = unsigned int;
-	using           ChartCombinedCellIndex = unsigned int;
+	using                   ChartCellIndex = unsigned int;
 	using           AtlasInteriorCellIndex = unsigned int;
 	using           AtlasBoundaryCellIndex = unsigned int;
-	using           AtlasCombinedCellIndex = unsigned int;
+	using                   AtlasCellIndex = unsigned int;
 
 	// Texel types
 	using          AtlasInteriorTexelIndex = unsigned int;
 	using           AtlasCoveredTexelIndex = unsigned int;
 	using          AtlasBoundaryTexelIndex = unsigned int;
-	using          AtlasCombinedTexelIndex = unsigned int;
+	using                  AtlasTexelIndex = unsigned int;
 
 	// Boundary types
 	using            BoundaryMidPointIndex = unsigned int;

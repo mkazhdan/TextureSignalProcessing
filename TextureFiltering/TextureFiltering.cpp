@@ -212,7 +212,7 @@ public:
 
 	static ExplicitIndexVector< ChartIndex , AtlasChart< PreReal > > atlasCharts;
 
-	static ExplicitIndexVector< AtlasCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > > bilinearElementIndices;
+	static ExplicitIndexVector< AtlasCellIndex , BilinearElementIndex< AtlasTexelIndex > > bilinearElementIndices;
 	
 	static std::vector< TextureNodeInfo< PreReal > > textureNodes;
 
@@ -323,7 +323,7 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth > Real
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > Real																TextureFilter< PreReal , Real , TextureBitDepth >::gradientModulation;
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< TextureNodeInfo< PreReal > >							TextureFilter< PreReal , Real , TextureBitDepth >::textureNodes;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > ExplicitIndexVector< AtlasCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > >	TextureFilter< PreReal , Real , TextureBitDepth >::bilinearElementIndices;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > ExplicitIndexVector< AtlasCellIndex , BilinearElementIndex< AtlasTexelIndex > >	TextureFilter< PreReal , Real , TextureBitDepth >::bilinearElementIndices;
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > int																	TextureFilter< PreReal , Real , TextureBitDepth >::steps;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > char																TextureFilter< PreReal , Real , TextureBitDepth >::stepsString[1024];
@@ -1103,10 +1103,10 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::Init( void )
 	for( int i=0 ; i<bilinearElementIndices.size() ; i++ )
 		cellCenterPositions[i] = Point3D< float >
 		(
-			textureNodePositions[ static_cast< unsigned int >( bilinearElementIndices[ AtlasCombinedCellIndex(i) ][0] ) ] +
-			textureNodePositions[ static_cast< unsigned int >( bilinearElementIndices[ AtlasCombinedCellIndex(i) ][1] ) ] +
-			textureNodePositions[ static_cast< unsigned int >( bilinearElementIndices[ AtlasCombinedCellIndex(i) ][2] ) ] +
-			textureNodePositions[ static_cast< unsigned int >( bilinearElementIndices[ AtlasCombinedCellIndex(i) ][3] ) ]
+			textureNodePositions[ static_cast< unsigned int >( bilinearElementIndices[ AtlasCellIndex(i) ][0] ) ] +
+			textureNodePositions[ static_cast< unsigned int >( bilinearElementIndices[ AtlasCellIndex(i) ][1] ) ] +
+			textureNodePositions[ static_cast< unsigned int >( bilinearElementIndices[ AtlasCellIndex(i) ][2] ) ] +
+			textureNodePositions[ static_cast< unsigned int >( bilinearElementIndices[ AtlasCellIndex(i) ][3] ) ]
 		) / 4.f;
 
 	if( true )

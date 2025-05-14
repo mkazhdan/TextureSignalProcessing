@@ -196,9 +196,9 @@ void FullMatrixConstruction( const GridAtlas< GeometryReal , MatrixReal > &gridA
 	{
 		const RasterLine & currentLine = rasterLines[r];
 		int lineLength = currentLine.lineEndIndex - currentLine.lineStartIndex + 1;
-		AtlasCombinedTexelIndex previousLineStart = currentLine.prevLineIndex;
-		AtlasCombinedTexelIndex currentLineStart = currentLine.lineStartIndex;
-		AtlasCombinedTexelIndex nextLineStart = currentLine.nextLineIndex;
+		AtlasTexelIndex previousLineStart = currentLine.prevLineIndex;
+		AtlasTexelIndex currentLineStart = currentLine.lineStartIndex;
+		AtlasTexelIndex nextLineStart = currentLine.nextLineIndex;
 		for( int i=0 ; i<lineLength ; i++ )
 		{
 			fullMatrix[ static_cast< unsigned int >(currentLineStart) ][0].N = static_cast< unsigned int >(previousLineStart) - 1;
@@ -225,9 +225,9 @@ void FullMatrixConstruction( const GridAtlas< GeometryReal , MatrixReal > &gridA
 		const RasterLine & currentLine = rasterLines[r];
 		AtlasInteriorTexelIndex deepOffset = currentLine.coeffStartIndex;
 		int lineLength = currentLine.lineEndIndex - currentLine.lineStartIndex + 1;
-		AtlasCombinedTexelIndex previousLineStart = currentLine.prevLineIndex;
-		AtlasCombinedTexelIndex currentLineStart = currentLine.lineStartIndex;
-		AtlasCombinedTexelIndex nextLineStart = currentLine.nextLineIndex;
+		AtlasTexelIndex previousLineStart = currentLine.prevLineIndex;
+		AtlasTexelIndex currentLineStart = currentLine.lineStartIndex;
+		AtlasTexelIndex nextLineStart = currentLine.nextLineIndex;
 		const MatrixReal *coefficients = systemCoefficients.deepCoefficients.data() + static_cast< unsigned int >(deepOffset) * 10;
 		for( int i=0 ; i<lineLength ; i++ )
 		{
@@ -243,12 +243,12 @@ void FullMatrixConstruction( const GridAtlas< GeometryReal , MatrixReal > &gridA
 	std::vector< Eigen::Triplet< MatrixReal > > boundaryTriplets;
 	for( unsigned int i=0 ; i<indexConverter.numBoundary() ; i++ )
 	{
-		AtlasCombinedTexelIndex globalIndex = indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex(i) );
+		AtlasTexelIndex globalIndex = indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex(i) );
 		for( unsigned int j=0 ; j<systemCoefficients.boundaryDeepMatrix.RowSize(i) ; j++ )
 			boundaryTriplets.push_back( Eigen::Triplet< MatrixReal >( static_cast< unsigned int >( globalIndex ) , systemCoefficients.boundaryDeepMatrix[i][j].N , systemCoefficients.boundaryDeepMatrix[i][j].Value ) );
 		for( unsigned int j=0 ; j<systemCoefficients.boundaryBoundaryMatrix.RowSize(i) ; j++ )
 		{
-			AtlasCombinedTexelIndex neighbourGlobalIndex = indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex( systemCoefficients.boundaryBoundaryMatrix[i][j].N ) );
+			AtlasTexelIndex neighbourGlobalIndex = indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex( systemCoefficients.boundaryBoundaryMatrix[i][j].N ) );
 			boundaryTriplets.push_back( Eigen::Triplet< MatrixReal >( static_cast< unsigned int >(globalIndex) , static_cast< unsigned int >(neighbourGlobalIndex) , systemCoefficients.boundaryBoundaryMatrix[i][j].Value ) );
 		}
 	}

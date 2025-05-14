@@ -45,13 +45,13 @@ namespace MishaK
 #pragma message( "[WARNING] Is this the right type?" )
 #endif // SANITY_CHECK
 		AtlasInteriorTexelIndex deepCoefficientsStart;
-		AtlasCombinedTexelIndex texelStart;
-		AtlasCombinedTexelIndex texelEnd;
+		AtlasTexelIndex texelStart;
+		AtlasTexelIndex texelEnd;
 	};
 
 	void InitializeDivergenceRasteLines
 	(
-		std::map< SimplexIndex< 1 , AtlasCombinedTexelIndex > , unsigned int > &coarseEdgeIndex ,
+		std::map< SimplexIndex< 1 , AtlasTexelIndex > , unsigned int > &coarseEdgeIndex ,
 		const std::vector< RasterLine > &rasterLines ,
 		std::vector< DivegenceRasterLine > &divergenceRasterLines
 	)
@@ -64,15 +64,15 @@ namespace MishaK
 			divLine.texelStart = line.lineStartIndex;
 			divLine.texelEnd = line.lineEndIndex;
 			divLine.deepCoefficientsStart = line.coeffStartIndex;
-			SimplexIndex< 1 , AtlasCombinedTexelIndex > prevEdgeKey( line.prevLineIndex-1 , line.prevLineIndex );
+			SimplexIndex< 1 , AtlasTexelIndex > prevEdgeKey( line.prevLineIndex-1 , line.prevLineIndex );
 			if( coarseEdgeIndex.find( prevEdgeKey )==coarseEdgeIndex.end() ) MK_THROW( "Edge not found" );
 			divLine.prevEdgeRowStart = coarseEdgeIndex[prevEdgeKey];
 
-			SimplexIndex< 1 , AtlasCombinedTexelIndex > currEdgeKey( line.lineStartIndex-1 , line.lineStartIndex );
+			SimplexIndex< 1 , AtlasTexelIndex > currEdgeKey( line.lineStartIndex-1 , line.lineStartIndex );
 			if( coarseEdgeIndex.find(currEdgeKey)==coarseEdgeIndex.end() ) MK_THROW( "Edge not found" );
 			divLine.currEdgeRowStart = coarseEdgeIndex[currEdgeKey];
 
-			SimplexIndex< 1 , AtlasCombinedTexelIndex > nextEdgeKey( line.nextLineIndex-1 , line.nextLineIndex );
+			SimplexIndex< 1 , AtlasTexelIndex > nextEdgeKey( line.nextLineIndex-1 , line.nextLineIndex );
 			if( coarseEdgeIndex.find(nextEdgeKey)==coarseEdgeIndex.end() ) MK_THROW( "Edge not found" );
 			divLine.nextEdgeRowStart = coarseEdgeIndex[nextEdgeKey];
 		}
