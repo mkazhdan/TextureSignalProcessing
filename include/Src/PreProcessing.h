@@ -36,7 +36,6 @@ DAMAGE.
 // -- Change coefficient vector std::vector -> IndexVector (in IterativeSolvers.inl)
 // -- Minimize static_cast< unsigned int >(...)
 // 1. Modify code to distinguish between grid-based indexing and normalized coordinates
-// 4. Change GetTriangleIntegerBBox/GetEdgeIntegerBBox to return Range (requires disabling USE_RASTERIZER)
 #ifndef PRE_PROCESSING_INCLUDED
 #define PRE_PROCESSING_INCLUDED
 
@@ -49,13 +48,7 @@ DAMAGE.
 //#define SANITY_CHECK					// Enables sanity checks for debugging purposes
 //#define USE_SIMPLEX_BASIS				// Cleaner, but slower
 
-#define USE_RASTERIZER				// Use triangle/edge rasterization code [SLOW]
-#define USE_RASTERIZER_1			// USE_RASTERIZER [HierarchyConstruction.inl], this is where the rasterization slow down is
-
-
-#ifdef USE_RASTERIZER
-//#define SEPARATE_POLYGONS			// Keep the polygons obtained by clipping triangles to boundary cells separate
-#endif // USE_RASTERIZER
+#define SEPARATE_POLYGONS			// Keep the polygons obtained by clipping triangles to boundary cells separate
 
 #define USE_EIGEN
 #undef USE_CHOLMOD

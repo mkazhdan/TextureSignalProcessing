@@ -464,45 +464,6 @@ namespace MishaK
 		return (unsigned int)polygon.vertices.size();
 	}
 
-#ifdef NEW_RASTERIZER
-#else // !NEW_RASTERIZER
-	template< typename GeometryReal >
-	void GetTriangleIntegerBBox( const Point2D< GeometryReal > tPos[3] , const GeometryReal invCellSizeW , const GeometryReal invCellSizeH,  int minCorner[2], int maxCorner[2] )
-	{
-		GeometryReal fminx = std::min< GeometryReal >( std::min< GeometryReal >( tPos[0][0] , tPos[1][0] ) , tPos[2][0]) ;
-		fminx = std::max< GeometryReal >( fminx , (GeometryReal)0. );
-		GeometryReal fminy = std::min< GeometryReal >( std::min< GeometryReal >( tPos[0][1] , tPos[1][1] ) , tPos[2][1] );
-		fminy = std::max< GeometryReal >( fminy , (GeometryReal)0. );
-		GeometryReal fmaxx = std::max< GeometryReal >( std::max< GeometryReal >( tPos[0][0] , tPos[1][0] ) , tPos[2][0] );
-		fmaxx = std::min< GeometryReal >( fmaxx , (GeometryReal)1. );
-		GeometryReal fmaxy = std::max< GeometryReal >( std::max< GeometryReal >( tPos[0][1] , tPos[1][1] ) , tPos[2][1] );
-		fmaxy = std::min< GeometryReal >( fmaxy , (GeometryReal)1. );
-
-		minCorner[0] = static_cast< int >( floor( fminx*invCellSizeW ) );
-		minCorner[1] = static_cast< int >( floor( fminy*invCellSizeH ) );
-		maxCorner[0] = static_cast< int >( ceil ( fmaxx*invCellSizeW ) );
-		maxCorner[1] = static_cast< int >( ceil ( fmaxy*invCellSizeH ) );
-	}
-
-	template< typename GeometryReal >
-	void GetEdgeIntegerBBox( const Point2D< GeometryReal > tPos[2] , const GeometryReal invCellSizeW , const GeometryReal invCellSizeH , int minCorner[2] , int maxCorner[2] )
-	{
-		GeometryReal fminx = std::min< GeometryReal >( tPos[0][0] , tPos[1][0] );
-		fminx = std::max< GeometryReal >( fminx , (GeometryReal)0. );
-		GeometryReal fminy = std::min< GeometryReal >( tPos[0][1] , tPos[1][1] );
-		fminy = std::max< GeometryReal >( fminy , (GeometryReal)0. );
-		GeometryReal fmaxx = std::max< GeometryReal >( tPos[0][0] , tPos[1][0] );
-		fmaxx = std::min< GeometryReal >( fmaxx , (GeometryReal)1. );
-		GeometryReal fmaxy = std::max< GeometryReal >( tPos[0][1] , tPos[1][1] );
-		fmaxy = std::min< GeometryReal >( fmaxy , (GeometryReal)1. );
-
-		minCorner[0] = static_cast< int >( floor( fminx*invCellSizeW ) );
-		minCorner[1] = static_cast< int >( floor( fminy*invCellSizeH ) );
-		maxCorner[0] = static_cast< int >( ceil ( fmaxx*invCellSizeW ) );
-		maxCorner[1] = static_cast< int >( ceil ( fmaxy*invCellSizeH ) );
-	}
-#endif // NEW_RASTERIZER
-
 	template< typename GeometryReal >
 	SquareMatrix< GeometryReal, 2 > GetBarycentricMap( Point2D< GeometryReal > tPos[3] )
 	{

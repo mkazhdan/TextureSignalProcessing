@@ -294,7 +294,6 @@ namespace MishaK
 				return center / area;
 			};
 
-#ifdef USE_RASTERIZER
 		using Range = RegularGrid< 2 >::Range;
 		using Index = RegularGrid< 2 >::Index;
 		Range nodeRange , cellRange;
@@ -312,7 +311,6 @@ namespace MishaK
 				}
 				return simplex;
 			};
-#endif // USE_RASTERIZER
 
 		for( unsigned int t=0 ; t<atlasChart.numTriangles() ; t++ )
 		{
@@ -324,13 +322,6 @@ namespace MishaK
 			SquareMatrix< GeometryReal , 2 > cell_metric = cell_to_texture_differential.transpose() * texture_metric * cell_to_texture_differential;
 			SquareMatrix< GeometryReal , 2 > cell_metric_inverse = cell_metric.inverse();
 			GeometryReal cell_area = (GeometryReal)sqrt( cell_metric.determinant() );
-
-#ifdef USE_RASTERIZER
-#else // !USE_RASTERIZER
-			//BBox
-			int minCorner[2] , maxCorner[2];
-			GetTriangleIntegerBBox( tPos , (GeometryReal)1./gridChart.cellSizeW , (GeometryReal)1./gridChart.cellSizeH , minCorner , maxCorner );
-#endif // USE_RASTERIZER
 
 			std::vector< Point2D< GeometryReal > > parametricVertices(3);
 			parametricVertices[0] = tPos[0], parametricVertices[1] = tPos[1], parametricVertices[2] = tPos[2];
@@ -344,16 +335,10 @@ namespace MishaK
 				atlasTriangle.atlasVertexParentEdge[k] = AtlasMeshEdgeIndex(-1);
 			}
 
-#ifdef USE_RASTERIZER
 			// Iterate over the cells that overlap the triangle
 			auto Kernel = [&]( Index I )
 			{
 				int i = I[0] , j = I[1];
-#else // !USE_RASTERIZER
-			// Iterate over the cells that can overlap the triangle
-			for( int j=minCorner[1] ; j<maxCorner[1] ; j++ ) for( int i=minCorner[0] ; i<maxCorner[0] ; i++ )
-			{
-#endif // USE_RASTERIZER
 				auto TextureToCell = [&]( Point2D< GeometryReal > p ){ return Point2D< GeometryReal >( ( p[0] / gridChart.cellSizeW ) - i , ( p[1] / gridChart.cellSizeH ) - j ); };
 
 				ChartInteriorCellIndex chartInteriorIndex = gridChart.cellIndices(i,j).interior;
@@ -527,12 +512,8 @@ namespace MishaK
 						}
 					}
 				}
-#ifdef USE_RASTERIZER
 			};
 			Rasterizer2D::RasterizeSupports< true , true >( GetSimplex(t) , Kernel , cellRange );
-#else // !USE_RASTERIZER
-			}
-#endif // USE_RASTERIZER
 		}
 	}
 

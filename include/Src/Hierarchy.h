@@ -35,14 +35,12 @@ DAMAGE.
 #include <Misha/RegularGrid.h>
 #include <Misha/Miscellany.h>
 #include <Misha/Exceptions.h>
-#ifdef USE_RASTERIZER
 #include <Misha/Texels.h>
 #include <Misha/Rasterizer2D.h>
 #include <Misha/Geometry.h>
 #include <Misha/MultiThreading.h>
 #include <Misha/Atomic.h>
 #include <Misha/Atomic.Geometry.h>
-#endif // USE_RASTERIZER
 #include "IndexedPolygon.h"
 #include "ImageIO.h"
 

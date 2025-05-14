@@ -106,7 +106,6 @@ void InitializeGridChartsActiveNodes
 	Image< Point2D< GeometryReal > > &barycentricCoords = gridChart.barycentricCoords;
 	barycentricCoords.resize( width , height );
 
-#ifdef USE_RASTERIZER
 	using Range = RegularGrid< 2 >::Range;
 	using Index = RegularGrid< 2 >::Index;
 	Range nodeRange , cellRange;
@@ -138,12 +137,6 @@ void InitializeGridChartsActiveNodes
 		};
 
 	//(1) Add nodes covered by the triangles
-#else // !USE_RASTERIZER
-	//(1) Add interior texels
-#endif // USE_RASTERIZER
-
-#ifdef USE_RASTERIZER_1
-#ifdef NEW_CODE
 
 	// Set the cells
 	{
@@ -236,320 +229,6 @@ void InitializeGridChartsActiveNodes
 			nodeRange.processParallel( Kernel );
 		}
 	}
-#else // !NEW_CODE
-	// Rasterize triangles into nodes/cells
-	for( unsigned int t=0 ; t<atlasChart.numTriangles() ; t++ )
-	{
-		// Compute the associated triangle in (shifted) texel coordinates
-		Simplex< double , 2 , 2 > simplex = GetTriangle( ChartMeshTriangleIndex(t) );
-
-		auto Kernel = [&]( Index I )
-			{
-				Point3D< double > bc = simplex.barycentricCoordinates( Point2D< double >( I[0] , I[1] ) );
-				Point2D< GeometryReal > newBC = Point2D< GeometryReal >( Point2D< double >( bc[1] , bc[2] ) );
-
-				texelType(I) = TexelType::BoundarySupportedAndUncovered;
-
-				if( chartTriangleID(I)==ChartMeshTriangleIndex(-1) )
-				{
-					chartTriangleID(I) = ChartMeshTriangleIndex(t);
-					barycentricCoords(I) = newBC;
-				}
-				else
-				{
-					Point2D< GeometryReal > oldBC = barycentricCoords(I);
-					Simplex< double , 2 , 2 > oldSimplex = GetTriangle( chartTriangleID(I) );
-					Point< double , 2 > oldP = oldSimplex( oldBC ) , newP = simplex( newBC );
-					double oldD2 = Point< double , 2 >::SquareDistance( oldP , oldSimplex.nearest(oldP) );
-					double newD2 = Point< double , 2 >::SquareDistance( newP ,    simplex.nearest(newP) );
-					if( newD2<oldD2 )
-					{
-						chartTriangleID(I) = ChartMeshTriangleIndex(t);
-						barycentricCoords(I) = newBC;
-					}
-				}
-			};
-		// Process texels whose support overlaps a triangle
-		Rasterizer2D::RasterizeSupports< false , false >( simplex , Kernel , nodeRange );
-
-		Rasterizer2D::RasterizeSupports< true , true >( simplex , [&]( Index I ){ cellType(I)=CellType::Interior; } , cellRange );
-	}
-
-	for( int t=0 ; t<atlasChart.numTriangles() ; t++ )
-		Rasterizer2D::RasterizeNodes< false >( GetTriangle( ChartMeshTriangleIndex(t) ) , [&]( Index I ){ texelType(I) = TexelType::BoundarySupportedAndCovered; } , nodeRange );
-
-	// Rasterize boundary edges into cells
-	for( unsigned int b=0 ; b<atlasChart.boundaryHalfEdges.size() ; b++ )
-	{
-		Simplex< double , 2 , 2 > simplex = GetTriangle( FactorChartMeshHalfEdgeIndex( atlasChart.boundaryHalfEdges[b] ).first );
-		Simplex< double , 2 , 1 > subSimplex = GetEdge( atlasChart.boundaryHalfEdges[b] );
-		Rasterizer2D::RasterizeSupports< true , true >( subSimplex , [&]( Index I ){ cellType(I)=CellType::Boundary; } , cellRange );
-	}
-
-	// Over-write the node designation for nodes whose support is entirely interior
-	{
-		auto Kernel = [&]( unsigned int , Index I )
-			{
-				if( chartTriangleID(I)!=ChartMeshTriangleIndex(-1) )
-				{
-					unsigned int bCount = 0;
-					Range::Intersect( cellRange , Range::CellsSupportedOnNode(I) ).process( [&]( Index I ){ if( cellType(I)==CellType::Boundary ) bCount++; } );
-					if( !bCount ) texelType(I) = TexelType::InteriorSupported;
-				}
-			};
-		nodeRange.processParallel( Kernel );
-	}
-#endif // NEW_CODE
-
-#else // !USE_RASTERIZER_1
-
-	for( unsigned int t=0 ; t<atlasChart.numTriangles() ; t++ )
-	{
-#ifdef USE_RASTERIZER
-		// Compute the associated triangle in (shifted) texel coordinates
-		Simplex< double , 2 , 2 > simplex = GetTriangle( t );
-		auto Kernel = [&]( Index I )
-			{
-#ifdef DEBUG_ATLAS
-				if( texelType(I)!=TexelType::Unsupported ) MK_WARN_ONCE( "Texel ( " , I[0]+gridChart.cornerCoords[0] , " , " , I[1]+gridChart.cornerCoords[1] , " ) owned by multiple triangles (mapping likely not injective): " , atlasChart.atlasTriangle(t) , " " , nodeOwner(I) );
-#else // !DEBUG_ATLAS
-				if( texelType(I)!=TexelType::Unsupported ) MK_WARN( "Node ( " , i , " , " , j , " ) in chart " , chartID , " already covered [" , t , "]" );
-#endif // DEBUG_ATLAS
-				texelType(I) = TexelType::BoundarySupportedAndCovered;
-#ifdef DEBUG_ATLAS
-				nodeOwner(I) = atlasChart.atlasTriangle(t);
-#endif // DEBUG_ATLAS
-				chartTriangleID(I) = AtlasMeshTriangleIndex(t);
-				Point3D< double > bc = simplex.barycentricCoordinates( Point2D< double >( I[0] , I[1] ) );
-				barycentricCoords(I) = Point2D< double >( bc[1] , bc[2] );
-			};
-		Rasterizer2D::RasterizeNodes< false >( simplex , Kernel , nodeRange );
-		Rasterizer2D::RasterizeSupports< true , true >( simplex , [&]( Index I ){ cellType(I)=CellType::Interior; } , cellRange );
-#else // !USE_RASTERIZER
-		Point2D< GeometryReal > tPos[3];
-		SimplexIndex< 2 , ChartMeshVertexIndex > tri = atlasChart.triangleIndex( ChartMeshTriangleIndex(t) );
-		for( unsigned int i=0 ; i<3 ; i++ ) tPos[i] = atlasChart.vertex( tri[i] ) - gridChart.corner;
-		int minCorner[2] , maxCorner[2];
-		GetTriangleIntegerBBox( tPos , (GeometryReal)1./cellSizeW , (GeometryReal)1./cellSizeH , minCorner , maxCorner );
-
-		SquareMatrix< GeometryReal , 2 > barycentricMap = GetBarycentricMap(tPos);
-
-		for( int j=minCorner[1] ; j<=maxCorner[1] ; j++ ) for( int i=minCorner[0] ; i<=maxCorner[0] ; i++ )
-		{
-			Point2D< GeometryReal > texel_pos = Point2D< GeometryReal >( (GeometryReal)i*cellSizeW , (GeometryReal)j*cellSizeH ) - tPos[0];
-			Point2D< GeometryReal > barycentricCoord = barycentricMap * texel_pos;
-			if( barycentricCoord[0]>=0 && barycentricCoord[1]>=0 && ( barycentricCoord[0]+barycentricCoord[1] )<=1 )
-			{
-#ifdef DEBUG_ATLAS
-				if( texelType(i,j)!=TexelType::Unsupported ) MK_WARN( "Texel ( " , i+gridChart.cornerCoords[0] , " , " , j+gridChart.cornerCoords[1] , " ) covered by multiple triangles: " , atlasChart.atlasTriangle( ChartMeshTriangleIndex(t) ) , " " , nodeOwner(i,j) );
-#else // !DEBUG_ATLAS
-				if( texelType(i,j)!=TexelType::Unsupported ) MK_WARN( "Node ( " , i , " , " , j , " ) in chart " , chartID , " already covered [" , t , "]" );
-#endif // DEBUG_ATLAS
-				texelType(i,j) = TexelType::BoundarySupportedAndCovered;
-#ifdef DEBUG_ATLAS
-				nodeOwner(i,j) = atlasChart.atlasTriangle( ChartMeshTriangleIndex(t) );
-#endif // DEBUG_ATLAS
-				chartTriangleID(i,j) = ChartMeshTriangleIndex(t);
-				barycentricCoords(i,j) = barycentricCoord;
-			}
-		}
-#endif // USE_RASTERIZER
-	}
-
-	//(2) Add texels adjacent to boundary cells
-	for( int e=0 ; e<atlasChart.boundaryHalfEdges.size() ; e++ )
-	{
-		std::pair< ChartMeshTriangleIndex , unsigned int > tkIndex = FactorChartMeshHalfEdgeIndex( atlasChart.boundaryHalfEdges[e] );
-
-#ifdef USE_RASTERIZER
-		Simplex< double , 2 , 2 > simplex = GetTriangle( tkIndex.first );
-		Simplex< double , 2 , 1 > subSimplex;
-		subSimplex[0] = simplex[tkIndex.second] , subSimplex[1] = simplex[(tkIndex.second+1)%3];
-		auto Kernel = [&]( Index I )
-			{
-				if( texelType(I)!=TexelType::BoundarySupportedAndCovered )
-				{
-					texelType(I) = TexelType::BoundarySupportedAndUncovered;
-					Point3D< double > bc = simplex.barycentricCoordinates( Point2D< double >( I[0] , I[1] ) );
-					Point2D< GeometryReal > newBC = Point2D< GeometryReal >( Point2D< double >( bc[1] , bc[2] ) );
-
-					// If no triangle has been assigned, assign this one
-					if( chartTriangleID(I)==AtlasMeshTriangleIndex(-1) )
-					{
-						chartTriangleID(I) = AtlasMeshTriangleIndex( tkIndex.first );
-						barycentricCoords(I) = newBC;
-					}
-					// Otherwise, update if closer
-					else
-					{
-						Point2D< GeometryReal > oldBC = barycentricCoords(I);
-						Simplex< double , 2 , 2 > oldSimplex = GetTriangle( chartTriangleID(I) );
-						Point< double , 2 > oldP = oldSimplex( oldBC ) , newP = simplex( newBC );
-						double oldD2 = Point< double , 2 >::SquareDistance( oldP , oldSimplex.nearest(oldP) );
-						double newD2 = Point< double , 2 >::SquareDistance( newP ,    simplex.nearest(newP) );
-						if( newD2<oldD2 )
-						{
-							chartTriangleID(I) = AtlasMeshTriangleIndex( tkIndex.first );
-							barycentricCoords(I) = newBC;
-						}
-					}
-				}
-			};
-		Rasterizer2D::RasterizeSupports< false , false >( subSimplex , Kernel , nodeRange );
-		Rasterizer2D::RasterizeSupports< true , true >( subSimplex , [&]( Index I ){ cellType(I)=CellType::Boundary; } , cellRange );
-#else // !USE_RASTERIZER
-		Point2D< GeometryReal > ePos[2];
-		SimplexIndex< 1 , ChartMeshVertexIndex > eIndex = atlasChart.edgeIndex( atlasChart.boundaryHalfEdges[e] );
-		ePos[0] = atlasChart.vertex( eIndex[0] ) - gridChart.corner;
-		ePos[1] = atlasChart.vertex( eIndex[1] ) - gridChart.corner;
-
-		int minCorner[2] , maxCorner[2];
-		GetEdgeIntegerBBox( ePos , (GeometryReal)1./cellSizeW , (GeometryReal)1./cellSizeH , minCorner , maxCorner);
-		Point2D< GeometryReal > tPos[3];
-		SimplexIndex< 2 , ChartMeshVertexIndex > tri = atlasChart.triangleIndex( tkIndex.first );
-		for( unsigned int k=0 ; k<3 ; k++ ) tPos[k] = atlasChart.vertex( tri[k] ) - gridChart.corner;
-
-		SquareMatrix< GeometryReal , 2 > barycentricMap = GetBarycentricMap(tPos);
-
-		Point2D< GeometryReal > edgeNormal;
-		GeometryReal edgeLevel;
-		Point2D< GeometryReal > edgeDirection = ePos[1] - ePos[0];
-		edgeNormal = Point2D< GeometryReal >( edgeDirection[1] , -edgeDirection[0] );
-		edgeNormal /= Point2D< GeometryReal >::Length( edgeNormal );
-		edgeLevel = ( Point2D< GeometryReal >::Dot( edgeNormal , ePos[0] ) + Point2D< GeometryReal >::Dot( edgeNormal , ePos[1] ) ) / 2;
-
-		//(2.1) Add texels adjacent to cell intersecting boundary edges
-
-		for( int c=0 ; c<2 ; c++ ) for( int j=minCorner[1] ; j<=maxCorner[1] ; j++ ) for( int i=minCorner[0] ; i<=maxCorner[0] ; i++ )
-		{
-			Point2D< GeometryReal > cellNode[2] =
-			{
-				Point2D< GeometryReal >( (GeometryReal)i*cellSizeW , (GeometryReal)j*cellSizeH ),
-				Point2D< GeometryReal >( (GeometryReal)i*cellSizeW , (GeometryReal)j*cellSizeH )
-			};
-			if( c==0 ) cellNode[1][c] += cellSizeW;
-			else       cellNode[1][c] += cellSizeH;
-			Point2D< GeometryReal > cellSide = cellNode[1] - cellNode[0];
-			Point2D< GeometryReal > cellSideNormal = Point2D< GeometryReal >(cellSide[1], -cellSide[0]);
-			cellSideNormal /= Point2D< GeometryReal >::Length(cellSideNormal);
-			GeometryReal cellLevel = ( Point2D< GeometryReal >::Dot( cellSideNormal , cellNode[0] ) + Point2D< GeometryReal >::Dot( cellSideNormal , cellNode[1] ) ) / 2;
-
-			// Are the nodes on opposite sides of the edge
-			bool oppositeEdgeSide = ( Point2D< GeometryReal >::Dot( edgeNormal , cellNode[0] ) - edgeLevel ) * ( Point2D< GeometryReal >::Dot( edgeNormal , cellNode[1] ) - edgeLevel )<0;
-			// Are the edge end-points on opposite sides of the node
-			bool oppositeCellSide = ( Point2D< GeometryReal >::Dot( cellSideNormal , ePos[1] ) - cellLevel ) * ( Point2D< GeometryReal >::Dot( cellSideNormal , ePos[0] ) - cellLevel )<0;
-
-			// Do the edge and the side of the node cross
-			if( oppositeEdgeSide && oppositeCellSide )
-			{
-				if( c==0 ) cellType(i,j-1) = cellType(i,j) = CellType::Boundary;
-				if( c==1 ) cellType(i-1,j) = cellType(i,j) = CellType::Boundary;
-
-
-				for( int dn=-1 ; dn<=1 ; dn++ ) for( int dc=0 ; dc<2 ; dc++ ) //Update nodes on adjacent cells
-				{
-					int nIndices[2] = { i, j };
-					nIndices[(1 - c)] += dn;
-					nIndices[c] += dc;
-					nIndices[0] = std::min< int >( std::max< int >( 0 , nIndices[0] ) , width  - 1 );
-					nIndices[1] = std::min< int >( std::max< int >( 0 , nIndices[1] ) , height - 1 );
-					if( texelType( nIndices[0] , nIndices[1] )!=TexelType::BoundarySupportedAndCovered )
-					{
-						texelType(nIndices[0],nIndices[1]) = TexelType::BoundarySupportedAndUncovered;
-
-						Point2D< GeometryReal > texel_pos = Point2D< GeometryReal >( (GeometryReal)nIndices[0]*cellSizeW , (GeometryReal)nIndices[1]*cellSizeH ) - tPos[0];
-						Point2D< GeometryReal > barycentricCoord = barycentricMap*texel_pos;
-
-						if( chartTriangleID( nIndices[0] , nIndices[1] )==ChartMeshTriangleIndex(-1) )
-						{
-							chartTriangleID( nIndices[0] , nIndices[1] ) = tkIndex.first;
-							barycentricCoords(nIndices[0], nIndices[1]) = barycentricCoord;
-						}
-						else //Update the position to the closest triangle
-						{
-							Point2D< GeometryReal > oldBarycentricCoord = barycentricCoords( nIndices[0] , nIndices[1] );
-							Point3D< GeometryReal > oldBarycentricCoord3( (GeometryReal)1. - oldBarycentricCoord[0] - oldBarycentricCoord[1] , oldBarycentricCoord[0] , oldBarycentricCoord[1] );
-							Point3D< GeometryReal > newBarycentricCoord3( (GeometryReal)1. -    barycentricCoord[0] -    barycentricCoord[1] ,    barycentricCoord[0] ,    barycentricCoord[1] );
-							GeometryReal minOld = std::min< GeometryReal >( std::min< GeometryReal >( oldBarycentricCoord3[0] , oldBarycentricCoord3[1] ) , oldBarycentricCoord3[2] );
-							GeometryReal minNew = std::min< GeometryReal >( std::min< GeometryReal >( newBarycentricCoord3[0] , newBarycentricCoord3[1] ) , newBarycentricCoord3[2] );
-							if( minNew>minOld )
-							{
-								chartTriangleID( nIndices[0] , nIndices[1] ) = tkIndex.first;
-								barycentricCoords( nIndices[0] , nIndices[1] ) = barycentricCoord;
-							}
-						}
-					}
-				}
-			}
-		}
-
-		//(2.2) Add texels adjacent to cells that contain triangles
-		if ((minCorner[0] + 1 == maxCorner[0]) && (minCorner[1] + 1 == maxCorner[1]))
-		{
-			cellType(minCorner[0], minCorner[1]) = CellType::Boundary;
-			for (int di = 0; di < 2; di++) for (int dj = 0; dj < 2; dj++) {
-				int nIndices[2] = { minCorner[0] + di, minCorner[1] + dj };
-				nIndices[0] = std::min<int>(std::max<int>(0, nIndices[0]), width - 1);
-				nIndices[1] = std::min<int>(std::max<int>(0, nIndices[1]), height - 1);
-				if( texelType( nIndices[0], nIndices[1] )!=TexelType::BoundarySupportedAndCovered )
-				{
-					texelType( nIndices[0] , nIndices[1] ) = TexelType::BoundarySupportedAndUncovered;
-
-					Point2D< GeometryReal > texel_pos = Point2D< GeometryReal >( (GeometryReal)nIndices[0]*cellSizeW , (GeometryReal)nIndices[1]*cellSizeH ) - tPos[0];
-					Point2D< GeometryReal > barycentricCoord = barycentricMap*texel_pos;
-
-					if( chartTriangleID( nIndices[0] , nIndices[1] )==ChartMeshTriangleIndex(-1) )
-					{
-						chartTriangleID( nIndices[0] , nIndices[1] ) = tkIndex.first;
-						barycentricCoords( nIndices[0] , nIndices[1] ) = barycentricCoord;
-					}
-					else //Update the position to the closest triangle
-					{
-						Point2D< GeometryReal > oldBarycentricCoord = barycentricCoords( nIndices[0] , nIndices[1] );
-						Point3D< GeometryReal > oldBarycentricCoord3( (GeometryReal)1. - oldBarycentricCoord[0] - oldBarycentricCoord[1] , oldBarycentricCoord[0] , oldBarycentricCoord[1] );
-						Point3D< GeometryReal > newBarycentricCoord3( (GeometryReal)1. -    barycentricCoord[0] -    barycentricCoord[1] ,    barycentricCoord[0] ,    barycentricCoord[1] );
-						GeometryReal minOld = std::min< GeometryReal >( std::min< GeometryReal >( oldBarycentricCoord3[0] , oldBarycentricCoord3[1] ) , oldBarycentricCoord3[2] );
-						GeometryReal minNew = std::min< GeometryReal >( std::min< GeometryReal >( newBarycentricCoord3[0] , newBarycentricCoord3[1] ) , newBarycentricCoord3[2] );
-						if( minNew>minOld )
-						{
-							chartTriangleID( nIndices[0] , nIndices[1] ) = tkIndex.first;
-							barycentricCoords( nIndices[0] , nIndices[1] ) = barycentricCoord;
-						}
-					}
-
-				}
-			}
-		}
-#endif // USE_RASTERIZER
-	}
-
-#ifdef USE_RASTERIZER_1
-#else // !USE_RASTERIZER_1
-	//(3) Add interior cells
-	for( unsigned int j=0 ; j<height-1 ; j++ ) for( unsigned int i=0 ; i<width-1 ; i++ )
-		if( texelType(i,j)==TexelType::BoundarySupportedAndCovered && texelType(i+1,j)==TexelType::BoundarySupportedAndCovered && texelType(i,j+1)==TexelType::BoundarySupportedAndCovered && texelType(i+1,j+1)==TexelType::BoundarySupportedAndCovered && cellType(i,j)==CellType::Exterior ) cellType(i,j) = CellType::Interior;
-#endif // USE_RASTERIZER_1
-
-#ifdef USE_RASTERIZER
-	//(3) Mark deep nodes
-	{
-		auto Kernel = [&]( Index I )
-			{
-				bool validDeepNode = true;
-				Range::Intersect( cellRange , Range::CellsSupportedOnNode(I) ).process( [&]( Index I ){ validDeepNode &= ( cellType(I)==CellType::Interior ); } );
-				if( validDeepNode ) texelType(I) = TexelType::InteriorSupported;
-			};
-		nodeRange.process( Kernel );
-	}
-#else // !USE_RASTERIZER
-	for( unsigned int j=1 ; j<height-1 ; j++ ) for( unsigned int i=1 ; i<width-1 ; i++ )
-	{
-		bool validDeepNode = true;
-		for( int di=-1 ; di<1 ; di++ ) for( int dj=-1 ; dj<1 ; dj++ ) if( cellType( i+di , j+dj )!=CellType::Interior ) validDeepNode = false;
-		if( validDeepNode ) texelType(i,j) = TexelType::InteriorSupported;
-	}
-#endif // USE_RASTERIZER
-#endif // USE_RASTERIZER_1
 
 	// Transform from chart triangle indices to atlas triangle indices
 	{
@@ -583,7 +262,6 @@ void InitializeGridChartsActiveNodes
 		if( gridChart.texelType(i,j)==TexelType::InteriorSupported ) texelIndices(i,j).interior = endInteriorTexelIndex++;
 	}
 
-#ifdef USE_RASTERIZER
 #ifdef SANITY_CHECK
 	// Sanity check: Confirm that all active/interior cells are incident on active/non-boundary nodes
 	{
@@ -608,7 +286,6 @@ void InitializeGridChartsActiveNodes
 		cellRange.process( Kernel );
 	}
 #endif // SANITY_CHECK
-#endif // USE_RASTERIZER
 
 
 	Image< CellIndex > & cellIndices = gridChart.cellIndices;
@@ -631,7 +308,6 @@ void InitializeGridChartsActiveNodes
 	// ---- set the (interior/covered) indices of the corners
 	for( unsigned int j=0 ; j<height-1 ; j++ ) for( unsigned int i=0 ; i<width-1 ; i++ ) if( gridChart.cellType(i,j)!=CellType::Exterior )
 	{
-#ifdef USE_RASTERIZER
 		combinedCellCombinedTexelBilinearElementIndices.emplace_back( texelIndices(i,j).combined , texelIndices(i+1,j).combined , texelIndices(i+1,j+1).combined , texelIndices(i,j+1).combined );
 
 		if( gridChart.cellType(i,j)==CellType::Boundary )
@@ -648,32 +324,6 @@ void InitializeGridChartsActiveNodes
 			interiorCellCombinedTexelBilinearElementIndices.emplace_back( texelIndices(i,j).combined , texelIndices(i+1,j).combined , texelIndices(i+1,j+1).combined , texelIndices(i,j+1).combined );
 		}
 		cellIndices(i,j).combined = _endCombinedCellIndex++;
-#else // !USE_RASTERIZER
-		AtlasCombinedTexelIndex combinedTexelIndices[4] = { texelIndices(i,j).combined , texelIndices(i+1,j).combined , texelIndices(i+1,j+1).combined , texelIndices(i,j+1).combined };
-		if( combinedTexelIndices[0]!=AtlasCombinedTexelIndex(-1) && combinedTexelIndices[1]!=AtlasCombinedTexelIndex(-1) && combinedTexelIndices[2]!=AtlasCombinedTexelIndex(-1) && combinedTexelIndices[3]!=AtlasCombinedTexelIndex(-1) )
-			combinedCellCombinedTexelBilinearElementIndices.push_back( BilinearElementIndex< AtlasCombinedTexelIndex >( combinedTexelIndices[0] , combinedTexelIndices[1] , combinedTexelIndices[2] , combinedTexelIndices[3] ) );
-		else MK_THROW( "Active cell adjacent to unactive node" );
-
-		if( gridChart.cellType(i,j)==CellType::Boundary )
-		{
-			cellIndices(i,j).boundary = _endBoundaryCellIndex++;
-			boundaryCellIndexToCombinedCellIndex.push_back( _endCombinedCellIndex );
-		}
-		else
-		{
-			cellIndices(i,j).interior = _endInteriorCellIndex++;
-			interiorCellIndexToCombinedCellIndex.push_back( _endCombinedCellIndex );
-
-			AtlasCoveredTexelIndex combinedTexelInteriorIndices[4] = { texelIndices(i,j).covered , texelIndices(i+1,j).covered , texelIndices(i+1,j+1).covered , texelIndices(i,j+1).covered };
-			if( combinedTexelInteriorIndices[0]!=AtlasCoveredTexelIndex(-1) && combinedTexelInteriorIndices[1]!=AtlasCoveredTexelIndex(-1) && combinedTexelInteriorIndices[2]!=AtlasCoveredTexelIndex(-1) && combinedTexelInteriorIndices[3]!=AtlasCoveredTexelIndex(-1) )
-			{
-				interiorCellCoveredTexelBilinearElementIndices.push_back( BilinearElementIndex< AtlasCoveredTexelIndex >( combinedTexelInteriorIndices[0] , combinedTexelInteriorIndices[1] , combinedTexelInteriorIndices[2] , combinedTexelInteriorIndices[3] ) );
-				interiorCellCombinedTexelBilinearElementIndices.push_back( BilinearElementIndex< AtlasCombinedTexelIndex >( combinedTexelIndices[0] , combinedTexelIndices[1] , combinedTexelIndices[2] , combinedTexelIndices[3] ) );
-			}
-			else MK_THROW( "Interior cell adjacent to non interior node" );
-		}
-		cellIndices(i,j).combined = _endCombinedCellIndex++;
-#endif // USE_RASTERIZER
 	}
 
 	endCombinedCellIndex += static_cast< unsigned int >( _endCombinedCellIndex );

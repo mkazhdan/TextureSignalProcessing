@@ -29,8 +29,6 @@ DAMAGE.
 #ifndef RASTERIZER_2D_INCLUDED
 #define RASTERIZER_2D_INCLUDED
 
-#define NEW_RASTERIZER_CODE
-
 #include "RegularGrid.h"
 #include "Geometry.h"
 #include "Miscellany.h"

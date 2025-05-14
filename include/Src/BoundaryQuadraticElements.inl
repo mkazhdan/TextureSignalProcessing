@@ -354,7 +354,6 @@ GetChartBoundaryPolygons
 
 	auto GetIndexedIntersectionPolygon = [&]( unsigned int i , unsigned int j ){ return IndexedPolygonFromCell( i , j , gridChart ); };
 
-#ifdef USE_RASTERIZER
 	using Range = RegularGrid< 2 >::Range;
 	using Index = RegularGrid< 2 >::Index;
 	Range nodeRange , cellRange;
@@ -373,13 +372,11 @@ GetChartBoundaryPolygons
 			}
 			return simplex;
 		};
-#endif // USE_RASTERIZER
 
 	//(1) Rasterize all triangles and, if they fall into the support of a boundary cell, add them to the list of triangles associated with that cell
 	for( unsigned int t=0 ; t<atlasChart.numTriangles() ; t++ )
 	{
 		IndexedIntersectionTriangle< GeometryReal > indexedTriangle = GetIndexedTriangle( ChartMeshTriangleIndex(t) );
-#ifdef USE_RASTERIZER
 		// Compute the associated triangle in (shifted) texel coordinates
 		Simplex< double , 2 , 2 > simplex = GetSimplex( ChartMeshTriangleIndex(t) );
 
@@ -413,53 +410,6 @@ GetChartBoundaryPolygons
 				}
 			};
 		Rasterizer2D::RasterizeSupports< true , true >( simplex , Kernel , cellRange );
-#else // !USE_RASTERIZER
-		int minCorner[2] , maxCorner[2];
-		GetTriangleIntegerBBox( &indexedTriangle.vertices[0] , (GeometryReal)1./gridChart.cellSizeW , (GeometryReal)1./gridChart.cellSizeH , minCorner , maxCorner );
-
-		for( int j=minCorner[1] ; j<maxCorner[1] ; j++ ) for( int i=minCorner[0] ; i<maxCorner[0] ; i++ )
-		{
-			if( gridChart.cellType(i,j)==CellType::Boundary )
-			{
-				ChartBoundaryCellIndex cellID = gridChart.cellIndices(i,j).boundary;
-				if( cellID==ChartBoundaryCellIndex(-1) ) MK_THROW( "Boundary cell invalid ID" );
-
-#ifdef DEBUG_INDEXING
-				std::pair< Point< unsigned int , 2 > , std::vector< std::pair< GridMeshIntersectionKey , GridMeshIntersectionKey > > > &segments = cellSegments[cellID];
-#else // !DEBUG_INDEXING
-				std::vector< std::pair< GridMeshIntersectionKey , GridMeshIntersectionKey > > &segments = cellSegments[cellID];
-#endif // DEBUG_INDEXING
-				{
-					Point< int , 2 > idx;
-					idx[0] = i+gridChart.cornerCoords[0];
-					idx[1] = j+gridChart.cornerCoords[1];
-#ifdef DEBUG_INDEXING
-					segments.first = idx;
-#endif // DEBUG_INDEXING
-				}
-
-				IndexedIntersectionPolygon< GeometryReal > cellPolygon = GetIndexedIntersectionPolygon( i , j );
-
-				if( ClipIndexedIntersectionPolygonToIndexedIntersectionTriangle( cellPolygon , indexedTriangle ) )
-				{
-					for( int s=0 ; s<cellPolygon.cornerKeys.size() ; s++ )
-					{
-						{
-							Point2D< GeometryReal > p[] = { cellPolygon.vertices[s] , cellPolygon.vertices[ (s+1)%cellPolygon.vertices.size() ] };
-							if( Point2D< GeometryReal >::SquareNorm( p[0] - p[1] )<=1e-16 )
-								MK_WARN( "Short clipped edge @ texel: " , cellSegments[cellID].first[0] , " , " , cellSegments[cellID].first[1] , " : " , sqrt( Point2D< GeometryReal >::SquareNorm( p[0] - p[1] ) ) );
-						}
-						std::pair< GridMeshIntersectionKey , GridMeshIntersectionKey > edge( cellPolygon.cornerKeys[s] , cellPolygon.cornerKeys[ (s+1) % cellPolygon.cornerKeys.size() ] );
-#ifdef DEBUG_INDEXING
-						segments.second.push_back( edge );
-#else // !DEBUG_INDEXING
-						segments.push_back( edge );
-#endif // DEBUG_INDEXING
-					}
-				}
-			}
-		}
-#endif // USE_RASTERIZER
 	}
 
 	//(2) Process cells

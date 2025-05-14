@@ -178,7 +178,6 @@ namespace MishaK
 			}
 		}
 		using Index = RegularGrid< 2 >::Index;
-#ifdef USE_RASTERIZER
 		using Range = RegularGrid< 2 >::Range;
 		Range cellRange;
 		cellRange.second[0] = gridChart.width-1;
@@ -194,7 +193,6 @@ namespace MishaK
 				}
 				return simplex;
 			};
-#endif // USE_RASTERIZER
 
 #ifdef SEPARATE_POLYGONS
 		// Add the bounday cell contribution
@@ -351,13 +349,6 @@ namespace MishaK
 			SquareMatrix< GeometryReal , 2 > cell_metric_inverse = cell_metric.inverse();
 			GeometryReal cell_area_scale_factor = (GeometryReal)sqrt( cell_metric.determinant() );
 
-#ifdef USE_RASTERIZER
-#else // !USE_RASTERIZER
-			//BBox
-			int minCorner[2] , maxCorner[2];
-			GetTriangleIntegerBBox( tPos , (GeometryReal)1./gridChart.cellSizeW , (GeometryReal)1./gridChart.cellSizeH , minCorner , maxCorner );
-#endif // USE_RASTERIZER
-
 			std::vector< Point2D< GeometryReal > > parametricVertices(3);
 			parametricVertices[0] = tPos[0] , parametricVertices[1] = tPos[1] , parametricVertices[2] = tPos[2];
 
@@ -369,14 +360,9 @@ namespace MishaK
 				atlasTriangle.vertexIndices[k] = atlasChart.triangleIndex( ChartMeshTriangleIndex(t) )[k];
 				atlasTriangle.atlasVertexParentEdge[k] = AtlasMeshEdgeIndex( -1 );
 			}
-#ifdef USE_RASTERIZER
 			auto Kernel = [&]( Index I )
 			{
 				int i = I[0] , j = I[1];
-#else // !USE_RASTERIZER
-			for( int j=minCorner[1] ; j<maxCorner[1] ; j++ ) for( int i=minCorner[0] ; i<maxCorner[0] ; i++ )
-			{
-#endif // USE_RASTERIZER
 				auto TextureToCell = [&]( Point2D< GeometryReal > p ){ return Point2D< GeometryReal >( (GeometryReal)( p[0] / gridChart.cellSizeW ) - i , (GeometryReal)( p[1] / gridChart.cellSizeH ) - j ); };
 
 				ChartInteriorCellIndex interiorIndex = gridChart.cellIndices(i,j).interior;
@@ -614,12 +600,8 @@ namespace MishaK
 					}
 				}
 #endif // SEPARATE_POLYGONS
-#ifdef USE_RASTERIZER
 			};
 			Rasterizer2D::RasterizeSupports< true , true >( GetSimplex( t ) , Kernel , cellRange );
-#else // !USE_RASTERIZER
-			}
-#endif // USE_RASTERIZER
 		}
 
 
