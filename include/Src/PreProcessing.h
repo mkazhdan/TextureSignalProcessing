@@ -50,7 +50,7 @@ DAMAGE.
 //#define USE_SIMPLEX_BASIS				// Cleaner, but slower
 
 #define USE_RASTERIZER				// Use triangle/edge rasterization code [SLOW]
-//#define USE_RASTERIZER_1			// USE_RASTERIZER [HierarchyConstruction.inl], this is where the rasterization slow down is
+#define USE_RASTERIZER_1			// USE_RASTERIZER [HierarchyConstruction.inl], this is where the rasterization slow down is
 
 
 #ifdef USE_RASTERIZER

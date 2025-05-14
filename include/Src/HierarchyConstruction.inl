@@ -143,6 +143,100 @@ void InitializeGridChartsActiveNodes
 #endif // USE_RASTERIZER
 
 #ifdef USE_RASTERIZER_1
+#ifdef NEW_CODE
+
+	// Set the cells
+	{
+		// Mark all cells containing a triangle
+		ThreadPool::ParallelFor
+		(
+			0 , atlasChart.numTriangles() ,
+			[&]( size_t t )
+			{
+				Simplex< double , 2 , 2 > simplex = GetTriangle( ChartMeshTriangleIndex(t) );
+				Rasterizer2D::RasterizeSupports< true , true >( simplex , [&]( Index I ){ SetAtomic( cellType(I) , CellType::Interior ); } , cellRange );
+			}
+		);
+
+		// Over-write the cell designation for cell containing a boundary edge
+		ThreadPool::ParallelFor
+		(
+			0 , atlasChart.boundaryHalfEdges.size() ,
+			[&]( size_t b )
+			{
+				Simplex< double , 2 , 1 > subSimplex = GetEdge( atlasChart.boundaryHalfEdges[b] );
+				Rasterizer2D::RasterizeSupports< true , true >( subSimplex , [&]( Index I ){ SetAtomic( cellType(I) , CellType::Boundary ); } , cellRange );
+			}
+		);
+	}
+
+	// Set the texel nodes
+	{
+		// Mark all nodes containing a triangle in their support
+		ThreadPool::ParallelFor
+		(
+			0 , atlasChart.numTriangles() ,
+			[&]( size_t t )
+			{
+				Simplex< double , 2 , 2 > simplex = GetTriangle( ChartMeshTriangleIndex(t) );
+				auto Kernel = [&]( Index I )
+					{
+						SetAtomic( texelType(I) , TexelType::BoundarySupportedAndUncovered );
+						SetAtomic( chartTriangleID(I) , ChartMeshTriangleIndex(t) );
+					};
+				// Process texels whose support overlaps a triangle
+				Rasterizer2D::RasterizeSupports< false , false >( simplex , Kernel , nodeRange );
+			}
+		);
+
+		// Over-write the node designation for nodes covered by a triangle
+		ThreadPool::ParallelFor
+		(
+			0 , atlasChart.numTriangles() ,
+			[&]( size_t t )
+			{
+				auto Kernel = [&]( Index I )
+					{
+						SetAtomic( texelType(I) , TexelType::BoundarySupportedAndCovered );
+						SetAtomic( chartTriangleID(I) , ChartMeshTriangleIndex(t) );
+					};
+				// Process texel nodes covered by a triangle
+				Rasterizer2D::RasterizeNodes< false >( GetTriangle( ChartMeshTriangleIndex(t) ) , Kernel , nodeRange );
+			}
+		);
+
+		// Over-write the node designation for nodes whose support is entirely interior
+		{
+			auto Kernel = [&]( unsigned int , Index I )
+				{
+					if( chartTriangleID(I)!=ChartMeshTriangleIndex(-1) )
+					{
+						unsigned int bCount = 0;
+						Range::Intersect( cellRange , Range::CellsSupportedOnNode(I) ).process( [&]( Index I ){ if( cellType(I)==CellType::Boundary ) bCount++; } );
+						if( !bCount ) texelType(I) = TexelType::InteriorSupported;
+					}
+				};
+			nodeRange.processParallel( Kernel );
+		}
+
+		// Set the barycentric coordinates for covered boundary nodes
+		{
+			auto Kernel = [&]( unsigned int , Index I )
+				{
+					if( texelType(I)==TexelType::BoundarySupportedAndCovered )
+					{
+						ChartMeshTriangleIndex tIdx = chartTriangleID(I);
+#ifdef SANITY_CHECK
+						if( tIdx==ChartMeshTriangleIndex(-1) ) MK_ERROR_OUT( "Expected covering triangle" );
+#endif // SANITY_CHECK
+						Point3D< double > bc = GetTriangle( tIdx ).barycentricCoordinates( Point2D< double >( I[0] , I[1] ) );
+						barycentricCoords(I) = Point2D< GeometryReal >( Point2D< double >( bc[1] , bc[2] ) );
+					}
+				};
+			nodeRange.processParallel( Kernel );
+		}
+	}
+#else // !NEW_CODE
 	// Rasterize triangles into nodes/cells
 	for( unsigned int t=0 ; t<atlasChart.numTriangles() ; t++ )
 	{
@@ -181,7 +275,6 @@ void InitializeGridChartsActiveNodes
 		Rasterizer2D::RasterizeSupports< true , true >( simplex , [&]( Index I ){ cellType(I)=CellType::Interior; } , cellRange );
 	}
 
-	// Over-write the node designation for nodes covered by a triangle
 	for( int t=0 ; t<atlasChart.numTriangles() ; t++ )
 		Rasterizer2D::RasterizeNodes< false >( GetTriangle( ChartMeshTriangleIndex(t) ) , [&]( Index I ){ texelType(I) = TexelType::BoundarySupportedAndCovered; } , nodeRange );
 
@@ -195,7 +288,7 @@ void InitializeGridChartsActiveNodes
 
 	// Over-write the node designation for nodes whose support is entirely interior
 	{
-		auto Kernel = [&]( Index I )
+		auto Kernel = [&]( unsigned int , Index I )
 			{
 				if( chartTriangleID(I)!=ChartMeshTriangleIndex(-1) )
 				{
@@ -204,8 +297,10 @@ void InitializeGridChartsActiveNodes
 					if( !bCount ) texelType(I) = TexelType::InteriorSupported;
 				}
 			};
-		nodeRange.process( Kernel );
+		nodeRange.processParallel( Kernel );
 	}
+#endif // NEW_CODE
+
 #else // !USE_RASTERIZER_1
 
 	for( unsigned int t=0 ; t<atlasChart.numTriangles() ; t++ )
@@ -798,6 +893,7 @@ void InitializeTextureNodes
 	std::vector< TextureNodeInfo< GeometryReal > > &textureNodes
 )
 {
+
 	for( unsigned int c=0 ; c<gridCharts.size() ; c++ )
 	{
 		const GridChart< GeometryReal > &gridChart = gridCharts[ ChartIndex(c) ];
