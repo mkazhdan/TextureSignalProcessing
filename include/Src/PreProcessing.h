@@ -41,7 +41,6 @@ DAMAGE.
 //#define NO_OPEN_GL_VISUALIZATION		// Disable OpenGL visualization
 //#define DEBUG_INDEXING				// Use separate classes to sanity check indexing
 //#define SANITY_CHECK					// Enables sanity checks for debugging purposes
-//#define USE_SIMPLEX_BASIS				// Cleaner, but slower
 
 #define USE_EIGEN
 #undef USE_CHOLMOD

@@ -30,9 +30,7 @@ DAMAGE.
 #include <Misha/Miscellany.h>
 #include <Misha/Exceptions.h>
 #include <Misha/RightTriangleQuadrature.h>
-#ifdef USE_SIMPLEX_BASIS
 #include <Misha/SimplexBasis.h>
-#endif // USE_SIMPLEX_BASIS
 #include "SimpleTriangleMesh.h"
 #include "Indices.h"
 
@@ -80,69 +78,28 @@ namespace MishaK
 		template< typename Real >
 		static Real Value( unsigned int elementIndex , Point2D< Real > pos )
 		{
-#ifdef USE_SIMPLEX_BASIS
 			return static_cast< Real >( SimplexElements< 2 , 2 >::Element( _idx[elementIndex] )( Point2D< double >(pos) ) );
-#else // !USE_SIMPLEX_BASIS
-			switch( elementIndex )
-			{
-			case 0:	return 2 * pos[0] * pos[0] + 4 * pos[0] * pos[1] + 2 * pos[1] * pos[1] - 3 * pos[0] - 3 * pos[1] + 1;
-			case 1: return 2 * pos[0] * pos[0] - 1 * pos[0];
-			case 2: return 2 * pos[1] * pos[1] - 1 * pos[1];
-			case 3: return 4 * pos[0] * pos[1];
-			case 4: return -4 * pos[0] * pos[1] - 4 * pos[1] * pos[1] + 4 * pos[1];
-			case 5: return -4 * pos[0] * pos[0] - 4 * pos[0] * pos[1] + 4 * pos[0];
-			default: MK_THROW( "Element out of bounds" );
-			}
-			return (Real)0;
-#endif // USE_SIMPLEX_BASIS
 		}
 
 		template< typename Real >
 		static Point2D< Real > Differential( unsigned int elementIndex , Point2D< Real > pos )
 		{
-#ifdef USE_SIMPLEX_BASIS
 			const Point< Polynomial::Polynomial< 2 , 1 , double > , 2 > & d = SimplexElements< 2 , 2 >::Differential( _idx[elementIndex] );
 			return Point2D< Real >( d[0]( Point2D< double >(pos) ) , d[1]( Point2D< double >(pos) ) );
-#else // !USE_SIMPLEX_BASIS
-			switch( elementIndex )
-			{
-			case 0: return Point2D< Real >( 4 * pos[0] + 4 * pos[1] - 3 , 4 * pos[0] + 4 * pos[1] - 3 );
-			case 1: return Point2D< Real >( 4 * pos[0] - 1 , 0 );
-			case 2: return Point2D< Real >( 0 , 4 * pos[1] - 1 );
-			case 3: return Point2D< Real >( 4 * pos[1] , 4 * pos[0]);
-			case 4: return Point2D< Real >( -4 * pos[1] , -4 * pos[0] - 8 * pos[1] + 4 );
-			case 5: return Point2D< Real >( -8 * pos[0] - 4 * pos[1] + 4 , -4 * pos[0] );
-			default: MK_THROW( "Element out of bounds" );
-			}
-			return Point2D< Real >();
-#endif // USE_SIMPLEX_BASIS
 		}
 
 		template< typename Real >
 		static void ValuesAndDifferentials( Point2D< Real > pos , Real values[6] , Point2D< Real > differentials[6] )
 		{
-#ifdef USE_SIMPLEX_BASIS
 			Point< double , 6 > _values = SimplexElements< 2 , 2 >::Elements()( pos );
 			Point< Point< double , 2 > , 6 , double > _differentials = SimplexElements< 2 , 2 >::Differentials()( pos );
 			for( unsigned int i=0 ; i<6 ; i++ ) values[i] = _values[ _idx[i] ] , differentials[i] = _differentials[ _idx[i] ];
-#else // !USE_SIMPLEX_BASIS
-			Real xx = pos[0]*pos[0] , xy = pos[0]*pos[1] , yy = pos[1]*pos[1] , x=pos[0] , y=pos[1];
-			values[0] =  2*xx + 4*xy + 2*yy - 3*x - 3*y + 1 , differentials[0] = Point2D< Real >(  4*x + 4*y - 3 ,  4*x + 4*y - 3 );
-			values[1] =  2*xx               - 1*x           , differentials[1] = Point2D< Real >(  4*x       - 1 ,              0 );
-			values[2] =                2*yy       - 1*y     , differentials[2] = Point2D< Real >(              0 ,  4*y       - 1 );
-			values[3] =         4*xy                        , differentials[3] = Point2D< Real >(        4*y     ,  4*x           );
-			values[4] =        -4*xy - 4*yy       + 4*y     , differentials[4] = Point2D< Real >(      - 4*y     , -4*x - 8*y + 4 );
-			values[5] = -4*xx - 4*xy        + 4*x           , differentials[5] = Point2D< Real >( -8*x - 4*y + 4 , -4*x           );
-#endif // USE_SIMPLEX_BASIS
 		}
 
-#ifdef USE_SIMPLEX_BASIS
 	protected:
 		static const unsigned int _idx[];
-#endif // USE_SIMPLEX_BASIS
 	};
 
-#ifdef USE_SIMPLEX_BASIS
 	inline const unsigned int QuadraticElement::_idx[] = 
 	{
 		SimplexElements< 2 , 2 >::NodeIndex( 0 , 0 ) ,
@@ -152,7 +109,6 @@ namespace MishaK
 		SimplexElements< 2 , 2 >::NodeIndex( 2 , 0 ) ,
 		SimplexElements< 2 , 2 >::NodeIndex( 0 , 1 ),
 	};
-#endif // USE_SIMPLEX_BASIS
 
 	struct BilinearElement
 	{
@@ -179,66 +135,6 @@ namespace MishaK
 		}
 
 	};
-
-#ifdef USE_SIMPLEX_BASIS
-#else // !USE_SIMPLEX_BASIS
-	// For the node at (0.0,0.0):
-	//		F(x,y) = a x^2 + b y^2 + c xy + d x + e y + f
-	//		F(0.0,0.0) = 1 => f = 1                 => F(x,y) = a x^2 + b y^2 + c xy + d x + e y + 1
-	//		F(1.0,0.0) = 0 => a + d + 1 = 0         => F(x,y) = a x^2 + b y^2 + c xy - (a+1) x + e y + 1
-	//		F(0.0,1.0) = 0 => b + e + 1 = 0         => F(x,y) = a x^2 + b y^2 + c xy - (a+1) x - (b+1) y + 1
-	//		F(0.5,0.0) = 0 => a/4 - (a+1)/2 + 1 = 0 => F(x,y) = 2 x^2 + b y^2 + c xy - 3 x - (b+1) y + 1
-	//		F(0.0,0.5) = 0 => b/4 - (b+1)/2 + 1 = 0 => F(x,y) = 2 x^2 + 2 y^2 + c xy - 3 x - 3 y + 1
-	//		F(0.5,0.5) = 0 => c/4 - 1 = 0           => F(x,y) = 2 x^2 + 2 y^2 + 4 xy - 3 x - 3 y + 1
-	// For the node at (1.0,0.0):
-	//		F(x,y) = a x^2 + b y^2 + c xy + d x + e y + f
-	//		F(0.0,0.0) = 0 => f = 0             => F(x,y) = a x^2 + b y^2 + c xy + d x + e y
-	//		F(1.0,0.0) = 1 => a + d = 1         => F(x,y) = a x^2 + b y^2 + c xy + (1-a) x + e y
-	//		F(0.0,1.0) = 0 => b + e = 0         => F(x,y) = a x^2 + b y^2 + c xy + (1-a) x - b y
-	//		F(0.5,0.0) = 0 => a/4 + (1-a)/2 = 0 => F(x,y) = 2 x^2 + b y^2 + c xy - x - b y
-	//		F(0.0,0.5) = 0 => b/4 - b/2 = 0     => F(x,y) = 2 x^2         + c xy - x
-	//		F(0.5,0.5) = 0 => c/4 = 0           => F(x,y) = 2 x^2                - x
-	// For the node at (0.0,1.0):
-	//		F(x,y) = 2 y^2 - y
-	// For the node at (0.5,0.0):
-	//		F(x,y) = a x^2 + c xy + d x
-	//		F(1.0,0.0) = 0 => a + d = 0     => F(x,y) =  a x^2 + c xy - a x
-	//		F(0.5,0.0) = 1 => a/4 - a/2 = 1 => F(x,y) = -4 x^2 + c xy + 4 x
-	//		F(0.5,0.5) = 0 => c/4 + 1 = 0   => F(x,y) = -4 x^2 - 4 xy + 4 x
-	// For the node at (0.0,0.5):
-	//		F(x,y) = -4 y^2 - 4 xy + 4y
-	// For the node at (0.5,0.5):
-	//		F(x,y) = c xy
-	//		F(0.5,0.5) = 1 => c/4 = 1 => F(x,y) = 4 xy
-
-	// 0 -> (0.0,0.0)
-	// 1 -> (1.0,0.0)
-	// 2 -> (0.0,1.0)
-	// 3 -> (0.5,0.5)
-	// 4 -> (0.0,0.5)
-	// 5 -> (0.5,0.0)
-	/////////////////////
-	// Function values //
-	//////////////////////////////////////////////////////////////////
-	// (0.0,0.0) -> F(x,y) =   2 x^2 + 2 y^2 + 4 xy - 3 x - 3 y + 1 //
-	// (1.0,0.0) -> F(x,y) =   2 x^2                - 1 x           //
-	// (0.0,1.0) -> F(x,y) =           2 y^2              - 1 y     //
-	// (0.5,0.5) -> F(x,y) =                   4 xy                 //
-	// (0.0,0.5) -> F(x,y) =         - 4 y^2 - 4 xy       + 4 y     //
-	// (0.5,0.0) -> F(x,y) = - 4 x^2         - 4 xy + 4 x           //
-	//////////////////////////////////////////////////////////////////
-
-	////////////////////////
-	// Function gradients //
-	/////////////////////////////////////////////////////////////////
-	// (0.0,0.0) -> G(x,y) = (   4 x + 4 y - 3 ,   4 y + 4 x - 3 ) //
-	// (1.0,0.0) -> G(x,y) = (   4 x       - 1 ,               0 ) //
-	// (0.0,1.0) -> G(x,y) = (               0 ,   4 y       - 1 ) //
-	// (0.5,0.5) -> G(x,y) = (         4 y     ,         4 x     ) //
-	// (0.0,0.5) -> G(x,y) = (       - 4 y     , - 8 y - 4 x + 4 ) //
-	// (0.5,0.0) -> G(x,y) = ( - 8 x - 4 y + 4 ,       - 4 x     ) //
-	/////////////////////////////////////////////////////////////////
-#endif // USE_SIMPLEX_BASIS
 
 	template< typename GeometryReal >
 	GeometryReal LinearElementValue( int elementIndex , Point2D< GeometryReal > pos )

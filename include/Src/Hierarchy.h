@@ -43,7 +43,7 @@ DAMAGE.
 #include <Misha/Atomic.Geometry.h>
 #include "IndexedPolygon.h"
 #include "ImageIO.h"
-#include "Basis.h"
+#include <Misha/SimplexBasis.h>
 
 namespace MishaK
 {
@@ -121,13 +121,7 @@ namespace MishaK
 			}
 			void init( Point2D< Real > p )
 			{
-				Real xx = p[0]*p[0] , xy = p[0]*p[1] , yy = p[1]*p[1] , x = p[0] , y = p[1];
-				_weights[0] = (   2 * xx + 2 * yy + 4 * xy - 3 * x - 3 * y + 1 );
-				_weights[1] = (   2 * xx                   - 1 * x             );
-				_weights[2] = (            2 * yy                  - 1 * y     );
-				_weights[3] = (                     4 * xy                     );
-				_weights[4] = (          - 4 * yy - 4 * xy         + 4 * y     );
-				_weights[5] = ( - 4 * xx          - 4 * xy + 4 * x             );
+				for( unsigned int i=0 ; i<6 ; i++ ) _weights[i] = static_cast< Real >( SimplexElements< 2 , 2 >::Element( _idx[i] )( Point2D< double >(p) ) );
 			}
 			template< typename T >
 			T operator()( const T values[6] ) const
@@ -170,6 +164,18 @@ namespace MishaK
 	protected:
 		unsigned int _sampleNum;
 		SampleData* _samples;
+		static const unsigned int _idx[];
+	};
+
+	template< typename Real >
+	const unsigned int QuadraticElementScalarSample< Real >::_idx[] = 
+	{
+		SimplexElements< 2 , 2 >::NodeIndex( 0 , 0 ) ,
+		SimplexElements< 2 , 2 >::NodeIndex( 1 , 1 ) ,
+		SimplexElements< 2 , 2 >::NodeIndex( 2 , 2 ) ,
+		SimplexElements< 2 , 2 >::NodeIndex( 1 , 2 ) ,
+		SimplexElements< 2 , 2 >::NodeIndex( 2 , 0 ) ,
+		SimplexElements< 2 , 2 >::NodeIndex( 0 , 1 ),
 	};
 
 	template< typename Real >
@@ -241,12 +247,11 @@ namespace MishaK
 			Point2D< Real > dualGradients[6];	// The integrated gradients of the six incident quadratic basis functions, dualized
 			void init( Point2D< Real > p )
 			{
-				_weights[0] = Point2D< Real >(   4 * p[0] + 4 * p[1] - 3 ,   4 * p[1] + 4 * p[0] - 3 );
-				_weights[1] = Point2D< Real >(   4 * p[0]            - 1 ,                         0 );
-				_weights[2] = Point2D< Real >(                         0 ,   4 * p[1]            - 1 );
-				_weights[3] = Point2D< Real >(              4 * p[1]     ,              4 * p[0]     );
-				_weights[4] = Point2D< Real >(            - 4 * p[1]     , - 8 * p[1] - 4 * p[0] + 4 );
-				_weights[5] = Point2D< Real >( - 8 * p[0] - 4 * p[1] + 4 ,            - 4 * p[0]     );
+				for( unsigned int i=0 ; i<6 ; i++ )
+				{
+					const Point< Polynomial::Polynomial< 2 , 1 , double > , 2 > & d = SimplexElements< 2 , 2 >::Differential( _idx[i] );
+					_weights[i] = Point2D< Real >( d[0]( Point2D< double >(p) ) , d[1]( Point2D< double >(p) ) );
+				}
 			}
 			template< typename T >
 			Point2D< T > operator()( const T values[6] ) const
@@ -293,6 +298,18 @@ namespace MishaK
 	protected:
 		unsigned int _sampleNum;
 		SampleData* _samples;
+		static const unsigned int _idx[];
+	};
+
+	template< typename Real >
+	const unsigned int QuadraticElementGradientSample< Real >::_idx[] = 
+	{
+		SimplexElements< 2 , 2 >::NodeIndex( 0 , 0 ) ,
+		SimplexElements< 2 , 2 >::NodeIndex( 1 , 1 ) ,
+		SimplexElements< 2 , 2 >::NodeIndex( 2 , 2 ) ,
+		SimplexElements< 2 , 2 >::NodeIndex( 1 , 2 ) ,
+		SimplexElements< 2 , 2 >::NodeIndex( 2 , 0 ) ,
+		SimplexElements< 2 , 2 >::NodeIndex( 0 , 1 ),
 	};
 
 	template< typename _Real >
