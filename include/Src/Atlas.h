@@ -35,95 +35,170 @@ DAMAGE.
 #include <Misha/Miscellany.h>
 #include <Misha/Exceptions.h>
 #include "SimpleTriangleMesh.h"
-#include "ChartDecomposition.h"
-
+#include "Indices.h"
 
 namespace MishaK
 {
-
-#ifdef DEBUG_ATLAS
-	struct _TriangleIndex
-	{
-		SimplexIndex< 2 > index;
-		int oldIndex;
-		_TriangleIndex( void ) : oldIndex( -1 ){}
-		_TriangleIndex( SimplexIndex< 2 > i , int o ) : index( i ) , oldIndex( o ){}
-
-		unsigned int &operator[] ( unsigned int idx )       { return index[idx]; }
-		unsigned int  operator[] ( unsigned int idx ) const { return index[idx]; }
-		int operator()( void ) const { return oldIndex; }
-	};
-#endif // DEBUG_ATLAS
+	template< typename GeometryReal > struct AtlasChart;
 
 	template< typename GeometryReal >
-	class AtlasMesh : public SimpleTriangleMesh< GeometryReal , 2 >
+	struct AtlasMesh : protected SimpleTriangleMesh< GeometryReal , 2 >
 	{
-	public:
-		using SimpleTriangleMesh< GeometryReal , 2 >::vertices;
-		using SimpleTriangleMesh< GeometryReal , 2 >::triangles;
+		Point< GeometryReal , 2 > vertex( AtlasMeshVertexIndex v ) const { return SimpleTriangleMesh< GeometryReal , 2 >::vertices[ static_cast< unsigned int >(v) ]; }
+		SimplexIndex< 2 , AtlasMeshVertexIndex > triangle( AtlasMeshTriangleIndex t ) const
+		{
+			SimplexIndex< 2 > _tri = SimpleTriangleMesh< GeometryReal , 2 >::triangles[ static_cast< unsigned int >(t) ];
+			SimplexIndex< 2 , AtlasMeshVertexIndex > tri;
+			for( unsigned int k=0 ; k<=2 ; k++ ) tri[k] = AtlasMeshVertexIndex( _tri[k] );
+			return tri;
+		}
+		size_t numVertices( void ) const { return SimpleTriangleMesh< GeometryReal , 2 >::vertices.size(); }
+		size_t numTriangles( void ) const { return SimpleTriangleMesh< GeometryReal , 2 >::triangles.size(); }
 
-		std::vector< int > triangleIndexInChart;
-		std::vector< int > triangleChartIndex;
-		std::vector< int > halfEdgeToEdgeIndex;
-		std::vector< int > vertexMap;
-		int numCharts;
+		// Returns the index of the chart the triangle has been assigned to
+		ChartIndex triangleToChart( AtlasMeshTriangleIndex t ) const { return _triangleToChart[t]; }
+
+		// Returns the index of the edge associated with the half-edge
+		AtlasMeshEdgeIndex halfEdgeToEdge( AtlasMeshHalfEdgeIndex he ) const { return _halfEdgeToEdge[he]; }
+
+		// Returns the index of the chart vertex as an atlas vertex
+		AtlasMeshVertexIndex chartToAtlasVertex( ChartMeshVertexIndex v ) const { return _chartToAtlasVertex[v]; }
+
+		unsigned int numCharts( void ) const { return _numCharts; }
+
+		void initialize( const TexturedTriangleMesh< GeometryReal > &inputMesh );
+
+		// Displace vertex positions if they are too close to the axes
+		void jitter( unsigned int width , unsigned int height , GeometryReal epsilon=(GeometryReal)1e-6 );
+
+		ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > > getCharts( const std::vector< bool > &isBoundaryHalfEdge , unsigned int width , unsigned int height ) const;
+
+	protected:
+		unsigned int _numCharts;
+		ExplicitIndexVector< AtlasMeshTriangleIndex , ChartIndex > _triangleToChart;
+		ExplicitIndexVector< AtlasMeshHalfEdgeIndex , AtlasMeshEdgeIndex > _halfEdgeToEdge;
+		ExplicitIndexVector< ChartMeshVertexIndex , AtlasMeshVertexIndex > _chartToAtlasVertex;
 	};
 
 	template< typename GeometryReal >
-	class AtlasChart
+	struct AtlasChart : protected SimpleTriangleMesh< GeometryReal , 2 >
 	{
-	public:
+		Point< GeometryReal , 2 > vertex( ChartMeshVertexIndex v ) const { return SimpleTriangleMesh< GeometryReal , 2 >::vertices[ static_cast< unsigned int >(v) ]; }
+		SimplexIndex< 2 , ChartMeshVertexIndex > triangleIndex( ChartMeshTriangleIndex t ) const
+		{
+			SimplexIndex< 2 > _tri = SimpleTriangleMesh< GeometryReal , 2 >::triangles[ static_cast< unsigned int >(t) ];
+			SimplexIndex< 2 , ChartMeshVertexIndex > tri;
+			for( unsigned int k=0 ; k<=2 ; k++ ) tri[k] = ChartMeshVertexIndex( _tri[k] );
+			return tri;
+		}
+		SimplexIndex< 1 , ChartMeshVertexIndex > edgeIndex( ChartMeshHalfEdgeIndex he ) const
+		{
+			SimplexIndex< 1 > _edge = SimpleTriangleMesh< GeometryReal , 2 >::edgeIndex( static_cast< unsigned int >(he) );
+			SimplexIndex< 1 , ChartMeshVertexIndex > edge;
+			for( unsigned int k=0 ; k<=1 ; k++ ) edge[k] = ChartMeshVertexIndex( _edge[k] );
+			return edge;
+		}
+		size_t numVertices( void ) const { return SimpleTriangleMesh< GeometryReal , 2 >::vertices.size(); }
+		size_t numTriangles( void ) const { return SimpleTriangleMesh< GeometryReal , 2 >::triangles.size(); }
+
 		Point2D< GeometryReal > minCorner;
 		Point2D< GeometryReal > maxCorner;
 		Point2D< GeometryReal > gridOrigin;
-		int originCoords[2];
-#ifdef DEBUG_ATLAS
-		std::vector< _TriangleIndex > triangles;
-#else // !DEBUG_ATLAS
-		std::vector< SimplexIndex< 2 > > triangles;
-#endif // DEBUG_ATLAS
-		std::vector< Point2D< GeometryReal > > vertices;
-		std::vector< int > boundaryHalfEdges;
-		std::vector< int > atlasEdgeIndices;
+		unsigned int originCoords[2];
 
-		std::vector< int > meshVertexIndices;
-		std::vector< int > meshTriangleIndices;
-	};
+		// The list of half edges on the boundary of the chart
+		std::vector< ChartMeshHalfEdgeIndex > boundaryHalfEdges;
 
-	template< typename GeometryReal >
-	class IndexedVector2D
-	{
-	public:
-		IndexedVector2D( Point2D< GeometryReal > p_p , int p_index , int p_vertex )
+		// Returns the index of the atlas edge associated with the chart half-edge
+		AtlasMeshEdgeIndex atlasEdge( ChartMeshHalfEdgeIndex he ) const { return _chartHalfEdgeToAtlasEdge[he]; }
+
+		// Returns the index of the atlas half-edge associated with the chart half-edge
+		AtlasMeshHalfEdgeIndex atlasHalfEdge( ChartMeshHalfEdgeIndex he ) const { auto f = FactorChartMeshHalfEdgeIndex( he ) ; return GetAtlasMeshHalfEdgeIndex( _chartToAtlasTriangle[f.first] , f.second ); }
+
+		// Returns the index of the chart vertex as an atlas vertex
+		AtlasMeshVertexIndex atlasVertex( ChartMeshVertexIndex v ) const { return _chartToAtlasVertex[v]; }
+
+		// Returns the index of the triangle within the atlas
+		AtlasMeshTriangleIndex atlasTriangle( ChartMeshTriangleIndex t ) const { return _chartToAtlasTriangle[t]; }
+
+		struct AtlasInfo
 		{
-			p = p_p;
-			index = p_index;
-			vertex = p_vertex;
-		}
-		Point2D< GeometryReal > p;
-		int index;
-		int vertex;
+			// The opposite half-edges (in the atlas mesh)
+			ExplicitIndexVector< AtlasMeshHalfEdgeIndex , AtlasMeshHalfEdgeIndex > oppositeHalfEdges;
+
+			// A map assigning an index to atlas boundary vertices
+			std::map< AtlasMeshVertexIndex , AtlasMeshBoundaryVertexIndex > atlasMeshVertexToBoundaryVertex;
+
+			// Is the atlas mesh water-tight
+			bool isClosed;
+		};
+
+		static ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > > GetCharts
+			(
+				const TexturedTriangleMesh< GeometryReal > &mesh ,
+				unsigned int width ,
+				unsigned int height ,
+				AtlasInfo &atlasInfo
+			);
+
+	protected:
+		friend AtlasMesh< GeometryReal >;
+
+		ExplicitIndexVector< ChartMeshHalfEdgeIndex , AtlasMeshEdgeIndex > _chartHalfEdgeToAtlasEdge;
+		ExplicitIndexVector< ChartMeshVertexIndex , AtlasMeshVertexIndex > _chartToAtlasVertex;
+		ExplicitIndexVector< ChartMeshTriangleIndex , AtlasMeshTriangleIndex > _chartToAtlasTriangle;
 	};
 
 	template< typename GeometryReal >
-	class IndexedVector2DComparison
+	struct IndexedVector2D
 	{
-	public:
-		bool operator()( const IndexedVector2D< GeometryReal > &p1 , const IndexedVector2D< GeometryReal > &p2 ) const
+		IndexedVector2D( Point2D< GeometryReal > p , ChartMeshVertexIndex index , AtlasMeshVertexIndex vertex ) : p(p) , index(index) , vertex(vertex){}
+		Point2D< GeometryReal > p;
+		ChartMeshVertexIndex index;
+		AtlasMeshVertexIndex vertex;
+		bool operator < ( const IndexedVector2D &p2 ) const
 		{
 			for( int i=0 ; i<2 ; i++ )
 			{
-				if      ( p1.p[i]<p2.p[i] ) return true;
-				else if ( p2.p[i]<p1.p[i] ) return false;
+				if      ( p[i]<p2.p[i] ) return true;
+				else if ( p2.p[i]<p[i] ) return false;
 				else
 				{
-					if     ( p1.vertex<p2.vertex ) return true;
-					else if( p2.vertex<p1.vertex ) return false;
+					if     ( vertex<p2.vertex ) return true;
+					else if( p2.vertex<vertex ) return false;
 				}
 			}
 			return false;
 		}
 	};
+
+	template< typename GeometryReal >
+	struct EdgeEquation
+	{
+		EdgeEquation( void ) : _offset(0) {}
+		EdgeEquation( Point2D< GeometryReal > v1 , Point2D< GeometryReal > v2 , bool normalize=false )
+		{
+			_n = v2 - v1;
+			_n = Point2D< GeometryReal >( -_n[1] , _n[0] );
+			if( normalize ) _n /= Point2D< GeometryReal >::Length( _n );
+			_offset = -Point2D< GeometryReal >::Dot( v1 , _n );
+		}
+		GeometryReal operator()( Point2D< GeometryReal > p ) const { return Point2D< GeometryReal >::Dot( _n , p ) + _offset; }
+		bool makePositive( Point2D< GeometryReal > p )
+		{
+			if( operator()( p )<0 )
+			{
+				_n = -_n;
+				_offset = -_offset;
+				return true;
+			}
+			else return false;
+		}
+	protected:
+		Point2D< GeometryReal > _n;
+		GeometryReal _offset;
+	};
+
 
 #include "AtlasMesh.inl"
 #include "AtlasCharts.inl"

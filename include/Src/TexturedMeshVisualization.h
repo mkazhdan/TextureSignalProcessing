@@ -65,7 +65,7 @@ namespace MishaK
 		void SetupOffScreenBuffer( void );
 		void RenderOffScreenBuffer( Image< Point3D< float > > & image );
 
-		std::vector< Point3D< float > > boundaryEdgeVertices;
+		std::vector< Point3D< float > > chartBoundaryVertices;
 		bool showBoundaryEdges;
 		bool useNearestSampling;
 		bool showVectorField;

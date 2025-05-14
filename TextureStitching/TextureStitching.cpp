@@ -59,9 +59,8 @@ CmdLineParameter< std::string > InputLowFrequency( "inLow" );
 CmdLineParameter< std::string > Output( "out" );
 CmdLineParameter< int   > OutputVCycles( "outVCycles" , 6 );
 CmdLineParameter< float > InterpolationWeight( "interpolation" , 1e2 );
-CmdLineParameter< int   > Levels( "levels" , 4 );
+CmdLineParameter< unsigned int > Levels( "levels" , 4 );
 CmdLineParameter< int   > MatrixQuadrature( "mQuadrature" , 6 );
-CmdLineParameter< int   > BoundaryDilationRadius( "dilateBoundaries" , -1 );
 
 CmdLineParameter< int   > MultigridBlockHeight ( "mBlockH" ,  16 );
 CmdLineParameter< int   > MultigridBlockWidth  ( "mBlockW" , 128 );
@@ -81,20 +80,15 @@ CmdLineReadable DetailVerbose( "detail" );
 CmdLineReadable Double( "double" );
 CmdLineReadable MultiInput( "multi" );
 CmdLineReadable Serial( "serial" );
+CmdLineReadable Run( "run" );
 #ifdef NO_OPEN_GL_VISUALIZATION
 #else // !NO_OPEN_GL_VISUALIZATION
 CmdLineReadable Nearest( "nearest" );
 #endif // NO_OPEN_GL_VISUALIZATION
 CmdLineParameter< double > CollapseEpsilon( "collapse" , 0 );
 
-#ifdef DEBUG_BAD_LOOP
-CmdLineParameterArray< int , 2 > DebugChartCell( "debugChartCell" );
-#endif // DEBUG_BAD_LOOP
 CmdLineReadable* params[] =
 {
-#ifdef DEBUG_BAD_LOOP
-	&DebugChartCell ,
-#endif // DEBUG_BAD_LOOP
 	&In , &InMask , &Output , &InterpolationWeight , &Levels , &UseDirectSolver , &Serial, &Verbose ,
 	&InputLowFrequency ,
 	&DetailVerbose , &MultigridBlockHeight , &MultigridBlockWidth , &MultigridPaddedHeight , &MultigridPaddedWidth , &RandomJitter ,
@@ -103,13 +97,13 @@ CmdLineReadable* params[] =
 #else // !NO_OPEN_GL_VISUALIZATION
 	&CameraConfig ,
 #endif // NO_OPEN_GL_VISUALIZATION
-	&BoundaryDilationRadius ,
 	&ChartMaskErode ,
 #ifdef NO_OPEN_GL_VISUALIZATION
 #else // !NO_OPEN_GL_VISUALIZATION
 	&Nearest ,
 #endif // NO_OPEN_GL_VISUALIZATION
 	&CollapseEpsilon ,
+	&Run ,
 	NULL
 };
 
@@ -129,7 +123,6 @@ void ShowUsage( const char *ex )
 	printf( "\t[--%s <output v-cycles>=%d]\n" , OutputVCycles.name.c_str() , OutputVCycles.value );
 	printf( "\t[--%s <interpolation weight>=%f]\n" , InterpolationWeight.name.c_str() , InterpolationWeight.value );
 	printf( "\t[--%s <system matrix quadrature points per triangle>=%d]\n" , MatrixQuadrature.name.c_str(), MatrixQuadrature.value );
-	printf( "\t[--%s <boundary dilation radius>=%d]\n" , BoundaryDilationRadius.name.c_str() , BoundaryDilationRadius.value );
 	printf( "\t[--%s]\n" , UseDirectSolver.name.c_str() );
 	printf( "\t[--%s]\n" , MultiInput.name.c_str() );
 	printf( "\t[--%s <jittering seed>]\n" , RandomJitter.name.c_str() );
@@ -143,18 +136,16 @@ void ShowUsage( const char *ex )
 #else // !NO_OPEN_GL_VISUALIZATION
 	printf( "\t[--%s <camera configuration file>]\n" , CameraConfig.name.c_str() );
 #endif // NO_OPEN_GL_VISUALIZATION
-	printf( "\t[--%s <hierarchy levels>=%d]\n" , Levels.name.c_str(), Levels.value );
+	printf( "\t[--%s <hierarchy levels>=%d]\n" , Levels.name.c_str(), static_cast< int >(Levels.value) );
 	printf( "\t[--%s <multigrid block width>=%d]\n" , MultigridBlockWidth.name.c_str() , MultigridBlockWidth.value );
 	printf( "\t[--%s <multigrid block height>=%d]\n" , MultigridBlockHeight.name.c_str() , MultigridBlockHeight.value );
 	printf( "\t[--%s <multigrid padded width>=%d]\n" , MultigridPaddedWidth.name.c_str() , MultigridPaddedWidth.value );
 	printf( "\t[--%s <multigrid padded height>=%d]\n" , MultigridPaddedHeight.name.c_str() , MultigridPaddedHeight.value );
 	printf( "\t[--%s <collapse epsilon>=%g]\n" , CollapseEpsilon.name.c_str() , CollapseEpsilon.value );
 	printf( "\t[--%s]\n", Serial.name.c_str() );
+	printf( "\t[--%s]\n", Run.name.c_str() );
 	printf( "\t[--%s]\n", DetailVerbose.name.c_str() );
 	printf( "\t[--%s]\n" , NoHelp.name.c_str() );
-#ifdef DEBUG_BAD_LOOP
-	printf( "\t[--%s < chart index , cell index >]\n" , DebugChartCell.name.c_str() );
-#endif // DEBUG_BAD_LOOP
 }
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth >
@@ -162,11 +153,11 @@ class Stitching
 {
 public:
 	static int inputMode;
-	static OrientedTexturedTriangleMesh< PreReal > mesh;
+	static TexturedTriangleMesh< PreReal > mesh;
 	static int textureWidth;
 	static int textureHeight;
 	static Real interpolationWeight;
-	static int levels;
+	static unsigned int levels;
 
 	static HierarchicalSystem< PreReal , Real > hierarchy;
 	static bool rhsUpdated;
@@ -197,9 +188,9 @@ public:
 	static std::vector< Point3D< float > >textureNodePositions;
 	static std::vector< Point3D< float > >textureEdgePositions;
 
-	static std::vector< AtlasChart< PreReal > > atlasCharts;
+	static ExplicitIndexVector< ChartIndex , AtlasChart< PreReal > > atlasCharts;
 
-	static std::vector< BilinearElementIndex > bilinearElementIndices;
+	static ExplicitIndexVector< AtlasCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > > bilinearElementIndices;
 
 	static std::vector< TextureNodeInfo< PreReal > > textureNodes;
 
@@ -227,8 +218,8 @@ public:
 	static VCycleSolvers< DirectSolver > vCycleSolvers;
 	static DirectSolver directSolver;
 
-	static std::unordered_map< unsigned long long , int > edgeIndex;
-	static std::vector< std::pair< int , int > > edgePairs;
+	static std::map< SimplexIndex< 1 , AtlasCombinedTexelIndex > , unsigned int > edgeIndex;
+	static std::vector< SimplexIndex< 1 , AtlasCombinedTexelIndex > > edgePairs;
 
 	static SparseMatrix< Real , int > boundaryDivergenceMatrix;
 
@@ -252,12 +243,12 @@ public:
 	static Padding padding;
 
 #ifdef NO_OPEN_GL_VISUALIZATION
-	static int updateCount;
+	static unsigned int updateCount;
 	static void WriteTexture( const char *fileName );
 #else // !NO_OPEN_GL_VISUALIZATION
 	// Visulization
 	static StitchingVisualization visualization;
-	static int updateCount;
+	static unsigned int updateCount;
 
 	static void ToggleForwardReferenceTextureCallBack ( Visualization *v , const char *prompt );
 	static void ToggleBackwardReferenceTextureCallBack( Visualization *v , const char *prompt );
@@ -282,7 +273,7 @@ public:
 	static void UpdateSolution( bool verbose=false , bool detailVerbose=false );
 	static void ComputeExactSolution( bool verbose=false );
 	static void InitializeSystem( int width , int height );
-	static void _InitializeSystem( std::vector< std::vector< SquareMatrix< PreReal , 2 > > > &parameterMetric , BoundaryProlongationData< Real > &boundaryProlongation );
+	static void _InitializeSystem( ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > > &parameterMetric , BoundaryProlongationData< Real > &boundaryProlongation );
 
 #ifdef NO_OPEN_GL_VISUALIZATION
 #else // !NO_OPEN_GL_VISUALIZATION
@@ -309,7 +300,7 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth > char
 #endif // NO_OPEN_GL_VISUALIZATION
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > int																Stitching< PreReal , Real , TextureBitDepth >::inputMode;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > OrientedTexturedTriangleMesh< PreReal >							Stitching< PreReal , Real , TextureBitDepth >::mesh;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > TexturedTriangleMesh< PreReal >									Stitching< PreReal , Real , TextureBitDepth >::mesh;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > int																Stitching< PreReal , Real , TextureBitDepth >::textureWidth;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > int																Stitching< PreReal , Real , TextureBitDepth >::textureHeight;
 #ifdef NO_OPEN_GL_VISUALIZATION
@@ -323,11 +314,11 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth > Spar
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > Real															Stitching< PreReal , Real , TextureBitDepth >::interpolationWeight;
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< TextureNodeInfo< PreReal > >						Stitching< PreReal , Real , TextureBitDepth >::textureNodes;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< BilinearElementIndex >								Stitching< PreReal , Real , TextureBitDepth >::bilinearElementIndices;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > ExplicitIndexVector< AtlasCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > >	Stitching< PreReal , Real , TextureBitDepth >::bilinearElementIndices;
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > int																Stitching< PreReal , Real , TextureBitDepth >::steps;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > char															Stitching< PreReal , Real , TextureBitDepth >::stepsString[1024];
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > int																Stitching< PreReal , Real , TextureBitDepth >::levels;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > unsigned int													Stitching< PreReal , Real , TextureBitDepth >::levels;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > HierarchicalSystem< PreReal , Real >							Stitching< PreReal , Real , TextureBitDepth >::hierarchy;
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > bool															Stitching< PreReal , Real , TextureBitDepth >::rhsUpdated = true;
@@ -353,7 +344,7 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth > std:
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > VCycleSolvers< typename Stitching< PreReal , Real , TextureBitDepth >::DirectSolver >		Stitching< PreReal , Real , TextureBitDepth >::vCycleSolvers;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > typename Stitching< PreReal , Real , TextureBitDepth >::DirectSolver				Stitching< PreReal , Real , TextureBitDepth >::directSolver;
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< AtlasChart< PreReal > >							Stitching< PreReal , Real , TextureBitDepth >::atlasCharts;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > ExplicitIndexVector< ChartIndex , AtlasChart< PreReal > >				Stitching< PreReal , Real , TextureBitDepth >::atlasCharts;
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Point3D< float > >									Stitching< PreReal , Real , TextureBitDepth >::textureNodePositions;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Point3D< float > >									Stitching< PreReal , Real , TextureBitDepth >::textureEdgePositions;
@@ -363,10 +354,10 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth > Padd
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > SystemCoefficients< Real >										Stitching< PreReal , Real , TextureBitDepth >::massCoefficients;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > SystemCoefficients< Real >										Stitching< PreReal , Real , TextureBitDepth >::stiffnessCoefficients;
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > int																Stitching< PreReal , Real , TextureBitDepth >::updateCount = -1;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > unsigned int													Stitching< PreReal , Real , TextureBitDepth >::updateCount = static_cast< unsigned int >(-1);
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth >  std::unordered_map< unsigned long long , int >					Stitching< PreReal , Real , TextureBitDepth >::edgeIndex;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth >  std::vector< std::pair< int , int > >							Stitching< PreReal , Real , TextureBitDepth >::edgePairs;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth >  std::map< SimplexIndex< 1 , AtlasCombinedTexelIndex > , unsigned int >	Stitching< PreReal , Real , TextureBitDepth >::edgeIndex;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth >  std::vector< SimplexIndex< 1 , AtlasCombinedTexelIndex > >		Stitching< PreReal , Real , TextureBitDepth >::edgePairs;
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth >  SparseMatrix< Real , int >										Stitching< PreReal , Real , TextureBitDepth >::boundaryDivergenceMatrix;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth >  std::vector< Real >											Stitching< PreReal , Real , TextureBitDepth >::deepDivergenceCoefficients;
@@ -587,11 +578,16 @@ void Stitching< PreReal , Real , TextureBitDepth >::ExportTextureCallBack( Visua
 template< typename PreReal , typename Real , unsigned int TextureBitDepth >
 void  Stitching< PreReal , Real , TextureBitDepth >::InterpolationWeightCallBack( Visualization * /*v*/ , const char *prompt )
 {
+	Miscellany::PerformanceMeter pMeter( '.' );
+
 	interpolationWeight = atof(prompt);
-	if( UseDirectSolver.set ) stitchingMatrix = mass*interpolationWeight + stiffness;
-	Miscellany::Timer timer;
+	if( UseDirectSolver.set )
+	{
+		stitchingMatrix = mass*interpolationWeight + stiffness;
+		if( Verbose.set ) std::cout << pMeter( "Stitching matrix" ) << std::endl;
+	}
 	UpdateLinearSystem( interpolationWeight , (Real)1. , hierarchy , multigridStitchingCoefficients , massCoefficients , stiffnessCoefficients , vCycleSolvers , directSolver , stitchingMatrix , DetailVerbose.set , false , UseDirectSolver.set );
-	if( Verbose.set ) printf( "\tInitialized multigrid coefficients: %.2f(s)\n" , timer.elapsed() );
+	if( Verbose.set ) std::cout << pMeter( "Initialized MG" ) << std::endl;
 
 	ThreadPool::ParallelFor( 0 , multigridStitchingVariables[0].rhs.size() , [&]( unsigned int , size_t i ){ multigridStitchingVariables[0].rhs[i] = texelMass[i] * interpolationWeight + texelDivergence[i]; } );
 
@@ -608,24 +604,23 @@ void  Stitching< PreReal , Real , TextureBitDepth >::InterpolationWeightCallBack
 template< typename PreReal , typename Real , unsigned int TextureBitDepth >
 void Stitching< PreReal , Real , TextureBitDepth >::ComputeExactSolution( bool verbose )
 {
-	Miscellany::Timer timer;
+	Miscellany::PerformanceMeter pMeter( '.' );
 	solve( directSolver , multigridStitchingVariables[0].x , multigridStitchingVariables[0].rhs );
-	if( verbose ) printf( "Solving time =  %.4f\n" , timer.elapsed() );
+	if( verbose ) std::cout << pMeter( "Solved" ) << std::endl;
 }
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth >
 void Stitching< PreReal , Real , TextureBitDepth >::UpdateSolution( bool verbose , bool detailVerbose )
 {
+	Miscellany::PerformanceMeter pMeter( '.' );
 	if( !rhsUpdated )
 	{
-		Miscellany::Timer timer;
-
-		MultiplyBySystemMatrix_NoReciprocals( massCoefficients , hierarchy.gridAtlases[0].boundaryGlobalIndex , hierarchy.gridAtlases[0].rasterLines , texelValues , texelMass );
+		MultiplyBySystemMatrix_NoReciprocals( massCoefficients , hierarchy.gridAtlases[0].indexConverter , hierarchy.gridAtlases[0].rasterLines , texelValues , texelMass );
 		ComputeDivergence( edgeValues , texelDivergence , deepDivergenceCoefficients , boundaryDivergenceMatrix , divergenceRasterLines );
 
 		ThreadPool::ParallelFor( 0 , textureNodes.size() , [&]( unsigned int , size_t i ){ multigridStitchingVariables[0].rhs[i] = texelMass[i] * interpolationWeight + texelDivergence[i]; } );
 
-		if( verbose ) printf( "RHS update time %.4f\n" , timer.elapsed() );
+		if( verbose ) std::cout << pMeter( "RHS" ) << std::endl;
 		rhsUpdated = true;
 	}
 
@@ -633,7 +628,11 @@ void Stitching< PreReal , Real , TextureBitDepth >::UpdateSolution( bool verbose
 }
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth >
-void Stitching< PreReal , Real , TextureBitDepth >::_InitializeSystem( std::vector< std::vector< SquareMatrix< PreReal , 2 > > > &parameterMetric , BoundaryProlongationData< Real > &boundaryProlongation )
+void Stitching< PreReal , Real , TextureBitDepth >::_InitializeSystem
+(
+	ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > > &parameterMetric ,
+	BoundaryProlongationData< Real > &boundaryProlongation
+)
 {
 	// Unused parameters
 	std::vector< Point3D< Real > > inputSignal;
@@ -657,10 +656,10 @@ void Stitching< PreReal , Real , TextureBitDepth >::_InitializeSystem( std::vect
 template< typename PreReal , typename Real , unsigned int TextureBitDepth >
 void Stitching< PreReal , Real , TextureBitDepth >::InitializeSystem( int width , int height )
 {
-	Miscellany::Timer timer;
-	MultigridBlockInfo multigridBlockInfo( MultigridBlockWidth.value , MultigridBlockHeight.value , MultigridPaddedWidth.value , MultigridPaddedHeight.value , 0 );
-	InitializeHierarchy( mesh , width , height , levels , textureNodes , bilinearElementIndices , hierarchy , atlasCharts , multigridBlockInfo , true , DetailVerbose.set );
-	if( Verbose.set ) printf( "\tInitialized hierarchy: %.2f(s)\n" , timer.elapsed() );
+	Miscellany::PerformanceMeter pMeter( '.' );
+	MultigridBlockInfo multigridBlockInfo( MultigridBlockWidth.value , MultigridBlockHeight.value , MultigridPaddedWidth.value , MultigridPaddedHeight.value );
+	InitializeHierarchy( mesh , width , height , levels , textureNodes , bilinearElementIndices , hierarchy , atlasCharts , multigridBlockInfo );
+	if( Verbose.set ) std::cout << pMeter( "Hierarchy" ) << std::endl;
 
 	BoundaryProlongationData< Real > boundaryProlongation;
 	InitializeBoundaryProlongationData( hierarchy.gridAtlases[0] , boundaryProlongation );
@@ -668,26 +667,18 @@ void Stitching< PreReal , Real , TextureBitDepth >::InitializeSystem( int width 
 	std::vector< Point3D< Real > > inputSignal;
 	std::vector< Real > texelToCellCoeffs;
 
-	std::vector< std::vector< SquareMatrix< PreReal , 2 > > > parameterMetric;
+	ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > > parameterMetric;
 	InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric );
 	InitializeIntraChartEdgeIndexing( hierarchy.gridAtlases[0].gridCharts , edgeIndex );
 
-	if( Verbose.set ) timer.reset();
+	pMeter.reset();
 	_InitializeSystem( parameterMetric , boundaryProlongation );
-	if( Verbose.set ) printf( "\tInitialized system: %.2f(s)\n" , timer.elapsed() );
+	if( Verbose.set ) std::cout << pMeter( "Mass and stiffness" ) << std::endl;
 	
 	InitializeDivergenceRasteLines( edgeIndex , hierarchy.gridAtlases[0].rasterLines , divergenceRasterLines );
 	
 	edgePairs.resize( edgeIndex.size() );
-	for( auto edgeIter=edgeIndex.begin() ; edgeIter!=edgeIndex.end() ; edgeIter++ )
-	{
-		unsigned long long edgeKey = (*edgeIter).first;
-		int edgeId = (*edgeIter).second;
-
-		unsigned long edgeCorners[2];
-		GetMeshEdgeIndices( edgeKey , edgeCorners[0] , edgeCorners[1] );
-		edgePairs[edgeId] = std::pair< int , int >( edgeCorners[0] , edgeCorners[1] );
-	}
+	for( auto edgeIter=edgeIndex.begin() ; edgeIter!=edgeIndex.end() ; edgeIter++ ) edgePairs[ (*edgeIter).second ] = (*edgeIter).first;
 
 	texelMass.resize( textureNodes.size() );
 	texelDivergence.resize( textureNodes.size() );
@@ -700,11 +691,12 @@ void Stitching< PreReal , Real , TextureBitDepth >::InitializeSystem( int width 
 	}
 
 	multigridIndices.resize(levels);
-	for( int i=0 ; i<levels ; i++ )
+	for( unsigned int i=0 ; i<levels ; i++ )
 	{
+		const typename GridAtlas<>::IndexConverter & indexConverter = hierarchy.gridAtlases[i].indexConverter;
 		const GridAtlas< PreReal , Real > &gridAtlas = hierarchy.gridAtlases[i];
 		multigridIndices[i].threadTasks = gridAtlas.threadTasks;
-		multigridIndices[i].boundaryGlobalIndex = gridAtlas.boundaryGlobalIndex;
+		multigridIndices[i].boundaryToCombined = indexConverter.boundaryToCombined();
 		multigridIndices[i].segmentedLines = gridAtlas.segmentedLines;
 		multigridIndices[i].rasterLines = gridAtlas.rasterLines;
 		multigridIndices[i].restrictionLines = gridAtlas.restrictionLines;
@@ -712,20 +704,21 @@ void Stitching< PreReal , Real , TextureBitDepth >::InitializeSystem( int width 
 		if( i<levels-1 ) multigridIndices[i].boundaryRestriction = hierarchy.boundaryRestriction[i];
 	}
 
-	if( Verbose.set ) timer.reset();
+	pMeter.reset();
 	UpdateLinearSystem( interpolationWeight , (Real)1. , hierarchy , multigridStitchingCoefficients , massCoefficients , stiffnessCoefficients , vCycleSolvers , directSolver , stitchingMatrix , DetailVerbose.set, true, UseDirectSolver.set );
-	if( Verbose.set ) printf( "\tInitialized multigrid coefficients: %.2f(s)\n" , timer.elapsed() );
+	if( Verbose.set ) std::cout << pMeter( "Initialize MG" ) << std::endl;
 
 	multigridStitchingVariables.resize(levels);
-	for( int i=0 ; i<levels ; i++ )
+	for( unsigned int i=0 ; i<levels ; i++ )
 	{
+		const typename GridAtlas<>::IndexConverter & indexConverter = hierarchy.gridAtlases[i].indexConverter;
 		MultigridLevelVariables< Point3D< Real > >& variables = multigridStitchingVariables[i];
-		variables.x.resize( hierarchy.gridAtlases[i].numTexels );
-		variables.rhs.resize( hierarchy.gridAtlases[i].numTexels );
-		variables.residual.resize( hierarchy.gridAtlases[i].numTexels );
-		variables.boundary_rhs.resize( hierarchy.gridAtlases[i].boundaryGlobalIndex.size() );
-		variables.boundary_value.resize( hierarchy.gridAtlases[i].boundaryGlobalIndex.size() );
-		variables.variable_boundary_value.resize( hierarchy.gridAtlases[i].boundaryGlobalIndex.size() );
+		variables.x.resize( indexConverter.numCombined() );
+		variables.rhs.resize( indexConverter.numCombined() );
+		variables.residual.resize( indexConverter.numCombined() );
+		variables.boundary_rhs.resize( indexConverter.numBoundary() );
+		variables.boundary_value.resize( indexConverter.numBoundary() );
+		variables.variable_boundary_value.resize( indexConverter.numBoundary() );
 	}
 }
 
@@ -733,7 +726,7 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth >
 void Stitching< PreReal , Real , TextureBitDepth >::SetUpSystem( void )
 {
 	texelMass.resize( textureNodes.size() );
-	MultiplyBySystemMatrix_NoReciprocals( massCoefficients , hierarchy.gridAtlases[0].boundaryGlobalIndex , hierarchy.gridAtlases[0].rasterLines , texelValues , texelMass );
+	MultiplyBySystemMatrix_NoReciprocals( massCoefficients , hierarchy.gridAtlases[0].indexConverter , hierarchy.gridAtlases[0].rasterLines , texelValues , texelMass );
 
 	ComputeDivergence( edgeValues , texelDivergence , deepDivergenceCoefficients , boundaryDivergenceMatrix , divergenceRasterLines );
 
@@ -770,7 +763,7 @@ Image< Point3D< unsigned char > > Stitching< PreReal , Real , TextureBitDepth >:
 	chartMask.resize( textureWidth , textureHeight );
 	for( unsigned int i=0 ; i<(unsigned int)textureWidth ; i++ ) for( unsigned int j=0 ; j<(unsigned int)textureHeight ; j++ ) chartMask(i,j) = Point3D< unsigned char >(0,0,0);
 
-	std::map< int , Point3D< unsigned char > > chartColors;
+	std::map< ChartIndex , Point3D< unsigned char > > chartColors;
 	auto ColorAlreadyUsed = [&]( Point3D< unsigned char > c )
 		{
 			for( auto iter=chartColors.begin() ; iter!=chartColors.end() ; iter++ )
@@ -826,8 +819,6 @@ void Stitching< PreReal , Real , TextureBitDepth >::LoadTextures( void )
 
 		textureWidth = inputTextures[0].res(0);
 		textureHeight = inputTextures[0].res(1);
-
-		if( Verbose.set ) printf( "Texture count: %d\n" , numTextures );
 	}
 	else
 	{
@@ -862,51 +853,6 @@ void Stitching< PreReal , Real , TextureBitDepth >::LoadMasks( void )
 		Image< Point3D< unsigned char > > textureConfidence;
 		if( InMask.set ) ReadImage< 8 >( textureConfidence , InMask.value );
 		else textureConfidence = GetChartMask();
-
-		if( BoundaryDilationRadius.value>=0 )
-		{
-			auto ToIndex = []( Point3D< unsigned char > c ){ return (size_t)c[0] * 256 *256 + (size_t)c[1]*256 + (size_t)c[2]; };
-			auto FromIndex = []( size_t idx )
-				{
-					Point3D< unsigned char > c;
-					c[2] = idx%256;
-					idx /= 256;
-					c[1] = idx %256;
-					idx /= 256;
-					c[0] = idx %256;
-					return c;
-				};
-			Image< Point3D< unsigned char > > old = textureConfidence;
-
-			unsigned int r = BoundaryDilationRadius.value;
-
-			ThreadPool::ParallelFor
-				(
-					0 , textureConfidence.res(0) ,
-					[&]( unsigned int , size_t i )
-					{
-						for( unsigned int j=0 ; j<textureConfidence.res(1) ; j++ )
-						{
-							size_t idx = static_cast< size_t >( ToIndex( old((unsigned int)i,j) ) );
-							if( idx==0 ) textureConfidence((unsigned int)i,j) = Point3D< unsigned char >(0,0,0);
-							else
-							{
-								std::set< size_t > indices;
-								for( int x=(int)i-r ; x<=(int)(i+r) ; x++ )
-									if( x>=0 && x<(int)textureConfidence.res(0) )
-										for( int y=(int)j-r ; y<=(int)(j+r) ; y++ )
-											if( y>=0 && y<(int)textureConfidence.res(1) )
-												if( (x-i)*(x-i) + (y-j)*(y-j)<=(int)(r*r) )
-												{
-													idx = ToIndex( old(x,y) );
-													indices.insert( idx );
-												}
-								if( indices.size()>=2 ) for( int c=0 ; c<3 ; c++ ) textureConfidence((unsigned int)i,j)[c] = rand()%256;
-							}
-						}
-					}
-				);
-		}
 
 		inputColorMask.resize( textureConfidence.res() );
 		for( unsigned int i=0 ; i<textureConfidence.res(0) ; i++ ) for( unsigned int j=0 ; j<textureConfidence.res(1) ; j++ ) for( unsigned int c=0 ; c<3 ; c++ )
@@ -958,15 +904,14 @@ void Stitching< PreReal , Real , TextureBitDepth >::ParseImages( void )
 
 			for( int e=0 ; e<edgePairs.size() ; e++ )
 			{
-				int edgeCorners[2] = { edgePairs[e].first , edgePairs[e].second };
 
 				Real weight[2];
 				Point3D< Real > value[2];
-				for( int k=0 ; k<2 ; k++ )
+				for( unsigned int k=0 ; k<2 ; k++ )
 				{
-					int i = edgeCorners[k];
-					weight[k] = textureConfidence( textureNodes[i].ci , textureNodes[i].cj );
-					value[k] = textureValues( textureNodes[i].ci , textureNodes[i].cj );
+					AtlasCombinedTexelIndex i = edgePairs[e][k];
+					weight[k] = textureConfidence( textureNodes[ static_cast< unsigned int >(i) ].ci , textureNodes[ static_cast< unsigned int >(i) ].cj );
+					value[k] = textureValues( textureNodes[ static_cast< unsigned int >(i) ].ci , textureNodes[ static_cast< unsigned int >(i) ].cj );
 				}
 				Real eWeight = weight[0] * weight[1];
 				Point3D<Real> eValue = value[1] - value[0];
@@ -993,9 +938,9 @@ void Stitching< PreReal , Real , TextureBitDepth >::ParseImages( void )
 		}
 		for( int e=0 ; e<edgePairs.size() ; e++ )
 		{
-			int edgeCorners[2] = { edgePairs[e].first , edgePairs[e].second };
-			int ci[] = { textureNodes[ edgeCorners[0] ].ci , textureNodes[ edgeCorners[1] ].ci };
-			int cj[] = { textureNodes[ edgeCorners[0] ].cj , textureNodes[ edgeCorners[1] ].cj };
+			const SimplexIndex< 1 , AtlasCombinedTexelIndex > &edgeCorners = edgePairs[e];
+			unsigned int ci[] = { textureNodes[ static_cast< unsigned int >(edgeCorners[0]) ].ci , textureNodes[ static_cast< unsigned int >(edgeCorners[1]) ].ci };
+			unsigned int cj[] = { textureNodes[ static_cast< unsigned int >(edgeCorners[0]) ].cj , textureNodes[ static_cast< unsigned int >(edgeCorners[1]) ].cj };
 			if( inputMask( ci[0] , cj[0] )!=-1 && inputMask( ci[0] , cj[0] )==inputMask( ci[1] , cj[1] ) ) edgeValues[e] = inputComposition( ci[1] , cj[1] ) - inputComposition( ci[0] , cj[0] );
 			else edgeValues[e] = Point3D< Real >(0, 0, 0);
 		}
@@ -1032,9 +977,7 @@ void Stitching< PreReal , Real , TextureBitDepth >::InitializeVisualization( voi
 	visualization.colorTextureBuffer = new unsigned char[textureHeight*textureWidth * 3];
 	memset( visualization.colorTextureBuffer , 204 , textureHeight * textureWidth * 3 * sizeof(unsigned char) );
 
-
-
-	int tCount = (int)mesh.triangles.size();
+	unsigned int tCount = (unsigned int)mesh.numTriangles();
 
 	visualization.triangles.resize( tCount );
 	visualization.vertices.resize( 3*tCount );
@@ -1043,27 +986,26 @@ void Stitching< PreReal , Real , TextureBitDepth >::InitializeVisualization( voi
 	visualization.normals.resize( 3*tCount );
 
 
-	for( int i=0 ; i<tCount ; i++ ) for( int k=0 ; k<3 ; k++ ) visualization.triangles[i][k] = 3*i + k;
-
-	for( int i=0 ; i<tCount ; i++ ) for( int j=0 ; j<3 ; j++ )
+	for( unsigned int t=0 , idx=0 ; t<tCount ; t++ )
 	{
-		visualization.vertices[ 3*i+j ] = mesh.vertices[ mesh.triangles[i][j] ];
-		visualization.normals[ 3*i+j ] = mesh.normals[ mesh.triangles[i][j] ];
-		visualization.textureCoordinates[ 3*i+j ] = mesh.textureCoordinates[ 3*i+j ];
+		Point3D< float > n = mesh.surfaceTriangle( t ).normal();
+		n /= Point3D< float >::Length( n );
+
+		for( int k=0 ; k<3 ; k++ , idx++ )
+		{
+			visualization.triangles[t][k] = idx;
+			visualization.vertices[idx] = mesh.surface.vertices[ mesh.surface.triangles[t][k] ];
+			visualization.normals[idx] = n;
+			visualization.textureCoordinates[idx] = mesh.texture.vertices[ mesh.texture.triangles[t][k] ];
+		}
 	}
 
-	std::vector< int > boundaryEdges;
-	mesh.initializeBoundaryEdges( boundaryEdges );
+	std::vector< unsigned int > boundaryHalfEdges = mesh.texture.boundaryHalfEdges();
 
-	for( int e=0 ; e<boundaryEdges.size() ; e++ )
+	for( int e=0 ; e<boundaryHalfEdges.size() ; e++ )
 	{
-		int tIndex = boundaryEdges[e] / 3;
-		int kIndex = boundaryEdges[e] % 3;
-		for( int c=0 ; c<2 ; c++ )
-		{
-			Point3D< double > v = mesh.vertices[ mesh.triangles[tIndex][ (kIndex+c)%3 ] ];
-			visualization.boundaryEdgeVertices.push_back( v );
-		}
+		SimplexIndex< 1 > eIndex = mesh.surface.edgeIndex( boundaryHalfEdges[e] );
+		for( int i=0 ; i<2 ; i++ ) visualization.chartBoundaryVertices.push_back( mesh.surface.vertices[ eIndex[i] ] );
 	}
 
 	if( inputMode==SINGLE_INPUT_MODE ) visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , 'M' , "toggle mask" , ToggleMaskCallBack ) );
@@ -1100,33 +1042,29 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth >
 void Stitching< PreReal , Real , TextureBitDepth >::Init( void )
 {
 	sprintf( stepsString , "Steps: 0" );
-	levels = std::max< int >( Levels.value , 1 );
+	levels = std::max< unsigned int >( Levels.value , 1 );
 	interpolationWeight = InterpolationWeight.value;
 
 	mesh.read( In.values[0] , DetailVerbose.set , CollapseEpsilon.value );
 	if( InputLowFrequency.set ) ReadImage< TextureBitDepth >( lowFrequencyTexture , InputLowFrequency.value );
 
 	// Define centroid and scale for visualization
-	Point3D< PreReal > centroid;
-	for( int i=0 ; i<mesh.vertices.size() ; i++ ) centroid += mesh.vertices[i];
-	centroid /= (int)mesh.vertices.size();
-	PreReal radius = 0;
-	for( int i=0 ; i<mesh.vertices.size() ; i++ ) radius = std::max< PreReal >( radius , Point3D< PreReal >::Length( mesh.vertices[i]-centroid ) );
-	for( int i=0 ; i<mesh.vertices.size() ; i++ ) mesh.vertices[i] = ( mesh.vertices[i]-centroid ) / radius;
+	Point3D< PreReal > centroid = mesh.surface.centroid();
+	PreReal radius = mesh.surface.boundingRadius( centroid );
+	for( int i=0 ; i<mesh.surface.vertices.size() ; i++ ) mesh.surface.vertices[i] = ( mesh.surface.vertices[i] - centroid ) / radius;
 
 	if( RandomJitter.set )
 	{
 		if( RandomJitter.value ) srand( RandomJitter.value );
 		else                     srand( (unsigned int)time(NULL) );
-		std::vector< Point2D< PreReal > > randomOffset( mesh.vertices.size() );
 		PreReal jitterScale = (PreReal)1e-3 / std::max< int >( textureWidth , textureHeight );
-		for( int i=0 ; i<randomOffset.size() ; i++ ) randomOffset[i] = Point2D< PreReal >( (PreReal)1. - Random< PreReal >()*2 , (PreReal)1. - Random< PreReal >()*2 ) * jitterScale;
-		for( int i=0 ; i<mesh.triangles.size() ; i++ ) for( int k=0 ; k<3 ; k++ ) mesh.textureCoordinates[ 3*i+k ] += randomOffset[ mesh.triangles[i][k] ];
+
+		for( int i=0 ; i<mesh.texture.vertices.size() ; i++ ) mesh.texture.vertices[i] += Point2D< PreReal >( (PreReal)1. - Random< PreReal >()*2 , (PreReal)1. - Random< PreReal >()*2 ) * jitterScale;
 	}
 
 	{
-		padding = Padding::Init( textureWidth , textureHeight , mesh.textureCoordinates , DetailVerbose.set );
-		padding.pad( textureWidth , textureHeight , mesh.textureCoordinates );
+		padding = Padding::Init( textureWidth , textureHeight , mesh.texture.vertices , DetailVerbose.set );
+		padding.pad( textureWidth , textureHeight , mesh.texture.vertices );
 		if( inputMode==MULTIPLE_INPUT_MODE ) for( int i=0 ; i<numTextures ; i++ ) padding.pad( inputTextures[i] ) , padding.pad( inputConfidence[i] );
 		else padding.pad( inputComposition ) , padding.pad( inputMask );
 
@@ -1134,53 +1072,44 @@ void Stitching< PreReal , Real , TextureBitDepth >::Init( void )
 		textureHeight += padding.height();
 	}
 
-	Miscellany::Timer timer;
+	Miscellany::PerformanceMeter pMeter( '.' );
 	InitializeSystem( textureWidth , textureHeight );
-	if( Verbose.set )
-	{
-		printf( "Resolution: %d / %d x %d\n" , (int)textureNodes.size() , textureWidth , textureHeight );
-		printf( "Initialized system %.2f(s)\n" , timer.elapsed() );
-		printf( "Peak Memory (MB): %d\n" , Miscellany::MemoryInfo::PeakMemoryUsageMB() );
-	}
+	if( Verbose.set ) std::cout << pMeter( "Initialized" ) << std::endl;
+	if( Verbose.set ) printf( "Resolution: %d / %d x %d\n" , (int)textureNodes.size() , textureWidth , textureHeight );
 
 	// Assign position to exterior nodes using barycentric-exponential map
 	{
-		FEM::RiemannianMesh< PreReal , unsigned int > rMesh( GetPointer( mesh.triangles) , mesh.triangles.size() );
-		rMesh.setMetricFromEmbedding( GetPointer(mesh.vertices) );
+		FEM::RiemannianMesh< PreReal , unsigned int > rMesh( GetPointer( mesh.surface.triangles) , mesh.surface.triangles.size() );
+		rMesh.setMetricFromEmbedding( GetPointer( mesh.surface.vertices ) );
 		rMesh.makeUnitArea();
 		Pointer( FEM::CoordinateXForm< PreReal > ) xForms = rMesh.getCoordinateXForms();
 
-		for( int i=0 ; i<textureNodes.size() ; i++ ) if( textureNodes[i].tID!=-1 && !textureNodes[i].isInterior )
+		for( unsigned int i=0 ; i<textureNodes.size() ; i++ ) if( textureNodes[i].tID!=AtlasMeshTriangleIndex(-1) && !textureNodes[i].isInterior )
 		{
 			FEM::HermiteSamplePoint< PreReal > _p;
-			_p.tIdx = textureNodes[i].tID;
+			_p.tIdx = static_cast< unsigned int >( textureNodes[i].tID );
 			_p.p = Point2D< PreReal >( (PreReal)1./3 , (PreReal)1./3 );
 			_p.v = textureNodes[i].barycentricCoords - _p.p;
 
+#ifdef SANITY_CHECK
+			rMesh.exp( xForms , _p , 0 , false );
+#else // !SANITY_CHECK
 			rMesh.exp( xForms , _p );
+#endif // SANITY_CHECK
 
-			textureNodes[i].tID = _p.tIdx;
+			textureNodes[i].tID = AtlasMeshTriangleIndex( _p.tIdx );
 			textureNodes[i].barycentricCoords = _p.p;
 		}
 	}
 
 	textureNodePositions.resize( textureNodes.size() );
-	for( int i=0 ; i<textureNodePositions.size() ; i++ )
-	{
-		Point2D< PreReal > barycentricCoords = textureNodes[i].barycentricCoords;
-		int tID = textureNodes[i].tID;
-		Point3D< PreReal > p =
-			mesh.vertices[ mesh.triangles[tID][0] ] * ( (PreReal)1.-barycentricCoords[0]-barycentricCoords[1] ) +
-			mesh.vertices[ mesh.triangles[tID][1] ] *               barycentricCoords[0]                        +
-			mesh.vertices[ mesh.triangles[tID][2] ] *                                    barycentricCoords[1]   ;
-		textureNodePositions[i] = Point3D< float >( p );
-	}
+	for( int i=0 ; i<textureNodePositions.size() ; i++ ) textureNodePositions[i] = mesh.surface( textureNodes[i] );
 
 	textureEdgePositions.resize( edgePairs.size() );
-	for( int i=0 ; i<edgePairs.size() ; i++ ) textureEdgePositions[i] = ( textureNodePositions[ edgePairs[i].first ] + textureNodePositions[ edgePairs[i].second ] ) / 2;
+	for( int i=0 ; i<edgePairs.size() ; i++ ) textureEdgePositions[i] = ( textureNodePositions[ static_cast< unsigned int >(edgePairs[i][0]) ] + textureNodePositions[ static_cast< unsigned int >(edgePairs[i][1]) ] ) / 2;
 
 	{
-		int multiChartTexelCount = 0;
+		unsigned int multiChartTexelCount = 0;
 		Image< int > texelId;
 		texelId.resize( textureWidth , textureHeight );
 		for( int i=0 ; i<texelId.size() ; i++ ) texelId[i] = -1;
@@ -1198,7 +1127,7 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth >
 void _main( int argc , char *argv[] )
 {
 	Stitching< PreReal , Real , TextureBitDepth >::inputMode = MultiInput.set ? MULTIPLE_INPUT_MODE : SINGLE_INPUT_MODE;
-	Stitching< PreReal , Real , TextureBitDepth >::updateCount = 0;
+	Stitching< PreReal , Real , TextureBitDepth >::updateCount = Run.set ? static_cast< unsigned int >(-1) : 0;
 
 	Stitching< PreReal , Real , TextureBitDepth >::LoadTextures();
 	Stitching< PreReal , Real , TextureBitDepth >::Init();
@@ -1252,7 +1181,7 @@ void _main( int argc , char *argv[] , unsigned int bitDepth )
 	case 16: return _main< PreReal , Real , 16 >( argc , argv );
 	case 32: return _main< PreReal , Real , 32 >( argc , argv );
 	case 64: return _main< PreReal , Real , 64 >( argc , argv );
-	default: MK_ERROR_OUT( "Only bit depths of 8, 16, 32, and 64 supported: " , bitDepth );
+	default: MK_THROW( "Only bit depths of 8, 16, 32, and 64 supported: " , bitDepth );
 	}
 }
 
@@ -1273,15 +1202,7 @@ int main( int argc , char* argv[] )
 		return EXIT_FAILURE;
 	}
 #endif // NO_OPEN_GL_VISUALIZATION
-	if( MultiInput.set && !InMask.set ) MK_ERROR_OUT( "Input mask required for multi-input" );
-
-#ifdef DEBUG_BAD_LOOP
-	if( DebugChartCell.set )
-	{
-		DebugChartFunctor = [&]( unsigned int idx ){ return idx==DebugChartCell.values[0]; };
-		DebugCellFunctor = [&]( unsigned int idx ){ return idx==DebugChartCell.values[1]; };
-	}
-#endif // DEBUG_BAD_LOOP
+	if( MultiInput.set && !InMask.set ) MK_THROW( "Input mask required for multi-input" );
 
 	unsigned int bitDepth;
 	{
@@ -1301,7 +1222,7 @@ int main( int argc , char* argv[] )
 					ImageReader< 8 >::GetInfo( textureName , _width , _height , _channels , _bitDepth );
 					if( !numTextures ) width = _width , height = _height , channels = _channels , bitDepth = _bitDepth;
 					else if( width!=_width || height!=_height || channels!=_channels || bitDepth!=_bitDepth )
-						MK_ERROR_OUT( "Image properties don't match: (" , width , " " , height , " " , channels , " " , bitDepth , ") != (" , _width , " " , _height , " " , _channels , " " , _bitDepth , ")" );
+						MK_THROW( "Image properties don't match: (" , width , " " , height , " " , channels , " " , bitDepth , ") != (" , _width , " " , _height , " " , _channels , " " , _bitDepth , ")" );
 					numTextures++;
 				}
 				else break;

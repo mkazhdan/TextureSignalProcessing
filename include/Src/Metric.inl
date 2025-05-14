@@ -38,24 +38,31 @@ enum
 
 
 template< typename GeometryReal , typename LengthToAnisotropyFunctor >
-void InitializeVectorFieldMetric( const std::vector< SquareMatrix< GeometryReal , 2 > >& embeddingMetric , const std::vector< Point2D< GeometryReal > >& vf , const LengthToAnisotropyFunctor &LengthToAnisotropy , bool normalizeArea , std::vector< SquareMatrix< GeometryReal , 2 > >& outputMetric )
+void InitializeVectorFieldMetric
+(
+	const ExplicitIndexVector< AtlasMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > >& embeddingMetric ,
+	const ExplicitIndexVector< AtlasMeshTriangleIndex , Point2D< GeometryReal > >& vf ,
+	const LengthToAnisotropyFunctor &LengthToAnisotropy ,
+	bool normalizeArea ,
+	ExplicitIndexVector< AtlasMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > >& outputMetric
+)
 {
-	int tCount = (int)embeddingMetric.size();
+	unsigned int tCount = (unsigned int)embeddingMetric.size();
 
 	outputMetric.resize( embeddingMetric.size() );
 	GeometryReal totalMass = 0;
 
-	for( int t=0 ; t<tCount ; t++ )
+	for( unsigned int t=0 ; t<tCount ; t++ )
 	{
-		SquareMatrix< GeometryReal , 2 > g = embeddingMetric[t];
+		SquareMatrix< GeometryReal , 2 > g = embeddingMetric[ AtlasMeshTriangleIndex(t) ];
 		SquareMatrix< GeometryReal , 2 > gOrtho;
-		GeometryReal len2 = std::max< GeometryReal >( Point2D< GeometryReal >::Dot( vf[t] , embeddingMetric[t] * vf[t] ) , 0 );
+		GeometryReal len2 = std::max< GeometryReal >( Point2D< GeometryReal >::Dot( vf[ AtlasMeshTriangleIndex(t) ] , embeddingMetric[ AtlasMeshTriangleIndex(t) ] * vf[ AtlasMeshTriangleIndex(t) ] ) , 0 );
 		if( len2>0 )
 		{
 			// Construct an orthonormal frame with basis[0] pointing in the direction of vf
 			Point2D< GeometryReal > basis[2];
 			{
-				basis[0] = vf[t];
+				basis[0] = vf[ AtlasMeshTriangleIndex(t) ];
 				Point2D< GeometryReal > temp = g*basis[0];
 				basis[1] = Point2D< GeometryReal >( -temp[1] , temp[0] );
 				for( int e=0 ; e<2 ; e++ ) basis[e] /= sqrt( Point2D< GeometryReal >::Dot( basis[e] , g*basis[e] ) );
@@ -78,11 +85,11 @@ void InitializeVectorFieldMetric( const std::vector< SquareMatrix< GeometryReal 
 		// When the anisotropy is small we want to revert to the standard metric
 		// When the anisotropy is large we want to scale distances along the perpendicular direction
 		GeometryReal aniso = (GeometryReal)LengthToAnisotropy( sqrt(len2) );
-		outputMetric[t] = gOrtho*aniso + g;
+		outputMetric[ AtlasMeshTriangleIndex(t) ] = gOrtho*aniso + g;
 
-		totalMass += sqrt( outputMetric[t].determinant() ) / 2;
+		totalMass += sqrt( outputMetric[ AtlasMeshTriangleIndex(t) ].determinant() ) / 2;
 	}
-	if( normalizeArea ) for( int t=0 ; t<tCount ; t++ )	outputMetric[t] /= totalMass;
+	if( normalizeArea ) for( unsigned int t=0 ; t<tCount ; t++ ) outputMetric[ AtlasMeshTriangleIndex(t) ] /= totalMass;
 }
 
 #define NORMALIZE_SURFACE_EMBEDDING
@@ -95,29 +102,31 @@ struct PrincipalCurvature
 };
 
 template< typename GeometryReal >
-void InitializePrincipalCurvatureDirection( const OrientedTexturedTriangleMesh< GeometryReal > &mesh , const std::vector< Point3D< GeometryReal > >& vNormals , std::vector< PrincipalCurvature< GeometryReal > >& principalCurvatures )
+void InitializePrincipalCurvatureDirection
+(
+	const TexturedTriangleMesh< GeometryReal > &mesh ,
+	const std::vector< Point3D< GeometryReal > >& vNormals ,
+	std::vector< PrincipalCurvature< GeometryReal > >& principalCurvatures
+)
 {
-	principalCurvatures.resize( mesh.triangles.size() );
+	principalCurvatures.resize( mesh.numTriangles() );
 
 #ifdef NORMALIZE_SURFACE_EMBEDDING
-	GeometryReal inputMass = mesh.area();
+	GeometryReal inputMass = mesh.surface.area();
 	GeometryReal edgeScaling = (GeometryReal)( 1.0 / sqrt(inputMass) );
 #endif // NORMALIZE_SURFACE_EMBEDDING
-	for( int t=0 ; t<mesh.triangles.size() ; t++ )
+	for( int t=0 ; t<mesh.numTriangles() ; t++ )
 	{
-		Point3D< GeometryReal > vPos[3];
-		for( int i=0 ; i<3 ; i++ ) vPos[i] = mesh.vertices[ mesh.triangles[t][i] ];
-
-		SquareMatrix< GeometryReal , 2 > g;
+		Simplex< GeometryReal , 3 , 2 > s = mesh.surfaceTriangle(t);
+		SquareMatrix< GeometryReal , 2 > g = s.metric();
 #ifdef NORMALIZE_SURFACE_EMBEDDING
-		Point3D< GeometryReal > dv[2] = { (vPos[1] - vPos[0])*edgeScaling, (vPos[2] - vPos[0])*edgeScaling };
+		Point3D< GeometryReal > dv[2] = { ( s[1]-s[0] )*edgeScaling , ( s[2]-s[0] )*edgeScaling };
 #else // !NORMALIZE_SURFACE_EMBEDDING
-		Point3D< GeometryReal > dv[2] = { (vPos[1] - vPos[0]), (vPos[2] - vPos[0]) };
+		Point3D< GeometryReal > dv[2] = { ( s[1]-s[0] ), ( s[2]-s[0] ) };
 #endif // NORMALIZE_SURFACE_EMBEDDING
-		for( int k=0 ; k<2 ; k++ ) for( int l=0 ; l<2 ; l++ ) g(k,l) = Point3D< GeometryReal >::Dot( dv[k] , dv[l] );
 
 		Point3D< GeometryReal > vNormal[3];
-		for( int i=0 ; i<3 ; i++ ) vNormal[i] = vNormals[ mesh.triangles[t][i] ];
+		for( int i=0 ; i<3 ; i++ ) vNormal[i] = vNormals[ mesh.surface.triangles[t][i] ];
 		Point3D< GeometryReal > dn[2] = { vNormal[1] - vNormal[0] , vNormal[2] - vNormal[0] };
 		SquareMatrix< GeometryReal , 2 > gg;
 		for( int k=0 ; k<2 ; k++ ) for( int l=0 ; l<2 ; l++ ) gg(k,l) = Point3D< GeometryReal >::Dot( dn[k] , dv[l] );
@@ -155,71 +164,72 @@ void InitializePrincipalCurvatureDirection( const OrientedTexturedTriangleMesh< 
 }
 
 template< typename GeometryReal >
-void InitializeEmbeddingMetric( const OrientedTexturedTriangleMesh< GeometryReal > &mesh , bool normalizeArea , std::vector< SquareMatrix< GeometryReal , 2 > > &embeddingMetric )
+void InitializeEmbeddingMetric
+(
+	const TexturedTriangleMesh< GeometryReal > &mesh ,
+	bool normalizeArea ,
+	ExplicitIndexVector< AtlasMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > & embeddingMetric
+)
 {
-	embeddingMetric.resize( mesh.triangles.size() );
+	embeddingMetric.resize( mesh.numTriangles() );
 
 	GeometryReal totalMass = 0;
 
-	for( int t=0 ; t<mesh.triangles.size() ; t++ )
+	for( unsigned int t=0 ; t<mesh.numTriangles() ; t++ )
 	{
-		Point3D< GeometryReal > vPos[3];
-		for( int i=0 ; i<3 ; i++ ) vPos[i] = mesh.vertices[ mesh.triangles[t][i] ];
-
-		SquareMatrix< GeometryReal , 2 > g;
-		Point3D< GeometryReal > dv[2] = { vPos[1] - vPos[0], vPos[2] - vPos[0] };
-		for( int k=0 ; k<2 ; k++ ) for ( int l=0 ; l<2 ; l++ ) g(k,l) = Point3D< GeometryReal >::Dot( dv[k] , dv[l] );
-
-		totalMass += sqrt( g.determinant() ) / 2;
-
-		embeddingMetric[t] = g;
+		Simplex< GeometryReal , 3 , 2 > s = mesh.surfaceTriangle( t );
+		totalMass += s.measure();
+		embeddingMetric[ AtlasMeshTriangleIndex(t) ] = s.metric();
 	}
 
-	if( normalizeArea ) for( int t=0 ; t<mesh.triangles.size() ; t++ ) embeddingMetric[t] /= totalMass;
+	if( normalizeArea ) for( int t=0 ; t<mesh.numTriangles() ; t++ ) embeddingMetric[ AtlasMeshTriangleIndex(t) ] /= totalMass;
 }
 
 template< typename GeometryReal >
-void InitializeUniformMetric( const OrientedTexturedTriangleMesh< GeometryReal > &mesh , bool normalizeArea , std::vector< SquareMatrix< GeometryReal , 2 > > &embeddingMetric )
+void InitializeUniformMetric
+(
+	const TexturedTriangleMesh< GeometryReal > &mesh ,
+	bool normalizeArea ,
+	ExplicitIndexVector< AtlasMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > &embeddingMetric
+)
 {
-	embeddingMetric.resize( mesh.triangles.size() );
+	embeddingMetric.resize( mesh.numTriangles() );
 
 	GeometryReal totalMass = 0;
 
-	for( int t=0 ; t<mesh.triangles.size() ; t++ )
+	for( unsigned int t=0 ; t<mesh.numTriangles() ; t++ )
 	{
-
-		Point2D< GeometryReal > tPos[3];
-		for( int i=0 ; i<3 ; i++ ) tPos[i] = mesh.textureCoordinates[ 3*t+i ];
-
-		SquareMatrix< GeometryReal , 2 > g;
-		Point2D< GeometryReal > dt[2] = { tPos[1] - tPos[0], tPos[2] - tPos[0] };
-		for( int k=0 ; k<2 ; k++ ) for( int l=0 ; l<2 ; l++ ) g(k,l) = Point2D< GeometryReal >::Dot( dt[k] , dt[l] );
-
-		totalMass += sqrt(g.determinant()) / 2;
-
-		embeddingMetric[t] = g;
+		Simplex< GeometryReal , 2 , 2 > s = mesh.textureTriangle( t );
+		SquareMatrix< GeometryReal , 2 > g = s.metric();
+		totalMass += s.measure();
+		embeddingMetric[ AtlasMeshTriangleIndex(t) ] = g;
 	}
 
-	if( normalizeArea ) for( int t=0 ; t<mesh.triangles.size() ; t++ ) embeddingMetric[t] /= totalMass;
+	if( normalizeArea ) for( unsigned int t=0 ; t<mesh.numTriangles() ; t++ ) embeddingMetric[ AtlasMeshTriangleIndex(t) ] /= totalMass;
 }
 
 template< typename GeometryReal >
-void InitializeParameterMetric( const OrientedTexturedTriangleMesh< GeometryReal > &mesh , const std::vector< SquareMatrix< GeometryReal , 2 > > &embeddingMetric , const std::vector< AtlasChart< GeometryReal > > &atlasCharts , std::vector< std::vector< SquareMatrix< GeometryReal , 2 > > > &parameterMetric )
+void InitializeParameterMetric
+(
+	const TexturedTriangleMesh< GeometryReal > &mesh ,
+	const ExplicitIndexVector< AtlasMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > &embeddingMetric ,
+	const ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
+	ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > > &parameterMetrics
+)
 {
-	parameterMetric.resize( atlasCharts.size() );
-	for( int i=0 ; i<atlasCharts.size() ; i++ )
+	parameterMetrics.resize( atlasCharts.size() );
+	for( unsigned int i=0 ; i<atlasCharts.size() ; i++ )
 	{
-		parameterMetric[i].resize( atlasCharts[i].meshTriangleIndices.size() );
-		for( int k=0 ; k<atlasCharts[i].meshTriangleIndices.size() ; k++ )
+		const AtlasChart< GeometryReal > & atlasChart = atlasCharts[ ChartIndex(i) ];
+		ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > & parameterMetric = parameterMetrics[ ChartIndex(i) ];
+		parameterMetric.resize( atlasChart.numTriangles() );
+		for( unsigned int k=0 ; k<atlasChart.numTriangles() ; k++ )
 		{
-			int t = atlasCharts[i].meshTriangleIndices[k];
+			AtlasMeshTriangleIndex t = atlasChart.atlasTriangle( ChartMeshTriangleIndex(k) );
 
 			SquareMatrix< GeometryReal , 2 > embedding_metric = embeddingMetric[t];
-
-			Point2D< GeometryReal > tPos[3];
-			for( int ii=0 ; ii<3 ; ii++ ) tPos[ii] = mesh.textureCoordinates[3*t+ii];
-
-			Point2D< GeometryReal > dp[2] = { tPos[1] - tPos[0], tPos[2] - tPos[0] };
+			Simplex< GeometryReal , 2 , 2 > simplex = mesh.textureTriangle( static_cast< unsigned int >(t) );
+			Point2D< GeometryReal > dp[2] = { simplex[1]-simplex[0] , simplex[2]-simplex[0] };
 
 			//Parametric map
 			SquareMatrix< GeometryReal , 2 > parametric_map_differential;
@@ -230,16 +240,22 @@ void InitializeParameterMetric( const OrientedTexturedTriangleMesh< GeometryReal
 
 			SquareMatrix< GeometryReal , 2 > inverse_parametric_map_differential = parametric_map_differential.inverse();
 			SquareMatrix< GeometryReal , 2 > parameter_metric = inverse_parametric_map_differential.transpose() * embedding_metric * inverse_parametric_map_differential;
-			parameterMetric[i][k] = parameter_metric;
+			parameterMetric[ ChartMeshTriangleIndex(k) ] = parameter_metric;
 		}
 	}
 }
 
 template< typename GeometryReal >
-void InitializeMetric( OrientedTexturedTriangleMesh< GeometryReal > &mesh , int metricMode , const std::vector< AtlasChart< GeometryReal > > &atlasCharts , std::vector< std::vector< SquareMatrix< GeometryReal , 2 > > > &parameterMetric )
+void InitializeMetric
+(
+	TexturedTriangleMesh< GeometryReal > &mesh ,
+	int metricMode ,
+	const ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
+	ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > > &parameterMetric
+)
 {
-	std::vector< SquareMatrix< GeometryReal , 2 > > surfaceMetric;
-	std::vector< SquareMatrix< GeometryReal , 2 > > embeddingMetric;
+	ExplicitIndexVector< AtlasMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > surfaceMetric;
+	ExplicitIndexVector< AtlasMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > embeddingMetric;
 
 	InitializeEmbeddingMetric( mesh , true , embeddingMetric );
 
@@ -250,10 +266,17 @@ void InitializeMetric( OrientedTexturedTriangleMesh< GeometryReal > &mesh , int 
 }
 
 template< typename GeometryReal , typename LengthToAnisotropyFunctor >
-void InitializeAnisotropicMetric( OrientedTexturedTriangleMesh< GeometryReal > &mesh , const std::vector< AtlasChart< GeometryReal > > &atlasCharts , const std::vector< Point2D< GeometryReal > > &vf , const LengthToAnisotropyFunctor &LengthToAnisotropy , std::vector< std::vector< SquareMatrix< GeometryReal , 2 > > > &parameterMetric )
+void InitializeAnisotropicMetric
+(
+	TexturedTriangleMesh< GeometryReal > &mesh ,
+	const ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
+	const ExplicitIndexVector< AtlasMeshTriangleIndex , Point2D< GeometryReal > > &vf ,
+	const LengthToAnisotropyFunctor &LengthToAnisotropy ,
+	ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > > &parameterMetric
+)
 {
-	std::vector< SquareMatrix< GeometryReal , 2 > > surfaceMetric;
-	std::vector< SquareMatrix< GeometryReal , 2 > > embeddingMetric;
+	ExplicitIndexVector< AtlasMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > surfaceMetric;
+	ExplicitIndexVector< AtlasMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > embeddingMetric;
 
 	InitializeEmbeddingMetric( mesh , true , embeddingMetric );
 	InitializeVectorFieldMetric( embeddingMetric , vf , LengthToAnisotropy , true , surfaceMetric );

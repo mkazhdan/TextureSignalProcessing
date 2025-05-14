@@ -1,4 +1,4 @@
-<center><h2>Gradient Domain Texture Processing (Version 6.06)</h2></center>
+<center><h2>Gradient Domain Texture Processing (Version 7.00)</h2></center>
 <center>
 <a href="#LINKS">links</a>
 <a href="#EXECUTABLES">executables</a>
@@ -32,6 +32,7 @@ This software supports gradient-domain signal processing within a texture atlas.
 <B>Data:</B>
 <A HREF="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/TSP.Data.zip">ZIP</A><br>
 <b>Older Versions:</b>
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version6.06/">V6.06</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version6.00/">V6.00</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version5.01/">V5.01</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version5.00/">V5.00</a>,
@@ -584,20 +585,25 @@ Here a "dots" pattern is written out to an image. (Empirically, we have found th
 <li> Add support for processing polygonal (i.e. not necessarily triangular) faces.
 </ul>
 
-<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version5.01/">Version 6.00</a>:
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version6.00/">Version 6.00</a>:
 <ul>
 <li> Add funcionality for dilating the texture map and masking out active texels.
 </ul>
 
-<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version5.01/">Version 6.05</a>:
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version6.05/">Version 6.05</a>:
 <ul>
 <li> Fixed off-by-half-pixel issue with texture rasterization.
 </ul>
 
-<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version5.01/">Version 6.06</a>:
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version6.06/">Version 6.06</a>:
 <ul>
 <LI> Cleaned up texture dilation
 <LI> Made non-template, header-only functions <code>inline</code>.
+</ul>
+
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version7.00/">Version 7.00</a>:
+<ul>
+<LI> Modified to support non-bijectve texture maps.
 </ul>
 
 
@@ -607,6 +613,3 @@ Here a "dots" pattern is written out to an image. (Empirically, we have found th
 <hr>
 <a name="SUPPORT"><b>SUPPORT</b></a><br>
 This work genersouly supported by NSF grant #1422325.
-
-<hr>
-<a href="http://www.cs.jhu.edu/~misha">HOME</a>

@@ -30,7 +30,7 @@ DAMAGE.
 #include <cstdlib>
 #include <cstdio>
 #include <vector>
-#include <Misha/Image.h>
+#include <Misha/RegularGrid.h>
 #include <Misha/Miscellany.h>
 
 namespace MishaK
@@ -61,7 +61,8 @@ namespace MishaK
 
 
 	template <class T>
-	void WriteBinaryImage(const Image<T> & image, std::string fileName) {
+	void WriteBinaryImage( const RegularGrid< 2 , T > & image , std::string fileName )
+	{
 		FILE * file;
 		file = fopen(fileName.c_str(), "wb");
 		int width = image.res(0);
@@ -73,7 +74,7 @@ namespace MishaK
 	}
 
 	template< class T >
-	void ReadBinaryImage( Image< T > &image , std::string fileName )
+	void ReadBinaryImage( RegularGrid< 2 , T > &image , std::string fileName )
 	{
 		FILE * file;
 		file = fopen(fileName.c_str(), "rb");

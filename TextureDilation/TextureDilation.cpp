@@ -117,10 +117,10 @@ int main( int argc , char* argv[] )
 
 	timer.reset();
 	ThreadPool::ParallelFor
-	(
-		0 , dilatedTexelInfo.resolution() ,
-		[&]( unsigned int , size_t i ){ if( dilatedTexelInfo[i].sIdx!=-1 && inputTexelInfo[i].sIdx==-1 ) texture[i] = SampleValue( dilatedTexelInfo[i] ); }
-	);
+		(
+			0 , dilatedTexelInfo.resolution() ,
+			[&]( unsigned int , size_t i ){ if( dilatedTexelInfo[i].sIdx!=-1 && inputTexelInfo[i].sIdx==-1 ) texture[i] = SampleValue( dilatedTexelInfo[i] ); }
+		);
 	if( Verbose.set ) std::cout << "Set dilated texels: " << timer() << std::endl;
 
 	auto SimplexEmbeddingFunctor = [&]( size_t sIdx )

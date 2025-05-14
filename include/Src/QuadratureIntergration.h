@@ -27,13 +27,17 @@ DAMAGE.
 */
 #pragma once
 
+#include <Misha/Atomic.h>
+#include <Misha/Atomic.Geometry.h>
+#include "PolygonClipping.h"
+
 namespace MishaK
 {
 	class InteriorCellLine
 	{
 	public:
-		int prevLineIndex , nextLineIndex;
-		int length;
+		AtlasCombinedTexelIndex prevLineIndex , nextLineIndex;
+		unsigned int length;
 	};
 
 	template< typename GeometryReal >
@@ -41,16 +45,15 @@ namespace MishaK
 	(
 		const GridChart< GeometryReal > &gridChart ,
 		std::vector< InteriorCellLine > &interiorCellLines ,
-		std::vector< std::pair< int , int > > &interiorCellLineIndex
+		ExplicitIndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > > &interiorCellLineIndex
 	)
 	{
-		const Image< int >& cellType = gridChart.cellType;
+		const Image< CellType >& cellType = gridChart.cellType;
 		unsigned int width = cellType.res(0) , height = cellType.res(1);
 
-		const Image< int > & globalTexelIndex = gridChart.globalTexelIndex;
-		const Image< int > & globalTexelInteriorIndex = gridChart.globalInteriorTexelIndex;
+		const Image< TexelIndex > & texelIndices = gridChart.texelIndices;
 
-		int localInteriorCellIndex = 0;
+		ChartInteriorCellIndex chartInteriorCellIndex(0);
 
 		for( unsigned int j=0 ; j<height ; j++ )
 		{
@@ -59,25 +62,25 @@ namespace MishaK
 			unsigned int rasterStart = -1;
 			while( offset<width )
 			{
-				bool currentIsInterior = cellType(offset, j) == 1;
+				bool currentIsInterior = cellType(offset,j)==CellType::Interior;
 				if( ( offset==0 || offset==width-1 ) && currentIsInterior ) MK_THROW( "Unexpected interior cell" );
 				if(  currentIsInterior && !previousIsInterior ) rasterStart = offset; //Start raster line
 				if( !currentIsInterior &&  previousIsInterior ) //Terminate raster line
 				{ 
 					InteriorCellLine newLine;
-					newLine.prevLineIndex = globalTexelIndex( rasterStart , j+0 );
-					newLine.nextLineIndex = globalTexelIndex( rasterStart , j+1 );
+					newLine.prevLineIndex = texelIndices( rasterStart , j+0 ).combined;
+					newLine.nextLineIndex = texelIndices( rasterStart , j+1 ).combined;
 					newLine.length = offset - rasterStart;
 
-					if( newLine.prevLineIndex==-1 || newLine.nextLineIndex==-1 ) MK_THROW( "Invalid indexing" );
+					if( newLine.prevLineIndex==AtlasCombinedTexelIndex(-1) || newLine.nextLineIndex==AtlasCombinedTexelIndex(-1) ) MK_THROW( "Invalid indexing" );
 					int currentLine = (int)interiorCellLines.size();
 
 					for( unsigned int k=0 ; k<offset-rasterStart ; k++ )
 					{
-						if( (int)gridChart.interiorCellCorners[localInteriorCellIndex][0]!=globalTexelInteriorIndex( rasterStart+k , j ) ) MK_THROW( "Unexpected corner ID" );
+						if( gridChart.interiorCellCoveredTexelBilinearElementIndices[chartInteriorCellIndex][0]!=texelIndices( rasterStart+k , j ).covered ) MK_THROW( "Unexpected corner ID" );
 
 						interiorCellLineIndex.push_back( std::pair< int , int >( currentLine , k ) );
-						localInteriorCellIndex++;
+						chartInteriorCellIndex++;
 					}
 
 					interiorCellLines.push_back( newLine );
@@ -91,12 +94,12 @@ namespace MishaK
 	template< typename GeometryReal >
 	void InitializeGridAtlasInteriorCellLines
 	(
-		const std::vector< GridChart< GeometryReal > >& gridCharts ,
+		const ExplicitIndexVector< ChartIndex , GridChart< GeometryReal > >& gridCharts ,
 		std::vector< InteriorCellLine >& interiorCellLines ,
-		std::vector< std::pair< int , int > >& interiorCellLineIndex
+		ExplicitIndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > >& interiorCellLineIndex
 	)
 	{
-		for( int i=0 ; i<gridCharts.size() ; i++ ) InitializeGridChartInteriorCellLines( gridCharts[i] , interiorCellLines , interiorCellLineIndex );
+		for( unsigned int i=0 ; i<gridCharts.size() ; i++ ) InitializeGridChartInteriorCellLines( gridCharts[ ChartIndex(i) ] , interiorCellLines , interiorCellLineIndex );
 	}
 
 	//////////////////////////////////////
@@ -195,7 +198,7 @@ namespace MishaK
 	{
 		// Compute the integrated gradients of each quadratic basis functions in the frame of the cell, weighted by the area of the unit triangle
 		// Dualize the samples so that integration is simple a dot-product
-		for( int k=0 ; k<6 ; k++ ) sampleData.dualValues[k] += (Real)QuadraticElementValue( k , pos ) * fragment_quadrature_weight;
+		for( unsigned int k=0 ; k<6 ; k++ ) sampleData.dualValues[k] += (Real)QuadraticElement::Value( k , pos ) * fragment_quadrature_weight;
 	}
 
 	template< unsigned int Samples , typename Real >
@@ -209,17 +212,17 @@ namespace MishaK
 	{
 		// Compute the integrated gradients of each quadratic basis functions in the frame of the cell, weighted by the area of the unit triangle
 		// Dualize the samples so that integration is simple a dot-product
-		for( int k=0 ; k<6 ; k++ ) sampleData.dualGradients[k] += sample.tensor * Point2D< Real >( QuadraticElementGradient( k , pos ) * fragment_quadrature_weight );
+		for( unsigned int k=0 ; k<6 ; k++ ) sampleData.dualGradients[k] += sample.tensor * Point2D< Real >( QuadraticElement::Differential( k , pos ) * fragment_quadrature_weight );
 	}
 
 	template< unsigned int Samples , typename GeometryReal , typename ElementSamples >
 	void InitializeIntegration
 	(
-		const std::vector< SquareMatrix< GeometryReal , 2 > > &texture_metrics ,
+		const ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > &texture_metrics ,
 		const AtlasChart< GeometryReal > &atlasChart ,
 		const GridChart< GeometryReal > &gridChart ,
-		const std::vector< std::pair< int , int > >& interiorCellLineIndex ,
-		const std::vector< int >& fineBoundaryIndex ,
+		const ExplicitIndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > >& interiorCellLineIndex ,
+		const std::vector< AtlasInteriorOrBoundaryNodeIndex > &fineBoundaryIndex ,
 		ElementSamples &elementSamples ,
 		std::mutex &element_samples_bilinear_mutex ,
 		std::mutex &element_samples_quadratic_mutex ,
@@ -233,18 +236,16 @@ namespace MishaK
 		auto InUnitTriangle = [&]( Point2D< GeometryReal > p ){ return !( p[0]<0-PRECISION_ERROR || p[1]<0-PRECISION_ERROR || ( p[0]+p[1] )>1+PRECISION_ERROR ); };
 		auto CellInTriangle = [&]( int i , int j , const std::vector< Point2D< GeometryReal > >& vertices )
 			{
-				GeometryReal x1 = (GeometryReal)i*gridChart.cellSizeW , x2 = (GeometryReal)(i+1)*gridChart.cellSizeW;
-				GeometryReal y1 = (GeometryReal)j*gridChart.cellSizeH , y2 = (GeometryReal)(j+1)*gridChart.cellSizeH;
-				Point2D< GeometryReal > points[] = { Point2D< GeometryReal >(x1,y1) , Point2D< GeometryReal >(x2,y1) , Point2D< GeometryReal >(x2,y2) , Point2D< GeometryReal >(x1,y2) };
-				Point2D< GeometryReal > normals[] = { vertices[1]-vertices[0] , vertices[2]-vertices[1] , vertices[0]-vertices[2] };
-				for( int k=0 ; k<3 ; k++ ) normals[k] = Point2D< GeometryReal >( normals[k][1] , -normals[k][0] );
-				GeometryReal offsets[] = { Point2D< GeometryReal >::Dot( normals[0] , vertices[0] ) , Point2D< GeometryReal >::Dot( normals[1] , vertices[1] ) , Point2D< GeometryReal >::Dot( normals[2] , vertices[2] ) };
-				for( int k=0 ; k<4 ; k++ )
+				Point2D< GeometryReal > points[] = { gridChart.nodePosition(i,j) , gridChart.nodePosition(i+1,j) , gridChart.nodePosition(i+1,j+1) , gridChart.nodePosition(i,j+1) };
+				EdgeEquation< GeometryReal > eq[3];
+				Point2D< GeometryReal > c = ( vertices[0] + vertices[1] + vertices[2] ) / 3;
+				for( unsigned int i=0 ; i<3 ; i++ )
 				{
-					if( ( Point2D< GeometryReal >::Dot( points[k] , normals[0] ) - offsets[0] )<0 ) return false;
-					if( ( Point2D< GeometryReal >::Dot( points[k] , normals[1] ) - offsets[1] )<0 ) return false;
-					if( ( Point2D< GeometryReal >::Dot( points[k] , normals[2] ) - offsets[2] )<0 ) return false;
+					SimplexIndex< 1 > eIndex = OutgoingEdgeIndex( i );
+					eq[i] = EdgeEquation< GeometryReal >( vertices[ eIndex[0] ] , vertices[ eIndex[1] ] );
+					eq[i].makePositive(c);
 				}
+				for( int k=0 ; k<4 ; k++ ) for( unsigned int i=0 ; i<3 ; i++ ) if( eq[i]( points[k] )<0 ) return false;
 				return true;
 			};
 
@@ -291,54 +292,71 @@ namespace MishaK
 					center += c * a; 
 				}
 				return center / area;
-			};	
+			};
 
-		for( int t=0 ; t<atlasChart.triangles.size() ; t++ )
+		using Range = RegularGrid< 2 >::Range;
+		using Index = RegularGrid< 2 >::Index;
+		Range nodeRange , cellRange;
+		nodeRange.second[0] = gridChart.width , cellRange.second[0] = gridChart.width-1;
+		nodeRange.second[1] = gridChart.height , cellRange.second[1] = gridChart.height-1;
+
+
+		auto GetSimplex = [&]( unsigned int t )
+			{
+				Simplex< double , 2 , 2 > simplex;
+				for( unsigned int i=0 ; i<=2 ; i++ )
+				{
+					simplex[i] = atlasChart.vertex( ChartMeshVertexIndex( atlasChart.triangleIndex( ChartMeshTriangleIndex(t) )[i] ) ) - gridChart.corner;
+					simplex[i][0] /= gridChart.cellSizeW , simplex[i][1] /= gridChart.cellSizeH;
+				}
+				return simplex;
+			};
+
+		for( unsigned int t=0 ; t<atlasChart.numTriangles() ; t++ )
 		{
+			SimplexIndex< 2 , ChartMeshVertexIndex > tri = atlasChart.triangleIndex( ChartMeshTriangleIndex(t) );
 			Point2D< GeometryReal > tPos[3];
-			for( int i=0 ; i<3 ; i++ ) tPos[i] = atlasChart.vertices[ atlasChart.triangles[t][i] ] - gridChart.corner;
+			for( unsigned int k=0 ; k<=2 ; k++ ) tPos[k] = atlasChart.vertex( tri[k] ) - gridChart.corner;
 
-			SquareMatrix< GeometryReal , 2 > texture_metric = texture_metrics[t];
+			SquareMatrix< GeometryReal , 2 > texture_metric = texture_metrics[ ChartMeshTriangleIndex(t) ];
 			SquareMatrix< GeometryReal , 2 > cell_metric = cell_to_texture_differential.transpose() * texture_metric * cell_to_texture_differential;
 			SquareMatrix< GeometryReal , 2 > cell_metric_inverse = cell_metric.inverse();
 			GeometryReal cell_area = (GeometryReal)sqrt( cell_metric.determinant() );
 
-			//BBox
-			int minCorner[2] , maxCorner[2];
-			GetTriangleIntegerBBox( tPos , (GeometryReal)1./gridChart.cellSizeW , (GeometryReal)1./gridChart.cellSizeH , minCorner , maxCorner );
-
 			std::vector< Point2D< GeometryReal > > parametricVertices(3);
 			parametricVertices[0] = tPos[0], parametricVertices[1] = tPos[1], parametricVertices[2] = tPos[2];
 
-			AtlasIndexedTriangle< GeometryReal > atlasTriangle;
-			for( int k=0 ; k<3 ; k++ )
+			IndexedTriangle< GeometryReal > atlasTriangle;
+			for( unsigned int k=0 ; k<3 ; k++ )
 			{
 				atlasTriangle.vertices[k] = tPos[k];
-				atlasTriangle.atlasEdgeIndices[k] = atlasChart.atlasEdgeIndices[ 3*t+k ];
-				atlasTriangle.atlasVertexIndices[k] = atlasChart.triangles[t][k];
-				atlasTriangle.atlasVertexParentEdge[k] = -1;
+				atlasTriangle.atlasEdgeIndices[k] = atlasChart.atlasEdge( GetChartMeshHalfEdgeIndex( ChartMeshTriangleIndex(t) , k ) );
+				atlasTriangle.vertexIndices[k] = tri[k];
+				atlasTriangle.atlasVertexParentEdge[k] = AtlasMeshEdgeIndex(-1);
 			}
 
-			// Iterate over the cells that can overlap the triangle
-			for( int j=minCorner[1] ; j<maxCorner[1] ; j++ ) for( int i=minCorner[0] ; i<maxCorner[0] ; i++ )
+			// Iterate over the cells that overlap the triangle
+			auto Kernel = [&]( Index I )
 			{
+				int i = I[0] , j = I[1];
 				auto TextureToCell = [&]( Point2D< GeometryReal > p ){ return Point2D< GeometryReal >( ( p[0] / gridChart.cellSizeW ) - i , ( p[1] / gridChart.cellSizeH ) - j ); };
 
-				int localInteriorIndex = gridChart.localInteriorCellIndex(i,j) , localBoundaryIndex = gridChart.localBoundaryCellIndex(i,j);
-				if( localInteriorIndex!=-1 && localBoundaryIndex!=-1 ) MK_THROW( "Cell simultaneosly interior and boundary" );
+				ChartInteriorCellIndex chartInteriorIndex = gridChart.cellIndices(i,j).interior;
+				ChartBoundaryCellIndex chartBoundaryIndex = gridChart.cellIndices(i,j).boundary;
+				if( chartInteriorIndex!=ChartInteriorCellIndex(-1) && chartBoundaryIndex!=ChartBoundaryCellIndex(-1) ) MK_THROW( "Cell simultaneosly interior and boundary" );
 
 				// Interior cells
 				// If the cell is entirely interior to the triangle
-				if( CellInTriangle( i , j , parametricVertices ) && localInteriorIndex!=-1 )
+				if( CellInTriangle( i , j , parametricVertices ) && chartInteriorIndex!=ChartInteriorCellIndex(-1) )
 				{
 					// For interior cells, the cell and the element are the same thing
 					auto TextureToElement = TextureToCell;
 					SquareMatrix< GeometryReal , 2 > element_metric = cell_metric , element_metric_inverse = cell_metric_inverse;
 					GeometryReal element_area = cell_area;
 
-					int globalInteriorIndex = localInteriorIndex + gridChart.globalIndexInteriorCellOffset;
-					int cellLineId = interiorCellLineIndex[globalInteriorIndex].first;
-					int cellLineOffset = interiorCellLineIndex[globalInteriorIndex].second;
+					AtlasInteriorCellIndex atlasInteriorIndex = gridChart.chartToAtlasInteriorCellIndex( chartInteriorIndex );
+					unsigned int cellLineId = interiorCellLineIndex[atlasInteriorIndex].first;
+					unsigned int cellLineOffset = interiorCellLineIndex[atlasInteriorIndex].second;
 
 					typename ElementSamples::Bilinear bilinearElementSample( fastIntegration ? 1 : 2*Samples );
 					bilinearElementSample.cellOffset = cellLineOffset;
@@ -364,7 +382,7 @@ namespace MishaK
 						elementSamples.bilinear[ cellLineId ].push_back( bilinearElementSample );
 					}
 				}
-				else if( localInteriorIndex!=-1 )
+				else if( chartInteriorIndex!=ChartInteriorCellIndex(-1) )
 				{
 					// For interior cells, the cell and the element are the same thing
 					auto TextureToElement = TextureToCell;
@@ -378,18 +396,18 @@ namespace MishaK
 					if( ClipTriangleToPrimalCell( polygon , i , j , gridChart.cellSizeW , gridChart.cellSizeH ) )
 					{
 						// Transform the polygon vertices into the coordinate frame of the cell
-						for( int ii=0 ; ii<polygon.size() ; ii++ ) polygon[ii] = TextureToElement( polygon[ii] );
+						for( unsigned int ii=0 ; ii<polygon.size() ; ii++ ) polygon[ii] = TextureToElement( polygon[ii] );
 
-						int globalInteriorIndex = localInteriorIndex + gridChart.globalIndexInteriorCellOffset;
-						int cellLineId = interiorCellLineIndex[globalInteriorIndex].first;
-						int cellLineOffset = interiorCellLineIndex[globalInteriorIndex].second;
+						AtlasInteriorCellIndex atlasInteriorIndex = gridChart.chartToAtlasInteriorCellIndex( chartInteriorIndex );
+						unsigned int cellLineId = interiorCellLineIndex[atlasInteriorIndex].first;
+						unsigned int cellLineOffset = interiorCellLineIndex[atlasInteriorIndex].second;
 
 						// There is a single sample for the whole polygon
 						typename ElementSamples::Bilinear bilinearElementSample( fastIntegration ? 1 : (polygon.size()-2)*Samples );
 						bilinearElementSample.cellOffset = cellLineOffset;
 						for( int x=0 ; x<2 ; x++ ) for( int y=0 ; y<2 ; y++ ) bilinearElementSample.tensor(x,y) = (typename ElementSamples::Real)element_metric_inverse(x,y);
 
-						for( int p=2 ; p<polygon.size() ; p++ )
+						for( unsigned int p=2 ; p<polygon.size() ; p++ )
 						{
 							Point2D< GeometryReal > dm[2] = { polygon[p-1]-polygon[0] , polygon[p]-polygon[0] };
 							SquareMatrix< GeometryReal , 2 > fragment_to_element_differential;
@@ -415,50 +433,49 @@ namespace MishaK
 					}
 				}
 				// Boundary cell
-				else if( localBoundaryIndex!=-1 )
+				else if( chartBoundaryIndex!=ChartBoundaryCellIndex(-1) )
 				{
-					std::vector< BoundaryIndexedTriangle< GeometryReal > > cellBoundaryTriangles = gridChart.boundaryTriangles[localBoundaryIndex];
+					const std::vector< BoundaryIndexedTriangle< GeometryReal > > & cellBoundaryTriangles = gridChart.boundaryTriangles[chartBoundaryIndex];
 
 					// Iterate over all elements in the cell
-					for( int bt=0 ; bt<cellBoundaryTriangles.size() ; bt++ )
+					for( unsigned int bt=0 ; bt<cellBoundaryTriangles.size() ; bt++ )
 					{
 						BoundaryIndexedTriangle< GeometryReal > element = cellBoundaryTriangles[bt];
 						std::vector< Point2D< GeometryReal > > element_vertices(3);
-						for( int ii=0 ; ii<3 ; ii++ ) element_vertices[ii] = TextureToCell( element[ii] );
+						for( unsigned int ii=0 ; ii<3 ; ii++ ) element_vertices[ii] = TextureToCell( element[ii] );
 
-						AtlasIndexedPolygon< GeometryReal > polygon;
-						SetAtlasIndexedPolygonFromBoundaryTriangle( element , polygon );
+
+						IndexedPolygon< GeometryReal > polygon;
+						SetIndexedPolygonFromBoundaryTriangle( element , polygon );
 
 						// Intersect the element with the atlas triangle
-						int clippingResult = ClipPartiallyIndexedPolygonToIndexedTriangle( polygon , atlasTriangle );
-						if( clippingResult>0 )
+						if( ClipPartiallyIndexedPolygonToIndexedTriangle( polygon , atlasTriangle ) )
 						{
 							// Convert the polygon vertices from the texture frame to the cell frame
-							for( int ii=0 ; ii<polygon.size() ; ii++ ) polygon[ii] = TextureToCell( polygon[ii] );
+							for( unsigned int ii=0 ; ii<polygon.size() ; ii++ ) polygon[ii] = TextureToCell( polygon[ii] );
 
 							SquareMatrix< GeometryReal , 2 > element_to_cell_differential , cell_to_element_differential;
 							Point2D< GeometryReal > dm[] = { element_vertices[1]-element_vertices[0] , element_vertices[2]-element_vertices[0] };
-							for( int x=0 ; x<2 ; x++ ) for( int y=0 ; y<2 ; y++ ) element_to_cell_differential(x,y) = dm[x][y];
+							for( unsigned int x=0 ; x<2 ; x++ ) for( unsigned int y=0 ; y<2 ; y++ ) element_to_cell_differential(x,y) = dm[x][y];
 							cell_to_element_differential = element_to_cell_differential.inverse();
 							auto CellToElement = [&]( Point2D< GeometryReal > p ){ return cell_to_element_differential * ( p - element_vertices[0] ); };
 							// Convert the polygon vertices from the cell frame to the element frame
-							for( int ii=0 ; ii<polygon.size() ; ii++ ) polygon[ii] = CellToElement( polygon[ii] );
+							for( unsigned int ii=0 ; ii<polygon.size() ; ii++ ) polygon[ii] = CellToElement( polygon[ii] );
 
 							SquareMatrix< GeometryReal , 2 > element_metric = element_to_cell_differential.transpose() * cell_metric * element_to_cell_differential;
 							SquareMatrix< GeometryReal , 2 > element_metric_inverse = element_metric.inverse();
 							GeometryReal element_area = sqrt( element_metric.determinant() );
-
 							typename ElementSamples::Quadratic quadraticElementSample( fastIntegration ? 1 : (unsigned int)(polygon.size()-2)*Samples );
 							for( int x=0 ; x<2 ; x++ ) for( int y=0 ; y<2 ; y++ ) quadraticElementSample.tensor(x,y) = (typename ElementSamples::Real)element_metric_inverse(x,y);
-							const QuadraticElementIndex& triangleElementIndices = gridChart.boundaryTriangles[localBoundaryIndex][bt].indices;
-							for( int k=0 ; k<6 ; k++ )
+							const QuadraticElement::Index& triangleElementIndices = gridChart.boundaryTriangles[chartBoundaryIndex][bt].indices;
+							for( unsigned int k=0 ; k<6 ; k++ )
 							{
-								int _fineBoundaryIndex = fineBoundaryIndex[ triangleElementIndices[k] ];
-								if( _fineBoundaryIndex!=-1 ) quadraticElementSample.fineNodes[k] = _fineBoundaryIndex;
+								AtlasInteriorOrBoundaryNodeIndex _fineBoundaryIndex = fineBoundaryIndex[ static_cast< unsigned int >( triangleElementIndices[k] ) ];
+								if( _fineBoundaryIndex!=AtlasInteriorOrBoundaryNodeIndex(-1) ) quadraticElementSample.fineNodes[k] = _fineBoundaryIndex;
 								else MK_THROW( "Invalid fine boundary index" );
 							}
 
-							for( int p=2 ; p<polygon.size() ; p++ )
+							for( unsigned int p=2 ; p<polygon.size() ; p++ )
 							{
 								Point2D< GeometryReal > d[2] = { polygon[p-1]-polygon[0] , polygon[p]-polygon[0] };
 								SquareMatrix< GeometryReal , 2 > fragment_to_element_differential;
@@ -485,32 +502,7 @@ namespace MishaK
 										sampleData.pos = pos;
 									}
 								}
-								else
-								{
-									MK_WARN( "Element discarded due to zero mass. Triangle " , t , ". Boundary cell " , localBoundaryIndex , ". Element " , bt , ". Sub triangle " , p-2 );
-
-									printf( "Atlas triangle\n" );
-									printf( "%d \n" , 3 );
-									for( int v=0 ; v<3 ; v++ ) printf( "%f %f %f\n" , atlasTriangle.vertices[v][0] , atlasTriangle.vertices[v][1] , 0. );
-									printf( "%d %d %d\n" , atlasTriangle.atlasVertexIndices[0] , atlasTriangle.atlasVertexIndices[1] , atlasTriangle.atlasVertexIndices[2] );
-									printf( "%d %d %d\n" , atlasTriangle.atlasEdgeIndices[0] , atlasTriangle.atlasEdgeIndices[1] , atlasTriangle.atlasEdgeIndices[2] );
-									for( int _bt=0 ; _bt<cellBoundaryTriangles.size() ; _bt++ )
-									{
-										printf( "ELEMENT %d\n" , _bt );
-
-										BoundaryIndexedTriangle< GeometryReal > _element = cellBoundaryTriangles[_bt];
-										AtlasIndexedPolygon< GeometryReal > _polygon;
-										SetAtlasIndexedPolygonFromBoundaryTriangle( _element , _polygon );
-
-										printf( "Boundary triangle\n" );
-										printf( "%d \n" , 3 );
-										for( int v=0 ; v<3 ; v++ )printf( "%f %f %f\n" , _element.vertices[v][0] , _element.vertices[v][1] , 0. );
-										printf( "%d %d %d\n" , _element.atlasVertexIndices[0] , _element.atlasVertexIndices[1] , _element.atlasVertexIndices[2] );
-										printf( "%d %d %d\n" , _element.atlasEdgeIndices[0] , _element.atlasEdgeIndices[1] , _element.atlasEdgeIndices[2] );
-
-										ClipPartiallyIndexedPolygonToIndexedTriangle( _polygon , atlasTriangle , _bt==bt );
-									}
-								}
+								else MK_WARN( "Element discarded due to zero mass. Triangle " , t , ". Boundary cell " , chartBoundaryIndex , ". Element " , bt , ". Sub triangle " , p-2 );
 							}
 							if( fastIntegration ) quadraticElementSample[0].pos = Point2D< GeometryReal >( PolygonCenter( &polygon[0] , (unsigned int)polygon.size() ) );
 							{
@@ -518,21 +510,21 @@ namespace MishaK
 								elementSamples.quadratic.push_back( quadraticElementSample );
 							}
 						}
-						else if( clippingResult<0 ) MK_THROW( "Bad clipping result: " , clippingResult );
 					}
 				}
-			}
+			};
+			Rasterizer2D::RasterizeSupports< true , true >( GetSimplex(t) , Kernel , cellRange );
 		}
 	}
 
 	template< unsigned int Samples , typename GeometryReal , typename ElementSamples >
 	void InitializeIntegration
 	(
-		const std::vector< std::vector< SquareMatrix< GeometryReal , 2 > > >& parameterMetric ,
-		const std::vector< AtlasChart< GeometryReal > > &atlasCharts ,
-		const std::vector< GridChart< GeometryReal > > &gridCharts ,
-		const std::vector< std::pair< int , int > > &interiorCellLineIndex ,
-		const std::vector< int > &fineBoundaryIndex ,
+		const ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > >& parameterMetric ,
+		const ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
+		const ExplicitIndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts ,
+		const ExplicitIndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > > &interiorCellLineIndex ,
+		const std::vector< AtlasInteriorOrBoundaryNodeIndex > &fineBoundaryIndex ,
 		ElementSamples &elementSamples ,
 		bool fastIntegration
 	)
@@ -543,7 +535,7 @@ namespace MishaK
 			0 , gridCharts.size() ,
 			[&]( unsigned int , size_t i )
 			{
-				InitializeIntegration< Samples >( parameterMetric[i] , atlasCharts[i] , gridCharts[i] , interiorCellLineIndex , fineBoundaryIndex , elementSamples , element_samples_bilinear_mutex , element_samples_quadratic_mutex , fastIntegration );
+				InitializeIntegration< Samples >( parameterMetric[ ChartIndex(i) ] , atlasCharts[ ChartIndex(i) ] , gridCharts[ ChartIndex(i) ] , interiorCellLineIndex , fineBoundaryIndex , elementSamples , element_samples_bilinear_mutex , element_samples_quadratic_mutex , fastIntegration );
 			}
 		);
 	}
@@ -594,7 +586,7 @@ namespace MishaK
 	{
 		for( int s=0 ; s<(int)sample.size() ; s++ )
 		{
-			T scalar = ValueFunction( QuadraticValue( cornerValues , sample[s].pos ) , sample.tensor );
+			T scalar = ValueFunction( QuadraticElement::Value( cornerValues , sample[s].pos ) , sample.tensor );
 			for( int k=0 ; k<6 ; k++ ) rhsValues[k] += scalar * sample[s].dualValues[k];
 		}
 	}
@@ -608,9 +600,9 @@ namespace MishaK
 		T rhsValues[]
 	)
 	{
-		for( int s=0 ; s<(int)sample.size() ; s++ )
+		for( unsigned int s=0 ; s<(int)sample.size() ; s++ )
 		{
-			Point2D< T > gradientVector = VectorFunction( QuadraticGradient( cornerValues , sample[s].pos ) , sample.tensor );
+			Point2D< T > gradientVector = VectorFunction( QuadraticElement::Differential( cornerValues , sample[s].pos ) , sample.tensor );
 			for( int k=0 ; k<6 ; k++ ) for( int d=0 ; d<2 ; d++ ) rhsValues[k] += gradientVector[d] * sample[s].dualGradients[k][d];
 		}
 	}
@@ -629,13 +621,13 @@ namespace MishaK
 	)
 	{
 		Miscellany::Timer timer;
-		auto UpdateRow = [&]( int r )
+		auto UpdateRow = [&]( unsigned int r )
 			{
-				const T* _inPrevious = &potential[ interiorCellLines[r].prevLineIndex ];
-				const T*     _inNext = &potential[ interiorCellLines[r].nextLineIndex ];
+				const T * _inPrevious = &potential[0] + interiorCellLines[r].prevLineIndex;
+				const T *     _inNext = &potential[0] + interiorCellLines[r].nextLineIndex;
 
-				T* _outPrevious = &rhs[ interiorCellLines[r].prevLineIndex ];
-				T*     _outNext = &rhs[ interiorCellLines[r].nextLineIndex ];
+				T * _outPrevious = &rhs[0] + interiorCellLines[r].prevLineIndex;
+				T *     _outNext = &rhs[0] + interiorCellLines[r].nextLineIndex;
 
 				T cornerValues[4];
 				cornerValues[0] = *_inPrevious;
@@ -647,11 +639,11 @@ namespace MishaK
 
 				T rhsValues[] = { T() , T() , T() , T() };
 
-				int numSamples = (int)elementSamples.bilinear[r].size();
+				unsigned int numSamples = (unsigned int)elementSamples.bilinear[r].size();
 				const typename ElementSamples::Bilinear *samplePtr = &elementSamples.bilinear[r][0];
-				int currentOffset = 0;
+				unsigned int currentOffset = 0;
 
-				for( int j=0 ; j<numSamples ; j++ )
+				for( unsigned int j=0 ; j<numSamples ; j++ )
 				{
 					const typename ElementSamples::Bilinear &sample = *samplePtr;
 					if( sample.cellOffset>currentOffset )
@@ -663,9 +655,9 @@ namespace MishaK
 						_inNext++;
 						cornerValues[2] = *_inNext;
 
-						*_outPrevious += rhsValues[0];
+						Atomic< T >::Add( *_outPrevious , rhsValues[0] );
 						_outPrevious++;
-						*_outNext += rhsValues[3];
+						Atomic< T >::Add( *_outNext , rhsValues[3] );
 						_outNext++;
 						rhsValues[0] = rhsValues[1];
 						rhsValues[1] = T();
@@ -679,29 +671,14 @@ namespace MishaK
 					samplePtr++;
 				}
 
-				*_outPrevious += rhsValues[0];
+				Atomic< T >::Add( *_outPrevious , rhsValues[0] );
 				_outPrevious++;
-				*_outPrevious += rhsValues[1];
-				*_outNext += rhsValues[3];
+				Atomic< T >::Add( *_outPrevious , rhsValues[1] );
+				Atomic< T >::Add( *_outNext     , rhsValues[3] );
 				_outNext++;
-				*_outNext += rhsValues[2];
+				Atomic< T >::Add( *_outNext     , rhsValues[2] );
 			};
-
-		unsigned int threads = ThreadPool::NumThreads();
-		std::vector< int > lineRange( threads+1 );
-		int blockSize = (int)interiorCellLines.size() / threads;
-		for( unsigned int t=0 ; t<threads ; t++ ) lineRange[t] = t*blockSize;
-		lineRange[threads] = (int)interiorCellLines.size();
-		ThreadPool::ParallelFor
-		(
-			0 , threads ,
-			[&]( unsigned int , size_t t )
-			{
-				int firstLine = lineRange[t];
-				int lastLine = lineRange[t+1];
-				for( int r=firstLine ; r<lastLine ; r++ ) UpdateRow(r);
-			}
-		);
+		ThreadPool::ParallelFor( 0 , interiorCellLines.size() , [&]( unsigned int , size_t r ){ UpdateRow( static_cast< unsigned int >(r) ); } );
 
 		if( verbose ) printf( "Integrated bilinear: %.2f(s)\n" , timer.elapsed() );
 
@@ -710,10 +687,18 @@ namespace MishaK
 		{
 			const typename ElementSamples::Quadratic &sample = elementSamples.quadratic[i];
 			// The values of the potential at the vertices and edge mid-points
-			T cornerValues[] = { boundary_potential[ sample.fineNodes[0] ] , boundary_potential[ sample.fineNodes[1] ] , boundary_potential[ sample.fineNodes[2] ] , boundary_potential[ sample.fineNodes[3] ] , boundary_potential[ sample.fineNodes[4] ] , boundary_potential[ sample.fineNodes[5] ] };
+			T cornerValues[] =
+			{
+				boundary_potential[ static_cast< unsigned int >(sample.fineNodes[0]) ] ,
+				boundary_potential[ static_cast< unsigned int >(sample.fineNodes[1]) ] ,
+				boundary_potential[ static_cast< unsigned int >(sample.fineNodes[2]) ] ,
+				boundary_potential[ static_cast< unsigned int >(sample.fineNodes[3]) ] ,
+				boundary_potential[ static_cast< unsigned int >(sample.fineNodes[4]) ] ,
+				boundary_potential[ static_cast< unsigned int >(sample.fineNodes[5]) ]
+			};
 			T rhsValues[] = { T() , T() , T() , T() , T() , T() };
 			IntegrateQuadratic< Real , T >( sample , SampleFunction , cornerValues , rhsValues );
-			for( int k=0 ; k<6 ; k++ ) boundary_rhs[ sample.fineNodes[k] ] += rhsValues[k];
+			for( unsigned int k=0 ; k<6 ; k++ ) boundary_rhs[ static_cast< unsigned int >( sample.fineNodes[k] ) ] += rhsValues[k];
 		}
 		if( verbose ) printf( "Integrated quadratic: %.2f(s)\n" , timer.elapsed() );
 	}

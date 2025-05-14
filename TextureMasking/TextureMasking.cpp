@@ -42,24 +42,24 @@ using namespace MishaK;
 
 
 CmdLineParameter< std::string >
-Input( "in" ) ,
-Output( "out" );
+	Input( "in" ) ,
+	Output( "out" );
 
 CmdLineParameterArray< unsigned int , 2 >
-Resolution( "res" );
+	Resolution( "res" );
 
 CmdLineParameter< double >
-CollapseEpsilon( "collapse" , 0 );
+	CollapseEpsilon( "collapse" , 0 );
 
 CmdLineParameter< unsigned int >
-DilationRadius( "radius" , 0 );
+	DilationRadius( "radius" , 0 );
 
 CmdLineReadable
-UseNearest( "nearest" ) ,
-NodeAtCorner( "nodeAtCorner" ) ,
-BoundaryOnly( "boundary" ) ,
-ID( "id" ) ,
-Verbose( "verbose" );
+	UseNearest( "nearest" ) ,
+	NodeAtCorner( "nodeAtCorner" ) ,
+	BoundaryOnly( "boundary" ) ,
+	ID( "id" ) ,
+	Verbose( "verbose" );
 
 CmdLineReadable* params[] =
 {

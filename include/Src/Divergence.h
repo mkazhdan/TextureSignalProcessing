@@ -41,29 +41,38 @@ namespace MishaK
 		int prevEdgeRowStart;
 		int currEdgeRowStart;
 		int nextEdgeRowStart;
-		int deepCoefficientsStart;
-		int texelStart;
-		int texelEnd;
+#ifdef SANITY_CHECK
+#pragma message( "[WARNING] Is this the right type?" )
+#endif // SANITY_CHECK
+		AtlasInteriorTexelIndex deepCoefficientsStart;
+		AtlasCombinedTexelIndex texelStart;
+		AtlasCombinedTexelIndex texelEnd;
 	};
 
-	void InitializeDivergenceRasteLines( std::unordered_map< unsigned long long , int > &coarseEdgeIndex , const std::vector< RasterLine > &rasterLines , std::vector< DivegenceRasterLine > &divergenceRasterLines )
+	void InitializeDivergenceRasteLines
+	(
+		std::map< SimplexIndex< 1 , AtlasCombinedTexelIndex > , unsigned int > &coarseEdgeIndex ,
+		const std::vector< RasterLine > &rasterLines ,
+		std::vector< DivegenceRasterLine > &divergenceRasterLines
+	)
 	{
 		divergenceRasterLines.resize(rasterLines.size());
-		for (int i = 0; i < rasterLines.size(); i++) {
+		for( unsigned int i=0 ; i<rasterLines.size() ; i++ )
+		{
 			const RasterLine & line = rasterLines[i];
 			DivegenceRasterLine & divLine = divergenceRasterLines[i];
 			divLine.texelStart = line.lineStartIndex;
 			divLine.texelEnd = line.lineEndIndex;
 			divLine.deepCoefficientsStart = line.coeffStartIndex;
-			unsigned long long prevEdgeKey = SetMeshEdgeKey(line.prevLineIndex - 1, line.prevLineIndex);
-			if( coarseEdgeIndex.find(prevEdgeKey)==coarseEdgeIndex.end() ) MK_THROW( "Edge not found" );
+			SimplexIndex< 1 , AtlasCombinedTexelIndex > prevEdgeKey( line.prevLineIndex-1 , line.prevLineIndex );
+			if( coarseEdgeIndex.find( prevEdgeKey )==coarseEdgeIndex.end() ) MK_THROW( "Edge not found" );
 			divLine.prevEdgeRowStart = coarseEdgeIndex[prevEdgeKey];
 
-			unsigned long long currEdgeKey = SetMeshEdgeKey(line.lineStartIndex - 1, line.lineStartIndex);
+			SimplexIndex< 1 , AtlasCombinedTexelIndex > currEdgeKey( line.lineStartIndex-1 , line.lineStartIndex );
 			if( coarseEdgeIndex.find(currEdgeKey)==coarseEdgeIndex.end() ) MK_THROW( "Edge not found" );
 			divLine.currEdgeRowStart = coarseEdgeIndex[currEdgeKey];
 
-			unsigned long long nextEdgeKey = SetMeshEdgeKey(line.nextLineIndex - 1, line.nextLineIndex);
+			SimplexIndex< 1 , AtlasCombinedTexelIndex > nextEdgeKey( line.nextLineIndex-1 , line.nextLineIndex );
 			if( coarseEdgeIndex.find(nextEdgeKey)==coarseEdgeIndex.end() ) MK_THROW( "Edge not found" );
 			divLine.nextEdgeRowStart = coarseEdgeIndex[nextEdgeKey];
 		}
@@ -84,7 +93,7 @@ namespace MishaK
 				const Data* currentRowEdges = edgeValues.data() + divergenceRasterLines[r].currEdgeRowStart;
 				const Data* nextRowEdges = edgeValues.data() + divergenceRasterLines[r].nextEdgeRowStart;
 
-				const Real * coeff = deepDivergenceCoefficients.data() + divergenceRasterLines[r].deepCoefficientsStart * 12;
+				const Real * coeff = deepDivergenceCoefficients.data() + static_cast< unsigned int >(divergenceRasterLines[r].deepCoefficientsStart) * 12;
 				int lineLenght = divergenceRasterLines[r].texelEnd - divergenceRasterLines[r].texelStart + 1;
 				for (int i = 0; i < lineLenght; coeff += 12, previousRowEdges += 2, currentRowEdges += 2, nextRowEdges += 2, i++) {
 					out[i] = previousRowEdges[0] * coeff[0] + previousRowEdges[1] * coeff[1] + previousRowEdges[2] * coeff[2] + previousRowEdges[3] * coeff[3] +

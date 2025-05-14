@@ -31,79 +31,21 @@ DAMAGE.
 #include <algorithm>
 #include <unordered_set>
 #include <Eigen/Sparse>
-#include <Misha/Image.h>
 #include <Misha/LinearSolvers.h>
 #include <Misha/RegularGrid.h>
 #include <Misha/Miscellany.h>
 #include <Misha/Exceptions.h>
-#ifdef USE_RASTERIZER
 #include <Misha/Texels.h>
 #include <Misha/Rasterizer2D.h>
 #include <Misha/Geometry.h>
-#endif // USE_RASTERIZER
+#include <Misha/MultiThreading.h>
+#include <Misha/Atomic.h>
+#include <Misha/Atomic.Geometry.h>
 #include "IndexedPolygon.h"
+#include "ImageIO.h"
 
 namespace MishaK
 {
-	template< typename Data > using Image = RegularGrid< 2 , Data >;
-
-	template< unsigned int BitDepth , typename Data >
-	void WriteImage( const Image< Data > &image , std::string fileName )
-	{
-		using CType = typename ImageChannel< BitDepth >::Type;
-		static const CType Scale = ~((CType )0);
-		if constexpr( std::is_same_v< Data , Point3D< double > > )
-		{
-			double scale = (double)Scale;
-			CType * pixels = new CType[ image.res(0)*image.res(1)*3 ];
-			for( unsigned int i=0 ; i<image.res(0) ; i++ ) for( unsigned int j=0 ; j<image.res(1) ; j++ ) for( int c=0 ; c<3 ; c++ ) pixels[ 3*(j*image.res(0)+i)+c ] = (CType)std::min< long long >( Scale , std::max< long long >( 0 , (long long)( image(i,j)[c] * scale + 0.5 ) ) );
-			ImageWriter< BitDepth >::Write( fileName , pixels , image.res(0) , image.res(1) , 3 );
-			delete[] pixels;
-		}
-		else if constexpr( std::is_same_v< Data , Point3D< float > > )
-		{
-			float scale = (float)Scale;
-			CType * pixels = new CType[ image.res(0) * image.res(1) * 3 ];
-			for( unsigned int i=0 ; i<image.res(0) ; i++ ) for( unsigned int j=0 ; j<image.res(1) ; j++ ) for( int c=0 ; c<3 ; c++ ) pixels[ 3*(j*image.res(0)+i)+c ] = (CType)std::min< long long >( Scale , std::max< long long >( 0 , (long long)( image(i,j)[c] * scale + 0.5f ) ) );
-			ImageWriter< BitDepth >::Write( fileName , pixels , image.res(0) , image.res(1) , 3 );
-			delete[] pixels;
-		}
-		else if constexpr( std::is_same_v< Data , Point3D< CType > > )
-		{
-			ImageWriter< BitDepth >::Write( fileName , (const CType*)image() , image.res(0) , image.res(1) , 3 );
-		}
-		else MK_ERROR_OUT( "Bad data type " );
-	}
-
-	template< unsigned int BitDepth , typename Data >
-	void ReadImage( Image< Data > &image , std::string fileName )
-	{
-		using CType = typename ImageChannel< BitDepth >::Type;
-		static const CType Scale = ~((CType )0);
-		unsigned int width , height;
-		CType * pixels = ImageReader< BitDepth >::ReadColor( fileName , width , height );
-		if( !pixels ) MK_THROW( "Failed to read image: " , fileName );
-		image.resize( width , height );
-
-		if constexpr( std::is_same_v< Data , Point3D< double > > )
-		{
-			double scale = (double)Scale;
-			for( int i=0 ; i<(int)width ; i++ ) for( int j=0 ; j<(int)height ; j++ ) for( int c=0 ; c<3 ; c++ ) image(i,j)[c] = ( pixels[ (j*width+i)*3+c ] ) / scale;
-		}
-		else if constexpr( std::is_same_v< Data , Point3D< float > > )
-		{
-			float scale = (float)Scale;
-			for( int i=0 ; i<(int)width ; i++ ) for( int j=0 ; j<(int)height ; j++ ) for( int c=0 ; c<3 ; c++ ) image(i,j)[c] = ( pixels[ (j*width+i)*3+c ] ) / scale;
-		}
-		else if constexpr( std::is_same_v< Data , Point3D< CType > > )
-		{
-			memcpy( (CType*)image() , pixels , sizeof( CType ) * image.res(0) * image.res(1) * 3 );
-		}
-		else MK_ERROR_OUT( "Bad data type " );
-
-		delete[] pixels;
-	}
-
 	template< typename Real >
 	struct BilinearElementScalarSample
 	{
@@ -114,8 +56,8 @@ namespace MishaK
 			Real dualValues[4];				// The integrated values of the four incident bilinear basis functions, dualized
 		};
 		SquareMatrix< Real , 2 > tensor;	// The inverse metric tensor defined by the intersecting triangle
-		int cellOffset;
-		static bool Compare( const BilinearElementScalarSample& a , const BilinearElementScalarSample& b ){ return a.cellOffset<b.cellOffset; }
+		unsigned int cellOffset;
+		bool operator < ( const BilinearElementScalarSample& sample ) const { return cellOffset<sample.cellOffset; }
 
 		BilinearElementScalarSample( void ) : _sampleNum(0) , _samples(NULL) {}
 		BilinearElementScalarSample( unsigned int sz ) : _sampleNum(0) , _samples(NULL) { resize(sz); }
@@ -126,6 +68,7 @@ namespace MishaK
 			tensor = bilinearElementScalarSample.tensor;
 			cellOffset = bilinearElementScalarSample.cellOffset;
 		}
+
 		BilinearElementScalarSample& operator = ( const BilinearElementScalarSample& bilinearElementScalarSample )
 		{
 			resize( bilinearElementScalarSample._sampleNum );
@@ -134,7 +77,9 @@ namespace MishaK
 			cellOffset = bilinearElementScalarSample.cellOffset;
 			return *this;
 		}
+
 		~BilinearElementScalarSample( void ){ resize(0); }
+
 		void resize( unsigned int sz )
 		{
 			if( _samples ){ delete[] _samples ; _samples = NULL; }
@@ -148,6 +93,7 @@ namespace MishaK
 		unsigned int _sampleNum;
 		SampleData* _samples;
 	};
+
 	template< typename Real >
 	struct QuadraticElementScalarSample
 	{
@@ -158,7 +104,7 @@ namespace MishaK
 			Real dualValues[6];				// The integrated values of the six incident quadratic basis functions, dualized
 		};
 		SquareMatrix< Real , 2 > tensor;	// The inverse metric tensor defined by the intersecting triangle
-		int fineNodes[6];
+		AtlasInteriorOrBoundaryNodeIndex fineNodes[6];
 
 		QuadraticElementScalarSample( void ) : _sampleNum(0) , _samples(NULL) {}
 		QuadraticElementScalarSample( unsigned int sz ) : _sampleNum(0) , _samples(NULL) { resize(sz); }
@@ -191,6 +137,7 @@ namespace MishaK
 		unsigned int _sampleNum;
 		SampleData* _samples;
 	};
+
 	template< typename Real >
 	struct BilinearElementGradientSample
 	{
@@ -200,8 +147,8 @@ namespace MishaK
 			Point2D< Real > dualGradients[4];	// The integrated gradients of the four incident bilinear basis functions, dualized
 		};
 		SquareMatrix< Real , 2 > tensor;		// The inverse metric tensor defined by the intersecting triangle
-		int cellOffset;
-		static bool Compare( const BilinearElementGradientSample& a , const BilinearElementGradientSample& b ){ return a.cellOffset<b.cellOffset; }
+		unsigned int cellOffset;
+		bool operator < ( const BilinearElementGradientSample& sample ) const { return cellOffset < sample.cellOffset; }
 
 		BilinearElementGradientSample( void ) : _sampleNum(0) , _samples(NULL) {}
 		BilinearElementGradientSample( unsigned int sz ) : _sampleNum(0) , _samples(NULL) { resize(sz); }
@@ -234,6 +181,7 @@ namespace MishaK
 		unsigned int _sampleNum;
 		SampleData* _samples;
 	};
+
 	template< typename Real >
 	struct QuadraticElementGradientSample
 	{
@@ -243,7 +191,7 @@ namespace MishaK
 			Point2D< Real > dualGradients[6];	// The integrated gradients of the six incident quadratic basis functions, dualized
 		};
 		SquareMatrix< Real , 2 > tensor;		// The inverse metric tensor defined by the intersecting triangle
-		int fineNodes[6];
+		AtlasInteriorOrBoundaryNodeIndex fineNodes[6];
 
 		QuadraticElementGradientSample( void ) : _sampleNum(0) , _samples(NULL) {}
 		QuadraticElementGradientSample( unsigned int sz ) : _sampleNum(0) , _samples(NULL) { resize(sz); }
@@ -276,6 +224,7 @@ namespace MishaK
 		unsigned int _sampleNum;
 		SampleData* _samples;
 	};
+
 	template< typename _Real >
 	struct ScalarElementSamples
 	{
@@ -285,8 +234,9 @@ namespace MishaK
 		std::vector< std::vector< Bilinear > > bilinear;
 		std::vector< Quadratic > quadratic;
 		void resize( size_t sz ){ bilinear.resize( sz ); }
-		void sort( void ){ for( int i=0 ; i<bilinear.size() ; i++ ) std::sort( bilinear[i].begin() , bilinear[i].end() , Bilinear::Compare ); }
+		void sort( void ){ for( int i=0 ; i<bilinear.size() ; i++ ) std::sort( bilinear[i].begin() , bilinear[i].end() ); }
 	};
+
 	template< typename _Real >
 	struct GradientElementSamples
 	{
@@ -296,275 +246,374 @@ namespace MishaK
 		std::vector< std::vector< Bilinear > > bilinear;
 		std::vector< Quadratic > quadratic;
 		void resize( size_t sz ){ bilinear.resize( sz ); }
-		void sort( void ){ for( int i=0 ; i<bilinear.size() ; i++ ) std::sort( bilinear[i].begin() , bilinear[i].end() , Bilinear::Compare ); }
+		void sort( void ){ for( int i=0 ; i<bilinear.size() ; i++ ) std::sort( bilinear[i].begin() , bilinear[i].end() ); }
 	};
 
-	class RasterLine
+	struct RasterLine
 	{
-	public:
-		int lineStartIndex;
-		int lineEndIndex;
-		int prevLineIndex;
-		int nextLineIndex;
-		int coeffStartIndex;
+		AtlasCombinedTexelIndex lineStartIndex;
+		AtlasCombinedTexelIndex lineEndIndex;
+		AtlasCombinedTexelIndex prevLineIndex;
+		AtlasCombinedTexelIndex nextLineIndex;
+		AtlasInteriorTexelIndex coeffStartIndex;
 	};
 
-	class DeepLine
+	struct DeepLine
 	{
-	public:
-		int coarseLineStartIndex;
-		int coarseLineEndIndex;
-		int finePrevLineIndex;
-		int fineCurrentLineIndex;
-		int fineNextLineIndex;
+		AtlasInteriorTexelIndex coarseLineStartIndex;
+		AtlasInteriorTexelIndex coarseLineEndIndex;
+		AtlasInteriorTexelIndex finePrevLineIndex;
+		AtlasInteriorTexelIndex fineCurrentLineIndex;
+		AtlasInteriorTexelIndex fineNextLineIndex;
 	};
 
-	class SegmentedRasterLine
+	struct SegmentedRasterLine
 	{
-	public:
-		std::vector<RasterLine> segments;
+		std::vector< RasterLine > segments;
 	};
 
-	class MultigridBlockInfo
+	struct MultigridBlockInfo
 	{
-	public:
-		MultigridBlockInfo( int p_blockWidth = 128, int p_blockHeight = 16, int p_paddingWidth = 2, int p_paddingHeight = 2, int p_boundaryDilation = 0) {
+		MultigridBlockInfo( unsigned int p_blockWidth=128 , unsigned int p_blockHeight=16 , unsigned int p_paddingWidth=2 , unsigned int p_paddingHeight=2 )
+		{
 			blockWidth = p_blockWidth;
 			blockHeight = p_blockHeight;
 			paddingWidth = p_paddingWidth;
 			paddingHeight = p_paddingHeight;
-			boundaryDilation = p_boundaryDilation;
 		}
-		int blockWidth;
-		int blockHeight;
-		int paddingWidth;
-		int paddingHeight;
-		int boundaryDilation;
+		unsigned int blockWidth;
+		unsigned int blockHeight;
+		unsigned int paddingWidth;
+		unsigned int paddingHeight;
 	};
 
-	class BlockDeepSegment
+	struct BlockDeepSegment
 	{
-	public:
-		int currentStart;
-		int currentEnd;
-		int previousStart;
-		int nextStart;
-		int deepStart;
+		AtlasCombinedTexelIndex currentStart;
+		AtlasCombinedTexelIndex currentEnd;
+		AtlasCombinedTexelIndex previousStart;
+		AtlasCombinedTexelIndex nextStart;
+		AtlasInteriorTexelIndex deepStart;
 	};
 
-	class BlockDeepSegmentedLine
+	struct BlockDeepSegmentedLine
 	{
-	public:
-		std::vector<BlockDeepSegment> blockDeepSegments;
+		std::vector< BlockDeepSegment > blockDeepSegments;
 	};
 
-	class BlockTask
+	struct BlockTask
 	{
-	public:
-		std::vector<BlockDeepSegmentedLine> blockPaddedSegmentedLines;
-		std::vector<BlockDeepSegmentedLine> blockDeepSegmentedLines;
+		std::vector< BlockDeepSegmentedLine > blockPaddedSegmentedLines;
+		std::vector< BlockDeepSegmentedLine > blockDeepSegmentedLines;
 	};
-	class ThreadTask
+
+	struct ThreadTask
 	{
-	public:
 		int taskDeepTexels;
-		std::vector<BlockTask> blockTasks;
+		std::vector< BlockTask > blockTasks;
 	};
 
 	bool threadTaskComparison( const ThreadTask & task1 , const ThreadTask & task2 ){ return task1.taskDeepTexels < task2.taskDeepTexels; }
 
-	class InteriorTexelToCellLine
+	struct InteriorTexelToCellLine
 	{
-	public:
-		int texelStartIndex;
-		int texelEndIndex;
-		int coeffOffset;
+		AtlasCombinedTexelIndex texelStartIndex;
+		AtlasCombinedTexelIndex texelEndIndex;
+		AtlasInteriorTexelIndex coeffOffset;
 		int length;
-		int previousCellStartIndex;
-		int nextCellStartIndex;
+		AtlasCombinedCellIndex previousCellStartIndex;
+		AtlasCombinedCellIndex     nextCellStartIndex;
 	};
 
 
-	class ProlongationLine
+	struct ProlongationLine
 	{
-	public:
-		int startIndex;
+		AtlasCombinedTexelIndex startIndex;
+		AtlasCombinedTexelIndex centerLineIndex;
+		AtlasCombinedTexelIndex prevLineIndex;
+		AtlasCombinedTexelIndex nextLineIndex;
 		int length;
-		int centerLineIndex;
-		int prevLineIndex;
-		int nextLineIndex;
 		bool alignedStart;
 	};
 
-	class RestrictionLine
+	template< typename GeometryReal >
+	using AuxiliaryNode = NodeInfo< GeometryReal , AtlasInteriorOrBoundaryNodeIndex >;
+
+	enum struct CellType
 	{
-	public:
-		RestrictionLine() {
-			startIndex = length = centerLineIndex = prevLineIndex = nextLineIndex = -1;
+		Exterior ,		// No geometry passes through the cell
+		Boundary ,		// A boundary edge passes through the cell
+		Interior		// A triangle passes through the cell, but not a boundary edge
+	};
+
+	enum struct TexelType
+	{
+		Unsupported ,					// No geometry passes through the support of the node
+		BoundarySupportedAndUncovered ,	// The support of the texel includes boundary nodes but the node is not covered by a triangle
+		BoundarySupportedAndCovered ,	// The support of the texel includes boundary nodes and the node is covered by a triangle
+		InteriorSupported				// The support of the texel consists of interior nodes
+	};
+
+	struct CellIndex
+	{
+		CellIndex( void ) : combined(-1) , interior(-1) , boundary(-1){}
+		ChartCombinedCellIndex combined;
+		ChartInteriorCellIndex interior;
+		ChartBoundaryCellIndex boundary;
+	};
+
+	struct TexelIndex
+	{
+		TexelIndex( void ) : combined(-1) , interior(-1) , covered(-1){}
+		AtlasCombinedTexelIndex combined;
+		AtlasCoveredTexelIndex covered;
+		AtlasInteriorTexelIndex interior;
+	};
+
+	bool IsCovered( TexelType texelType ){ return texelType==TexelType::BoundarySupportedAndCovered || texelType==TexelType::InteriorSupported; }
+	bool IsBoundarySupported( TexelType texelType ){ return texelType==TexelType::BoundarySupportedAndCovered || texelType==TexelType::BoundarySupportedAndUncovered; }
+
+	std::string CellTypeName( CellType cellType )
+	{
+		if     ( cellType==CellType::Exterior ) return std::string( "Exterior" );
+		else if( cellType==CellType::Boundary ) return std::string( "Boundary" );
+		else if( cellType==CellType::Interior ) return std::string( "Interior" );
+		else
+		{
+			MK_THROW( "Unrecognized cell type" );
+			return std::string();
 		}
-		int startIndex;
-		int length;
-		int centerLineIndex;
-		int prevLineIndex;
-		int nextLineIndex;
-		int outputStart;
-	};
+	}
+
+	std::string TexelTypeName( TexelType texelType )
+	{
+		if     ( texelType==TexelType::Unsupported ) return std::string( "Unsupported" );
+		else if( texelType==TexelType::BoundarySupportedAndCovered ) return std::string( "Boundary supported and covered" );
+		else if( texelType==TexelType::BoundarySupportedAndUncovered ) return std::string( "Boundary supported and uncovered" );
+		else if( texelType==TexelType::InteriorSupported ) return std::string( "Interior supported" );
+		else
+		{
+			MK_THROW( "Unrecognized texel type" );
+			return std::string();
+		}
+	}
 
 	template< typename GeometryReal >
-	class AuxiliaryNode
+	struct GridChart
 	{
-	public:
-		Point2D< GeometryReal > position;
-		int index;
-	};
-
-	template< typename GeometryReal >
-	class GridChart
-	{
-	public:
 		Point2D< GeometryReal > corner;
 		int cornerCoords[2];
 		int centerOffset[2];
 		GeometryReal cellSizeW;
 		GeometryReal cellSizeH;
-		int width;
-		int height;
-		int globalTexelDeepOffset;
-		int globalTexelBoundaryOffset;
-		int globalIndexTexelOffset;
-		int globalIndexInteriorTexelOffset;
-		int globalIndexCellOffset;
-		int globalIndexInteriorCellOffset;
-		int gridIndexOffset;
-		Image< int > cellType;
-		Image< int > nodeType;
-		Image< int > globalInteriorTexelIndex;
-		Image< int > globalTexelIndex;
-		Image< int > globalTexelDeepIndex;
-		Image< int > globalTexelBoundaryIndex;
+		unsigned int width;
+		unsigned int height;
+		unsigned int atlasWidth;
+		unsigned int atlasHeight;
 
+		Point2D< GeometryReal > nodePosition( unsigned int i , unsigned int j ) const { return Point2D< GeometryReal >( i*cellSizeW , j*cellSizeH ); }
 
-		Image< int > localCellIndex;
-		std::vector< BilinearElementIndex > bilinearElementIndices;
+		AtlasGridVertexIndex nodeIndex( unsigned int i , unsigned int j ) const { return AtlasGridVertexIndex( atlasWidth*(j+cornerCoords[1]) + (i+cornerCoords[0]) ); }
+		bool factorNodeIndex( AtlasGridVertexIndex g , unsigned int &i , unsigned int &j ) const
+		{
+			unsigned int idx = static_cast< unsigned int >( g );
+			if( idx<atlasWidth*atlasHeight )
+			{
+				i = idx % atlasWidth , j = idx / atlasWidth;
+				if( i<cornerCoords[0] || j<cornerCoords[1] || i>=cornerCoords[0]+width || j>=cornerCoords[1]+height ) return false;
+				i -= cornerCoords[0] , j -= cornerCoords[1];
+				return true;
+			}
+			else return false;
+		}
 
-		Image<int> localInteriorCellIndex;
-		std::vector< BilinearElementIndex> interiorCellCorners;
+		AtlasGridEdgeIndex edgeIndex( unsigned int i , unsigned int j , unsigned int dir ) const { return AtlasGridEdgeIndex( atlasWidth*atlasHeight*dir + (j+cornerCoords[1])*atlasWidth + (i+cornerCoords[0]) ); }
 
-		std::vector< BilinearElementIndex > interiorCellGlobalCorners;
+		bool factorEdgeIndex( AtlasGridEdgeIndex e , unsigned int &i , unsigned int &j , unsigned int &dir ) const
+		{
+			unsigned int idx = static_cast< unsigned int >( e );
+			dir = 0;
+			if( idx<atlasWidth*atlasHeight )
+			{
+				i = idx % atlasWidth , j = idx / atlasWidth;
+				if( i<cornerCoords[0] || j<cornerCoords[1] || i>=cornerCoords[0]+width || j>=cornerCoords[1]+height ) return false;
+				i -= cornerCoords[0] , j -= cornerCoords[1];
+				return true;
+			}
+			else
+			{
+				idx -= atlasWidth*atlasHeight;
+				dir++;
+				if( idx<atlasWidth*atlasHeight )
+				{
+					i = idx % atlasWidth , j = idx / atlasWidth;
+					if( i<cornerCoords[0] || j<cornerCoords[1] || i>=cornerCoords[0]+width || j>=cornerCoords[1]+height ) return false;
+					i -= cornerCoords[0] , j -= cornerCoords[1];
+					return true;
+				}
+				else return false;
+			}
+		}
 
-		int numInteriorCells;
+		// Texel indices (atlas)
+		Image< TexelIndex > texelIndices;
 
-		Image< int > localBoundaryCellIndex;
-		int numBoundaryCells;
+		// Cell indices (chart)
+		Image< CellIndex > cellIndices;
 
-		std::vector< int > interiorCellIndexToLocalCellIndex;
-		std::vector< int > boundaryCellIndexToLocalCellIndex;
+		// The indices of the incident nodes
+		ExplicitIndexVector< ChartCombinedCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > > combinedCellCombinedTexelBilinearElementIndices;
 
-		std::vector< std::vector< AtlasIndexedPolygon< GeometryReal > > > boundaryPolygons;
-		std::vector< std::vector< BoundaryIndexedTriangle< GeometryReal > > > boundaryTriangles;
+		// For interior cells, the indices of the incident interior nodes
+		ExplicitIndexVector< ChartInteriorCellIndex , BilinearElementIndex< AtlasCoveredTexelIndex > > interiorCellCoveredTexelBilinearElementIndices;
 
-		int numBoundaryTriangles;
+		// For interior cells, the indices of the incident nodes
+		ExplicitIndexVector< ChartInteriorCellIndex , BilinearElementIndex< AtlasCombinedTexelIndex > > interiorCellCombinedTexelBilinearElementIndices;
+
+		// Maps converting boundary/interiorl cell indices to combined cell indices
+		std::vector< ChartCombinedCellIndex > interiorCellIndexToCombinedCellIndex;
+		std::vector< ChartCombinedCellIndex > boundaryCellIndexToCombinedCellIndex;
+
+		const size_t numInteriorCells( void ) const { return interiorCellIndexToCombinedCellIndex.size(); }
+		const size_t numBoundaryCells( void ) const { return boundaryCellIndexToCombinedCellIndex.size(); }
+
+		ExplicitIndexVector< ChartBoundaryCellIndex , std::vector< BoundaryIndexedTriangle< GeometryReal > > > boundaryTriangles;
+
+		ChartBoundaryTriangleIndex endBoundaryTriangleIndex;
 
 		std::vector< AuxiliaryNode< GeometryReal > > auxiliaryNodes;
 
-		Image< int > triangleID;
+		Image< CellType > cellType;
+		Image< TexelType > texelType;
+		Image< AtlasMeshTriangleIndex > triangleID;
 		Image< Point2D< GeometryReal > > barycentricCoords;
+
+		AtlasInteriorCellIndex chartToAtlasInteriorCellIndex( ChartInteriorCellIndex idx ) const { return static_cast< AtlasInteriorCellIndex >( static_cast< unsigned int >(idx) + _interiorCellOffset ); }
+		ChartInteriorCellIndex atlasToChartInteriorCellIndex( AtlasInteriorCellIndex idx ) const { return static_cast< ChartInteriorCellIndex >( static_cast< unsigned int >(idx) - _interiorCellOffset ); }
+		AtlasCombinedCellIndex chartToAtlasCombinedCellIndex( ChartCombinedCellIndex idx ) const { return static_cast< AtlasCombinedCellIndex >( static_cast< unsigned int >(idx) + _combinedCellOffset ); }
+		ChartCombinedCellIndex atlasToChartCombinedCellIndex( AtlasCombinedCellIndex idx ) const { return static_cast< ChartCombinedCellIndex >( static_cast< unsigned int >(idx) - _combinedCellOffset ); }
+
+		// [WARNING] This should really be done through friendship
+		void setInteriorCellOffset( unsigned int interiorCellOffset ){ _interiorCellOffset = interiorCellOffset; }
+		void setCombinedCellOffset( unsigned int combinedCellOffset ){ _combinedCellOffset = combinedCellOffset; }
+	protected:
+		unsigned int _interiorCellOffset;
+		unsigned int _combinedCellOffset;
 	};
 
-
-	class GridNodeInfo
+	struct TexelInfo
 	{
-	public:
-		int chartID;
-		int ci;
-		int cj;
-		int nodeType;
+		ChartIndex chartID;
+		unsigned int ci;
+		unsigned int cj;
+		TexelType texelType;
 	};
 
-	class TexelLineInfo
+	struct TexelLineInfo
 	{
-	public:
 		TexelLineInfo() : lineIndex(-1) , offset(-1) {}
 		int lineIndex;
 		int offset;
 	};
 
-	template< typename GeometryReal , typename MatrixReal >
-	class GridAtlas
-	{
-	public:
+	template< typename ... T > struct GridAtlas;
 
+	template<>
+	struct GridAtlas<>
+	{
+		struct IndexConverter
+		{
+			AtlasCombinedTexelIndex boundaryToCombined( AtlasBoundaryTexelIndex idx ) const { return _boundaryToCombined[idx]; }
+			AtlasCombinedTexelIndex interiorToCombined( AtlasInteriorTexelIndex idx ) const { return _interiorToCombined[idx]; }
+			AtlasBoundaryTexelIndex combinedToBoundary( AtlasCombinedTexelIndex idx ) const { return AtlasBoundaryTexelIndex( _combinedToBoundaryOrInterior[idx].first ? _combinedToBoundaryOrInterior[idx].second : static_cast< unsigned int >(-1) ); }
+			AtlasInteriorTexelIndex combinedToInterior( AtlasCombinedTexelIndex idx ) const { return AtlasInteriorTexelIndex( _combinedToBoundaryOrInterior[idx].first ? static_cast< unsigned int >(-1) : _combinedToBoundaryOrInterior[idx].second ); }
+
+			const ExplicitIndexVector< AtlasBoundaryTexelIndex , AtlasCombinedTexelIndex > &boundaryToCombined( void ) const { return _boundaryToCombined; }
+			const ExplicitIndexVector< AtlasInteriorTexelIndex , AtlasCombinedTexelIndex > &interiorToCombined( void ) const { return _interiorToCombined; }
+
+			size_t numCombined( void ) const { return _combinedToBoundaryOrInterior.size(); }
+			size_t numBoundary( void ) const { return _boundaryToCombined.size(); }
+			size_t numInterior( void ) const { return _interiorToCombined.size(); }
+		protected:
+			template< typename GeometryReal >
+			friend void InitializeIndexConverter( const ExplicitIndexVector< ChartIndex , GridChart< GeometryReal > > & , AtlasCombinedTexelIndex , IndexConverter & );
+
+			ExplicitIndexVector< AtlasCombinedTexelIndex , std::pair< bool , unsigned int > > _combinedToBoundaryOrInterior;
+			ExplicitIndexVector< AtlasBoundaryTexelIndex , AtlasCombinedTexelIndex > _boundaryToCombined;
+			ExplicitIndexVector< AtlasInteriorTexelIndex , AtlasCombinedTexelIndex > _interiorToCombined;
+		};
+	};
+
+	template< typename GeometryReal , typename MatrixReal >
+	struct GridAtlas< GeometryReal , MatrixReal >
+	{
 		std::vector< ThreadTask > threadTasks;
-		std::vector< int > boundaryAndDeepIndex;
-		std::vector< int > boundaryGlobalIndex;
-		std::vector< int > deepGlobalIndex;
-		std::vector< GridNodeInfo > nodeInfo;
-		std::vector< GridChart< GeometryReal > > gridCharts;
+		typename GridAtlas<>::IndexConverter indexConverter;
+		ExplicitIndexVector< AtlasCombinedTexelIndex , TexelInfo > texelInfo;
+		ExplicitIndexVector< ChartIndex , GridChart< GeometryReal > > gridCharts;
 		std::vector< SegmentedRasterLine > segmentedLines;
 		std::vector< RasterLine > rasterLines;
 		std::vector< RasterLine > restrictionLines;
 		std::vector< DeepLine > deepLines;
 		std::vector< ProlongationLine > prolongationLines;
 		Eigen::SparseMatrix< MatrixReal > coarseToFineNodeProlongation;
-		//int resolution;
-		int numTexels;
-		int numInteriorTexels;
-		int numDeepTexels;
-		int numBoundaryTexels;
-		int numCells;
-		int numBoundaryCells;
-		int numInteriorCells;
-		int numBoundaryNodes;
-		int numMidPoints;
-		int numFineNodes;
+
+		AtlasCombinedTexelIndex endCombinedTexelIndex;
+		AtlasCoveredTexelIndex endCoveredTexelIndex;
+		AtlasInteriorTexelIndex endInteriorTexelIndex;
+		AtlasBoundaryTexelIndex endBoundaryTexelIndex;
+		AtlasCombinedCellIndex endCombinedCellIndex;
+		AtlasBoundaryCellIndex endBoundaryCellIndex;
+		AtlasInteriorCellIndex endInteriorCellIndex;
+
+		AtlasRefinedBoundaryVertexIndex endBoundaryVertexIndex;
+		BoundaryMidPointIndex endMidPointIndex;
+		unsigned int numFineNodes;
 	};
 
 	struct BoundaryDeepIndex
 	{
-		int boundaryIndex;
-		int deepGlobalIndex;
-		int deepIndex;
-		int offset;
+		AtlasBoundaryTexelIndex boundaryIndex;
+		AtlasCombinedTexelIndex combinedIndex;
+		AtlasInteriorTexelIndex interiorIndex;
+		unsigned int offset;
 	};
 
 	template< typename Real >
 	struct BoundaryBoundaryIndex
 	{
-		int coarsePrincipalBoundaryIndex;
-		int coarseSecondaryBoundaryIndex;
-		int fineDeepIndex;
-		int offset;
+		AtlasBoundaryTexelIndex coarsePrincipalBoundaryIndex;
+		AtlasBoundaryTexelIndex coarseSecondaryBoundaryIndex;
+		AtlasInteriorTexelIndex fineInteriorIndex;
+		unsigned int offset;
 		Real weight;
 	};
 
 	template< typename GeometryReal , typename MatrixReal >
-	class HierarchicalSystem
+	struct HierarchicalSystem
 	{
-	public:
 		std::vector< GridAtlas< GeometryReal , MatrixReal > > gridAtlases;
 
 		std::vector< SparseMatrix< MatrixReal , int > > boundaryRestriction;
 		std::vector< SparseMatrix< MatrixReal , int > > prolongation;
 		std::vector< SparseMatrix< MatrixReal , int > > boundaryCoarseFineProlongation;
 		std::vector< SparseMatrix< MatrixReal , int > > boundaryFineCoarseRestriction;
-		std::vector< std::vector< BoundaryBoundaryIndex< MatrixReal > > > boundaryBoundaryIndices;
-		std::vector< std::vector< BoundaryDeepIndex > > boundaryDeepIndices;
+		std::vector< ExplicitIndexVector< AtlasBoundaryTexelIndex , BoundaryBoundaryIndex< MatrixReal > > > boundaryBoundaryIndices;
+		std::vector< ExplicitIndexVector< AtlasBoundaryTexelIndex , BoundaryDeepIndex > > boundaryDeepIndices;
 	};
 
 
-	template< class Real >
-	class SystemCoefficients
+	template< typename Real >
+	struct SystemCoefficients
 	{
-	public:
 		std::vector< Real > deepCoefficients;
 		SparseMatrix< Real , int > boundaryDeepMatrix;
 		SparseMatrix< Real , int > boundaryBoundaryMatrix;
 	};
 
-	template< class DataType >
-	class MultigridLevelVariables
+	template< typename DataType >
+	struct MultigridLevelVariables
 	{
-	public:
 		std::vector< DataType > x;
 		std::vector< DataType > rhs;
 		std::vector< DataType > residual;
@@ -573,19 +622,19 @@ namespace MishaK
 		std::vector< DataType > variable_boundary_value;
 	};
 
-	template<class Real>
-	class MultigridLevelIndices {
-	public:
-		std::vector<ThreadTask> threadTasks;
-		std::vector<int> boundaryGlobalIndex;
-		std::vector<SegmentedRasterLine> segmentedLines;
-		std::vector<RasterLine> rasterLines;
-		std::vector<RasterLine> restrictionLines;
-		std::vector<ProlongationLine> prolongationLines;
-		SparseMatrix<Real, int> boundaryRestriction;
+	template< typename Real >
+	struct MultigridLevelIndices
+	{
+		std::vector< ThreadTask > threadTasks;
+		ExplicitIndexVector< AtlasBoundaryTexelIndex , AtlasCombinedTexelIndex > boundaryToCombined;
+		std::vector< SegmentedRasterLine > segmentedLines;
+		std::vector< RasterLine > rasterLines;
+		std::vector< RasterLine > restrictionLines;
+		std::vector< ProlongationLine > prolongationLines;
+		SparseMatrix< Real , int > boundaryRestriction;
 	};
 
-	template< class DirectSolver >
+	template< typename DirectSolver >
 	struct VCycleSolvers
 	{
 		std::vector< DirectSolver > boundary;

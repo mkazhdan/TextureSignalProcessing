@@ -376,7 +376,7 @@ namespace MishaK
 		Real& operator () ( unsigned int c , unsigned int r ) { return coords[c][r]; }
 		const Real& operator () ( unsigned int c , unsigned int r ) const { return coords[c][r]; }
 
-		volatile Real& operator () ( unsigned int c , unsigned int r ) volatile  { return coords[c][r]; }
+		volatile Real& operator () ( unsigned int c , unsigned int r ) volatile { return coords[c][r]; }
 		volatile const Real& operator () ( unsigned int c , unsigned int r ) volatile const { return coords[c][r]; }
 
 		template<int Cols1>
@@ -492,7 +492,8 @@ namespace MishaK
 	};
 
 	// Need forward declaration to support the characteristic polynomial
-	namespace Polynomial{ template< unsigned int Dim , unsigned int Degree , typename Real > class Polynomial; }
+	//	namespace Polynomial{ template< unsigned int Dim , unsigned int Degree , typename T , typename Real=T > class Polynomial; }
+	namespace Polynomial{ template< unsigned int Dim , unsigned int Degree , typename T , typename Real > class Polynomial; }
 
 	template< class Real , int Dim >
 	class Matrix< Real , Dim , Dim > : public Algebra< Real , Matrix< Real , Dim , Dim > > , public InnerProductSpace< Real , Matrix< Real , Dim , Dim > >
@@ -527,8 +528,11 @@ namespace MishaK
 				for(int j=0;j<Rows && j<R;j++)
 					coords[i][j]=m.coords[i][j];
 		}
-		Real& operator () (int c,int r) { return coords[c][r]; }
-		const Real& operator () (int c,int r) const { return coords[c][r]; }
+		Real& operator () ( unsigned int c , unsigned int r ){ return coords[c][r]; }
+		const Real& operator () ( unsigned int c , unsigned int r ) const { return coords[c][r]; }
+
+		volatile Real& operator () ( unsigned int c , unsigned int r ) volatile { return coords[c][r]; }
+		volatile const Real& operator () ( unsigned int c , unsigned int r ) volatile const { return coords[c][r]; }
 
 		template<int Cols1>
 		Matrix< Real , Cols1 , Dim > operator * ( const Matrix< Real , Cols1 , Dim >& m ) const;
@@ -572,12 +576,12 @@ namespace MishaK
 		Real trace( void ) const;
 		Matrix inverse( bool& success ) const;
 		Matrix inverse( void ) const;
-		class Polynomial::Polynomial< 1 , Dim , Real > characteristicPolynomial( void ) const;
+		class Polynomial::Polynomial< 1 , Dim , Real , Real > characteristicPolynomial( void ) const;
 
 		template< class Real2 > Point< Real2 , Dim-1 > operator () ( const Point< Real2 , Dim-1 >& v ) const;
 	protected:
 		friend Matrix< double , Dim+1 , Dim+1 >;
-		class Polynomial::Polynomial< 1 , Dim , Real > _characteristicPolynomial( Matrix< char , Dim , Dim > mask ) const;
+		class Polynomial::Polynomial< 1 , Dim , Real , Real > _characteristicPolynomial( Matrix< char , Dim , Dim > mask ) const;
 	};
 
 #if 0
@@ -612,8 +616,11 @@ namespace MishaK
 		template< int C , int R >
 		Matrix( const Matrix< Real , C , R > &m ){}
 
-		Real& operator () ( int c , int r ) { MK_ERROR_OUT( "Should not be accessing the entries of this matrix" ) ; Real v=0 ; return v; }
-		const Real& operator () ( int c , int r ) const { MK_ERROR_OUT( "Should not be accessing the entries of this matrix" ) ; Real v=0 ; return v; }
+		Real& operator () ( unsigned int c , unsigned int r ){ MK_ERROR_OUT( "Should not be accessing the entries of this matrix" ) ; Real v=0 ; return v; }
+		const Real& operator () ( unsigned int c , unsigned int r ) const { MK_ERROR_OUT( "Should not be accessing the entries of this matrix" ) ; Real v=0 ; return v; }
+
+		volatile Real& operator () ( unsigned int c , unsigned int r ) volatile { MK_ERROR_OUT( "Should not be accessing the entries of this matrix" ) ; Real v=0 ; return v; }
+		volatile const Real& operator () ( unsigned int c , unsigned int r ) volatile const { MK_ERROR_OUT( "Should not be accessing the entries of this matrix" ) ; Real v=0 ; return v; }
 
 		template< int Cols1 >
 		Matrix< Real , Cols1 , Rows > operator * ( const Matrix< Real , Cols1 , Cols >& m ) const { return Matrix< Real , Cols1 , Rows >(); }

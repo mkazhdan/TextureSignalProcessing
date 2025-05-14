@@ -33,24 +33,25 @@ namespace MishaK
 	void InitializeInteriorTexelToCellLines( std::vector< InteriorTexelToCellLine > &interiorTexeltoCellLine , const GridAtlas< GeometryReal , MatrixReal > &gridAtlas )
 	{
 		const std::vector<RasterLine> & rasterLines = gridAtlas.rasterLines;
-		const std::vector<GridNodeInfo> & nodeInfo = gridAtlas.nodeInfo;
-		const std::vector< GridChart< GeometryReal > > &gridCharts = gridAtlas.gridCharts;
-		interiorTexeltoCellLine.resize(rasterLines.size());
-		for (int i = 0; i < rasterLines.size(); i++) {
-			int interiorTexelStart = rasterLines[i].lineStartIndex;
-			int ci = nodeInfo[interiorTexelStart].ci;
-			int cj = nodeInfo[interiorTexelStart].cj;
-			int chartID = nodeInfo[interiorTexelStart].chartID;
+		const ExplicitIndexVector< AtlasCombinedTexelIndex , TexelInfo > & texelInfo = gridAtlas.texelInfo;
+		const ExplicitIndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts = gridAtlas.gridCharts;
+		interiorTexeltoCellLine.resize( rasterLines.size() );
+		for( unsigned int i=0 ; i<rasterLines.size() ; i++ )
+		{
+			AtlasCombinedTexelIndex interiorTexelStart = rasterLines[i].lineStartIndex;
+			unsigned int ci = texelInfo[interiorTexelStart].ci;
+			unsigned int cj = texelInfo[interiorTexelStart].cj;
+			ChartIndex chartID = texelInfo[interiorTexelStart].chartID;
 
 			interiorTexeltoCellLine[i].texelStartIndex = rasterLines[i].lineStartIndex;
 			interiorTexeltoCellLine[i].texelEndIndex = rasterLines[i].lineEndIndex;
 			interiorTexeltoCellLine[i].coeffOffset = rasterLines[i].coeffStartIndex;
 
-			if( gridCharts[chartID].cellType( ci-1 , cj-1)!=1 ) MK_THROW( "Non interior cell" );
-			interiorTexeltoCellLine[i].previousCellStartIndex = gridCharts[chartID].localCellIndex(ci - 1, cj - 1) + gridCharts[chartID].globalIndexCellOffset;
+			if( gridCharts[chartID].cellType(ci-1,cj-1)!=CellType::Interior ) MK_THROW( "Non interior cell" );
+			interiorTexeltoCellLine[i].previousCellStartIndex = gridCharts[chartID].chartToAtlasCombinedCellIndex( gridCharts[chartID].cellIndices( ci-1 , cj-1 ).combined );
 
-			if( gridCharts[chartID].cellType( ci-1 , cj )!=1 ) MK_THROW( "Non interior cell" );
-			interiorTexeltoCellLine[i].nextCellStartIndex = gridCharts[chartID].localCellIndex(ci - 1, cj) + gridCharts[chartID].globalIndexCellOffset;
+			if( gridCharts[chartID].cellType(ci-1,cj)!=CellType::Interior ) MK_THROW( "Non interior cell" );
+			interiorTexeltoCellLine[i].nextCellStartIndex = gridCharts[chartID].chartToAtlasCombinedCellIndex( gridCharts[chartID].cellIndices( ci-1 , cj ).combined );
 		}
 	}
 }

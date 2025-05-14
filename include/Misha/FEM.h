@@ -487,8 +487,8 @@ namespace MishaK
 			Real getIntegral( ConstPointer( Real ) coefficients ) const;
 			Real getDotProduct( ConstPointer( Real ) c1 , ConstPointer( Real ) c2 , bool lump ) const;
 
-			CoordinateXForm< Real >  exp( ConstPointer( CoordinateXForm< Real > ) xForms , HermiteSamplePoint< Real >& p , Real eps=(Real)0 , bool noWarning=false ) const;
-			CoordinateXForm< Real > flow( ConstPointer( CoordinateXForm< Real > ) xForms , const TangentVectorField< Real >& vf , Real flowTime , SamplePoint< Real >& p , Real minStepSize , Real eps=(Real)0 , std::vector< SamplePoint< Real > >* path=NULL , bool noWarning=false ) const;
+			CoordinateXForm< Real >  exp( ConstPointer( CoordinateXForm< Real > ) xForms , HermiteSamplePoint< Real >& p , Real eps=(Real)0 , bool noWarning=true ) const;
+			CoordinateXForm< Real > flow( ConstPointer( CoordinateXForm< Real > ) xForms , const TangentVectorField< Real >& vf , Real flowTime , SamplePoint< Real >& p , Real minStepSize , Real eps=(Real)0 , std::vector< SamplePoint< Real > >* path=NULL , bool noWarning=true ) const;
 
 			Pointer( CoordinateXForm< Real > ) getCoordinateXForms( void ) const;
 			void                               setCoordinateXForms( Pointer( CoordinateXForm< Real > ) xForms ) const;

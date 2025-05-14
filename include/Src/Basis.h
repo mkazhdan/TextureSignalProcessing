@@ -30,87 +30,169 @@ DAMAGE.
 #include <Misha/Miscellany.h>
 #include <Misha/Exceptions.h>
 #include <Misha/RightTriangleQuadrature.h>
+#ifdef USE_SIMPLEX_BASIS
+#include <Misha/SimplexBasis.h>
+#endif // USE_SIMPLEX_BASIS
+#include "SimpleTriangleMesh.h"
+#include "Indices.h"
 
 namespace MishaK
 {
 	template< typename GeometryReal >
-	class TextureNodeInfo
+	struct TextureNodeInfo
 	{
-	public:
-		TextureNodeInfo( void ) : tID(-1) , ci(-1) , cj(-1) , chartID(-1) , isInterior(false) {}
-		TextureNodeInfo( int _tID, Point2D< GeometryReal > _barycentricCoords , int _ci , int _cj , int _chartID , bool _isInterior ) : tID(_tID) , barycentricCoords(_barycentricCoords) , ci(_ci) , cj(_cj) , chartID(_chartID) , isInterior(_isInterior) {}
-		int tID;
-		Point2D< GeometryReal > barycentricCoords;
-		int ci , cj;
-		int chartID;
+		TextureNodeInfo( void )
+			: tID(-1) , ci( static_cast< unsigned int >(-1) ) , cj( static_cast< unsigned int >(-1) ) , chartID( static_cast< unsigned int >(-1) ) , isInterior(false) {}
+		TextureNodeInfo( AtlasMeshTriangleIndex tID , Point2D< GeometryReal > barycentricCoords , unsigned int ci , unsigned int cj , ChartIndex chartID , bool isInterior )
+			: tID(tID) , barycentricCoords(barycentricCoords) , ci(ci) , cj(cj) , chartID(chartID) , isInterior(isInterior) {}
+		AtlasMeshTriangleIndex tID;
+		Point< GeometryReal , 2 > barycentricCoords;
+		unsigned int ci , cj;
+		ChartIndex chartID;
 		bool isInterior;
+
+		operator MeshSample< GeometryReal >() const { return MeshSample< GeometryReal >( static_cast< unsigned int >(tID) , barycentricCoords ); }
 	};
 
-
-	class BilinearElementIndex
+	template< typename IndexType >
+	struct BilinearElementIndex
 	{
+		BilinearElementIndex( void ) { _v[0] = _v[1] = _v[2] = _v[3] = IndexType(-1); }
+		BilinearElementIndex( IndexType v0 , IndexType v1 , IndexType v2 , IndexType v3 ) { _v[0] = v0 , _v[1] = v1 , _v[2] = v2 , _v[3] = v3; }
+		IndexType &operator[]( unsigned int idx )       { return _v[idx]; }
+		IndexType  operator[]( unsigned int idx ) const { return _v[idx]; }
 	protected:
-		unsigned int v[4];
-	public:
-		BilinearElementIndex( void ) { v[0] = v[1] = v[2] = v[3] = 0; }
-		BilinearElementIndex( unsigned int v0 , unsigned int v1 , unsigned int v2 , unsigned int v3 ) { v[0] = v0 , v[1] = v1 , v[2] = v2 , v[3] = v3; }
-		unsigned int &operator[]( unsigned int idx )       { return v[idx]; }
-		unsigned int  operator[]( unsigned int idx ) const { return v[idx]; }
+		IndexType _v[4];
 	};
 
-	class QuadraticElementIndex
+	struct QuadraticElement
 	{
+		struct Index
+		{
+			Index( void ) { _v[0] = _v[1] = _v[2] = _v[3] = _v[4] = _v[5] = AtlasInteriorOrBoundaryNodeIndex(0); }
+			Index( AtlasInteriorOrBoundaryNodeIndex v0 , AtlasInteriorOrBoundaryNodeIndex v1 , AtlasInteriorOrBoundaryNodeIndex v2 , AtlasInteriorOrBoundaryNodeIndex v3 , AtlasInteriorOrBoundaryNodeIndex v4 , AtlasInteriorOrBoundaryNodeIndex v5 ){ _v[0] = v0 , _v[1] = v1 , _v[2] = v2 , _v[3] = v3 , _v[4] = v4 , _v[5] = v5; }
+			AtlasInteriorOrBoundaryNodeIndex &operator[]( unsigned int idx )       { return _v[idx]; }
+			AtlasInteriorOrBoundaryNodeIndex  operator[]( unsigned int idx ) const { return _v[idx]; }
+		protected:
+			AtlasInteriorOrBoundaryNodeIndex _v[6];
+		};
+
+		template< typename Real >
+		static Real Value( unsigned int elementIndex , Point2D< Real > pos )
+		{
+#ifdef USE_SIMPLEX_BASIS
+			return static_cast< Real >( SimplexElements< 2 , 2 >::Element( _idx[elementIndex] )( Point2D< double >(pos) ) );
+#else // !USE_SIMPLEX_BASIS
+			switch( elementIndex )
+			{
+			case 0:	return 2 * pos[0] * pos[0] + 4 * pos[0] * pos[1] + 2 * pos[1] * pos[1] - 3 * pos[0] - 3 * pos[1] + 1;
+			case 1: return 2 * pos[0] * pos[0] - 1 * pos[0];
+			case 2: return 2 * pos[1] * pos[1] - 1 * pos[1];
+			case 3: return 4 * pos[0] * pos[1];
+			case 4: return -4 * pos[0] * pos[1] - 4 * pos[1] * pos[1] + 4 * pos[1];
+			case 5: return -4 * pos[0] * pos[0] - 4 * pos[0] * pos[1] + 4 * pos[0];
+			default: MK_THROW( "Element out of bounds" );
+			}
+			return (Real)0;
+#endif // USE_SIMPLEX_BASIS
+		}
+
+		template< typename Real >
+		static Point2D< Real > Differential( unsigned int elementIndex , Point2D< Real > pos )
+		{
+#ifdef USE_SIMPLEX_BASIS
+			const Point< Polynomial::Polynomial< 2 , 1 , double > , 2 > & d = SimplexElements< 2 , 2 >::Differential( _idx[elementIndex] );
+			return Point2D< Real >( d[0]( Point2D< double >(pos) ) , d[1]( Point2D< double >(pos) ) );
+#else // !USE_SIMPLEX_BASIS
+			switch( elementIndex )
+			{
+			case 0: return Point2D< Real >( 4 * pos[0] + 4 * pos[1] - 3 , 4 * pos[0] + 4 * pos[1] - 3 );
+			case 1: return Point2D< Real >( 4 * pos[0] - 1 , 0 );
+			case 2: return Point2D< Real >( 0 , 4 * pos[1] - 1 );
+			case 3: return Point2D< Real >( 4 * pos[1] , 4 * pos[0]);
+			case 4: return Point2D< Real >( -4 * pos[1] , -4 * pos[0] - 8 * pos[1] + 4 );
+			case 5: return Point2D< Real >( -8 * pos[0] - 4 * pos[1] + 4 , -4 * pos[0] );
+			default: MK_THROW( "Element out of bounds" );
+			}
+			return Point2D< Real >();
+#endif // USE_SIMPLEX_BASIS
+		}
+
+		template< typename Real >
+		static void ValuesAndDifferentials( Point2D< Real > pos , Real values[6] , Point2D< Real > differentials[6] )
+		{
+#ifdef USE_SIMPLEX_BASIS
+			Point< double , 6 > _values = SimplexElements< 2 , 2 >::Elements()( pos );
+			Point< Point< double , 2 > , 6 , double > _differentials = SimplexElements< 2 , 2 >::Differentials()( pos );
+			for( unsigned int i=0 ; i<6 ; i++ ) values[i] = _values[ _idx[i] ] , differentials[i] = _differentials[ _idx[i] ];
+#else // !USE_SIMPLEX_BASIS
+			Real xx = pos[0]*pos[0] , xy = pos[0]*pos[1] , yy = pos[1]*pos[1] , x=pos[0] , y=pos[1];
+			values[0] =  2*xx + 4*xy + 2*yy - 3*x - 3*y + 1 , differentials[0] = Point2D< Real >(  4*x + 4*y - 3 ,  4*x + 4*y - 3 );
+			values[1] =  2*xx               - 1*x           , differentials[1] = Point2D< Real >(  4*x       - 1 ,              0 );
+			values[2] =                2*yy       - 1*y     , differentials[2] = Point2D< Real >(              0 ,  4*y       - 1 );
+			values[3] =         4*xy                        , differentials[3] = Point2D< Real >(        4*y     ,  4*x           );
+			values[4] =        -4*xy - 4*yy       + 4*y     , differentials[4] = Point2D< Real >(      - 4*y     , -4*x - 8*y + 4 );
+			values[5] = -4*xx - 4*xy        + 4*x           , differentials[5] = Point2D< Real >( -8*x - 4*y + 4 , -4*x           );
+#endif // USE_SIMPLEX_BASIS
+		}
+
+		template< class Real , typename T >
+		static T Value( const T values[6] , Point2D< Real > pos )
+		{
+#ifdef USE_SIMPLEX_BASIS
+			T t{};
+			Point< double , 6 > eValues = SimplexElements< 2 , 2 >::Elements()( pos );
+			for( unsigned int i=0 ; i<6 ; i++ ) t += values[i] * eValues[ _idx[i] ];
+			return t;
+#else // !USE_SIMPLEX_BASIS
+			Real xx = pos[0] * pos[0] , xy = pos[0]*pos[1] , yy = pos[1] * pos[1] , x = pos[0] , y = pos[1];
+			return
+				values[0] * (   2 * xx + 2 * yy + 4 * xy - 3 * x - 3 * y + 1 ) +
+				values[1] * (   2 * xx                   - 1 * x             ) +
+				values[2] * (            2 * yy                  - 1 * y     ) +
+				values[3] * (                     4 * xy                     ) +
+				values[4] * (          - 4 * yy - 4 * xy         + 4 * y     ) +
+				values[5] * ( - 4 * xx          - 4 * xy + 4 * x             ) ;
+#endif // USE_SIMPLEX_BASIS
+		}
+
+		template< class Real , typename T >
+		static Point2D< T > Differential( const T values[6] , Point2D< Real > pos )
+		{
+#ifdef USE_SIMPLEX_BASIS
+			Point2D< T > d;
+			Point< Point< double , 2 > , 6 , double > dValues = SimplexElements< 2 , 2 >::Differentials()( pos );
+			for( unsigned int i=0 ; i<6 ; i++ ) d[0] += values[i] * dValues[ _idx[i] ][0] , d[1] += values[i] * dValues[ _idx[i] ][1];
+			return d;
+#else // !USE_SIMPLEX_BASIS
+			Real x = pos[0] , y = pos[1];
+			return 
+				Point2D< T >( values[0] * (   4 * x + 4 * y - 3 ) , values[0] * (   4 * y + 4 * x - 3 ) ) +
+				Point2D< T >( values[1] * (   4 * x         - 1 ) , values[1] * (                   0 ) ) +
+				Point2D< T >( values[2] * (                   0 ) , values[2] * (   4 * y         - 1 ) ) +
+				Point2D< T >( values[3] * (           4 * y     ) , values[3] * (           4 * x     ) ) +
+				Point2D< T >( values[4] * (         - 4 * y     ) , values[4] * ( - 8 * y - 4 * x + 4 ) ) +
+				Point2D< T >( values[5] * ( - 8 * x - 4 * y + 4 ) , values[5] * (         - 4 * x     ) ) ;
+#endif // USE_SIMPLEX_BASIS
+		}
+#ifdef USE_SIMPLEX_BASIS
 	protected:
-		unsigned int v[6];
-	public:
-		QuadraticElementIndex( void ) { v[0] = v[1] = v[2] = v[3] = v[4] = v[5] = 0; }
-		QuadraticElementIndex( unsigned int v0 , unsigned int v1 , unsigned int v2 , unsigned int v3 , unsigned int v4 , unsigned int v5 ){ v[0] = v0 , v[1] = v1 , v[2] = v2 , v[3] = v3 , v[4] = v4 , v[5] = v5; }
-		unsigned int &operator[]( unsigned int idx )       { return v[idx]; }
-		unsigned int  operator[]( unsigned int idx ) const { return v[idx]; }
+		static const unsigned int _idx[];
+#endif // USE_SIMPLEX_BASIS
 	};
 
-	template< typename GeometryReal >
-	GeometryReal QuadraticElementValue( int elementIndex , Point2D< GeometryReal > pos )
+#ifdef USE_SIMPLEX_BASIS
+	inline const unsigned int QuadraticElement::_idx[] = 
 	{
-		switch( elementIndex )
-		{
-		case 0:	return 2 * pos[0] * pos[0] + 4 * pos[0] * pos[1] + 2 * pos[1] * pos[1] - 3 * pos[0] - 3 * pos[1] + 1;
-		case 1: return 2 * pos[0] * pos[0] - 1 * pos[0];
-		case 2: return 2 * pos[1] * pos[1] - 1 * pos[1];
-		case 3: return 4 * pos[0] * pos[1];
-		case 4: return -4 * pos[0] * pos[1] - 4 * pos[1] * pos[1] + 4 * pos[1];
-		case 5: return -4 * pos[0] * pos[0] - 4 * pos[0] * pos[1] + 4 * pos[0];
-		default: MK_THROW( "Element out of bounds" );
-		}
-		return (GeometryReal)0;
-	}
+		SimplexElements< 2 , 2 >::NodeIndex( 0 , 0 ) ,
+		SimplexElements< 2 , 2 >::NodeIndex( 1 , 1 ) ,
+		SimplexElements< 2 , 2 >::NodeIndex( 2 , 2 ) ,
+		SimplexElements< 2 , 2 >::NodeIndex( 1 , 2 ) ,
+		SimplexElements< 2 , 2 >::NodeIndex( 2 , 0 ) ,
+		SimplexElements< 2 , 2 >::NodeIndex( 0 , 1 ),
+	};
+#endif // USE_SIMPLEX_BASIS
 
-	template< typename GeometryReal >
-	Point2D< GeometryReal > QuadraticElementGradient( int elementIndex , Point2D< GeometryReal > pos )
-	{
-		switch( elementIndex )
-		{
-		case 0: return Point2D< GeometryReal >( 4 * pos[0] + 4 * pos[1] - 3 , 4 * pos[0] + 4 * pos[1] - 3 );
-		case 1: return Point2D< GeometryReal >( 4 * pos[0] - 1 , 0 );
-		case 2: return Point2D< GeometryReal >( 0 , 4 * pos[1] - 1 );
-		case 3: return Point2D< GeometryReal >( 4 * pos[1] , 4 * pos[0]);
-		case 4: return Point2D< GeometryReal >( -4 * pos[1] , -4 * pos[0] - 8 * pos[1] + 4 );
-		case 5: return Point2D< GeometryReal >( -8 * pos[0] - 4 * pos[1] + 4 , -4 * pos[0] );
-		default: MK_THROW( "Element out of bounds" );
-		}
-		return Point2D< GeometryReal >();
-	}
-	template< typename GeometryReal >
-	void QuadraticElementValuesAndGradients( Point2D< GeometryReal > pos , GeometryReal values[] , Point2D< GeometryReal > gradients[] )
-	{
-		GeometryReal xx = pos[0]*pos[0] , xy = pos[0]*pos[1] , yy = pos[1]*pos[1] , x=pos[0] , y=pos[1];
-		values[0] =  2*xx + 4*xy + 2*yy - 3*x - 3*y + 1 , gradients[0] = Point2D< GeometryReal >(  4*x + 4*y - 3 ,  4*x + 4*y - 3 );
-		values[1] =  2*xx               - 1*x           , gradients[1] = Point2D< GeometryReal >(  4*x       - 1 ,              0 );
-		values[2] =                2*yy       - 1*y     , gradients[2] = Point2D< GeometryReal >(              0 ,  4*y       - 1 );
-		values[3] =         4*xy                        , gradients[3] = Point2D< GeometryReal >(        4*y     ,  4*x           );
-		values[4] =        -4*xy - 4*yy       + 4*y     , gradients[4] = Point2D< GeometryReal >(      - 4*y     , -4*x - 8*y + 4 );
-		values[5] = -4*xx - 4*xy        + 4*x           , gradients[5] = Point2D< GeometryReal >( -8*x - 4*y + 4 , -4*x           );
-	}
 
 	template< class Real , typename T >
 	T BilinearValue( const T values[4] , Point2D< Real > pos )
@@ -132,6 +214,9 @@ namespace MishaK
 			Point2D< T >( values[2] * (   y     ) , values[2] * (   x     ) ) +
 			Point2D< T >( values[3] * ( - y     ) , values[3] * ( - x + 1 ) ) ;
 	}
+
+#ifdef USE_SIMPLEX_BASIS
+#else // !USE_SIMPLEX_BASIS
 	// For the node at (0.0,0.0):
 	//		F(x,y) = a x^2 + b y^2 + c xy + d x + e y + f
 	//		F(0.0,0.0) = 1 => f = 1                 => F(x,y) = a x^2 + b y^2 + c xy + d x + e y + 1
@@ -188,30 +273,7 @@ namespace MishaK
 	// (0.0,0.5) -> G(x,y) = (       - 4 y     , - 8 y - 4 x + 4 ) //
 	// (0.5,0.0) -> G(x,y) = ( - 8 x - 4 y + 4 ,       - 4 x     ) //
 	/////////////////////////////////////////////////////////////////
-	template< class Real , typename T >
-	T QuadraticValue( const T values[6] , Point2D< Real > pos )
-	{
-		Real xx = pos[0] * pos[0] , xy = pos[0]*pos[1] , yy = pos[1] * pos[1] , x = pos[0] , y = pos[1];
-		return
-			values[0] * (   2 * xx + 2 * yy + 4 * xy - 3 * x - 3 * y + 1 ) +
-			values[1] * (   2 * xx                   - 1 * x             ) +
-			values[2] * (            2 * yy                  - 1 * y     ) +
-			values[3] * (                     4 * xy                     ) +
-			values[4] * (          - 4 * yy - 4 * xy         + 4 * y     ) +
-			values[5] * ( - 4 * xx          - 4 * xy + 4 * x             ) ;
-	}
-	template< class Real , typename T >
-	Point2D< T > QuadraticGradient( const T values[6] , Point2D< Real > pos )
-	{
-		Real x = pos[0] , y = pos[1];
-		return 
-			Point2D< T >( values[0] * (   4 * x + 4 * y - 3 ) , values[0] * (   4 * y + 4 * x - 3 ) ) +
-			Point2D< T >( values[1] * (   4 * x         - 1 ) , values[1] * (                   0 ) ) +
-			Point2D< T >( values[2] * (                   0 ) , values[2] * (   4 * y         - 1 ) ) +
-			Point2D< T >( values[3] * (           4 * y     ) , values[3] * (           4 * x     ) ) +
-			Point2D< T >( values[4] * (         - 4 * y     ) , values[4] * ( - 8 * y - 4 * x + 4 ) ) +
-			Point2D< T >( values[5] * ( - 8 * x - 4 * y + 4 ) , values[5] * (         - 4 * x     ) ) ;
-	}
+#endif // USE_SIMPLEX_BASIS
 
 	template< typename GeometryReal >
 	GeometryReal LinearElementValue( int elementIndex , Point2D< GeometryReal > pos )

@@ -117,7 +117,7 @@ namespace MishaK
 
 
 		template< unsigned int EmbeddingDim , typename VertexEmbeddingFunctor /* = std::function< Point< double , EmbeddingDim > ( size_t ) > */ , typename SimplexIndexFunctor /* = std::function< SimplexIndex< Dim >( size_t ) > */ >
-		static void FlowTexelInfoToInterior( size_t simplexNum , VertexEmbeddingFunctor && VF , SimplexIndexFunctor && SIF , RegularGrid< Dim , TexelInfo< Dim > > &texelInfo );
+		static void FlowTexelInfoToInterior( size_t simplexNum , VertexEmbeddingFunctor && VF , SimplexIndexFunctor && SIF , RegularGrid< Dim , TexelInfo< Dim > > &texelInfo , double eps=0 , bool noWarning=true );
 
 		// Compute embedding positions for active texels
 		template< typename Real , unsigned int EmbeddingDim , unsigned int K , typename SimplexEmbeddingFunctor /* = std::function< Simplex< double , EmbeddingDim , K > > ( size_t ) > */ >

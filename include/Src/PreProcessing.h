@@ -25,30 +25,35 @@ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING 
 ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
 DAMAGE.
 */
+
+// To do:
+// -- Use analytic integration
+// -- Pass in GridAtlas instead of its member data
+// -- Remove GridChart::cellType and GridChart::texelType
+// -- "combined" -> ""
+// -- supported -> covered
+// -- AtlasInteriorOrBoundaryNodeIndex -> AtlasCoveredOrBoundaryNodeIndex
+// -- Change coefficient vector std::vector -> IndexVector (in IterativeSolvers.inl)
+// -- Minimize static_cast< unsigned int >(...)
+// 1. Modify code to distinguish between grid-based indexing and normalized coordinates
 #ifndef PRE_PROCESSING_INCLUDED
 #define PRE_PROCESSING_INCLUDED
 
-#define NEW_CODE					// General-purpose experimental code encapsulation
+#define NEW_CODE						// General-purpose experimental code encapsulation
+
+
+//#define NO_OPEN_GL_VISUALIZATION		// Disable OpenGL visualization
+//#define DEBUG_INDEXING				// Use separate classes to sanity check indexing
+//#define SANITY_CHECK					// Enables sanity checks for debugging purposes
+//#define USE_SIMPLEX_BASIS				// Cleaner, but slower
 
 #define USE_EIGEN
 #undef USE_CHOLMOD
 #undef USE_EIGEN_PARDISO
 
 
-//#define NO_OPEN_GL_VISUALIZATION		// Disable OpenGL visualization
-//#define USE_TEXTURE_TRIANGLES			// Represent textures using a separate triangulation
-#define USE_RASTERIZER					// Use triangle/edge rasterization code
-
-#define INSERTION_EPSILON 1e-12		// Separation from interval end-points required for insertion
+#define INSERTION_EPSILON 1e-12			// Separation from interval end-points required for insertion
 
 
-//#define DEBUG_BAD_LOOP
-#ifdef DEBUG_BAD_LOOP
-#include <functional>
-std::function< bool ( unsigned int ) > DebugChartFunctor = [&]( unsigned int ){ return false; };
-std::function< bool ( unsigned int ) > DebugCellFunctor = [&]( unsigned int ){ return false; };
-bool DebugChart = false; 
-bool DebugCell = false;
-#endif // DEBUG_BAD_LOOP
 
 #endif // PRE_PROCESSING_INCLUDED
