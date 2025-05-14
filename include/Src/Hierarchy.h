@@ -43,6 +43,9 @@ DAMAGE.
 #include <Misha/Atomic.Geometry.h>
 #include "IndexedPolygon.h"
 #include "ImageIO.h"
+#ifdef NEW_CODE
+#include "Basis.h"
+#endif // NEW_CODE
 
 namespace MishaK
 {
@@ -51,17 +54,35 @@ namespace MishaK
 	{
 		struct SampleData
 		{
+			Real dualValues[4];				// The integrated values of the four incident bilinear basis functions, dualized
+#ifdef NEW_CODE
+			SampleData( void ){ _weights[0] = _weights[1] = _weights[2] = _weights[3] = 0; dualValues[0] = dualValues[1] = dualValues[2] = dualValues[3] = 0; }
+			void init( Point2D< Real > p )
+			{
+				_weights[0] = ( 1 - p[0] ) * ( 1 - p[1] );
+				_weights[1] = (     p[0] ) * ( 1 - p[1] );
+				_weights[2] = (     p[0] ) * (     p[1] );
+				_weights[3] = ( 1 - p[0] ) * (     p[1] );
+			}
+			template< typename T >
+			T operator()( const T values[4] ) const
+			{
+				return values[0] * _weights[0] + values[1] * _weights[1] + values[2] * _weights[2] + values[3] * _weights[3];
+			}
+		protected:
+			Real _weights[4];
+#else // !NEW_CODE
 			SampleData( void ){ memset( dualValues , 0 , sizeof(Real) * 4 ); }
 			Point2D< Real > pos;			// The sample position inside the element
-			Real dualValues[4];				// The integrated values of the four incident bilinear basis functions, dualized
+#endif // NEW_CODE
 		};
 		SquareMatrix< Real , 2 > tensor;	// The inverse metric tensor defined by the intersecting triangle
 		unsigned int cellOffset;
 		bool operator < ( const BilinearElementScalarSample& sample ) const { return cellOffset<sample.cellOffset; }
 
-		BilinearElementScalarSample( void ) : _sampleNum(0) , _samples(NULL) {}
-		BilinearElementScalarSample( unsigned int sz ) : _sampleNum(0) , _samples(NULL) { resize(sz); }
-		BilinearElementScalarSample( const BilinearElementScalarSample& bilinearElementScalarSample ) : _sampleNum(0) , _samples(NULL)
+		BilinearElementScalarSample( void ) : _sampleNum(0) , _samples(nullptr) {}
+		BilinearElementScalarSample( unsigned int sz ) : _sampleNum(0) , _samples(nullptr) { resize(sz); }
+		BilinearElementScalarSample( const BilinearElementScalarSample& bilinearElementScalarSample ) : _sampleNum(0) , _samples(nullptr)
 		{
 			resize( bilinearElementScalarSample._sampleNum );
 			memcpy( _samples , bilinearElementScalarSample._samples , sizeof( SampleData ) * _sampleNum );
@@ -82,7 +103,7 @@ namespace MishaK
 
 		void resize( unsigned int sz )
 		{
-			if( _samples ){ delete[] _samples ; _samples = NULL; }
+			if( _samples ){ delete[] _samples ; _samples = nullptr; }
 			_sampleNum = 0;
 			if( sz ){ _samples = new SampleData[sz] ; _sampleNum = sz; }
 		}
@@ -99,16 +120,41 @@ namespace MishaK
 	{
 		struct SampleData
 		{
+			Real dualValues[6];				// The integrated values of the six incident quadratic basis functions, dualized
+#ifdef NEW_CODE
+			SampleData( void )
+			{
+				_weights[0] = _weights[1] = _weights[2] = _weights[3] = _weights[4] = _weights[5] = 0;
+				dualValues[0] = dualValues[1] = dualValues[2] = dualValues[3] = dualValues[4] = dualValues[5] = 0;
+			}
+			void init( Point2D< Real > p )
+			{
+				Real xx = p[0]*p[0] , xy = p[0]*p[1] , yy = p[1]*p[1] , x = p[0] , y = p[1];
+				_weights[0] = (   2 * xx + 2 * yy + 4 * xy - 3 * x - 3 * y + 1 );
+				_weights[1] = (   2 * xx                   - 1 * x             );
+				_weights[2] = (            2 * yy                  - 1 * y     );
+				_weights[3] = (                     4 * xy                     );
+				_weights[4] = (          - 4 * yy - 4 * xy         + 4 * y     );
+				_weights[5] = ( - 4 * xx          - 4 * xy + 4 * x             );
+			}
+			template< typename T >
+			T operator()( const T values[6] ) const
+			{
+				return values[0]*_weights[0] + values[1]*_weights[1] + values[2]*_weights[2] + values[3]*_weights[3] + values[4]*_weights[4] + values[5]*_weights[5];
+			}
+		protected:
+			Real _weights[6];
+#else // !NEW_CODE
 			SampleData( void ){ memset( dualValues , 0 , sizeof(Real) * 6 ); }
 			Point2D< Real > pos;			// The sample position inside the element
-			Real dualValues[6];				// The integrated values of the six incident quadratic basis functions, dualized
+#endif // NEW_CODE
 		};
 		SquareMatrix< Real , 2 > tensor;	// The inverse metric tensor defined by the intersecting triangle
 		AtlasInteriorOrBoundaryNodeIndex fineNodes[6];
 
-		QuadraticElementScalarSample( void ) : _sampleNum(0) , _samples(NULL) {}
-		QuadraticElementScalarSample( unsigned int sz ) : _sampleNum(0) , _samples(NULL) { resize(sz); }
-		QuadraticElementScalarSample( const QuadraticElementScalarSample& quadraticElementScalarSample ) : _sampleNum(0) , _samples(NULL)
+		QuadraticElementScalarSample( void ) : _sampleNum(0) , _samples(nullptr) {}
+		QuadraticElementScalarSample( unsigned int sz ) : _sampleNum(0) , _samples(nullptr) { resize(sz); }
+		QuadraticElementScalarSample( const QuadraticElementScalarSample& quadraticElementScalarSample ) : _sampleNum(0) , _samples(nullptr)
 		{
 			resize( quadraticElementScalarSample._sampleNum );
 			memcpy( _samples , quadraticElementScalarSample._samples , sizeof( SampleData ) * _sampleNum );
@@ -126,7 +172,7 @@ namespace MishaK
 		~QuadraticElementScalarSample( void ){ resize(0); }
 		void resize( unsigned int sz )
 		{
-			if( _samples ){ delete[] _samples ; _samples = NULL; }
+			if( _samples ){ delete[] _samples ; _samples = nullptr; }
 			_sampleNum = 0;
 			if( sz ){ _samples = new SampleData[sz] ; _sampleNum = sz; }
 		}
@@ -143,16 +189,37 @@ namespace MishaK
 	{
 		struct SampleData
 		{
-			Point2D< Real > pos;				// The sample position inside the element
 			Point2D< Real > dualGradients[4];	// The integrated gradients of the four incident bilinear basis functions, dualized
+#ifdef NEW_CODE
+			void init( Point2D< Real > p )
+			{
+				_weights[0] = Point2D< Real >(   p[1] - 1 ,    p[0] - 1 );
+				_weights[1] = Point2D< Real >( - p[1] + 1 ,  - p[0]     );
+				_weights[2] = Point2D< Real >(   p[1]     ,    p[0]     );
+				_weights[3] = Point2D< Real >( - p[1]     ,  - p[0] + 1 );
+			}
+			template< typename T >
+			Point2D< T > operator()( const T values[4] ) const
+			{
+				return Point2D< T >
+					(
+						values[0] * _weights[0][0] + values[1] * _weights[1][0] + values[2] * _weights[2][0] + values[3] * _weights[3][0] ,
+						values[0] * _weights[0][1] + values[1] * _weights[1][1] + values[2] * _weights[2][1] + values[3] * _weights[3][1]
+					);
+			}
+		protected:
+			Point2D< Real > _weights[4];
+#else // !NEW_CODE
+			Point2D< Real > pos;				// The sample position inside the element
+#endif // NEW_CODE
 		};
 		SquareMatrix< Real , 2 > tensor;		// The inverse metric tensor defined by the intersecting triangle
 		unsigned int cellOffset;
 		bool operator < ( const BilinearElementGradientSample& sample ) const { return cellOffset < sample.cellOffset; }
 
-		BilinearElementGradientSample( void ) : _sampleNum(0) , _samples(NULL) {}
-		BilinearElementGradientSample( unsigned int sz ) : _sampleNum(0) , _samples(NULL) { resize(sz); }
-		BilinearElementGradientSample( const BilinearElementGradientSample& bilinearElementGradientSample ) : _sampleNum(0) , _samples(NULL)
+		BilinearElementGradientSample( void ) : _sampleNum(0) , _samples(nullptr) {}
+		BilinearElementGradientSample( unsigned int sz ) : _sampleNum(0) , _samples(nullptr) { resize(sz); }
+		BilinearElementGradientSample( const BilinearElementGradientSample& bilinearElementGradientSample ) : _sampleNum(0) , _samples(nullptr)
 		{
 			resize( bilinearElementGradientSample._sampleNum );
 			memcpy( _samples , bilinearElementGradientSample._samples , sizeof( SampleData ) * _sampleNum );
@@ -170,7 +237,7 @@ namespace MishaK
 		~BilinearElementGradientSample( void ){ resize(0); }
 		void resize( unsigned int sz )
 		{
-			if( _samples ){ delete[] _samples ; _samples = NULL; }
+			if( _samples ){ delete[] _samples ; _samples = nullptr; }
 			_sampleNum = 0;
 			if( sz ){ _samples = new SampleData[sz] ; _sampleNum = sz; }
 		}
@@ -187,15 +254,38 @@ namespace MishaK
 	{
 		struct SampleData
 		{
-			Point2D< Real > pos;				// The sample position inside the element
 			Point2D< Real > dualGradients[6];	// The integrated gradients of the six incident quadratic basis functions, dualized
+#ifdef NEW_CODE
+			void init( Point2D< Real > p )
+			{
+				_weights[0] = Point2D< Real >(   4 * p[0] + 4 * p[1] - 3 ,   4 * p[1] + 4 * p[0] - 3 );
+				_weights[1] = Point2D< Real >(   4 * p[0]            - 1 ,                         0 );
+				_weights[2] = Point2D< Real >(                         0 ,   4 * p[1]            - 1 );
+				_weights[3] = Point2D< Real >(              4 * p[1]     ,              4 * p[0]     );
+				_weights[4] = Point2D< Real >(            - 4 * p[1]     , - 8 * p[1] - 4 * p[0] + 4 );
+				_weights[5] = Point2D< Real >( - 8 * p[0] - 4 * p[1] + 4 ,            - 4 * p[0]     );
+			}
+			template< typename T >
+			Point2D< T > operator()( const T values[6] ) const
+			{
+				return Point2D< T >
+					(
+						values[0] * _weights[0][0] + values[1] * _weights[1][0] + values[2] * _weights[2][0] + values[3] * _weights[3][0] + values[4] * _weights[4][0] + values[5] * _weights[5][0] ,
+						values[0] * _weights[0][1] + values[1] * _weights[1][1] + values[2] * _weights[2][1] + values[3] * _weights[3][1] + values[4] * _weights[4][1] + values[5] * _weights[5][1]
+					);
+			}
+		protected:
+			Point2D< Real > _weights[6];
+#else // !NEW_CODE
+			Point2D< Real > pos;				// The sample position inside the element
+#endif // NEW_CODE
 		};
 		SquareMatrix< Real , 2 > tensor;		// The inverse metric tensor defined by the intersecting triangle
 		AtlasInteriorOrBoundaryNodeIndex fineNodes[6];
 
-		QuadraticElementGradientSample( void ) : _sampleNum(0) , _samples(NULL) {}
-		QuadraticElementGradientSample( unsigned int sz ) : _sampleNum(0) , _samples(NULL) { resize(sz); }
-		QuadraticElementGradientSample( const QuadraticElementGradientSample& quadraticElementGradientSample ) : _sampleNum(0) , _samples(NULL)
+		QuadraticElementGradientSample( void ) : _sampleNum(0) , _samples(nullptr) {}
+		QuadraticElementGradientSample( unsigned int sz ) : _sampleNum(0) , _samples(nullptr) { resize(sz); }
+		QuadraticElementGradientSample( const QuadraticElementGradientSample& quadraticElementGradientSample ) : _sampleNum(0) , _samples(nullptr)
 		{
 			resize( quadraticElementGradientSample._sampleNum );
 			memcpy( _samples , quadraticElementGradientSample._samples , sizeof( SampleData ) * _sampleNum );
@@ -213,7 +303,7 @@ namespace MishaK
 		~QuadraticElementGradientSample( void ){ resize(0); }
 		void resize( unsigned int sz )
 		{
-			if( _samples ){ delete[] _samples ; _samples = NULL; }
+			if( _samples ){ delete[] _samples ; _samples = nullptr; }
 			_sampleNum = 0;
 			if( sz ){ _samples = new SampleData[sz] ; _sampleNum = sz; }
 		}

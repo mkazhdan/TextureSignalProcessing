@@ -193,7 +193,33 @@ namespace MishaK
 	};
 #endif // USE_SIMPLEX_BASIS
 
+#ifdef NEW_CODE
+	struct BilinearElement
+	{
+		template< class Real , typename T >
+		static T Value( const T values[4] , Point2D< Real > pos )
+		{
+			Real x = pos[0] , y = pos[1];
+			return
+				values[0] * ( 1 - x ) * ( 1 - y ) +
+				values[1] * (     x ) * ( 1 - y ) +
+				values[2] * (     x ) * (     y ) +
+				values[3] * ( 1 - x ) * (     y ) ;
+		}
 
+		template< class Real , typename T >
+		static Point2D< T > Differential( const T values[4] , Point2D< Real > pos )
+		{
+			Real x = pos[0] , y = pos[1];
+			return
+				Point2D< T >( values[0] * (   y - 1 ) , values[0] * (   x - 1 ) ) +
+				Point2D< T >( values[1] * ( - y + 1 ) , values[1] * ( - x     ) ) +
+				Point2D< T >( values[2] * (   y     ) , values[2] * (   x     ) ) +
+				Point2D< T >( values[3] * ( - y     ) , values[3] * ( - x + 1 ) ) ;
+		}
+
+	};
+#else // !NEW_CODE
 	template< class Real , typename T >
 	T BilinearValue( const T values[4] , Point2D< Real > pos )
 	{
@@ -214,6 +240,9 @@ namespace MishaK
 			Point2D< T >( values[2] * (   y     ) , values[2] * (   x     ) ) +
 			Point2D< T >( values[3] * ( - y     ) , values[3] * ( - x + 1 ) ) ;
 	}
+#endif // NEW_CODE
+
+
 
 #ifdef USE_SIMPLEX_BASIS
 #else // !USE_SIMPLEX_BASIS
