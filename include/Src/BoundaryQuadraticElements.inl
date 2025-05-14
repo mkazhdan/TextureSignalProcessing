@@ -491,8 +491,10 @@ GetChartBoundaryPolygons
 
 							// Find the information for the opposite half-edge
 							auto atlasBoundaryHalfEdgeToIntersectionInfosIter = atlasBoundaryHalfEdgeToIntersectionInfos.find( oppHalfEdge );
+#ifdef SANITY_CHECK
 							if( atlasBoundaryHalfEdgeToIntersectionInfosIter==atlasBoundaryHalfEdgeToIntersectionInfos.end() )
 								MK_THROW( "Opposite edge intersections not found. Current  edge " , atlasChart.atlasHalfEdge( segmentInfo.chartHalfEdge ) , ". Opposite " , oppHalfEdge );
+#endif // SANITY_CHECK
 
 							std::vector< AtlasRefinedBoundaryVertexIndex > segmentIndicesToInsert;
 							std::vector< GeometryReal > segmentTimesToInsert;
@@ -554,7 +556,9 @@ GetChartBoundaryPolygons
 					Point2D< GeometryReal > currentPos = loopNodes[i][j].position;
 					Point2D< GeometryReal >    nextPos = loopNodes[i][ (j+1)%loopKeys[i].second.size() ].position;
 
+#ifdef SANITY_CHECK
 					if( currentSegmentAtlasEdgeIndex==AtlasMeshEdgeIndex(-1) ) MK_THROW( "Invalid atlas edge index" );
+#endif // SANITY_CHECK
 
 					for( unsigned int k=0 ; k<_indices.size() ; k++ )
 					{
@@ -585,7 +589,9 @@ GetChartBoundaryPolygons
 					insertionCount++;
 				}
 			}
+#ifdef SANITY_CHECK
 			if( insertionCount!=indicesToInsert.size() ) MK_THROW( "Intersection chains count does not match" );
+#endif // SANITY_CHECK
 			loopNodes[i] = expandedLoopNodes;
 			loopAtlasVertexIndices[i] = expandedLoopAtlasVertexIndices;
 			loopAtlasEdges[i] = expandedLoopAtlasEdgeIndex;
@@ -829,7 +835,9 @@ void InitializeCoarseBoundaryToFineBoundaryProlongation
 				AtlasTexelIndex coarseCombinedIndex = gridChart.texelIndices[j].combined;
 
 				AtlasBoundaryTexelIndex boundaryIndex = indexConverter.combinedToBoundary( coarseCombinedIndex );
+#ifdef SANITY_CHECK
 				if( boundaryIndex==AtlasBoundaryTexelIndex(-1) ) MK_THROW( "Coarse node is not boundary. Combined index " , coarseCombinedIndex , ". Boundary index " , boundaryIndex );
+#endif // SANITY_CHECK
 				prolongationTriplets.emplace_back( numFineBoundaryNodes , static_cast< unsigned int >(boundaryIndex) , (MatrixReal)1. );
 				fineBoundaryIndex[ static_cast< unsigned int >(gridChart.texelIndices[j].covered) ] = static_cast< AtlasInteriorOrBoundaryNodeIndex >( numFineBoundaryNodes );
 				numFineBoundaryNodes++;
@@ -877,13 +885,17 @@ void InitializeCoarseBoundaryToFineBoundaryProlongation
 			Point2D< GeometryReal >nodePosition = gridChart.auxiliaryNodes[j].position;
 			int corner[2] = { (int)floor(nodePosition[0] / gridChart.cellSizeW), (int)floor(nodePosition[1] / gridChart.cellSizeH) };
 			ChartCellIndex cellID = gridChart.cellIndices( corner[0] , corner[1] ).combined;
+#ifdef SANITY_CHECK
 			if( cellID==ChartCellIndex(-1) ) MK_THROW( "Invalid cell index. Node position " , nodePosition[0] / gridChart.cellSizeW , " " , nodePosition[1] / gridChart.cellSizeH );
+#endif // SANITY_CHECK
 			nodePosition[0] /= gridChart.cellSizeW;
 			nodePosition[1] /= gridChart.cellSizeH;
 			nodePosition[0] -= (GeometryReal)corner[0];
 			nodePosition[1] -= (GeometryReal)corner[1];
+#ifdef SANITY_CHECK
 			if( nodePosition[0] < 0-precision_error || nodePosition[0] > 1+precision_error || nodePosition[1] < 0-precision_error || nodePosition[1] > 1+precision_error )
 				MK_THROW( "Sample out of unit box! (" , nodePosition[0] , " " , nodePosition[0] , ")" );
+#endif // SANITY_CHECK
 			for( unsigned int k=0 ; k<4 ; k++ )
 			{
 				MatrixReal texelWeight = (MatrixReal)BilinearElementValue(k, nodePosition) / nodeDegree;
@@ -891,13 +903,17 @@ void InitializeCoarseBoundaryToFineBoundaryProlongation
 				{
 					auxiliaryNodesCumWeight[auxiliaryID] += texelWeight;
 					AtlasTexelIndex texelIndex = gridChart.combinedCellCombinedTexelBilinearElementIndices[cellID][k];
+#ifdef SANITY_CHECK
 					if( texelInfo[texelIndex].texelType==TexelType::InteriorSupported )
 						MK_THROW( "Interior-supported texel cannot be in the support of an auxiliary node. Weight " , texelWeight , " (A)" );
 
 					if( static_cast< unsigned int >(gridChart.auxiliaryNodes[j].index)<static_cast< unsigned int >(gridAtlas.endCoveredTexelIndex) || static_cast< unsigned int >(gridChart.auxiliaryNodes[j].index)>numFineNodes || texelIndex==AtlasTexelIndex(-1) || static_cast< unsigned int >(texelIndex)>static_cast< unsigned int >(gridAtlas.endCombinedTexelIndex) ) MK_THROW( "Out of bounds index" );
+#endif // SANITY_CHECK
 
 					AtlasBoundaryTexelIndex boundaryIndex = indexConverter.combinedToBoundary( AtlasTexelIndex(texelIndex) );
+#ifdef SANITY_CHECK
 					if( boundaryIndex==AtlasBoundaryTexelIndex(-1) ) MK_THROW( "Coarse node is not boundary" );
+#endif // SANITY_CHECK
 					prolongationTriplets.emplace_back( static_cast< unsigned int >(fineBoundaryID) , static_cast< unsigned int >(boundaryIndex) , texelWeight );
 				}
 			}

@@ -258,8 +258,10 @@ namespace MishaK
 								for( int s=0 ; s<Samples ; s++ )
 								{
 									fragment_samples[s] = polygon[0] + d[0] * (GeometryReal)TriangleIntegrator<Samples>::Positions[s][0] + d[1] * (GeometryReal)TriangleIntegrator<Samples>::Positions[s][1];
+#ifdef SANITY_CHECK
 									if( !InUnitTriangle( fragment_samples[s] ) ) MK_THROW( "Boundary sample out of unit right triangle! (" , fragment_samples[s][0] , " " , fragment_samples[s][1] , ")" );
 									else
+#endif // SANITY_CHECK
 									{
 										fragment_samples[s][0] = std::max< GeometryReal >( fragment_samples[s][0] , 0 );
 										fragment_samples[s][1] = std::max< GeometryReal >( fragment_samples[s][1] , 0 );
@@ -368,7 +370,9 @@ namespace MishaK
 
 							ChartInteriorCellIndex interiorIndex = gridChart.cellIndices(i,j).interior;
 							ChartBoundaryCellIndex boundaryIndex = gridChart.cellIndices(i,j).boundary;
+#ifdef SANITY_CHECK
 							if( interiorIndex!=ChartInteriorCellIndex(-1) && boundaryIndex!=ChartBoundaryCellIndex(-1) ) MK_THROW( "Cell simultaneously interior and boundary" );
+#endif // SANITY_CHECK
 
 							// If the cell is entirely within the triangle...
 							if( CellInTriangle( i , j , parametricVertices ) && interiorIndex!=ChartInteriorCellIndex(-1) )
@@ -418,7 +422,9 @@ namespace MishaK
 										for( int s=0 ; s<Samples ; s++ )
 										{
 											fragment_samples[s] = polygon[0] + dm[0] * (GeometryReal)TriangleIntegrator<Samples>::Positions[s][0] + dm[1] * (GeometryReal)TriangleIntegrator<Samples>::Positions[s][1];
+#ifdef SANITY_CHECK
 											if( !InUnitSquare( fragment_samples[s] ) ) MK_THROW( "Interior sample out of unit box! (" , fragment_samples[s][0] , " " , fragment_samples[s][1] , ")" );
+#endif // SANITY_CHECK
 										}
 
 										// Integrate scalar product and gradient field
@@ -604,7 +610,9 @@ namespace MishaK
 							boundaryBoundaryMassTriplets.push_back( Eigen::Triplet< MatrixReal >( static_cast< unsigned int >( fineBoundaryIndex[ static_cast< unsigned int >(indicesInterior[k]) ] ) , static_cast< unsigned int >( fineBoundaryIndex[ static_cast< unsigned int >(indicesInterior[l]) ] ) , (MatrixReal)cellMass[ ChartInteriorCellIndex(i) ](k,l) ) );
 							boundaryBoundaryStiffnessTriplets.push_back( Eigen::Triplet< MatrixReal >( static_cast< unsigned int >( fineBoundaryIndex[ static_cast< unsigned int >(indicesInterior[k]) ] ) , static_cast< unsigned int >( fineBoundaryIndex[ static_cast< unsigned int >(indicesInterior[l]) ] ) , (MatrixReal)cellStiffness[ ChartInteriorCellIndex(i) ](k,l) ) );
 						}
+#ifdef SANITY_CHECK
 						else MK_THROW( "Expected supported index" );
+#endif // SANITY_CHECK
 					}
 					if( computeCellBasedStiffness )
 					{
@@ -622,7 +630,9 @@ namespace MishaK
 								AtlasTexelIndex edgeSourceCoarseIndex = indicesCombined[reducedCellCornerPairs[ 2*l+0 ] ];
 								AtlasTexelIndex edgeTargetCoarseIndex = indicesCombined[reducedCellCornerPairs[ 2*l+1 ] ];
 								SimplexIndex< 1 , AtlasTexelIndex > coarseEdgeKey( edgeSourceCoarseIndex , edgeTargetCoarseIndex );
+#ifdef SANITY_CHECK
 								if( coarseEdgeIndex.find(coarseEdgeKey)==coarseEdgeIndex.end() ) MK_THROW( "Fine edge not found" );
+#endif // SANITY_CHECK
 								cellCoarseEdgeIndex[l] = coarseEdgeIndex[coarseEdgeKey];
 							}
 							coarseEdgeIndexInitialized = true;
@@ -630,7 +640,9 @@ namespace MishaK
 						for( int l=0 ; l<4 ; l++ ) boundaryDeepDivergenceTriplets.push_back( Eigen::Triplet< MatrixReal >( static_cast< unsigned int >(currentNode) , cellCoarseEdgeIndex[l] , (MatrixReal)cellDivergence[ ChartInteriorCellIndex(i) ](k,l) ) );
 					}
 				}
+#ifdef SANITY_CHECK
 				else MK_THROW( "Expected supported index" );
+#endif // SANITY_CHECK
 			}
 		}
 
@@ -697,7 +709,9 @@ namespace MishaK
 					}
 
 					auto iter = fineBoundaryEdgeIndex.find( SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex >( edgeSourceFineIndex , edgeTargetFineIndex ) );
+#ifdef SANITY_CHECK
 					if( iter==fineBoundaryEdgeIndex.end() ) MK_THROW( "Fine edge not found" );
+#endif // SANITY_CHECK
 					for( unsigned int n=0 ; n<6 ; n++ )
 					{
 						AtlasInteriorOrBoundaryNodeIndex fineNodeIndex = fineTriangleElementIndices[n];

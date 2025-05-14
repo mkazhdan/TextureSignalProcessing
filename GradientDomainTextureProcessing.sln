@@ -125,7 +125,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Src", "Src", "{02EA681E-C7D
 		include\Src\Indices.h = include\Src\Indices.h
 		include\Src\InteriorTexelToCellLines.h = include\Src\InteriorTexelToCellLines.h
 		include\Src\IterativeSolvers.inl = include\Src\IterativeSolvers.inl
-		include\Src\MapLoop.h = include\Src\MapLoop.h
 		include\Src\MassAndStiffness.h = include\Src\MassAndStiffness.h
 		include\Src\MeshIO.h = include\Src\MeshIO.h
 		include\Src\Metric.inl = include\Src\Metric.inl

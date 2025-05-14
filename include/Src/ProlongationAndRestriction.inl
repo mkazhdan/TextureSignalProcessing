@@ -74,20 +74,32 @@ void InitializeAtlasHierachicalProlongation( GridAtlas< GeometryReal , MatrixRea
 						newLine.prevLineIndex = AtlasTexelIndex(-1);
 						newLine.nextLineIndex = AtlasTexelIndex(-1);
 						AtlasTexelIndex combinedIndex = coarseChart.texelIndices(ci,cj).combined;
+#ifdef SANITY_CHECK
 						if( combinedIndex==AtlasTexelIndex(-1) ) MK_THROW( "Coarse texel is inactive!(A)" );
 						else newLine.centerLineIndex = combinedIndex;
+#else // !SANITY_CHECK
+					newLine.centerLineIndex = combinedIndex;
+#endif // SANITY_CHECK
 					}
 					else
 					{
 						newLine.centerLineIndex = AtlasTexelIndex(-1);
 
 						AtlasTexelIndex combinedIndex = coarseChart.texelIndices(ci, cj).combined;
+#ifdef SANITY_CHECK
 						if( combinedIndex==AtlasTexelIndex(-1) ) MK_THROW( "Coarse texel is inactive!(B)" );
 						else newLine.prevLineIndex = combinedIndex;
+#else // !SANITY_CHECK
+						newLine.prevLineIndex = combinedIndex;
+#endif // SANITY_CHECK
 
 						combinedIndex = coarseChart.texelIndices(ci, cj + 1).combined;
+#ifdef SANITY_CHECK
 						if( combinedIndex==AtlasTexelIndex(-1) ) MK_THROW( "Coarse texel is inactive!(C)" );
 						else newLine.nextLineIndex = combinedIndex;
+#else // !SANITY_CHECK
+						newLine.nextLineIndex = combinedIndex;
+#endif // SANITY_CHECK
 					}
 					prolongationLines.push_back( newLine );
 				}
@@ -173,6 +185,7 @@ void InitializeProlongationMatrix( const GridAtlas< GeometryReal , MatrixReal > 
 	}
 
 	__prolongation = SetSparseMatrix( prolongationTriplets , fineAtlas.numTexels , coarseAtlas.numTexels , false );
+#ifdef SANITY_CHECK
 	ThreadPool::ParallelFor
 		(
 			0 , __prolongation.rows ,
@@ -183,6 +196,7 @@ void InitializeProlongationMatrix( const GridAtlas< GeometryReal , MatrixReal > 
 				if( fabs(sum-1.0)>1e-10 ) MK_THROW( "Prolongation does not add up to one! " , i , " -> " , sum );
 			}
 		);
+#endif // SANITY_CHECK
 }
 
 //Coarse restriction
@@ -224,7 +238,9 @@ void InitializeAtlasHierachicalRestriction
 				deepLines[i].coarseLineEndIndex = coarseRasterLines[i].coeffStartIndex + lineCoarseLength - 1;
 
 				TexelInfo startTexelInfo = coarseTexelInfo[lineCoarseStartIndex];
-				if( startTexelInfo.texelType!=TexelType::InteriorSupported ) MK_THROW( "Not an interior-supported teel" );
+#ifdef SANITY_CHECK
+				if( startTexelInfo.texelType!=TexelType::InteriorSupported ) MK_THROW( "Not an interior-supported texel" );
+#endif // SANITY_CHECK
 				int ci = startTexelInfo.ci;
 				int cj = startTexelInfo.cj;
 
@@ -234,7 +250,9 @@ void InitializeAtlasHierachicalRestriction
 
 				int fi = (int)( fineChart.centerOffset[0] + 2.0 *(ci - coarseChart.centerOffset[0]) );
 				int fj = (int)( fineChart.centerOffset[1] + 2.0 *(cj - coarseChart.centerOffset[1]) );
+#ifdef SANITY_CHECK
 				if( fi-1 < 0 || fi+1>(int)fineChart.width-1 || fj-1 < 0 || fj+1>(int)fineChart.height-1 ) MK_THROW( "Out of bounds node position" );
+#endif // SANITY_CHECK
 
 				AtlasTexelIndex fineCurrentLineStart = fineChart.texelIndices(fi,fj).combined;
 				if( fineCurrentLineStart!=AtlasTexelIndex(-1) )
@@ -243,10 +261,16 @@ void InitializeAtlasHierachicalRestriction
 					restrictionLines[i].lineEndIndex = fineCurrentLineStart + 2 * (coarseRasterLines[i].lineEndIndex - lineCoarseStartIndex);
 
 					AtlasInteriorTexelIndex fineCurrentDeep = fineChart.texelIndices(fi,fj).interior;
+#ifdef SANITY_CHECK
 					if( fineCurrentDeep!=AtlasInteriorTexelIndex(-1) ) deepLines[i].fineCurrentLineIndex = fineCurrentDeep;
 					else MK_THROW( "Invalid fine line start index" );
+#else // !SANITY_CHECK
+					deepLines[i].fineCurrentLineIndex = fineCurrentDeep;
+#endif // SANITY_CHECK
 				}
+#ifdef SANITY_CHECK
 				else MK_THROW( "Invalid fine line start index" );
+#endif // SANITY_CHECK
 
 				AtlasTexelIndex finePreviousLineStart = fineChart.texelIndices(fi,fj-1).combined;
 				if( finePreviousLineStart!=AtlasTexelIndex(-1) )
@@ -254,10 +278,16 @@ void InitializeAtlasHierachicalRestriction
 					restrictionLines[i].prevLineIndex = finePreviousLineStart;
 
 					AtlasInteriorTexelIndex finePreviousDeep = fineChart.texelIndices(fi,fj-1).interior;
+#ifdef SANITY_CHECK
 					if( finePreviousDeep!=AtlasInteriorTexelIndex(-1) ) deepLines[i].finePrevLineIndex = finePreviousDeep;
 					else MK_THROW( "Invalid fine line start index" );
+#else // !SANITY_CHECK
+					deepLines[i].finePrevLineIndex = finePreviousDeep;
+#endif // SANITY_CHECK
 				}
+#ifdef SANITY_CHECK
 				else MK_THROW( "Invalid fine previous line start index" );
+#endif // SANITY_CHECK
 
 
 				AtlasTexelIndex fineNextLineStart = fineChart.texelIndices(fi,fj+1).combined;
@@ -266,10 +296,16 @@ void InitializeAtlasHierachicalRestriction
 					restrictionLines[i].nextLineIndex = fineNextLineStart;
 
 					AtlasInteriorTexelIndex fineNextDeep = fineChart.texelIndices(fi,fj+1).interior;
+#ifdef SANITY_CHECK
 					if( fineNextDeep!=AtlasInteriorTexelIndex(-1) ) deepLines[i].fineNextLineIndex = fineNextDeep;
 					else MK_THROW( "Invalid fine line start index" );
+#else // !SANITY_CHECK
+					deepLines[i].fineNextLineIndex = fineNextDeep;
+#endif // SANITY_CHECK
 				}
+#ifdef SANITY_CHECK
 				else MK_THROW( "Invalid fine next line start index" );
+#endif // SANITY_CHECK
 			}
 		);
 
@@ -322,12 +358,17 @@ void InitializeAtlasHierachicalRestriction
 			for( int di=0 ; di<2 ; di++ ) for( int dj=0 ; dj<2 ; dj++ ) if( ci[di]!=-1 && cj[dj]!=-1)
 			{
 				AtlasTexelIndex coarseCombinedTexel = coarseChart.texelIndices(ci[di], cj[dj]).combined;
+#ifdef SANITY_CHECK
 				if( coarseCombinedTexel==AtlasTexelIndex(-1) ) MK_THROW( "Coarse texel is unactive! (D)" );
 				else
 				{
 					AtlasBoundaryTexelIndex coarseBoundaryIndex = indexConverter.combinedToBoundary( coarseCombinedTexel );
 					if( coarseBoundaryIndex!=AtlasBoundaryTexelIndex(-1) ) boundaryRestrictionTriplets.emplace_back( static_cast< unsigned int >(coarseBoundaryIndex) , static_cast< unsigned int >(fineChart.texelIndices(fi,fj).combined) , ci_weights[di] * cj_weights[dj] );
 				}
+#else // !SANITY_CHECK
+				AtlasBoundaryTexelIndex coarseBoundaryIndex = indexConverter.combinedToBoundary( coarseCombinedTexel );
+				if( coarseBoundaryIndex!=AtlasBoundaryTexelIndex(-1) ) boundaryRestrictionTriplets.emplace_back( static_cast< unsigned int >(coarseBoundaryIndex) , static_cast< unsigned int >(fineChart.texelIndices(fi,fj).combined) , ci_weights[di] * cj_weights[dj] );
+#endif // SANITY_CHECK
 			}
 		}
 	}

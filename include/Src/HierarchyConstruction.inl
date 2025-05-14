@@ -55,7 +55,9 @@ void InitializeIndexConverter
 				indexConverter._interiorToCombined.push_back( combinedTexelIndex );
 				indexConverter._combinedToBoundaryOrInterior[ combinedTexelIndex ] = std::pair< bool , unsigned int >( false , static_cast< unsigned int >(interiorTexelIndex++) );
 			}
+#ifdef SANITY_CHECK
 			if( gridChart.texelIndices[i].combined!=combinedTexelIndex ) MK_THROW( "Unexpected combined index: actual " , gridChart.texelIndices[i].combined , " , expected " , combinedTexelIndex );
+#endif // SANITY_CHECK
 			combinedTexelIndex++;
 		}
 	}
@@ -358,7 +360,9 @@ void InitializeGridChartsActiveNodes
 				newLine.nextLineIndex   = texelIndices( rasterStart , j+1 ).combined;
 				newLine.coeffStartIndex = texelIndices( rasterStart , j   ).interior;
 
+#ifdef SANITY_CHECK
 				if( newLine.lineStartIndex==AtlasTexelIndex(-1) || newLine.lineEndIndex==AtlasTexelIndex(-1) || newLine.prevLineIndex==AtlasTexelIndex(-1) || newLine.nextLineIndex==AtlasTexelIndex(-1) ) MK_THROW( "Inavlid Indexing" );
+#endif // SANITY_CHECK
 				rasterLines.push_back( newLine );
 
 				SegmentedRasterLine & newSegmentLine = segmentedLines.back();
@@ -639,7 +643,9 @@ void InitializeAtlasHierachicalBoundaryCoefficients
 						boundary_offset_j[numBoundaryNeighbours] = 2 * lj;
 						numBoundaryNeighbours++;
 					}
+#ifdef SANITY_CHECK
 					else MK_THROW( "Expected a supported index" );
+#endif // SANITY_CHECK
 				}
 			}
 		}
@@ -730,7 +736,9 @@ void InitializeAtlasHierachicalBoundaryCoefficients
 							}
 						}
 					}
+#ifdef SANITY_CHECK
 					else MK_THROW( "Expected supported index" );
+#endif // SANITY_CHECK
 				}
 			}
 		}

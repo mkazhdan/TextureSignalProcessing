@@ -65,15 +65,21 @@ namespace MishaK
 			divLine.texelEnd = line.lineEndIndex;
 			divLine.deepCoefficientsStart = line.coeffStartIndex;
 			SimplexIndex< 1 , AtlasTexelIndex > prevEdgeKey( line.prevLineIndex-1 , line.prevLineIndex );
+#ifdef SANITY_CHECK
 			if( coarseEdgeIndex.find( prevEdgeKey )==coarseEdgeIndex.end() ) MK_THROW( "Edge not found" );
+#endif // SANITY_CHECK
 			divLine.prevEdgeRowStart = coarseEdgeIndex[prevEdgeKey];
 
 			SimplexIndex< 1 , AtlasTexelIndex > currEdgeKey( line.lineStartIndex-1 , line.lineStartIndex );
+#ifdef SANITY_CHECK
 			if( coarseEdgeIndex.find(currEdgeKey)==coarseEdgeIndex.end() ) MK_THROW( "Edge not found" );
+#endif // SANITY_CHECK
 			divLine.currEdgeRowStart = coarseEdgeIndex[currEdgeKey];
 
 			SimplexIndex< 1 , AtlasTexelIndex > nextEdgeKey( line.nextLineIndex-1 , line.nextLineIndex );
+#ifdef SANITY_CHECK
 			if( coarseEdgeIndex.find(nextEdgeKey)==coarseEdgeIndex.end() ) MK_THROW( "Edge not found" );
+#endif // SANITY_CHECK
 			divLine.nextEdgeRowStart = coarseEdgeIndex[nextEdgeKey];
 		}
 	}

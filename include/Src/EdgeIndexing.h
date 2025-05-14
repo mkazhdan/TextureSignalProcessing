@@ -63,12 +63,16 @@ namespace MishaK
 			{
 				AtlasTexelIndex vIndices[2] = { indices[ pairsToAdd[2*k] ] , indices[ pairsToAdd[2*k+1] ] };
 				SimplexIndex< 1 , AtlasTexelIndex > edgeKey( vIndices[0] , vIndices[1] );
+#ifdef SANITY_CHECK
 				if( boundaryCoarseEdgeIndex.find(edgeKey)==boundaryCoarseEdgeIndex.end() )
+#endif // SANITY_CHECK
 				{
 					boundaryCoarseEdgeIndex[edgeKey] = lastAddedEdgeIndex;
 					lastAddedEdgeIndex++;
 				}
+#ifdef SANITY_CHECK
 				else MK_THROW( "Edge already added" );
+#endif // SANITY_CHECK
 			}
 		}
 	}
@@ -237,7 +241,9 @@ namespace MishaK
 									_coarseToFineOneFormProlongation[thread].push_back( Eigen::Triplet< MatrixReal >( static_cast< unsigned int >(fineEdgeId) , static_cast< unsigned int >(coarseEdgeId) , -coarseValue1 *coarseValue2 ) );
 								}
 							}
+#ifdef SANITY_CHECK
 							if( !foundEdge ) MK_THROW( "Edge (" , coarseIndex1 , "," , coarseIndex2 , ") not found" );
+#endif // SANITY_CHECK
 						}
 					}
 				}

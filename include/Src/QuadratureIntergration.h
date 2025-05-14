@@ -63,7 +63,9 @@ namespace MishaK
 			while( offset<width )
 			{
 				bool currentIsInterior = cellType(offset,j)==CellType::Interior;
+#ifdef SANITY_CHECK
 				if( ( offset==0 || offset==width-1 ) && currentIsInterior ) MK_THROW( "Unexpected interior cell" );
+#endif // SANITY_CHECK
 				if(  currentIsInterior && !previousIsInterior ) rasterStart = offset; //Start raster line
 				if( !currentIsInterior &&  previousIsInterior ) //Terminate raster line
 				{ 
@@ -72,12 +74,16 @@ namespace MishaK
 					newLine.nextLineIndex = texelIndices( rasterStart , j+1 ).combined;
 					newLine.length = offset - rasterStart;
 
+#ifdef SANITY_CHECK
 					if( newLine.prevLineIndex==AtlasTexelIndex(-1) || newLine.nextLineIndex==AtlasTexelIndex(-1) ) MK_THROW( "Invalid indexing" );
+#endif // SANITY_CHECK
 					int currentLine = (int)interiorCellLines.size();
 
 					for( unsigned int k=0 ; k<offset-rasterStart ; k++ )
 					{
+#ifdef SANITY_CHECK
 						if( gridChart.interiorCellCoveredTexelBilinearElementIndices[chartInteriorCellIndex][0]!=texelIndices( rasterStart+k , j ).covered ) MK_THROW( "Unexpected corner ID" );
+#endif // SANITY_CHECK
 
 						interiorCellLineIndex.push_back( std::pair< int , int >( currentLine , k ) );
 						chartInteriorCellIndex++;
@@ -351,7 +357,9 @@ namespace MishaK
 
 							ChartInteriorCellIndex chartInteriorIndex = gridChart.cellIndices(i,j).interior;
 							ChartBoundaryCellIndex chartBoundaryIndex = gridChart.cellIndices(i,j).boundary;
+#ifdef SANITY_CHECK
 							if( chartInteriorIndex!=ChartInteriorCellIndex(-1) && chartBoundaryIndex!=ChartBoundaryCellIndex(-1) ) MK_THROW( "Cell simultaneosly interior and boundary" );
+#endif // SANITY_CHECK
 
 							// Interior cells
 							// If the cell is entirely interior to the triangle
@@ -421,7 +429,9 @@ namespace MishaK
 										for( int s=0 ; s<Samples ; s++ )
 										{
 											Point2D< typename ElementSamples::Real > pos = polygon[0] + dm[0] * (typename ElementSamples::Real)TriangleIntegrator< Samples >::Positions[s][0] + dm[1] * (typename ElementSamples::Real)TriangleIntegrator< Samples >::Positions[s][1];
+#ifdef SANITY_CHECK
 											if( !InUnitSquare( pos ) ) MK_THROW( "Sample position out of unit square! (" , pos[0] , " " , pos[1] , ")" );
+#endif // SANITY_CHECK
 
 											typename ElementSamples::Bilinear::SampleData& sampleData = bilinearElementSample[ fastIntegration ? 0 : (p-2)*Samples+s ];
 											SetInteriorDuals< Samples >( sampleData , bilinearElementSample , pos , (typename ElementSamples::Real)( TriangleIntegrator< Samples >::Weights[s] * fragment_area ) );
@@ -471,8 +481,12 @@ namespace MishaK
 										for( unsigned int k=0 ; k<6 ; k++ )
 										{
 											AtlasInteriorOrBoundaryNodeIndex _fineBoundaryIndex = fineBoundaryIndex[ static_cast< unsigned int >( triangleElementIndices[k] ) ];
+#ifdef SANITY_CHECK
 											if( _fineBoundaryIndex!=AtlasInteriorOrBoundaryNodeIndex(-1) ) quadraticElementSample.fineNodes[k] = _fineBoundaryIndex;
 											else MK_THROW( "Invalid fine boundary index" );
+#else // !SANITY_CHECK
+											quadraticElementSample.fineNodes[k] = _fineBoundaryIndex;
+#endif // SANITY_CHECK
 										}
 
 										for( unsigned int p=2 ; p<polygon.size() ; p++ )
@@ -488,6 +502,7 @@ namespace MishaK
 												for( int s=0 ; s<Samples ; s++ )
 												{
 													Point2D< GeometryReal > pos = polygon[0] + d[0] * (GeometryReal)TriangleIntegrator< Samples >::Positions[s][0] + d[1] * (GeometryReal)TriangleIntegrator< Samples >::Positions[s][1];
+#ifdef SANITY_CHECK
 													if( !InUnitTriangle( pos ) ) MK_THROW( "Sample out of unit right triangle! (" , pos[0] , " " , pos[1] , ")" );
 													else
 													{
@@ -496,6 +511,12 @@ namespace MishaK
 														GeometryReal excess = ( pos[0] + pos[1] ) - 1;
 														if( excess>0 ) pos[0] -= excess/2 , pos[1] -= excess/2;
 													}
+#else // !SANITY_CHECK
+													pos[0] = std::max< GeometryReal >( pos[0] , 0 );
+													pos[1] = std::max< GeometryReal >( pos[1] , 0 );
+													GeometryReal excess = ( pos[0] + pos[1] ) - 1;
+													if( excess>0 ) pos[0] -= excess/2 , pos[1] -= excess/2;
+#endif // SANITY_CHECK
 
 													typename ElementSamples::Quadratic::SampleData& sampleData = quadraticElementSample[ fastIntegration ? 0 : (p-2)*Samples+s ];
 													SetBoundaryDuals< Samples >( sampleData , quadraticElementSample , Point2D< typename ElementSamples::Real >( pos ) , (typename ElementSamples::Real)( TriangleIntegrator< Samples >::Weights[s] * fragment_area ) );

@@ -277,6 +277,7 @@ namespace MishaK
 			polygon.atlasEdgeIndices = outputEdgeIndices;
 			polygon.atlasVertexParentEdge = outputParentVertexEdgeIndices;
 
+#ifdef SANITY_CHECK
 			if( polygon.vertices.size()!=polygon.vertexIndices.size() || polygon.vertices.size()!=polygon.atlasEdgeIndices.size() || polygon.vertices.size()!=polygon.atlasVertexParentEdge.size() )
 				MK_THROW( "Polygon array size does not match" );
 
@@ -284,6 +285,7 @@ namespace MishaK
 			for( unsigned int i=0 ; i<polygon.atlasEdgeIndices.size() ; i++ )
 				if( polygon.atlasEdgeIndices[i]!=AtlasMeshEdgeIndex(-1) && polygon.atlasEdgeIndices[i]==polygon.atlasEdgeIndices[ (i+1)%polygon.atlasEdgeIndices.size() ] )
 					MK_THROW( "Unexpected consecutive colinear edges" );
+#endif // SANITY_CHECK
 		}
 	}
 
@@ -375,9 +377,13 @@ namespace MishaK
 					// [WARNING] In the case that the previous edge index is of atlas type, we are creating an invalid GridMeshIntersectionKey
 					if     ( std::optional< AtlasGridEdgeIndex >  g = previousEdgeIndex.grid() ) outputCornerKeys.push_back( GridMeshIntersectionKey( * g , *m ) );
 					else if( std::optional< AtlasMeshEdgeIndex > _m = previousEdgeIndex.mesh() ) outputCornerKeys.push_back( m2k( *_m , *m ) );
+#ifdef SANITY_CHECK
 					else MK_THROW( "Bad previous edge index" );
+#endif // SANITY_CHECK
 				}
+#ifdef SANITY_CHECK
 				else MK_THROW( "Expected mesh edge type" );
+#endif // SANITY_CHECK
 
 				// If the previous is interior, the edge emenating from the new vertex follows the introduced edge
 				outputEdgeIndices.push_back( isPreviousInterior ? edgeIndex : previousEdgeIndex );
@@ -413,7 +419,9 @@ namespace MishaK
 		{
 			std::optional< AtlasMeshEdgeIndex > m1 = triangle.outgoingEdgeIndices[k].mesh();
 			std::optional< AtlasMeshEdgeIndex > m2 = triangle.outgoingEdgeIndices[(k+2)%3].mesh();
+#ifdef SANITY_CHECK
 			if( !m1 || !m2 ) MK_THROW( "Expected incident edges to be mesh edges" );
+#endif // SANITY_CHECK
 			cornerEdges[2*k+0] = std::make_pair( *m1 , *m2 );
 			cornerEdges[2*k+1] = std::make_pair( *m2 , *m1 );
 		}
@@ -422,7 +430,9 @@ namespace MishaK
 			{
 				std::pair< AtlasMeshEdgeIndex , AtlasMeshEdgeIndex > m = std::make_pair( m1 , m2 );
 				for( unsigned int i=0 ; i<6 ; i++ ) if( m==cornerEdges[i] ) return triangle.cornerKeys[i/2];
+#ifdef SANITY_CHECK
 				MK_THROW( "Could not match mesh edges: " , m1 , " : " , m2 );
+#endif // SANITY_CHECK
 				return GridMeshIntersectionKey();
 			};
 

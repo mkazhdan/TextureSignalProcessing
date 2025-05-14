@@ -732,7 +732,6 @@ namespace MishaK
 #include "SparseMatrixParser.h"
 #include "Atlas.h"
 #include "ConstrainedTriangulation.h"
-#include "MapLoop.h"
 
 namespace MishaK
 {
@@ -742,7 +741,6 @@ namespace MishaK
 #include "HierarchyConstruction.inl"
 #include "UpdateCoefficients.inl"
 #include "IterativeSolvers.inl"
-
 }
 
 #endif//HIERARCHICAL_SYSTEM_INCLUDED
