@@ -947,7 +947,6 @@ namespace MishaK
 		Point< Real , Dim > p[K+1];
 		Simplex( void ){ static_assert( K<=Dim , "[ERROR] Bad simplex dimension" ); }
 
-#ifdef NEW_GEOMETRY_CODE
 		Simplex( const Point< Real , Dim > p[K+1] ) : Simplex() { _init( p ); }
 
 		template< typename ... Points >
@@ -957,12 +956,6 @@ namespace MishaK
 			const Point< Real , Dim > _p[] = { p , ps... };
 			_init( _p );
 		}
-#else // !NEW_GEOMETRY_CODE
-		Simplex( const Point< Real , Dim > p[K+1] ) : Simplex() { for( unsigned int k=0 ; k<=K ; k++ ) this->p[k] = p[k]; }
-
-		template< typename ... Points >
-		Simplex( Point< Real , Dim > p , Points ... ps ) : Simplex( { p , ps... } ){ static_assert( sizeof...(Points)==K , "[ERROR] Wrong number of points" ); }
-#endif // NEW_GEOMETRY_CODE
 
 		Point< Real , Dim >& operator[]( unsigned int k ){ return p[k]; }
 		const Point< Real , Dim >& operator[]( unsigned int k ) const { return p[k]; }
@@ -1056,7 +1049,6 @@ namespace MishaK
 			return (Real)sqrt( fabs( M.determinant() ) );
 		}
 
-#if 1
 		Point< Real , K+1 > barycentricCoordinates( Point< Real , Dim > q ) const
 		{
 			SquareMatrix< Real , K > M;
@@ -1072,22 +1064,29 @@ namespace MishaK
 			for( unsigned int k=0 ; k<K ; k++ ) b[0] -= _b[k] , b[k+1] = _b[k];
 			return b;
 		}
-#else
-		template< unsigned int _K=K >
-		typename std::enable_if< _K==Dim , Point< Real , Dim+1 > >::type barycentricCoordinates( Point< Real , Dim > q ) const
-		{
-			q -= p[0];
-			SquareMatrix< Real , Dim > D;
-			for( unsigned int c=0 ; c<Dim ; c++ ) for( unsigned int r=0 ; r<Dim ; r++ ) D(c,r) = p[c+1][r] - p[0][r];
-			q = D.inverse() * q;
-			Point< Real , Dim+1 > bc;
-			bc[0] = (Real)1.;
-			for( unsigned int d=0 ; d<Dim ; d++ ) bc[0] -= q[d] , bc[d+1] = q[d];
-			return bc;
-		};
-#endif
 
 #ifdef NEW_GEOMETRY_CODE
+		std::pair< Real , Point< Real , K+1 > > barycentricCoordinates( Ray< Real , Dim > r ) const
+		{
+			// Solve for (t,a_1,..,a_K) minimizing:
+			//	E(t,a_1,...,a_K) = || r(t) - (1-a_1-...-a_k)p[0] - a_1*p[1] - ... a_K*p[K] ||^2
+			//                   = || r.position-p[0] + r.direction * t + a_1*(p[0]-p[1]) + ... + a_K*(p[0]-p[K]) ||^2
+			//                   = || v + A * a ||^2
+			//                   = || v ||^2 + 2 * a^t * A^t * v + a^t * A^t * A * a
+			Matrix< Real , K+1 , Dim > A;
+			for( unsigned int k=0 ; k<=K ; k++ ) for( unsigned int d=0 ; d<Dim ; d++ )
+				if( k==0 ) A(k,d) = r.direction[d];
+				else       A(k,d) = p[0][d] - p[k][d];
+			Point< Real , K+1 > a = - ( A.transpose() * A ).inverse() * ( A.transpose() * ( r.position - p[0] ) );
+			Real sum = 0;
+			Real t = a[0];
+			for( unsigned int k=1 ; k<=K ; k++ ) sum += a[k];
+			a[0] = (Real)1 - sum;
+			return std::pair< Real , Point< Real , K+1 > >( t , a );
+		}
+#endif // NEW_GEOMETRY_CODE
+
+
 		Point< Real , K+1 > nearestBC( Point< Real , Dim > p ) const
 		{
 			Point< Real , K+1 > bc = barycentricCoordinates( p );
@@ -1120,10 +1119,6 @@ namespace MishaK
 			}
 		}
 		Point< Real , Dim > nearest( Point< Real , Dim > p ) const { return operator()( nearestBC(p) ); }
-#else // !NEW_GEOMETRY_CODE
-		Point< Real , Dim > nearest( Point< Real , Dim > point , Real barycentricCoordinates[K+1] ) const;
-		Point< Real , Dim > nearest( Point< Real , Dim > point ) const { Real barycentricCoordinates[K+1] ; return nearest( point , barycentricCoordinates ); }
-#endif // NEW_GEOMETRY_CODE
 
 
 		friend std::ostream &operator << ( std::ostream &os , const Simplex &s )
@@ -1137,40 +1132,8 @@ namespace MishaK
 			return os << " }";
 		}
 
-#ifdef NEW_GEOMETRY_CODE
 	protected:
 		void _init( const Point< Real , Dim > p[K+1] ){ for( unsigned int k=0 ; k<=K ; k++ ) this->p[k] = p[k]; }
-#else // !NEW_GEOMETRY_CODE
-		struct NearestKey
-		{
-#ifdef NEW_GEOMETRY_CODE
-			NearestKey( void ){}
-			NearestKey( Simplex s ){ init(s); }
-			Point< double , K+1 > nearestBC( Point< Real , Dim > point ) const;
-#endif // NEW_GEOMETRY_CODE
-			void init( Simplex simplex );
-			Point< Real , Dim > nearest( Point< Real , Dim > point , Real barycentricCoordinates[K+1] ) const { _nearest( point , barycentricCoordinates ) ; return operator()( barycentricCoordinates ); }
-			Point< Real , Dim > nearest( Point< Real , Dim > point ) const { Real barycentricCoordinates[K+1] ; return nearest( point , barycentricCoordinates ); }
-			Point< Real , Dim > operator()( const Real weights[K+1] ) const
-			{
-				Point< Real , Dim > q;
-				Real weightSum = 0;
-				for( unsigned int k=0 ; k<K ; k++ ) q += _dirs[k] * weights[k+1] , weightSum += weights[k+1];
-				return q + _base * ( weights[0] + weightSum );
-			}
-
-		protected:
-			Point< Real , Dim > _base , _dirs[K];
-			SquareMatrix< Real , K > _Dinv;
-			typename Simplex< Real , Dim , K-1 >::NearestKey _faceKeys[K+1];
-			void _nearest( Point< Real , Dim > point , Real barycentricCoordinates[K+1] ) const;
-
-			friend typename Simplex< Real , Dim , K+1 >::NearestKey;
-		};
-	protected:
-		void _nearest( Point< Real , Dim > point , Real barycentricCoordinates[K+1] ) const;
-		friend Simplex< Real , Dim , K+1 >;
-#endif // NEW_GEOMETRY_CODE
 	};
 
 	template< class Real , unsigned int Dim >	

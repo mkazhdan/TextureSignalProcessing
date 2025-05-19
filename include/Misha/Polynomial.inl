@@ -404,6 +404,24 @@ T &Polynomial< Dim , Degree , T , Real >::coefficient( unsigned int index , Unsi
 }
 
 template< unsigned int Dim , unsigned int Degree , typename T , typename Real >
+template< typename ... Ints >
+const T &Polynomial< Dim , Degree , T , Real >::coefficient( int index , Ints ... indices ) const
+{
+	static_assert( sizeof...(indices)+1==Dim  , "[ERROR] Polynomial< Dim , Degree , T , Real >::coefficient: Invalid number of indices" );
+	unsigned int _indices[] = { static_cast< unsigned int >(index) , static_cast< unsigned int >(indices) ... };
+	return _coefficient( _indices , Degree );
+}
+
+template< unsigned int Dim , unsigned int Degree , typename T , typename Real >
+template< typename ... Ints >
+T &Polynomial< Dim , Degree , T , Real >::coefficient( int index , Ints ... indices )
+{
+	static_assert( sizeof...(indices)+1==Dim , "[ERROR] Polynomial< Dim , Degree , T , Real >::coefficient: Invalid number of indices" );
+	unsigned int _indices[] = { static_cast< unsigned int >(index) , static_cast< unsigned int >(indices) ... };
+	return _coefficient( _indices , Degree );
+}
+
+template< unsigned int Dim , unsigned int Degree , typename T , typename Real >
 const T &Polynomial< Dim , Degree , T , Real >::coefficient( const unsigned int indices[Dim] ) const
 {
 	return _coefficient( indices , Degree );
