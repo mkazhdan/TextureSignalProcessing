@@ -188,11 +188,6 @@ public:
 	static std::vector< Point3D< float > >textureNodePositions;
 	static std::vector< Point3D< float > >textureEdgePositions;
 
-#ifdef NEW_CODE
-#else // !NEW_CODE
-	static ExplicitIndexVector< ChartIndex , AtlasChart< PreReal > > atlasCharts;
-#endif // NEW_CODE
-
 	static ExplicitIndexVector< AtlasCellIndex , BilinearElementIndex< AtlasTexelIndex > > bilinearElementIndices;
 
 	static std::vector< TextureNodeInfo< PreReal > > textureNodes;
@@ -284,10 +279,6 @@ public:
 	static void UpdateSolution( bool verbose=false , bool detailVerbose=false );
 	static void ComputeExactSolution( bool verbose=false );
 	static void InitializeSystem( int width , int height );
-#ifdef NEW_CODE
-#else // !NEW_CODE
-	static void _InitializeSystem( ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > > &parameterMetric , BoundaryProlongationData< Real > &boundaryProlongation );
-#endif // NEW_CODE
 
 #ifdef NO_OPEN_GL_VISUALIZATION
 #else // !NO_OPEN_GL_VISUALIZATION
@@ -357,11 +348,6 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth > std:
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > VCycleSolvers< typename Stitching< PreReal , Real , TextureBitDepth >::DirectSolver >		Stitching< PreReal , Real , TextureBitDepth >::vCycleSolvers;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > typename Stitching< PreReal , Real , TextureBitDepth >::DirectSolver				Stitching< PreReal , Real , TextureBitDepth >::directSolver;
-
-#ifdef NEW_CODE
-#else // !NEW_CODE
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > ExplicitIndexVector< ChartIndex , AtlasChart< PreReal > >		Stitching< PreReal , Real , TextureBitDepth >::atlasCharts;
-#endif // NEW_CODE
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Point3D< float > >									Stitching< PreReal , Real , TextureBitDepth >::textureNodePositions;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Point3D< float > >									Stitching< PreReal , Real , TextureBitDepth >::textureEdgePositions;
@@ -665,7 +651,6 @@ void Stitching< PreReal , Real , TextureBitDepth >::UpdateSolution( bool verbose
 	VCycle( multigridStitchingVariables , multigridStitchingCoefficients , multigridIndices , vCycleSolvers , verbose , detailVerbose );
 }
 
-#ifdef NEW_CODE
 template< typename PreReal , typename Real , unsigned int TextureBitDepth >
 void Stitching< PreReal , Real , TextureBitDepth >::InitializeSystem( int width , int height )
 {
@@ -697,7 +682,6 @@ void Stitching< PreReal , Real , TextureBitDepth >::InitializeSystem( int width 
 		{
 			switch( MatrixQuadrature.value )
 			{
-#ifdef NEW_CODE
 #ifdef NEW_DIVERGENCE
 #ifdef NEW_MASS_AND_STIFFNESS
 			case  1: InitializeMassAndStiffness< 1>( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , divergenceOperator ) ; break;
@@ -722,32 +706,6 @@ void Stitching< PreReal , Real , TextureBitDepth >::InitializeSystem( int width 
 			case 24: InitializeMassAndStiffness<24>( massCoefficients , stiffnessCoefficients , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
 			case 32: InitializeMassAndStiffness<32>( massCoefficients , stiffnessCoefficients , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
 #endif // NEW_DIVERGENCE
-#else // !NEW_CODE
-#ifdef NEW_DIVERGENCE
-#ifdef NEW_MASS_AND_STIFFNESS
-			case  1: InitializeMassAndStiffness< 1>( massAndStiffnessOperator , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , divergenceOperator ) ; break;
-			case  3: InitializeMassAndStiffness< 3>( massAndStiffnessOperator , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , divergenceOperator ) ; break;
-			case  6: InitializeMassAndStiffness< 6>( massAndStiffnessOperator , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , divergenceOperator ) ; break;
-			case 12: InitializeMassAndStiffness<12>( massAndStiffnessOperator , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , divergenceOperator ) ; break;
-			case 24: InitializeMassAndStiffness<24>( massAndStiffnessOperator , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , divergenceOperator ) ; break;
-			case 32: InitializeMassAndStiffness<32>( massAndStiffnessOperator , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , divergenceOperator ) ; break;
-#else // !NEW_MASS_AND_STIFFNESS
-			case  1: InitializeMassAndStiffness< 1>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , divergenceOperator ) ; break;
-			case  3: InitializeMassAndStiffness< 3>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , divergenceOperator ) ; break;
-			case  6: InitializeMassAndStiffness< 6>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , divergenceOperator ) ; break;
-			case 12: InitializeMassAndStiffness<12>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , divergenceOperator ) ; break;
-			case 24: InitializeMassAndStiffness<24>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , divergenceOperator ) ; break;
-			case 32: InitializeMassAndStiffness<32>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , divergenceOperator ) ; break;
-#endif // NEW_MASS_AND_STIFFNESS
-#else // !NEW_DIVERGENCE
-			case  1: InitializeMassAndStiffness< 1>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
-			case  3: InitializeMassAndStiffness< 3>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
-			case  6: InitializeMassAndStiffness< 6>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
-			case 12: InitializeMassAndStiffness<12>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
-			case 24: InitializeMassAndStiffness<24>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
-			case 32: InitializeMassAndStiffness<32>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
-#endif // NEW_DIVERGENCE
-#endif // NEW_CODE
 			default: MK_THROW( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
 			}
 		}
@@ -812,102 +770,6 @@ void Stitching< PreReal , Real , TextureBitDepth >::InitializeSystem( int width 
 		variables.variable_boundary_value.resize( indexConverter.numBoundary() );
 	}
 }
-#else // !NEW_CODE
-template< typename PreReal , typename Real , unsigned int TextureBitDepth >
-void Stitching< PreReal , Real , TextureBitDepth >::_InitializeSystem
-(
-	ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > > &parameterMetric ,
-	BoundaryProlongationData< Real > &boundaryProlongation
-)
-{
-	// Unused parameters
-	std::vector< Point3D< Real > > inputSignal;
-	std::vector< Real > texelToCellCoeffs;
-	SparseMatrix< Real , int > boundaryCellBasedStiffnessRHSMatrix[3];
-
-	{
-		switch( MatrixQuadrature.value )
-		{
-		case  1: InitializeMassAndStiffness< 1>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
-		case  3: InitializeMassAndStiffness< 3>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
-		case  6: InitializeMassAndStiffness< 6>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
-		case 12: InitializeMassAndStiffness<12>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
-		case 24: InitializeMassAndStiffness<24>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
-		case 32: InitializeMassAndStiffness<32>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
-		default: MK_THROW( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
-		}
-	}
-}
-
-template< typename PreReal , typename Real , unsigned int TextureBitDepth >
-void Stitching< PreReal , Real , TextureBitDepth >::InitializeSystem( int width , int height )
-{
-	Miscellany::PerformanceMeter pMeter( '.' );
-	MultigridBlockInfo multigridBlockInfo( MultigridBlockWidth.value , MultigridBlockHeight.value , MultigridPaddedWidth.value , MultigridPaddedHeight.value );
-	InitializeHierarchy( mesh , width , height , levels , textureNodes , bilinearElementIndices , hierarchy , atlasCharts , multigridBlockInfo );
-	if( Verbose.set ) std::cout << pMeter( "Hierarchy" ) << std::endl;
-
-	BoundaryProlongationData< Real > boundaryProlongation;
-	InitializeBoundaryProlongationData( hierarchy.gridAtlases[0] , boundaryProlongation );
-
-	std::vector< Point3D< Real > > inputSignal;
-	std::vector< Real > texelToCellCoeffs;
-
-	ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > > parameterMetric;
-	InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric );
-	InitializeIntraChartEdgeIndexing( hierarchy.gridAtlases[0].gridCharts , edgeIndex );
-
-	pMeter.reset();
-	_InitializeSystem( parameterMetric , boundaryProlongation );
-	if( Verbose.set ) std::cout << pMeter( "Mass and stiffness" ) << std::endl;
-	
-	InitializeDivergenceRasterLines( edgeIndex , hierarchy.gridAtlases[0].rasterLines , divergenceRasterLines );
-	
-	edgePairs.resize( edgeIndex.size() );
-	for( auto edgeIter=edgeIndex.begin() ; edgeIter!=edgeIndex.end() ; edgeIter++ ) edgePairs[ (*edgeIter).second ] = (*edgeIter).first;
-
-	texelMass.resize( textureNodes.size() );
-	texelDivergence.resize( textureNodes.size() );
-
-	if( UseDirectSolver.set )
-	{
-		FullMatrixConstruction( hierarchy.gridAtlases[0] , massCoefficients , mass );
-		FullMatrixConstruction( hierarchy.gridAtlases[0] , stiffnessCoefficients , stiffness );
-		stitchingMatrix = mass*interpolationWeight + stiffness;
-	}
-
-	multigridIndices.resize(levels);
-	for( unsigned int i=0 ; i<levels ; i++ )
-	{
-		const typename GridAtlas<>::IndexConverter & indexConverter = hierarchy.gridAtlases[i].indexConverter;
-		const GridAtlas< PreReal , Real > &gridAtlas = hierarchy.gridAtlases[i];
-		multigridIndices[i].threadTasks = gridAtlas.threadTasks;
-		multigridIndices[i].boundaryToCombined = indexConverter.boundaryToCombined();
-		multigridIndices[i].segmentedLines = gridAtlas.segmentedLines;
-		multigridIndices[i].rasterLines = gridAtlas.rasterLines;
-		multigridIndices[i].restrictionLines = gridAtlas.restrictionLines;
-		multigridIndices[i].prolongationLines = gridAtlas.prolongationLines;
-		if( i<levels-1 ) multigridIndices[i].boundaryRestriction = hierarchy.boundaryRestriction[i];
-	}
-
-	pMeter.reset();
-	UpdateLinearSystem( interpolationWeight , (Real)1. , hierarchy , multigridStitchingCoefficients , massCoefficients , stiffnessCoefficients , vCycleSolvers , directSolver , stitchingMatrix , DetailVerbose.set, true, UseDirectSolver.set );
-	if( Verbose.set ) std::cout << pMeter( "Initialize MG" ) << std::endl;
-
-	multigridStitchingVariables.resize(levels);
-	for( unsigned int i=0 ; i<levels ; i++ )
-	{
-		const typename GridAtlas<>::IndexConverter & indexConverter = hierarchy.gridAtlases[i].indexConverter;
-		MultigridLevelVariables< Point3D< Real > >& variables = multigridStitchingVariables[i];
-		variables.x.resize( indexConverter.numCombined() );
-		variables.rhs.resize( indexConverter.numCombined() );
-		variables.residual.resize( indexConverter.numCombined() );
-		variables.boundary_rhs.resize( indexConverter.numBoundary() );
-		variables.boundary_value.resize( indexConverter.numBoundary() );
-		variables.variable_boundary_value.resize( indexConverter.numBoundary() );
-	}
-}
-#endif // NEW_CODE
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth >
 void Stitching< PreReal , Real , TextureBitDepth >::SetUpSystem( void )

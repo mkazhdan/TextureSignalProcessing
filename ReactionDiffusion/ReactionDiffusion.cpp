@@ -178,12 +178,6 @@ public:
 
 	static unsigned int seedTexel;
 
-#ifdef NEW_CODE
-#else // !NEW_CODE
-	static ExplicitIndexVector< ChartIndex , AtlasChart< PreReal > > atlasCharts;
-	static ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > > parameterMetric;
-#endif // NEW_CODE
-
 	static std::vector< SystemCoefficients< Real > > multigridCoefficients[2];
 	static std::vector< MultigridLevelVariables< Real > > multigridVariables[2];
 
@@ -216,8 +210,12 @@ public:
 	static ExplicitIndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > > interiorCellLineIndex;
 
 	//Linear Operators
+#ifdef NEW_MASS_AND_STIFFNESS
+	static MassAndStiffnessOperator< Real > massAndStiffnessOperator;
+#else // !NEW_MASS_AND_STIFFNESS
 	static SystemCoefficients< Real > massCoefficients;
 	static SystemCoefficients< Real > stiffnessCoefficients;
+#endif // NEW_MASS_AND_STIFFNESS
 
 	static unsigned char * outputBuffer;
 
@@ -264,12 +262,6 @@ template< typename PreReal , typename Real > int																	GrayScottReacti
 template< typename PreReal , typename Real > bool																	GrayScottReactionDiffusion< PreReal , Real >::mouseSelectionActive = false;
 template< typename PreReal , typename Real > Padding																GrayScottReactionDiffusion< PreReal , Real >::padding;
 
-#ifdef NEW_CODE
-#else // !NEW_CODE
-template< typename PreReal , typename Real > ExplicitIndexVector< ChartIndex , AtlasChart< PreReal > >						GrayScottReactionDiffusion< PreReal , Real> ::atlasCharts;
-template< typename PreReal , typename Real > ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > >	GrayScottReactionDiffusion< PreReal , Real >::parameterMetric;
-#endif // NEW_CODE
-
 template< typename PreReal , typename Real > SparseMatrix< Real , int >												GrayScottReactionDiffusion< PreReal , Real >::mass;
 template< typename PreReal , typename Real > SparseMatrix< Real , int >												GrayScottReactionDiffusion< PreReal , Real >::stiffness;
 template< typename PreReal , typename Real > SparseMatrix< Real , int >												GrayScottReactionDiffusion< PreReal , Real >::systemMatrices[2];
@@ -314,8 +306,12 @@ template< typename PreReal , typename Real > std::vector< Point2D< Real > >					
 template< typename PreReal , typename Real > std::vector< Point2D< Real > >											GrayScottReactionDiffusion< PreReal , Real >::fineBoundaryValues;
 template< typename PreReal , typename Real > std::vector< Point2D< Real > >											GrayScottReactionDiffusion< PreReal , Real >::fineBoundaryRHS;
 
+#ifdef NEW_MASS_AND_STIFFNESS
+template< typename PreReal , typename Real > MassAndStiffnessOperator< Real >										GrayScottReactionDiffusion< PreReal , Real >::massAndStiffnessOperator;
+#else // !NEW_MASS_AND_STIFFNESS
 template< typename PreReal , typename Real > SystemCoefficients< Real >												GrayScottReactionDiffusion< PreReal , Real >::massCoefficients;
 template< typename PreReal , typename Real > SystemCoefficients< Real >												GrayScottReactionDiffusion< PreReal , Real >::stiffnessCoefficients;
+#endif // NEW_MASS_AND_STIFFNESS
 
 template< typename PreReal , typename Real > int																	GrayScottReactionDiffusion< PreReal , Real >::whichConcentration = 1;
 template< typename PreReal , typename Real > int																	GrayScottReactionDiffusion< PreReal , Real >::updateCount = 0;
@@ -338,7 +334,11 @@ void GrayScottReactionDiffusion< PreReal , Real >::SetRightHandSide( void )
 	ThreadPool::ParallelFor( 0 , indexConverter.numBoundary() , [&]( unsigned int , size_t i ){ coarseBoundaryValues[i] = ab_x[ static_cast< unsigned int >(indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex(i) ) ) ]; } );
 	coarseBoundaryFineBoundaryProlongation.Multiply( &coarseBoundaryValues[0] , &fineBoundaryValues[0] );
 
+#ifdef NEW_MASS_AND_STIFFNESS
+	for( unsigned int ab=0 ; ab<2 ; ab++ ) massAndStiffnessOperator.mass( multigridVariables[ab][0].x , multigridVariables[ab][0].rhs );
+#else // !NEW_MASS_AND_STIFFNESS
 	for( unsigned int ab=0 ; ab<2 ; ab++ ) MultiplyBySystemMatrix_NoReciprocals( massCoefficients , indexConverter , hierarchy.gridAtlases[0].rasterLines , multigridVariables[ab][0].x , multigridVariables[ab][0].rhs );
+#endif // NEW_MASS_AND_STIFFNESS
 	auto ABFunction = [&]( Point2D< Real > ab , SquareMatrix< Real , 2 > )
 	{
 		return Point2D< Real >
@@ -576,10 +576,8 @@ template< typename PreReal , typename Real >
 void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width , int height )
 {
 	Miscellany::PerformanceMeter pMeter( '.' );
-#ifdef NEW_CODE
 	ExplicitIndexVector< ChartIndex , AtlasChart< PreReal > > atlasCharts;
 	ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > > parameterMetric;
-#endif // NEW_CODE
 	MultigridBlockInfo multigridBlockInfo( MultigridBlockWidth.value , MultigridBlockHeight.value , MultigridPaddedWidth.value , MultigridPaddedHeight.value );
 	InitializeHierarchy( mesh , width , height , levels , textureNodes , bilinearElementIndices , hierarchy , atlasCharts , multigridBlockInfo );
 	if( Verbose.set ) std::cout << pMeter( "Hierarchy" ) << std::endl;
@@ -595,13 +593,6 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 
 	BoundaryProlongationData< Real > boundaryProlongation;
 	InitializeBoundaryProlongationData( hierarchy.gridAtlases[0] , boundaryProlongation );
-
-#ifdef NEW_CODE
-#else // !NEW_CODE
-	std::vector< Point3D< Real > > __inputSignal;
-	std::vector< Real > __texelToCellCoeffs;
-	SparseMatrix< Real , int > __boundaryCellBasedStiffnessRHSMatrix[3];
-#endif // NEW_CODE
 
 	if( VectorField.set )
 	{
@@ -672,21 +663,21 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 	{
 		switch( MatrixQuadrature.value )
 		{
-#ifdef NEW_CODE
+#ifdef NEW_MASS_AND_STIFFNESS
+		case 1:  InitializeMassAndStiffness< 1>( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
+		case 3:  InitializeMassAndStiffness< 3>( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
+		case 6:  InitializeMassAndStiffness< 6>( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
+		case 12: InitializeMassAndStiffness<12>( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
+		case 24: InitializeMassAndStiffness<24>( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
+		case 32: InitializeMassAndStiffness<32>( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
+#else // !NEW_MASS_AND_STIFFNESS
 		case 1:  InitializeMassAndStiffness< 1>( massCoefficients , stiffnessCoefficients , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
 		case 3:  InitializeMassAndStiffness< 3>( massCoefficients , stiffnessCoefficients , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
 		case 6:  InitializeMassAndStiffness< 6>( massCoefficients , stiffnessCoefficients , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
 		case 12: InitializeMassAndStiffness<12>( massCoefficients , stiffnessCoefficients , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
 		case 24: InitializeMassAndStiffness<24>( massCoefficients , stiffnessCoefficients , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
 		case 32: InitializeMassAndStiffness<32>( massCoefficients , stiffnessCoefficients , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
-#else // !NEW_CODE
-		case 1:  InitializeMassAndStiffness< 1>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		case 3:  InitializeMassAndStiffness< 3>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		case 6:  InitializeMassAndStiffness< 6>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		case 12: InitializeMassAndStiffness<12>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		case 24: InitializeMassAndStiffness<24>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		case 32: InitializeMassAndStiffness<32>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-#endif // NEW_CODE
+#endif // NEW_MASS_AND_STIFFNESS
 		default: MK_THROW( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
 		}
 	}
@@ -694,8 +685,13 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 
 	if( UseDirectSolver.set )
 	{
+#ifdef NEW_MASS_AND_STIFFNESS
+		FullMatrixConstruction( hierarchy.gridAtlases[0] , massAndStiffnessOperator.massCoefficients , mass );
+		FullMatrixConstruction( hierarchy.gridAtlases[0] , massAndStiffnessOperator.stiffnessCoefficients , stiffness );
+#else // !NEW_MASS_AND_STIFFNESS
 		FullMatrixConstruction( hierarchy.gridAtlases[0] , massCoefficients , mass );
 		FullMatrixConstruction( hierarchy.gridAtlases[0] , stiffnessCoefficients , stiffness );
+#endif // NEW_MASS_AND_STIFFNESS
 		systemMatrices[0] = mass + stiffness * diffusionRates[0] * speed;
 		systemMatrices[1] = mass + stiffness * diffusionRates[1] * speed;
 		if( Verbose.set ) std::cout << pMeter( "Assembled" ) << std::endl;
@@ -720,7 +716,11 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 	//////////////////////////////////// Initialize multigrid coefficients
 
 	pMeter.reset();
+#ifdef NEW_MASS_AND_STIFFNESS
+	for( int ab=0 ; ab<2 ; ab++ ) UpdateLinearSystem( (Real)1. , diffusionRates[ab] * speed , hierarchy , multigridCoefficients[ab] , massAndStiffnessOperator.massCoefficients , massAndStiffnessOperator.stiffnessCoefficients , vCycleSolvers[ab] , fineSolvers[ab] , systemMatrices[ab] , DetailVerbose.set , true , UseDirectSolver.set );
+#else // !NEW_MASS_AND_STIFFNESS
 	for( int ab=0 ; ab<2 ; ab++ ) UpdateLinearSystem( (Real)1. , diffusionRates[ab] * speed , hierarchy , multigridCoefficients[ab] , massCoefficients , stiffnessCoefficients , vCycleSolvers[ab] , fineSolvers[ab] , systemMatrices[ab] , DetailVerbose.set , true , UseDirectSolver.set );
+#endif // NEW_MASS_AND_STIFFNESS
 	if( Verbose.set ) std::cout << pMeter( "Initialized MG" ) << std::endl;
 
 	//////////////////////////////////// Initialize multigrid variables

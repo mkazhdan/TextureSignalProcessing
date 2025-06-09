@@ -146,10 +146,6 @@ public:
 
 	static unsigned int impulseTexel;
 
-#ifdef NEW_CODE
-#else // !NEW_CODE
-	static ExplicitIndexVector< ChartIndex , AtlasChart< PreReal > > atlasCharts;
-#endif // NEW_CODE
 	static ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > > parameterMetric;
 
 	static Real smoothImpulseRange;
@@ -227,10 +223,6 @@ template< typename PreReal , typename Real > int															Geodesics< PreRea
 template< typename PreReal , typename Real > bool															Geodesics< PreReal , Real >::mouseSelectionActive = false;
 template< typename PreReal , typename Real > Padding														Geodesics< PreReal , Real >::padding;
 
-#ifdef NEW_CODE
-#else // !NEW_CODE
-template< typename PreReal , typename Real > ExplicitIndexVector< ChartIndex , AtlasChart< PreReal > >				Geodesics< PreReal , Real >::atlasCharts;
-#endif // NEW_CODE
 template< typename PreReal , typename Real > ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > >	Geodesics< PreReal , Real >::parameterMetric;
 
 template< typename PreReal , typename Real > SparseMatrix< Real , int >										Geodesics< PreReal , Real >::mass;
@@ -599,9 +591,7 @@ template< typename PreReal , typename Real >
 void Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 {
 	Miscellany::PerformanceMeter pMeter( '.' );
-#ifdef NEW_CODE
 	ExplicitIndexVector< ChartIndex , AtlasChart< PreReal > > atlasCharts;
-#endif // NEW_CODE
 	MultigridBlockInfo multigridBlockInfo( MultigridBlockWidth.value , MultigridBlockHeight.value , MultigridPaddedWidth.value , MultigridPaddedHeight.value );
 	InitializeHierarchy( mesh , width , height , levels , textureNodes , bilinearElementIndices , hierarchy , atlasCharts , multigridBlockInfo );
 	if( Verbose.set ) std::cout << pMeter( "Hierarchy" ) << std::endl;
@@ -614,15 +604,12 @@ void Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 	BoundaryProlongationData< Real > boundaryProlongation;
 	InitializeBoundaryProlongationData( hierarchy.gridAtlases[0] , boundaryProlongation );
 
+#ifdef NEW_MASS_AND_STIFFNESS
+	MassAndStiffnessOperator< Real > massAndStiffnessOperator;
+#else // !NEW_MASS_AND_STIFFNESS
 	SystemCoefficients< Real > massCoefficients;
 	SystemCoefficients< Real > stiffnessCoefficients;
-
-#ifdef NEW_CODE
-#else // !NEW_CODE
-	std::vector< Point3D< Real > > __inputSignal;
-	std::vector< Real > __texelToCellCoeffs;
-	SparseMatrix< Real , int > __boundaryCellBasedStiffnessRHSMatrix[3];
-#endif // NEW_CODE
+#endif // NEW_MASS_AND_STIFFNESS
 
 	InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric );
 
@@ -630,21 +617,21 @@ void Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 	{
 		switch( MatrixQuadrature.value )
 		{
-#ifdef NEW_CODE
+#ifdef NEW_MASS_AND_STIFFNESS
+		case  1: InitializeMassAndStiffness< 1>( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
+		case  3: InitializeMassAndStiffness< 3>( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
+		case  6: InitializeMassAndStiffness< 6>( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
+		case 12: InitializeMassAndStiffness<12>( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
+		case 24: InitializeMassAndStiffness<24>( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
+		case 32: InitializeMassAndStiffness<32>( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
+#else // !NEW_MASS_AND_STIFFNESS
 		case  1: InitializeMassAndStiffness< 1>( massCoefficients , stiffnessCoefficients , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
 		case  3: InitializeMassAndStiffness< 3>( massCoefficients , stiffnessCoefficients , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
 		case  6: InitializeMassAndStiffness< 6>( massCoefficients , stiffnessCoefficients , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
 		case 12: InitializeMassAndStiffness<12>( massCoefficients , stiffnessCoefficients , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
 		case 24: InitializeMassAndStiffness<24>( massCoefficients , stiffnessCoefficients , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
 		case 32: InitializeMassAndStiffness<32>( massCoefficients , stiffnessCoefficients , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
-#else // !NEW_CODE
-		case  1: InitializeMassAndStiffness< 1>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		case  3: InitializeMassAndStiffness< 3>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		case  6: InitializeMassAndStiffness< 6>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		case 12: InitializeMassAndStiffness<12>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		case 24: InitializeMassAndStiffness<24>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		case 32: InitializeMassAndStiffness<32>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , __inputSignal , __texelToCellCoeffs , __boundaryCellBasedStiffnessRHSMatrix ) ; break;
-#endif // NEW_CODE
+#endif // NEW_MASS_AND_STIFFNESS
 		default: MK_THROW( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
 		}
 	}
@@ -652,8 +639,13 @@ void Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 
 	if( UseDirectSolver.set )
 	{
+#ifdef NEW_MASS_AND_STIFFNESS
+		FullMatrixConstruction( hierarchy.gridAtlases[0] , massAndStiffnessOperator.massCoefficients , mass );
+		FullMatrixConstruction( hierarchy.gridAtlases[0] , massAndStiffnessOperator.stiffnessCoefficients , stiffness );
+#else // !NEW_MASS_AND_STIFFNESS
 		FullMatrixConstruction( hierarchy.gridAtlases[0] , massCoefficients , mass );
 		FullMatrixConstruction( hierarchy.gridAtlases[0] , stiffnessCoefficients , stiffness );
+#endif // NEW_MASS_AND_STIFFNESS
 		smoothImpulseMatrix = mass * diffusionInterpolationWeight + stiffness;
 		geodesicDistanceMatrix = mass * geodesicInterpolationWeight + stiffness;
 		if( Verbose.set ) std::cout << pMeter( "Assembled matrice" ) << std::endl;
@@ -677,8 +669,13 @@ void Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 
 //////////////////////////////////// Initialize multigrid coefficients
 
+#ifdef NEW_MASS_AND_STIFFNESS
+	UpdateLinearSystem( diffusionInterpolationWeight , (Real)1. , hierarchy , multigridSmoothImpulseCoefficients , massAndStiffnessOperator.massCoefficients , massAndStiffnessOperator.stiffnessCoefficients , smoothImpulseSolvers , fineSmoothImpulseSolver , smoothImpulseMatrix , DetailVerbose.set , true , UseDirectSolver.set );
+	UpdateLinearSystem(  geodesicInterpolationWeight , (Real)1. , hierarchy , multigridGeodesicDistanceCoefficients , massAndStiffnessOperator.massCoefficients , massAndStiffnessOperator.stiffnessCoefficients , geodesicDistanceSolvers , fineGeodesicDistanceSolver , geodesicDistanceMatrix , DetailVerbose.set , true , UseDirectSolver.set );
+#else // !NEW_MASS_AND_STIFFNESS
 	UpdateLinearSystem( diffusionInterpolationWeight , (Real)1. , hierarchy , multigridSmoothImpulseCoefficients , massCoefficients , stiffnessCoefficients , smoothImpulseSolvers , fineSmoothImpulseSolver , smoothImpulseMatrix , DetailVerbose.set , true , UseDirectSolver.set );
 	UpdateLinearSystem(  geodesicInterpolationWeight , (Real)1. , hierarchy , multigridGeodesicDistanceCoefficients , massCoefficients , stiffnessCoefficients , geodesicDistanceSolvers , fineGeodesicDistanceSolver , geodesicDistanceMatrix , DetailVerbose.set , true , UseDirectSolver.set );
+#endif // NEW_MASS_AND_STIFFNESS
 	if( Verbose.set ) std::cout << pMeter( "MG coefficients" ) << std::endl;
 
 //////////////////////////////////// Initialize multigrid variables

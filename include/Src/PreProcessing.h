@@ -44,7 +44,7 @@ DAMAGE.
 //#define SANITY_CHECK					// Enables sanity checks for debugging purposes
 
 #define NEW_DIVERGENCE					// Define a divergence operator
-//#define NEW_MASS_AND_STIFFNESS			// Define a mass/stiffness operator
+#define NEW_MASS_AND_STIFFNESS			// Define a mass/stiffness operator
 
 #define USE_EIGEN
 #undef USE_CHOLMOD
