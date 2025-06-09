@@ -35,6 +35,463 @@ DAMAGE.
 
 namespace MishaK
 {
+#ifdef NEW_MASS_AND_STIFFNESS
+	template< typename MatrixReal >
+	struct MassAndStiffnessOperator
+	{
+		SystemCoefficients< MatrixReal > massCoefficients , stiffnessCoefficients;
+		std::vector< RasterLine > rasterLines;
+		typename GridAtlas<>::IndexConverter indexConverter;
+
+		size_t cols( void ) const { return indexConverter.numCombined(); }
+		size_t rows( void ) const { return indexConverter.numCombined(); }
+
+		template< typename Data >
+		void operator()( double mWeight , double sWeight , const std::vector< Data > &in , std::vector< Data > &out , bool add=false ) const;
+
+		template< typename Data >
+		std::vector< Data > operator()( double mWeight , double sWeight , const std::vector< Data > &in ) const;
+
+		template< typename Data >
+		void operator()( double mWeight , double sWeight , ConstPointer( Data ) in , Pointer( Data ) out , bool add=false ) const;
+
+		template< typename Data >
+		void mass( const std::vector< Data > &in , std::vector< Data > &out , bool add=false ) const;
+
+		template< typename Data >
+		std::vector< Data > mass( const std::vector< Data > &in ) const;
+
+		template< typename Data >
+		void mass( ConstPointer( Data ) in , Pointer( Data ) out , bool add=false ) const;
+
+
+		template< typename Data >
+		void stiffness( const std::vector< Data > &in , std::vector< Data > &out , bool add=false ) const;
+
+		template< typename Data >
+		std::vector< Data > stiffness( const std::vector< Data > &in ) const;
+
+		template< typename Data >
+		void stiffness( ConstPointer( Data ) in , Pointer( Data ) out , bool add=false ) const;
+
+
+		template< typename OutReal=MatrixReal >
+		Eigen::SparseMatrix< OutReal > operator()( double mWeight , double sWeight ) const;
+
+		template< typename OutReal=MatrixReal >
+		Eigen::SparseMatrix< OutReal > mass( void ) const;
+
+		template< typename OutReal=MatrixReal >
+		Eigen::SparseMatrix< OutReal > stiffness( void ) const;
+
+	protected:
+		template< bool Add , bool Mass , bool Stiffness , typename Data >
+		void _evaluate( double mWeight , double sWeight , ConstPointer( Data ) in , Pointer( Data ) out ) const;
+
+		template< bool Mass , bool Stiffness , typename OutReal >
+		Eigen::SparseMatrix< OutReal > _matrix( double mWeight , double sWeight ) const;
+	};
+
+	template< typename MatrixReal >
+	template< typename Data >
+	void MassAndStiffnessOperator< MatrixReal >::operator()( double mWeight , double sWeight , const std::vector< Data > &in , std::vector< Data > &out , bool add ) const
+	{
+		return operator()( mWeight , sWeight , GetPointer( in ) , GetPointer( out ) , add );
+	}
+
+	template< typename MatrixReal >
+	template< typename Data >
+	std::vector< Data > MassAndStiffnessOperator< MatrixReal >::operator()( double mWeight , double sWeight , const std::vector< Data > &in ) const
+	{
+		std::vector< Data > out( rows() );
+		operator()( mWeight , sWeight , in , out );
+		return out;
+	}
+
+	template< typename MatrixReal >
+	template< typename Data >
+	void MassAndStiffnessOperator< MatrixReal >::operator()( double mWeight , double sWeight , ConstPointer( Data ) in , Pointer( Data ) out , bool add ) const
+	{
+		if( add )
+		{
+			if     ( mWeight==1.0 && sWeight==0. ) return _evaluate< true , true , false >( mWeight , sWeight , in , out );
+			else if( mWeight==0.0 && sWeight==1. ) return _evaluate< true ,false , true >( mWeight , sWeight , in , out );
+			else                                   return _evaluate< true ,false , false >( mWeight , sWeight , in , out );
+		}
+		else
+		{
+			if     ( mWeight==1.0 && sWeight==0. ) return _evaluate< false , true , false >( mWeight , sWeight , in , out );
+			else if( mWeight==0.0 && sWeight==1. ) return _evaluate< false , false , true >( mWeight , sWeight , in , out );
+			else                                   return _evaluate< false , false , false >( mWeight , sWeight , in , out );
+		}
+	}
+
+	template< typename MatrixReal >
+	template< typename Data >
+	void MassAndStiffnessOperator< MatrixReal >::mass( const std::vector< Data > &in , std::vector< Data > &out , bool add ) const
+	{
+		if( add ) return _evaluate< true  , true , false >( 1 , 0 , GetPointer( in ) , GetPointer( out ) );
+		else      return _evaluate< false , true , false >( 1 , 0 , GetPointer( in ) , GetPointer( out ) );
+	}
+
+	template< typename MatrixReal >
+	template< typename Data >
+	void MassAndStiffnessOperator< MatrixReal >::stiffness( const std::vector< Data > &in , std::vector< Data > &out , bool add ) const
+	{
+		if( add ) return _evaluate< true  , false , true >( 0 , 1 , GetPointer( in ) , GetPointer( out ) );
+		else      return _evaluate< false , false , true >( 0 , 1 , GetPointer( in ) , GetPointer( out ) );
+	}
+
+	template< typename MatrixReal >
+	template< typename Data >
+	std::vector< Data > MassAndStiffnessOperator< MatrixReal >::mass( const std::vector< Data > &in ) const
+	{
+		std::vector< Data > out( rows() );
+		_evaluate< false , true , false >( 1 , 0 , in , out );
+		return out;
+	}
+
+	template< typename MatrixReal >
+	template< typename Data >
+	std::vector< Data > MassAndStiffnessOperator< MatrixReal >::stiffness( const std::vector< Data > &in ) const
+	{
+		std::vector< Data > out( rows() );
+		_evaluate< false , false , true >( 0 , 1 , in , out );
+		return out;
+	}
+
+	template< typename MatrixReal >
+	template< typename Data >
+	void MassAndStiffnessOperator< MatrixReal >::mass( ConstPointer( Data ) in , Pointer( Data ) out , bool add ) const
+	{
+		if( add ) return _evaluate< true  , true , false >( 1 , 0 , in out );
+		else      return _evaluate< false , true , false >( 1 , 0 , in out );
+	}
+
+	template< typename MatrixReal >
+	template< typename Data >
+	void MassAndStiffnessOperator< MatrixReal >::stiffness( ConstPointer( Data ) in , Pointer( Data ) out , bool add ) const
+	{
+		if( add ) return _evaluate< true  , false , true >( 0 , 1 , in out );
+		else      return _evaluate< false , false , true >( 0 , 1 , in out );
+	}
+
+	template< typename MatrixReal >
+	template< typename OutReal >
+	Eigen::SparseMatrix< OutReal > MassAndStiffnessOperator< MatrixReal >::operator()( double mWeight , double sWeight ) const
+	{
+		if     ( mWeight==1. && sWeight==0. ) return _matrix< true , false , OutReal >( 1 , 0 );
+		else if( mWeight==0. && sWeight==1. ) return _matrix< false , true , OutReal >( 0 , 1 );
+		else                                  return _matrix< false , false , OutReal >( mWeight , sWeight );
+	}
+
+	template< typename MatrixReal >
+	template< typename OutReal >
+	Eigen::SparseMatrix< OutReal > MassAndStiffnessOperator< MatrixReal >::mass( void ) const{ return _matrix< true , false >( 1 , 0 ); }
+
+	template< typename MatrixReal >
+	template< typename OutReal >
+	Eigen::SparseMatrix< OutReal > MassAndStiffnessOperator< MatrixReal >::stiffness( void ) const{ return _matrix< false , true >( 0 , 1 ); }
+
+
+
+	template< typename MatrixReal >
+	template< bool Add , bool Mass , bool Stiffness , typename Data >
+	void MassAndStiffnessOperator< MatrixReal >::_evaluate( double mWeight , double sWeight , ConstPointer( Data ) in , Pointer( Data ) out ) const
+	{
+		static_assert( !( Mass && Stiffness ) , "[ERROR] Mass and Stiffness can't both be true" );
+		unsigned int numBoundaryVariables = static_cast< unsigned int >( indexConverter.numBoundary() );
+
+		// Pull out the boundary values from the input array
+		std::vector< Data > outBoundaryValues( numBoundaryVariables );
+		std::vector< Data >  inBoundaryValues( numBoundaryVariables );
+		for( unsigned int i=0 ; i<numBoundaryVariables ; i++ ) inBoundaryValues[i] = in[ static_cast< unsigned int >( indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex(i) ) ) ];
+
+		if constexpr( Mass )
+		{
+			//  Perform the boundary -> boundary multiplication
+			massCoefficients.boundaryBoundaryMatrix.template Multiply< Data , MatrixReal >( &inBoundaryValues[0] , &outBoundaryValues[0] , Add ? MULTIPLY_ADD : 0 );
+			// Perform the interior -> boundary multiplication
+			massCoefficients.boundaryDeepMatrix.template Multiply< Data , MatrixReal >( &in[0] , &outBoundaryValues[0] , MULTIPLY_ADD );
+		}
+		else if constexpr( Stiffness )
+		{
+			//  Perform the boundary -> boundary multiplication
+			stiffnessCoefficients.boundaryBoundaryMatrix.template Multiply< Data , MatrixReal >( &inBoundaryValues[0] , &outBoundaryValues[0] , Add ? MULTIPLY_ADD : 0 );
+			// Perform the interior -> boundary multiplication
+			stiffnessCoefficients.boundaryDeepMatrix.template Multiply< Data , MatrixReal >( &in[0] , &outBoundaryValues[0] , MULTIPLY_ADD );
+		}
+		else
+		{
+			std::vector< Data > _outBoundaryValues( numBoundaryVariables );
+
+			//  Perform the boundary -> boundary multiplication
+			massCoefficients.boundaryBoundaryMatrix.template Multiply< Data , MatrixReal >( &inBoundaryValues[0] , &_outBoundaryValues[0] );
+			// Perform the interior -> boundary multiplication
+			massCoefficients.boundaryDeepMatrix.template Multiply< Data , MatrixReal >( &in[0] , &_outBoundaryValues[0] , MULTIPLY_ADD );
+			if( Add ) ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( size_t i ){ outBoundaryValues[i] += _outBoundaryValues[i] * mWeight; } );
+			else      ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( size_t i ){ outBoundaryValues[i]  = _outBoundaryValues[i] * mWeight; } );
+
+			//  Perform the boundary -> boundary multiplication
+			stiffnessCoefficients.boundaryBoundaryMatrix.template Multiply< Data , MatrixReal >( &inBoundaryValues[0] , &_outBoundaryValues[0] );
+			// Perform the interior -> boundary multiplication
+			stiffnessCoefficients.boundaryDeepMatrix.template Multiply< Data , MatrixReal >( &in[0] , &_outBoundaryValues[0] , MULTIPLY_ADD );
+			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( size_t i ){ outBoundaryValues[i] += _outBoundaryValues[i] * sWeight; } );
+		}
+
+		// Write the boundary values back into the output array
+		if( Add ) ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ out[ static_cast< unsigned int >(indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex((unsigned int)i) ) ) ] += outBoundaryValues[i]; } );
+		else      ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ out[ static_cast< unsigned int >(indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex((unsigned int)i) ) ) ] = outBoundaryValues[i]; } );
+
+		// Perform the interior -> interior multiplication
+		auto UpdateRow = [&]( int r )
+			{
+
+				Data* _out = out + rasterLines[r].lineStartIndex;
+				const Data* _inCurr = in + rasterLines[r].lineStartIndex;
+				const Data* _inPrev = in + rasterLines[r].prevLineIndex;
+				const Data* _inNext = in + rasterLines[r].nextLineIndex;
+
+				int lineLength = ( rasterLines[r].lineEndIndex - rasterLines[r].lineStartIndex + 1 );
+				size_t lineDeepStart = static_cast< size_t >( rasterLines[r].coeffStartIndex );
+				const MatrixReal * _deepM = &massCoefficients.deepCoefficients[ 10 * lineDeepStart ];
+				const MatrixReal * _deepS = &stiffnessCoefficients.deepCoefficients[ 10 * lineDeepStart ];
+
+				for( int i=0 ; i<lineLength ; _deepM+=10 , _deepS+=10 , i++ )
+				{
+					if constexpr( Mass )
+					{
+						if constexpr( Add )
+							_out[i] +=
+							(
+								_inPrev[i-1] * _deepM[0] +
+								_inPrev[i+0] * _deepM[1] +
+								_inPrev[i+1] * _deepM[2] +
+								_inCurr[i-1] * _deepM[3] +
+								_inCurr[i+0] * _deepM[4] +
+								_inCurr[i+1] * _deepM[5] +
+								_inNext[i-1] * _deepM[6] +
+								_inNext[i+0] * _deepM[7] +
+								_inNext[i+1] * _deepM[8]
+							);
+						else
+							_out[i] =
+							(
+								_inPrev[i-1] * _deepM[0] +
+								_inPrev[i+0] * _deepM[1] +
+								_inPrev[i+1] * _deepM[2] +
+								_inCurr[i-1] * _deepM[3] +
+								_inCurr[i+0] * _deepM[4] +
+								_inCurr[i+1] * _deepM[5] +
+								_inNext[i-1] * _deepM[6] +
+								_inNext[i+0] * _deepM[7] +
+								_inNext[i+1] * _deepM[8]
+							);
+					}
+					else if constexpr( Stiffness )
+					{
+						if constexpr( Add )
+							_out[i] +=
+							(
+								_inPrev[i-1] * _deepS[0] +
+								_inPrev[i+0] * _deepS[1] +
+								_inPrev[i+1] * _deepS[2] +
+								_inCurr[i-1] * _deepS[3] +
+								_inCurr[i+0] * _deepS[4] +
+								_inCurr[i+1] * _deepS[5] +
+								_inNext[i-1] * _deepS[6] +
+								_inNext[i+0] * _deepS[7] +
+								_inNext[i+1] * _deepS[8]
+							);
+						else
+							_out[i] =
+							(
+								_inPrev[i-1] * _deepS[0] +
+								_inPrev[i+0] * _deepS[1] +
+								_inPrev[i+1] * _deepS[2] +
+								_inCurr[i-1] * _deepS[3] +
+								_inCurr[i+0] * _deepS[4] +
+								_inCurr[i+1] * _deepS[5] +
+								_inNext[i-1] * _deepS[6] +
+								_inNext[i+0] * _deepS[7] +
+								_inNext[i+1] * _deepS[8]
+							);
+
+					}
+					else
+					{
+						if constexpr( Add )
+							_out[i] =
+							(
+								_inPrev[i-1] * ( _deepM[0]*mWeight + _deepS[0]*sWeight ) +
+								_inPrev[i+0] * ( _deepM[1]*mWeight + _deepS[1]*sWeight ) +
+								_inPrev[i+1] * ( _deepM[2]*mWeight + _deepS[2]*sWeight ) +
+								_inCurr[i-1] * ( _deepM[3]*mWeight + _deepS[3]*sWeight ) +
+								_inCurr[i+0] * ( _deepM[4]*mWeight + _deepS[4]*sWeight ) +
+								_inCurr[i+1] * ( _deepM[5]*mWeight + _deepS[5]*sWeight ) +
+								_inNext[i-1] * ( _deepM[6]*mWeight + _deepS[6]*sWeight ) +
+								_inNext[i+0] * ( _deepM[7]*mWeight + _deepS[7]*sWeight ) +
+								_inNext[i+1] * ( _deepM[8]*mWeight + _deepS[8]*sWeight )
+							);
+						else
+							_out[i] +=
+							(
+								_inPrev[i-1] * ( _deepM[0]*mWeight + _deepS[0]*sWeight ) +
+								_inPrev[i+0] * ( _deepM[1]*mWeight + _deepS[1]*sWeight ) +
+								_inPrev[i+1] * ( _deepM[2]*mWeight + _deepS[2]*sWeight ) +
+								_inCurr[i-1] * ( _deepM[3]*mWeight + _deepS[3]*sWeight ) +
+								_inCurr[i+0] * ( _deepM[4]*mWeight + _deepS[4]*sWeight ) +
+								_inCurr[i+1] * ( _deepM[5]*mWeight + _deepS[5]*sWeight ) +
+								_inNext[i-1] * ( _deepM[6]*mWeight + _deepS[6]*sWeight ) +
+								_inNext[i+0] * ( _deepM[7]*mWeight + _deepS[7]*sWeight ) +
+								_inNext[i+1] * ( _deepM[8]*mWeight + _deepS[8]*sWeight )
+							);
+					}
+				}
+			};
+
+		unsigned int threads = ThreadPool::NumThreads();
+		std::vector< int > lineRange( threads+1 );
+		int blockSize = (int)rasterLines.size() / threads;
+		for( unsigned int t=0 ; t<threads ; t++ ) lineRange[t] = t*blockSize;
+		lineRange[threads] = (int)rasterLines.size();
+		ThreadPool::ParallelFor
+		(
+			0 , threads ,
+			[&]( unsigned int , size_t t )
+			{
+				int firstLine = lineRange[t];
+				int lastLine = lineRange[t+1];
+				for( int r=firstLine ; r<lastLine ; r++ ) UpdateRow(r);
+			}
+		);
+	}
+
+	template< typename MatrixReal >
+	template< bool Mass , bool Stiffness , typename OutReal >
+	Eigen::SparseMatrix< OutReal > MassAndStiffnessOperator< MatrixReal >::_matrix( double mWeight , double sWeight ) const
+	{
+		Eigen::SparseMatrix< OutReal > M( indexConverter.numCombined() , indexConverter.numCombined() );
+		std::vector< Eigen::Triplet< MatrixReal > > triplets;
+
+		size_t entries = 0;
+		{
+			for( unsigned int r=0 ; r<rasterLines.size() ; r++ )
+			{
+				const RasterLine & line = rasterLines[r];
+				entries += ( line.lineEndIndex - line.lineStartIndex + 1 ) * 9;
+			}
+
+			entries += massCoefficients.boundaryDeepMatrix.Entries();
+
+			entries += massCoefficients.boundaryMatrix.Entries();
+		}
+
+		triplets.reserve( entries );
+
+		for( unsigned int r=0 ; r<rasterLines.size() ; r++ )
+		{
+			const RasterLine & line = rasterLines[r];
+			size_t deepOffset = static_cast< size_t >( line.coeffStartIndex );
+			int lineLength = line.lineEndIndex - line.lineStartIndex + 1;
+			size_t prevCol = static_cast< size_t >( line.prevLineIndex );
+			size_t current = static_cast< size_t >( line.lineStartIndex );
+			size_t nextCol = static_cast< size_t >( line.nextLineIndex );
+			const MatrixReal *mCoefficients = massCoefficients.deepCoefficients.data() + deepOffset * 10;
+			const MatrixReal *sCoefficients = stiffnessCoefficients.deepCoefficients.data() + deepOffset * 10;
+
+
+			for( int i=0 ; i<lineLength ; i++ , prevCol++ , current++ , nextCol++ , mCoefficients+=10 , sCoefficients+=10 )
+			{
+				if constexpr( Mass )
+				{
+					triplets.emplace_back( current , prevCol-1 , mCoefficients[0] );
+					triplets.emplace_back( current , prevCol   , mCoefficients[1] );
+					triplets.emplace_back( current , prevCol+1 , mCoefficients[2] );
+					triplets.emplace_back( current , currCol-1 , mCoefficients[3] );
+					triplets.emplace_back( current , currCol   , mCoefficients[4] );
+					triplets.emplace_back( current , currCol+1 , mCoefficients[5] );
+					triplets.emplace_back( current , nextCol-1 , mCoefficients[6] );
+					triplets.emplace_back( current , nextCol   , mCoefficients[7] );
+					triplets.emplace_back( current , nextCol+1 , mCoefficients[8] );
+				}
+				else if constexpr( Stiffness )
+				{
+					triplets.emplace_back( current , prevCol-1 , sCoefficients[0] );
+					triplets.emplace_back( current , prevCol   , sCoefficients[1] );
+					triplets.emplace_back( current , prevCol+1 , sCoefficients[2] );
+					triplets.emplace_back( current , currCol-1 , sCoefficients[3] );
+					triplets.emplace_back( current , currCol   , sCoefficients[4] );
+					triplets.emplace_back( current , currCol+1 , sCoefficients[5] );
+					triplets.emplace_back( current , nextCol-1 , sCoefficients[6] );
+					triplets.emplace_back( current , nextCol   , sCoefficients[7] );
+					triplets.emplace_back( current , nextCol+1 , sCoefficients[8] );
+				}
+				else
+				{
+					triplets.emplace_back( current , prevCol-1 , mCoefficients[0]*mWeight + sCoefficients[0]*sWeight );
+					triplets.emplace_back( current , prevCol   , mCoefficients[1]*mWeight + sCoefficients[1]*sWeight );
+					triplets.emplace_back( current , prevCol+1 , mCoefficients[2]*mWeight + sCoefficients[2]*sWeight );
+					triplets.emplace_back( current , currCol-1 , mCoefficients[3]*mWeight + sCoefficients[3]*sWeight );
+					triplets.emplace_back( current , currCol   , mCoefficients[4]*mWeight + sCoefficients[4]*sWeight );
+					triplets.emplace_back( current , currCol+1 , mCoefficients[5]*mWeight + sCoefficients[5]*sWeight );
+					triplets.emplace_back( current , nextCol-1 , mCoefficients[6]*mWeight + sCoefficients[6]*sWeight );
+					triplets.emplace_back( current , nextCol   , mCoefficients[7]*mWeight + sCoefficients[7]*sWeight );
+					triplets.emplace_back( current , nextCol+1 , mCoefficients[8]*mWeight + sCoefficients[8]*sWeight );
+				}
+			}
+		}
+
+		for( unsigned int i=0 ; i<indexConverter.numBoundary() ; i++ )
+		{
+			size_t globalIndex = static_cast< size_t >( indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex(i) ) );
+
+			if constexpr( Mass )
+			{
+				for( unsigned int j=0 ; j<massCoefficients.boundaryDeepMatrix.RowSize(i) ; j++ )
+					triplets.emplace_back( globalIndex , massCoefficients.boundaryDeepMatrix[i][j].N , massCoefficients.boundaryDeepMatrix[i][j].Value );
+
+				for( unsigned int j=0 ; j<masCoefficientss.boundaryBoundaryMatrix.RowSize(i) ; j++ )
+				{
+					size_t neighbourGlobalIndex = static_cast< size_t >( indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex( massCoefficients.boundaryBoundaryMatrix[i][j].N ) ) );
+					triplets.emplace_back( globalIndex , neighbourGlobalIndex , massCoefficients.boundaryBoundaryMatrix[i][j].Value );
+				}
+			}
+			else if constexpr( Stiffness )
+			{
+				for( unsigned int j=0 ; j<stiffnessCoefficients.boundaryDeepMatrix.RowSize(i) ; j++ )
+					triplets.emplace_back( globalIndex , stiffness.boundaryDeepMatrix[i][j].N , stiffnessCoefficients.boundaryDeepMatrix[i][j].Value );
+
+				for( unsigned int j=0 ; j<stiffnessCoefficients.boundaryBoundaryMatrix.RowSize(i) ; j++ )
+				{
+					size_t neighbourGlobalIndex = static_cast< size_t >( indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex( stiffnessCoefficients.boundaryBoundaryMatrix[i][j].N ) ) );
+					triplets.emplace_back( globalIndex , neighbourGlobalIndex , stiffnessCoefficients.boundaryBoundaryMatrix[i][j].Value );
+				}
+			}
+			else
+			{
+				for( unsigned int j=0 ; j<massCoefficients.boundaryDeepMatrix.RowSize(i) ; j++ )
+					triplets.emplace_back( globalIndex , mass.boundaryDeepMatrix[i][j].N , massCoefficients.boundaryDeepMatrix[i][j].Value*mWeight + stiffnessCoefficients.boundaryDeepMatrix[i][j].Value*sWeight );
+
+				for( unsigned int j=0 ; j<massCoefficients.boundaryBoundaryMatrix.RowSize(i) ; j++ )
+				{
+					size_t neighbourGlobalIndex = static_cast< size_t >( indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex( massCoefficients.boundaryBoundaryMatrix[i][j].N ) ) );
+					triplets.emplace_back( globalIndex , neighbourGlobalIndex , massCoefficients.boundaryBoundaryMatrix[i][j].Value*mWeight + stiffnessCoefficients.boundaryBoundaryMatrix[i][j].Value*sWeight );
+				}
+			}
+		}
+
+		for( unsigned int r=0 ; r<massCoefficients.boundaryMatrix.rows ; r++ )
+			for( unsigned int j=0 ; j<massCoefficients.boundaryMatrix.rowSizes[r] ; j++ )
+				if constexpr( Mass ) triplets.emplace_back( r , massCoefficients.boundaryMatrix[r][j].N , massCoefficients.boundaryMatrix[r][j].Value );
+				else if constexpr( Stiffness ) triplets.emplace_back( r , stiffnessCoefficients.boundaryMatrix[r][j].N , stiffnessCoefficients.boundaryMatrix[r][j].Value );
+				else triplets.emplace_back( r , massCoefficients.boundaryMatrix[r][j].N , massCoefficients.boundaryMatrix[r][j].Value*mWeight + stiffnessCoefficients.boundaryMatrix[r][j].Value*sWeight );
+
+		M.setFromTriplets( triplets.begin() , triplets.end() );
+		return M;
+	}
+#endif // NEW_MASS_AND_STIFFNESS
+
 	template< unsigned int Samples , typename GeometryReal , typename MatrixReal >
 	void InitializeChartMassAndStiffness
 	(
@@ -560,7 +1017,7 @@ namespace MishaK
 			if( computeCellBasedStiffness )
 			{
 				Point3D< GeometryReal > values[4] = { inputSignal[ static_cast< unsigned int >(indicesCombined[0]) ] , inputSignal[ static_cast< unsigned int >(indicesCombined[1]) ] , inputSignal[ static_cast< unsigned int >(indicesCombined[2]) ] , inputSignal[ static_cast< unsigned int >(indicesCombined[3]) ] };
-				for( int c=0 ; c<3 ; c++ )
+				for( unsigned int c=0 ; c<3 ; c++ )
 				{
 					Point< GeometryReal , 4 > v;
 					v[0] = values[0][c];
@@ -838,9 +1295,17 @@ namespace MishaK
 	template< unsigned int Samples , typename GeometryReal , typename MatrixReal >
 	void InitializeMassAndStiffness
 	(
+#ifdef NEW_MASS_AND_STIFFNESS
+		MassAndStiffnessOperator< MatrixReal > & massAndStiffnessOperator ,
+#else // !NEW_MASS_AND_STIFFNESS
 		SystemCoefficients< MatrixReal > &mass ,
 		SystemCoefficients< MatrixReal > &stiffness ,
+#endif // NEW_MASS_AND_STIFFNESS
+#ifdef NEW_CODE
+		const GridAtlas< GeometryReal , MatrixReal > & gridAtlas ,
+#else // !NEW_CODE
 		const HierarchicalSystem< GeometryReal , MatrixReal > &hierarchy ,
+#endif // NEW_CODE
 		const ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > > &parameterMetric ,
 		const ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
 		const BoundaryProlongationData< MatrixReal > &boundaryProlongation ,
@@ -849,15 +1314,64 @@ namespace MishaK
 		std::vector< MatrixReal > &texelToCellCoeffs ,
 		SparseMatrix< MatrixReal , int > boundaryCellBasedStiffnessRHSMatrix[3] ,
 		bool computeDivergence ,
+#ifdef NEW_DIVERGENCE
+		DivergenceOperator< MatrixReal > & divergenceOperator
+#else // !NEW_DIVERGENCE
 		std::map< SimplexIndex< 1 , AtlasTexelIndex > , unsigned int > & edgeIndex ,
 		SparseMatrix< MatrixReal , int > & boundaryDivergenceMatrix ,
 		std::vector< MatrixReal > & deepDivergenceCoefficients
+#endif // NEW_DIVERGENCE
 	)
 	{
+#ifdef NEW_CODE
+#ifdef NEW_MASS_AND_STIFFNESS
+		massAndStiffnessOperator.indexConverter = gridAtlas.indexConverter;
+		massAndStiffnessOperator.rasterLines = gridAtlas.rasterLines;
+
 		//(2) Initialize mass and stiffness
-		mass.deepCoefficients.resize( 10 * static_cast< unsigned int >(hierarchy.gridAtlases[0].endInteriorTexelIndex) , 0 );
-		stiffness.deepCoefficients.resize( 10 * static_cast< unsigned int >(hierarchy.gridAtlases[0].endInteriorTexelIndex) , 0 );
+		massAndStiffnessOperator.massCoefficients.deepCoefficients.resize( 10 * static_cast< unsigned int >( gridAtlas.endInteriorTexelIndex ) , 0 );
+		massAndStiffnessOperator.stiffnessCoefficients.deepCoefficients.resize( 10 * static_cast< unsigned int >( gridAtlas.endInteriorTexelIndex ) , 0 );
+#else // !NEW_MASS_AND_STIFFNESS
+
+		//(2) Initialize mass and stiffness
+		mass.deepCoefficients.resize( 10 * static_cast< unsigned int >( gridAtlas.endInteriorTexelIndex ) , 0 );
+		stiffness.deepCoefficients.resize( 10 * static_cast< unsigned int >( gridAtlas.endInteriorTexelIndex ) , 0 );
+#endif // NEW_MASS_AND_STIFFNESS
+#ifdef NEW_DIVERGENCE
+		std::map< SimplexIndex< 1 , AtlasTexelIndex > , unsigned int > edgeToIndex;
+		if( computeDivergence )
+		{
+			InitializeIntraChartEdgeIndexing( gridAtlas.gridCharts , edgeToIndex );
+			divergenceOperator.deepCoefficients.resize( 20 * static_cast< unsigned int >( gridAtlas.endInteriorTexelIndex ) , 0 );
+		}
+#else // !NEW_DIVERGENCE
+		if( computeDivergence ) deepDivergenceCoefficients.resize( 20 * static_cast< unsigned int >( gridAtlas.endInteriorTexelIndex ) , 0 );
+#endif // NEW_DIVERGENCE
+#else // !NEW_CODE
+#ifdef NEW_MASS_AND_STIFFNESS
+		massAndStiffnessOperator.indexConverter = hierarchy.gridAtlases[0].indexConverter;
+		massAndStiffnessOperator.rasterLines = hierarchy.gridAtlases[0].rasterLines;
+
+		//(2) Initialize mass and stiffness
+		massAndStiffnessOperator.massCoefficients.deepCoefficients.resize( 10 * static_cast< unsigned int >( hierarchy.gridAtlases[0].endInteriorTexelIndex ) , 0 );
+		massAndStiffnessOperator.stiffnessCoefficients.deepCoefficients.resize( 10 * static_cast< unsigned int >( hierarchy.gridAtlases[0].endInteriorTexelIndex ) , 0 );
+#else // !NEW_MASS_AND_STIFFNESS
+
+		//(2) Initialize mass and stiffness
+		mass.deepCoefficients.resize( 10 * static_cast< unsigned int >( hierarchy.gridAtlases[0].endInteriorTexelIndex ) , 0 );
+		stiffness.deepCoefficients.resize( 10 * static_cast< unsigned int >( hierarchy.gridAtlases[0].endInteriorTexelIndex ) , 0 );
+#endif // NEW_MASS_AND_STIFFNESS
+#ifdef NEW_DIVERGENCE
+		std::map< SimplexIndex< 1 , AtlasTexelIndex > , unsigned int > edgeToIndex;
+		if( computeDivergence )
+		{
+			InitializeIntraChartEdgeIndexing( hierarchy.gridAtlases[0].gridCharts , edgeToIndex );
+			divergenceOperator.deepCoefficients.resize( 20 * static_cast< unsigned int >( hierarchy.gridAtlases[0].endInteriorTexelIndex ) , 0 );
+		}
+#else // !NEW_DIVERGENCE
 		if( computeDivergence ) deepDivergenceCoefficients.resize( 20 * static_cast< unsigned int >(hierarchy.gridAtlases[0].endInteriorTexelIndex) , 0 );
+#endif // NEW_DIVERGENCE
+#endif // NEW_CODE
 
 		SparseMatrix< MatrixReal , int > fineBoundaryBoundaryMassMatrix;
 		SparseMatrix< MatrixReal , int > fineBoundaryBoundaryStiffnessMatrix;
@@ -866,14 +1380,22 @@ namespace MishaK
 		std::vector< Eigen::Triplet< MatrixReal > > boundaryBoundaryDivergenceTriplets;
 		std::map< SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex > , AtlasRefinedBoundaryEdgeIndex > fineBoundaryEdgeIndex;
 
+#ifdef NEW_CODE
+		if( computeDivergence ) InitializeFineBoundaryEdgeIndexing( boundaryProlongation.fineBoundaryIndex , fineBoundaryEdgeIndex , gridAtlas.gridCharts );
+#else // !NEW_CODE
 		if( computeDivergence ) InitializeFineBoundaryEdgeIndexing( boundaryProlongation.fineBoundaryIndex , fineBoundaryEdgeIndex , hierarchy.gridAtlases[0].gridCharts );
+#endif // NEW_CODE
 
 		SparseMatrix< MatrixReal , int > fineBoundaryCellStiffnessRHSMatrix[3];
 		std::vector< Point3D< MatrixReal > > fineBoundarySignal;
 
 		if( computeCellBasedStiffness )
 		{
+#ifdef NEW_CODE
+			const typename GridAtlas<>::IndexConverter & indexConverter = gridAtlas.indexConverter;
+#else // !NEW_CODE
 			const typename GridAtlas<>::IndexConverter & indexConverter = hierarchy.gridAtlases[0].indexConverter;
+#endif // NEW_CODE
 			unsigned int numBoundaryTexels = (unsigned int)indexConverter.numBoundary();
 			unsigned int numFineBoundaryNodes = boundaryProlongation.numFineBoundaryNodes;
 			std::vector< Point3D< MatrixReal > > coarseBoundarySignal;
@@ -883,26 +1405,59 @@ namespace MishaK
 			boundaryProlongation.coarseBoundaryFineBoundaryProlongation.Multiply( &coarseBoundarySignal[0] , &fineBoundarySignal[0] );
 		}
 
+#ifdef NEW_CODE
+#ifdef NEW_DIVERGENCE
+#ifdef NEW_MASS_AND_STIFFNESS
+		InitializeMassAndStiffness< Samples >( parameterMetric , atlasCharts , gridAtlas , boundaryProlongation.fineBoundaryIndex , boundaryProlongation.numFineBoundaryNodes , massAndStiffnessOperator.massCoefficients.deepCoefficients , massAndStiffnessOperator.stiffnessCoefficients.deepCoefficients , fineBoundaryBoundaryMassMatrix , fineBoundaryBoundaryStiffnessMatrix , massAndStiffnessOperator.massCoefficients.boundaryDeepMatrix , massAndStiffnessOperator.stiffnessCoefficients.boundaryDeepMatrix , computeCellBasedStiffness , inputSignal , fineBoundarySignal , texelToCellCoeffs , fineBoundaryCellStiffnessRHSMatrix , computeDivergence , fineBoundaryEdgeIndex , edgeToIndex , boundaryDivergenceTriplets , boundaryBoundaryDivergenceTriplets , divergenceOperator.deepCoefficients );
+#else // !NEW_MASS_AND_STIFFNESS
+		InitializeMassAndStiffness< Samples >( parameterMetric , atlasCharts , gridAtlas , boundaryProlongation.fineBoundaryIndex , boundaryProlongation.numFineBoundaryNodes , mass.deepCoefficients , stiffness.deepCoefficients , fineBoundaryBoundaryMassMatrix , fineBoundaryBoundaryStiffnessMatrix , mass.boundaryDeepMatrix , stiffness.boundaryDeepMatrix , computeCellBasedStiffness , inputSignal , fineBoundarySignal , texelToCellCoeffs , fineBoundaryCellStiffnessRHSMatrix , computeDivergence , fineBoundaryEdgeIndex , edgeToIndex , boundaryDivergenceTriplets , boundaryBoundaryDivergenceTriplets , divergenceOperator.deepCoefficients );
+#endif // NEW_MASS_AND_STIFFNESS
+#else // !NEW_DIVERGENCE
+		InitializeMassAndStiffness< Samples >( parameterMetric , atlasCharts , gridAtlas , boundaryProlongation.fineBoundaryIndex , boundaryProlongation.numFineBoundaryNodes , mass.deepCoefficients , stiffness.deepCoefficients , fineBoundaryBoundaryMassMatrix , fineBoundaryBoundaryStiffnessMatrix , mass.boundaryDeepMatrix , stiffness.boundaryDeepMatrix , computeCellBasedStiffness , inputSignal , fineBoundarySignal , texelToCellCoeffs , fineBoundaryCellStiffnessRHSMatrix , computeDivergence , fineBoundaryEdgeIndex , edgeIndex , boundaryDivergenceTriplets , boundaryBoundaryDivergenceTriplets , deepDivergenceCoefficients );
+#endif // NEW_DIVERGENCE
+#else // !NEW_CODE
+#ifdef NEW_DIVERGENCE
+#ifdef NEW_MASS_AND_STIFFNESS
+		InitializeMassAndStiffness< Samples >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0] , boundaryProlongation.fineBoundaryIndex , boundaryProlongation.numFineBoundaryNodes , massAndStiffnessOperator.massCoefficients.deepCoefficients , massAndStiffnessOperator.stiffnessCoefficients.deepCoefficients , fineBoundaryBoundaryMassMatrix , fineBoundaryBoundaryStiffnessMatrix , massAndStiffnessOperator.massCoefficients.boundaryDeepMatrix , massAndStiffnessOperator.stiffnessCoefficients.boundaryDeepMatrix , computeCellBasedStiffness , inputSignal , fineBoundarySignal , texelToCellCoeffs , fineBoundaryCellStiffnessRHSMatrix , computeDivergence , fineBoundaryEdgeIndex , edgeToIndex , boundaryDivergenceTriplets , boundaryBoundaryDivergenceTriplets , divergenceOperator.deepCoefficients );
+#else // !NEW_MASS_AND_STIFFNESS
+		InitializeMassAndStiffness< Samples >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0] , boundaryProlongation.fineBoundaryIndex , boundaryProlongation.numFineBoundaryNodes , mass.deepCoefficients , stiffness.deepCoefficients , fineBoundaryBoundaryMassMatrix , fineBoundaryBoundaryStiffnessMatrix , mass.boundaryDeepMatrix , stiffness.boundaryDeepMatrix , computeCellBasedStiffness , inputSignal , fineBoundarySignal , texelToCellCoeffs , fineBoundaryCellStiffnessRHSMatrix , computeDivergence , fineBoundaryEdgeIndex , edgeToIndex , boundaryDivergenceTriplets , boundaryBoundaryDivergenceTriplets , divergenceOperator.deepCoefficients );
+#endif // NEW_MASS_AND_STIFFNESS
+#else // !NEW_DIVERGENCE
 		InitializeMassAndStiffness< Samples >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0] , boundaryProlongation.fineBoundaryIndex , boundaryProlongation.numFineBoundaryNodes , mass.deepCoefficients , stiffness.deepCoefficients , fineBoundaryBoundaryMassMatrix , fineBoundaryBoundaryStiffnessMatrix , mass.boundaryDeepMatrix , stiffness.boundaryDeepMatrix , computeCellBasedStiffness , inputSignal , fineBoundarySignal , texelToCellCoeffs , fineBoundaryCellStiffnessRHSMatrix , computeDivergence , fineBoundaryEdgeIndex , edgeIndex , boundaryDivergenceTriplets , boundaryBoundaryDivergenceTriplets , deepDivergenceCoefficients );
+#endif // NEW_DIVERGENCE
+#endif // NEW_CODE
 
 		{
 			SparseMatrix< MatrixReal , int > temp = fineBoundaryBoundaryMassMatrix * boundaryProlongation.coarseBoundaryFineBoundaryProlongation;
+#ifdef NEW_MASS_AND_STIFFNESS
+			massAndStiffnessOperator.massCoefficients.boundaryBoundaryMatrix = boundaryProlongation.fineBoundaryCoarseBoundaryRestriction * temp;
+#else // !NEW_MASS_AND_STIFFNESS
 			mass.boundaryBoundaryMatrix = boundaryProlongation.fineBoundaryCoarseBoundaryRestriction * temp;
+#endif // NEW_MASS_AND_STIFFNESS
 		}
 		{
 			SparseMatrix< MatrixReal , int > temp = fineBoundaryBoundaryStiffnessMatrix * boundaryProlongation.coarseBoundaryFineBoundaryProlongation;
+#ifdef NEW_MASS_AND_STIFFNESS
+			massAndStiffnessOperator.stiffnessCoefficients.boundaryBoundaryMatrix = boundaryProlongation.fineBoundaryCoarseBoundaryRestriction * temp;
+#else // !NEW_MASS_AND_STIFFNESS
 			stiffness.boundaryBoundaryMatrix = boundaryProlongation.fineBoundaryCoarseBoundaryRestriction * temp;
+#endif // NEW_MASS_AND_STIFFNESS
 		}
 
 		{
+#ifdef NEW_MASS_AND_STIFFNESS
+			std::vector< MatrixReal > in ( massAndStiffnessOperator.massCoefficients.boundaryBoundaryMatrix.Rows() , (MatrixReal)1. );
+			std::vector< MatrixReal > out( massAndStiffnessOperator.massCoefficients.boundaryBoundaryMatrix.Rows() , (MatrixReal)0. );
+			massAndStiffnessOperator.massCoefficients.boundaryBoundaryMatrix.Multiply( GetPointer(in) , GetPointer(out) );
+#else // !NEW_MASS_AND_STIFFNESS
 			std::vector< MatrixReal > in ( mass.boundaryBoundaryMatrix.Rows() , (MatrixReal)1. );
 			std::vector< MatrixReal > out( mass.boundaryBoundaryMatrix.Rows() , (MatrixReal)0. );
 			mass.boundaryBoundaryMatrix.Multiply( GetPointer(in) , GetPointer(out) );
+#endif // NEW_MASS_AND_STIFFNESS
 			for( int i=0 ; i<out.size() ; i++ ) if( out[i]==0 ) MK_WARN( "Zero row at boundary index " , i , ". Try running with jittering." );
 		}
 
 		if( computeCellBasedStiffness ) for( int c=0 ; c<3 ; c++ ) boundaryCellBasedStiffnessRHSMatrix[c] = boundaryProlongation.fineBoundaryCoarseBoundaryRestriction * fineBoundaryCellStiffnessRHSMatrix[c];
-
 		if( computeDivergence )
 		{
 			SparseMatrix< MatrixReal , int > fineBoundaryBoundaryDivergenceMatrix = SetSparseMatrix( boundaryBoundaryDivergenceTriplets , boundaryProlongation.numFineBoundaryNodes , (int)fineBoundaryEdgeIndex.size() , false );
@@ -910,42 +1465,164 @@ namespace MishaK
 			std::map< SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex > , AtlasRefinedBoundaryEdgeIndex > boundaryCoarseEdgeIndex;
 			std::vector< unsigned int > boundaryCoarseEdgeToGlobalEdge;
 
+#ifdef NEW_CODE
+#ifdef NEW_DIVERGENCE
+#ifdef NEW_MASS_AND_STIFFNESS
+			InitializeBoundaryEdgeIndexing( massAndStiffnessOperator.massCoefficients.boundaryBoundaryMatrix , gridAtlas.indexConverter , edgeToIndex , boundaryCoarseEdgeToGlobalEdge , boundaryCoarseEdgeIndex );
+#else // !NEW_MASS_AND_STIFFNESS
+			InitializeBoundaryEdgeIndexing( mass.boundaryBoundaryMatrix , gridAtlas.indexConverter , edgeToIndex , boundaryCoarseEdgeToGlobalEdge , boundaryCoarseEdgeIndex );
+#endif // NEW_MASS_AND_STIFFNESS
+#else // !NEW_DIVERGENCE
+			InitializeBoundaryEdgeIndexing( mass.boundaryBoundaryMatrix , gridAtlas.indexConverter , edgeIndex , boundaryCoarseEdgeToGlobalEdge , boundaryCoarseEdgeIndex );
+#endif // NEW_DIVERGENCE
+#else // !NEW_CODE
+#ifdef NEW_DIVERGENCE
+#ifdef NEW_MASS_AND_STIFFNESS
+			InitializeBoundaryEdgeIndexing( massAndStiffnessOperator.massCoefficients.boundaryBoundaryMatrix , hierarchy.gridAtlases[0].indexConverter , edgeToIndex , boundaryCoarseEdgeToGlobalEdge , boundaryCoarseEdgeIndex );
+#else // !NEW_MASS_AND_STIFFNESS
+			InitializeBoundaryEdgeIndexing( mass.boundaryBoundaryMatrix , hierarchy.gridAtlases[0].indexConverter , edgeToIndex , boundaryCoarseEdgeToGlobalEdge , boundaryCoarseEdgeIndex );
+#endif // NEW_MASS_AND_STIFFNESS
+#else // !NEW_DIVERGENCE
 			InitializeBoundaryEdgeIndexing( mass.boundaryBoundaryMatrix , hierarchy.gridAtlases[0].indexConverter , edgeIndex , boundaryCoarseEdgeToGlobalEdge , boundaryCoarseEdgeIndex );
+#endif // NEW_DIVERGENCE
+#endif // NEW_CODE
 
 			SparseMatrix< MatrixReal , int > boundaryCoarseToFineBoundaryOneFormProlongation;
 			InitializeBoundaryCoarseToFineBoundaryOneFormProlongation< MatrixReal >( boundaryProlongation.coarseBoundaryFineBoundaryProlongation , boundaryCoarseEdgeIndex , fineBoundaryEdgeIndex , boundaryCoarseToFineBoundaryOneFormProlongation );
 
 			SparseMatrix< MatrixReal , int > temp = boundaryProlongation.fineBoundaryCoarseBoundaryRestriction * fineBoundaryBoundaryDivergenceMatrix;
 			SparseMatrix< MatrixReal , int > boundaryBoundaryDivergenceMatrix = temp *  boundaryCoarseToFineBoundaryOneFormProlongation;
+#ifdef NEW_CODE
+			const typename GridAtlas<>::IndexConverter & indexConverter = gridAtlas.indexConverter;
+#else // !NEW_CODE
 			const typename GridAtlas<>::IndexConverter & indexConverter = hierarchy.gridAtlases[0].indexConverter;
+#endif // NEW_CODE
 			for( int i=0 ; i<boundaryBoundaryDivergenceMatrix.Rows() ; i++ )
 			{
 				AtlasTexelIndex supportedIndex = indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex(i) );
 				for( int j=0 ; j<boundaryBoundaryDivergenceMatrix.RowSize(i) ; j++ )
 					boundaryDivergenceTriplets.emplace_back( static_cast< unsigned int >(supportedIndex) , boundaryCoarseEdgeToGlobalEdge[ boundaryBoundaryDivergenceMatrix[i][j].N ] , boundaryBoundaryDivergenceMatrix[i][j].Value );
 			}
+#ifdef NEW_CODE
+#ifdef NEW_DIVERGENCE
+			divergenceOperator.boundaryMatrix = SetSparseMatrix( boundaryDivergenceTriplets , static_cast< unsigned int >( gridAtlas.endCombinedTexelIndex ) , (int)edgeToIndex.size() , false );
+			divergenceOperator.rasterLines = DivergenceOperator< MatrixReal >::DivergenceRasterLine::GetRasterLines( edgeToIndex , gridAtlas.rasterLines );
+			divergenceOperator.edges.resize( edgeToIndex.size() );
+			for( auto edgeIter=edgeToIndex.begin() ; edgeIter!=edgeToIndex.end() ; edgeIter++ ) divergenceOperator.edges[ (*edgeIter).second ] = (*edgeIter).first;
+#else // !NEW_DIVERGENCE
+			boundaryDivergenceMatrix = SetSparseMatrix( boundaryDivergenceTriplets , static_cast< unsigned int >( gridAtlas.endCombinedTexelIndex ) , (int)edgeIndex.size() , false );
+#endif // NEW_DIVERGENCE
+#else // !NEW_CODE
+#ifdef NEW_DIVERGENCE
+			divergenceOperator.boundaryMatrix = SetSparseMatrix( boundaryDivergenceTriplets , static_cast< unsigned int >( hierarchy.gridAtlases[0].endCombinedTexelIndex ) , (int)edgeToIndex.size() , false );
+			divergenceOperator.rasterLines = DivergenceOperator< MatrixReal >::DivergenceRasterLine::GetRasterLines( edgeToIndex , hierarchy.gridAtlases[0].rasterLines );
+			divergenceOperator.edges.resize( edgeToIndex.size() );
+			for( auto edgeIter=edgeToIndex.begin() ; edgeIter!=edgeToIndex.end() ; edgeIter++ ) divergenceOperator.edges[ (*edgeIter).second ] = (*edgeIter).first;
+#else // !NEW_DIVERGENCE
 			boundaryDivergenceMatrix = SetSparseMatrix( boundaryDivergenceTriplets , static_cast< unsigned int >(hierarchy.gridAtlases[0].endCombinedTexelIndex) , (int)edgeIndex.size() , false );
+#endif // NEW_DIVERGENCE
+#endif // NEW_CODE
 		}
 	}
 
 	template< unsigned int Samples , typename GeometryReal , typename MatrixReal >
 	void InitializeMassAndStiffness
 	(
+#ifdef NEW_MASS_AND_STIFFNESS
+		MassAndStiffnessOperator< MatrixReal > &massAndStiffnessOperator ,
+#else // !NEW_MASS_AND_STIFFNESS
 		SystemCoefficients< MatrixReal > &mass ,
 		SystemCoefficients< MatrixReal > &stiffness ,
+#endif // NEW_MASS_AND_STIFFNESS
+#ifdef NEW_CODE
+		const GridAtlas< GeometryReal , MatrixReal > & gridAtlas ,
+#else // !NEW_CODE
 		const HierarchicalSystem< GeometryReal , MatrixReal >& hierarchy ,
+#endif // NEW_CODE
 		const ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > > &parameterMetric ,
 		const ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
 		const BoundaryProlongationData< MatrixReal > &boundaryProlongation ,
+#ifdef NEW_CODE
+#else // !NEW_CODE
 		bool computeCellBasedStiffness ,
+#endif // NEW_CODE
 		const std::vector< Point3D< MatrixReal > > &inputSignal ,
 		std::vector< MatrixReal >& texelToCellCoeffs ,
 		SparseMatrix< MatrixReal , int > boundaryCellBasedStiffnessRHSMatrix[3]
 	)
 	{
+#ifdef NEW_CODE
+		bool computeCellBasedStiffness = true;
+#endif // NEW_CODE
+#ifdef NEW_DIVERGENCE
+		DivergenceOperator< MatrixReal > divergenceOperator;
+#ifdef NEW_CODE
+		InitializeMassAndStiffness< Samples >( mass , stiffness , gridAtlas , parameterMetric , atlasCharts , boundaryProlongation , computeCellBasedStiffness , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , false , divergenceOperator );
+#else // !NEW_CODE
+		InitializeMassAndStiffness< Samples >( mass , stiffness , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , computeCellBasedStiffness , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , false , divergenceOperator );
+#endif // NEW_CODE
+#else // !NEW_DIVERGENCE
 		std::map< SimplexIndex< 1 , AtlasTexelIndex > , unsigned int > edgeIndex;
 		SparseMatrix< MatrixReal , int > boundaryDivergenceMatrix;
 		std::vector< MatrixReal > deepDivergenceCoefficients;
+#ifdef NEW_CODE
+		InitializeMassAndStiffness< Samples >( mass , stiffness , gridAtlas , parameterMetric , atlasCharts , boundaryProlongation , computeCellBasedStiffness , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , false , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients );
+#else // !NEW_CODE
 		InitializeMassAndStiffness< Samples >( mass , stiffness , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , computeCellBasedStiffness , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , false , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients );
+#endif // NEW_CODE
+#endif // NEW_DIVERGENCE
 	}
+
+#ifdef NEW_CODE
+	template< unsigned int Samples , typename GeometryReal , typename MatrixReal >
+	void InitializeMassAndStiffness
+	(
+#ifdef NEW_MASS_AND_STIFFNESS
+		MassAndStiffnessOperator< MatrixReal > & massAndStiffness ,
+#else // !NEW_MASS_AND_STIFFNESS
+		SystemCoefficients< MatrixReal > &mass ,
+		SystemCoefficients< MatrixReal > &stiffness ,
+#endif // NEW_MASS_AND_STIFFNESS
+#ifdef NEW_CODE
+		const GridAtlas< GeometryReal , MatrixReal > & gridAtlas ,
+#else // !NEW_CODE
+		const HierarchicalSystem< GeometryReal , MatrixReal >& hierarchy ,
+#endif // NEW_CODE
+		const ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > > &parameterMetric ,
+		const ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
+		const BoundaryProlongationData< MatrixReal > &boundaryProlongation
+	)
+	{
+		bool computeCellBasedStiffness=false;
+		const std::vector< Point3D< MatrixReal > > inputSignal;
+		std::vector< MatrixReal > texelToCellCoeffs;
+		SparseMatrix< MatrixReal , int > boundaryCellBasedStiffnessRHSMatrix[3];
+
+#ifdef NEW_DIVERGENCE
+		DivergenceOperator< MatrixReal > divergenceOperator;
+#ifdef NEW_MASS_AND_STIFFNESS
+#ifdef NEW_CODE
+		InitializeMassAndStiffness< Samples >( massAndStiffnessOperator , gridAtlas , parameterMetric , atlasCharts , boundaryProlongation , computeCellBasedStiffness , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , false , divergenceOperator );
+#else // !NEW_CODE
+		InitializeMassAndStiffness< Samples >( massAndStiffnessOperator , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , computeCellBasedStiffness , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , false , divergenceOperator );
+#endif // NEW_CODE
+#else // !NEW_MASS_AND_STIFFNESS
+#ifdef NEW_CODE
+		InitializeMassAndStiffness< Samples >( mass , stiffness , gridAtlas , parameterMetric , atlasCharts , boundaryProlongation , computeCellBasedStiffness , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , false , divergenceOperator );
+#else // !NEW_CODE
+		InitializeMassAndStiffness< Samples >( mass , stiffness , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , computeCellBasedStiffness , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , false , divergenceOperator );
+#endif // NEW_CODE
+#endif // NEW_MASS_AND_STIFFNESS
+#else // !NEW_DIVERGENCE
+		std::map< SimplexIndex< 1 , AtlasTexelIndex > , unsigned int > edgeIndex;
+		SparseMatrix< MatrixReal , int > boundaryDivergenceMatrix;
+		std::vector< MatrixReal > deepDivergenceCoefficients;
+#ifdef NEW_CODE
+		InitializeMassAndStiffness< Samples >( mass , stiffness , gridAtlas , parameterMetric , atlasCharts , boundaryProlongation , computeCellBasedStiffness , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , false , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients );
+#else // !NEW_CODE
+		InitializeMassAndStiffness< Samples >( mass , stiffness , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , computeCellBasedStiffness , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , false , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients );
+#endif // NEW_CODE
+#endif // NEW_DIVERGENCE
+	}
+#endif // NEW_CODE
 }

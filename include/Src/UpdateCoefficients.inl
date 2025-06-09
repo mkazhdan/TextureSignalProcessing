@@ -26,9 +26,6 @@ ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF S
 DAMAGE.
 */
 
-#include <Misha/Miscellany.h>
-#include <Misha/MultiThreading.h>
-
 
 
 template< class Real >
@@ -392,8 +389,12 @@ void UpdateMultigridCoefficientsAndSolvers( const HierarchicalSystem< GeometryRe
 template< typename GeometryReal , typename MatrixReal  , class DirectSolver >
 void UpdateLinearSystem
 (
-	MatrixReal screenWeight , MatrixReal stiffnessWeight , const HierarchicalSystem< GeometryReal , MatrixReal > &hierarchy , std::vector< SystemCoefficients< MatrixReal > > &multigridCoefficients ,
-	const SystemCoefficients< MatrixReal > &mass , const SystemCoefficients< MatrixReal > &stiffness ,
+	MatrixReal screenWeight ,
+	MatrixReal stiffnessWeight ,
+	const HierarchicalSystem< GeometryReal , MatrixReal > &hierarchy ,
+	std::vector< SystemCoefficients< MatrixReal > > &multigridCoefficients ,
+	const SystemCoefficients< MatrixReal > &mass ,
+	const SystemCoefficients< MatrixReal > &stiffness ,
 	VCycleSolvers< DirectSolver > &vCycleSolvers , DirectSolver &fineSolver ,
 	const SparseMatrix< MatrixReal , int > &fineSystemMatrix ,
 	bool detailVerbose=false , bool initSolvers=true , bool updateFineSolver=false

@@ -35,6 +35,247 @@ DAMAGE.
 
 namespace MishaK
 {
+#ifdef NEW_DIVERGENCE
+	template< typename MatrixReal >
+	struct DivergenceOperator
+	{
+		class DivergenceRasterLine
+		{
+		public:
+			int prevEdgeRowStart;
+			int currEdgeRowStart;
+			int nextEdgeRowStart;
+#ifdef SANITY_CHECK
+#pragma message( "[WARNING] Is this the right type?" )
+#endif // SANITY_CHECK
+			AtlasInteriorTexelIndex deepCoefficientsStart;
+			AtlasTexelIndex texelStart;
+			AtlasTexelIndex texelEnd;
+
+			static std::vector< DivergenceRasterLine > GetRasterLines
+			(
+				const std::map< SimplexIndex< 1 , AtlasTexelIndex > , unsigned int > &coarseEdgeIndex ,
+				const std::vector< RasterLine > &rasterLines
+			);
+		};
+
+
+		std::vector< SimplexIndex< 1 , AtlasTexelIndex > > edges;
+		SparseMatrix< MatrixReal , int > boundaryMatrix;
+		std::vector< MatrixReal > deepCoefficients;
+		std::vector< DivergenceRasterLine > rasterLines;
+
+		size_t cols( void ) const { return edges.size(); }
+		size_t rows( void ) const { return boundaryMatrix.rows; }
+
+		template< typename Data >
+		void operator()( const std::vector< Data > &edgeValues , std::vector< Data > &texelDivergence , bool add=false ) const;
+
+		template< typename Data >
+		void operator()( ConstPointer( Data ) edgeValues , Pointer( Data ) texelDivergence , bool add=false ) const;
+
+		template< typename Data >
+		std::vector< Data > operator()( const std::vector< Data > &edgeValues ) const;
+
+		template< typename OutReal=MatrixReal >
+		Eigen::SparseMatrix< OutReal > operator()( void ) const;
+	};
+
+
+	template< typename MatrixReal >
+	std::vector< typename DivergenceOperator< MatrixReal >::DivergenceRasterLine >
+		DivergenceOperator< MatrixReal >::DivergenceRasterLine::GetRasterLines
+		(
+			const std::map< SimplexIndex< 1 , AtlasTexelIndex > , unsigned int > &edgeToIndex ,
+			const std::vector< RasterLine > &rasterLines
+		)
+	{
+		std::vector< typename DivergenceOperator< MatrixReal >::DivergenceRasterLine > divergenceRasterLines( rasterLines.size() );
+		for( unsigned int i=0 ; i<rasterLines.size() ; i++ )
+		{
+			const RasterLine & line = rasterLines[i];
+			DivergenceRasterLine & divLine = divergenceRasterLines[i];
+			divLine.texelStart = line.lineStartIndex;
+			divLine.texelEnd = line.lineEndIndex;
+			divLine.deepCoefficientsStart = line.coeffStartIndex;
+
+
+			{
+				SimplexIndex< 1 , AtlasTexelIndex > prevEdgeKey( line.prevLineIndex-1 , line.prevLineIndex );
+				auto iter = edgeToIndex.find( prevEdgeKey );
+#ifdef SANITY_CHECK
+				if( iter==edgeToIndex.end() ) MK_THROW( "Edge not found" );
+#endif // SANITY_CHECK
+				divLine.prevEdgeRowStart = iter->second;
+			}
+
+			{
+				SimplexIndex< 1 , AtlasTexelIndex > currEdgeKey( line.lineStartIndex-1 , line.lineStartIndex );
+				auto iter = edgeToIndex.find( currEdgeKey );
+#ifdef SANITY_CHECK
+				if( iter==edgeToIndex.end() ) MK_THROW( "Edge not found" );
+#endif // SANITY_CHECK
+				divLine.currEdgeRowStart = iter->second;
+			}
+
+			{
+				SimplexIndex< 1 , AtlasTexelIndex > nextEdgeKey( line.nextLineIndex-1 , line.nextLineIndex );
+				auto iter = edgeToIndex.find( nextEdgeKey );
+#ifdef SANITY_CHECK
+				if( iter==edgeToIndex.end() ) MK_THROW( "Edge not found" );
+#endif // SANITY_CHECK
+				divLine.nextEdgeRowStart = iter->second;
+			}
+		}
+		return divergenceRasterLines;
+	}
+
+	template< typename Real >
+	template< typename Data >
+	void DivergenceOperator< Real >::operator()( ConstPointer( Data ) edgeValues , Pointer( Data ) texelDivergence , bool add ) const
+	{
+		// Update Boundary Texels 
+		if( add ) boundaryMatrix.Multiply( &edgeValues[0] , &texelDivergence[0] , MULTIPLY_ADD );
+		else      boundaryMatrix.Multiply( &edgeValues[0] , &texelDivergence[0] );
+
+		// Update Deep Texels
+
+		auto UpdateRow = [&]( int r )
+			{
+				Data* out = texelDivergence + rasterLines[r].texelStart;
+				const Data* previousRowEdges = edgeValues + rasterLines[r].prevEdgeRowStart;
+				const Data* currentRowEdges = edgeValues + rasterLines[r].currEdgeRowStart;
+				const Data* nextRowEdges = edgeValues + rasterLines[r].nextEdgeRowStart;
+
+				const Real * coeff = deepCoefficients.data() + static_cast< unsigned int >( rasterLines[r].deepCoefficientsStart ) * 12;
+				int lineLength = rasterLines[r].texelEnd - rasterLines[r].texelStart + 1;
+
+				if( add )
+				{
+					for( int i=0 ; i<lineLength ; coeff+=12 , previousRowEdges+=2 , currentRowEdges+=2 , nextRowEdges+=2 , i++ )
+					{
+						out[i] +=
+							previousRowEdges[0] * coeff[0] +
+							previousRowEdges[1] * coeff[1] +
+							previousRowEdges[2] * coeff[2] +
+							previousRowEdges[3] * coeff[3] +
+							previousRowEdges[5] * coeff[4] +
+
+							currentRowEdges[0] * coeff[5] +
+							currentRowEdges[1] * coeff[6] +
+							currentRowEdges[2] * coeff[7] +
+							currentRowEdges[3] * coeff[8] +
+							currentRowEdges[5] * coeff[9] +
+
+							nextRowEdges[0] * coeff[10] +
+							nextRowEdges[2] * coeff[11];
+					}
+				}
+				else
+				{
+					for( int i=0 ; i<lineLength ; coeff+=12 , previousRowEdges+=2 , currentRowEdges+=2 , nextRowEdges+=2 , i++ )
+					{
+						out[i] =
+							previousRowEdges[0] * coeff[0] +
+							previousRowEdges[1] * coeff[1] +
+							previousRowEdges[2] * coeff[2] +
+							previousRowEdges[3] * coeff[3] +
+							previousRowEdges[5] * coeff[4] +
+
+							currentRowEdges[0] * coeff[5] +
+							currentRowEdges[1] * coeff[6] +
+							currentRowEdges[2] * coeff[7] +
+							currentRowEdges[3] * coeff[8] +
+							currentRowEdges[5] * coeff[9] +
+
+							nextRowEdges[0] * coeff[10] +
+							nextRowEdges[2] * coeff[11];
+					}
+				}
+
+				// Edge indexing
+				//		 ---0---
+				//		|  
+				//		1  
+				//		|  
+
+
+				// Reduced interior texel neighbour edge indexing
+				//		--0-----2-- 
+				//		|    |    |
+				//		1    3    4
+				//		|    |    |
+				//		--5----7--
+				//		|    |    |
+				//		6    8    9
+				//		|    |    |
+				//      --10---11--
+
+
+			};
+
+		ThreadPool::ParallelFor( 0 , rasterLines.size() , [&]( unsigned int , size_t r ){ UpdateRow((unsigned int)r); } );
+	}
+
+	template< typename Real >
+	template< typename Data >
+	void DivergenceOperator< Real >::operator()( const std::vector< Data > & edgeValues , std::vector< Data > & texelDivergence , bool add ) const
+	{
+		return operator()( GetPointer( edgeValues ) , GetPointer( texelDivergence ) , add );
+	}
+
+	template< typename Real >
+	template< typename Data >
+	std::vector< Data > DivergenceOperator< Real >::operator()( const std::vector< Data > &edgeValues ) const
+	{
+		std::vector< Data > texelDivergence( boundaryMatrix.rows );
+		operator()( edgeValues , texelDivergence , false );
+		return texelDivergence;
+	}
+
+	template< typename Real >
+	template< typename OutReal >
+	Eigen::SparseMatrix< OutReal > DivergenceOperator< Real >::operator()( void ) const
+	{
+		std::vector< Eigen::Triplet< OutReal > > triplets;
+		Eigen::SparseMatrix< OutReal > M( boundaryMatrix.rows , edges.size() );
+
+		size_t deepEntries = 0;
+		for( unsigned int r=0 ; r<rasterLines.size() ; r++ ) deepEntries += ( rasterLines[r].texelEnd - rasterLines[r].texelStart + 1 ) + 12;
+		triplets.reserve( deepEntries + boundaryMatrix.Entries() );
+
+		for( unsigned int i=0 ; i<boundaryMatrix.rows ; i++ ) for( unsigned int j=0 ; j<boundaryMatrix.rowSizes[i] ; j++ ) triplets.emplace_back( i , boundaryMatrix[i][j].N , static_cast< OutReal >( boundaryMatrix[i][j].Value ) );
+
+		for( unsigned int r=0 ; r<rasterLines.size() ; r++ )
+		{
+			size_t row = rasterLines[r].texelStart;
+			size_t prevCol = static_cast< unsigned int >( rasterLines[r].prevEdgeRowStart );
+			size_t currCol = static_cast< unsigned int >( rasterLines[r].currEdgeRowStart );
+			size_t nextCol = static_cast< unsigned int >( rasterLines[r].nextEdgeRowStart );
+			const Real * coeff = deepCoefficients.data() + static_cast< unsigned int >( rasterLines[r].deepCoefficientsStart ) * 12;
+			int lineLength = rasterLines[r].texelEnd - rasterLines[r].texelStart + 1;
+
+			for( int i=0 ; i<lineLength ; coeff+=12 , prevCol+=2 , currCol+=2 , nextCol+=2 , i++ )
+			{
+				triplets.emplace_back( row+i , prevCol+0 , static_cast< OutReal >( coeff[ 0] ) );
+				triplets.emplace_back( row+i , prevCol+1 , static_cast< OutReal >( coeff[ 1] ) );
+				triplets.emplace_back( row+i , prevCol+2 , static_cast< OutReal >( coeff[ 2] ) );
+				triplets.emplace_back( row+i , prevCol+3 , static_cast< OutReal >( coeff[ 3] ) );
+				triplets.emplace_back( row+i , prevCol+5 , static_cast< OutReal >( coeff[ 4] ) );
+				triplets.emplace_back( row+i , currCol+0 , static_cast< OutReal >( coeff[ 5] ) );
+				triplets.emplace_back( row+i , currCol+1 , static_cast< OutReal >( coeff[ 6] ) );
+				triplets.emplace_back( row+i , currCol+2 , static_cast< OutReal >( coeff[ 7] ) );
+				triplets.emplace_back( row+i , currCol+3 , static_cast< OutReal >( coeff[ 8] ) );
+				triplets.emplace_back( row+i , currCol+5 , static_cast< OutReal >( coeff[ 9] ) );
+				triplets.emplace_back( row+i , nextCol+0 , static_cast< OutReal >( coeff[10] ) );
+				triplets.emplace_back( row+i , nextCol+2 , static_cast< OutReal >( coeff[11] ) );
+			}
+		}
+		M.setFromTriplets( triplets.begin() , triplets.end() );
+		return M;
+	}
+#else // !NEW_DIVERGENCE
+
 	class DivegenceRasterLine
 	{
 	public:
@@ -49,7 +290,7 @@ namespace MishaK
 		AtlasTexelIndex texelEnd;
 	};
 
-	void InitializeDivergenceRasteLines
+	void InitializeDivergenceRasterLines
 	(
 		std::map< SimplexIndex< 1 , AtlasTexelIndex > , unsigned int > &coarseEdgeIndex ,
 		const std::vector< RasterLine > &rasterLines ,
@@ -87,12 +328,12 @@ namespace MishaK
 	template< class Real , class Data >
 	void ComputeDivergence( const std::vector< Data > &edgeValues , std::vector< Data > &texelDivergence , const std::vector< Real > &deepDivergenceCoefficients , const SparseMatrix< Real , int > &boundaryDivergenceMatrix , const std::vector< DivegenceRasterLine > &divergenceRasterLines )
 	{
-		//Update Boundary Texels 
+		// Update Boundary Texels 
 		boundaryDivergenceMatrix.Multiply(&edgeValues[0], &texelDivergence[0]);
 
-		//Update Deep Texels
+		// Update Deep Texels
 
-		auto UpdateRow = [&](int r)
+		auto UpdateRow = [&]( int r )
 			{
 				Data* out = texelDivergence.data() + divergenceRasterLines[r].texelStart;
 				const Data* previousRowEdges = edgeValues.data() + divergenceRasterLines[r].prevEdgeRowStart;
@@ -100,8 +341,9 @@ namespace MishaK
 				const Data* nextRowEdges = edgeValues.data() + divergenceRasterLines[r].nextEdgeRowStart;
 
 				const Real * coeff = deepDivergenceCoefficients.data() + static_cast< unsigned int >(divergenceRasterLines[r].deepCoefficientsStart) * 12;
-				int lineLenght = divergenceRasterLines[r].texelEnd - divergenceRasterLines[r].texelStart + 1;
-				for (int i = 0; i < lineLenght; coeff += 12, previousRowEdges += 2, currentRowEdges += 2, nextRowEdges += 2, i++) {
+				int lineLength = divergenceRasterLines[r].texelEnd - divergenceRasterLines[r].texelStart + 1;
+				for( int i=0 ; i<lineLength ; coeff+=12 , previousRowEdges+=2 , currentRowEdges+=2 , nextRowEdges+=2 , i++ )
+				{
 					out[i] = previousRowEdges[0] * coeff[0] + previousRowEdges[1] * coeff[1] + previousRowEdges[2] * coeff[2] + previousRowEdges[3] * coeff[3] +
 						previousRowEdges[5] * coeff[4] +
 
@@ -133,9 +375,9 @@ namespace MishaK
 
 			};
 
-
 		ThreadPool::ParallelFor( 0 , divergenceRasterLines.size() , [&]( unsigned int , size_t r ){ UpdateRow((unsigned int)r); } );
 	}
+#endif // NEW_DIVERGENCE
 }
 #endif // DIVERGENCE_INCLUDED
 

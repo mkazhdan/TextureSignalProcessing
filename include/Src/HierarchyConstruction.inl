@@ -547,7 +547,6 @@ void InitializeTextureNodes
 	std::vector< TextureNodeInfo< GeometryReal > > &textureNodes
 )
 {
-
 	for( unsigned int c=0 ; c<gridCharts.size() ; c++ )
 	{
 		const GridChart< GeometryReal > &gridChart = gridCharts[ ChartIndex(c) ];
@@ -559,7 +558,7 @@ void InitializeTextureNodes
 			textureNode.cj = gridChart.cornerCoords[1] + j;
 			textureNode.chartID = ChartIndex(c);
 			textureNode.tID = gridChart.triangleID(i,j);
-			textureNode.barycentricCoords = gridChart.barycentricCoords(i, j);
+			textureNode.barycentricCoords = gridChart.barycentricCoords(i,j);
 			textureNode.isInterior = IsCovered( gridChart.texelType(i,j) );
 			textureNodes.push_back( textureNode );
 		}

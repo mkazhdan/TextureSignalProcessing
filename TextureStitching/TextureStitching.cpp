@@ -188,7 +188,10 @@ public:
 	static std::vector< Point3D< float > >textureNodePositions;
 	static std::vector< Point3D< float > >textureEdgePositions;
 
+#ifdef NEW_CODE
+#else // !NEW_CODE
 	static ExplicitIndexVector< ChartIndex , AtlasChart< PreReal > > atlasCharts;
+#endif // NEW_CODE
 
 	static ExplicitIndexVector< AtlasCellIndex , BilinearElementIndex< AtlasTexelIndex > > bilinearElementIndices;
 
@@ -218,21 +221,29 @@ public:
 	static VCycleSolvers< DirectSolver > vCycleSolvers;
 	static DirectSolver directSolver;
 
+
+#ifdef NEW_DIVERGENCE
+	static DivergenceOperator< Real > divergenceOperator;
+#else // !NEW_DIVERGENCE
 	static std::map< SimplexIndex< 1 , AtlasTexelIndex > , unsigned int > edgeIndex;
-	static std::vector< SimplexIndex< 1 , AtlasTexelIndex > > edgePairs;
-
 	static SparseMatrix< Real , int > boundaryDivergenceMatrix;
-
 	static std::vector< Real > deepDivergenceCoefficients;
 	static std::vector< DivegenceRasterLine > divergenceRasterLines;
+	static std::vector< SimplexIndex< 1 , AtlasTexelIndex > > edgePairs;
+#endif // NEW_DIVERGENCE
+
 
 	static std::vector< bool > unobservedTexel;
 	static std::vector< Point3D< Real > > texelValues;
 	static std::vector< Point3D< Real > > edgeValues;
 
 	// Linear Operators
+#ifdef NEW_MASS_AND_STIFFNESS
+	static MassAndStiffnessOperator< Real > massAndStiffnessOperator;
+#else // !NEW_MASS_AND_STIFFNESS
 	static SystemCoefficients< Real > massCoefficients;
 	static SystemCoefficients< Real > stiffnessCoefficients;
+#endif // NEW_MASS_AND_STIFFNESS
 
 	// Stitching UI
 	static int textureIndex;
@@ -273,7 +284,10 @@ public:
 	static void UpdateSolution( bool verbose=false , bool detailVerbose=false );
 	static void ComputeExactSolution( bool verbose=false );
 	static void InitializeSystem( int width , int height );
+#ifdef NEW_CODE
+#else // !NEW_CODE
 	static void _InitializeSystem( ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > > &parameterMetric , BoundaryProlongationData< Real > &boundaryProlongation );
+#endif // NEW_CODE
 
 #ifdef NO_OPEN_GL_VISUALIZATION
 #else // !NO_OPEN_GL_VISUALIZATION
@@ -344,24 +358,36 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth > std:
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > VCycleSolvers< typename Stitching< PreReal , Real , TextureBitDepth >::DirectSolver >		Stitching< PreReal , Real , TextureBitDepth >::vCycleSolvers;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > typename Stitching< PreReal , Real , TextureBitDepth >::DirectSolver				Stitching< PreReal , Real , TextureBitDepth >::directSolver;
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > ExplicitIndexVector< ChartIndex , AtlasChart< PreReal > >				Stitching< PreReal , Real , TextureBitDepth >::atlasCharts;
+#ifdef NEW_CODE
+#else // !NEW_CODE
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > ExplicitIndexVector< ChartIndex , AtlasChart< PreReal > >		Stitching< PreReal , Real , TextureBitDepth >::atlasCharts;
+#endif // NEW_CODE
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Point3D< float > >									Stitching< PreReal , Real , TextureBitDepth >::textureNodePositions;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Point3D< float > >									Stitching< PreReal , Real , TextureBitDepth >::textureEdgePositions;
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > Padding															Stitching< PreReal , Real , TextureBitDepth >::padding;
 
+#ifdef NEW_MASS_AND_STIFFNESS
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > MassAndStiffnessOperator< Real >								Stitching< PreReal , Real , TextureBitDepth >::massAndStiffnessOperator;
+#else // !NEW_MASS_AND_STIFFNESS
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > SystemCoefficients< Real >										Stitching< PreReal , Real , TextureBitDepth >::massCoefficients;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > SystemCoefficients< Real >										Stitching< PreReal , Real , TextureBitDepth >::stiffnessCoefficients;
+#endif // NEW_MASS_AND_STIFFNESS
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > unsigned int													Stitching< PreReal , Real , TextureBitDepth >::updateCount = static_cast< unsigned int >(-1);
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth >  std::map< SimplexIndex< 1 , AtlasTexelIndex > , unsigned int >	Stitching< PreReal , Real , TextureBitDepth >::edgeIndex;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth >  std::vector< SimplexIndex< 1 , AtlasTexelIndex > >		Stitching< PreReal , Real , TextureBitDepth >::edgePairs;
 
+#ifdef NEW_DIVERGENCE
+template< typename PreReal , typename Real , unsigned int TextureBitDepth >  DivergenceOperator< Real >										Stitching< PreReal , Real , TextureBitDepth >::divergenceOperator;
+#else // !NEW_DIVERGENCE
+template< typename PreReal , typename Real , unsigned int TextureBitDepth >  std::map< SimplexIndex< 1 , AtlasTexelIndex > , unsigned int >	Stitching< PreReal , Real , TextureBitDepth >::edgeIndex;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth >  SparseMatrix< Real , int >										Stitching< PreReal , Real , TextureBitDepth >::boundaryDivergenceMatrix;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth >  std::vector< Real >											Stitching< PreReal , Real , TextureBitDepth >::deepDivergenceCoefficients;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth >  std::vector< DivegenceRasterLine >  							Stitching< PreReal , Real , TextureBitDepth >::divergenceRasterLines;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth >  std::vector< SimplexIndex< 1 , AtlasTexelIndex > >				Stitching< PreReal , Real , TextureBitDepth >::edgePairs;
+#endif // NEW_DIVERGENCE
+
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth >  std::vector< bool >											Stitching< PreReal , Real , TextureBitDepth >::unobservedTexel;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth >  std::vector< Point3D< Real > >									Stitching< PreReal , Real , TextureBitDepth >::texelValues;
@@ -586,7 +612,11 @@ void  Stitching< PreReal , Real , TextureBitDepth >::InterpolationWeightCallBack
 		stitchingMatrix = mass*interpolationWeight + stiffness;
 		if( Verbose.set ) std::cout << pMeter( "Stitching matrix" ) << std::endl;
 	}
+#ifdef NEW_MASS_AND_STIFFNESS
+	UpdateLinearSystem( interpolationWeight , (Real)1. , hierarchy , multigridStitchingCoefficients , massAndStiffnessOperator.massCoefficients , massAndStiffnessOperator.stiffnessCoefficients , vCycleSolvers , directSolver , stitchingMatrix , DetailVerbose.set , false , UseDirectSolver.set );
+#else // !NEW_MASS_AND_STIFFNESS
 	UpdateLinearSystem( interpolationWeight , (Real)1. , hierarchy , multigridStitchingCoefficients , massCoefficients , stiffnessCoefficients , vCycleSolvers , directSolver , stitchingMatrix , DetailVerbose.set , false , UseDirectSolver.set );
+#endif // NEW_MASS_AND_STIFFNESS
 	if( Verbose.set ) std::cout << pMeter( "Initialized MG" ) << std::endl;
 
 	ThreadPool::ParallelFor( 0 , multigridStitchingVariables[0].rhs.size() , [&]( unsigned int , size_t i ){ multigridStitchingVariables[0].rhs[i] = texelMass[i] * interpolationWeight + texelDivergence[i]; } );
@@ -615,8 +645,16 @@ void Stitching< PreReal , Real , TextureBitDepth >::UpdateSolution( bool verbose
 	Miscellany::PerformanceMeter pMeter( '.' );
 	if( !rhsUpdated )
 	{
+#ifdef NEW_MASS_AND_STIFFNESS
+		massAndStiffnessOperator.mass( texelValues , texelMass );
+#else // !NEW_MASS_AND_STIFFNESS
 		MultiplyBySystemMatrix_NoReciprocals( massCoefficients , hierarchy.gridAtlases[0].indexConverter , hierarchy.gridAtlases[0].rasterLines , texelValues , texelMass );
+#endif // NEW_MASS_AND_STIFFNESS
+#ifdef NEW_DIVERGENCE
+		divergenceOperator( edgeValues , texelDivergence );
+#else // !NEW_DIVERGENCE
 		ComputeDivergence( edgeValues , texelDivergence , deepDivergenceCoefficients , boundaryDivergenceMatrix , divergenceRasterLines );
+#endif // NEW_DIVERGENCE
 
 		ThreadPool::ParallelFor( 0 , textureNodes.size() , [&]( unsigned int , size_t i ){ multigridStitchingVariables[0].rhs[i] = texelMass[i] * interpolationWeight + texelDivergence[i]; } );
 
@@ -627,6 +665,154 @@ void Stitching< PreReal , Real , TextureBitDepth >::UpdateSolution( bool verbose
 	VCycle( multigridStitchingVariables , multigridStitchingCoefficients , multigridIndices , vCycleSolvers , verbose , detailVerbose );
 }
 
+#ifdef NEW_CODE
+template< typename PreReal , typename Real , unsigned int TextureBitDepth >
+void Stitching< PreReal , Real , TextureBitDepth >::InitializeSystem( int width , int height )
+{
+	Miscellany::PerformanceMeter pMeter( '.' );
+
+	ExplicitIndexVector< ChartIndex , AtlasChart< PreReal > > atlasCharts;
+
+	MultigridBlockInfo multigridBlockInfo( MultigridBlockWidth.value , MultigridBlockHeight.value , MultigridPaddedWidth.value , MultigridPaddedHeight.value );
+	InitializeHierarchy( mesh , width , height , levels , textureNodes , bilinearElementIndices , hierarchy , atlasCharts , multigridBlockInfo );
+	if( Verbose.set ) std::cout << pMeter( "Hierarchy" ) << std::endl;
+
+	BoundaryProlongationData< Real > boundaryProlongation;
+	InitializeBoundaryProlongationData( hierarchy.gridAtlases[0] , boundaryProlongation );
+
+	ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > > parameterMetric;
+	InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric );
+#ifdef NEW_DIVERGENCE
+#else // !NEW_DIVERGENCE
+	InitializeIntraChartEdgeIndexing( hierarchy.gridAtlases[0].gridCharts , edgeIndex );
+#endif // NEW_DIVERGENCE
+
+	pMeter.reset();
+	{
+		// Unused parameters
+		std::vector< Point3D< Real > > inputSignal;
+		std::vector< Real > texelToCellCoeffs;
+		SparseMatrix< Real , int > boundaryCellBasedStiffnessRHSMatrix[3];
+
+		{
+			switch( MatrixQuadrature.value )
+			{
+#ifdef NEW_CODE
+#ifdef NEW_DIVERGENCE
+#ifdef NEW_MASS_AND_STIFFNESS
+			case  1: InitializeMassAndStiffness< 1>( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , divergenceOperator ) ; break;
+			case  3: InitializeMassAndStiffness< 3>( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , divergenceOperator ) ; break;
+			case  6: InitializeMassAndStiffness< 6>( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , divergenceOperator ) ; break;
+			case 12: InitializeMassAndStiffness<12>( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , divergenceOperator ) ; break;
+			case 24: InitializeMassAndStiffness<24>( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , divergenceOperator ) ; break;
+			case 32: InitializeMassAndStiffness<32>( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , divergenceOperator ) ; break;
+#else // !NEW_MASS_AND_STIFFNESS
+			case  1: InitializeMassAndStiffness< 1>( massCoefficients , stiffnessCoefficients , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , divergenceOperator ) ; break;
+			case  3: InitializeMassAndStiffness< 3>( massCoefficients , stiffnessCoefficients , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , divergenceOperator ) ; break;
+			case  6: InitializeMassAndStiffness< 6>( massCoefficients , stiffnessCoefficients , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , divergenceOperator ) ; break;
+			case 12: InitializeMassAndStiffness<12>( massCoefficients , stiffnessCoefficients , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , divergenceOperator ) ; break;
+			case 24: InitializeMassAndStiffness<24>( massCoefficients , stiffnessCoefficients , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , divergenceOperator ) ; break;
+			case 32: InitializeMassAndStiffness<32>( massCoefficients , stiffnessCoefficients , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , divergenceOperator ) ; break;
+#endif // NEW_MASS_AND_STIFFNESS
+#else // !NEW_DIVERGENCE
+			case  1: InitializeMassAndStiffness< 1>( massCoefficients , stiffnessCoefficients , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
+			case  3: InitializeMassAndStiffness< 3>( massCoefficients , stiffnessCoefficients , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
+			case  6: InitializeMassAndStiffness< 6>( massCoefficients , stiffnessCoefficients , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
+			case 12: InitializeMassAndStiffness<12>( massCoefficients , stiffnessCoefficients , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
+			case 24: InitializeMassAndStiffness<24>( massCoefficients , stiffnessCoefficients , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
+			case 32: InitializeMassAndStiffness<32>( massCoefficients , stiffnessCoefficients , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
+#endif // NEW_DIVERGENCE
+#else // !NEW_CODE
+#ifdef NEW_DIVERGENCE
+#ifdef NEW_MASS_AND_STIFFNESS
+			case  1: InitializeMassAndStiffness< 1>( massAndStiffnessOperator , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , divergenceOperator ) ; break;
+			case  3: InitializeMassAndStiffness< 3>( massAndStiffnessOperator , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , divergenceOperator ) ; break;
+			case  6: InitializeMassAndStiffness< 6>( massAndStiffnessOperator , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , divergenceOperator ) ; break;
+			case 12: InitializeMassAndStiffness<12>( massAndStiffnessOperator , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , divergenceOperator ) ; break;
+			case 24: InitializeMassAndStiffness<24>( massAndStiffnessOperator , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , divergenceOperator ) ; break;
+			case 32: InitializeMassAndStiffness<32>( massAndStiffnessOperator , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , divergenceOperator ) ; break;
+#else // !NEW_MASS_AND_STIFFNESS
+			case  1: InitializeMassAndStiffness< 1>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , divergenceOperator ) ; break;
+			case  3: InitializeMassAndStiffness< 3>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , divergenceOperator ) ; break;
+			case  6: InitializeMassAndStiffness< 6>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , divergenceOperator ) ; break;
+			case 12: InitializeMassAndStiffness<12>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , divergenceOperator ) ; break;
+			case 24: InitializeMassAndStiffness<24>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , divergenceOperator ) ; break;
+			case 32: InitializeMassAndStiffness<32>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , divergenceOperator ) ; break;
+#endif // NEW_MASS_AND_STIFFNESS
+#else // !NEW_DIVERGENCE
+			case  1: InitializeMassAndStiffness< 1>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
+			case  3: InitializeMassAndStiffness< 3>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
+			case  6: InitializeMassAndStiffness< 6>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
+			case 12: InitializeMassAndStiffness<12>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
+			case 24: InitializeMassAndStiffness<24>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
+			case 32: InitializeMassAndStiffness<32>( massCoefficients , stiffnessCoefficients , hierarchy , parameterMetric , atlasCharts , boundaryProlongation , false , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , true , edgeIndex , boundaryDivergenceMatrix , deepDivergenceCoefficients ) ; break;
+#endif // NEW_DIVERGENCE
+#endif // NEW_CODE
+			default: MK_THROW( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
+			}
+		}
+	}
+	if( Verbose.set ) std::cout << pMeter( "Mass and stiffness" ) << std::endl;
+
+#ifdef NEW_DIVERGENCE
+#else // !NEW_DIVERGENCE
+	InitializeDivergenceRasterLines( edgeIndex , hierarchy.gridAtlases[0].rasterLines , divergenceRasterLines );
+
+	edgePairs.resize( edgeIndex.size() );
+	for( auto edgeIter=edgeIndex.begin() ; edgeIter!=edgeIndex.end() ; edgeIter++ ) edgePairs[ (*edgeIter).second ] = (*edgeIter).first;
+#endif // NEW_DIVERGENCE
+
+	texelMass.resize( textureNodes.size() );
+	texelDivergence.resize( textureNodes.size() );
+
+	if( UseDirectSolver.set )
+	{
+#ifdef NEW_MASS_AND_STIFFNESS
+		FullMatrixConstruction( hierarchy.gridAtlases[0] , massAndStiffnessOperator.massCoefficients , mass );
+		FullMatrixConstruction( hierarchy.gridAtlases[0] , massAndStiffnessOperator.stiffnessCoefficients , stiffness );
+#else // !NEW_MASS_AND_STIFFNESS
+		FullMatrixConstruction( hierarchy.gridAtlases[0] , massCoefficients , mass );
+		FullMatrixConstruction( hierarchy.gridAtlases[0] , stiffnessCoefficients , stiffness );
+#endif // NEW_MASS_AND_STIFFNESS
+		stitchingMatrix = mass*interpolationWeight + stiffness;
+	}
+
+	multigridIndices.resize(levels);
+	for( unsigned int i=0 ; i<levels ; i++ )
+	{
+		const typename GridAtlas<>::IndexConverter & indexConverter = hierarchy.gridAtlases[i].indexConverter;
+		const GridAtlas< PreReal , Real > &gridAtlas = hierarchy.gridAtlases[i];
+		multigridIndices[i].threadTasks = gridAtlas.threadTasks;
+		multigridIndices[i].boundaryToCombined = indexConverter.boundaryToCombined();
+		multigridIndices[i].segmentedLines = gridAtlas.segmentedLines;
+		multigridIndices[i].rasterLines = gridAtlas.rasterLines;
+		multigridIndices[i].restrictionLines = gridAtlas.restrictionLines;
+		multigridIndices[i].prolongationLines = gridAtlas.prolongationLines;
+		if( i<levels-1 ) multigridIndices[i].boundaryRestriction = hierarchy.boundaryRestriction[i];
+	}
+
+	pMeter.reset();
+#ifdef NEW_MASS_AND_STIFFNESS
+	UpdateLinearSystem( interpolationWeight , (Real)1. , hierarchy , multigridStitchingCoefficients , massAndStiffnessOperator.massCoefficients , massAndStiffnessOperator.stiffnessCoefficients , vCycleSolvers , directSolver , stitchingMatrix , DetailVerbose.set, true, UseDirectSolver.set );
+#else // !NEW_MASS_AND_STIFFNESS
+	UpdateLinearSystem( interpolationWeight , (Real)1. , hierarchy , multigridStitchingCoefficients , massCoefficients , stiffnessCoefficients , vCycleSolvers , directSolver , stitchingMatrix , DetailVerbose.set, true, UseDirectSolver.set );
+#endif // NEW_MASS_AND_STIFFNESS
+	if( Verbose.set ) std::cout << pMeter( "Initialize MG" ) << std::endl;
+
+	multigridStitchingVariables.resize(levels);
+	for( unsigned int i=0 ; i<levels ; i++ )
+	{
+		const typename GridAtlas<>::IndexConverter & indexConverter = hierarchy.gridAtlases[i].indexConverter;
+		MultigridLevelVariables< Point3D< Real > >& variables = multigridStitchingVariables[i];
+		variables.x.resize( indexConverter.numCombined() );
+		variables.rhs.resize( indexConverter.numCombined() );
+		variables.residual.resize( indexConverter.numCombined() );
+		variables.boundary_rhs.resize( indexConverter.numBoundary() );
+		variables.boundary_value.resize( indexConverter.numBoundary() );
+		variables.variable_boundary_value.resize( indexConverter.numBoundary() );
+	}
+}
+#else // !NEW_CODE
 template< typename PreReal , typename Real , unsigned int TextureBitDepth >
 void Stitching< PreReal , Real , TextureBitDepth >::_InitializeSystem
 (
@@ -675,7 +861,7 @@ void Stitching< PreReal , Real , TextureBitDepth >::InitializeSystem( int width 
 	_InitializeSystem( parameterMetric , boundaryProlongation );
 	if( Verbose.set ) std::cout << pMeter( "Mass and stiffness" ) << std::endl;
 	
-	InitializeDivergenceRasteLines( edgeIndex , hierarchy.gridAtlases[0].rasterLines , divergenceRasterLines );
+	InitializeDivergenceRasterLines( edgeIndex , hierarchy.gridAtlases[0].rasterLines , divergenceRasterLines );
 	
 	edgePairs.resize( edgeIndex.size() );
 	for( auto edgeIter=edgeIndex.begin() ; edgeIter!=edgeIndex.end() ; edgeIter++ ) edgePairs[ (*edgeIter).second ] = (*edgeIter).first;
@@ -721,14 +907,25 @@ void Stitching< PreReal , Real , TextureBitDepth >::InitializeSystem( int width 
 		variables.variable_boundary_value.resize( indexConverter.numBoundary() );
 	}
 }
+#endif // NEW_CODE
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth >
 void Stitching< PreReal , Real , TextureBitDepth >::SetUpSystem( void )
 {
 	texelMass.resize( textureNodes.size() );
-	MultiplyBySystemMatrix_NoReciprocals( massCoefficients , hierarchy.gridAtlases[0].indexConverter , hierarchy.gridAtlases[0].rasterLines , texelValues , texelMass );
 
+#ifdef NEW_MASS_AND_STIFFNESS
+	massAndStiffnessOperator.mass( texelValues , texelMass );
+#else // !NEW_MASS_AND_STIFFNESS
+	MultiplyBySystemMatrix_NoReciprocals( massCoefficients , hierarchy.gridAtlases[0].indexConverter , hierarchy.gridAtlases[0].rasterLines , texelValues , texelMass );
+#endif // NEW_MASS_AND_STIFFNESS
+
+
+#ifdef NEW_DIVERGENCE
+	divergenceOperator( edgeValues , texelDivergence );
+#else // !NEW_DIVERGENCE
 	ComputeDivergence( edgeValues , texelDivergence , deepDivergenceCoefficients , boundaryDivergenceMatrix , divergenceRasterLines );
+#endif // NEW_DIVERGENCE
 
 	ThreadPool::ParallelFor
 		(
@@ -870,30 +1067,37 @@ void Stitching< PreReal , Real , TextureBitDepth >::LoadMasks( void )
 template< typename PreReal , typename Real , unsigned int TextureBitDepth >
 void Stitching< PreReal , Real , TextureBitDepth >::ParseImages( void )
 {
-	int numNodes = (int)textureNodes.size();
-	int numEdges = (int)edgeIndex.size();
+	unsigned int numNodes = (unsigned int)textureNodes.size();
+#ifdef NEW_DIVERGENCE
+	unsigned int numEdges = static_cast< unsigned int >( divergenceOperator.edges.size() );
+#else // !NEW_DIVERGENCE
+	unsigned int numEdges = (unsigned int)edgeIndex.size();
+#endif // NEW_DIVERGENCE
 	unobservedTexel.resize( numNodes );
 	texelValues.resize( numNodes );
  	edgeValues.resize( numEdges );
 
 	if( inputMode==MULTIPLE_INPUT_MODE )
 	{
-		std::vector< Real > texelWeight;
-		std::vector< Real > edgeWeight;
-		texelWeight.resize( numNodes , 0 );
-		edgeWeight.resize( numEdges , 0 );
+		std::vector< Real > texelWeight( numNodes , 0 );
+		std::vector< Real > edgeWeight( numEdges , 0 );
 
 		partialTexelValues.resize( numTextures );
 		for( int i=0 ; i<numTextures ; i++ ) partialTexelValues[i].resize( numNodes );
 		partialEdgeValues.resize( numTextures );
+#ifdef NEW_DIVERGENCE
+		for( int i=0 ; i<numTextures ; i++ ) partialEdgeValues[i].resize( divergenceOperator.edges.size() );
+#else // !NEW_DIVERGENCE
 		for( int i=0 ; i<numTextures ; i++ ) partialEdgeValues[i].resize( edgeIndex.size() );
+#endif // NEW_DIVERGENCE
+
 
 		for( int textureIter=0 ; textureIter<numTextures ; textureIter++ )
 		{
-			Image< Point3D< Real > > textureValues = InputLowFrequency.set ? lowFrequencyTexture : inputTextures[textureIter];
-			Image< Real > textureConfidence = inputConfidence[textureIter];
+			const Image< Point3D< Real > > & textureValues = InputLowFrequency.set ? lowFrequencyTexture : inputTextures[textureIter];
+			const Image< Real > & textureConfidence = inputConfidence[textureIter];
 
-			for( int i=0 ; i<textureNodes.size() ; i++ )
+			for( unsigned int i=0 ; i<textureNodes.size() ; i++ )
 			{
 				Real weight = textureConfidence( textureNodes[i].ci , textureNodes[i].cj );
 				Point3D< Real > value = textureValues( textureNodes[i].ci , textureNodes[i].cj );
@@ -902,32 +1106,39 @@ void Stitching< PreReal , Real , TextureBitDepth >::ParseImages( void )
 				texelWeight[i] += weight;
 			}
 
-			for( int e=0 ; e<edgePairs.size() ; e++ )
+#ifdef NEW_DIVERGENCE
+			for( unsigned int e=0 ; e<divergenceOperator.edges.size() ; e++ )
+#else // !NEW_DIVERGENCE
+			for( unsigned int e=0 ; e<edgePairs.size() ; e++ )
+#endif // NEW_DIVERGENCE
 			{
-
 				Real weight[2];
 				Point3D< Real > value[2];
 				for( unsigned int k=0 ; k<2 ; k++ )
 				{
+#ifdef NEW_DIVERGENCE
+					AtlasTexelIndex i = divergenceOperator.edges[e][k];
+#else // !NEW_DIVERGENCE
 					AtlasTexelIndex i = edgePairs[e][k];
+#endif // NEW_DIVERGENCE
 					weight[k] = textureConfidence( textureNodes[ static_cast< unsigned int >(i) ].ci , textureNodes[ static_cast< unsigned int >(i) ].cj );
 					value[k] = textureValues( textureNodes[ static_cast< unsigned int >(i) ].ci , textureNodes[ static_cast< unsigned int >(i) ].cj );
 				}
 				Real eWeight = weight[0] * weight[1];
-				Point3D<Real> eValue = value[1] - value[0];
-				partialEdgeValues[textureIter][e] = eWeight > 0 ? eValue : Point3D<Real>();
-				edgeValues[e] += eValue*eWeight;
+				Point3D< Real > eValue = value[1] - value[0];
+				partialEdgeValues[textureIter][e] = eWeight > 0 ? eValue : Point3D< Real >();
+				edgeValues[e] += eValue * eWeight;
 				edgeWeight[e] += eWeight;
 			}
-
 		}
-		for( int i=0 ; i<numNodes ; i++ )
+
+		for( unsigned int i=0 ; i<numNodes ; i++ )
 		{
 			unobservedTexel[i] = texelWeight[i]==0;
 			if( texelWeight[i]>0 ) texelValues[i] /= texelWeight[i];
 		}
 
-		for( int i=0 ; i<numEdges ; i++ ) if( edgeWeight[i]>0 ) edgeValues[i] /= edgeWeight[i];
+		for( unsigned int i=0 ; i<numEdges ; i++ ) if( edgeWeight[i]>0 ) edgeValues[i] /= edgeWeight[i];
 	}
 	else
 	{
@@ -936,9 +1147,17 @@ void Stitching< PreReal , Real , TextureBitDepth >::ParseImages( void )
 			unobservedTexel[i] = inputMask( textureNodes[i].ci , textureNodes[i].cj )==-1;
 			texelValues[i] = InputLowFrequency.set ? lowFrequencyTexture( textureNodes[i].ci , textureNodes[i].cj ) : inputComposition( textureNodes[i].ci , textureNodes[i].cj );
 		}
+#ifdef NEW_DIVERGENCE
+		for( unsigned int e=0 ; e<divergenceOperator.edges.size() ; e++ )
+#else // !NEW_DIVERGENCE
 		for( int e=0 ; e<edgePairs.size() ; e++ )
+#endif // NEW_DIVERGENCE
 		{
+#ifdef NEW_DIVERGENCE
+			const SimplexIndex< 1 , AtlasTexelIndex > &edgeCorners = divergenceOperator.edges[e];
+#else // !NEW_DIVERGENCE
 			const SimplexIndex< 1 , AtlasTexelIndex > &edgeCorners = edgePairs[e];
+#endif // NEW_DIVERGENCE
 			unsigned int ci[] = { textureNodes[ static_cast< unsigned int >(edgeCorners[0]) ].ci , textureNodes[ static_cast< unsigned int >(edgeCorners[1]) ].ci };
 			unsigned int cj[] = { textureNodes[ static_cast< unsigned int >(edgeCorners[0]) ].cj , textureNodes[ static_cast< unsigned int >(edgeCorners[1]) ].cj };
 			if( inputMask( ci[0] , cj[0] )!=-1 && inputMask( ci[0] , cj[0] )==inputMask( ci[1] , cj[1] ) ) edgeValues[e] = inputComposition( ci[1] , cj[1] ) - inputComposition( ci[0] , cj[0] );
@@ -1105,8 +1324,13 @@ void Stitching< PreReal , Real , TextureBitDepth >::Init( void )
 	textureNodePositions.resize( textureNodes.size() );
 	for( int i=0 ; i<textureNodePositions.size() ; i++ ) textureNodePositions[i] = mesh.surface( textureNodes[i] );
 
+#ifdef NEW_DIVERGENCE
+	textureEdgePositions.resize( divergenceOperator.edges.size() );
+	for( int i=0 ; i<divergenceOperator.edges.size() ; i++ ) textureEdgePositions[i] = ( textureNodePositions[ static_cast< unsigned int >(divergenceOperator.edges[i][0]) ] + textureNodePositions[ static_cast< unsigned int >(divergenceOperator.edges[i][1]) ] ) / 2;
+#else // !NEW_DIVERGENCE
 	textureEdgePositions.resize( edgePairs.size() );
 	for( int i=0 ; i<edgePairs.size() ; i++ ) textureEdgePositions[i] = ( textureNodePositions[ static_cast< unsigned int >(edgePairs[i][0]) ] + textureNodePositions[ static_cast< unsigned int >(edgePairs[i][1]) ] ) / 2;
+#endif // NEW_DIVERGENCE
 
 	{
 		unsigned int multiChartTexelCount = 0;

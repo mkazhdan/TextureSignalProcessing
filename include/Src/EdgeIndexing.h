@@ -141,7 +141,6 @@ namespace MishaK
 		}
 	}
 
-
 	template< typename GeometryReal >
 	void InitializeFineBoundaryEdgeChartIndexing
 	(
@@ -197,7 +196,7 @@ namespace MishaK
 		std::vector< std::vector< Eigen::Triplet< MatrixReal > > > _coarseToFineOneFormProlongation( ThreadPool::NumThreads() );
 		std::vector< std::pair< SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex > , AtlasRefinedBoundaryEdgeIndex > > _boundaryFineEdgeIndex;
 
-		// Transform the unordered_map into a vector of pairs for parallelization
+		// Transform the map into a vector of pairs for parallelization
 		_boundaryFineEdgeIndex.reserve( boundaryFineEdgeIndex.size() );
 		for( auto iter=boundaryFineEdgeIndex.begin() ; iter!=boundaryFineEdgeIndex.end() ; iter++ ) _boundaryFineEdgeIndex.push_back( std::make_pair( iter->first , iter->second ) );
 

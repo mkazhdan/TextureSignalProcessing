@@ -381,10 +381,10 @@ void TexturedMeshVisualization::DrawGeometry( GLuint& textureBufferId , bool pho
 		glEnd();
 	}
 
-	if (showBoundaryEdges)
+	if( showBoundaryEdges )
 	{
 		glDisable(GL_LIGHTING);
-		glLineWidth(lineWidth);
+		glLineWidth( lineWidth );
 		glColor3f( lineColor[0] , lineColor[1] , lineColor[2] );
 		glDisable(GL_MULTISAMPLE);
 		glEnable(GL_BLEND);
@@ -750,6 +750,7 @@ void TexturedMeshVisualization::motionFunc(int x, int y)
 }
 
 TexturedMeshVisualization::TexturedMeshVisualization( bool hasVectorField )
+	: lineColor( 0.25 , 0.25 , 0.25 )
 {
 	showVectorField = false;
 	useNearestSampling = false;
