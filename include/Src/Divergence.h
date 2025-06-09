@@ -35,7 +35,6 @@ DAMAGE.
 
 namespace MishaK
 {
-#ifdef NEW_DIVERGENCE
 	template< typename MatrixReal >
 	struct DivergenceOperator
 	{
@@ -274,110 +273,6 @@ namespace MishaK
 		M.setFromTriplets( triplets.begin() , triplets.end() );
 		return M;
 	}
-#else // !NEW_DIVERGENCE
-
-	class DivegenceRasterLine
-	{
-	public:
-		int prevEdgeRowStart;
-		int currEdgeRowStart;
-		int nextEdgeRowStart;
-#ifdef SANITY_CHECK
-#pragma message( "[WARNING] Is this the right type?" )
-#endif // SANITY_CHECK
-		AtlasInteriorTexelIndex deepCoefficientsStart;
-		AtlasTexelIndex texelStart;
-		AtlasTexelIndex texelEnd;
-	};
-
-	void InitializeDivergenceRasterLines
-	(
-		std::map< SimplexIndex< 1 , AtlasTexelIndex > , unsigned int > &coarseEdgeIndex ,
-		const std::vector< RasterLine > &rasterLines ,
-		std::vector< DivegenceRasterLine > &divergenceRasterLines
-	)
-	{
-		divergenceRasterLines.resize(rasterLines.size());
-		for( unsigned int i=0 ; i<rasterLines.size() ; i++ )
-		{
-			const RasterLine & line = rasterLines[i];
-			DivegenceRasterLine & divLine = divergenceRasterLines[i];
-			divLine.texelStart = line.lineStartIndex;
-			divLine.texelEnd = line.lineEndIndex;
-			divLine.deepCoefficientsStart = line.coeffStartIndex;
-			SimplexIndex< 1 , AtlasTexelIndex > prevEdgeKey( line.prevLineIndex-1 , line.prevLineIndex );
-#ifdef SANITY_CHECK
-			if( coarseEdgeIndex.find( prevEdgeKey )==coarseEdgeIndex.end() ) MK_THROW( "Edge not found" );
-#endif // SANITY_CHECK
-			divLine.prevEdgeRowStart = coarseEdgeIndex[prevEdgeKey];
-
-			SimplexIndex< 1 , AtlasTexelIndex > currEdgeKey( line.lineStartIndex-1 , line.lineStartIndex );
-#ifdef SANITY_CHECK
-			if( coarseEdgeIndex.find(currEdgeKey)==coarseEdgeIndex.end() ) MK_THROW( "Edge not found" );
-#endif // SANITY_CHECK
-			divLine.currEdgeRowStart = coarseEdgeIndex[currEdgeKey];
-
-			SimplexIndex< 1 , AtlasTexelIndex > nextEdgeKey( line.nextLineIndex-1 , line.nextLineIndex );
-#ifdef SANITY_CHECK
-			if( coarseEdgeIndex.find(nextEdgeKey)==coarseEdgeIndex.end() ) MK_THROW( "Edge not found" );
-#endif // SANITY_CHECK
-			divLine.nextEdgeRowStart = coarseEdgeIndex[nextEdgeKey];
-		}
-	}
-
-	template< class Real , class Data >
-	void ComputeDivergence( const std::vector< Data > &edgeValues , std::vector< Data > &texelDivergence , const std::vector< Real > &deepDivergenceCoefficients , const SparseMatrix< Real , int > &boundaryDivergenceMatrix , const std::vector< DivegenceRasterLine > &divergenceRasterLines )
-	{
-		// Update Boundary Texels 
-		boundaryDivergenceMatrix.Multiply(&edgeValues[0], &texelDivergence[0]);
-
-		// Update Deep Texels
-
-		auto UpdateRow = [&]( int r )
-			{
-				Data* out = texelDivergence.data() + divergenceRasterLines[r].texelStart;
-				const Data* previousRowEdges = edgeValues.data() + divergenceRasterLines[r].prevEdgeRowStart;
-				const Data* currentRowEdges = edgeValues.data() + divergenceRasterLines[r].currEdgeRowStart;
-				const Data* nextRowEdges = edgeValues.data() + divergenceRasterLines[r].nextEdgeRowStart;
-
-				const Real * coeff = deepDivergenceCoefficients.data() + static_cast< unsigned int >(divergenceRasterLines[r].deepCoefficientsStart) * 12;
-				int lineLength = divergenceRasterLines[r].texelEnd - divergenceRasterLines[r].texelStart + 1;
-				for( int i=0 ; i<lineLength ; coeff+=12 , previousRowEdges+=2 , currentRowEdges+=2 , nextRowEdges+=2 , i++ )
-				{
-					out[i] = previousRowEdges[0] * coeff[0] + previousRowEdges[1] * coeff[1] + previousRowEdges[2] * coeff[2] + previousRowEdges[3] * coeff[3] +
-						previousRowEdges[5] * coeff[4] +
-
-						currentRowEdges[0] * coeff[5] + currentRowEdges[1] * coeff[6] + currentRowEdges[2] * coeff[7] + currentRowEdges[3] * coeff[8] +
-						currentRowEdges[5] * coeff[9] +
-
-						nextRowEdges[0] * coeff[10] +
-						nextRowEdges[2] * coeff[11];
-				}
-
-				// Edge indexing
-				//		 ---0---
-				//		|  
-				//		1  
-				//		|  
-
-
-				// Reduced interior texel neighbour edge indexing
-				//		--0-----2-- 
-				//		|    |    |
-				//		1    3    4
-				//		|    |    |
-				//		--5----7--
-				//		|    |    |
-				//		6    8    9
-				//		|    |    |
-				//      --10---11--
-
-
-			};
-
-		ThreadPool::ParallelFor( 0 , divergenceRasterLines.size() , [&]( unsigned int , size_t r ){ UpdateRow((unsigned int)r); } );
-	}
-#endif // NEW_DIVERGENCE
 }
 #endif // DIVERGENCE_INCLUDED
 

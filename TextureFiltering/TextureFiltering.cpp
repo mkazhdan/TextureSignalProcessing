@@ -38,7 +38,6 @@ DAMAGE.
 #include <Src/Basis.h>
 #include <Src/Solver.h>
 #include <Src/MassAndStiffness.h>
-#include <Src/InteriorTexelToCellLines.h>
 #include <Src/Padding.h>
 #ifdef NO_OPEN_GL_VISUALIZATION
 #else // !NO_OPEN_GL_VISUALIZATION
@@ -203,15 +202,10 @@ public:
 #endif // NO_OPEN_GL_VISUALIZATION
 
 	static std::vector< Real > uniformTexelModulationMask;
-	static std::vector< Real > cellModulationMask;
-	static std::vector< Real > uniformCellModulationMask;
-	static std::vector< Real > texelStiffness[3];
+	static std::vector< Real > texelModulationMask;
 
-	static std::vector< Point3D< float > > cellCenterPositions;
 	static std::vector< Point3D< float > > textureNodePositions;
 
-	static ExplicitIndexVector< AtlasCellIndex , BilinearElementIndex< AtlasTexelIndex > > bilinearElementIndices;
-	
 	static std::vector< TextureNodeInfo< PreReal > > textureNodes;
 
 	static SparseMatrix< Real , int > mass;
@@ -219,11 +213,9 @@ public:
 	static SparseMatrix< Real , int > filteringMatrix;
 
 	//RHS computation
-	static std::vector< InteriorTexelToCellLine > interiorTexelToCellLines;
-	static std::vector< Point3D< Real > > interiorTexelToCellCoeffs;
-	static SparseMatrix< Real , int > boundaryCellBasedStiffnessRHSMatrix[3];
-	static std::vector< Real > boundaryTexelStiffness[3];
-	static std::vector< Point3D< Real > > texelModulatedStiffness;
+	static std::vector< Point3D< Real > > high_x0;
+	static std::vector< Point3D< Real > > edgeDifferences;
+	static std::vector< Point3D< Real > > texelDivergence;
 
 	static std::vector< Point3D< Real > > mass_x0;
 	static std::vector< Point3D< Real > > stiffness_x0;
@@ -247,12 +239,8 @@ public:
 
 
 	//Linear Operators
-#ifdef NEW_MASS_AND_STIFFNESS
 	static MassAndStiffnessOperator< Real > massAndStiffnessOperator;
-#else // !NEW_MASS_AND_STIFFNESS
-	static SystemCoefficients< Real > massCoefficients;
-	static SystemCoefficients< Real > stiffnessCoefficients;
-#endif // NEW_MASS_AND_STIFFNESS
+	static DivergenceOperator< Real > divergenceOperator;
 
 	static int steps;
 	static char stepsString[];
@@ -324,7 +312,6 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth > Real
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > Real																TextureFilter< PreReal , Real , TextureBitDepth >::gradientModulation;
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< TextureNodeInfo< PreReal > >							TextureFilter< PreReal , Real , TextureBitDepth >::textureNodes;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > ExplicitIndexVector< AtlasCellIndex , BilinearElementIndex< AtlasTexelIndex > >	TextureFilter< PreReal , Real , TextureBitDepth >::bilinearElementIndices;
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > int																	TextureFilter< PreReal , Real , TextureBitDepth >::steps;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > char																TextureFilter< PreReal , Real , TextureBitDepth >::stepsString[1024];
@@ -336,10 +323,6 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth > bool
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > bool																TextureFilter< PreReal , Real , TextureBitDepth >::positiveModulation = true;
 
 //UI
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Real >													TextureFilter< PreReal , Real , TextureBitDepth >::texelStiffness[3];
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Real >													TextureFilter< PreReal , Real , TextureBitDepth >::cellModulationMask;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Real >													TextureFilter< PreReal , Real , TextureBitDepth >::uniformCellModulationMask;
-
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > Image< Point3D< Real > >											TextureFilter< PreReal , Real , TextureBitDepth >::filteredTexture;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > Image< Point3D< float > >											TextureFilter< PreReal , Real , TextureBitDepth >::highFrequencyTexture;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > Image< Point3D< float > >											TextureFilter< PreReal , Real , TextureBitDepth >::lowFrequencyTexture;
@@ -354,24 +337,18 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth > std:
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > VCycleSolvers< typename TextureFilter< PreReal , Real , TextureBitDepth >::DirectSolver >		TextureFilter< PreReal , Real , TextureBitDepth >::vCycleSolvers;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > typename TextureFilter< PreReal , Real , TextureBitDepth >::DirectSolver						TextureFilter< PreReal , Real , TextureBitDepth >::directSolver;
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector<InteriorTexelToCellLine>								TextureFilter< PreReal , Real , TextureBitDepth >::interiorTexelToCellLines;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Point3D< Real > >										TextureFilter< PreReal , Real , TextureBitDepth >::interiorTexelToCellCoeffs;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > SparseMatrix<Real, int>												TextureFilter< PreReal , Real , TextureBitDepth >::boundaryCellBasedStiffnessRHSMatrix[3];
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector<Real>													TextureFilter< PreReal , Real , TextureBitDepth >::boundaryTexelStiffness[3];
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Point3D< Real > >										TextureFilter< PreReal , Real , TextureBitDepth >::texelModulatedStiffness;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Point3D< Real > >										TextureFilter< PreReal , Real , TextureBitDepth >::high_x0;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Point3D< Real > >										TextureFilter< PreReal , Real , TextureBitDepth >::edgeDifferences;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Point3D< Real > >										TextureFilter< PreReal , Real , TextureBitDepth >::texelDivergence;
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Point3D< float > >										TextureFilter< PreReal , Real , TextureBitDepth >::cellCenterPositions;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Point3D< float > >										TextureFilter< PreReal , Real , TextureBitDepth >::textureNodePositions;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Real >													TextureFilter< PreReal , Real , TextureBitDepth >::uniformTexelModulationMask;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Real >													TextureFilter< PreReal , Real , TextureBitDepth >::texelModulationMask;
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > Padding																TextureFilter< PreReal , Real , TextureBitDepth >::padding;
 
-#ifdef NEW_MASS_AND_STIFFNESS
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > MassAndStiffnessOperator< Real >									TextureFilter< PreReal , Real , TextureBitDepth >::massAndStiffnessOperator;
-#else // !NEW_MASS_AND_STIFFNESS
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > SystemCoefficients< Real >											TextureFilter< PreReal , Real , TextureBitDepth >::massCoefficients;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > SystemCoefficients< Real >											TextureFilter< PreReal , Real , TextureBitDepth >::stiffnessCoefficients;
-#endif // NEW_MASS_AND_STIFFNESS
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > DivergenceOperator< Real >											TextureFilter< PreReal , Real , TextureBitDepth >::divergenceOperator;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > int																	TextureFilter< PreReal , Real , TextureBitDepth >::updateCount = -1;
 
 template< typename Real >
@@ -404,7 +381,8 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::UpdateMaskTexture( void 
 			[&]( unsigned int , size_t i )
 			{
 				Real texelModulationValue = uniformTexelModulationMask[i];
-				if (texelModulationValue != 0.5){
+				if( texelModulationValue!=0.5 )
+				{
 					Point3D< Real > newColor;
 					if( texelModulationValue>0.5 )
 					{
@@ -501,16 +479,6 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::Idle( void )
 		{			
 			float modulationSign = positiveModulation ? 1.f : -1.f;
 			modulationVartiation *= modulationSign;
-			for( int i=0 ; i<bilinearElementIndices.size() ; i++ )
-			{
-				float distanceRatio = Point3D< float >::Length( cellCenterPositions[i]-selectedPoint) / radius;
-				float factor = 1.f - distanceRatio;
-				factor = factor < 0 ? 0 : factor*factor*(-2.0*factor + 3.0);
-				float uniformModulationMaskValue = std::max< float >( 0.f , std::min< float >( 1.f , uniformCellModulationMask[i] + modulationVartiation * factor ) );
-				uniformCellModulationMask[i] = uniformModulationMaskValue;
-				cellModulationMask[i] = RescaleFunction( uniformModulationMaskValue );
-			}
-			if( true )
 			{
 				for( int i=0 ; i<textureNodePositions.size() ; i++ )
 				{
@@ -519,6 +487,7 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::Idle( void )
 					factor = factor < 0 ? 0 : factor*factor*( -2.f * factor + 3.f );
 					float modulationMaskValue = std::max< float >( 0 , std::min< float >( 1.f , uniformTexelModulationMask[i] + modulationVartiation * factor ) );
 					uniformTexelModulationMask[i] = modulationMaskValue;
+					texelModulationMask[i] = RescaleFunction( modulationMaskValue );
 				}
 				UpdateMaskTexture();
 			}
@@ -532,22 +501,13 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::Idle( void )
 			float diff = (float)( visualization.slideBarCursorPosition - visualization.slideBarCursorOldPosition );
 			visualization.slideBarCursorOldPosition = visualization.slideBarCursorPosition;
 
-			for( int i=0 ; i<bilinearElementIndices.size() ; i++ )
+			for( unsigned int i=0 ; i<textureNodePositions.size() ; i++ )
 			{
-				float uniformModulationMaskValue = std::max< float >( 0.f , std::min< float >( 1.f , uniformCellModulationMask[i] + diff ) );
-				uniformCellModulationMask[i] = uniformModulationMaskValue;
-				cellModulationMask[i] = RescaleFunction( uniformModulationMaskValue );
+				float modulationMaskValue = std::max< float >( 0.f , std::min< float >( 1.f , uniformTexelModulationMask[i] + diff ) );
+				uniformTexelModulationMask[i] = modulationMaskValue;
+				texelModulationMask[i] = RescaleFunction( modulationMaskValue );
 			}
-
-			if( true )
-			{
-				for( int i=0 ; i<textureNodePositions.size() ; i++ )
-				{
-					float modulationMaskValue = std::max< float >( 0.f , std::min< float >( 1.f , uniformTexelModulationMask[i] + diff ) );
-					uniformTexelModulationMask[i] = modulationMaskValue;
-				}
-				UpdateMaskTexture();
-			}
+			UpdateMaskTexture();
 			steps = 0;
 		}
 	}
@@ -580,9 +540,19 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::MouseFunc( int button , 
 {
 	if( state==GLUT_UP && UseDirectSolver.set && ( visualization.isBrushActive || visualization.isSlideBarActive ) )
 	{
-		CellStiffnessToTexelStiffness< Real , 3 >( cellModulationMask , interiorTexelToCellLines , interiorTexelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , boundaryTexelStiffness , hierarchy.gridAtlases[0].indexConverter , texelModulatedStiffness );
-		int numTexels = (int)multigridFilteringVariables[0].rhs.size();
-		ThreadPool::ParallelFor( 0 , numTexels , [&]( unsigned int , size_t i ){ multigridFilteringVariables[0].rhs[i] = mass_x0[i]*interpolationWeight + texelModulatedStiffness[i]; } );
+		unsigned int numTexels = static_cast< unsigned int >( multigridFilteringVariables[0].rhs.size() );
+
+		ThreadPool::ParallelFor
+		(
+			0 , divergenceOperator.edges.size() ,
+			[&]( size_t i )
+			{
+				SimplexIndex< 1 , AtlasTexelIndex > edge = divergenceOperator.edges[i];
+				edgeDifferences[i] = ( high_x0[ edge[1] ] - high_x0[ edge[0] ] ) * texelModulationMask[ edge[0] ] * texelModulationMask[ edge[1] ];
+			}
+		);
+		divergenceOperator( edgeDifferences , texelDivergence );
+		ThreadPool::ParallelFor( 0 , numTexels , [&]( unsigned int , size_t i ){ multigridFilteringVariables[0].rhs[i] = mass_x0[i]*interpolationWeight + texelDivergence[i]; } );
 		ComputeExactSolution( DetailVerbose.set );
 		if( visualization.textureType==COLOR_TEXTURE )
 		{
@@ -670,10 +640,11 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::MotionFunc( int x , int 
 			else if( visualization.scaling  ) visualization.camera.translate( visualization.camera.forward*pForward);
 			else if( visualization.panning  ) visualization.camera.translate( -( visualization.camera.right*pRight + visualization.camera.up*pUp ) );
 		}
-		else {
+		else
+		{
 			visualization.oldX = visualization.newX, visualization.oldY = visualization.newY, visualization.newX = x, visualization.newY = y;
 
-			if (visualization.panning) visualization.xForm.offset[0] -= (visualization.newX - visualization.oldX) / visualization.imageToScreenScale(), visualization.xForm.offset[1] += (visualization.newY - visualization.oldY) / visualization.imageToScreenScale();
+			if( visualization.panning ) visualization.xForm.offset[0] -= (visualization.newX - visualization.oldX) / visualization.imageToScreenScale(), visualization.xForm.offset[1] += (visualization.newY - visualization.oldY) / visualization.imageToScreenScale();
 			else
 			{
 				float dz = (float)pow( 1.1f , (float)( visualization.newY-visualization.oldY ) / 8 );
@@ -751,11 +722,7 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::InterpolationWeightCallB
 
 	interpolationWeight = atof(prompt);
 	if( UseDirectSolver.set ) filteringMatrix = mass*interpolationWeight + stiffness;
-#ifdef NEW_MASS_AND_STIFFNESS
 	UpdateLinearSystem( interpolationWeight , (Real)1. , hierarchy , multigridFilteringCoefficients , massAndStiffnessOperator.massCoefficients , massAndStiffnessOperator.stiffnessCoefficients , vCycleSolvers , directSolver , filteringMatrix , DetailVerbose.set , false , UseDirectSolver.set );
-#else // !NEW_MASS_AND_STIFFNESS
-	UpdateLinearSystem( interpolationWeight , (Real)1. , hierarchy , multigridFilteringCoefficients , massCoefficients , stiffnessCoefficients , vCycleSolvers , directSolver , filteringMatrix , DetailVerbose.set , false , UseDirectSolver.set );
-#endif // NEW_MASS_AND_STIFFNESS
 	if( Verbose.set ) std::cout << pMeter( "Initialized MG" ) << std::endl;
 
 	ThreadPool::ParallelFor( 0 ,multigridFilteringVariables[0].rhs.size() , [&]( unsigned int , size_t i ){ multigridFilteringVariables[0].rhs[i] = mass_x0[i]*interpolationWeight + stiffness_x0[i] * gradientModulation; } );
@@ -794,8 +761,17 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::UpdateSolution( bool ver
 		int numTexels = (int)multigridFilteringVariables[0].rhs.size();
 
 		Miscellany::PerformanceMeter pMeter( '.' );
-		CellStiffnessToTexelStiffness< Real , 3 >( cellModulationMask , interiorTexelToCellLines , interiorTexelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix , boundaryTexelStiffness , hierarchy.gridAtlases[0].indexConverter , texelModulatedStiffness );
-		ThreadPool::ParallelFor( 0 , numTexels , [&]( unsigned int , size_t i ){ multigridFilteringVariables[0].rhs[i] = mass_x0[i]*interpolationWeight + texelModulatedStiffness[i]; } );
+		ThreadPool::ParallelFor
+		(
+			0 , divergenceOperator.edges.size() ,
+			[&]( size_t i )
+			{
+				SimplexIndex< 1 , AtlasTexelIndex > edge = divergenceOperator.edges[i];
+				edgeDifferences[i] = ( high_x0[ edge[1] ] - high_x0[ edge[0] ] ) * texelModulationMask[ edge[0] ] * texelModulationMask[ edge[1] ];
+			}
+		);
+		divergenceOperator( edgeDifferences , texelDivergence );
+		ThreadPool::ParallelFor( 0 , numTexels , [&]( unsigned int , size_t i ){ multigridFilteringVariables[0].rhs[i] = mass_x0[i]*interpolationWeight + texelDivergence[i]; } );
 
 		if( verbose ) std::cout << pMeter( "RHS update" ) << std::endl;
 		gradientModulationUpdated = true;
@@ -811,19 +787,12 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::InitializeSystem( int wi
 	ExplicitIndexVector< ChartIndex , AtlasChart< PreReal > > atlasCharts;
 
 	MultigridBlockInfo multigridBlockInfo( MultigridBlockWidth.value , MultigridBlockHeight.value , MultigridPaddedWidth.value , MultigridPaddedHeight.value );
-	InitializeHierarchy( mesh , width , height , levels , textureNodes , bilinearElementIndices , hierarchy , atlasCharts , multigridBlockInfo );
+	InitializeHierarchy( mesh , width , height , levels , textureNodes , hierarchy , atlasCharts , multigridBlockInfo );
 	if( Verbose.set ) std::cout << pMeter( "Hierarchy" ) << std::endl;
 
-	BoundaryProlongationData< Real > boundaryProlongation;
-	InitializeBoundaryProlongationData( hierarchy.gridAtlases[0] , boundaryProlongation );
-
-	std::vector< Point3D< Real > > low_x0( textureNodes.size() ) , high_x0( textureNodes.size() );
+	std::vector< Point3D< Real > > low_x0( textureNodes.size() );
+	high_x0.resize( textureNodes.size() );
 	for( int i=0 ; i<textureNodes.size() ; i++ ) high_x0[i] = highFrequencyTexture( textureNodes[i].ci , textureNodes[i].cj ) , low_x0[i] = lowFrequencyTexture( textureNodes[i].ci , textureNodes[i].cj );
-
-	std::vector< Point3D< Real > > inputSignal( textureNodes.size() );
-	for( int i=0 ; i<textureNodes.size() ; i++ ) inputSignal[i] = highFrequencyTexture( textureNodes[i].ci , textureNodes[i].cj );
-
-	std::vector< Real > texelToCellCoeffs;
 
 	pMeter.reset();
 	{
@@ -831,43 +800,21 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::InitializeSystem( int wi
 		InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric );
 		switch( MatrixQuadrature.value )
 		{
-#ifdef NEW_MASS_AND_STIFFNESS
-		case  1: InitializeMassAndStiffness< 1>( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		case  3: InitializeMassAndStiffness< 3>( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		case  6: InitializeMassAndStiffness< 6>( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		case 12: InitializeMassAndStiffness<12>( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		case 24: InitializeMassAndStiffness<24>( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		case 32: InitializeMassAndStiffness<32>( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix ) ; break;
-#else // !NEW_MASS_AND_STIFFNESS
-		case  1: InitializeMassAndStiffness< 1>( massCoefficients , stiffnessCoefficients , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		case  3: InitializeMassAndStiffness< 3>( massCoefficients , stiffnessCoefficients , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		case  6: InitializeMassAndStiffness< 6>( massCoefficients , stiffnessCoefficients , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		case 12: InitializeMassAndStiffness<12>( massCoefficients , stiffnessCoefficients , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		case 24: InitializeMassAndStiffness<24>( massCoefficients , stiffnessCoefficients , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix ) ; break;
-		case 32: InitializeMassAndStiffness<32>( massCoefficients , stiffnessCoefficients , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation , inputSignal , texelToCellCoeffs , boundaryCellBasedStiffnessRHSMatrix ) ; break;
-#endif // NEW_MASS_AND_STIFFNESS
+		case  1: MassAndStiffness<  1 >::Initialize( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , divergenceOperator ) ; break;
+		case  3: MassAndStiffness<  3 >::Initialize( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , divergenceOperator ) ; break;
+		case  6: MassAndStiffness<  6 >::Initialize( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , divergenceOperator ) ; break;
+		case 12: MassAndStiffness< 12 >::Initialize( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , divergenceOperator ) ; break;
+		case 24: MassAndStiffness< 24 >::Initialize( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , divergenceOperator ) ; break;
+		case 32: MassAndStiffness< 32 >::Initialize( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , divergenceOperator ) ; break;
 		default: MK_THROW( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
 		}
 	}
 	if( Verbose.set ) std::cout << pMeter( "Mass and stiffness" ) << std::endl;
 
-	interiorTexelToCellCoeffs.resize( 4 * static_cast< unsigned int >(hierarchy.gridAtlases[0].endInteriorTexelIndex) );
-	for( unsigned int i=0 ; i<interiorTexelToCellCoeffs.size() ; i++ ) interiorTexelToCellCoeffs[i] = Point3D< Real >( Real(texelToCellCoeffs[3*i+0]) , Real(texelToCellCoeffs[3*i+1]) , Real(texelToCellCoeffs[3*i+2]) );
-
-	InitializeInteriorTexelToCellLines( interiorTexelToCellLines , hierarchy.gridAtlases[0] );
-
-	for( unsigned int c=0 ; c<3 ; c++ ) boundaryTexelStiffness[c].resize( hierarchy.gridAtlases[0].indexConverter.numBoundary() );
-	texelModulatedStiffness.resize( static_cast< unsigned int >(hierarchy.gridAtlases[0].endCombinedTexelIndex));
-
 	if( UseDirectSolver.set )
 	{
-#ifdef NEW_MASS_AND_STIFFNESS
 		FullMatrixConstruction( hierarchy.gridAtlases[0] , massAndStiffnessOperator.massCoefficients , mass );
 		FullMatrixConstruction( hierarchy.gridAtlases[0] , massAndStiffnessOperator.stiffnessCoefficients , stiffness );
-#else // !NEW_MASS_AND_STIFFNESS
-		FullMatrixConstruction( hierarchy.gridAtlases[0] , massCoefficients , mass );
-		FullMatrixConstruction( hierarchy.gridAtlases[0] , stiffnessCoefficients , stiffness );
-#endif // NEW_MASS_AND_STIFFNESS
 		filteringMatrix  = mass*interpolationWeight + stiffness;
 	}
 
@@ -886,11 +833,7 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::InitializeSystem( int wi
 	}
 
 	pMeter.reset();
-#ifdef NEW_MASS_AND_STIFFNESS
 	UpdateLinearSystem( interpolationWeight , (Real)1. , hierarchy , multigridFilteringCoefficients , massAndStiffnessOperator.massCoefficients , massAndStiffnessOperator.stiffnessCoefficients , vCycleSolvers , directSolver , filteringMatrix , DetailVerbose.set , true , UseDirectSolver.set );
-#else // !NEW_MASS_AND_STIFFNESS
-	UpdateLinearSystem( interpolationWeight , (Real)1. , hierarchy , multigridFilteringCoefficients , massCoefficients , stiffnessCoefficients , vCycleSolvers , directSolver , filteringMatrix , DetailVerbose.set , true , UseDirectSolver.set );
-#endif // NEW_MASS_AND_STIFFNESS
 	if( Verbose.set ) std::cout << pMeter( "Initialized MG" ) << std::endl;
 
 	multigridFilteringVariables.resize(levels);
@@ -907,18 +850,13 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::InitializeSystem( int wi
 	}
 
 	mass_x0.resize( textureNodes.size() );
-#ifdef NEW_MASS_AND_STIFFNESS
 	massAndStiffnessOperator.mass( low_x0 , mass_x0 );
-#else // !NEW_MASS_AND_STIFFNESS
-	MultiplyBySystemMatrix_NoReciprocals( massCoefficients , hierarchy.gridAtlases[0].indexConverter , hierarchy.gridAtlases[0].rasterLines , low_x0 , mass_x0 );
-#endif // NEW_MASS_AND_STIFFNESS
 
-	stiffness_x0.resize(textureNodes.size());
-#ifdef NEW_MASS_AND_STIFFNESS
+	stiffness_x0.resize( textureNodes.size() );
 	massAndStiffnessOperator.stiffness( high_x0 , stiffness_x0 );
-#else // !NEW_MASS_AND_STIFFNESS
-	MultiplyBySystemMatrix_NoReciprocals( stiffnessCoefficients , hierarchy.gridAtlases[0].indexConverter , hierarchy.gridAtlases[0].rasterLines , high_x0 , stiffness_x0 );
-#endif // NEW_MASS_AND_STIFFNESS
+
+	edgeDifferences.resize( divergenceOperator.edges.size() );
+	texelDivergence.resize( textureNodes.size() );
 
 	ThreadPool::ParallelFor
 	(
@@ -1125,21 +1063,7 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::Init( void )
 	for( int i=0 ; i<textureNodePositions.size() ; i++ ) textureNodePositions[i] = mesh.surface( textureNodes[i] );
 
 	uniformTexelModulationMask.resize( textureNodes.size() , 0.5 );
-
-	for (int c = 0; c < 3; c++) texelStiffness[c].resize(textureNodes.size());
-
-	cellModulationMask.resize( bilinearElementIndices.size() , 1 );
-	uniformCellModulationMask.resize( bilinearElementIndices.size() , 0.5 );
-
-	cellCenterPositions.resize( bilinearElementIndices.size() );
-	for( int i=0 ; i<bilinearElementIndices.size() ; i++ )
-		cellCenterPositions[i] = Point3D< float >
-		(
-			textureNodePositions[ static_cast< unsigned int >( bilinearElementIndices[ AtlasCellIndex(i) ][0] ) ] +
-			textureNodePositions[ static_cast< unsigned int >( bilinearElementIndices[ AtlasCellIndex(i) ][1] ) ] +
-			textureNodePositions[ static_cast< unsigned int >( bilinearElementIndices[ AtlasCellIndex(i) ][2] ) ] +
-			textureNodePositions[ static_cast< unsigned int >( bilinearElementIndices[ AtlasCellIndex(i) ][3] ) ]
-		) / 4.f;
+	texelModulationMask.resize( textureNodes.size() , 1.0 );
 
 	if( true )
 	{

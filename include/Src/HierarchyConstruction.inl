@@ -797,13 +797,13 @@ void InitializeHierarchy
 	unsigned int height ,
 	unsigned int levels ,
 	std::vector< TextureNodeInfo< GeometryReal > > &textureNodes ,
-	ExplicitIndexVector< AtlasCellIndex , BilinearElementIndex< AtlasTexelIndex > > &cellNodes ,
 	HierarchicalSystem< GeometryReal , MatrixReal > &hierarchy ,
 	ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
 	const MultigridBlockInfo &multigridBlockInfo
 )
 {
 	typename AtlasChart< GeometryReal >::AtlasInfo atlasInfo;
+
 	//(1) Initialize atlas charts
 	atlasCharts = AtlasChart< GeometryReal >::GetCharts( mesh , width , height , atlasInfo );
 
@@ -812,7 +812,6 @@ void InitializeHierarchy
 
 	//(3) Initialize fine level texture nodes and cells
 	InitializeTextureNodes( hierarchy.gridAtlases[0].gridCharts , textureNodes );
-	InitializeCellNodes( hierarchy.gridAtlases[0].gridCharts , cellNodes );
 
 	//(4) Initialize boundary triangulation
 	InitializeBoundaryTriangulation( hierarchy.gridAtlases[0] , atlasCharts , atlasInfo );

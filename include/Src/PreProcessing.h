@@ -26,7 +26,8 @@ ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF S
 DAMAGE.
 */
 
-
+// To do:
+// -- Remove dependence on boundaryProlongation for integration in ReactionDiffusion and Geodesics
 // To do:
 // -- Use analytic integration
 // -- Remove GridChart::cellType and GridChart::texelType
@@ -38,13 +39,9 @@ DAMAGE.
 
 #define NEW_CODE						// General-purpose experimental code encapsulation
 
-
 //#define NO_OPEN_GL_VISUALIZATION		// Disable OpenGL visualization
 //#define DEBUG_INDEXING				// Use separate classes to sanity check indexing
 //#define SANITY_CHECK					// Enables sanity checks for debugging purposes
-
-#define NEW_DIVERGENCE					// Define a divergence operator
-#define NEW_MASS_AND_STIFFNESS			// Define a mass/stiffness operator
 
 #define USE_EIGEN
 #undef USE_CHOLMOD

@@ -154,7 +154,6 @@ public:
 	static Padding padding;
 
 	static HierarchicalSystem< PreReal , Real > hierarchy;
-	static ExplicitIndexVector< AtlasCellIndex , BilinearElementIndex< AtlasTexelIndex > > bilinearElementIndices;
 
 	static std::vector< TextureNodeInfo< PreReal > > textureNodes;
 	static Image< int > nodeIndex;
@@ -202,28 +201,16 @@ public:
 
 	static std::vector<MultigridLevelIndices<Real>> multigridIndices;
 
-	static SparseMatrix< Real , int > coarseBoundaryFineBoundaryProlongation;
-	static SparseMatrix< Real , int > fineBoundaryCoarseBoundaryRestriction;
 	static std::vector< Real > coarseBoundaryValues;
 	static std::vector< Real > coarseBoundaryRHS;
 	static std::vector< Real > fineBoundaryValues;
 	static std::vector< Real > fineBoundaryRHS;
 
-#ifdef NEW_MASS_AND_STIFFNESS
 	// Anisotropic Linear Operators
 	static MassAndStiffnessOperator< Real > anisoMassAndStiffnessOperator;
 
 	// Isotropic Linear Operators
 	static MassAndStiffnessOperator< Real > massAndStiffnessOperator;
-#else // !NEW_MASS_AND_STIFFNESS
-	// Anisotropic Linear Operators
-	static SystemCoefficients< Real > anisoMassCoefficients;
-	static SystemCoefficients< Real > anisoStiffnessCoefficients;
-
-	// Isotropic Linear Operators
-	static SystemCoefficients< Real > massCoefficients;
-	static SystemCoefficients< Real > stiffnessCoefficients;
-#endif // NEW_MASS_AND_STIFFNESS
 
 	static unsigned char * outputBuffer;
 
@@ -277,7 +264,6 @@ template< typename PreReal , typename Real > SparseMatrix< Real , int >									
 template< typename PreReal , typename Real > SparseMatrix< Real , int >									LineConvolution< PreReal , Real >::stiffness;
 template< typename PreReal , typename Real > std::vector< TextureNodeInfo< PreReal > >					LineConvolution< PreReal , Real >::textureNodes;
 template< typename PreReal , typename Real > Image< int >												LineConvolution< PreReal , Real >::nodeIndex;
-template< typename PreReal , typename Real > ExplicitIndexVector< AtlasCellIndex , BilinearElementIndex< AtlasTexelIndex > >	LineConvolution< PreReal , Real >::bilinearElementIndices;
 
 template< typename PreReal , typename Real > int														LineConvolution< PreReal , Real >::steps;
 template< typename PreReal , typename Real > char														LineConvolution< PreReal , Real >::stepsString[1024];
@@ -309,23 +295,13 @@ template< typename PreReal , typename Real > int														LineConvolution< P
 template< typename PreReal , typename Real > Real														LineConvolution< PreReal , Real >::lineConvolutionRange;
 template< typename PreReal , typename Real > Real														LineConvolution< PreReal , Real >::modulationRange;
 
-template< typename PreReal , typename Real > SparseMatrix< Real , int >									LineConvolution< PreReal , Real >::coarseBoundaryFineBoundaryProlongation;
-template< typename PreReal , typename Real > SparseMatrix< Real , int >									LineConvolution< PreReal , Real >::fineBoundaryCoarseBoundaryRestriction;
-
 template< typename PreReal , typename Real > std::vector< Real >										LineConvolution< PreReal , Real >::coarseBoundaryValues;
 template< typename PreReal , typename Real > std::vector< Real >										LineConvolution< PreReal , Real >::coarseBoundaryRHS;
 template< typename PreReal , typename Real > std::vector< Real >										LineConvolution< PreReal , Real >::fineBoundaryValues;
 template< typename PreReal , typename Real > std::vector< Real >										LineConvolution< PreReal , Real >::fineBoundaryRHS;
 
-#ifdef NEW_MASS_AND_STIFFNESS
 template< typename PreReal , typename Real > MassAndStiffnessOperator< Real >							LineConvolution< PreReal , Real >::anisoMassAndStiffnessOperator;
 template< typename PreReal , typename Real > MassAndStiffnessOperator< Real >							LineConvolution< PreReal , Real >::massAndStiffnessOperator;
-#else // !NEW_MASS_AND_STIFFNESS
-template< typename PreReal , typename Real > SystemCoefficients< Real >									LineConvolution< PreReal , Real >::anisoMassCoefficients;
-template< typename PreReal , typename Real > SystemCoefficients< Real >									LineConvolution< PreReal , Real >::anisoStiffnessCoefficients;
-template< typename PreReal , typename Real > SystemCoefficients< Real >									LineConvolution< PreReal , Real >::massCoefficients;
-template< typename PreReal , typename Real > SystemCoefficients< Real >									LineConvolution< PreReal , Real >::stiffnessCoefficients;
-#endif // NEW_MASS_AND_STIFFNESS
 
 template< typename PreReal , typename Real > int														LineConvolution< PreReal , Real >::updateCount = 0;
 
@@ -336,11 +312,7 @@ void LineConvolution< PreReal , Real >::ComputeExactSolution( bool verbose )
 
 	// (1) Line Convolution	
 	// RHS = Mass * randSignal * licInterpolationWeight
-#ifdef NEW_MASS_AND_STIFFNESS
 	anisoMassAndStiffnessOperator.mass( randSignal , multigridLineConvolutionVariables[0].rhs );
-#else // !NEW_MASS_AND_STIFFNESS
-	MultiplyBySystemMatrix_NoReciprocals( anisoMassCoefficients , hierarchy.gridAtlases[0].indexConverter , hierarchy.gridAtlases[0].rasterLines , randSignal , multigridLineConvolutionVariables[0].rhs );
-#endif // NEW_MASS_AND_STIFFNESS
 	ThreadPool::ParallelFor( 0 , textureNodes.size() , [&]( unsigned int , size_t i ){ multigridLineConvolutionVariables[0].rhs[i] *= licInterpolationWeight; } );
 
 	pMeter.reset();
@@ -349,18 +321,10 @@ void LineConvolution< PreReal , Real >::ComputeExactSolution( bool verbose )
 
 	//(2) Compute modulation RHS
 	mass_x0.resize( textureNodes.size() );
-#ifdef NEW_MASS_AND_STIFFNESS
 	massAndStiffnessOperator.mass( multigridLineConvolutionVariables[0].x , mass_x0 );
-#else // !NEW_MASS_AND_STIFFNESS
-	MultiplyBySystemMatrix_NoReciprocals( massCoefficients , hierarchy.gridAtlases[0].indexConverter , hierarchy.gridAtlases[0].rasterLines , multigridLineConvolutionVariables[0].x , mass_x0 );
-#endif // NEW_MASS_AND_STIFFNESS
 
 	stiffness_x0.resize( textureNodes.size() );
-#ifdef NEW_MASS_AND_STIFFNESS
 	massAndStiffnessOperator.stiffness( multigridLineConvolutionVariables[0].x , stiffness_x0 );
-#else // !NEW_MASS_AND_STIFFNESS
-	MultiplyBySystemMatrix_NoReciprocals( stiffnessCoefficients , hierarchy.gridAtlases[0].indexConverter , hierarchy.gridAtlases[0].rasterLines , multigridLineConvolutionVariables[0].x , stiffness_x0 );
-#endif // NEW_MASS_AND_STIFFNESS
 
 	ThreadPool::ParallelFor( 0 , textureNodes.size() , [&]( unsigned int , size_t i ){ multigridModulationVariables[0].rhs[i] = mass_x0[i] * sharpeningInterpolationWeight + stiffness_x0[i] * sharpeningGradientModulation; } );
 
@@ -464,11 +428,7 @@ void LineConvolution< PreReal , Real >::SharpeningInterpolationWeightCallBack( V
 
 	if( UseDirectSolver.set ) modulationMatrix = mass * sharpeningInterpolationWeight + stiffness;
 
-#ifdef NEW_MASS_AND_STIFFNESS
 	UpdateLinearSystem( sharpeningInterpolationWeight , (Real)1. , hierarchy , multigridModulationCoefficients , massAndStiffnessOperator.massCoefficients , massAndStiffnessOperator.stiffnessCoefficients , modulationSolvers , fineModulationSolver , modulationMatrix , DetailVerbose.set , false , UseDirectSolver.set );
-#else // !NEW_MASS_AND_STIFFNESS
-	UpdateLinearSystem( sharpeningInterpolationWeight , (Real)1. , hierarchy , multigridModulationCoefficients , massCoefficients , stiffnessCoefficients , modulationSolvers , fineModulationSolver , modulationMatrix , DetailVerbose.set , false , UseDirectSolver.set );
-#endif // NEW_MASS_AND_STIFFNESS
 	Reset();
 	if( UseDirectSolver.set ) UpdateOutputBuffer( multigridModulationVariables[0].x );
 }
@@ -482,11 +442,7 @@ void LineConvolution< PreReal , Real >::LICInterpolationWeightCallBack( Visualiz
 
 	if( UseDirectSolver.set ) lineConvolutionMatrix = anisotropicMass * licInterpolationWeight + anisotropicStiffness;
 
-#ifdef NEW_MASS_AND_STIFFNESS
 	UpdateLinearSystem( licInterpolationWeight , (Real)1. , hierarchy , multigridLineConvolutionCoefficients , anisoMassAndStiffnessOperator.massCoefficients , anisoMassAndStiffnessOperator.stiffnessCoefficients , lineConvolutionSolvers , fineLineConvolutionSolver , lineConvolutionMatrix , DetailVerbose.set , false , UseDirectSolver.set );
-#else // !NEW_MASS_AND_STIFFNESS
-	UpdateLinearSystem( licInterpolationWeight , (Real)1. , hierarchy , multigridLineConvolutionCoefficients , anisoMassCoefficients , anisoStiffnessCoefficients , lineConvolutionSolvers , fineLineConvolutionSolver , lineConvolutionMatrix , DetailVerbose.set , false , UseDirectSolver.set );
-#endif // NEW_MASS_AND_STIFFNESS
 
 	Reset();
 	if( UseDirectSolver.set ) UpdateOutputBuffer( multigridModulationVariables[0].x );
@@ -532,11 +488,7 @@ void LineConvolution< PreReal , Real >::UpdateSolution( bool verbose , bool deta
 	Miscellany::PerformanceMeter pMeter( '.' );
 	
 	// (1) Update smoothed input solution
-#ifdef NEW_MASS_AND_STIFFNESS
 	anisoMassAndStiffnessOperator.mass( randSignal , multigridLineConvolutionVariables[0].rhs );
-#else // !NEW_MASS_AND_STIFFNESS
-	MultiplyBySystemMatrix_NoReciprocals( anisoMassCoefficients , hierarchy.gridAtlases[0].indexConverter , hierarchy.gridAtlases[0].rasterLines , randSignal , multigridLineConvolutionVariables[0].rhs );
-#endif // NEW_MASS_AND_STIFFNESS
 	ThreadPool::ParallelFor( 0 , textureNodes.size() , [&]( unsigned int , size_t i ){ multigridLineConvolutionVariables[0].rhs[i] *= licInterpolationWeight; } );
 
 	pMeter.reset();
@@ -545,18 +497,10 @@ void LineConvolution< PreReal , Real >::UpdateSolution( bool verbose , bool deta
 
 	// (2) Compute modulation RHS
 	mass_x0.resize( textureNodes.size() );
-#ifdef NEW_MASS_AND_STIFFNESS
 	massAndStiffnessOperator.mass( multigridLineConvolutionVariables[0].x , mass_x0 );
-#else // !NEW_MASS_AND_STIFFNESS
-	MultiplyBySystemMatrix_NoReciprocals( massCoefficients , hierarchy.gridAtlases[0].indexConverter , hierarchy.gridAtlases[0].rasterLines , multigridLineConvolutionVariables[0].x , mass_x0 );
-#endif // NEW_MASS_AND_STIFFNESS
 
 	stiffness_x0.resize( textureNodes.size() );
-#ifdef NEW_MASS_AND_STIFFNESS
 	massAndStiffnessOperator.stiffness( multigridLineConvolutionVariables[0].x , stiffness_x0 );
-#else // !NEW_MASS_AND_STIFFNESS
-	MultiplyBySystemMatrix_NoReciprocals( stiffnessCoefficients , hierarchy.gridAtlases[0].indexConverter , hierarchy.gridAtlases[0].rasterLines , multigridLineConvolutionVariables[0].x , stiffness_x0 );
-#endif // NEW_MASS_AND_STIFFNESS
 
 	ThreadPool::ParallelFor( 0 , textureNodes.size() , [&]( unsigned int , size_t i ){ multigridModulationVariables[0].rhs[i] = mass_x0[i] * sharpeningInterpolationWeight + stiffness_x0[i] * sharpeningGradientModulation; } );
 
@@ -573,7 +517,7 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 	ExplicitIndexVector< ChartIndex , AtlasChart< PreReal > > atlasCharts;
 	ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > > parameterMetric;
 	MultigridBlockInfo multigridBlockInfo( MultigridBlockWidth.value , MultigridBlockHeight.value , MultigridPaddedWidth.value , MultigridPaddedHeight.value );
-	InitializeHierarchy( mesh , width , height , levels , textureNodes , bilinearElementIndices , hierarchy , atlasCharts , multigridBlockInfo );
+	InitializeHierarchy( mesh , width , height , levels , textureNodes , hierarchy , atlasCharts , multigridBlockInfo );
 	if( Verbose.set ) std::cout << pMeter( "Hierarchy" ) << std::endl;
 
 	//Initialize node index
@@ -585,9 +529,6 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 			MK_THROW( "Invalid node! " , textureNodes[i].ci , " " , textureNodes[i].cj );
 		nodeIndex( textureNodes[i].ci , textureNodes[i].cj ) = i;
 	}
-
-	BoundaryProlongationData< Real > boundaryProlongation;
-	InitializeBoundaryProlongationData( hierarchy.gridAtlases[0] , boundaryProlongation );
 
 	//////////////////////////////////// Initialize multigrid indices
 	multigridIndices.resize( levels );
@@ -809,47 +750,28 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 		InitializeAnisotropicMetric( mesh , atlasCharts , vectorField , LengthToAnisotropy , parameterMetric );
 
 		pMeter.reset();
+		switch( MatrixQuadrature.value )
 		{
-			switch( MatrixQuadrature.value )
-			{
-#ifdef NEW_MASS_AND_STIFFNESS
-			case  1: InitializeMassAndStiffness< 1>( anisoMassAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
-			case  3: InitializeMassAndStiffness< 3>( anisoMassAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
-			case  6: InitializeMassAndStiffness< 6>( anisoMassAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
-			case 12: InitializeMassAndStiffness<12>( anisoMassAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
-			case 24: InitializeMassAndStiffness<24>( anisoMassAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
-			case 32: InitializeMassAndStiffness<32>( anisoMassAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
-#else // !NEW_MASS_AND_STIFFNESS
-			case  1: InitializeMassAndStiffness< 1>( anisoMassCoefficients , anisoStiffnessCoefficients , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
-			case  3: InitializeMassAndStiffness< 3>( anisoMassCoefficients , anisoStiffnessCoefficients , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
-			case  6: InitializeMassAndStiffness< 6>( anisoMassCoefficients , anisoStiffnessCoefficients , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
-			case 12: InitializeMassAndStiffness<12>( anisoMassCoefficients , anisoStiffnessCoefficients , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
-			case 24: InitializeMassAndStiffness<24>( anisoMassCoefficients , anisoStiffnessCoefficients , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
-			case 32: InitializeMassAndStiffness<32>( anisoMassCoefficients , anisoStiffnessCoefficients , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
-#endif // NEW_MASS_AND_STIFFNESS
-			default: MK_THROW( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
-			}
+		case  1: MassAndStiffness<  1 >::Initialize( anisoMassAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts ) ; break;
+		case  3: MassAndStiffness<  3 >::Initialize( anisoMassAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts ) ; break;
+		case  6: MassAndStiffness<  6 >::Initialize( anisoMassAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts ) ; break;
+		case 12: MassAndStiffness< 12 >::Initialize( anisoMassAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts ) ; break;
+		case 24: MassAndStiffness< 24 >::Initialize( anisoMassAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts ) ; break;
+		case 32: MassAndStiffness< 32 >::Initialize( anisoMassAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts ) ; break;
+		default: MK_THROW( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
 		}
+
 		if( Verbose.set ) std::cout << pMeter( "System" ) << std::endl;
 
 		if( UseDirectSolver.set )
 		{
-#ifdef NEW_MASS_AND_STIFFNESS
 			FullMatrixConstruction( hierarchy.gridAtlases[0] , anisoMassAndStiffnessOperator.massCoefficients , anisotropicMass );
 			FullMatrixConstruction( hierarchy.gridAtlases[0] , anisoMassAndStiffnessOperator.stiffnessCoefficients , anisotropicStiffness );
-#else // !NEW_MASS_AND_STIFFNESS
-			FullMatrixConstruction( hierarchy.gridAtlases[0] , anisoMassCoefficients , anisotropicMass);
-			FullMatrixConstruction( hierarchy.gridAtlases[0] , anisoStiffnessCoefficients , anisotropicStiffness);
-#endif // NEW_MASS_AND_STIFFNESS
 			lineConvolutionMatrix = anisotropicMass * licInterpolationWeight + anisotropicStiffness;
 			if( Verbose.set ) std::cout << pMeter( "Assembled matrice" ) << std::endl;
 		}
 
-#ifdef NEW_MASS_AND_STIFFNESS
 		UpdateLinearSystem( licInterpolationWeight , (Real)1. , hierarchy , multigridLineConvolutionCoefficients , anisoMassAndStiffnessOperator.massCoefficients , anisoMassAndStiffnessOperator.stiffnessCoefficients , lineConvolutionSolvers , fineLineConvolutionSolver , lineConvolutionMatrix , DetailVerbose.set , true , UseDirectSolver.set );
-#else // !NEW_MASS_AND_STIFFNESS
-		UpdateLinearSystem( licInterpolationWeight , (Real)1. , hierarchy , multigridLineConvolutionCoefficients , anisoMassCoefficients , anisoStiffnessCoefficients , lineConvolutionSolvers , fineLineConvolutionSolver , lineConvolutionMatrix , DetailVerbose.set , true , UseDirectSolver.set );
-#endif // NEW_MASS_AND_STIFFNESS
 		if( Verbose.set ) std::cout << pMeter( "System" ) << std::endl;
 	}
 
@@ -859,47 +781,27 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 		InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric );
 
 		pMeter.reset();
+		switch( MatrixQuadrature.value )
 		{
-			switch( MatrixQuadrature.value )
-			{
-#ifdef NEW_MASS_AND_STIFFNESS
-			case  1: InitializeMassAndStiffness< 1>( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
-			case  3: InitializeMassAndStiffness< 3>( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
-			case  6: InitializeMassAndStiffness< 6>( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
-			case 12: InitializeMassAndStiffness<12>( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
-			case 24: InitializeMassAndStiffness<24>( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
-			case 32: InitializeMassAndStiffness<32>( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
-#else // !NEW_MASS_AND_STIFFNESS
-			case  1: InitializeMassAndStiffness< 1>( massCoefficients , stiffnessCoefficients , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
-			case  3: InitializeMassAndStiffness< 3>( massCoefficients , stiffnessCoefficients , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
-			case  6: InitializeMassAndStiffness< 6>( massCoefficients , stiffnessCoefficients , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
-			case 12: InitializeMassAndStiffness<12>( massCoefficients , stiffnessCoefficients , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
-			case 24: InitializeMassAndStiffness<24>( massCoefficients , stiffnessCoefficients , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
-			case 32: InitializeMassAndStiffness<32>( massCoefficients , stiffnessCoefficients , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
-#endif // NEW_MASS_AND_STIFFNESS
-			default: MK_THROW( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
-			}
+		case  1: MassAndStiffness<  1 >::Initialize( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts ) ; break;
+		case  3: MassAndStiffness<  3 >::Initialize( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts ) ; break;
+		case  6: MassAndStiffness<  6 >::Initialize( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts ) ; break;
+		case 12: MassAndStiffness< 12 >::Initialize( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts ) ; break;
+		case 24: MassAndStiffness< 24 >::Initialize( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts ) ; break;
+		case 32: MassAndStiffness< 32 >::Initialize( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts ) ; break;
+		default: MK_THROW( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
 		}
 		if( Verbose.set ) std::cout << pMeter( "Mass and stiffness" ) << std::endl;
 
 		if( UseDirectSolver.set )
 		{
-#ifdef NEW_MASS_AND_STIFFNESS
 			FullMatrixConstruction( hierarchy.gridAtlases[0] , massAndStiffnessOperator.massCoefficients , mass);
 			FullMatrixConstruction( hierarchy.gridAtlases[0] , massAndStiffnessOperator.stiffnessCoefficients , stiffness);
-#else // !NEW_MASS_AND_STIFFNESS
-			FullMatrixConstruction( hierarchy.gridAtlases[0] , massCoefficients , mass);
-			FullMatrixConstruction( hierarchy.gridAtlases[0] , stiffnessCoefficients , stiffness);
-#endif // NEW_MASS_AND_STIFFNESS
 			modMatrix = mass * sharpeningInterpolationWeight + stiffness;
 			std::cout << pMeter( "Assembled" ) << std::endl;
 		}
 
-#ifdef NEW_MASS_AND_STIFFNESS
 		UpdateLinearSystem( sharpeningInterpolationWeight , (Real)1. , hierarchy , multigridModulationCoefficients , massAndStiffnessOperator.massCoefficients , massAndStiffnessOperator.stiffnessCoefficients , modulationSolvers , fineModulationSolver , modMatrix , DetailVerbose.set , true , UseDirectSolver.set );
-#else // !NEW_MASS_AND_STIFFNESS
-		UpdateLinearSystem( sharpeningInterpolationWeight , (Real)1. , hierarchy , multigridModulationCoefficients , massCoefficients , stiffnessCoefficients , modulationSolvers , fineModulationSolver , modMatrix , DetailVerbose.set , true , UseDirectSolver.set );
-#endif // NEW_MASS_AND_STIFFNESS
 		if( Verbose.set ) std::cout << pMeter( "MG coefficients" ) << std::endl;
 	}
 
