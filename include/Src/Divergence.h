@@ -35,6 +35,8 @@ DAMAGE.
 
 namespace MishaK
 {
+#ifdef NEW_CODE
+#else // !NEW_CODE
 	template< typename MatrixReal >
 	struct DivergenceOperator
 	{
@@ -273,6 +275,7 @@ namespace MishaK
 		M.setFromTriplets( triplets.begin() , triplets.end() );
 		return M;
 	}
+#endif // NEW_CODE
 }
 #endif // DIVERGENCE_INCLUDED
 

@@ -29,6 +29,7 @@ DAMAGE.
 
 #include <Misha/Atomic.h>
 #include <Misha/Atomic.Geometry.h>
+#include <Misha/Array.h>
 #include "PolygonClipping.h"
 
 namespace MishaK
@@ -233,7 +234,7 @@ namespace MishaK
 		bool fastIntegration
 	)
 	{
-		////Rasterize
+		// Rasterize
 		const GeometryReal PRECISION_ERROR = 1e-3;
 
 		auto InUnitSquare =   [&]( Point2D< GeometryReal > p ){ return !( p[0]<0-PRECISION_ERROR || p[1]<0-PRECISION_ERROR || p[0]>1+PRECISION_ERROR || p[1]>1+PRECISION_ERROR ); };
@@ -568,93 +569,109 @@ namespace MishaK
 	///////////////////////////
 	// Compute the integrals //
 	///////////////////////////
-	template< class Real , typename T , typename ValueFunctionType >
+	template< class Real , typename OutT , typename InT , typename ValueFunctionType >
 	void IntegrateBilinear
 	(
 		const BilinearElementScalarSample< Real > &sample ,
 		const ValueFunctionType &ValueFunction ,
-		const T cornerValues[] ,
-		T rhsValues[]
+		const InT cornerValues[] ,
+		OutT rhsValues[]
 	)
 	{
 		for( unsigned int s=0 ; s<sample.size() ; s++ )
 		{
-			T scalar = ValueFunction( sample[s]( cornerValues ) , sample.tensor );
+			OutT scalar = ValueFunction( sample[s]( cornerValues ) , sample.tensor );
 			for( unsigned int k=0 ; k<4 ; k++ ) rhsValues[k] += scalar * sample[s].dualValues[k];
 		}
 	}
 
-	template< class Real , typename T , typename GradientFunctionType >
+	template< class Real , typename OutT , typename InT , typename GradientFunctionType >
 	void IntegrateBilinear
 	(
 		const BilinearElementGradientSample< Real > &sample ,
 		const GradientFunctionType &GradientFunction ,
-		const T cornerValues[] ,
-		T rhsValues[]
+		const InT cornerValues[] ,
+		OutT rhsValues[]
 	)
 	{
 		for( unsigned int s=0 ; s<sample.size() ; s++ )
 		{
-			Point2D< T > gradientVector = GradientFunction( sample[s]( cornerValues ) , sample.tensor );
+			Point2D< OutT > gradientVector = GradientFunction( sample[s]( cornerValues ) , sample.tensor );
 			for( unsigned int k=0 ; k<4 ; k++ ) for( int d=0 ; d<2 ; d++ ) rhsValues[k] += gradientVector[d] * sample[s].dualGradients[k][d];
 		}
 	}
 
-	template< class Real , typename T , typename ValueFunctionType >
+	template< class Real , typename OutT , typename InT , typename ValueFunctionType >
 	void IntegrateQuadratic
 	(
 		const QuadraticElementScalarSample< Real >& sample ,
 		const ValueFunctionType& ValueFunction ,
-		const T cornerValues[] ,
-		T rhsValues[]
+		const InT cornerValues[] ,
+		OutT rhsValues[]
 	)
 	{
 		for( unsigned int s=0 ; s<sample.size() ; s++ )
 		{
-			T scalar = ValueFunction( sample[s]( cornerValues ) , sample.tensor );
+			OutT scalar = ValueFunction( sample[s]( cornerValues ) , sample.tensor );
 			for( unsigned int k=0 ; k<6 ; k++ ) rhsValues[k] += scalar * sample[s].dualValues[k];
 		}
 	}
 
-	template< class Real , typename T , typename GradientFunctionType >
+	template< class Real , typename OutT , typename InT , typename GradientFunctionType >
 	void IntegrateQuadratic
 	(
 		const QuadraticElementGradientSample< Real >& sample ,
 		const GradientFunctionType& VectorFunction ,
-		const T cornerValues[] ,
-		T rhsValues[]
+		const InT cornerValues[] ,
+		OutT rhsValues[]
 	)
 	{
 		for( unsigned int s=0 ; s<sample.size() ; s++ )
 		{
-			Point2D< T > gradientVector = VectorFunction( sample[s]( cornerValues ) , sample.tensor );
+			Point2D< OutT > gradientVector = VectorFunction( sample[s]( cornerValues ) , sample.tensor );
 			for( unsigned int k=0 ; k<6 ; k++ ) for( unsigned int d=0 ; d<2 ; d++ ) rhsValues[k] += gradientVector[d] * sample[s].dualGradients[k][d];
 		}
 	}
 
-	template< typename Real , typename T , typename ElementSamples , typename SampleFunctionType >
+	template< typename Real , typename OutT , typename InT , typename ElementSamples , typename SampleFunctionType >
 	void Integrate
 	(
 		const std::vector< InteriorCellLine >& interiorCellLines ,
 		const ElementSamples &elementSamples ,
-		const std::vector< T >& potential ,
-		const std::vector< T >& boundary_potential ,
+		const std::vector< InT >& potential ,
+		const std::vector< InT >& boundary_potential ,
 		const SampleFunctionType& SampleFunction ,
-		std::vector< T >& rhs ,
-		std::vector< T >& boundary_rhs ,
+		std::vector< OutT >& rhs ,
+		std::vector< OutT >& boundary_rhs ,
+		bool verbose=false
+	)
+	{
+		return Integrate< Real >( interiorCellLines , elementSamples , GetPointer( potential ) , GetPointer( boundary_potential ) , SampleFunction , GetPointer( rhs ) , GetPointer( boundary_rhs ) , verbose );
+	}
+
+	template< typename Real , typename OutT , typename InT , typename ElementSamples , typename SampleFunctionType >
+	void Integrate
+	(
+		const std::vector< InteriorCellLine >& interiorCellLines ,
+		const ElementSamples &elementSamples ,
+		ConstPointer( InT ) potential ,
+		ConstPointer( InT ) boundary_potential ,
+		const SampleFunctionType& SampleFunction ,
+		Pointer( OutT ) rhs ,
+		Pointer( OutT ) boundary_rhs ,
 		bool verbose=false
 	)
 	{
 		Miscellany::Timer timer;
 		auto UpdateRow = [&]( unsigned int r )
 			{
-				const T * _inPrevious = &potential[0] + interiorCellLines[r].prevLineIndex;
-				const T *     _inNext = &potential[0] + interiorCellLines[r].nextLineIndex;
+				const InT * _inPrevious = &potential[0] + interiorCellLines[r].prevLineIndex;
+				const InT *     _inNext = &potential[0] + interiorCellLines[r].nextLineIndex;
 
-				T * _outPrevious = &rhs[0] + interiorCellLines[r].prevLineIndex;
-				T *     _outNext = &rhs[0] + interiorCellLines[r].nextLineIndex;
+				OutT * _outPrevious = &rhs[0] + interiorCellLines[r].prevLineIndex;
+				OutT *     _outNext = &rhs[0] + interiorCellLines[r].nextLineIndex;
 
-				T cornerValues[4];
+				InT cornerValues[4];
 				cornerValues[0] = *_inPrevious;
 				_inPrevious++;
 				cornerValues[1] = *_inPrevious;
@@ -662,7 +679,7 @@ namespace MishaK
 				_inNext++;
 				cornerValues[2] = *_inNext;
 
-				T rhsValues[] = { T() , T() , T() , T() };
+				OutT rhsValues[] = { OutT() , OutT() , OutT() , OutT() };
 
 				unsigned int numSamples = (unsigned int)elementSamples.bilinear[r].size();
 				const typename ElementSamples::Bilinear *samplePtr = &elementSamples.bilinear[r][0];
@@ -680,39 +697,39 @@ namespace MishaK
 						_inNext++;
 						cornerValues[2] = *_inNext;
 
-						Atomic< T >::Add( *_outPrevious , rhsValues[0] );
+						Atomic< OutT >::Add( *_outPrevious , rhsValues[0] );
 						_outPrevious++;
-						Atomic< T >::Add( *_outNext , rhsValues[3] );
+						Atomic< OutT >::Add( *_outNext , rhsValues[3] );
 						_outNext++;
 						rhsValues[0] = rhsValues[1];
-						rhsValues[1] = T();
+						rhsValues[1] = OutT();
 						rhsValues[3] = rhsValues[2];
-						rhsValues[2] = T();
+						rhsValues[2] = OutT();
 
 						currentOffset++;
 					}
 
-					IntegrateBilinear< Real , T >( sample , SampleFunction , cornerValues , rhsValues );
+					IntegrateBilinear< Real , OutT , InT >( sample , SampleFunction , cornerValues , rhsValues );
 					samplePtr++;
 				}
 
-				Atomic< T >::Add( *_outPrevious , rhsValues[0] );
+				Atomic< OutT >::Add( *_outPrevious , rhsValues[0] );
 				_outPrevious++;
-				Atomic< T >::Add( *_outPrevious , rhsValues[1] );
-				Atomic< T >::Add( *_outNext     , rhsValues[3] );
+				Atomic< OutT >::Add( *_outPrevious , rhsValues[1] );
+				Atomic< OutT >::Add( *_outNext     , rhsValues[3] );
 				_outNext++;
-				Atomic< T >::Add( *_outNext     , rhsValues[2] );
+				Atomic< OutT >::Add( *_outNext     , rhsValues[2] );
 			};
 		ThreadPool::ParallelFor( 0 , interiorCellLines.size() , [&]( unsigned int , size_t r ){ UpdateRow( static_cast< unsigned int >(r) ); } );
 
 		if( verbose ) printf( "Integrated bilinear: %.2f(s)\n" , timer.elapsed() );
 
 		timer.reset();
-		for( int i=0 ; i<elementSamples.quadratic.size() ; i++ )
+		for( unsigned int i=0 ; i<elementSamples.quadratic.size() ; i++ )
 		{
 			const typename ElementSamples::Quadratic &sample = elementSamples.quadratic[i];
 			// The values of the potential at the vertices and edge mid-points
-			T cornerValues[] =
+			InT cornerValues[] =
 			{
 				boundary_potential[ static_cast< unsigned int >(sample.fineNodes[0]) ] ,
 				boundary_potential[ static_cast< unsigned int >(sample.fineNodes[1]) ] ,
@@ -721,8 +738,8 @@ namespace MishaK
 				boundary_potential[ static_cast< unsigned int >(sample.fineNodes[4]) ] ,
 				boundary_potential[ static_cast< unsigned int >(sample.fineNodes[5]) ]
 			};
-			T rhsValues[] = { T() , T() , T() , T() , T() , T() };
-			IntegrateQuadratic< Real , T >( sample , SampleFunction , cornerValues , rhsValues );
+			OutT rhsValues[] = { OutT() , OutT() , OutT() , OutT() , OutT() , OutT() };
+			IntegrateQuadratic< Real , OutT , InT >( sample , SampleFunction , cornerValues , rhsValues );
 			for( unsigned int k=0 ; k<6 ; k++ ) boundary_rhs[ static_cast< unsigned int >( sample.fineNodes[k] ) ] += rhsValues[k];
 		}
 		if( verbose ) printf( "Integrated quadratic: %.2f(s)\n" , timer.elapsed() );

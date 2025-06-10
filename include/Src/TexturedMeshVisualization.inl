@@ -767,13 +767,13 @@ TexturedMeshVisualization::TexturedMeshVisualization( bool hasVectorField )
 
 	camera = Camera( Point3D< float >( 0.f , 0.f , 2.f ) , Point3D< float >( 0.f , 0.f , -1.f ) , Point3D< float >( 0.f , 1.f , 0.f ) );
 
-	callBacks.push_back(KeyboardCallBack(this, 'C', "read camera", "File Name", ReadSceneConfigurationCallBack));
-	callBacks.push_back(KeyboardCallBack(this, 'c', "save camera", "File Name", WriteSceneConfigurationCallBack));
-	callBacks.push_back(KeyboardCallBack(this, 'e', "show edges", ShowEdgesCallBack));
-	callBacks.push_back(KeyboardCallBack(this, 'm', "toggle mesh-atlas", ToggleVisualizationMode));
-	callBacks.push_back(KeyboardCallBack(this, 'K', "screenshot", "File Name", ScreenshotCallBack));
-	callBacks.push_back(KeyboardCallBack(this, 'E', "show boundary", ShowBoundaryEdgesCallBack));
-	callBacks.push_back(KeyboardCallBack(this, 'N', "use nearest", NearestSamplingCallBack));
+	callBacks.push_back(KeyboardCallBack( this , 'C' , "read camera" , "File Name", ReadSceneConfigurationCallBack ) );
+	callBacks.push_back(KeyboardCallBack( this , 'c' , "save camera" , "File Name", WriteSceneConfigurationCallBack ) );
+	callBacks.push_back(KeyboardCallBack( this , 'e' , "show edges" , ShowEdgesCallBack ) );
+	callBacks.push_back(KeyboardCallBack( this , 'm' , "toggle mesh-atlas" , ToggleVisualizationMode ) );
+	callBacks.push_back(KeyboardCallBack( this , 'K' , "screenshot" , "File Name", ScreenshotCallBack ) );
+	callBacks.push_back(KeyboardCallBack( this , 'E' , "show boundary" , ShowBoundaryEdgesCallBack ) );
+	callBacks.push_back(KeyboardCallBack( this , 'N' , "use nearest" , NearestSamplingCallBack ) );
 	if( hasVectorField ) callBacks.push_back( KeyboardCallBack( this , 'V', "toggle vector field ", ToggleVectorFieldCallBack ) );
 
 

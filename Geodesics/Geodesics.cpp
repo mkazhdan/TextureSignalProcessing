@@ -37,38 +37,44 @@ DAMAGE.
 #include <Src/SimpleTriangleMesh.h>
 #include <Src/Basis.h>
 #include <Src/Solver.h>
-#include <Src/QuadratureIntergration.h>
-#include <Src/MassAndStiffness.h>
+#include <Src/QuadratureIntegration.h>
+#include <Src/Operators.h>
 #include <Src/Padding.h>
 #include <Src/TexturedMeshVisualization.h>
 
 using namespace MishaK;
 
-CmdLineParameter< std::string > Input( "in" );
-CmdLineParameter< int   > Width( "width" , 1024 );
-CmdLineParameter< int   > Height( "height" , 1024 );
-CmdLineParameter< float > DiffusionInterpolationWeight( "interpolation" , 1e3 );
-CmdLineParameter< unsigned int > Levels( "levels" , 4 );
-CmdLineParameter< std::string > CameraConfig( "camera" );
-CmdLineReadable Serial( "serial" );
-CmdLineParameter< int   > DisplayMode( "display" , TWO_REGION_DISPLAY );
-CmdLineParameter< int   > MatrixQuadrature( "mQuadrature" , 6 );
-CmdLineParameter< int   > VectorFieldQuadrature( "vfQuadrature" , 6 );
+CmdLineParameter< std::string >
+	Input( "in" ) ,
+	CameraConfig( "camera" );
 
-CmdLineParameter< int   > MultigridBlockHeight ( "mBlockH" ,  16 );
-CmdLineParameter< int   > MultigridBlockWidth  ( "mBlockW" , 128 );
-CmdLineParameter< int   > MultigridPaddedHeight( "mPadH"   ,   0 );
-CmdLineParameter< int   > MultigridPaddedWidth ( "mPadW"   ,   2 );
+CmdLineParameter< unsigned int >
+	Width( "width" , 1024 ) ,
+	Height( "height" , 1024 ) ,
+	Levels( "levels" , 4 ) ,
+	DisplayMode( "display" , TWO_REGION_DISPLAY ) ,
+	MatrixQuadrature( "mQuadrature" , 6 ) ,
+	VectorFieldQuadrature( "vfQuadrature" , 6 ) ,
+	MultigridBlockHeight ( "mBlockH" ,  16 ) ,
+	MultigridBlockWidth  ( "mBlockW" , 128 ) ,
+	MultigridPaddedHeight( "mPadH"   ,   0 ) , 
+	MultigridPaddedWidth ( "mPadW"   ,   2 ) ,
+	RandomJitter( "jitter" , 0 );
 
-CmdLineParameter< int   > RandomJitter( "jitter" , 0 );
-CmdLineReadable Verbose( "verbose" );
-CmdLineReadable NoHelp( "noHelp" );
-CmdLineReadable DetailVerbose( "detail" );
-CmdLineReadable UseDirectSolver( "useDirectSolver" );
-CmdLineReadable Double( "double" );
-CmdLineReadable PreciseIntegration( "preciseIntegration" );
+CmdLineParameter< double >
+	DiffusionInterpolationWeight( "interpolation" , 1e3 ) ,
+	CollapseEpsilon( "collapse" , 0 );
 
-CmdLineParameter< double > CollapseEpsilon( "collapse" , 0 );
+CmdLineReadable
+	Serial( "serial" ) , 
+	Verbose( "verbose" ) ,
+	NoHelp( "noHelp" ) ,
+	DetailVerbose( "detail" ) ,
+	UseDirectSolver( "useDirectSolver" ) ,
+	Double( "double" ) ,
+	Nearest( "nearest" ) ,
+	PreciseIntegration( "preciseIntegration" );
+
 
 CmdLineReadable* params[] =
 {
@@ -79,6 +85,7 @@ CmdLineReadable* params[] =
 	&MatrixQuadrature , &VectorFieldQuadrature ,
 	&PreciseIntegration ,
 	&NoHelp ,
+	&Nearest ,
 	&CollapseEpsilon ,
 	NULL
 };
@@ -108,6 +115,7 @@ void ShowUsage( const char* ex )
 	printf( "\t[--%s <multigrid padded width>=%d]\n"  , MultigridPaddedWidth.name.c_str()  , MultigridPaddedWidth.value  );
 	printf( "\t[--%s <multigrid padded height>=%d]\n" , MultigridPaddedHeight.name.c_str() , MultigridPaddedHeight.value );
 	printf( "\t[--%s <collapse epsilon>=%g]\n" , CollapseEpsilon.name.c_str() , CollapseEpsilon.value );
+	printf( "\t[--%s]\n" , Nearest.name.c_str() );
 	printf( "\t[--%s]\n" , Serial.name.c_str() );
 	printf( "\t[--%s]\n" , NoHelp.name.c_str() );
 }
@@ -174,17 +182,8 @@ public:
 
 	static std::vector<MultigridLevelIndices<Real>> multigridIndices;
 
-	static SparseMatrix< Real , int > coarseBoundaryFineBoundaryProlongation;
-	static SparseMatrix< Real , int > fineBoundaryCoarseBoundaryRestriction;
-	static std::vector< Real > coarseBoundaryValues;
-	static std::vector< Real > coarseBoundaryRHS;
-	static std::vector< Real > fineBoundaryValues;
-	static std::vector< Real > fineBoundaryRHS;
-
-	//Samples
-	static GradientElementSamples< Real > gradientSamples;
-	static std::vector<InteriorCellLine> interiorCellLines;
-	static ExplicitIndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > > interiorCellLineIndex;
+	static GradientIntegrator< Real > gradientIntegrator;
+	static typename GradientIntegrator< Real >::template Scratch< Real , Real > gradientIntegratorScratch;
 
 	static unsigned char * outputBuffer;
 
@@ -258,23 +257,14 @@ template< typename PreReal , typename Real > typename Geodesics< PreReal , Real 
 template< typename PreReal , typename Real > typename Geodesics< PreReal , Real >::DirectSolver				Geodesics< PreReal , Real >::fineGeodesicDistanceSolver;
 
 //Samples
-template< typename PreReal , typename Real > GradientElementSamples< Real >									Geodesics< PreReal , Real >::gradientSamples;
-template< typename PreReal , typename Real > std::vector<InteriorCellLine>									Geodesics< PreReal , Real >::interiorCellLines;
-template< typename PreReal , typename Real > ExplicitIndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > >	Geodesics< PreReal , Real >::interiorCellLineIndex;
-
 template< typename PreReal , typename Real > unsigned int													Geodesics< PreReal , Real >::impulseTexel = static_cast< unsigned int >(-1);
 template< typename PreReal , typename Real > std::vector<Point3D< float > >									Geodesics< PreReal , Real >::textureNodePositions;
 
 template< typename PreReal , typename Real > Real															Geodesics< PreReal , Real >::smoothImpulseRange;
 template< typename PreReal , typename Real > Real															Geodesics< PreReal , Real >::geodesicDistanceRange;
 
-template< typename PreReal , typename Real > SparseMatrix<Real, int>										Geodesics< PreReal , Real >::coarseBoundaryFineBoundaryProlongation;
-template< typename PreReal , typename Real > SparseMatrix<Real, int>										Geodesics< PreReal , Real >::fineBoundaryCoarseBoundaryRestriction;
-
-template< typename PreReal , typename Real > std::vector<Real>												Geodesics< PreReal , Real >::coarseBoundaryValues;
-template< typename PreReal , typename Real > std::vector<Real>												Geodesics< PreReal , Real >::coarseBoundaryRHS;
-template< typename PreReal , typename Real > std::vector<Real>												Geodesics< PreReal , Real >::fineBoundaryValues;
-template< typename PreReal , typename Real > std::vector<Real>												Geodesics< PreReal , Real >::fineBoundaryRHS;
+template< typename PreReal , typename Real > GradientIntegrator< Real >										Geodesics< PreReal , Real >::gradientIntegrator;
+template< typename PreReal , typename Real > typename GradientIntegrator< Real >::template Scratch< Real , Real > Geodesics< PreReal , Real >::gradientIntegratorScratch;
 
 template< typename PreReal , typename Real > int															Geodesics< PreReal , Real >::updateCount = -1;
 
@@ -286,34 +276,17 @@ void Geodesics< PreReal , Real >::ComputeExactSolution( void )
 	solve( fineSmoothImpulseSolver , multigridSmoothImpulseVariables[0].x , multigridSmoothImpulseVariables[0].rhs );
 
 	//(1) Integrating vector field	
-	const typename GridAtlas<>::IndexConverter & indexConverter = hierarchy.gridAtlases[0].indexConverter;
-
-	ThreadPool::ParallelFor
-	(
-		0 , indexConverter.numBoundary() ,
-		[&]( unsigned int , size_t i ){ coarseBoundaryValues[i] = multigridSmoothImpulseVariables[0].x[ static_cast< unsigned int >( indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex(i) ) ) ]; }
-	);
-	coarseBoundaryFineBoundaryProlongation.Multiply(&coarseBoundaryValues[0], &fineBoundaryValues[0]);
-
-
 	std::vector< Real >& fineGeodesicDistanceRHS = multigridGeodesicDistanceVariables[0].rhs;
-	auto VectorFunction = []( Point2D< Real > v , SquareMatrix< Real , 2 > tensor )
-	{
-		Point2D< Real > _v = tensor * v;
-		Real len2 = Point2D< Real >::Dot( v , _v );
-		if( len2>0 ) return -v / (Real)sqrt( len2 );
-		else         return -v;
-	};
-	memset( &multigridGeodesicDistanceVariables[0].rhs[0] , 0 , multigridGeodesicDistanceVariables[0].rhs.size() * sizeof(Real) );
-	memset( &fineBoundaryRHS[0] , 0 , fineBoundaryRHS.size() * sizeof(Real) );
-	Integrate< Real >( interiorCellLines , gradientSamples , multigridSmoothImpulseVariables[0].x , fineBoundaryValues , VectorFunction , fineGeodesicDistanceRHS , fineBoundaryRHS );
 
-	fineBoundaryCoarseBoundaryRestriction.Multiply( &fineBoundaryRHS[0] , &coarseBoundaryRHS[0] );
-	ThreadPool::ParallelFor
-		(
-			0 , indexConverter.numBoundary() ,
-			[&]( unsigned int , size_t i ){ fineGeodesicDistanceRHS[ static_cast< unsigned int >( indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex(i) ) ) ] += coarseBoundaryRHS[i]; }
-		);
+	auto VectorFunction = []( Point2D< Real > v , SquareMatrix< Real , 2 > tensor )
+		{
+			Point2D< Real > _v = tensor * v;
+			Real len2 = Point2D< Real >::Dot( v , _v );
+			if( len2>0 ) return -v / (Real)sqrt( len2 );
+			else         return -v;
+		};
+
+	gradientIntegrator( multigridSmoothImpulseVariables[0].x , VectorFunction , gradientIntegratorScratch , fineGeodesicDistanceRHS );
 
 	//(3) Update geodesic distance solution	
 	solve( fineGeodesicDistanceSolver , multigridGeodesicDistanceVariables[0].x , fineGeodesicDistanceRHS );
@@ -543,34 +516,15 @@ void Geodesics< PreReal , Real >::UpdateSolution( void )
 	VCycle( multigridSmoothImpulseVariables , multigridSmoothImpulseCoefficients , multigridIndices , smoothImpulseSolvers , false , false );
 
 	// (2) Integrate normalized vector field
-	const typename GridAtlas<>::IndexConverter & indexConverter = hierarchy.gridAtlases[0].indexConverter;
-
-	ThreadPool::ParallelFor
-		(
-			0 , indexConverter.numBoundary() ,
-			[&]( unsigned int , size_t i ){ coarseBoundaryValues[i] = multigridSmoothImpulseVariables[0].x[ static_cast< unsigned int >( indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex(i) ) ) ]; }
-		);
-	coarseBoundaryFineBoundaryProlongation.Multiply( &coarseBoundaryValues[0] , &fineBoundaryValues[0] );
-
 	auto VectorFunction = []( Point2D< Real > v , SquareMatrix< Real , 2 > tensor )
-	{
-		Point2D< Real > _v = tensor * v;
-		Real len2 = Point2D<Real>::Dot( v , _v );
-		if( len2>0 ) return -v / (Real)sqrt( len2 );
-		else         return -v;
-	};
+		{
+			Point2D< Real > _v = tensor * v;
+			Real len2 = Point2D<Real>::Dot( v , _v );
+			if( len2>0 ) return -v / (Real)sqrt( len2 );
+			else         return -v;
+		};
 
-	memset( &multigridGeodesicDistanceVariables[0].rhs[0] , 0 , multigridGeodesicDistanceVariables[0].rhs.size() * sizeof(Real) );
-	memset( &fineBoundaryRHS[0] , 0 , fineBoundaryRHS.size() * sizeof(Real) );
-	Integrate< Real >( interiorCellLines , gradientSamples , multigridSmoothImpulseVariables[0].x , fineBoundaryValues , VectorFunction , multigridGeodesicDistanceVariables[0].rhs , fineBoundaryRHS );
-
-	fineBoundaryCoarseBoundaryRestriction.Multiply( &fineBoundaryRHS[0] , &coarseBoundaryRHS[0] );
-	ThreadPool::ParallelFor
-		(
-			0 , indexConverter.numBoundary() ,
-			[&]( unsigned int , size_t i ){ multigridGeodesicDistanceVariables[0].rhs[ static_cast< unsigned int >( indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex(i) ) ) ] += coarseBoundaryRHS[i]; }
-		);
-
+	gradientIntegrator( multigridSmoothImpulseVariables[0].x , VectorFunction , gradientIntegratorScratch , multigridGeodesicDistanceVariables[0].rhs );
 
 	// (3) Update geodesic distance solution	
 	VCycle( multigridGeodesicDistanceVariables , multigridGeodesicDistanceCoefficients , multigridIndices, geodesicDistanceSolvers , false , false );
@@ -606,17 +560,8 @@ void Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 	InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric );
 
 	pMeter.reset();
-	switch( MatrixQuadrature.value )
-	{
-	case  1: MassAndStiffness<  1 >::Initialize( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
-	case  3: MassAndStiffness<  3 >::Initialize( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
-	case  6: MassAndStiffness<  6 >::Initialize( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
-	case 12: MassAndStiffness< 12 >::Initialize( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
-	case 24: MassAndStiffness< 24 >::Initialize( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
-	case 32: MassAndStiffness< 32 >::Initialize( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
-	default: MK_THROW( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
-	}
-
+	OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , gradientIntegrator , VectorFieldQuadrature.value , !PreciseIntegration.set );
+	gradientIntegratorScratch = gradientIntegrator.template getScratch< Real , Real >();
 	if( Verbose.set ) std::cout << pMeter( "System" ) << std::endl;
 
 	if( UseDirectSolver.set )
@@ -646,8 +591,8 @@ void Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 
 //////////////////////////////////// Initialize multigrid coefficients
 
-	UpdateLinearSystem( diffusionInterpolationWeight , (Real)1. , hierarchy , multigridSmoothImpulseCoefficients , massAndStiffnessOperator.massCoefficients , massAndStiffnessOperator.stiffnessCoefficients , smoothImpulseSolvers , fineSmoothImpulseSolver , smoothImpulseMatrix , DetailVerbose.set , true , UseDirectSolver.set );
-	UpdateLinearSystem(  geodesicInterpolationWeight , (Real)1. , hierarchy , multigridGeodesicDistanceCoefficients , massAndStiffnessOperator.massCoefficients , massAndStiffnessOperator.stiffnessCoefficients , geodesicDistanceSolvers , fineGeodesicDistanceSolver , geodesicDistanceMatrix , DetailVerbose.set , true , UseDirectSolver.set );
+	UpdateLinearSystem( diffusionInterpolationWeight , (Real)1. , hierarchy , multigridSmoothImpulseCoefficients , massAndStiffnessOperator , smoothImpulseSolvers , fineSmoothImpulseSolver , smoothImpulseMatrix , DetailVerbose.set , true , UseDirectSolver.set );
+	UpdateLinearSystem(  geodesicInterpolationWeight , (Real)1. , hierarchy , multigridGeodesicDistanceCoefficients , massAndStiffnessOperator , geodesicDistanceSolvers , fineGeodesicDistanceSolver , geodesicDistanceMatrix , DetailVerbose.set , true , UseDirectSolver.set );
 	if( Verbose.set ) std::cout << pMeter( "MG coefficients" ) << std::endl;
 
 //////////////////////////////////// Initialize multigrid variables
@@ -676,40 +621,6 @@ void Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 		variables.variable_boundary_value.resize( hierarchy.gridAtlases[i].indexConverter.numBoundary() );
 	}
 	if( Verbose.set ) std::cout << pMeter( "MG variables" ) << std::endl;
-
-//////////////////////////////////// Initialize cell samples
-
-	InitializeGridAtlasInteriorCellLines( hierarchy.gridAtlases[0].gridCharts , interiorCellLines , interiorCellLineIndex );
-	if( interiorCellLineIndex.size()!=static_cast< unsigned int >(hierarchy.gridAtlases[0].endInteriorCellIndex) )
-		MK_THROW( "Inconsistent number of interior cells: " , static_cast< unsigned int >(hierarchy.gridAtlases[0].endInteriorCellIndex) , " != " , interiorCellLineIndex.size() );
-	if( Verbose.set ) std::cout << pMeter( "Cell samples" ) << std::endl;
-
-	coarseBoundaryFineBoundaryProlongation = boundaryProlongation.coarseBoundaryFineBoundaryProlongation;
-	fineBoundaryCoarseBoundaryRestriction = boundaryProlongation.fineBoundaryCoarseBoundaryRestriction;
-	const std::vector< AtlasInteriorOrBoundaryNodeIndex > & fineBoundaryIndex = boundaryProlongation.fineBoundaryIndex;
-	unsigned int numFineBoundaryNodes = boundaryProlongation.numFineBoundaryNodes;
-
-	gradientSamples.resize( interiorCellLines.size() );
-
-	{
-		switch( VectorFieldQuadrature.value )
-		{
-		case  1: InitializeIntegration<  1 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , gradientSamples , !PreciseIntegration.set ) ; break;
-		case  3: InitializeIntegration<  3 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , gradientSamples , !PreciseIntegration.set ) ; break;
-		case  6: InitializeIntegration<  6 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , gradientSamples , !PreciseIntegration.set ) ; break;
-		case 12: InitializeIntegration< 12 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , gradientSamples , !PreciseIntegration.set ) ; break;
-		case 24: InitializeIntegration< 24 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , gradientSamples , !PreciseIntegration.set ) ; break;
-		case 32: InitializeIntegration< 32 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , gradientSamples , !PreciseIntegration.set ) ; break;
-		default: MK_THROW( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
-		}
-	}
-	if( Verbose.set ) std::cout << pMeter( "VF integration" ) << std::endl;
-	coarseBoundaryValues.resize( static_cast< unsigned int >( hierarchy.gridAtlases[0].endCombinedTexelIndex ) - static_cast< unsigned int >( hierarchy.gridAtlases[0].endInteriorTexelIndex ) );
-	coarseBoundaryRHS.resize( static_cast< unsigned int >( hierarchy.gridAtlases[0].endCombinedTexelIndex ) - static_cast< unsigned int >( hierarchy.gridAtlases[0].endInteriorTexelIndex ) );
-	fineBoundaryValues.resize( numFineBoundaryNodes );
-	fineBoundaryRHS.resize( numFineBoundaryNodes );
-
-	gradientSamples.sort();
 }
 
  template< typename PreReal , typename Real>
@@ -860,6 +771,7 @@ void _main( int argc, char *argv[] )
 	Geodesics< PreReal , Real >::visualization.displayMode = DisplayMode.value;
 	if     ( DisplayMode.value==ONE_REGION_DISPLAY ) Geodesics< PreReal , Real >::visualization.screenWidth =  800 , Geodesics< PreReal , Real >::visualization.screenHeight = 800;
 	else if( DisplayMode.value==TWO_REGION_DISPLAY ) Geodesics< PreReal , Real >::visualization.screenWidth = 1440 , Geodesics< PreReal , Real >::visualization.screenHeight = 720;
+	Geodesics< PreReal , Real >::visualization.useNearestSampling = Nearest.set;
 
 	glutInitWindowSize( Geodesics< PreReal , Real >::visualization.screenWidth , Geodesics< PreReal , Real >::visualization.screenHeight );
 

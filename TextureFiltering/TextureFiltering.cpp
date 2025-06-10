@@ -37,7 +37,7 @@ DAMAGE.
 #include <Src/SimpleTriangleMesh.h>
 #include <Src/Basis.h>
 #include <Src/Solver.h>
-#include <Src/MassAndStiffness.h>
+#include <Src/Operators.h>
 #include <Src/Padding.h>
 #ifdef NO_OPEN_GL_VISUALIZATION
 #else // !NO_OPEN_GL_VISUALIZATION
@@ -722,7 +722,7 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::InterpolationWeightCallB
 
 	interpolationWeight = atof(prompt);
 	if( UseDirectSolver.set ) filteringMatrix = mass*interpolationWeight + stiffness;
-	UpdateLinearSystem( interpolationWeight , (Real)1. , hierarchy , multigridFilteringCoefficients , massAndStiffnessOperator.massCoefficients , massAndStiffnessOperator.stiffnessCoefficients , vCycleSolvers , directSolver , filteringMatrix , DetailVerbose.set , false , UseDirectSolver.set );
+	UpdateLinearSystem( interpolationWeight , (Real)1. , hierarchy , multigridFilteringCoefficients , massAndStiffnessOperator , vCycleSolvers , directSolver , filteringMatrix , DetailVerbose.set , false , UseDirectSolver.set );
 	if( Verbose.set ) std::cout << pMeter( "Initialized MG" ) << std::endl;
 
 	ThreadPool::ParallelFor( 0 ,multigridFilteringVariables[0].rhs.size() , [&]( unsigned int , size_t i ){ multigridFilteringVariables[0].rhs[i] = mass_x0[i]*interpolationWeight + stiffness_x0[i] * gradientModulation; } );
@@ -798,16 +798,7 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::InitializeSystem( int wi
 	{
 		ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > > parameterMetric;
 		InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric );
-		switch( MatrixQuadrature.value )
-		{
-		case  1: MassAndStiffness<  1 >::Initialize( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , divergenceOperator ) ; break;
-		case  3: MassAndStiffness<  3 >::Initialize( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , divergenceOperator ) ; break;
-		case  6: MassAndStiffness<  6 >::Initialize( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , divergenceOperator ) ; break;
-		case 12: MassAndStiffness< 12 >::Initialize( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , divergenceOperator ) ; break;
-		case 24: MassAndStiffness< 24 >::Initialize( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , divergenceOperator ) ; break;
-		case 32: MassAndStiffness< 32 >::Initialize( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , divergenceOperator ) ; break;
-		default: MK_THROW( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
-		}
+		OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , divergenceOperator );
 	}
 	if( Verbose.set ) std::cout << pMeter( "Mass and stiffness" ) << std::endl;
 
@@ -833,7 +824,7 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::InitializeSystem( int wi
 	}
 
 	pMeter.reset();
-	UpdateLinearSystem( interpolationWeight , (Real)1. , hierarchy , multigridFilteringCoefficients , massAndStiffnessOperator.massCoefficients , massAndStiffnessOperator.stiffnessCoefficients , vCycleSolvers , directSolver , filteringMatrix , DetailVerbose.set , true , UseDirectSolver.set );
+	UpdateLinearSystem( interpolationWeight , (Real)1. , hierarchy , multigridFilteringCoefficients , massAndStiffnessOperator , vCycleSolvers , directSolver , filteringMatrix , DetailVerbose.set , true , UseDirectSolver.set );
 	if( Verbose.set ) std::cout << pMeter( "Initialized MG" ) << std::endl;
 
 	multigridFilteringVariables.resize(levels);

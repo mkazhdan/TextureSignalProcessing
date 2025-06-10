@@ -44,7 +44,7 @@ enum
 #include <Src/SimpleTriangleMesh.h>
 #include <Src/Basis.h>
 #include <Src/Solver.h>
-#include <Src/MassAndStiffness.h>
+#include <Src/Operators.h>
 #include <Src/Padding.h>
 #ifdef NO_OPEN_GL_VISUALIZATION
 #else // !NO_OPEN_GL_VISUALIZATION
@@ -566,7 +566,7 @@ void  Stitching< PreReal , Real , TextureBitDepth >::InterpolationWeightCallBack
 		stitchingMatrix = mass*interpolationWeight + stiffness;
 		if( Verbose.set ) std::cout << pMeter( "Stitching matrix" ) << std::endl;
 	}
-	UpdateLinearSystem( interpolationWeight , (Real)1. , hierarchy , multigridStitchingCoefficients , massAndStiffnessOperator.massCoefficients , massAndStiffnessOperator.stiffnessCoefficients , vCycleSolvers , directSolver , stitchingMatrix , DetailVerbose.set , false , UseDirectSolver.set );
+	UpdateLinearSystem( interpolationWeight , (Real)1. , hierarchy , multigridStitchingCoefficients , massAndStiffnessOperator , vCycleSolvers , directSolver , stitchingMatrix , DetailVerbose.set , false , UseDirectSolver.set );
 	if( Verbose.set ) std::cout << pMeter( "Initialized MG" ) << std::endl;
 
 	ThreadPool::ParallelFor( 0 , multigridStitchingVariables[0].rhs.size() , [&]( unsigned int , size_t i ){ multigridStitchingVariables[0].rhs[i] = texelMass[i] * interpolationWeight + texelDivergence[i]; } );
@@ -623,16 +623,7 @@ void Stitching< PreReal , Real , TextureBitDepth >::InitializeSystem( int width 
 	InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric );
 
 	pMeter.reset();
-	switch( MatrixQuadrature.value )
-	{
-	case  1: MassAndStiffness<  1 >::Initialize( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , divergenceOperator ) ; break;
-	case  3: MassAndStiffness<  3 >::Initialize( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , divergenceOperator ) ; break;
-	case  6: MassAndStiffness<  6 >::Initialize( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , divergenceOperator ) ; break;
-	case 12: MassAndStiffness< 12 >::Initialize( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , divergenceOperator ) ; break;
-	case 24: MassAndStiffness< 24 >::Initialize( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , divergenceOperator ) ; break;
-	case 32: MassAndStiffness< 32 >::Initialize( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , divergenceOperator ) ; break;
-	default: MK_THROW( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
-	}
+	OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , divergenceOperator );
 	if( Verbose.set ) std::cout << pMeter( "Mass and stiffness" ) << std::endl;
 
 	texelMass.resize( textureNodes.size() );
@@ -660,7 +651,7 @@ void Stitching< PreReal , Real , TextureBitDepth >::InitializeSystem( int width 
 	}
 
 	pMeter.reset();
-	UpdateLinearSystem( interpolationWeight , (Real)1. , hierarchy , multigridStitchingCoefficients , massAndStiffnessOperator.massCoefficients , massAndStiffnessOperator.stiffnessCoefficients , vCycleSolvers , directSolver , stitchingMatrix , DetailVerbose.set, true, UseDirectSolver.set );
+	UpdateLinearSystem( interpolationWeight , (Real)1. , hierarchy , multigridStitchingCoefficients , massAndStiffnessOperator , vCycleSolvers , directSolver , stitchingMatrix , DetailVerbose.set, true, UseDirectSolver.set );
 	if( Verbose.set ) std::cout << pMeter( "Initialize MG" ) << std::endl;
 
 	multigridStitchingVariables.resize(levels);

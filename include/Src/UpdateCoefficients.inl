@@ -393,22 +393,22 @@ void UpdateLinearSystem
 	MatrixReal stiffnessWeight ,
 	const HierarchicalSystem< GeometryReal , MatrixReal > &hierarchy ,
 	std::vector< SystemCoefficients< MatrixReal > > &multigridCoefficients ,
-	const SystemCoefficients< MatrixReal > &mass ,
-	const SystemCoefficients< MatrixReal > &stiffness ,
+	const MassAndStiffnessOperator< MatrixReal > & massAndStiffnessOperator ,
 	VCycleSolvers< DirectSolver > &vCycleSolvers , DirectSolver &fineSolver ,
 	const SparseMatrix< MatrixReal , int > &fineSystemMatrix ,
 	bool detailVerbose=false , bool initSolvers=true , bool updateFineSolver=false
 )
 {
 	SystemCoefficients< MatrixReal > fineCoefficients;
-	int numDeepCoefficients = (int)mass.deepCoefficients.size();
+	unsigned int numDeepCoefficients = static_cast< unsigned int >( massAndStiffnessOperator.massCoefficients.deepCoefficients.size() );
 	fineCoefficients.deepCoefficients.resize( numDeepCoefficients );
 
-	ThreadPool::ParallelFor( 0 , numDeepCoefficients , [&]( unsigned int , size_t i ){ fineCoefficients.deepCoefficients[i] = mass.deepCoefficients[i] * screenWeight + stiffness.deepCoefficients[i] * stiffnessWeight; } );
+	ThreadPool::ParallelFor( 0 , numDeepCoefficients , [&]( unsigned int , size_t i ){ fineCoefficients.deepCoefficients[i] = massAndStiffnessOperator.massCoefficients.deepCoefficients[i] * screenWeight + massAndStiffnessOperator.stiffnessCoefficients.deepCoefficients[i] * stiffnessWeight; } );
 
-	const SparseMatrix< MatrixReal , int >* in[][2] = { { &mass.boundaryBoundaryMatrix , &stiffness.boundaryBoundaryMatrix } , { &mass.boundaryDeepMatrix , &stiffness.boundaryDeepMatrix } };
+	const SparseMatrix< MatrixReal , int >* in[][2] = { { &massAndStiffnessOperator.massCoefficients.boundaryBoundaryMatrix , &massAndStiffnessOperator.stiffnessCoefficients.boundaryBoundaryMatrix } , { &massAndStiffnessOperator.massCoefficients.boundaryDeepMatrix , &massAndStiffnessOperator.stiffnessCoefficients.boundaryDeepMatrix } };
+
 	SparseMatrix< MatrixReal , int >* out[] = { &fineCoefficients.boundaryBoundaryMatrix , &fineCoefficients.boundaryDeepMatrix };
-	for( int ii=0 ; ii<2 ; ii++ )
+	for( unsigned int ii=0 ; ii<2 ; ii++ )
 	{
 		const SparseMatrix< MatrixReal , int >& _in1 = *(in[ii][0]);
 		const SparseMatrix< MatrixReal , int >& _in2 = *(in[ii][1]);

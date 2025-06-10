@@ -35,50 +35,53 @@ DAMAGE.
 #include <Src/Basis.h>
 #include <Src/HSV.h>
 #include <Src/Solver.h>
-#include <Src/MassAndStiffness.h>
+#include <Src/Operators.h>
 #include <Src/Padding.h>
 #include <Src/TexturedMeshVisualization.h>
 
 using namespace MishaK;
 
-CmdLineParameter< std::string > Input( "in" );
-CmdLineParameter< std::string > Output( "out" );
-CmdLineParameter< int   > OutputVCycles( "outVCycles" , 10 );
-CmdLineReadable MinimalCurvature( "minimal" );
-CmdLineReadable Double( "double" );
-CmdLineParameter< std::string > InVectorField( "inVF" );
-CmdLineParameter< std::string > OutVectorField( "outVF" );
-CmdLineParameter< int   > Width( "width" , 2048 );
-CmdLineParameter< int   > Height( "height" , 2048 );
-CmdLineParameter< float > LICInterpolationWeight( "licInterpolation" , 1e4 );
-CmdLineParameter< float > SharpeningInterpolationWeight( "sharpInterpolation" , 1e4 );
-CmdLineParameter< float > SharpeningGradientModulation( "sharpModulation" , 100 );
-CmdLineParameter< float > AnisotropyExponent( "aExp" , 0.f );
-CmdLineParameter< int   > NormalSmoothingIterations( "nIters" , 2 );
-CmdLineParameter< float > NormalSmoothingInterpolation( "nInterpolation" , 1e3f );
-CmdLineParameter< unsigned int > Levels( "levels" , 4 );
-CmdLineParameter< int   > MatrixQuadrature( "mQuadrature" , 6 );
+CmdLineParameter< std::string >
+	Input( "in" ) ,
+	Output( "out" ) ,
+	InVectorField( "inVF" ) ,
+	OutVectorField( "outVF" ) ,
+	CameraConfig("camera");
 
+CmdLineParameter< unsigned int >
+	Levels( "levels" , 4 ) ,
+	OutputVCycles( "outVCycles" , 10 ) ,
+	Width( "width" , 2048 ) ,
+	Height( "height" , 2048 ) ,
+	NormalSmoothingIterations( "nIters" , 2 ) ,
+	MatrixQuadrature( "mQuadrature" , 6 ) ,
+	DisplayMode( "display" , TWO_REGION_DISPLAY ) ,
+	MultigridBlockHeight( "mBlockH" , 16 ) ,
+	MultigridBlockWidth( "mBlockW" , 128 ) ,
+	MultigridPaddedHeight( "mPadH" , 0 ) ,
+	MultigridPaddedWidth( "mPadW" , 2 ) ,
+	RandomJitter( "jitter" , 0 );
 
-CmdLineParameter< std::string > CameraConfig("camera");
-CmdLineParameter< int   > DisplayMode("display", TWO_REGION_DISPLAY);
+CmdLineParameter< double >
+	LICInterpolationWeight( "licInterpolation" , 1e4 ) ,
+	SharpeningInterpolationWeight( "sharpInterpolation" , 1e4 ) ,
+	SharpeningGradientModulation( "sharpModulation" , 100 ) ,
+	AnisotropyExponent( "aExp" , 0.f ) ,
+	NormalSmoothingInterpolation( "nInterpolation" , 1e3f ) ,
+	CollapseEpsilon( "collapse" , 0 );
 
+CmdLineReadable
+	MinimalCurvature( "minimal" ) , 
+	Double( "double" ) ,
+	Verbose("verbose" ) ,
+	DetailVerbose( "detail" ) ,
+	UseDirectSolver( "useDirectSolver" ) ,
+	IntrinsicVectorField( "intrinsicVF" ) ,
+	Serial( "serial" ) ,
+	Run( "run" ) ,
+	Nearest( "nearest" ) ,
+	NoHelp( "noHelp" );
 
-CmdLineParameter< int   > MultigridBlockHeight("mBlockH", 16);
-CmdLineParameter< int   > MultigridBlockWidth("mBlockW", 128);
-CmdLineParameter< int   > MultigridPaddedHeight("mPadH", 0);
-CmdLineParameter< int   > MultigridPaddedWidth("mPadW", 2);
-
-CmdLineParameter< int   > RandomJitter( "jitter" , 0 );
-CmdLineReadable Verbose("verbose");
-CmdLineReadable DetailVerbose("detail");
-CmdLineReadable UseDirectSolver("useDirectSolver");
-CmdLineReadable IntrinsicVectorField( "intrinsicVF" );
-CmdLineReadable Serial( "serial" );
-CmdLineReadable Run( "run" );
-CmdLineReadable NoHelp( "noHelp" );
-
-CmdLineParameter< double > CollapseEpsilon( "collapse" , 0 );
 
 CmdLineReadable* params[] =
 {
@@ -90,6 +93,7 @@ CmdLineReadable* params[] =
 	&NoHelp , &AnisotropyExponent ,
 	&NormalSmoothingIterations , &NormalSmoothingInterpolation ,
 	&CollapseEpsilon ,
+	&Nearest ,
 	&Run ,
 	NULL
 };
@@ -131,6 +135,7 @@ void ShowUsage(const char* ex)
 	printf( "\t[--%s <collapse epsilon>=%g]\n" , CollapseEpsilon.name.c_str() , CollapseEpsilon.value );
 	printf( "\t[--%s]\n" , Run.name.c_str() );
 	printf( "\t[--%s]\n" , Serial.name.c_str() );
+	printf( "\t[--%s]\n" , Nearest.name.c_str() );
 	printf( "\t[--%s]\n" , NoHelp.name.c_str() );
 	printf( "\t[--%s]\n" , Double.name.c_str() );
 }
@@ -428,7 +433,7 @@ void LineConvolution< PreReal , Real >::SharpeningInterpolationWeightCallBack( V
 
 	if( UseDirectSolver.set ) modulationMatrix = mass * sharpeningInterpolationWeight + stiffness;
 
-	UpdateLinearSystem( sharpeningInterpolationWeight , (Real)1. , hierarchy , multigridModulationCoefficients , massAndStiffnessOperator.massCoefficients , massAndStiffnessOperator.stiffnessCoefficients , modulationSolvers , fineModulationSolver , modulationMatrix , DetailVerbose.set , false , UseDirectSolver.set );
+	UpdateLinearSystem( sharpeningInterpolationWeight , (Real)1. , hierarchy , multigridModulationCoefficients , massAndStiffnessOperator , modulationSolvers , fineModulationSolver , modulationMatrix , DetailVerbose.set , false , UseDirectSolver.set );
 	Reset();
 	if( UseDirectSolver.set ) UpdateOutputBuffer( multigridModulationVariables[0].x );
 }
@@ -442,7 +447,7 @@ void LineConvolution< PreReal , Real >::LICInterpolationWeightCallBack( Visualiz
 
 	if( UseDirectSolver.set ) lineConvolutionMatrix = anisotropicMass * licInterpolationWeight + anisotropicStiffness;
 
-	UpdateLinearSystem( licInterpolationWeight , (Real)1. , hierarchy , multigridLineConvolutionCoefficients , anisoMassAndStiffnessOperator.massCoefficients , anisoMassAndStiffnessOperator.stiffnessCoefficients , lineConvolutionSolvers , fineLineConvolutionSolver , lineConvolutionMatrix , DetailVerbose.set , false , UseDirectSolver.set );
+	UpdateLinearSystem( licInterpolationWeight , (Real)1. , hierarchy , multigridLineConvolutionCoefficients , anisoMassAndStiffnessOperator , lineConvolutionSolvers , fineLineConvolutionSolver , lineConvolutionMatrix , DetailVerbose.set , false , UseDirectSolver.set );
 
 	Reset();
 	if( UseDirectSolver.set ) UpdateOutputBuffer( multigridModulationVariables[0].x );
@@ -750,17 +755,7 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 		InitializeAnisotropicMetric( mesh , atlasCharts , vectorField , LengthToAnisotropy , parameterMetric );
 
 		pMeter.reset();
-		switch( MatrixQuadrature.value )
-		{
-		case  1: MassAndStiffness<  1 >::Initialize( anisoMassAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts ) ; break;
-		case  3: MassAndStiffness<  3 >::Initialize( anisoMassAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts ) ; break;
-		case  6: MassAndStiffness<  6 >::Initialize( anisoMassAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts ) ; break;
-		case 12: MassAndStiffness< 12 >::Initialize( anisoMassAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts ) ; break;
-		case 24: MassAndStiffness< 24 >::Initialize( anisoMassAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts ) ; break;
-		case 32: MassAndStiffness< 32 >::Initialize( anisoMassAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts ) ; break;
-		default: MK_THROW( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
-		}
-
+		OperatorInitializer::Initialize( MatrixQuadrature.value , anisoMassAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts );
 		if( Verbose.set ) std::cout << pMeter( "System" ) << std::endl;
 
 		if( UseDirectSolver.set )
@@ -771,7 +766,7 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 			if( Verbose.set ) std::cout << pMeter( "Assembled matrice" ) << std::endl;
 		}
 
-		UpdateLinearSystem( licInterpolationWeight , (Real)1. , hierarchy , multigridLineConvolutionCoefficients , anisoMassAndStiffnessOperator.massCoefficients , anisoMassAndStiffnessOperator.stiffnessCoefficients , lineConvolutionSolvers , fineLineConvolutionSolver , lineConvolutionMatrix , DetailVerbose.set , true , UseDirectSolver.set );
+		UpdateLinearSystem( licInterpolationWeight , (Real)1. , hierarchy , multigridLineConvolutionCoefficients , anisoMassAndStiffnessOperator , lineConvolutionSolvers , fineLineConvolutionSolver , lineConvolutionMatrix , DetailVerbose.set , true , UseDirectSolver.set );
 		if( Verbose.set ) std::cout << pMeter( "System" ) << std::endl;
 	}
 
@@ -781,16 +776,7 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 		InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric );
 
 		pMeter.reset();
-		switch( MatrixQuadrature.value )
-		{
-		case  1: MassAndStiffness<  1 >::Initialize( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts ) ; break;
-		case  3: MassAndStiffness<  3 >::Initialize( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts ) ; break;
-		case  6: MassAndStiffness<  6 >::Initialize( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts ) ; break;
-		case 12: MassAndStiffness< 12 >::Initialize( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts ) ; break;
-		case 24: MassAndStiffness< 24 >::Initialize( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts ) ; break;
-		case 32: MassAndStiffness< 32 >::Initialize( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts ) ; break;
-		default: MK_THROW( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
-		}
+		OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts );
 		if( Verbose.set ) std::cout << pMeter( "Mass and stiffness" ) << std::endl;
 
 		if( UseDirectSolver.set )
@@ -801,7 +787,7 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 			std::cout << pMeter( "Assembled" ) << std::endl;
 		}
 
-		UpdateLinearSystem( sharpeningInterpolationWeight , (Real)1. , hierarchy , multigridModulationCoefficients , massAndStiffnessOperator.massCoefficients , massAndStiffnessOperator.stiffnessCoefficients , modulationSolvers , fineModulationSolver , modMatrix , DetailVerbose.set , true , UseDirectSolver.set );
+		UpdateLinearSystem( sharpeningInterpolationWeight , (Real)1. , hierarchy , multigridModulationCoefficients , massAndStiffnessOperator , modulationSolvers , fineModulationSolver , modMatrix , DetailVerbose.set , true , UseDirectSolver.set );
 		if( Verbose.set ) std::cout << pMeter( "MG coefficients" ) << std::endl;
 	}
 
@@ -984,6 +970,7 @@ void _main( int argc , char* argv[] )
 		LineConvolution< PreReal , Real >::visualization.displayMode = DisplayMode.value;
 		if     ( DisplayMode.value==ONE_REGION_DISPLAY ) LineConvolution< PreReal , Real >::visualization.screenWidth =  800 , LineConvolution< PreReal , Real >::visualization.screenHeight = 800;
 		else if( DisplayMode.value==TWO_REGION_DISPLAY ) LineConvolution< PreReal , Real >::visualization.screenWidth = 1440 , LineConvolution< PreReal , Real >::visualization.screenHeight = 720;
+		LineConvolution< PreReal , Real >::visualization.useNearestSampling = Nearest.set;
 		glutInitWindowSize( LineConvolution< PreReal , Real >::visualization.screenWidth , LineConvolution< PreReal , Real >::visualization.screenHeight );
 		glutInit( &argc , argv );
 		char windowName[1024];

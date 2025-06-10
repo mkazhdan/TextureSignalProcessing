@@ -45,8 +45,6 @@ DAMAGE.
 #include "ImageIO.h"
 #include <Misha/SimplexBasis.h>
 
-
-
 namespace MishaK
 {
 	template< typename Real >
@@ -103,7 +101,7 @@ namespace MishaK
 			if( sz ){ _samples = new SampleData[sz] ; _sampleNum = sz; }
 		}
 		unsigned int size( void ) const { return _sampleNum; }
-		SampleData& operator[]( unsigned int idx )       { return _samples[idx]; }
+		SampleData& operator[]( unsigned int idx ){ return _samples[idx]; }
 		const SampleData& operator[]( unsigned int idx ) const { return _samples[idx]; }
 	protected:
 		unsigned int _sampleNum;
@@ -734,6 +732,7 @@ namespace MishaK
 #include "SparseMatrixParser.h"
 #include "Atlas.h"
 #include "ConstrainedTriangulation.h"
+#include "PolygonClipping.h"
 
 namespace MishaK
 {
@@ -741,7 +740,6 @@ namespace MishaK
 #include "BoundaryQuadraticElements.inl"
 #include "ProlongationAndRestriction.inl"
 #include "HierarchyConstruction.inl"
-#include "UpdateCoefficients.inl"
 #include "IterativeSolvers.inl"
 }
 

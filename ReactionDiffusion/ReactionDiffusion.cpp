@@ -37,8 +37,8 @@ DAMAGE.
 #include <Src/SimpleTriangleMesh.h>
 #include <Src/Basis.h>
 #include <Src/Solver.h>
-#include <Src/QuadratureIntergration.h>
-#include <Src/MassAndStiffness.h>
+#include <Src/QuadratureIntegration.h>
+#include <Src/Operators.h>
 #include <Src/Padding.h>
 #include <Src/TexturedMeshVisualization.h>
 
@@ -49,43 +49,52 @@ const float    DotRates[] = { 0.0367f , 0.0649f };
 const float DefaultStripesSamplesFraction = 0.01f;
 const float DefaultDotsSamplesFraction = 0.001f;
 
-CmdLineParameter< std::string > Input( "in" );
-CmdLineParameter< std::string > Output( "out" );
-CmdLineParameter< int   > OutputSteps( "outSteps" , 1000 );
-CmdLineParameter< int   > Width( "width" , 512 );
-CmdLineParameter< int   > Height( "height" , 512 );
-CmdLineParameter< float > Speed( "speed" , 10.f );
-CmdLineParameterArray< float , 2 > FeedKillRates( "fk" , StripeRates );
-CmdLineParameter< float > DiffusionScale( "diff" , 1.f );
-CmdLineParameter< float > SamplesFraction( "samples" );
-CmdLineParameter< unsigned int > Levels( "levels" , 4 );
-CmdLineParameter< std::string > CameraConfig( "camera" );
-CmdLineParameter< int   > DisplayMode( "display" , TWO_REGION_DISPLAY );
-CmdLineParameter< int   > MatrixQuadrature( "mQuadrature" , 6 );
-CmdLineParameter< int   > RHSQuadrature( "rhsQuadrature" , 3 );
+CmdLineParameter< std::string >
+	Input( "in" ) ,
+	Output( "out" ) ,
+	CameraConfig( "camera" ) ,
+	VectorField( "inVF" );
 
-CmdLineParameter< int   > MultigridBlockHeight ( "mBlockH" ,  16 );
-CmdLineParameter< int   > MultigridBlockWidth  ( "mBlockW" , 128 );
-CmdLineParameter< int   > MultigridPaddedHeight( "mPadH"   ,   0 );
-CmdLineParameter< int   > MultigridPaddedWidth ( "mPadW"   ,   2 );
 
-CmdLineParameter< int   > RandomJitter( "jitter" , 0 );
-CmdLineReadable Verbose( "verbose" );
-CmdLineReadable NoHelp( "noHelp" );
-CmdLineReadable DetailVerbose( "detail" );
-CmdLineReadable UseDirectSolver( "useDirectSolver" );
-CmdLineReadable Double( "double" );
-CmdLineReadable ApproximateIntegration( "approximateIntegration" );
-CmdLineReadable Dots( "dots" );
-CmdLineReadable Serial( "serial" );
-CmdLineReadable Run( "run" );
+CmdLineParameter< unsigned int >
+	OutputSteps( "outSteps" , 1000 ) ,
+	Width( "width" , 512 ) ,
+	Height( "height" , 512 ) ,
+	DisplayMode( "display" , TWO_REGION_DISPLAY ) ,
+	MatrixQuadrature( "mQuadrature" , 6 ) ,
+	RHSQuadrature( "rhsQuadrature" , 3 ) ,
+	MultigridBlockHeight ( "mBlockH" ,  16 ) ,
+	MultigridBlockWidth  ( "mBlockW" , 128 ) ,
+	MultigridPaddedHeight( "mPadH"   ,   0 ) ,
+	MultigridPaddedWidth ( "mPadW"   ,   2 ) ,
+	RandomJitter( "jitter" , 0 ) ,
+	Levels( "levels" , 4 );
 
-CmdLineParameter< std::string > VectorField( "inVF" );
-CmdLineParameter< float > AnisotropyScale( "aScl" , 1.f );
-CmdLineParameter< float > AnisotropyExponent( "aExp" , 0.f );
-CmdLineReadable IntrinsicVectorField( "intrinsicVF" );
+CmdLineParameterArray< float , 2 >
+	FeedKillRates( "fk" , StripeRates );
 
-CmdLineParameter< double > CollapseEpsilon( "collapse" , 0 );
+CmdLineParameter< float >
+	Speed( "speed" , 10.f ) ,
+	DiffusionScale( "diff" , 1.f ) ,
+	SamplesFraction( "samples" ) ,
+	AnisotropyScale( "aScl" , 1.f ) ,
+	AnisotropyExponent( "aExp" , 0.f );
+
+CmdLineReadable
+	Verbose( "verbose" ) , 
+	NearestSampling( "nearest" ) , 
+	NoHelp( "noHelp" ) ,
+	DetailVerbose( "detail" ) ,
+	UseDirectSolver( "useDirectSolver" ) ,
+	Double( "double" ) ,
+	ApproximateIntegration( "approximateIntegration" ) ,
+	Dots( "dots" ) ,
+	Serial( "serial" ) ,
+	Run( "run" ) ,
+	IntrinsicVectorField( "intrinsicVF" );
+
+CmdLineParameter< double >
+	CollapseEpsilon( "collapse" , 0 );
 
 CmdLineReadable* params[] =
 {
@@ -99,6 +108,7 @@ CmdLineReadable* params[] =
 	&VectorField , &IntrinsicVectorField , &AnisotropyScale , &AnisotropyExponent , 
 	&CollapseEpsilon ,
 	&Run ,
+	&NearestSampling ,
 	NULL
 };
 
@@ -140,6 +150,7 @@ void ShowUsage( const char* ex )
 	printf( "\t[--%s]\n" , IntrinsicVectorField.name.c_str() );
 	printf( "\t[--%s]\n" , Run.name.c_str() );
 	printf( "\t[--%s]\n" , Serial.name.c_str() );
+	printf( "\t[--%s]\n" , NearestSampling.name.c_str() );
 
 	printf( "\t[--%s]\n" , NoHelp.name.c_str() );
 }
@@ -194,18 +205,8 @@ public:
 
 	static std::vector< MultigridLevelIndices< Real > > multigridIndices;
 
-	static SparseMatrix< Real , int > coarseBoundaryFineBoundaryProlongation;
-	static SparseMatrix< Real , int > fineBoundaryCoarseBoundaryRestriction;
-	static std::vector< Point2D< Real > > coarseBoundaryValues;
-	static std::vector< Point2D< Real > > coarseBoundaryRHS;
-	static std::vector< Point2D< Real > > fineBoundaryValues;
-	static std::vector< Point2D< Real > > fineBoundaryRHS;
-
-	//Samples
-	static ScalarElementSamples< Real > scalarSamples;
-	static std::vector< InteriorCellLine > interiorCellLines;
-
-	static ExplicitIndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > > interiorCellLineIndex;
+	static ScalarIntegrator< Real > scalarIntegrator;
+	static typename ScalarIntegrator< Real >::template Scratch< Point< Real , 2 > , Point< Real , 2 > > scalarIntegratorScratch;
 
 	//Linear Operators
 	static MassAndStiffnessOperator< Real > massAndStiffnessOperator;
@@ -283,20 +284,12 @@ template< typename PreReal , typename Real > typename GrayScottReactionDiffusion
 
 
 //Samples
-template< typename PreReal , typename Real > ScalarElementSamples< Real >											GrayScottReactionDiffusion< PreReal , Real >::scalarSamples;
-template< typename PreReal , typename Real > std::vector< InteriorCellLine >										GrayScottReactionDiffusion< PreReal , Real >::interiorCellLines;
-template< typename PreReal , typename Real > ExplicitIndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > >	GrayScottReactionDiffusion< PreReal , Real >::interiorCellLineIndex;
 
 template< typename PreReal , typename Real > unsigned int															GrayScottReactionDiffusion< PreReal , Real >::seedTexel = -1;
 template< typename PreReal , typename Real > std::vector< Point3D< float > >										GrayScottReactionDiffusion< PreReal , Real >::textureNodePositions;
 
-template< typename PreReal , typename Real > SparseMatrix< Real , int >												GrayScottReactionDiffusion< PreReal , Real >::coarseBoundaryFineBoundaryProlongation;
-template< typename PreReal , typename Real > SparseMatrix< Real , int >												GrayScottReactionDiffusion< PreReal , Real >::fineBoundaryCoarseBoundaryRestriction;
-
-template< typename PreReal , typename Real > std::vector< Point2D< Real > >											GrayScottReactionDiffusion< PreReal , Real >::coarseBoundaryValues;
-template< typename PreReal , typename Real > std::vector< Point2D< Real > >											GrayScottReactionDiffusion< PreReal , Real >::coarseBoundaryRHS;
-template< typename PreReal , typename Real > std::vector< Point2D< Real > >											GrayScottReactionDiffusion< PreReal , Real >::fineBoundaryValues;
-template< typename PreReal , typename Real > std::vector< Point2D< Real > >											GrayScottReactionDiffusion< PreReal , Real >::fineBoundaryRHS;
+template< typename PreReal , typename Real > ScalarIntegrator< Real >												GrayScottReactionDiffusion< PreReal , Real >::scalarIntegrator;
+template< typename PreReal , typename Real > typename ScalarIntegrator< Real >::template Scratch< Point< Real , 2 > , Point< Real , 2 > > GrayScottReactionDiffusion< PreReal , Real >::scalarIntegratorScratch;
 
 template< typename PreReal , typename Real > MassAndStiffnessOperator< Real >										GrayScottReactionDiffusion< PreReal , Real >::massAndStiffnessOperator;
 
@@ -315,30 +308,20 @@ void GrayScottReactionDiffusion< PreReal , Real >::SetRightHandSide( void )
 	// [MK] Should pull this out and initialize it once
 	static std::vector< Point2D< Real > > ab_x( multigridVariables[0][0].x.size() );
 	static std::vector< Point2D< Real > > ab_rhs( multigridVariables[0][0].rhs.size() );
-	for( int ab=0 ; ab<2 ; ab++ ) ThreadPool::ParallelFor( 0 , ab_x.size() , [&]( unsigned int , size_t i ){ ab_x[i][ab] = multigridVariables[ab][0].x[i]; } );
-	const typename GridAtlas<>::IndexConverter & indexConverter = hierarchy.gridAtlases[0].indexConverter;
-
-	ThreadPool::ParallelFor( 0 , indexConverter.numBoundary() , [&]( unsigned int , size_t i ){ coarseBoundaryValues[i] = ab_x[ static_cast< unsigned int >(indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex(i) ) ) ]; } );
-	coarseBoundaryFineBoundaryProlongation.Multiply( &coarseBoundaryValues[0] , &fineBoundaryValues[0] );
-
+	for( unsigned int ab=0 ; ab<2 ; ab++ ) ThreadPool::ParallelFor( 0 , ab_x.size() , [&]( unsigned int , size_t i ){ ab_x[i][ab] = multigridVariables[ab][0].x[i]; } );
 	for( unsigned int ab=0 ; ab<2 ; ab++ ) massAndStiffnessOperator.mass( multigridVariables[ab][0].x , multigridVariables[ab][0].rhs );
+
 	auto ABFunction = [&]( Point2D< Real > ab , SquareMatrix< Real , 2 > )
-	{
-		return Point2D< Real >
-			(
-				(Real)( speed * ( - ab[0] * ab[1] * ab[1] + feed * ( 1 - ab[0] ) ) ) ,
-				(Real)( speed * (   ab[0] * ab[1] * ab[1] - ( kill + feed ) * ab[1] ) )
-			);
-	};
-	memset( &ab_rhs[0] , 0 , ab_rhs.size() * sizeof( Point2D< Real > ) );
-	memset( &fineBoundaryRHS[0] , 0 , fineBoundaryRHS.size() * sizeof( Point2D< Real > ) );
-	Integrate< Real >( interiorCellLines , scalarSamples , ab_x , fineBoundaryValues , ABFunction , ab_rhs , fineBoundaryRHS );
-	fineBoundaryCoarseBoundaryRestriction.Multiply( &fineBoundaryRHS[0] , &coarseBoundaryRHS[0] );
-	for( int ab=0 ; ab<2 ; ab++ )
-	{
-		ThreadPool::ParallelFor( 0 , ab_rhs.size() , [&]( unsigned int , size_t i ){ multigridVariables[ab][0].rhs[i] += ab_rhs[i][ab]; } );
-		ThreadPool::ParallelFor( 0 , indexConverter.numBoundary() , [&]( unsigned int , size_t i ){ multigridVariables[ab][0].rhs[ static_cast< unsigned int >( indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex(i) ) ) ] += coarseBoundaryRHS[i][ab]; } );
-	}
+		{
+			return Point2D< Real >
+				(
+					(Real)( speed * ( - ab[0] * ab[1] * ab[1] + feed * ( 1 - ab[0] ) ) ) ,
+					(Real)( speed * (   ab[0] * ab[1] * ab[1] - ( kill + feed ) * ab[1] ) )
+				);
+		};
+
+	scalarIntegrator( ab_x , ABFunction , scalarIntegratorScratch , ab_rhs );
+	for( unsigned int ab=0 ; ab<2 ; ab++ ) ThreadPool::ParallelFor( 0 , ab_rhs.size() , [&]( size_t i ){ multigridVariables[ab][0].rhs[i] += ab_rhs[i][ab]; } );
 }
 
 template< typename PreReal , typename Real >
@@ -643,16 +626,8 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 	for( unsigned int i=0 ; i<parameterMetric.size() ; i++ ) for( unsigned int j=0 ; j<parameterMetric[ ChartIndex(i) ].size() ; j++ ) parameterMetric[ ChartIndex(i) ][ ChartMeshTriangleIndex(j) ] *= textureNodes.size() / 2;
 
 	pMeter.reset();
-	switch( MatrixQuadrature.value )
-	{
-	case 1:  MassAndStiffness<  1 >::Initialize( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
-	case 3:  MassAndStiffness<  3 >::Initialize( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
-	case 6:  MassAndStiffness<  6 >::Initialize( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
-	case 12: MassAndStiffness< 12 >::Initialize( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
-	case 24: MassAndStiffness< 24 >::Initialize( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
-	case 32: MassAndStiffness< 32 >::Initialize( massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , boundaryProlongation ) ; break;
-	default: MK_THROW( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
-	}
+	OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , scalarIntegrator , RHSQuadrature.value , ApproximateIntegration.set );
+	scalarIntegratorScratch = scalarIntegrator.template getScratch< Point< Real , 2 > , Point< Real , 2 > >();
 	if( Verbose.set ) std::cout << pMeter( "Mass and stiffness" ) << std::endl;
 
 	if( UseDirectSolver.set )
@@ -683,7 +658,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 	//////////////////////////////////// Initialize multigrid coefficients
 
 	pMeter.reset();
-	for( int ab=0 ; ab<2 ; ab++ ) UpdateLinearSystem( (Real)1. , diffusionRates[ab] * speed , hierarchy , multigridCoefficients[ab] , massAndStiffnessOperator.massCoefficients , massAndStiffnessOperator.stiffnessCoefficients , vCycleSolvers[ab] , fineSolvers[ab] , systemMatrices[ab] , DetailVerbose.set , true , UseDirectSolver.set );
+	for( int ab=0 ; ab<2 ; ab++ ) UpdateLinearSystem( (Real)1. , diffusionRates[ab] * speed , hierarchy , multigridCoefficients[ab] , massAndStiffnessOperator , vCycleSolvers[ab] , fineSolvers[ab] , systemMatrices[ab] , DetailVerbose.set , true , UseDirectSolver.set );
 	if( Verbose.set ) std::cout << pMeter( "Initialized MG" ) << std::endl;
 
 	//////////////////////////////////// Initialize multigrid variables
@@ -703,40 +678,6 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 			variables.variable_boundary_value.resize( indexConverter.numBoundary() );
 		}
 	}
-
-
-	//////////////////////////////////// Initialize cell samples
-
-	InitializeGridAtlasInteriorCellLines( hierarchy.gridAtlases[0].gridCharts , interiorCellLines , interiorCellLineIndex );
-	if( interiorCellLineIndex.size()!=static_cast< unsigned int >(hierarchy.gridAtlases[0].endInteriorCellIndex) ) MK_THROW( "Inconsistent number of interior cells! Expected " , hierarchy.gridAtlases[0].endInteriorCellIndex , " . Result " , interiorCellLineIndex.size() , "." );
-
-	coarseBoundaryFineBoundaryProlongation = boundaryProlongation.coarseBoundaryFineBoundaryProlongation;
-	fineBoundaryCoarseBoundaryRestriction = boundaryProlongation.fineBoundaryCoarseBoundaryRestriction;
-	const std::vector< AtlasInteriorOrBoundaryNodeIndex > & fineBoundaryIndex = boundaryProlongation.fineBoundaryIndex;
-	unsigned int numFineBoundaryNodes = boundaryProlongation.numFineBoundaryNodes;
-
-	scalarSamples.resize( interiorCellLines.size() );
-
-	pMeter.reset();
-	{
-		switch( RHSQuadrature.value )
-		{
-		case  1: InitializeIntegration<  1 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , scalarSamples , ApproximateIntegration.set ) ; break;
-		case  3: InitializeIntegration<  3 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , scalarSamples , ApproximateIntegration.set ) ; break;
-		case  6: InitializeIntegration<  6 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , scalarSamples , ApproximateIntegration.set ) ; break;
-		case 12: InitializeIntegration< 12 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , scalarSamples , ApproximateIntegration.set ) ; break;
-		case 24: InitializeIntegration< 24 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , scalarSamples , ApproximateIntegration.set ) ; break;
-		case 32: InitializeIntegration< 32 >( parameterMetric , atlasCharts , hierarchy.gridAtlases[0].gridCharts , interiorCellLineIndex , fineBoundaryIndex , scalarSamples , ApproximateIntegration.set ) ; break;
-		default: MK_THROW( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles" );
-		}
-	}
-	if( Verbose.set ) std::cout << pMeter( "VF integration" ) << std::endl;
-	coarseBoundaryValues.resize( static_cast< unsigned int >(hierarchy.gridAtlases[0].endCombinedTexelIndex) - static_cast< unsigned int >(hierarchy.gridAtlases[0].endInteriorTexelIndex) );
-	coarseBoundaryRHS.resize   ( static_cast< unsigned int >(hierarchy.gridAtlases[0].endCombinedTexelIndex) - static_cast< unsigned int >(hierarchy.gridAtlases[0].endInteriorTexelIndex) );
-	fineBoundaryValues.resize( numFineBoundaryNodes );
-	fineBoundaryRHS.resize   ( numFineBoundaryNodes );
-
-	scalarSamples.sort();
 }
 
 template< typename PreReal , typename Real >
@@ -907,6 +848,7 @@ void _main( int argc , char* argv[] )
 		GrayScottReactionDiffusion< PreReal , Real >::visualization.displayMode = DisplayMode.value;
 		if     ( DisplayMode.value==ONE_REGION_DISPLAY ) GrayScottReactionDiffusion< PreReal , Real >::visualization.screenWidth =  800 , GrayScottReactionDiffusion< PreReal , Real >::visualization.screenHeight = 800;
 		else if( DisplayMode.value==TWO_REGION_DISPLAY ) GrayScottReactionDiffusion< PreReal , Real >::visualization.screenWidth = 1440 , GrayScottReactionDiffusion< PreReal , Real >::visualization.screenHeight = 720;
+		GrayScottReactionDiffusion< PreReal , Real >::visualization.useNearestSampling = NearestSampling.set;
 		glutInitWindowSize( GrayScottReactionDiffusion< PreReal , Real >::visualization.screenWidth , GrayScottReactionDiffusion< PreReal , Real >::visualization.screenHeight );
 
 		glutInit( &argc , argv );
