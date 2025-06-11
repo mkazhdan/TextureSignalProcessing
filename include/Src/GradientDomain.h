@@ -44,12 +44,12 @@ namespace MishaK
 		template< typename Real >
 		struct GradientDomain
 		{
-			// A constructure taking functions that:
+			// A constructor taking functions mapping:
 			// 1.  Triangle index       -> surface vertex indices at corners
-			// 2a. Triangle index       -> the metric tensor associated to the (right) triangle
-			// 2b. Surface vertex index -> position of the vertex in 3D
+			// 2a. Triangle index       -> metric tensor associated to the triangle
+			// 2b. Surface vertex index -> position in 3D
 			// 3.  Triangle index       -> texture vertex indices at corners
-			// 4.  Texture vertex index -> position of the vertex in the unit square
+			// 4.  Texture vertex index -> position in the unit square
 			template
 				<
 				typename SurfaceTriangleFunctor ,       /* = std::function< SimplexIndex< 2 > ( size_t ) > */
@@ -84,16 +84,16 @@ namespace MishaK
 			// The indices of the two texels that are the end-points of the (directed) edge
 			std::pair< size_t , size_t > edge( size_t e ) const;
 
-			// The mass matrix associated with texture map
+			// The mass matrix
 			Eigen::SparseMatrix< Real > mass( void ) const;
 
-			// The stiffness matrix associated with texture map
+			// The stiffness matrix
 			Eigen::SparseMatrix< Real > stiffness( void ) const;
 
-			// The divergence matrix associated with texture map
+			// The divergence matrix
 			Eigen::SparseMatrix< Real > divergence( void ) const;
 
-			// The finite-difference matrix associated with the texture map
+			// The finite-differences matrix
 			Eigen::SparseMatrix< Real > finiteDifferences( void ) const;
 
 			// Computes the mass of the per-node signal
@@ -108,7 +108,7 @@ namespace MishaK
 			// Compute the finite-differnces of texels along the edges
 			template< typename T > void finiteDifferences( const T * in , T * out ) const;
 
-			// Runs sanity-tests to confirm the definitions of the operators are consistent
+			// Runs unit-tests to confirm the definitions of the operators are consistent
 			void unitTests( unsigned int numTest , double eps , bool verbose=false ) const;
 
 		protected:
