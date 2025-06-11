@@ -499,8 +499,8 @@ Here a "dots" pattern is written out to an image. (Empirically, we have found th
 <DL>
 <DETAILS>
 <SUMMARY>
-<font size="+1"><b>GradientDomain.example.cpp</b></font>
-In addition to executables, the gradient-domain processing code can be interfaced through the <CODE>GradientDomain</CODE> object declared in <CODE>include/Src/GradientDomain.h</CODE>.
+<font size="+1"><b>include/Src/GradientDomain.h</b></font>
+In addition to executables, the gradient-domain processing code can be interfaced through the <CODE>GradientDomain</CODE> class declared in <CODE>include/Src/GradientDomain.h</CODE>.
 Once constructed, this object can be used to query the active texels/edges, as well as create the standard mass/stiffness/divergence matrices and apply the mass/stiffness/operators to the texel data. In the descriptions below, the template parameter <CODE>Real</CODE> is the floating point type used to represent data (typically <code>double</code>) and <CODE>Solver</CODE> is the class used to factor and solve the sparse system of linear equations (<CODE>Eigen::SimplicialLDLT</CODE> by default).
 </SUMMARY>
 

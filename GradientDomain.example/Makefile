@@ -19,6 +19,7 @@ endif
 LFLAGS += -lgomp -lz -lpng -ljpeg
 ifeq ($(USE_PARDISO),true)
 	CFLAGS += -DUSE_EIGEN_PARDISO
+endif
 
 CFLAGS_DEBUG = -DDEBUG -g3
 LFLAGS_DEBUG =
