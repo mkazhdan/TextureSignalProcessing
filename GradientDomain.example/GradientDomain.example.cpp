@@ -220,7 +220,6 @@ int main( int argc , char* argv[] )
 	}
 	if( Verbose.set ) std::cout << pMeter( "Solved" ) << std::endl;
 
-
 	// Put the texel values back into the texture
 	for( size_t n=0 ; n<gd.numNodes() ; n++ )
 	{
