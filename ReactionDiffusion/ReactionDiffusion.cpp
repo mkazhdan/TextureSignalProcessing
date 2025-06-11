@@ -43,6 +43,7 @@ DAMAGE.
 #include <Src/TexturedMeshVisualization.h>
 
 using namespace MishaK;
+using namespace MishaK::TSP;
 
 const float StripeRates[] = { 0.062f , 0.062f };
 const float    DotRates[] = { 0.0367f , 0.0649f };
@@ -208,8 +209,8 @@ public:
 	static ScalarIntegrator< Real > scalarIntegrator;
 	static typename ScalarIntegrator< Real >::template Scratch< Point< Real , 2 > , Point< Real , 2 > > scalarIntegratorScratch;
 
-	//Linear Operators
-	static MassAndStiffnessOperator< Real > massAndStiffnessOperator;
+	// Linear Operators
+	static MassAndStiffnessOperators< Real > massAndStiffnessOperators;
 
 	static unsigned char * outputBuffer;
 
@@ -291,7 +292,7 @@ template< typename PreReal , typename Real > std::vector< Point3D< float > >				
 template< typename PreReal , typename Real > ScalarIntegrator< Real >												GrayScottReactionDiffusion< PreReal , Real >::scalarIntegrator;
 template< typename PreReal , typename Real > typename ScalarIntegrator< Real >::template Scratch< Point< Real , 2 > , Point< Real , 2 > > GrayScottReactionDiffusion< PreReal , Real >::scalarIntegratorScratch;
 
-template< typename PreReal , typename Real > MassAndStiffnessOperator< Real >										GrayScottReactionDiffusion< PreReal , Real >::massAndStiffnessOperator;
+template< typename PreReal , typename Real > MassAndStiffnessOperators< Real >										GrayScottReactionDiffusion< PreReal , Real >::massAndStiffnessOperators;
 
 template< typename PreReal , typename Real > int																	GrayScottReactionDiffusion< PreReal , Real >::whichConcentration = 1;
 template< typename PreReal , typename Real > int																	GrayScottReactionDiffusion< PreReal , Real >::updateCount = 0;
@@ -309,7 +310,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::SetRightHandSide( void )
 	static std::vector< Point2D< Real > > ab_x( multigridVariables[0][0].x.size() );
 	static std::vector< Point2D< Real > > ab_rhs( multigridVariables[0][0].rhs.size() );
 	for( unsigned int ab=0 ; ab<2 ; ab++ ) ThreadPool::ParallelFor( 0 , ab_x.size() , [&]( unsigned int , size_t i ){ ab_x[i][ab] = multigridVariables[ab][0].x[i]; } );
-	for( unsigned int ab=0 ; ab<2 ; ab++ ) massAndStiffnessOperator.mass( multigridVariables[ab][0].x , multigridVariables[ab][0].rhs );
+	for( unsigned int ab=0 ; ab<2 ; ab++ ) massAndStiffnessOperators.mass( multigridVariables[ab][0].x , multigridVariables[ab][0].rhs );
 
 	auto ABFunction = [&]( Point2D< Real > ab , SquareMatrix< Real , 2 > )
 		{
@@ -626,14 +627,14 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 	for( unsigned int i=0 ; i<parameterMetric.size() ; i++ ) for( unsigned int j=0 ; j<parameterMetric[ ChartIndex(i) ].size() ; j++ ) parameterMetric[ ChartIndex(i) ][ ChartMeshTriangleIndex(j) ] *= textureNodes.size() / 2;
 
 	pMeter.reset();
-	OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , scalarIntegrator , RHSQuadrature.value , ApproximateIntegration.set );
+	OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , scalarIntegrator , RHSQuadrature.value , ApproximateIntegration.set );
 	scalarIntegratorScratch = scalarIntegrator.template getScratch< Point< Real , 2 > , Point< Real , 2 > >();
 	if( Verbose.set ) std::cout << pMeter( "Mass and stiffness" ) << std::endl;
 
 	if( UseDirectSolver.set )
 	{
-		FullMatrixConstruction( hierarchy.gridAtlases[0] , massAndStiffnessOperator.massCoefficients , mass );
-		FullMatrixConstruction( hierarchy.gridAtlases[0] , massAndStiffnessOperator.stiffnessCoefficients , stiffness );
+		FullMatrixConstruction( hierarchy.gridAtlases[0] , massAndStiffnessOperators.massCoefficients , mass );
+		FullMatrixConstruction( hierarchy.gridAtlases[0] , massAndStiffnessOperators.stiffnessCoefficients , stiffness );
 		systemMatrices[0] = mass + stiffness * diffusionRates[0] * speed;
 		systemMatrices[1] = mass + stiffness * diffusionRates[1] * speed;
 		if( Verbose.set ) std::cout << pMeter( "Assembled" ) << std::endl;
@@ -658,7 +659,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 	//////////////////////////////////// Initialize multigrid coefficients
 
 	pMeter.reset();
-	for( int ab=0 ; ab<2 ; ab++ ) UpdateLinearSystem( (Real)1. , diffusionRates[ab] * speed , hierarchy , multigridCoefficients[ab] , massAndStiffnessOperator , vCycleSolvers[ab] , fineSolvers[ab] , systemMatrices[ab] , DetailVerbose.set , true , UseDirectSolver.set );
+	for( int ab=0 ; ab<2 ; ab++ ) UpdateLinearSystem( (Real)1. , diffusionRates[ab] * speed , hierarchy , multigridCoefficients[ab] , massAndStiffnessOperators , vCycleSolvers[ab] , fineSolvers[ab] , systemMatrices[ab] , DetailVerbose.set , true , UseDirectSolver.set );
 	if( Verbose.set ) std::cout << pMeter( "Initialized MG" ) << std::endl;
 
 	//////////////////////////////////// Initialize multigrid variables

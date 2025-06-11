@@ -27,7 +27,8 @@ DAMAGE.
 */
 
 // To do:
-// -- Remove dependence on boundaryProlongation for integration in ReactionDiffusion and Geodesics
+// -- Pull edges out of the divergence operator
+
 // To do:
 // -- Use analytic integration
 // -- Remove GridChart::cellType and GridChart::texelType
@@ -44,8 +45,8 @@ DAMAGE.
 //#define SANITY_CHECK					// Enables sanity checks for debugging purposes
 
 #define USE_EIGEN
-#undef USE_CHOLMOD
-#undef USE_EIGEN_PARDISO
+//#define USE_CHOLMOD
+//#define USE_EIGEN_PARDISO
 
 
 #define INSERTION_EPSILON 1e-12			// Separation from interval end-points required for insertion

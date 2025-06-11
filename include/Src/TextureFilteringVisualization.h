@@ -30,40 +30,43 @@ DAMAGE.
 
 namespace MishaK
 {
-	enum
+	namespace TSP
 	{
-		COLOR_TEXTURE,
-		NORMAL_TEXTURE,
-		TEXTURE_TYPE_COUNT
-	};
+		enum
+		{
+			COLOR_TEXTURE,
+			NORMAL_TEXTURE,
+			TEXTURE_TYPE_COUNT
+		};
 
-	class TextureFilteringVisualization : public TexturedMeshVisualization
-	{
-	public:
-		TextureFilteringVisualization( void );
-		int textureType;
-		float slideBarCursorPosition = 0.5f;
-		float slideBarCursorOldPosition = 0.5f;
-		bool isBrushActive;
-		bool isSlideBarActive;
-		int diskX, diskY;
-		bool positiveModulation;
-		bool showDisk;
-		bool showSlideBar;
-		GLuint maskTextureBuffer = 0;
-		unsigned char * maskBufferValues;
-		unsigned char * colorTextureBuffer;
-		int textureWidth;
-		int textureHeight;
-		template< typename Real >
-		void UpdateTextureBuffer( const Image< Point3D< Real > > &image);
-		void UpdateColorTextureBuffer();
-		void UpdateMaskTextureBuffer();
-		int slideBarWidth( void );
+		class TextureFilteringVisualization : public TexturedMeshVisualization
+		{
+		public:
+			TextureFilteringVisualization( void );
+			int textureType;
+			float slideBarCursorPosition = 0.5f;
+			float slideBarCursorOldPosition = 0.5f;
+			bool isBrushActive;
+			bool isSlideBarActive;
+			int diskX, diskY;
+			bool positiveModulation;
+			bool showDisk;
+			bool showSlideBar;
+			GLuint maskTextureBuffer = 0;
+			unsigned char * maskBufferValues;
+			unsigned char * colorTextureBuffer;
+			int textureWidth;
+			int textureHeight;
+			template< typename Real >
+			void UpdateTextureBuffer( const Image< Point3D< Real > > &image);
+			void UpdateColorTextureBuffer();
+			void UpdateMaskTextureBuffer();
+			int slideBarWidth( void );
 
-		void display(void);
-		void LoadGeometryData();
-		void DrawSlideBar();
-	};
+			void display(void);
+			void LoadGeometryData();
+			void DrawSlideBar();
+		};
 #include "TextureFilteringVisualization.inl"
+	}
 }

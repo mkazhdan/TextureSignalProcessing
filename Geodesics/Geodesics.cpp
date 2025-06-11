@@ -43,6 +43,7 @@ DAMAGE.
 #include <Src/TexturedMeshVisualization.h>
 
 using namespace MishaK;
+using namespace MishaK::TSP;
 
 CmdLineParameter< std::string >
 	Input( "in" ) ,
@@ -555,19 +556,19 @@ void Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 	BoundaryProlongationData< Real > boundaryProlongation;
 	InitializeBoundaryProlongationData( hierarchy.gridAtlases[0] , boundaryProlongation );
 
-	MassAndStiffnessOperator< Real > massAndStiffnessOperator;
+	MassAndStiffnessOperators< Real > massAndStiffnessOperators;
 
 	InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric );
 
 	pMeter.reset();
-	OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , gradientIntegrator , VectorFieldQuadrature.value , !PreciseIntegration.set );
+	OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , gradientIntegrator , VectorFieldQuadrature.value , !PreciseIntegration.set );
 	gradientIntegratorScratch = gradientIntegrator.template getScratch< Real , Real >();
 	if( Verbose.set ) std::cout << pMeter( "System" ) << std::endl;
 
 	if( UseDirectSolver.set )
 	{
-		FullMatrixConstruction( hierarchy.gridAtlases[0] , massAndStiffnessOperator.massCoefficients , mass );
-		FullMatrixConstruction( hierarchy.gridAtlases[0] , massAndStiffnessOperator.stiffnessCoefficients , stiffness );
+		FullMatrixConstruction( hierarchy.gridAtlases[0] , massAndStiffnessOperators.massCoefficients , mass );
+		FullMatrixConstruction( hierarchy.gridAtlases[0] , massAndStiffnessOperators.stiffnessCoefficients , stiffness );
 		smoothImpulseMatrix = mass * diffusionInterpolationWeight + stiffness;
 		geodesicDistanceMatrix = mass * geodesicInterpolationWeight + stiffness;
 		if( Verbose.set ) std::cout << pMeter( "Assembled matrice" ) << std::endl;
@@ -591,8 +592,8 @@ void Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 
 //////////////////////////////////// Initialize multigrid coefficients
 
-	UpdateLinearSystem( diffusionInterpolationWeight , (Real)1. , hierarchy , multigridSmoothImpulseCoefficients , massAndStiffnessOperator , smoothImpulseSolvers , fineSmoothImpulseSolver , smoothImpulseMatrix , DetailVerbose.set , true , UseDirectSolver.set );
-	UpdateLinearSystem(  geodesicInterpolationWeight , (Real)1. , hierarchy , multigridGeodesicDistanceCoefficients , massAndStiffnessOperator , geodesicDistanceSolvers , fineGeodesicDistanceSolver , geodesicDistanceMatrix , DetailVerbose.set , true , UseDirectSolver.set );
+	UpdateLinearSystem( diffusionInterpolationWeight , (Real)1. , hierarchy , multigridSmoothImpulseCoefficients , massAndStiffnessOperators , smoothImpulseSolvers , fineSmoothImpulseSolver , smoothImpulseMatrix , DetailVerbose.set , true , UseDirectSolver.set );
+	UpdateLinearSystem(  geodesicInterpolationWeight , (Real)1. , hierarchy , multigridGeodesicDistanceCoefficients , massAndStiffnessOperators , geodesicDistanceSolvers , fineGeodesicDistanceSolver , geodesicDistanceMatrix , DetailVerbose.set , true , UseDirectSolver.set );
 	if( Verbose.set ) std::cout << pMeter( "MG coefficients" ) << std::endl;
 
 //////////////////////////////////// Initialize multigrid variables

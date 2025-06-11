@@ -393,19 +393,19 @@ void UpdateLinearSystem
 	MatrixReal stiffnessWeight ,
 	const HierarchicalSystem< GeometryReal , MatrixReal > &hierarchy ,
 	std::vector< SystemCoefficients< MatrixReal > > &multigridCoefficients ,
-	const MassAndStiffnessOperator< MatrixReal > & massAndStiffnessOperator ,
+	const MassAndStiffnessOperators< MatrixReal > & massAndStiffnessOperators ,
 	VCycleSolvers< DirectSolver > &vCycleSolvers , DirectSolver &fineSolver ,
 	const SparseMatrix< MatrixReal , int > &fineSystemMatrix ,
 	bool detailVerbose=false , bool initSolvers=true , bool updateFineSolver=false
 )
 {
 	SystemCoefficients< MatrixReal > fineCoefficients;
-	unsigned int numDeepCoefficients = static_cast< unsigned int >( massAndStiffnessOperator.massCoefficients.deepCoefficients.size() );
+	unsigned int numDeepCoefficients = static_cast< unsigned int >( massAndStiffnessOperators.massCoefficients.deepCoefficients.size() );
 	fineCoefficients.deepCoefficients.resize( numDeepCoefficients );
 
-	ThreadPool::ParallelFor( 0 , numDeepCoefficients , [&]( unsigned int , size_t i ){ fineCoefficients.deepCoefficients[i] = massAndStiffnessOperator.massCoefficients.deepCoefficients[i] * screenWeight + massAndStiffnessOperator.stiffnessCoefficients.deepCoefficients[i] * stiffnessWeight; } );
+	ThreadPool::ParallelFor( 0 , numDeepCoefficients , [&]( unsigned int , size_t i ){ fineCoefficients.deepCoefficients[i] = massAndStiffnessOperators.massCoefficients.deepCoefficients[i] * screenWeight + massAndStiffnessOperators.stiffnessCoefficients.deepCoefficients[i] * stiffnessWeight; } );
 
-	const SparseMatrix< MatrixReal , int >* in[][2] = { { &massAndStiffnessOperator.massCoefficients.boundaryBoundaryMatrix , &massAndStiffnessOperator.stiffnessCoefficients.boundaryBoundaryMatrix } , { &massAndStiffnessOperator.massCoefficients.boundaryDeepMatrix , &massAndStiffnessOperator.stiffnessCoefficients.boundaryDeepMatrix } };
+	const SparseMatrix< MatrixReal , int >* in[][2] = { { &massAndStiffnessOperators.massCoefficients.boundaryBoundaryMatrix , &massAndStiffnessOperators.stiffnessCoefficients.boundaryBoundaryMatrix } , { &massAndStiffnessOperators.massCoefficients.boundaryDeepMatrix , &massAndStiffnessOperators.stiffnessCoefficients.boundaryDeepMatrix } };
 
 	SparseMatrix< MatrixReal , int >* out[] = { &fineCoefficients.boundaryBoundaryMatrix , &fineCoefficients.boundaryDeepMatrix };
 	for( unsigned int ii=0 ; ii<2 ; ii++ )

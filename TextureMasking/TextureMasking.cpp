@@ -39,6 +39,7 @@ DAMAGE.
 #include <Src/MeshIO.h>
 
 using namespace MishaK;
+using namespace MishaK::TSP;
 
 
 CmdLineParameter< std::string >

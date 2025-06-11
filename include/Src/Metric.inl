@@ -251,16 +251,17 @@ void InitializeMetric
 	TexturedTriangleMesh< GeometryReal > &mesh ,
 	int metricMode ,
 	const ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
-	ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > > &parameterMetric
+	ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > > &parameterMetric ,
+	bool normalize = true
 )
 {
 	ExplicitIndexVector< AtlasMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > surfaceMetric;
 	ExplicitIndexVector< AtlasMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > embeddingMetric;
 
-	InitializeEmbeddingMetric( mesh , true , embeddingMetric );
+	InitializeEmbeddingMetric( mesh , normalize , embeddingMetric );
 
 	if     ( metricMode==EMBEDDING_METRIC ) surfaceMetric = embeddingMetric;
-	else if( metricMode==UNIFORM_METRIC   ) InitializeUniformMetric( mesh , true , surfaceMetric );
+	else if( metricMode==UNIFORM_METRIC   ) InitializeUniformMetric( mesh , normalize , surfaceMetric );
 	else MK_THROW( "Unrecognized  metric: " , metricMode );
 	InitializeParameterMetric( mesh , surfaceMetric , atlasCharts , parameterMetric );
 }

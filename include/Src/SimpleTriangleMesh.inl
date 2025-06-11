@@ -170,7 +170,7 @@ template< typename Real >
 size_t TexturedTriangleMesh< Real >::numTriangles( void ) const { return surface.triangles.size(); }
 
 template< typename Real >
-void TexturedTriangleMesh< Real >::read( std::string meshName , bool verbose , double eps )
+void TexturedTriangleMesh< Real >::read( std::string meshName , bool verbose , double eps , bool flip )
 {
 	surface.vertices.clear();
 	texture.vertices.clear();
@@ -182,7 +182,7 @@ void TexturedTriangleMesh< Real >::read( std::string meshName , bool verbose , d
 	if( eps>0 ) CollapseVertices( surface.vertices , surface.triangles , eps );
 
 	// Flip the vertical axis
-	for( int i=0 ; i<texture.vertices.size() ; i++ ) texture.vertices[i][1] = (Real)1. - texture.vertices[i][1];
+	if( flip ) for( int i=0 ; i<texture.vertices.size() ; i++ ) texture.vertices[i][1] = (Real)1. - texture.vertices[i][1];
 	for( unsigned int i=0 ; i<texture.triangles.size() ; i++ ) if( texture.triangle(i).measure()==0 ) MK_WARN( "Zero area texture triangle: " , i );
 }
 

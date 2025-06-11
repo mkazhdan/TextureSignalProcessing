@@ -29,33 +29,36 @@ DAMAGE.
 
 namespace MishaK
 {
-	template< typename GeometryReal , typename MatrixReal >
-	void InitializeInteriorTexelToCellLines( std::vector< InteriorTexelToCellLine > &interiorTexeltoCellLine , const GridAtlas< GeometryReal , MatrixReal > &gridAtlas )
+	namespace TSP
 	{
-		const std::vector<RasterLine> & rasterLines = gridAtlas.rasterLines;
-		const ExplicitIndexVector< AtlasTexelIndex , TexelInfo > & texelInfo = gridAtlas.texelInfo;
-		const ExplicitIndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts = gridAtlas.gridCharts;
-		interiorTexeltoCellLine.resize( rasterLines.size() );
-		for( unsigned int i=0 ; i<rasterLines.size() ; i++ )
+		template< typename GeometryReal , typename MatrixReal >
+		void InitializeInteriorTexelToCellLines( std::vector< InteriorTexelToCellLine > &interiorTexeltoCellLine , const GridAtlas< GeometryReal , MatrixReal > &gridAtlas )
 		{
-			AtlasTexelIndex interiorTexelStart = rasterLines[i].lineStartIndex;
-			unsigned int ci = texelInfo[interiorTexelStart].ci;
-			unsigned int cj = texelInfo[interiorTexelStart].cj;
-			ChartIndex chartID = texelInfo[interiorTexelStart].chartID;
+			const std::vector<RasterLine> & rasterLines = gridAtlas.rasterLines;
+			const ExplicitIndexVector< AtlasTexelIndex , TexelInfo > & texelInfo = gridAtlas.texelInfo;
+			const ExplicitIndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts = gridAtlas.gridCharts;
+			interiorTexeltoCellLine.resize( rasterLines.size() );
+			for( unsigned int i=0 ; i<rasterLines.size() ; i++ )
+			{
+				AtlasTexelIndex interiorTexelStart = rasterLines[i].lineStartIndex;
+				unsigned int ci = texelInfo[interiorTexelStart].ci;
+				unsigned int cj = texelInfo[interiorTexelStart].cj;
+				ChartIndex chartID = texelInfo[interiorTexelStart].chartID;
 
-			interiorTexeltoCellLine[i].texelStartIndex = rasterLines[i].lineStartIndex;
-			interiorTexeltoCellLine[i].texelEndIndex = rasterLines[i].lineEndIndex;
-			interiorTexeltoCellLine[i].coeffOffset = rasterLines[i].coeffStartIndex;
+				interiorTexeltoCellLine[i].texelStartIndex = rasterLines[i].lineStartIndex;
+				interiorTexeltoCellLine[i].texelEndIndex = rasterLines[i].lineEndIndex;
+				interiorTexeltoCellLine[i].coeffOffset = rasterLines[i].coeffStartIndex;
 
 #ifdef SANITY_CHECK
-			if( gridCharts[chartID].cellType(ci-1,cj-1)!=CellType::Interior ) MK_THROW( "Non interior cell" );
+				if( gridCharts[chartID].cellType(ci-1,cj-1)!=CellType::Interior ) MK_THROW( "Non interior cell" );
 #endif // SANITY_CHECK
-			interiorTexeltoCellLine[i].previousCellStartIndex = gridCharts[chartID].chartToAtlasCombinedCellIndex( gridCharts[chartID].cellIndices( ci-1 , cj-1 ).combined );
+				interiorTexeltoCellLine[i].previousCellStartIndex = gridCharts[chartID].chartToAtlasCombinedCellIndex( gridCharts[chartID].cellIndices( ci-1 , cj-1 ).combined );
 
 #ifdef SANITY_CHECK
-			if( gridCharts[chartID].cellType(ci-1,cj)!=CellType::Interior ) MK_THROW( "Non interior cell" );
+				if( gridCharts[chartID].cellType(ci-1,cj)!=CellType::Interior ) MK_THROW( "Non interior cell" );
 #endif // SANITY_CHECK
-			interiorTexeltoCellLine[i].nextCellStartIndex = gridCharts[chartID].chartToAtlasCombinedCellIndex( gridCharts[chartID].cellIndices( ci-1 , cj ).combined );
+				interiorTexeltoCellLine[i].nextCellStartIndex = gridCharts[chartID].chartToAtlasCombinedCellIndex( gridCharts[chartID].cellIndices( ci-1 , cj ).combined );
+			}
 		}
 	}
 }

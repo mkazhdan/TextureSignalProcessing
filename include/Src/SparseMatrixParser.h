@@ -33,78 +33,81 @@ DAMAGE.
 
 namespace MishaK
 {
-	template< class Real , class RealOut=Real >
-	SparseMatrix< RealOut , int > SetSparseMatrix( const std::vector< Eigen::Triplet< Real > >& triplets , int cols , int /*rows*/ , bool rowMajor )
+	namespace TSP
 	{
-		SparseMatrix< RealOut , int > M;
-		M.resize( cols );
-		if( rowMajor ) ThreadPool::ParallelFor( 0 , triplets.size() , [&]( unsigned int , size_t i ){ AddAtomic< size_t >( M.rowSizes[ triplets[i].col() ] , 1 ); } );
-		else           ThreadPool::ParallelFor( 0 , triplets.size() , [&]( unsigned int , size_t i ){ AddAtomic< size_t >( M.rowSizes[ triplets[i].row() ] , 1 ); } );
+		template< class Real , class RealOut=Real >
+		SparseMatrix< RealOut , int > SetSparseMatrix( const std::vector< Eigen::Triplet< Real > >& triplets , int cols , int /*rows*/ , bool rowMajor )
+		{
+			SparseMatrix< RealOut , int > M;
+			M.resize( cols );
+			if( rowMajor ) ThreadPool::ParallelFor( 0 , triplets.size() , [&]( unsigned int , size_t i ){ AddAtomic< size_t >( M.rowSizes[ triplets[i].col() ] , 1 ); } );
+			else           ThreadPool::ParallelFor( 0 , triplets.size() , [&]( unsigned int , size_t i ){ AddAtomic< size_t >( M.rowSizes[ triplets[i].row() ] , 1 ); } );
 
-		ThreadPool::ParallelFor
-		(
-			0 , cols ,
-			[&]( unsigned int , size_t i )
-			{
-				if( M.rowSizes[i] )
+			ThreadPool::ParallelFor
+			(
+				0 , cols ,
+				[&]( unsigned int , size_t i )
 				{
-					int s = (int)M.rowSizes[i];
-					M.SetRowSize(i,s);
-					M.rowSizes[i] = 0;
+					if( M.rowSizes[i] )
+					{
+						int s = (int)M.rowSizes[i];
+						M.SetRowSize(i,s);
+						M.rowSizes[i] = 0;
+					}
+				}
+			);
+
+			for( int i=0 ; i<triplets.size() ; i++ )
+			{
+				int col = rowMajor ? triplets[i].row() : triplets[i].col() , row = rowMajor ? triplets[i].col() : triplets[i].row();
+				M[row][M.rowSizes[row]++] = MatrixEntry< RealOut , int >( col , (RealOut)triplets[i].value() );
+			}
+
+			ThreadPool::ParallelFor
+			(
+				0 , M.rows ,
+				[&]( unsigned int , size_t i )
+				{
+					std::map< int , RealOut > rowMap;
+					for( int j=0 ; j<M.rowSizes[i] ; j++ ) rowMap[M[i][j].N] += M[i][j].Value;
+					M.SetRowSize( i , rowMap.size() );
+					int count = 0;
+					for( auto it=rowMap.begin() ; it!=rowMap.end() ; it++ ) M[i][count++] = MatrixEntry< RealOut , int >( it->first , it->second );
+				}
+			);
+
+			return M;
+		}
+		template< typename Real >
+		class matrixRowEntry
+		{
+		public:
+			matrixRowEntry (int p_index , Real p_value ) : index(p_index) , value(p_value) {}
+			int index;
+			Real value;
+		};
+
+		template< typename Real >
+		struct matrixRowEntryCompare
+		{
+			bool operator() (const matrixRowEntry< Real > &lhs , const matrixRowEntry< Real > &rhs ) const { return lhs.index <rhs.index; }
+		};
+
+		template< class RealIn, class RealOut>
+		void SparseMatrixParser(const SparseMatrix< RealIn, int > & _M, Eigen::SparseMatrix<RealOut> & M) {
+			int rows = (int)_M.rows;
+			int cols = 0;
+			std::vector<Eigen::Triplet<RealOut>> triplets;
+			for (int i = 0; i < rows; i++) {
+				for (int j = 0; j < _M.rowSizes[i]; j++) {
+					int col = _M[i][j].N;
+					RealIn value = _M[i][j].Value;
+					triplets.push_back(Eigen::Triplet<RealOut>(i, col, RealOut(value)));
+					cols = std::max<int>(col, cols);
 				}
 			}
-		);
-
-		for( int i=0 ; i<triplets.size() ; i++ )
-		{
-			int col = rowMajor ? triplets[i].row() : triplets[i].col() , row = rowMajor ? triplets[i].col() : triplets[i].row();
-			M[row][M.rowSizes[row]++] = MatrixEntry< RealOut , int >( col , (RealOut)triplets[i].value() );
+			M.resize(rows, cols + 1);
+			M.setFromTriplets(triplets.begin(), triplets.end());
 		}
-
-		ThreadPool::ParallelFor
-		(
-			0 , M.rows ,
-			[&]( unsigned int , size_t i )
-			{
-				std::map< int , RealOut > rowMap;
-				for( int j=0 ; j<M.rowSizes[i] ; j++ ) rowMap[M[i][j].N] += M[i][j].Value;
-				M.SetRowSize( i , rowMap.size() );
-				int count = 0;
-				for( auto it=rowMap.begin() ; it!=rowMap.end() ; it++ ) M[i][count++] = MatrixEntry< RealOut , int >( it->first , it->second );
-			}
-		);
-
-		return M;
-	}
-	template< typename Real >
-	class matrixRowEntry
-	{
-	public:
-		matrixRowEntry (int p_index , Real p_value ) : index(p_index) , value(p_value) {}
-		int index;
-		Real value;
-	};
-
-	template< typename Real >
-	struct matrixRowEntryCompare
-	{
-		bool operator() (const matrixRowEntry< Real > &lhs , const matrixRowEntry< Real > &rhs ) const { return lhs.index <rhs.index; }
-	};
-
-	template< class RealIn, class RealOut>
-	void SparseMatrixParser(const SparseMatrix< RealIn, int > & _M, Eigen::SparseMatrix<RealOut> & M) {
-		int rows = (int)_M.rows;
-		int cols = 0;
-		std::vector<Eigen::Triplet<RealOut>> triplets;
-		for (int i = 0; i < rows; i++) {
-			for (int j = 0; j < _M.rowSizes[i]; j++) {
-				int col = _M[i][j].N;
-				RealIn value = _M[i][j].Value;
-				triplets.push_back(Eigen::Triplet<RealOut>(i, col, RealOut(value)));
-				cols = std::max<int>(col, cols);
-			}
-		}
-		M.resize(rows, cols + 1);
-		M.setFromTriplets(triplets.begin(), triplets.end());
 	}
 }

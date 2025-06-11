@@ -33,13 +33,13 @@ DAMAGE.
 #include <Misha/FEM.h>
 #include <Src/Hierarchy.h>
 #include <Src/Basis.h>
-#include <Src/HSV.h>
 #include <Src/Solver.h>
 #include <Src/Operators.h>
 #include <Src/Padding.h>
 #include <Src/TexturedMeshVisualization.h>
 
 using namespace MishaK;
+using namespace MishaK::TSP;
 
 CmdLineParameter< std::string >
 	Input( "in" ) ,
@@ -212,10 +212,10 @@ public:
 	static std::vector< Real > fineBoundaryRHS;
 
 	// Anisotropic Linear Operators
-	static MassAndStiffnessOperator< Real > anisoMassAndStiffnessOperator;
+	static MassAndStiffnessOperators< Real > anisoMassAndStiffnessOperators;
 
 	// Isotropic Linear Operators
-	static MassAndStiffnessOperator< Real > massAndStiffnessOperator;
+	static MassAndStiffnessOperators< Real > massAndStiffnessOperators;
 
 	static unsigned char * outputBuffer;
 
@@ -305,8 +305,8 @@ template< typename PreReal , typename Real > std::vector< Real >										LineCo
 template< typename PreReal , typename Real > std::vector< Real >										LineConvolution< PreReal , Real >::fineBoundaryValues;
 template< typename PreReal , typename Real > std::vector< Real >										LineConvolution< PreReal , Real >::fineBoundaryRHS;
 
-template< typename PreReal , typename Real > MassAndStiffnessOperator< Real >							LineConvolution< PreReal , Real >::anisoMassAndStiffnessOperator;
-template< typename PreReal , typename Real > MassAndStiffnessOperator< Real >							LineConvolution< PreReal , Real >::massAndStiffnessOperator;
+template< typename PreReal , typename Real > MassAndStiffnessOperators< Real >							LineConvolution< PreReal , Real >::anisoMassAndStiffnessOperators;
+template< typename PreReal , typename Real > MassAndStiffnessOperators< Real >							LineConvolution< PreReal , Real >::massAndStiffnessOperators;
 
 template< typename PreReal , typename Real > int														LineConvolution< PreReal , Real >::updateCount = 0;
 
@@ -317,7 +317,7 @@ void LineConvolution< PreReal , Real >::ComputeExactSolution( bool verbose )
 
 	// (1) Line Convolution	
 	// RHS = Mass * randSignal * licInterpolationWeight
-	anisoMassAndStiffnessOperator.mass( randSignal , multigridLineConvolutionVariables[0].rhs );
+	anisoMassAndStiffnessOperators.mass( randSignal , multigridLineConvolutionVariables[0].rhs );
 	ThreadPool::ParallelFor( 0 , textureNodes.size() , [&]( unsigned int , size_t i ){ multigridLineConvolutionVariables[0].rhs[i] *= licInterpolationWeight; } );
 
 	pMeter.reset();
@@ -326,10 +326,10 @@ void LineConvolution< PreReal , Real >::ComputeExactSolution( bool verbose )
 
 	//(2) Compute modulation RHS
 	mass_x0.resize( textureNodes.size() );
-	massAndStiffnessOperator.mass( multigridLineConvolutionVariables[0].x , mass_x0 );
+	massAndStiffnessOperators.mass( multigridLineConvolutionVariables[0].x , mass_x0 );
 
 	stiffness_x0.resize( textureNodes.size() );
-	massAndStiffnessOperator.stiffness( multigridLineConvolutionVariables[0].x , stiffness_x0 );
+	massAndStiffnessOperators.stiffness( multigridLineConvolutionVariables[0].x , stiffness_x0 );
 
 	ThreadPool::ParallelFor( 0 , textureNodes.size() , [&]( unsigned int , size_t i ){ multigridModulationVariables[0].rhs[i] = mass_x0[i] * sharpeningInterpolationWeight + stiffness_x0[i] * sharpeningGradientModulation; } );
 
@@ -433,7 +433,7 @@ void LineConvolution< PreReal , Real >::SharpeningInterpolationWeightCallBack( V
 
 	if( UseDirectSolver.set ) modulationMatrix = mass * sharpeningInterpolationWeight + stiffness;
 
-	UpdateLinearSystem( sharpeningInterpolationWeight , (Real)1. , hierarchy , multigridModulationCoefficients , massAndStiffnessOperator , modulationSolvers , fineModulationSolver , modulationMatrix , DetailVerbose.set , false , UseDirectSolver.set );
+	UpdateLinearSystem( sharpeningInterpolationWeight , (Real)1. , hierarchy , multigridModulationCoefficients , massAndStiffnessOperators , modulationSolvers , fineModulationSolver , modulationMatrix , DetailVerbose.set , false , UseDirectSolver.set );
 	Reset();
 	if( UseDirectSolver.set ) UpdateOutputBuffer( multigridModulationVariables[0].x );
 }
@@ -447,7 +447,7 @@ void LineConvolution< PreReal , Real >::LICInterpolationWeightCallBack( Visualiz
 
 	if( UseDirectSolver.set ) lineConvolutionMatrix = anisotropicMass * licInterpolationWeight + anisotropicStiffness;
 
-	UpdateLinearSystem( licInterpolationWeight , (Real)1. , hierarchy , multigridLineConvolutionCoefficients , anisoMassAndStiffnessOperator , lineConvolutionSolvers , fineLineConvolutionSolver , lineConvolutionMatrix , DetailVerbose.set , false , UseDirectSolver.set );
+	UpdateLinearSystem( licInterpolationWeight , (Real)1. , hierarchy , multigridLineConvolutionCoefficients , anisoMassAndStiffnessOperators , lineConvolutionSolvers , fineLineConvolutionSolver , lineConvolutionMatrix , DetailVerbose.set , false , UseDirectSolver.set );
 
 	Reset();
 	if( UseDirectSolver.set ) UpdateOutputBuffer( multigridModulationVariables[0].x );
@@ -493,7 +493,7 @@ void LineConvolution< PreReal , Real >::UpdateSolution( bool verbose , bool deta
 	Miscellany::PerformanceMeter pMeter( '.' );
 	
 	// (1) Update smoothed input solution
-	anisoMassAndStiffnessOperator.mass( randSignal , multigridLineConvolutionVariables[0].rhs );
+	anisoMassAndStiffnessOperators.mass( randSignal , multigridLineConvolutionVariables[0].rhs );
 	ThreadPool::ParallelFor( 0 , textureNodes.size() , [&]( unsigned int , size_t i ){ multigridLineConvolutionVariables[0].rhs[i] *= licInterpolationWeight; } );
 
 	pMeter.reset();
@@ -502,10 +502,10 @@ void LineConvolution< PreReal , Real >::UpdateSolution( bool verbose , bool deta
 
 	// (2) Compute modulation RHS
 	mass_x0.resize( textureNodes.size() );
-	massAndStiffnessOperator.mass( multigridLineConvolutionVariables[0].x , mass_x0 );
+	massAndStiffnessOperators.mass( multigridLineConvolutionVariables[0].x , mass_x0 );
 
 	stiffness_x0.resize( textureNodes.size() );
-	massAndStiffnessOperator.stiffness( multigridLineConvolutionVariables[0].x , stiffness_x0 );
+	massAndStiffnessOperators.stiffness( multigridLineConvolutionVariables[0].x , stiffness_x0 );
 
 	ThreadPool::ParallelFor( 0 , textureNodes.size() , [&]( unsigned int , size_t i ){ multigridModulationVariables[0].rhs[i] = mass_x0[i] * sharpeningInterpolationWeight + stiffness_x0[i] * sharpeningGradientModulation; } );
 
@@ -755,18 +755,18 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 		InitializeAnisotropicMetric( mesh , atlasCharts , vectorField , LengthToAnisotropy , parameterMetric );
 
 		pMeter.reset();
-		OperatorInitializer::Initialize( MatrixQuadrature.value , anisoMassAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts );
+		OperatorInitializer::Initialize( MatrixQuadrature.value , anisoMassAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts );
 		if( Verbose.set ) std::cout << pMeter( "System" ) << std::endl;
 
 		if( UseDirectSolver.set )
 		{
-			FullMatrixConstruction( hierarchy.gridAtlases[0] , anisoMassAndStiffnessOperator.massCoefficients , anisotropicMass );
-			FullMatrixConstruction( hierarchy.gridAtlases[0] , anisoMassAndStiffnessOperator.stiffnessCoefficients , anisotropicStiffness );
+			FullMatrixConstruction( hierarchy.gridAtlases[0] , anisoMassAndStiffnessOperators.massCoefficients , anisotropicMass );
+			FullMatrixConstruction( hierarchy.gridAtlases[0] , anisoMassAndStiffnessOperators.stiffnessCoefficients , anisotropicStiffness );
 			lineConvolutionMatrix = anisotropicMass * licInterpolationWeight + anisotropicStiffness;
 			if( Verbose.set ) std::cout << pMeter( "Assembled matrice" ) << std::endl;
 		}
 
-		UpdateLinearSystem( licInterpolationWeight , (Real)1. , hierarchy , multigridLineConvolutionCoefficients , anisoMassAndStiffnessOperator , lineConvolutionSolvers , fineLineConvolutionSolver , lineConvolutionMatrix , DetailVerbose.set , true , UseDirectSolver.set );
+		UpdateLinearSystem( licInterpolationWeight , (Real)1. , hierarchy , multigridLineConvolutionCoefficients , anisoMassAndStiffnessOperators , lineConvolutionSolvers , fineLineConvolutionSolver , lineConvolutionMatrix , DetailVerbose.set , true , UseDirectSolver.set );
 		if( Verbose.set ) std::cout << pMeter( "System" ) << std::endl;
 	}
 
@@ -776,18 +776,18 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 		InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric );
 
 		pMeter.reset();
-		OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts );
+		OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts );
 		if( Verbose.set ) std::cout << pMeter( "Mass and stiffness" ) << std::endl;
 
 		if( UseDirectSolver.set )
 		{
-			FullMatrixConstruction( hierarchy.gridAtlases[0] , massAndStiffnessOperator.massCoefficients , mass);
-			FullMatrixConstruction( hierarchy.gridAtlases[0] , massAndStiffnessOperator.stiffnessCoefficients , stiffness);
+			FullMatrixConstruction( hierarchy.gridAtlases[0] , massAndStiffnessOperators.massCoefficients , mass);
+			FullMatrixConstruction( hierarchy.gridAtlases[0] , massAndStiffnessOperators.stiffnessCoefficients , stiffness);
 			modMatrix = mass * sharpeningInterpolationWeight + stiffness;
 			std::cout << pMeter( "Assembled" ) << std::endl;
 		}
 
-		UpdateLinearSystem( sharpeningInterpolationWeight , (Real)1. , hierarchy , multigridModulationCoefficients , massAndStiffnessOperator , modulationSolvers , fineModulationSolver , modMatrix , DetailVerbose.set , true , UseDirectSolver.set );
+		UpdateLinearSystem( sharpeningInterpolationWeight , (Real)1. , hierarchy , multigridModulationCoefficients , massAndStiffnessOperators , modulationSolvers , fineModulationSolver , modMatrix , DetailVerbose.set , true , UseDirectSolver.set );
 		if( Verbose.set ) std::cout << pMeter( "MG coefficients" ) << std::endl;
 	}
 
@@ -823,8 +823,10 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 
 	for( int i=0 ; i<randSignal.size() ; i++ )
 	{
-		Point3D< float > randomColor = HSV2RGB( Random< float >() , 1.f , 1.f );
-		randSignal[i] = Point3D< Real >( randomColor[0] , randomColor[1] , randomColor[2] );
+		Point3D< double > hsv( Random< double >() * 2. * M_PI , 1. , 1. );
+		Point3D< double > rgb;
+		Miscellany::HSVtoRGB( &hsv[0] , &rgb[0] );
+		randSignal[i] = Point3D< Real >( rgb[0] , rgb[1] , rgb[2] );
 	}
 	Reset();
 }

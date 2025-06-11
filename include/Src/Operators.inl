@@ -26,20 +26,20 @@ ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF S
 DAMAGE.
 */
 
-//////////////////////////////
-// MassAndStiffnessOperator //
-//////////////////////////////
+///////////////////////////////
+// MassAndStiffnessOperators //
+///////////////////////////////
 
 template< typename MatrixReal >
 template< typename Data >
-void MassAndStiffnessOperator< MatrixReal >::operator()( double mWeight , double sWeight , const std::vector< Data > &in , std::vector< Data > &out , bool add ) const
+void MassAndStiffnessOperators< MatrixReal >::operator()( double mWeight , double sWeight , const std::vector< Data > &in , std::vector< Data > &out , bool add ) const
 {
 	return operator()( mWeight , sWeight , GetPointer( in ) , GetPointer( out ) , add );
 }
 
 template< typename MatrixReal >
 template< typename Data >
-std::vector< Data > MassAndStiffnessOperator< MatrixReal >::operator()( double mWeight , double sWeight , const std::vector< Data > &in ) const
+std::vector< Data > MassAndStiffnessOperators< MatrixReal >::operator()( double mWeight , double sWeight , const std::vector< Data > &in ) const
 {
 	std::vector< Data > out( rows() );
 	operator()( mWeight , sWeight , in , out );
@@ -48,7 +48,7 @@ std::vector< Data > MassAndStiffnessOperator< MatrixReal >::operator()( double m
 
 template< typename MatrixReal >
 template< typename Data >
-void MassAndStiffnessOperator< MatrixReal >::operator()( double mWeight , double sWeight , ConstPointer( Data ) in , Pointer( Data ) out , bool add ) const
+void MassAndStiffnessOperators< MatrixReal >::operator()( double mWeight , double sWeight , ConstPointer( Data ) in , Pointer( Data ) out , bool add ) const
 {
 	if( add )
 	{
@@ -66,7 +66,7 @@ void MassAndStiffnessOperator< MatrixReal >::operator()( double mWeight , double
 
 template< typename MatrixReal >
 template< typename Data >
-void MassAndStiffnessOperator< MatrixReal >::mass( const std::vector< Data > &in , std::vector< Data > &out , bool add ) const
+void MassAndStiffnessOperators< MatrixReal >::mass( const std::vector< Data > &in , std::vector< Data > &out , bool add ) const
 {
 	if( add ) return _evaluate< true  , true , false >( 1 , 0 , GetPointer( in ) , GetPointer( out ) );
 	else      return _evaluate< false , true , false >( 1 , 0 , GetPointer( in ) , GetPointer( out ) );
@@ -74,7 +74,7 @@ void MassAndStiffnessOperator< MatrixReal >::mass( const std::vector< Data > &in
 
 template< typename MatrixReal >
 template< typename Data >
-void MassAndStiffnessOperator< MatrixReal >::stiffness( const std::vector< Data > &in , std::vector< Data > &out , bool add ) const
+void MassAndStiffnessOperators< MatrixReal >::stiffness( const std::vector< Data > &in , std::vector< Data > &out , bool add ) const
 {
 	if( add ) return _evaluate< true  , false , true >( 0 , 1 , GetPointer( in ) , GetPointer( out ) );
 	else      return _evaluate< false , false , true >( 0 , 1 , GetPointer( in ) , GetPointer( out ) );
@@ -82,7 +82,7 @@ void MassAndStiffnessOperator< MatrixReal >::stiffness( const std::vector< Data 
 
 template< typename MatrixReal >
 template< typename Data >
-std::vector< Data > MassAndStiffnessOperator< MatrixReal >::mass( const std::vector< Data > &in ) const
+std::vector< Data > MassAndStiffnessOperators< MatrixReal >::mass( const std::vector< Data > &in ) const
 {
 	std::vector< Data > out( rows() );
 	_evaluate< false , true , false >( 1 , 0 , in , out );
@@ -91,7 +91,7 @@ std::vector< Data > MassAndStiffnessOperator< MatrixReal >::mass( const std::vec
 
 template< typename MatrixReal >
 template< typename Data >
-std::vector< Data > MassAndStiffnessOperator< MatrixReal >::stiffness( const std::vector< Data > &in ) const
+std::vector< Data > MassAndStiffnessOperators< MatrixReal >::stiffness( const std::vector< Data > &in ) const
 {
 	std::vector< Data > out( rows() );
 	_evaluate< false , false , true >( 0 , 1 , in , out );
@@ -100,7 +100,7 @@ std::vector< Data > MassAndStiffnessOperator< MatrixReal >::stiffness( const std
 
 template< typename MatrixReal >
 template< typename Data >
-void MassAndStiffnessOperator< MatrixReal >::mass( ConstPointer( Data ) in , Pointer( Data ) out , bool add ) const
+void MassAndStiffnessOperators< MatrixReal >::mass( ConstPointer( Data ) in , Pointer( Data ) out , bool add ) const
 {
 	if( add ) return _evaluate< true  , true , false >( 1 , 0 , in , out );
 	else      return _evaluate< false , true , false >( 1 , 0 , in , out );
@@ -108,7 +108,7 @@ void MassAndStiffnessOperator< MatrixReal >::mass( ConstPointer( Data ) in , Poi
 
 template< typename MatrixReal >
 template< typename Data >
-void MassAndStiffnessOperator< MatrixReal >::stiffness( ConstPointer( Data ) in , Pointer( Data ) out , bool add ) const
+void MassAndStiffnessOperators< MatrixReal >::stiffness( ConstPointer( Data ) in , Pointer( Data ) out , bool add ) const
 {
 	if( add ) return _evaluate< true  , false , true >( 0 , 1 , in , out );
 	else      return _evaluate< false , false , true >( 0 , 1 , in , out );
@@ -116,7 +116,7 @@ void MassAndStiffnessOperator< MatrixReal >::stiffness( ConstPointer( Data ) in 
 
 template< typename MatrixReal >
 template< typename OutReal >
-Eigen::SparseMatrix< OutReal > MassAndStiffnessOperator< MatrixReal >::operator()( double mWeight , double sWeight ) const
+Eigen::SparseMatrix< OutReal > MassAndStiffnessOperators< MatrixReal >::operator()( double mWeight , double sWeight ) const
 {
 	if     ( mWeight==1. && sWeight==0. ) return _matrix< true , false , OutReal >( 1 , 0 );
 	else if( mWeight==0. && sWeight==1. ) return _matrix< false , true , OutReal >( 0 , 1 );
@@ -125,16 +125,16 @@ Eigen::SparseMatrix< OutReal > MassAndStiffnessOperator< MatrixReal >::operator(
 
 template< typename MatrixReal >
 template< typename OutReal >
-Eigen::SparseMatrix< OutReal > MassAndStiffnessOperator< MatrixReal >::mass( void ) const{ return _matrix< true , false >( 1 , 0 ); }
+Eigen::SparseMatrix< OutReal > MassAndStiffnessOperators< MatrixReal >::mass( void ) const{ return _matrix< true , false , OutReal >( 1 , 0 ); }
 
 template< typename MatrixReal >
 template< typename OutReal >
-Eigen::SparseMatrix< OutReal > MassAndStiffnessOperator< MatrixReal >::stiffness( void ) const{ return _matrix< false , true >( 0 , 1 ); }
+Eigen::SparseMatrix< OutReal > MassAndStiffnessOperators< MatrixReal >::stiffness( void ) const{ return _matrix< false , true , OutReal >( 0 , 1 ); }
 
 
 template< typename MatrixReal >
 template< bool Add , bool Mass , bool Stiffness , typename Data >
-void MassAndStiffnessOperator< MatrixReal >::_evaluate( double mWeight , double sWeight , ConstPointer( Data ) in , Pointer( Data ) out ) const
+void MassAndStiffnessOperators< MatrixReal >::_evaluate( double mWeight , double sWeight , ConstPointer( Data ) in , Pointer( Data ) out ) const
 {
 	static_assert( !( Mass && Stiffness ) , "[ERROR] Mass and Stiffness can't both be true" );
 	unsigned int numBoundaryVariables = static_cast< unsigned int >( indexConverter.numBoundary() );
@@ -306,7 +306,7 @@ void MassAndStiffnessOperator< MatrixReal >::_evaluate( double mWeight , double 
 
 template< typename MatrixReal >
 template< bool Mass , bool Stiffness , typename OutReal >
-Eigen::SparseMatrix< OutReal > MassAndStiffnessOperator< MatrixReal >::_matrix( double mWeight , double sWeight ) const
+Eigen::SparseMatrix< OutReal > MassAndStiffnessOperators< MatrixReal >::_matrix( double mWeight , double sWeight ) const
 {
 	Eigen::SparseMatrix< OutReal > M( indexConverter.numCombined() , indexConverter.numCombined() );
 	std::vector< Eigen::Triplet< MatrixReal > > triplets;
@@ -321,7 +321,7 @@ Eigen::SparseMatrix< OutReal > MassAndStiffnessOperator< MatrixReal >::_matrix( 
 
 		entries += massCoefficients.boundaryDeepMatrix.Entries();
 
-		entries += massCoefficients.boundaryMatrix.Entries();
+		entries += massCoefficients.boundaryBoundaryMatrix.Entries();
 	}
 
 	triplets.reserve( entries );
@@ -418,11 +418,11 @@ Eigen::SparseMatrix< OutReal > MassAndStiffnessOperator< MatrixReal >::_matrix( 
 		}
 	}
 
-	for( unsigned int r=0 ; r<massCoefficients.boundaryMatrix.rows ; r++ )
-		for( unsigned int j=0 ; j<massCoefficients.boundaryMatrix.rowSizes[r] ; j++ )
-			if constexpr( Mass ) triplets.emplace_back( r , massCoefficients.boundaryMatrix[r][j].N , massCoefficients.boundaryMatrix[r][j].Value );
-			else if constexpr( Stiffness ) triplets.emplace_back( r , stiffnessCoefficients.boundaryMatrix[r][j].N , stiffnessCoefficients.boundaryMatrix[r][j].Value );
-			else triplets.emplace_back( r , massCoefficients.boundaryMatrix[r][j].N , massCoefficients.boundaryMatrix[r][j].Value*mWeight + stiffnessCoefficients.boundaryMatrix[r][j].Value*sWeight );
+	for( unsigned int r=0 ; r<massCoefficients.boundaryBoundaryMatrix.rows ; r++ )
+		for( unsigned int j=0 ; j<massCoefficients.boundaryBoundaryMatrix.rowSizes[r] ; j++ )
+			if constexpr( Mass ) triplets.emplace_back( r , massCoefficients.boundaryBoundaryMatrix[r][j].N , massCoefficients.boundaryBoundaryMatrix[r][j].Value );
+			else if constexpr( Stiffness ) triplets.emplace_back( r , stiffnessCoefficients.boundaryBoundaryMatrix[r][j].N , stiffnessCoefficients.boundaryBoundaryMatrix[r][j].Value );
+			else triplets.emplace_back( r , massCoefficients.boundaryBoundaryMatrix[r][j].N , massCoefficients.boundaryBoundaryMatrix[r][j].Value*mWeight + stiffnessCoefficients.boundaryBoundaryMatrix[r][j].Value*sWeight );
 
 	M.setFromTriplets( triplets.begin() , triplets.end() );
 	return M;
@@ -1338,7 +1338,7 @@ void OperatorInitializer::_Initialize
 template< unsigned int Samples , typename GeometryReal , typename MatrixReal >
 void OperatorInitializer::_Initialize
 (
-	MassAndStiffnessOperator< MatrixReal > & massAndStiffnessOperator ,
+	MassAndStiffnessOperators< MatrixReal > & massAndStiffnessOperators ,
 	const GridAtlas< GeometryReal , MatrixReal > & gridAtlas ,
 	const ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > > &parameterMetric ,
 	const ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
@@ -1347,12 +1347,12 @@ void OperatorInitializer::_Initialize
 	DivergenceOperator< MatrixReal > & divergenceOperator
 )
 {
-	massAndStiffnessOperator.indexConverter = gridAtlas.indexConverter;
-	massAndStiffnessOperator.rasterLines = gridAtlas.rasterLines;
+	massAndStiffnessOperators.indexConverter = gridAtlas.indexConverter;
+	massAndStiffnessOperators.rasterLines = gridAtlas.rasterLines;
 
 	//(2) Initialize mass and stiffness
-	massAndStiffnessOperator.massCoefficients.deepCoefficients.resize( 10 * static_cast< unsigned int >( gridAtlas.endInteriorTexelIndex ) , 0 );
-	massAndStiffnessOperator.stiffnessCoefficients.deepCoefficients.resize( 10 * static_cast< unsigned int >( gridAtlas.endInteriorTexelIndex ) , 0 );
+	massAndStiffnessOperators.massCoefficients.deepCoefficients.resize( 10 * static_cast< unsigned int >( gridAtlas.endInteriorTexelIndex ) , 0 );
+	massAndStiffnessOperators.stiffnessCoefficients.deepCoefficients.resize( 10 * static_cast< unsigned int >( gridAtlas.endInteriorTexelIndex ) , 0 );
 	std::map< SimplexIndex< 1 , AtlasTexelIndex > , unsigned int > edgeToIndex;
 	if( computeDivergence )
 	{
@@ -1372,21 +1372,21 @@ void OperatorInitializer::_Initialize
 	SparseMatrix< MatrixReal , int > fineBoundaryCellStiffnessRHSMatrix[3];
 	std::vector< Point3D< MatrixReal > > fineBoundarySignal;
 
-	_Initialize< Samples >( parameterMetric , atlasCharts , gridAtlas , boundaryProlongation.fineBoundaryIndex , boundaryProlongation.numFineBoundaryNodes , massAndStiffnessOperator.massCoefficients.deepCoefficients , massAndStiffnessOperator.stiffnessCoefficients.deepCoefficients , fineBoundaryBoundaryMassMatrix , fineBoundaryBoundaryStiffnessMatrix , massAndStiffnessOperator.massCoefficients.boundaryDeepMatrix , massAndStiffnessOperator.stiffnessCoefficients.boundaryDeepMatrix , computeDivergence , fineBoundaryEdgeIndex , edgeToIndex , boundaryDivergenceTriplets , boundaryBoundaryDivergenceTriplets , divergenceOperator.deepCoefficients );
+	_Initialize< Samples >( parameterMetric , atlasCharts , gridAtlas , boundaryProlongation.fineBoundaryIndex , boundaryProlongation.numFineBoundaryNodes , massAndStiffnessOperators.massCoefficients.deepCoefficients , massAndStiffnessOperators.stiffnessCoefficients.deepCoefficients , fineBoundaryBoundaryMassMatrix , fineBoundaryBoundaryStiffnessMatrix , massAndStiffnessOperators.massCoefficients.boundaryDeepMatrix , massAndStiffnessOperators.stiffnessCoefficients.boundaryDeepMatrix , computeDivergence , fineBoundaryEdgeIndex , edgeToIndex , boundaryDivergenceTriplets , boundaryBoundaryDivergenceTriplets , divergenceOperator.deepCoefficients );
 
 	{
 		SparseMatrix< MatrixReal , int > temp = fineBoundaryBoundaryMassMatrix * boundaryProlongation.coarseBoundaryFineBoundaryProlongation;
-		massAndStiffnessOperator.massCoefficients.boundaryBoundaryMatrix = boundaryProlongation.fineBoundaryCoarseBoundaryRestriction * temp;
+		massAndStiffnessOperators.massCoefficients.boundaryBoundaryMatrix = boundaryProlongation.fineBoundaryCoarseBoundaryRestriction * temp;
 	}
 	{
 		SparseMatrix< MatrixReal , int > temp = fineBoundaryBoundaryStiffnessMatrix * boundaryProlongation.coarseBoundaryFineBoundaryProlongation;
-		massAndStiffnessOperator.stiffnessCoefficients.boundaryBoundaryMatrix = boundaryProlongation.fineBoundaryCoarseBoundaryRestriction * temp;
+		massAndStiffnessOperators.stiffnessCoefficients.boundaryBoundaryMatrix = boundaryProlongation.fineBoundaryCoarseBoundaryRestriction * temp;
 	}
 
 	{
-		std::vector< MatrixReal > in ( massAndStiffnessOperator.massCoefficients.boundaryBoundaryMatrix.Rows() , (MatrixReal)1. );
-		std::vector< MatrixReal > out( massAndStiffnessOperator.massCoefficients.boundaryBoundaryMatrix.Rows() , (MatrixReal)0. );
-		massAndStiffnessOperator.massCoefficients.boundaryBoundaryMatrix.Multiply( GetPointer(in) , GetPointer(out) );
+		std::vector< MatrixReal > in ( massAndStiffnessOperators.massCoefficients.boundaryBoundaryMatrix.Rows() , (MatrixReal)1. );
+		std::vector< MatrixReal > out( massAndStiffnessOperators.massCoefficients.boundaryBoundaryMatrix.Rows() , (MatrixReal)0. );
+		massAndStiffnessOperators.massCoefficients.boundaryBoundaryMatrix.Multiply( GetPointer(in) , GetPointer(out) );
 		for( int i=0 ; i<out.size() ; i++ ) if( out[i]==0 ) MK_WARN( "Zero row at boundary index " , i , ". Try running with jittering." );
 	}
 
@@ -1397,7 +1397,7 @@ void OperatorInitializer::_Initialize
 		std::map< SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex > , AtlasRefinedBoundaryEdgeIndex > boundaryCoarseEdgeIndex;
 		std::vector< unsigned int > boundaryCoarseEdgeToGlobalEdge;
 
-		InitializeBoundaryEdgeIndexing( massAndStiffnessOperator.massCoefficients.boundaryBoundaryMatrix , gridAtlas.indexConverter , edgeToIndex , boundaryCoarseEdgeToGlobalEdge , boundaryCoarseEdgeIndex );
+		InitializeBoundaryEdgeIndexing( massAndStiffnessOperators.massCoefficients.boundaryBoundaryMatrix , gridAtlas.indexConverter , edgeToIndex , boundaryCoarseEdgeToGlobalEdge , boundaryCoarseEdgeIndex );
 
 		SparseMatrix< MatrixReal , int > boundaryCoarseToFineBoundaryOneFormProlongation;
 		InitializeBoundaryCoarseToFineBoundaryOneFormProlongation< MatrixReal >( boundaryProlongation.coarseBoundaryFineBoundaryProlongation , boundaryCoarseEdgeIndex , fineBoundaryEdgeIndex , boundaryCoarseToFineBoundaryOneFormProlongation );
@@ -1422,7 +1422,7 @@ template< typename GeometryReal , typename MatrixReal >
 void OperatorInitializer::_Initialize
 (
 	unsigned int samples ,
-	MassAndStiffnessOperator< MatrixReal > & massAndStiffnessOperator ,
+	MassAndStiffnessOperators< MatrixReal > & massAndStiffnessOperators ,
 	const GridAtlas< GeometryReal , MatrixReal > & gridAtlas ,
 	const ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > > &parameterMetric ,
 	const ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
@@ -1433,12 +1433,12 @@ void OperatorInitializer::_Initialize
 {
 	switch( samples )
 	{
-	case  1: return _Initialize<  1 >( massAndStiffnessOperator , gridAtlas , parameterMetric , atlasCharts , boundaryProlongation , computeDivergence , divergenceOperator );
-	case  3: return _Initialize<  3 >( massAndStiffnessOperator , gridAtlas , parameterMetric , atlasCharts , boundaryProlongation , computeDivergence , divergenceOperator );
-	case  6: return _Initialize<  6 >( massAndStiffnessOperator , gridAtlas , parameterMetric , atlasCharts , boundaryProlongation , computeDivergence , divergenceOperator );
-	case 12: return _Initialize< 12 >( massAndStiffnessOperator , gridAtlas , parameterMetric , atlasCharts , boundaryProlongation , computeDivergence , divergenceOperator );
-	case 24: return _Initialize< 24 >( massAndStiffnessOperator , gridAtlas , parameterMetric , atlasCharts , boundaryProlongation , computeDivergence , divergenceOperator );
-	case 32: return _Initialize< 32 >( massAndStiffnessOperator , gridAtlas , parameterMetric , atlasCharts , boundaryProlongation , computeDivergence , divergenceOperator );
+	case  1: return _Initialize<  1 >( massAndStiffnessOperators , gridAtlas , parameterMetric , atlasCharts , boundaryProlongation , computeDivergence , divergenceOperator );
+	case  3: return _Initialize<  3 >( massAndStiffnessOperators , gridAtlas , parameterMetric , atlasCharts , boundaryProlongation , computeDivergence , divergenceOperator );
+	case  6: return _Initialize<  6 >( massAndStiffnessOperators , gridAtlas , parameterMetric , atlasCharts , boundaryProlongation , computeDivergence , divergenceOperator );
+	case 12: return _Initialize< 12 >( massAndStiffnessOperators , gridAtlas , parameterMetric , atlasCharts , boundaryProlongation , computeDivergence , divergenceOperator );
+	case 24: return _Initialize< 24 >( massAndStiffnessOperators , gridAtlas , parameterMetric , atlasCharts , boundaryProlongation , computeDivergence , divergenceOperator );
+	case 32: return _Initialize< 32 >( massAndStiffnessOperators , gridAtlas , parameterMetric , atlasCharts , boundaryProlongation , computeDivergence , divergenceOperator );
 	default: MK_THROW( "Only 1-, 3-, 6-, 12-, 24-, and 32-point quadrature supported for triangles: " , samples );
 	}
 }
@@ -1447,7 +1447,7 @@ template< typename GeometryReal , typename MatrixReal >
 void OperatorInitializer::Initialize
 (
 	unsigned int samples ,
-	MassAndStiffnessOperator< MatrixReal > & massAndStiffnessOperator ,
+	MassAndStiffnessOperators< MatrixReal > & massAndStiffnessOperators ,
 	const GridAtlas< GeometryReal , MatrixReal > & gridAtlas ,
 	const ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > > &parameterMetric ,
 	const ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
@@ -1456,14 +1456,14 @@ void OperatorInitializer::Initialize
 {
 	BoundaryProlongationData< MatrixReal > boundaryProlongation;
 	InitializeBoundaryProlongationData( gridAtlas , boundaryProlongation );
-	_Initialize( samples , massAndStiffnessOperator , gridAtlas , parameterMetric , atlasCharts , boundaryProlongation , true , divergenceOperator );
+	_Initialize( samples , massAndStiffnessOperators , gridAtlas , parameterMetric , atlasCharts , boundaryProlongation , true , divergenceOperator );
 }
 
 template< typename GeometryReal , typename MatrixReal >
 void OperatorInitializer::Initialize
 (
 	unsigned int samples ,
-	MassAndStiffnessOperator< MatrixReal > & massAndStiffnessOperator ,
+	MassAndStiffnessOperators< MatrixReal > & massAndStiffnessOperators ,
 	const GridAtlas< GeometryReal , MatrixReal > & gridAtlas ,
 	const ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > > &parameterMetric ,
 	const ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts
@@ -1472,14 +1472,14 @@ void OperatorInitializer::Initialize
 	DivergenceOperator< MatrixReal > divergenceOperator;
 	BoundaryProlongationData< MatrixReal > boundaryProlongation;
 	InitializeBoundaryProlongationData( gridAtlas , boundaryProlongation );
-	_Initialize( samples , massAndStiffnessOperator , gridAtlas , parameterMetric , atlasCharts , boundaryProlongation , false , divergenceOperator );
+	_Initialize( samples , massAndStiffnessOperators , gridAtlas , parameterMetric , atlasCharts , boundaryProlongation , false , divergenceOperator );
 }
 
 template< typename GeometryReal , typename MatrixReal >
 void OperatorInitializer::Initialize
 (
 	unsigned int samples ,
-	MassAndStiffnessOperator< MatrixReal > & massAndStiffnessOperator ,
+	MassAndStiffnessOperators< MatrixReal > & massAndStiffnessOperators ,
 	const GridAtlas< GeometryReal , MatrixReal > & gridAtlas ,
 	const ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > > &parameterMetric ,
 	const ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
@@ -1487,14 +1487,14 @@ void OperatorInitializer::Initialize
 )
 {
 	DivergenceOperator< MatrixReal > divergenceOperator;
-	_Initialize( samples , massAndStiffnessOperator , gridAtlas , parameterMetric , atlasCharts , boundaryProlongation , false , divergenceOperator );
+	_Initialize( samples , massAndStiffnessOperators , gridAtlas , parameterMetric , atlasCharts , boundaryProlongation , false , divergenceOperator );
 }
 
 template< typename GeometryReal , typename MatrixReal >
 void OperatorInitializer::Initialize
 (
 	unsigned int samples ,
-	MassAndStiffnessOperator< MatrixReal > & massAndStiffnessOperator ,
+	MassAndStiffnessOperators< MatrixReal > & massAndStiffnessOperators ,
 	const GridAtlas< GeometryReal , MatrixReal > & gridAtlas ,
 	const ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > > &parameterMetric ,
 	const ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
@@ -1502,7 +1502,7 @@ void OperatorInitializer::Initialize
 	DivergenceOperator< MatrixReal > & divergenceOperator
 )
 {
-	_Initialize( samples , massAndStiffnessOperator , gridAtlas , parameterMetric , atlasCharts , boundaryProlongation , true , divergenceOperator );
+	_Initialize( samples , massAndStiffnessOperators , gridAtlas , parameterMetric , atlasCharts , boundaryProlongation , true , divergenceOperator );
 }
 
 
@@ -1510,7 +1510,7 @@ template< typename GeometryReal , typename MatrixReal , typename SampleType >
 void OperatorInitializer::Initialize
 (
 	unsigned int samples ,
-	MassAndStiffnessOperator< MatrixReal > & massAndStiffnessOperator ,
+	MassAndStiffnessOperators< MatrixReal > & massAndStiffnessOperators ,
 	const GridAtlas< GeometryReal , MatrixReal > & gridAtlas ,
 	const ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > > &parameterMetric ,
 	const ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
@@ -1522,7 +1522,7 @@ void OperatorInitializer::Initialize
 	BoundaryProlongationData< MatrixReal > boundaryProlongation;
 	DivergenceOperator< MatrixReal > divergenceOperator;
 	InitializeBoundaryProlongationData( gridAtlas , boundaryProlongation );
-	_Initialize( samples , massAndStiffnessOperator , gridAtlas , parameterMetric , atlasCharts , boundaryProlongation , false , divergenceOperator );
+	_Initialize( samples , massAndStiffnessOperators , gridAtlas , parameterMetric , atlasCharts , boundaryProlongation , false , divergenceOperator );
 
 	// Set integrator
 	ExplicitIndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > > interiorCellLineIndex;
@@ -1554,7 +1554,7 @@ template< typename GeometryReal , typename MatrixReal , typename SampleType >
 void OperatorInitializer::Initialize
 (
 	unsigned int samples ,
-	MassAndStiffnessOperator< MatrixReal > & massAndStiffnessOperator ,
+	MassAndStiffnessOperators< MatrixReal > & massAndStiffnessOperators ,
 	const GridAtlas< GeometryReal , MatrixReal > & gridAtlas ,
 	const ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > > &parameterMetric ,
 	const ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
@@ -1566,7 +1566,7 @@ void OperatorInitializer::Initialize
 {
 	BoundaryProlongationData< MatrixReal > boundaryProlongation;
 	InitializeBoundaryProlongationData( gridAtlas , boundaryProlongation );
-	_Initialize( samples , massAndStiffnessOperator , gridAtlas , parameterMetric , atlasCharts , boundaryProlongation , true , divergenceOperator );
+	_Initialize( samples , massAndStiffnessOperators , gridAtlas , parameterMetric , atlasCharts , boundaryProlongation , true , divergenceOperator );
 
 	// Set integrator
 	ExplicitIndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > > interiorCellLineIndex;

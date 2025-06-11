@@ -33,52 +33,55 @@ DAMAGE.
 
 namespace MishaK
 {
-	enum
+	namespace TSP
 	{
-		COLOR_TEXTURE,
-		NORMAL_TEXTURE,
-		TEXTURE_TYPE_COUNT
-	};
+		enum
+		{
+			COLOR_TEXTURE,
+			NORMAL_TEXTURE,
+			TEXTURE_TYPE_COUNT
+		};
 
-	class StitchingVisualization : public TexturedMeshVisualization
-	{
-	public:
-		StitchingVisualization();
-		int visualizationMode;
-		bool isBrushActive;
-		int diskX, diskY;
-		bool showDisk;
+		class StitchingVisualization : public TexturedMeshVisualization
+		{
+		public:
+			StitchingVisualization();
+			int visualizationMode;
+			bool isBrushActive;
+			int diskX, diskY;
+			bool showDisk;
 
-		//Single input
-		bool showMask;
-		GLuint compositeTextureBuffer;
-		GLuint maskTextureBuffer;
-		template< typename Real >
-		void UpdateCompositeTextureBuffer( const Image< Point3D< Real > > &composite );
-		template< typename Real >
-		void UpdateMaskTextureBuffer( const Image< Point3D< Real > > &mask );
+			//Single input
+			bool showMask;
+			GLuint compositeTextureBuffer;
+			GLuint maskTextureBuffer;
+			template< typename Real >
+			void UpdateCompositeTextureBuffer( const Image< Point3D< Real > > &composite );
+			template< typename Real >
+			void UpdateMaskTextureBuffer( const Image< Point3D< Real > > &mask );
 
 
-		//Multiple input
-		int referenceIndex;
-		std::vector<GLuint> referenceTextureBuffers;
-		template< typename Real >
-		void UpdateReferenceTextureBuffers( const std::vector< Image< Point3D< Real > > > &images );
-		std::vector< GLuint > referenceConfidenceBuffers;
-		template< typename Real >
-		void UpdateReferenceConfidenceBuffers( const std::vector< Image< Real > > &confidences );
+			//Multiple input
+			int referenceIndex;
+			std::vector<GLuint> referenceTextureBuffers;
+			template< typename Real >
+			void UpdateReferenceTextureBuffers( const std::vector< Image< Point3D< Real > > > &images );
+			std::vector< GLuint > referenceConfidenceBuffers;
+			template< typename Real >
+			void UpdateReferenceConfidenceBuffers( const std::vector< Image< Real > > &confidences );
 
-		unsigned char * colorTextureBuffer;
-		int textureWidth;
-		int textureHeight;
-		template< typename Real >
-		void UpdateTextureBuffer( const Image< Point3D< Real > > &image );
-		void UpdateColorTextureBuffer();
+			unsigned char * colorTextureBuffer;
+			int textureWidth;
+			int textureHeight;
+			template< typename Real >
+			void UpdateTextureBuffer( const Image< Point3D< Real > > &image );
+			void UpdateColorTextureBuffer();
 
-		void display(void);
-		void LoadGeometryData();
-	};
+			void display(void);
+			void LoadGeometryData();
+		};
 
 #include "StitchingVisualization.inl"
+	}
 }
 #endif // STITCHING_VISUALIZATION

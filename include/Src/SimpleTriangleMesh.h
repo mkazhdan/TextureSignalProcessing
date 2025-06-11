@@ -41,61 +41,63 @@ DAMAGE.
 
 namespace MishaK
 {
-	template< typename Real >
-	class MeshSample
+	namespace TSP
 	{
-	public:
-		MeshSample( void ) : tID(-1){}
-		MeshSample( unsigned int tID , Point2D< Real > barycentricCoords ) : tID(tID) , barycentricCoords(barycentricCoords) { }
-		unsigned int tID;
-		Point2D< Real > barycentricCoords;
-	};
+		template< typename Real >
+		class MeshSample
+		{
+		public:
+			MeshSample( void ) : tID(-1){}
+			MeshSample( unsigned int tID , Point2D< Real > barycentricCoords ) : tID(tID) , barycentricCoords(barycentricCoords) { }
+			unsigned int tID;
+			Point2D< Real > barycentricCoords;
+		};
 
-	SimplexIndex< 1 > OutgoingEdgeIndex( unsigned int k , bool flip=false );
+		SimplexIndex< 1 > OutgoingEdgeIndex( unsigned int k , bool flip=false );
 
-	template< typename Real , unsigned int Dim >
-	struct SimpleTriangleMesh
-	{
-		std::vector< Point< Real , Dim > > vertices;
-		std::vector< SimplexIndex< 2 > > triangles;
+		template< typename Real , unsigned int Dim >
+		struct SimpleTriangleMesh
+		{
+			std::vector< Point< Real , Dim > > vertices;
+			std::vector< SimplexIndex< 2 > > triangles;
 
-		// Returns the edge-index associated with the half-edge
-		SimplexIndex< 1 > edgeIndex( unsigned int he , bool flip=false ) const;
+			// Returns the edge-index associated with the half-edge
+			SimplexIndex< 1 > edgeIndex( unsigned int he , bool flip=false ) const;
 
-		Simplex< Real , Dim , 2 > triangle( unsigned int t ) const;
+			Simplex< Real , Dim , 2 > triangle( unsigned int t ) const;
 
-		Real area( void ) const;
+			Real area( void ) const;
 
-		Point< Real , Dim > operator()( MeshSample< Real > s ) const;
+			Point< Real , Dim > operator()( MeshSample< Real > s ) const;
 
-		std::vector< unsigned int > oppositeHalfEdges( void ) const;
-		std::vector< unsigned int > boundaryHalfEdges( void ) const;
-		std::vector< unsigned int > trianglesToComponents( unsigned int &numComponents ) const;
+			std::vector< unsigned int > oppositeHalfEdges( void ) const;
+			std::vector< unsigned int > boundaryHalfEdges( void ) const;
+			std::vector< unsigned int > trianglesToComponents( unsigned int &numComponents ) const;
 
-		Point< Real , Dim > centroid( void ) const;
-		Real boundingRadius( Point< Real , Dim > center=Point< Real , Dim >() ) const;
+			Point< Real , Dim > centroid( void ) const;
+			Real boundingRadius( Point< Real , Dim > center=Point< Real , Dim >() ) const;
+		};
 
-	};
+		template< typename Real >
+		struct TexturedTriangleMesh
+		{
+			SimpleTriangleMesh< Real , 3 > surface;
+			SimpleTriangleMesh< Real , 2 > texture;
 
-	template< typename Real >
-	struct TexturedTriangleMesh
-	{
-		SimpleTriangleMesh< Real , 3 > surface;
-		SimpleTriangleMesh< Real , 2 > texture;
+			size_t numTriangles( void ) const;
 
-		size_t numTriangles( void ) const;
+			Simplex< Real , 3 , 2 > surfaceTriangle( unsigned int t ) const;
+			Simplex< Real , 2 , 2 > textureTriangle( unsigned int t ) const;
 
-		Simplex< Real , 3 , 2 > surfaceTriangle( unsigned int t ) const;
-		Simplex< Real , 2 , 2 > textureTriangle( unsigned int t ) const;
+			void read( std::string meshName , bool verbose , double eps , bool flip=true );
 
-		void read( std::string meshName , bool verbose , double eps );
+			// Sets the boundary half-edge information
+			void setBoundaryHalfEdgeInfo( std::vector< unsigned int > &textureBoundaryHalfEdges , std::vector< unsigned int > &oppositeSurfaceHalfEdges ) const;
 
-		// Sets the boundary half-edge information
-		void setBoundaryHalfEdgeInfo( std::vector< unsigned int > &textureBoundaryHalfEdges , std::vector< unsigned int > &oppositeSurfaceHalfEdges ) const;
-
-		// Sets the boundary vertex information
-		void setBoundaryVertexInfo( const std::vector< unsigned int > &textureBoundaryHalfEdges , std::map< unsigned int , unsigned int > &surfaceBoundaryVertexToIndex ) const;		
-	};
+			// Sets the boundary vertex information
+			void setBoundaryVertexInfo( const std::vector< unsigned int > &textureBoundaryHalfEdges , std::map< unsigned int , unsigned int > &surfaceBoundaryVertexToIndex ) const;		
+		};
 #include "SimpleTriangleMesh.inl"
+	}
 }
 #endif // SIMPLE_TRIANGLE_MESH_INCLUDED

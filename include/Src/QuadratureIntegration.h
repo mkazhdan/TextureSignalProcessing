@@ -34,294 +34,296 @@ DAMAGE.
 
 namespace MishaK
 {
-	class InteriorCellLine
+	namespace TSP
 	{
-	public:
-		AtlasTexelIndex prevLineIndex , nextLineIndex;
-		unsigned int length;
-	};
-
-	template< typename GeometryReal >
-	void InitializeGridChartInteriorCellLines
-	(
-		const GridChart< GeometryReal > &gridChart ,
-		std::vector< InteriorCellLine > &interiorCellLines ,
-		ExplicitIndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > > &interiorCellLineIndex
-	)
-	{
-		const Image< CellType >& cellType = gridChart.cellType;
-		unsigned int width = cellType.res(0) , height = cellType.res(1);
-
-		const Image< TexelIndex > & texelIndices = gridChart.texelIndices;
-
-		ChartInteriorCellIndex chartInteriorCellIndex(0);
-
-		for( unsigned int j=0 ; j<height ; j++ )
+		class InteriorCellLine
 		{
-			unsigned int offset = 0;
-			bool previousIsInterior = false;
-			unsigned int rasterStart = -1;
-			while( offset<width )
+		public:
+			AtlasTexelIndex prevLineIndex , nextLineIndex;
+			unsigned int length;
+		};
+
+		template< typename GeometryReal >
+		void InitializeGridChartInteriorCellLines
+		(
+			const GridChart< GeometryReal > &gridChart ,
+			std::vector< InteriorCellLine > &interiorCellLines ,
+			ExplicitIndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > > &interiorCellLineIndex
+		)
+		{
+			const Image< CellType >& cellType = gridChart.cellType;
+			unsigned int width = cellType.res(0) , height = cellType.res(1);
+
+			const Image< TexelIndex > & texelIndices = gridChart.texelIndices;
+
+			ChartInteriorCellIndex chartInteriorCellIndex(0);
+
+			for( unsigned int j=0 ; j<height ; j++ )
 			{
-				bool currentIsInterior = cellType(offset,j)==CellType::Interior;
+				unsigned int offset = 0;
+				bool previousIsInterior = false;
+				unsigned int rasterStart = -1;
+				while( offset<width )
+				{
+					bool currentIsInterior = cellType(offset,j)==CellType::Interior;
 #ifdef SANITY_CHECK
-				if( ( offset==0 || offset==width-1 ) && currentIsInterior ) MK_THROW( "Unexpected interior cell" );
+					if( ( offset==0 || offset==width-1 ) && currentIsInterior ) MK_THROW( "Unexpected interior cell" );
 #endif // SANITY_CHECK
-				if(  currentIsInterior && !previousIsInterior ) rasterStart = offset; //Start raster line
-				if( !currentIsInterior &&  previousIsInterior ) //Terminate raster line
-				{ 
-					InteriorCellLine newLine;
-					newLine.prevLineIndex = texelIndices( rasterStart , j+0 ).combined;
-					newLine.nextLineIndex = texelIndices( rasterStart , j+1 ).combined;
-					newLine.length = offset - rasterStart;
+					if(  currentIsInterior && !previousIsInterior ) rasterStart = offset; //Start raster line
+					if( !currentIsInterior &&  previousIsInterior ) //Terminate raster line
+					{ 
+						InteriorCellLine newLine;
+						newLine.prevLineIndex = texelIndices( rasterStart , j+0 ).combined;
+						newLine.nextLineIndex = texelIndices( rasterStart , j+1 ).combined;
+						newLine.length = offset - rasterStart;
 
 #ifdef SANITY_CHECK
-					if( newLine.prevLineIndex==AtlasTexelIndex(-1) || newLine.nextLineIndex==AtlasTexelIndex(-1) ) MK_THROW( "Invalid indexing" );
+						if( newLine.prevLineIndex==AtlasTexelIndex(-1) || newLine.nextLineIndex==AtlasTexelIndex(-1) ) MK_THROW( "Invalid indexing" );
 #endif // SANITY_CHECK
-					int currentLine = (int)interiorCellLines.size();
+						int currentLine = (int)interiorCellLines.size();
 
-					for( unsigned int k=0 ; k<offset-rasterStart ; k++ )
-					{
+						for( unsigned int k=0 ; k<offset-rasterStart ; k++ )
+						{
 #ifdef SANITY_CHECK
-						if( gridChart.interiorCellCoveredTexelBilinearElementIndices[chartInteriorCellIndex][0]!=texelIndices( rasterStart+k , j ).covered ) MK_THROW( "Unexpected corner ID" );
+							if( gridChart.interiorCellCoveredTexelBilinearElementIndices[chartInteriorCellIndex][0]!=texelIndices( rasterStart+k , j ).covered ) MK_THROW( "Unexpected corner ID" );
 #endif // SANITY_CHECK
 
-						interiorCellLineIndex.push_back( std::pair< int , int >( currentLine , k ) );
-						chartInteriorCellIndex++;
+							interiorCellLineIndex.push_back( std::pair< int , int >( currentLine , k ) );
+							chartInteriorCellIndex++;
+						}
+
+						interiorCellLines.push_back( newLine );
 					}
-
-					interiorCellLines.push_back( newLine );
+					previousIsInterior = currentIsInterior;
+					offset++;
 				}
-				previousIsInterior = currentIsInterior;
-				offset++;
 			}
 		}
-	}
 
-	template< typename GeometryReal >
-	void InitializeGridAtlasInteriorCellLines
-	(
-		const ExplicitIndexVector< ChartIndex , GridChart< GeometryReal > >& gridCharts ,
-		std::vector< InteriorCellLine >& interiorCellLines ,
-		ExplicitIndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > >& interiorCellLineIndex
-	)
-	{
-		for( unsigned int i=0 ; i<gridCharts.size() ; i++ ) InitializeGridChartInteriorCellLines( gridCharts[ ChartIndex(i) ] , interiorCellLines , interiorCellLineIndex );
-	}
-
-	//////////////////////////////////////
-	// Pre-compute the integration info //
-	//////////////////////////////////////
-
-	// In what follows we have the following mappings:
-	// fragment -> element -> texture:
-	//		fragment: a triangle in the decomposition of the clipping of the atlas triangle to the elements
-	//		element:  either a square or a triangle (depending on whether the cell is interior or not)
-	//		texture: the texture space grid
-	template< unsigned int Samples , typename Real >
-	void SetInteriorCellDuals
-	(
-		typename BilinearElementScalarSample< Real >::SampleData& sampleData ,
-		Point2D< Real > pos ,
-		Real fragment_to_element_quadrature_weight
-	)
-	{
-		// Compute the integrated Scalar of the bilinear basis function in the frame of the cell, weighted by the area of the unit triangle
-		for( int k=0 ; k<4 ; k++ ) sampleData.dualValues[k] += (Real)BilinearElementValue( k , pos ) * fragment_to_element_quadrature_weight;
-	}
-
-	template< unsigned int Samples , typename Real >
-	void SetInteriorCellDuals
-	(
-		typename BilinearElementGradientSample< Real >::SampleData& sampleData ,
-		Point2D< Real > pos ,
-		Real fragment_to_element_quadrature_weight
-	)
-	{
-		// Compute the integrated gradient of the bilinear basis function in the frame of the cell, weighted by the area of the unit triangle
-		for( int k=0 ; k<4 ; k++ ) sampleData.dualGradients[k] += Point2D< Real >( BilinearElementGradient( k , pos ) * fragment_to_element_quadrature_weight );
-	}
-
-	template< unsigned int Samples , typename Real >
-	void SetCellInTriangleDuals
-	(
-		typename BilinearElementScalarSample< Real >::SampleData& sampleData ,
-		const BilinearElementScalarSample< Real > & ,
-		const typename BilinearElementScalarSample< Real >::SampleData& interiorSampleData ,
-		Real element_area
-	)
-	{
-		for( int k=0 ; k<4 ; k++ ) sampleData.dualValues[k] = interiorSampleData.dualValues[k] * element_area;
-	}
-
-	template< unsigned int Samples , typename Real >
-	void SetCellInTriangleDuals
-	(
-		typename BilinearElementGradientSample< Real >::SampleData& sampleData ,
-		const BilinearElementGradientSample< Real >& sample ,
-		const typename BilinearElementGradientSample< Real >::SampleData& interiorSampleData ,
-		Real element_area
-	)
-	{
-		for( int k=0 ; k<4 ; k++ ) sampleData.dualGradients[k] = sample.tensor * interiorSampleData.dualGradients[k] * element_area;
-	}
-
-	template< unsigned int Samples , typename Real >
-	void SetInteriorDuals
-	(
-		typename BilinearElementScalarSample< Real >::SampleData& sampleData ,
-		const BilinearElementScalarSample< Real > & ,
-		Point2D< Real > pos , 
-		Real fragment_quadrature_weight
-	)
-	{
-		// Compute the integrated gradients of each bilinear basis functions in the frame of the cell, weighted by the area of the unit triangle
-		// Dualize the samples so that integration is simple a dot-product
-		for( int k=0 ; k<4 ; k++ ) sampleData.dualValues[k] += (Real)BilinearElementValue( k , pos ) * fragment_quadrature_weight;
-	}
-
-	template< unsigned int Samples , typename Real >
-	void SetInteriorDuals
-	(
-		typename BilinearElementGradientSample< Real >::SampleData& sampleData ,
-		const BilinearElementGradientSample< Real >& sample ,
-		Point2D< Real > pos , 
-		Real fragment_quadrature_weight
-	)
-	{
-		// Compute the integrated gradients of each bilinear basis functions in the frame of the cell, weighted by the area of the unit triangle
-		// Dualize the samples so that integration is simple a dot-product
-		for( int k=0 ; k<4 ; k++ ) sampleData.dualGradients[k] += sample.tensor * Point2D< Real >( BilinearElementGradient( k , pos ) * fragment_quadrature_weight );
-	}
-
-	template< unsigned int Samples , typename Real >
-	void SetBoundaryDuals
-	(
-		typename QuadraticElementScalarSample< Real >::SampleData& sampleData ,
-		const QuadraticElementScalarSample< Real > & ,
-		Point2D< Real > pos , 
-		Real fragment_quadrature_weight
-	)
-	{
-		// Compute the integrated gradients of each quadratic basis functions in the frame of the cell, weighted by the area of the unit triangle
-		// Dualize the samples so that integration is simple a dot-product
-		for( unsigned int k=0 ; k<6 ; k++ ) sampleData.dualValues[k] += (Real)QuadraticElement::Value( k , pos ) * fragment_quadrature_weight;
-	}
-
-	template< unsigned int Samples , typename Real >
-	void SetBoundaryDuals
-	(
-		typename QuadraticElementGradientSample< Real >::SampleData& sampleData ,
-		const QuadraticElementGradientSample< Real >& sample ,
-		Point2D< Real > pos , 
-		Real fragment_quadrature_weight
-	)
-	{
-		// Compute the integrated gradients of each quadratic basis functions in the frame of the cell, weighted by the area of the unit triangle
-		// Dualize the samples so that integration is simple a dot-product
-		for( unsigned int k=0 ; k<6 ; k++ ) sampleData.dualGradients[k] += sample.tensor * Point2D< Real >( QuadraticElement::Differential( k , pos ) * fragment_quadrature_weight );
-	}
-
-	template< unsigned int Samples , typename GeometryReal , typename ElementSamples >
-	void InitializeIntegration
-	(
-		const ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > &texture_metrics ,
-		const AtlasChart< GeometryReal > &atlasChart ,
-		const GridChart< GeometryReal > &gridChart ,
-		const ExplicitIndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > >& interiorCellLineIndex ,
-		const std::vector< AtlasInteriorOrBoundaryNodeIndex > &fineBoundaryIndex ,
-		ElementSamples &elementSamples ,
-		bool fastIntegration
-	)
-	{
-		// Rasterize
-		const GeometryReal PRECISION_ERROR = 1e-3;
-
-		auto InUnitSquare =   [&]( Point2D< GeometryReal > p ){ return !( p[0]<0-PRECISION_ERROR || p[1]<0-PRECISION_ERROR || p[0]>1+PRECISION_ERROR || p[1]>1+PRECISION_ERROR ); };
-		auto InUnitTriangle = [&]( Point2D< GeometryReal > p ){ return !( p[0]<0-PRECISION_ERROR || p[1]<0-PRECISION_ERROR || ( p[0]+p[1] )>1+PRECISION_ERROR ); };
-		auto CellInTriangle = [&]( int i , int j , const std::vector< Point2D< GeometryReal > >& vertices )
-			{
-				Point2D< GeometryReal > points[] = { gridChart.nodePosition(i,j) , gridChart.nodePosition(i+1,j) , gridChart.nodePosition(i+1,j+1) , gridChart.nodePosition(i,j+1) };
-				EdgeEquation< GeometryReal > eq[3];
-				Point2D< GeometryReal > c = ( vertices[0] + vertices[1] + vertices[2] ) / 3;
-				for( unsigned int i=0 ; i<3 ; i++ )
-				{
-					SimplexIndex< 1 > eIndex = OutgoingEdgeIndex( i );
-					eq[i] = EdgeEquation< GeometryReal >( vertices[ eIndex[0] ] , vertices[ eIndex[1] ] );
-					eq[i].makePositive(c);
-				}
-				for( int k=0 ; k<4 ; k++ ) for( unsigned int i=0 ; i<3 ; i++ ) if( eq[i]( points[k] )<0 ) return false;
-				return true;
-			};
-
-		SquareMatrix< GeometryReal , 2 > cell_to_texture_differential;
-
-		cell_to_texture_differential(0,0) = gridChart.cellSizeW;
-		cell_to_texture_differential(1,1) = gridChart.cellSizeH;
-		cell_to_texture_differential(0,1) = cell_to_texture_differential(1,0) = 0.;
-
-		typename ElementSamples::Bilinear::SampleData interior_cell_samples[2*Samples] , interior_cell_sample;
+		template< typename GeometryReal >
+		void InitializeGridAtlasInteriorCellLines
+		(
+			const ExplicitIndexVector< ChartIndex , GridChart< GeometryReal > >& gridCharts ,
+			std::vector< InteriorCellLine >& interiorCellLines ,
+			ExplicitIndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > >& interiorCellLineIndex
+		)
 		{
-			std::vector< Point2D< GeometryReal > > polygon = { Point2D< GeometryReal >(0,0) , Point2D< GeometryReal >(1,0) , Point2D< GeometryReal >(1,1) , Point2D< GeometryReal >(0,1) };
-			for( int p=2 ; p<polygon.size() ; p++ )
-			{
-				Point2D< GeometryReal > dm[2] = { polygon[p-1]-polygon[0] , polygon[p]-polygon[0] };
-				SquareMatrix< GeometryReal , 2 > fragment_to_element_differential;
-				for( int x=0 ; x<2 ; x++ ) for( int y=0 ; y<2 ; y++ ) fragment_to_element_differential(x,y) = dm[x][y];
-				GeometryReal fragment_to_element_area_scale_factor = fabs( fragment_to_element_differential.determinant() );
-
-				for( unsigned int s=0 ; s<Samples ; s++ )
-				{
-					Point2D< GeometryReal > pos = polygon[0] + dm[0] * (GeometryReal)TriangleIntegrator< Samples >::Positions[s][0] + dm[1] * (GeometryReal)TriangleIntegrator< Samples >::Positions[s][1];
-
-					typename ElementSamples::Bilinear::SampleData& _interior_cell_sample = interior_cell_samples[ (p-2)*Samples + s ];
-					SetInteriorCellDuals< Samples >( _interior_cell_sample , Point2D< typename ElementSamples::Real >( pos ) , (typename ElementSamples::Real)( TriangleIntegrator< Samples >::Weights[s] * fragment_to_element_area_scale_factor / 2 ) );
-					SetInteriorCellDuals< Samples >(  interior_cell_sample , Point2D< typename ElementSamples::Real >( pos ) , (typename ElementSamples::Real)( TriangleIntegrator< Samples >::Weights[s] * fragment_to_element_area_scale_factor / 2 ) );
-					_interior_cell_sample.init( pos );
-				}
-			}
-			interior_cell_sample.init( Point2D< GeometryReal >( (GeometryReal)0.5 , (GeometryReal)0.5 ) );
+			for( unsigned int i=0 ; i<gridCharts.size() ; i++ ) InitializeGridChartInteriorCellLines( gridCharts[ ChartIndex(i) ] , interiorCellLines , interiorCellLineIndex );
 		}
 
-		auto PolygonCenter = []( const Point2D< GeometryReal >* polygon , unsigned int polygonSize )
-			{
-				GeometryReal area = 0;
-				Point2D< GeometryReal > center;
-				for( int p=2 ; p<(int)polygonSize ; p++ )
+		//////////////////////////////////////
+		// Pre-compute the integration info //
+		//////////////////////////////////////
+
+		// In what follows we have the following mappings:
+		// fragment -> element -> texture:
+		//		fragment: a triangle in the decomposition of the clipping of the atlas triangle to the elements
+		//		element:  either a square or a triangle (depending on whether the cell is interior or not)
+		//		texture: the texture space grid
+		template< unsigned int Samples , typename Real >
+		void SetInteriorCellDuals
+		(
+			typename BilinearElementScalarSample< Real >::SampleData& sampleData ,
+			Point2D< Real > pos ,
+			Real fragment_to_element_quadrature_weight
+		)
+		{
+			// Compute the integrated Scalar of the bilinear basis function in the frame of the cell, weighted by the area of the unit triangle
+			for( int k=0 ; k<4 ; k++ ) sampleData.dualValues[k] += (Real)BilinearElementValue( k , pos ) * fragment_to_element_quadrature_weight;
+		}
+
+		template< unsigned int Samples , typename Real >
+		void SetInteriorCellDuals
+		(
+			typename BilinearElementGradientSample< Real >::SampleData& sampleData ,
+			Point2D< Real > pos ,
+			Real fragment_to_element_quadrature_weight
+		)
+		{
+			// Compute the integrated gradient of the bilinear basis function in the frame of the cell, weighted by the area of the unit triangle
+			for( int k=0 ; k<4 ; k++ ) sampleData.dualGradients[k] += Point2D< Real >( BilinearElementGradient( k , pos ) * fragment_to_element_quadrature_weight );
+		}
+
+		template< unsigned int Samples , typename Real >
+		void SetCellInTriangleDuals
+		(
+			typename BilinearElementScalarSample< Real >::SampleData& sampleData ,
+			const BilinearElementScalarSample< Real > & ,
+			const typename BilinearElementScalarSample< Real >::SampleData& interiorSampleData ,
+			Real element_area
+		)
+		{
+			for( int k=0 ; k<4 ; k++ ) sampleData.dualValues[k] = interiorSampleData.dualValues[k] * element_area;
+		}
+
+		template< unsigned int Samples , typename Real >
+		void SetCellInTriangleDuals
+		(
+			typename BilinearElementGradientSample< Real >::SampleData& sampleData ,
+			const BilinearElementGradientSample< Real >& sample ,
+			const typename BilinearElementGradientSample< Real >::SampleData& interiorSampleData ,
+			Real element_area
+		)
+		{
+			for( int k=0 ; k<4 ; k++ ) sampleData.dualGradients[k] = sample.tensor * interiorSampleData.dualGradients[k] * element_area;
+		}
+
+		template< unsigned int Samples , typename Real >
+		void SetInteriorDuals
+		(
+			typename BilinearElementScalarSample< Real >::SampleData& sampleData ,
+			const BilinearElementScalarSample< Real > & ,
+			Point2D< Real > pos , 
+			Real fragment_quadrature_weight
+		)
+		{
+			// Compute the integrated gradients of each bilinear basis functions in the frame of the cell, weighted by the area of the unit triangle
+			// Dualize the samples so that integration is simple a dot-product
+			for( int k=0 ; k<4 ; k++ ) sampleData.dualValues[k] += (Real)BilinearElementValue( k , pos ) * fragment_quadrature_weight;
+		}
+
+		template< unsigned int Samples , typename Real >
+		void SetInteriorDuals
+		(
+			typename BilinearElementGradientSample< Real >::SampleData& sampleData ,
+			const BilinearElementGradientSample< Real >& sample ,
+			Point2D< Real > pos , 
+			Real fragment_quadrature_weight
+		)
+		{
+			// Compute the integrated gradients of each bilinear basis functions in the frame of the cell, weighted by the area of the unit triangle
+			// Dualize the samples so that integration is simple a dot-product
+			for( int k=0 ; k<4 ; k++ ) sampleData.dualGradients[k] += sample.tensor * Point2D< Real >( BilinearElementGradient( k , pos ) * fragment_quadrature_weight );
+		}
+
+		template< unsigned int Samples , typename Real >
+		void SetBoundaryDuals
+		(
+			typename QuadraticElementScalarSample< Real >::SampleData& sampleData ,
+			const QuadraticElementScalarSample< Real > & ,
+			Point2D< Real > pos , 
+			Real fragment_quadrature_weight
+		)
+		{
+			// Compute the integrated gradients of each quadratic basis functions in the frame of the cell, weighted by the area of the unit triangle
+			// Dualize the samples so that integration is simple a dot-product
+			for( unsigned int k=0 ; k<6 ; k++ ) sampleData.dualValues[k] += (Real)QuadraticElement::Value( k , pos ) * fragment_quadrature_weight;
+		}
+
+		template< unsigned int Samples , typename Real >
+		void SetBoundaryDuals
+		(
+			typename QuadraticElementGradientSample< Real >::SampleData& sampleData ,
+			const QuadraticElementGradientSample< Real >& sample ,
+			Point2D< Real > pos , 
+			Real fragment_quadrature_weight
+		)
+		{
+			// Compute the integrated gradients of each quadratic basis functions in the frame of the cell, weighted by the area of the unit triangle
+			// Dualize the samples so that integration is simple a dot-product
+			for( unsigned int k=0 ; k<6 ; k++ ) sampleData.dualGradients[k] += sample.tensor * Point2D< Real >( QuadraticElement::Differential( k , pos ) * fragment_quadrature_weight );
+		}
+
+		template< unsigned int Samples , typename GeometryReal , typename ElementSamples >
+		void InitializeIntegration
+		(
+			const ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > &texture_metrics ,
+			const AtlasChart< GeometryReal > &atlasChart ,
+			const GridChart< GeometryReal > &gridChart ,
+			const ExplicitIndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > >& interiorCellLineIndex ,
+			const std::vector< AtlasInteriorOrBoundaryNodeIndex > &fineBoundaryIndex ,
+			ElementSamples &elementSamples ,
+			bool fastIntegration
+		)
+		{
+			// Rasterize
+			const GeometryReal PRECISION_ERROR = 1e-3;
+
+			auto InUnitSquare =   [&]( Point2D< GeometryReal > p ){ return !( p[0]<0-PRECISION_ERROR || p[1]<0-PRECISION_ERROR || p[0]>1+PRECISION_ERROR || p[1]>1+PRECISION_ERROR ); };
+			auto InUnitTriangle = [&]( Point2D< GeometryReal > p ){ return !( p[0]<0-PRECISION_ERROR || p[1]<0-PRECISION_ERROR || ( p[0]+p[1] )>1+PRECISION_ERROR ); };
+			auto CellInTriangle = [&]( int i , int j , const std::vector< Point2D< GeometryReal > >& vertices )
 				{
-					Point2D< GeometryReal > v[] = { polygon[0] , polygon[p-1] , polygon[p] };
-					Point2D< GeometryReal > d[] = { v[1]-v[0] , v[2]-v[0] };
-					GeometryReal a = (GeometryReal)fabs( d[0][0] * d[1][1] - d[0][1] * d[1][0] );
-					area += a;
-					Point2D< GeometryReal > c = ( v[0] + v[1] + v[2] ) / 3;
-					center += c * a; 
-				}
-				return center / area;
-			};
+					Point2D< GeometryReal > points[] = { gridChart.nodePosition(i,j) , gridChart.nodePosition(i+1,j) , gridChart.nodePosition(i+1,j+1) , gridChart.nodePosition(i,j+1) };
+					EdgeEquation< GeometryReal > eq[3];
+					Point2D< GeometryReal > c = ( vertices[0] + vertices[1] + vertices[2] ) / 3;
+					for( unsigned int i=0 ; i<3 ; i++ )
+					{
+						SimplexIndex< 1 > eIndex = OutgoingEdgeIndex( i );
+						eq[i] = EdgeEquation< GeometryReal >( vertices[ eIndex[0] ] , vertices[ eIndex[1] ] );
+						eq[i].makePositive(c);
+					}
+					for( int k=0 ; k<4 ; k++ ) for( unsigned int i=0 ; i<3 ; i++ ) if( eq[i]( points[k] )<0 ) return false;
+					return true;
+				};
 
-		using Range = RegularGrid< 2 >::Range;
-		using Index = RegularGrid< 2 >::Index;
-		Range nodeRange , cellRange;
-		nodeRange.second[0] = gridChart.width , cellRange.second[0] = gridChart.width-1;
-		nodeRange.second[1] = gridChart.height , cellRange.second[1] = gridChart.height-1;
+			SquareMatrix< GeometryReal , 2 > cell_to_texture_differential;
 
+			cell_to_texture_differential(0,0) = gridChart.cellSizeW;
+			cell_to_texture_differential(1,1) = gridChart.cellSizeH;
+			cell_to_texture_differential(0,1) = cell_to_texture_differential(1,0) = 0.;
 
-		auto GetSimplex = [&]( unsigned int t )
+			typename ElementSamples::Bilinear::SampleData interior_cell_samples[2*Samples] , interior_cell_sample;
 			{
-				Simplex< double , 2 , 2 > simplex;
-				for( unsigned int i=0 ; i<=2 ; i++ )
+				std::vector< Point2D< GeometryReal > > polygon = { Point2D< GeometryReal >(0,0) , Point2D< GeometryReal >(1,0) , Point2D< GeometryReal >(1,1) , Point2D< GeometryReal >(0,1) };
+				for( int p=2 ; p<polygon.size() ; p++ )
 				{
-					simplex[i] = atlasChart.vertex( ChartMeshVertexIndex( atlasChart.triangleIndex( ChartMeshTriangleIndex(t) )[i] ) ) - gridChart.corner;
-					simplex[i][0] /= gridChart.cellSizeW , simplex[i][1] /= gridChart.cellSizeH;
+					Point2D< GeometryReal > dm[2] = { polygon[p-1]-polygon[0] , polygon[p]-polygon[0] };
+					SquareMatrix< GeometryReal , 2 > fragment_to_element_differential;
+					for( int x=0 ; x<2 ; x++ ) for( int y=0 ; y<2 ; y++ ) fragment_to_element_differential(x,y) = dm[x][y];
+					GeometryReal fragment_to_element_area_scale_factor = fabs( fragment_to_element_differential.determinant() );
+
+					for( unsigned int s=0 ; s<Samples ; s++ )
+					{
+						Point2D< GeometryReal > pos = polygon[0] + dm[0] * (GeometryReal)TriangleIntegrator< Samples >::Positions[s][0] + dm[1] * (GeometryReal)TriangleIntegrator< Samples >::Positions[s][1];
+
+						typename ElementSamples::Bilinear::SampleData& _interior_cell_sample = interior_cell_samples[ (p-2)*Samples + s ];
+						SetInteriorCellDuals< Samples >( _interior_cell_sample , Point2D< typename ElementSamples::Real >( pos ) , (typename ElementSamples::Real)( TriangleIntegrator< Samples >::Weights[s] * fragment_to_element_area_scale_factor / 2 ) );
+						SetInteriorCellDuals< Samples >(  interior_cell_sample , Point2D< typename ElementSamples::Real >( pos ) , (typename ElementSamples::Real)( TriangleIntegrator< Samples >::Weights[s] * fragment_to_element_area_scale_factor / 2 ) );
+						_interior_cell_sample.init( pos );
+					}
 				}
-				return simplex;
-			};
+				interior_cell_sample.init( Point2D< GeometryReal >( (GeometryReal)0.5 , (GeometryReal)0.5 ) );
+			}
 
-		std::vector< std::vector< std::vector< typename ElementSamples::Bilinear > > > _bilinear( ThreadPool::NumThreads() );
-		std::vector< std::vector< typename ElementSamples::Quadratic > > _quadratic( ThreadPool::NumThreads() );
-		for( unsigned int i=0 ; i<ThreadPool::NumThreads() ; i++ ) _bilinear[i].resize( elementSamples.bilinear.size() );
+			auto PolygonCenter = []( const Point2D< GeometryReal >* polygon , unsigned int polygonSize )
+				{
+					GeometryReal area = 0;
+					Point2D< GeometryReal > center;
+					for( int p=2 ; p<(int)polygonSize ; p++ )
+					{
+						Point2D< GeometryReal > v[] = { polygon[0] , polygon[p-1] , polygon[p] };
+						Point2D< GeometryReal > d[] = { v[1]-v[0] , v[2]-v[0] };
+						GeometryReal a = (GeometryReal)fabs( d[0][0] * d[1][1] - d[0][1] * d[1][0] );
+						area += a;
+						Point2D< GeometryReal > c = ( v[0] + v[1] + v[2] ) / 3;
+						center += c * a; 
+					}
+					return center / area;
+				};
 
-		ThreadPool::ParallelFor
+			using Range = RegularGrid< 2 >::Range;
+			using Index = RegularGrid< 2 >::Index;
+			Range nodeRange , cellRange;
+			nodeRange.second[0] = gridChart.width , cellRange.second[0] = gridChart.width-1;
+			nodeRange.second[1] = gridChart.height , cellRange.second[1] = gridChart.height-1;
+
+
+			auto GetSimplex = [&]( unsigned int t )
+				{
+					Simplex< double , 2 , 2 > simplex;
+					for( unsigned int i=0 ; i<=2 ; i++ )
+					{
+						simplex[i] = atlasChart.vertex( ChartMeshVertexIndex( atlasChart.triangleIndex( ChartMeshTriangleIndex(t) )[i] ) ) - gridChart.corner;
+						simplex[i][0] /= gridChart.cellSizeW , simplex[i][1] /= gridChart.cellSizeH;
+					}
+					return simplex;
+				};
+
+			std::vector< std::vector< std::vector< typename ElementSamples::Bilinear > > > _bilinear( ThreadPool::NumThreads() );
+			std::vector< std::vector< typename ElementSamples::Quadratic > > _quadratic( ThreadPool::NumThreads() );
+			for( unsigned int i=0 ; i<ThreadPool::NumThreads() ; i++ ) _bilinear[i].resize( elementSamples.bilinear.size() );
+
+			ThreadPool::ParallelFor
 			(
 				0 , atlasChart.numTriangles() ,
 				[&]( unsigned int thread , size_t t )
@@ -535,213 +537,214 @@ namespace MishaK
 					Rasterizer2D::RasterizeSupports< true , true >( GetSimplex(t) , Kernel , cellRange );
 				}
 			);
-		for( unsigned int i=0 ; i<elementSamples.bilinear.size() ; i++ )
-		{
-			size_t sz = elementSamples.bilinear[i].size();
-			for( unsigned int t=0 ; t<_bilinear.size() ; t++ ) sz += _bilinear[t][i].size();
-			elementSamples.bilinear[i].reserve( sz );
-			for( unsigned int t=0 ; t<_bilinear.size() ; t++ ) elementSamples.bilinear[i].insert( elementSamples.bilinear[i].end() , _bilinear[t][i].begin() , _bilinear[t][i].end() );
-		}
-		{
-			size_t sz = elementSamples.quadratic.size();
-			for( unsigned int t=0 ; t<_quadratic.size() ; t++ ) sz += _quadratic[t].size();
-			elementSamples.quadratic.reserve( sz );
-			for( unsigned int t=0 ; t<_quadratic.size() ; t++ ) elementSamples.quadratic.insert( elementSamples.quadratic.end() , _quadratic[t].begin() , _quadratic[t].end() );
-		}
-	}
-
-	template< unsigned int Samples , typename GeometryReal , typename ElementSamples >
-	void InitializeIntegration
-	(
-		const ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > >& parameterMetric ,
-		const ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
-		const ExplicitIndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts ,
-		const ExplicitIndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > > &interiorCellLineIndex ,
-		const std::vector< AtlasInteriorOrBoundaryNodeIndex > &fineBoundaryIndex ,
-		ElementSamples &elementSamples ,
-		bool fastIntegration
-	)
-	{
-		for( unsigned int i=0 ; i<gridCharts.size() ; i++ )
-			InitializeIntegration< Samples >( parameterMetric[ ChartIndex(i) ] , atlasCharts[ ChartIndex(i) ] , gridCharts[ ChartIndex(i) ] , interiorCellLineIndex , fineBoundaryIndex , elementSamples , fastIntegration );
-	}
-
-	///////////////////////////
-	// Compute the integrals //
-	///////////////////////////
-	template< class Real , typename OutT , typename InT , typename ValueFunctionType >
-	void IntegrateBilinear
-	(
-		const BilinearElementScalarSample< Real > &sample ,
-		const ValueFunctionType &ValueFunction ,
-		const InT cornerValues[] ,
-		OutT rhsValues[]
-	)
-	{
-		for( unsigned int s=0 ; s<sample.size() ; s++ )
-		{
-			OutT scalar = ValueFunction( sample[s]( cornerValues ) , sample.tensor );
-			for( unsigned int k=0 ; k<4 ; k++ ) rhsValues[k] += scalar * sample[s].dualValues[k];
-		}
-	}
-
-	template< class Real , typename OutT , typename InT , typename GradientFunctionType >
-	void IntegrateBilinear
-	(
-		const BilinearElementGradientSample< Real > &sample ,
-		const GradientFunctionType &GradientFunction ,
-		const InT cornerValues[] ,
-		OutT rhsValues[]
-	)
-	{
-		for( unsigned int s=0 ; s<sample.size() ; s++ )
-		{
-			Point2D< OutT > gradientVector = GradientFunction( sample[s]( cornerValues ) , sample.tensor );
-			for( unsigned int k=0 ; k<4 ; k++ ) for( int d=0 ; d<2 ; d++ ) rhsValues[k] += gradientVector[d] * sample[s].dualGradients[k][d];
-		}
-	}
-
-	template< class Real , typename OutT , typename InT , typename ValueFunctionType >
-	void IntegrateQuadratic
-	(
-		const QuadraticElementScalarSample< Real >& sample ,
-		const ValueFunctionType& ValueFunction ,
-		const InT cornerValues[] ,
-		OutT rhsValues[]
-	)
-	{
-		for( unsigned int s=0 ; s<sample.size() ; s++ )
-		{
-			OutT scalar = ValueFunction( sample[s]( cornerValues ) , sample.tensor );
-			for( unsigned int k=0 ; k<6 ; k++ ) rhsValues[k] += scalar * sample[s].dualValues[k];
-		}
-	}
-
-	template< class Real , typename OutT , typename InT , typename GradientFunctionType >
-	void IntegrateQuadratic
-	(
-		const QuadraticElementGradientSample< Real >& sample ,
-		const GradientFunctionType& VectorFunction ,
-		const InT cornerValues[] ,
-		OutT rhsValues[]
-	)
-	{
-		for( unsigned int s=0 ; s<sample.size() ; s++ )
-		{
-			Point2D< OutT > gradientVector = VectorFunction( sample[s]( cornerValues ) , sample.tensor );
-			for( unsigned int k=0 ; k<6 ; k++ ) for( unsigned int d=0 ; d<2 ; d++ ) rhsValues[k] += gradientVector[d] * sample[s].dualGradients[k][d];
-		}
-	}
-
-	template< typename Real , typename OutT , typename InT , typename ElementSamples , typename SampleFunctionType >
-	void Integrate
-	(
-		const std::vector< InteriorCellLine >& interiorCellLines ,
-		const ElementSamples &elementSamples ,
-		const std::vector< InT >& potential ,
-		const std::vector< InT >& boundary_potential ,
-		const SampleFunctionType& SampleFunction ,
-		std::vector< OutT >& rhs ,
-		std::vector< OutT >& boundary_rhs ,
-		bool verbose=false
-	)
-	{
-		return Integrate< Real >( interiorCellLines , elementSamples , GetPointer( potential ) , GetPointer( boundary_potential ) , SampleFunction , GetPointer( rhs ) , GetPointer( boundary_rhs ) , verbose );
-	}
-
-	template< typename Real , typename OutT , typename InT , typename ElementSamples , typename SampleFunctionType >
-	void Integrate
-	(
-		const std::vector< InteriorCellLine >& interiorCellLines ,
-		const ElementSamples &elementSamples ,
-		ConstPointer( InT ) potential ,
-		ConstPointer( InT ) boundary_potential ,
-		const SampleFunctionType& SampleFunction ,
-		Pointer( OutT ) rhs ,
-		Pointer( OutT ) boundary_rhs ,
-		bool verbose=false
-	)
-	{
-		Miscellany::Timer timer;
-		auto UpdateRow = [&]( unsigned int r )
+			for( unsigned int i=0 ; i<elementSamples.bilinear.size() ; i++ )
 			{
-				const InT * _inPrevious = &potential[0] + interiorCellLines[r].prevLineIndex;
-				const InT *     _inNext = &potential[0] + interiorCellLines[r].nextLineIndex;
+				size_t sz = elementSamples.bilinear[i].size();
+				for( unsigned int t=0 ; t<_bilinear.size() ; t++ ) sz += _bilinear[t][i].size();
+				elementSamples.bilinear[i].reserve( sz );
+				for( unsigned int t=0 ; t<_bilinear.size() ; t++ ) elementSamples.bilinear[i].insert( elementSamples.bilinear[i].end() , _bilinear[t][i].begin() , _bilinear[t][i].end() );
+			}
+			{
+				size_t sz = elementSamples.quadratic.size();
+				for( unsigned int t=0 ; t<_quadratic.size() ; t++ ) sz += _quadratic[t].size();
+				elementSamples.quadratic.reserve( sz );
+				for( unsigned int t=0 ; t<_quadratic.size() ; t++ ) elementSamples.quadratic.insert( elementSamples.quadratic.end() , _quadratic[t].begin() , _quadratic[t].end() );
+			}
+		}
 
-				OutT * _outPrevious = &rhs[0] + interiorCellLines[r].prevLineIndex;
-				OutT *     _outNext = &rhs[0] + interiorCellLines[r].nextLineIndex;
+		template< unsigned int Samples , typename GeometryReal , typename ElementSamples >
+		void InitializeIntegration
+		(
+			const ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > >& parameterMetric ,
+			const ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
+			const ExplicitIndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts ,
+			const ExplicitIndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > > &interiorCellLineIndex ,
+			const std::vector< AtlasInteriorOrBoundaryNodeIndex > &fineBoundaryIndex ,
+			ElementSamples &elementSamples ,
+			bool fastIntegration
+		)
+		{
+			for( unsigned int i=0 ; i<gridCharts.size() ; i++ )
+				InitializeIntegration< Samples >( parameterMetric[ ChartIndex(i) ] , atlasCharts[ ChartIndex(i) ] , gridCharts[ ChartIndex(i) ] , interiorCellLineIndex , fineBoundaryIndex , elementSamples , fastIntegration );
+		}
 
-				InT cornerValues[4];
-				cornerValues[0] = *_inPrevious;
-				_inPrevious++;
-				cornerValues[1] = *_inPrevious;
-				cornerValues[3] = *_inNext;
-				_inNext++;
-				cornerValues[2] = *_inNext;
+		///////////////////////////
+		// Compute the integrals //
+		///////////////////////////
+		template< class Real , typename OutT , typename InT , typename ValueFunctionType >
+		void IntegrateBilinear
+		(
+			const BilinearElementScalarSample< Real > &sample ,
+			const ValueFunctionType &ValueFunction ,
+			const InT cornerValues[] ,
+			OutT rhsValues[]
+		)
+		{
+			for( unsigned int s=0 ; s<sample.size() ; s++ )
+			{
+				OutT scalar = ValueFunction( sample[s]( cornerValues ) , sample.tensor );
+				for( unsigned int k=0 ; k<4 ; k++ ) rhsValues[k] += scalar * sample[s].dualValues[k];
+			}
+		}
 
-				OutT rhsValues[] = { OutT() , OutT() , OutT() , OutT() };
+		template< class Real , typename OutT , typename InT , typename GradientFunctionType >
+		void IntegrateBilinear
+		(
+			const BilinearElementGradientSample< Real > &sample ,
+			const GradientFunctionType &GradientFunction ,
+			const InT cornerValues[] ,
+			OutT rhsValues[]
+		)
+		{
+			for( unsigned int s=0 ; s<sample.size() ; s++ )
+			{
+				Point2D< OutT > gradientVector = GradientFunction( sample[s]( cornerValues ) , sample.tensor );
+				for( unsigned int k=0 ; k<4 ; k++ ) for( int d=0 ; d<2 ; d++ ) rhsValues[k] += gradientVector[d] * sample[s].dualGradients[k][d];
+			}
+		}
 
-				unsigned int numSamples = (unsigned int)elementSamples.bilinear[r].size();
-				const typename ElementSamples::Bilinear *samplePtr = &elementSamples.bilinear[r][0];
-				unsigned int currentOffset = 0;
+		template< class Real , typename OutT , typename InT , typename ValueFunctionType >
+		void IntegrateQuadratic
+		(
+			const QuadraticElementScalarSample< Real >& sample ,
+			const ValueFunctionType& ValueFunction ,
+			const InT cornerValues[] ,
+			OutT rhsValues[]
+		)
+		{
+			for( unsigned int s=0 ; s<sample.size() ; s++ )
+			{
+				OutT scalar = ValueFunction( sample[s]( cornerValues ) , sample.tensor );
+				for( unsigned int k=0 ; k<6 ; k++ ) rhsValues[k] += scalar * sample[s].dualValues[k];
+			}
+		}
 
-				for( unsigned int j=0 ; j<numSamples ; j++ )
+		template< class Real , typename OutT , typename InT , typename GradientFunctionType >
+		void IntegrateQuadratic
+		(
+			const QuadraticElementGradientSample< Real >& sample ,
+			const GradientFunctionType& VectorFunction ,
+			const InT cornerValues[] ,
+			OutT rhsValues[]
+		)
+		{
+			for( unsigned int s=0 ; s<sample.size() ; s++ )
+			{
+				Point2D< OutT > gradientVector = VectorFunction( sample[s]( cornerValues ) , sample.tensor );
+				for( unsigned int k=0 ; k<6 ; k++ ) for( unsigned int d=0 ; d<2 ; d++ ) rhsValues[k] += gradientVector[d] * sample[s].dualGradients[k][d];
+			}
+		}
+
+		template< typename Real , typename OutT , typename InT , typename ElementSamples , typename SampleFunctionType >
+		void Integrate
+		(
+			const std::vector< InteriorCellLine >& interiorCellLines ,
+			const ElementSamples &elementSamples ,
+			const std::vector< InT >& potential ,
+			const std::vector< InT >& boundary_potential ,
+			const SampleFunctionType& SampleFunction ,
+			std::vector< OutT >& rhs ,
+			std::vector< OutT >& boundary_rhs ,
+			bool verbose=false
+		)
+		{
+			return Integrate< Real >( interiorCellLines , elementSamples , GetPointer( potential ) , GetPointer( boundary_potential ) , SampleFunction , GetPointer( rhs ) , GetPointer( boundary_rhs ) , verbose );
+		}
+
+		template< typename Real , typename OutT , typename InT , typename ElementSamples , typename SampleFunctionType >
+		void Integrate
+		(
+			const std::vector< InteriorCellLine >& interiorCellLines ,
+			const ElementSamples &elementSamples ,
+			ConstPointer( InT ) potential ,
+			ConstPointer( InT ) boundary_potential ,
+			const SampleFunctionType& SampleFunction ,
+			Pointer( OutT ) rhs ,
+			Pointer( OutT ) boundary_rhs ,
+			bool verbose=false
+		)
+		{
+			Miscellany::Timer timer;
+			auto UpdateRow = [&]( unsigned int r )
 				{
-					const typename ElementSamples::Bilinear &sample = *samplePtr;
-					if( sample.cellOffset>currentOffset )
+					const InT * _inPrevious = &potential[0] + interiorCellLines[r].prevLineIndex;
+					const InT *     _inNext = &potential[0] + interiorCellLines[r].nextLineIndex;
+
+					OutT * _outPrevious = &rhs[0] + interiorCellLines[r].prevLineIndex;
+					OutT *     _outNext = &rhs[0] + interiorCellLines[r].nextLineIndex;
+
+					InT cornerValues[4];
+					cornerValues[0] = *_inPrevious;
+					_inPrevious++;
+					cornerValues[1] = *_inPrevious;
+					cornerValues[3] = *_inNext;
+					_inNext++;
+					cornerValues[2] = *_inNext;
+
+					OutT rhsValues[] = { OutT() , OutT() , OutT() , OutT() };
+
+					unsigned int numSamples = (unsigned int)elementSamples.bilinear[r].size();
+					const typename ElementSamples::Bilinear *samplePtr = &elementSamples.bilinear[r][0];
+					unsigned int currentOffset = 0;
+
+					for( unsigned int j=0 ; j<numSamples ; j++ )
 					{
-						cornerValues[0] = cornerValues[1];
-						_inPrevious++;
-						cornerValues[1] = *_inPrevious;
-						cornerValues[3] = cornerValues[2];
-						_inNext++;
-						cornerValues[2] = *_inNext;
+						const typename ElementSamples::Bilinear &sample = *samplePtr;
+						if( sample.cellOffset>currentOffset )
+						{
+							cornerValues[0] = cornerValues[1];
+							_inPrevious++;
+							cornerValues[1] = *_inPrevious;
+							cornerValues[3] = cornerValues[2];
+							_inNext++;
+							cornerValues[2] = *_inNext;
 
-						Atomic< OutT >::Add( *_outPrevious , rhsValues[0] );
-						_outPrevious++;
-						Atomic< OutT >::Add( *_outNext , rhsValues[3] );
-						_outNext++;
-						rhsValues[0] = rhsValues[1];
-						rhsValues[1] = OutT();
-						rhsValues[3] = rhsValues[2];
-						rhsValues[2] = OutT();
+							Atomic< OutT >::Add( *_outPrevious , rhsValues[0] );
+							_outPrevious++;
+							Atomic< OutT >::Add( *_outNext , rhsValues[3] );
+							_outNext++;
+							rhsValues[0] = rhsValues[1];
+							rhsValues[1] = OutT();
+							rhsValues[3] = rhsValues[2];
+							rhsValues[2] = OutT();
 
-						currentOffset++;
+							currentOffset++;
+						}
+
+						IntegrateBilinear< Real , OutT , InT >( sample , SampleFunction , cornerValues , rhsValues );
+						samplePtr++;
 					}
 
-					IntegrateBilinear< Real , OutT , InT >( sample , SampleFunction , cornerValues , rhsValues );
-					samplePtr++;
-				}
+					Atomic< OutT >::Add( *_outPrevious , rhsValues[0] );
+					_outPrevious++;
+					Atomic< OutT >::Add( *_outPrevious , rhsValues[1] );
+					Atomic< OutT >::Add( *_outNext     , rhsValues[3] );
+					_outNext++;
+					Atomic< OutT >::Add( *_outNext     , rhsValues[2] );
+				};
+			ThreadPool::ParallelFor( 0 , interiorCellLines.size() , [&]( unsigned int , size_t r ){ UpdateRow( static_cast< unsigned int >(r) ); } );
 
-				Atomic< OutT >::Add( *_outPrevious , rhsValues[0] );
-				_outPrevious++;
-				Atomic< OutT >::Add( *_outPrevious , rhsValues[1] );
-				Atomic< OutT >::Add( *_outNext     , rhsValues[3] );
-				_outNext++;
-				Atomic< OutT >::Add( *_outNext     , rhsValues[2] );
-			};
-		ThreadPool::ParallelFor( 0 , interiorCellLines.size() , [&]( unsigned int , size_t r ){ UpdateRow( static_cast< unsigned int >(r) ); } );
+			if( verbose ) printf( "Integrated bilinear: %.2f(s)\n" , timer.elapsed() );
 
-		if( verbose ) printf( "Integrated bilinear: %.2f(s)\n" , timer.elapsed() );
-
-		timer.reset();
-		for( unsigned int i=0 ; i<elementSamples.quadratic.size() ; i++ )
-		{
-			const typename ElementSamples::Quadratic &sample = elementSamples.quadratic[i];
-			// The values of the potential at the vertices and edge mid-points
-			InT cornerValues[] =
+			timer.reset();
+			for( unsigned int i=0 ; i<elementSamples.quadratic.size() ; i++ )
 			{
-				boundary_potential[ static_cast< unsigned int >(sample.fineNodes[0]) ] ,
-				boundary_potential[ static_cast< unsigned int >(sample.fineNodes[1]) ] ,
-				boundary_potential[ static_cast< unsigned int >(sample.fineNodes[2]) ] ,
-				boundary_potential[ static_cast< unsigned int >(sample.fineNodes[3]) ] ,
-				boundary_potential[ static_cast< unsigned int >(sample.fineNodes[4]) ] ,
-				boundary_potential[ static_cast< unsigned int >(sample.fineNodes[5]) ]
-			};
-			OutT rhsValues[] = { OutT() , OutT() , OutT() , OutT() , OutT() , OutT() };
-			IntegrateQuadratic< Real , OutT , InT >( sample , SampleFunction , cornerValues , rhsValues );
-			for( unsigned int k=0 ; k<6 ; k++ ) boundary_rhs[ static_cast< unsigned int >( sample.fineNodes[k] ) ] += rhsValues[k];
+				const typename ElementSamples::Quadratic &sample = elementSamples.quadratic[i];
+				// The values of the potential at the vertices and edge mid-points
+				InT cornerValues[] =
+				{
+					boundary_potential[ static_cast< unsigned int >(sample.fineNodes[0]) ] ,
+					boundary_potential[ static_cast< unsigned int >(sample.fineNodes[1]) ] ,
+					boundary_potential[ static_cast< unsigned int >(sample.fineNodes[2]) ] ,
+					boundary_potential[ static_cast< unsigned int >(sample.fineNodes[3]) ] ,
+					boundary_potential[ static_cast< unsigned int >(sample.fineNodes[4]) ] ,
+					boundary_potential[ static_cast< unsigned int >(sample.fineNodes[5]) ]
+				};
+				OutT rhsValues[] = { OutT() , OutT() , OutT() , OutT() , OutT() , OutT() };
+				IntegrateQuadratic< Real , OutT , InT >( sample , SampleFunction , cornerValues , rhsValues );
+				for( unsigned int k=0 ; k<6 ; k++ ) boundary_rhs[ static_cast< unsigned int >( sample.fineNodes[k] ) ] += rhsValues[k];
+			}
+			if( verbose ) printf( "Integrated quadratic: %.2f(s)\n" , timer.elapsed() );
 		}
-		if( verbose ) printf( "Integrated quadratic: %.2f(s)\n" , timer.elapsed() );
 	}
 }

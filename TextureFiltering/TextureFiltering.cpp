@@ -52,6 +52,7 @@ const std::string fragment_shader_src =
 #endif // NO_OPEN_GL_VISUALIZATION
 
 using namespace MishaK;
+using namespace MishaK::TSP;
 
 CmdLineParameterArray< std::string , 2 > Input( "in" );
 CmdLineParameter< std::string > InputLowFrequency( "inLow" );
@@ -239,7 +240,7 @@ public:
 
 
 	//Linear Operators
-	static MassAndStiffnessOperator< Real > massAndStiffnessOperator;
+	static MassAndStiffnessOperators< Real > massAndStiffnessOperators;
 	static DivergenceOperator< Real > divergenceOperator;
 
 	static int steps;
@@ -347,7 +348,7 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth > std:
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > Padding																TextureFilter< PreReal , Real , TextureBitDepth >::padding;
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > MassAndStiffnessOperator< Real >									TextureFilter< PreReal , Real , TextureBitDepth >::massAndStiffnessOperator;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > MassAndStiffnessOperators< Real >									TextureFilter< PreReal , Real , TextureBitDepth >::massAndStiffnessOperators;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > DivergenceOperator< Real >											TextureFilter< PreReal , Real , TextureBitDepth >::divergenceOperator;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > int																	TextureFilter< PreReal , Real , TextureBitDepth >::updateCount = -1;
 
@@ -722,7 +723,7 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::InterpolationWeightCallB
 
 	interpolationWeight = atof(prompt);
 	if( UseDirectSolver.set ) filteringMatrix = mass*interpolationWeight + stiffness;
-	UpdateLinearSystem( interpolationWeight , (Real)1. , hierarchy , multigridFilteringCoefficients , massAndStiffnessOperator , vCycleSolvers , directSolver , filteringMatrix , DetailVerbose.set , false , UseDirectSolver.set );
+	UpdateLinearSystem( interpolationWeight , (Real)1. , hierarchy , multigridFilteringCoefficients , massAndStiffnessOperators , vCycleSolvers , directSolver , filteringMatrix , DetailVerbose.set , false , UseDirectSolver.set );
 	if( Verbose.set ) std::cout << pMeter( "Initialized MG" ) << std::endl;
 
 	ThreadPool::ParallelFor( 0 ,multigridFilteringVariables[0].rhs.size() , [&]( unsigned int , size_t i ){ multigridFilteringVariables[0].rhs[i] = mass_x0[i]*interpolationWeight + stiffness_x0[i] * gradientModulation; } );
@@ -798,14 +799,14 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::InitializeSystem( int wi
 	{
 		ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > > parameterMetric;
 		InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric );
-		OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , divergenceOperator );
+		OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , divergenceOperator );
 	}
 	if( Verbose.set ) std::cout << pMeter( "Mass and stiffness" ) << std::endl;
 
 	if( UseDirectSolver.set )
 	{
-		FullMatrixConstruction( hierarchy.gridAtlases[0] , massAndStiffnessOperator.massCoefficients , mass );
-		FullMatrixConstruction( hierarchy.gridAtlases[0] , massAndStiffnessOperator.stiffnessCoefficients , stiffness );
+		FullMatrixConstruction( hierarchy.gridAtlases[0] , massAndStiffnessOperators.massCoefficients , mass );
+		FullMatrixConstruction( hierarchy.gridAtlases[0] , massAndStiffnessOperators.stiffnessCoefficients , stiffness );
 		filteringMatrix  = mass*interpolationWeight + stiffness;
 	}
 
@@ -824,7 +825,7 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::InitializeSystem( int wi
 	}
 
 	pMeter.reset();
-	UpdateLinearSystem( interpolationWeight , (Real)1. , hierarchy , multigridFilteringCoefficients , massAndStiffnessOperator , vCycleSolvers , directSolver , filteringMatrix , DetailVerbose.set , true , UseDirectSolver.set );
+	UpdateLinearSystem( interpolationWeight , (Real)1. , hierarchy , multigridFilteringCoefficients , massAndStiffnessOperators , vCycleSolvers , directSolver , filteringMatrix , DetailVerbose.set , true , UseDirectSolver.set );
 	if( Verbose.set ) std::cout << pMeter( "Initialized MG" ) << std::endl;
 
 	multigridFilteringVariables.resize(levels);
@@ -841,10 +842,10 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::InitializeSystem( int wi
 	}
 
 	mass_x0.resize( textureNodes.size() );
-	massAndStiffnessOperator.mass( low_x0 , mass_x0 );
+	massAndStiffnessOperators.mass( low_x0 , mass_x0 );
 
 	stiffness_x0.resize( textureNodes.size() );
-	massAndStiffnessOperator.stiffness( high_x0 , stiffness_x0 );
+	massAndStiffnessOperators.stiffness( high_x0 , stiffness_x0 );
 
 	edgeDifferences.resize( divergenceOperator.edges.size() );
 	texelDivergence.resize( textureNodes.size() );

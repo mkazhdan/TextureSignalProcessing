@@ -32,17 +32,20 @@ DAMAGE.
 
 namespace MishaK
 {
-	template< typename GeometryReal >
-	void TriangulateConvexPolygon( const std::vector< Point2D< GeometryReal > > &vertices , std::vector< SimplexIndex< 2 > > &outputTriangles )
+	namespace TSP
 	{
-		auto SquaredArea = [&]( unsigned int i0 , unsigned int i1 , unsigned int i2 )
-			{
-				Point< GeometryReal , 2 > d[] = { vertices[i1]-vertices[i0] , vertices[i2]-vertices[i0] };
-				SquareMatrix< double , 2 > M;
-				for( int i=0 ; i<2 ; i++ ) for( int j=0 ; j<2 ; j++ ) M(i,j) = Point< GeometryReal , 2 >::Dot( d[i] , d[j] );
-				return M.determinant();
-			};
-		MinimalAreaTriangulation::GetTriangulation( SquaredArea , static_cast< unsigned int >( vertices.size() ) , outputTriangles );
+		template< typename GeometryReal >
+		void TriangulateConvexPolygon( const std::vector< Point2D< GeometryReal > > &vertices , std::vector< SimplexIndex< 2 > > &outputTriangles )
+		{
+			auto SquaredArea = [&]( unsigned int i0 , unsigned int i1 , unsigned int i2 )
+				{
+					Point< GeometryReal , 2 > d[] = { vertices[i1]-vertices[i0] , vertices[i2]-vertices[i0] };
+					SquareMatrix< double , 2 > M;
+					for( int i=0 ; i<2 ; i++ ) for( int j=0 ; j<2 ; j++ ) M(i,j) = Point< GeometryReal , 2 >::Dot( d[i] , d[j] );
+					return M.determinant();
+				};
+			MinimalAreaTriangulation::GetTriangulation( SquaredArea , static_cast< unsigned int >( vertices.size() ) , outputTriangles );
+		}
 	}
 }
 #endif //CONSTRAINED_TRIANGULATION_INCLUDED

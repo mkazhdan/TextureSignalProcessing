@@ -36,31 +36,34 @@ DAMAGE.
 
 namespace MishaK
 {
-	RegularGrid< 2 , Point< double , 3 > > ReadTexture( std::string fileName )
+	namespace TSP
 	{
-		unsigned int res[2];
-		unsigned char *pixels = ImageReader<>::ReadColor( fileName , res[0] , res[1] );
+		RegularGrid< 2 , Point< double , 3 > > ReadTexture( std::string fileName )
+		{
+			unsigned int res[2];
+			unsigned char *pixels = ImageReader<>::ReadColor( fileName , res[0] , res[1] );
 
-		RegularGrid< 2 , Point< double , 3 > > img;
-		img.resize( res );
+			RegularGrid< 2 , Point< double , 3 > > img;
+			img.resize( res );
 
-		for( unsigned int j=0 , idx=0 ; j<img.res(1) ; j++ ) for( unsigned int i=0 ; i<img.res(1) ; i++ ) for( unsigned int k=0 ; k<3 ; k++ , idx++ )
-			img(i,res[1]-1-j)[k] = pixels[idx]/255.;
+			for( unsigned int j=0 , idx=0 ; j<img.res(1) ; j++ ) for( unsigned int i=0 ; i<img.res(1) ; i++ ) for( unsigned int k=0 ; k<3 ; k++ , idx++ )
+				img(i,res[1]-1-j)[k] = pixels[idx]/255.;
 
-		delete[] pixels;
+			delete[] pixels;
 
-		return img;
-	};
+			return img;
+		};
 
-	void WriteTexture( std::string fileName , const RegularGrid< 2 , Point< double , 3 > > &img )
-	{
-		unsigned char * pixels = new unsigned char[ img.resolution() * 3 ];
-		for( unsigned int j=0 , idx=0 ; j<img.res(1) ; j++ ) for( unsigned int i=0 ; i<img.res(1) ; i++ ) for( unsigned int k=0 ; k<3 ; k++ , idx++ )
-			pixels[idx] = static_cast< unsigned char >( std::min< double >( 255. , std::max< double >( 0. , img(i,img.res(1)-1-j)[k]*255. ) ) );
+		void WriteTexture( std::string fileName , const RegularGrid< 2 , Point< double , 3 > > &img )
+		{
+			unsigned char * pixels = new unsigned char[ img.resolution() * 3 ];
+			for( unsigned int j=0 , idx=0 ; j<img.res(1) ; j++ ) for( unsigned int i=0 ; i<img.res(1) ; i++ ) for( unsigned int k=0 ; k<3 ; k++ , idx++ )
+				pixels[idx] = static_cast< unsigned char >( std::min< double >( 255. , std::max< double >( 0. , img(i,img.res(1)-1-j)[k]*255. ) ) );
 
-		ImageWriter<>::Write( fileName , pixels , img.res(0) , img.res(1) , 3 );
+			ImageWriter<>::Write( fileName , pixels , img.res(0) , img.res(1) , 3 );
 
-		delete[] pixels;
+			delete[] pixels;
+		}
 	}
 }
 #endif // TEXTURE_INCLUDED

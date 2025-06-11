@@ -39,6 +39,7 @@ DAMAGE.
 #include "tinyexr.h"
 
 using namespace MishaK;
+using namespace MishaK::TSP;
 
 CmdLineParameterArray< std::string , 2 > Input( "in" );
 CmdLineParameter< std::string > Output( "out" ) , OutputTexturePositions( "outP" );

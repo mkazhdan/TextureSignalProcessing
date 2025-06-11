@@ -52,6 +52,7 @@ enum
 #endif // NO_OPEN_GL_VISUALIZATION
 
 using namespace MishaK;
+using namespace MishaK::TSP;
 
 CmdLineParameterArray< std::string , 2 > In( "in" );
 CmdLineParameter< std::string > InMask( "mask" );
@@ -222,7 +223,7 @@ public:
 	static std::vector< Point3D< Real > > edgeValues;
 
 	// Linear Operators
-	static MassAndStiffnessOperator< Real > massAndStiffnessOperator;
+	static MassAndStiffnessOperators< Real > massAndStiffnessOperators;
 
 	// Stitching UI
 	static int textureIndex;
@@ -337,7 +338,7 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth > std:
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > Padding															Stitching< PreReal , Real , TextureBitDepth >::padding;
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > MassAndStiffnessOperator< Real >								Stitching< PreReal , Real , TextureBitDepth >::massAndStiffnessOperator;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > MassAndStiffnessOperators< Real >								Stitching< PreReal , Real , TextureBitDepth >::massAndStiffnessOperators;
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > unsigned int													Stitching< PreReal , Real , TextureBitDepth >::updateCount = static_cast< unsigned int >(-1);
 
@@ -566,7 +567,7 @@ void  Stitching< PreReal , Real , TextureBitDepth >::InterpolationWeightCallBack
 		stitchingMatrix = mass*interpolationWeight + stiffness;
 		if( Verbose.set ) std::cout << pMeter( "Stitching matrix" ) << std::endl;
 	}
-	UpdateLinearSystem( interpolationWeight , (Real)1. , hierarchy , multigridStitchingCoefficients , massAndStiffnessOperator , vCycleSolvers , directSolver , stitchingMatrix , DetailVerbose.set , false , UseDirectSolver.set );
+	UpdateLinearSystem( interpolationWeight , (Real)1. , hierarchy , multigridStitchingCoefficients , massAndStiffnessOperators , vCycleSolvers , directSolver , stitchingMatrix , DetailVerbose.set , false , UseDirectSolver.set );
 	if( Verbose.set ) std::cout << pMeter( "Initialized MG" ) << std::endl;
 
 	ThreadPool::ParallelFor( 0 , multigridStitchingVariables[0].rhs.size() , [&]( unsigned int , size_t i ){ multigridStitchingVariables[0].rhs[i] = texelMass[i] * interpolationWeight + texelDivergence[i]; } );
@@ -595,7 +596,7 @@ void Stitching< PreReal , Real , TextureBitDepth >::UpdateSolution( bool verbose
 	Miscellany::PerformanceMeter pMeter( '.' );
 	if( !rhsUpdated )
 	{
-		massAndStiffnessOperator.mass( texelValues , texelMass );
+		massAndStiffnessOperators.mass( texelValues , texelMass );
 		divergenceOperator( edgeValues , texelDivergence );
 
 		ThreadPool::ParallelFor( 0 , textureNodes.size() , [&]( unsigned int , size_t i ){ multigridStitchingVariables[0].rhs[i] = texelMass[i] * interpolationWeight + texelDivergence[i]; } );
@@ -623,7 +624,7 @@ void Stitching< PreReal , Real , TextureBitDepth >::InitializeSystem( int width 
 	InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric );
 
 	pMeter.reset();
-	OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperator , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , divergenceOperator );
+	OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , divergenceOperator );
 	if( Verbose.set ) std::cout << pMeter( "Mass and stiffness" ) << std::endl;
 
 	texelMass.resize( textureNodes.size() );
@@ -631,8 +632,8 @@ void Stitching< PreReal , Real , TextureBitDepth >::InitializeSystem( int width 
 
 	if( UseDirectSolver.set )
 	{
-		FullMatrixConstruction( hierarchy.gridAtlases[0] , massAndStiffnessOperator.massCoefficients , mass );
-		FullMatrixConstruction( hierarchy.gridAtlases[0] , massAndStiffnessOperator.stiffnessCoefficients , stiffness );
+		FullMatrixConstruction( hierarchy.gridAtlases[0] , massAndStiffnessOperators.massCoefficients , mass );
+		FullMatrixConstruction( hierarchy.gridAtlases[0] , massAndStiffnessOperators.stiffnessCoefficients , stiffness );
 		stitchingMatrix = mass*interpolationWeight + stiffness;
 	}
 
@@ -651,7 +652,7 @@ void Stitching< PreReal , Real , TextureBitDepth >::InitializeSystem( int width 
 	}
 
 	pMeter.reset();
-	UpdateLinearSystem( interpolationWeight , (Real)1. , hierarchy , multigridStitchingCoefficients , massAndStiffnessOperator , vCycleSolvers , directSolver , stitchingMatrix , DetailVerbose.set, true, UseDirectSolver.set );
+	UpdateLinearSystem( interpolationWeight , (Real)1. , hierarchy , multigridStitchingCoefficients , massAndStiffnessOperators , vCycleSolvers , directSolver , stitchingMatrix , DetailVerbose.set, true, UseDirectSolver.set );
 	if( Verbose.set ) std::cout << pMeter( "Initialize MG" ) << std::endl;
 
 	multigridStitchingVariables.resize(levels);
@@ -673,7 +674,7 @@ void Stitching< PreReal , Real , TextureBitDepth >::SetUpSystem( void )
 {
 	texelMass.resize( textureNodes.size() );
 
-	massAndStiffnessOperator.mass( texelValues , texelMass );
+	massAndStiffnessOperators.mass( texelValues , texelMass );
 
 	divergenceOperator( edgeValues , texelDivergence );
 
