@@ -44,7 +44,7 @@ namespace MishaK
 		template< typename Real >
 		struct GradientDomain
 		{
-			// A constructor taking functions mapping:
+			// A constructor taking functors mapping:
 			// 1.  Triangle index       -> surface vertex indices at corners
 			// 2a. Triangle index       -> metric tensor associated to the triangle
 			// 2b. Surface vertex index -> position in 3D

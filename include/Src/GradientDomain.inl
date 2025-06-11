@@ -76,7 +76,7 @@ GradientDomain< Real >::GradientDomain
 	static_assert( _IsTriangleFunctor< TextureTriangleFunctor >()                    , "[ERROR] TextureTriangleFunctor poorly formed" );
 	static_assert( _IsTextureVertexFunctor< TextureVertexFunctor >()                 , "[ERROR] TextureVertexFunctor poorly formed" );
 
-	static const bool UseSurfaceMetric = _IsSurfaceMetricFunctor< SurfaceMetricOrVertexFunctor >();
+	static const bool HasSurfaceMetric = _IsSurfaceMetricFunctor< SurfaceMetricOrVertexFunctor >();
 	static const bool HasSurfaceVertex = _IsSurfaceVertexFunctor< SurfaceMetricOrVertexFunctor >();
 
 	TexturedTriangleMesh< Real > mesh;
@@ -101,13 +101,20 @@ GradientDomain< Real >::GradientDomain
 	InitializeHierarchy( mesh , width , height , 1 , _textureNodes , hierarchy , atlasCharts , multigridBlockInfo );
 
 	ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< Real , 2 > > > parameterMetric;
-	if constexpr( HasSurfaceVertex ) InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric );
-	else
+	if constexpr( HasSurfaceVertex ) InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric , normalize );
+	else if constexpr( HasSurfaceMetric )
 	{
 		ExplicitIndexVector< AtlasMeshTriangleIndex , SquareMatrix< Real , 2 > > surfaceMetric( numTriangles );
-		for( size_t t=0 ; t<numTriangles ; t++ ) surfaceMetric[t] = surfaceMetricOrVertexFunctor[t];
+		for( size_t t=0 ; t<numTriangles ; t++ ) surfaceMetric[t] = surfaceMetricOrVertexFunctor(t);
+		if( normalize )
+		{
+			Real totalArea = 0;
+			ThreadPool::ParallelFor( 0 , surfaceMetric.size() , [&]( size_t t ){ Atomic< Real >::Add( totalArea , (Real)sqrt( fabs( surfaceMetric[t].determinant() ) / 2. ) ); } );
+			ThreadPool::ParallelFor( 0 , surfaceMetric.size() , [&]( size_t t ){ surfaceMetric[t] /= totalArea; } );
+		}
 		InitializeParameterMetric( mesh , surfaceMetric , atlasCharts , parameterMetric );
 	}
+
 	OperatorInitializer::Initialize( quadraturePointsPerTriangle , _massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , _divergenceOperator );
 }
 
