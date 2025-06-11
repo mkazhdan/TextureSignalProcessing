@@ -3,6 +3,8 @@ SOURCE= GradientDomain.example.cpp
 
 COMPILER ?= gcc
 #COMPILER ?= clang
+USE_PARDISO ?= false
+
 
 ifeq ($(COMPILER),gcc)
 	CFLAGS += -fpermissive -fopenmp -Wno-deprecated -Wno-unused-result -Wno-format -msse2 -std=c++17
@@ -15,7 +17,8 @@ else
 endif
 
 LFLAGS += -lgomp -lz -lpng -ljpeg
-#CFLAGS += -DNO_OPEN_GL_VISUALIZATION
+ifeq ($(USE_PARDISO),true)
+	CFLAGS += -DUSE_EIGEN_PARDISO
 
 CFLAGS_DEBUG = -DDEBUG -g3
 LFLAGS_DEBUG =

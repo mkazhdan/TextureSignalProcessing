@@ -534,7 +534,7 @@ namespace MishaK
 								}
 							}
 						};
-					Rasterizer2D::RasterizeSupports< true , true >( GetSimplex(t) , Kernel , cellRange );
+					Rasterizer2D::RasterizeSupports< true , true >( GetSimplex( static_cast< unsigned int >(t) ) , Kernel , cellRange );
 				}
 			);
 			for( unsigned int i=0 ; i<elementSamples.bilinear.size() ; i++ )

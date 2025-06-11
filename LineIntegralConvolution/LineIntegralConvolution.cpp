@@ -619,7 +619,7 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 				typedef EigenSolverCholeskyLDLt< PreReal , typename SparseMatrix< PreReal , int >::RowIterator > Solver;
 				Solver solver( M , true );
 
-				for( int iter=0 ; iter<NormalSmoothingIterations.value ; iter++ )
+				for( unsigned int iter=0 ; iter<NormalSmoothingIterations.value ; iter++ )
 				{
 					// Set the tangent directions
 					ThreadPool::ParallelFor
@@ -992,7 +992,7 @@ void _main( int argc , char* argv[] )
 	else
 	{
 		if( UseDirectSolver.set ) LineConvolution< PreReal , Real >::ComputeExactSolution();
-		else for( int i=0 ; i<OutputVCycles.value ; i++ ) LineConvolution< PreReal , Real >::UpdateSolution();
+		else for( unsigned int i=0 ; i<OutputVCycles.value ; i++ ) LineConvolution< PreReal , Real >::UpdateSolution();
 		LineConvolution< PreReal , Real >::SetOutputBuffer( LineConvolution< PreReal , Real >::multigridModulationVariables[0].x );
 		LineConvolution< PreReal , Real >::ExportTextureCallBack( &LineConvolution< PreReal , Real >::visualization , Output.value.c_str() );
 	}

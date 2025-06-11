@@ -521,22 +521,22 @@ This is done by solving for the output texture values which simultaneouly fit va
   The details of the implementation can be found in the <code>GradientDomain.example.cpp</code> code.
   <UL>
     <LI><U>Lines 113-120</U>: The texture-mapped geometry and the texture image (as well as a mask image describing when texels belong to the same patch, for stitching) are read in.
-    <LI><U>Lines 142-155</U>: The <CODE>GradientDomain</CODE> object is constructed, passing in the resolution of the mesh as well as functor giving the indices of embedding/texture-vertices for each corner, functors giving the positions of embedding/texture-vertices, the texture image resolution, and the number of quadrature points per triangle used for integration (valid values are 1, 3, 6, 12, 24, and 32).
-    <LI><U>Lines 161-166</U>: The input texture values are read from the image into a <CODE>std::vector</CODE>, using the member functions <CODE>GradientDomain::numNodes</CODE> to get the number of (active) texels in the texture map and <CODE>GradientDomain::node</CODE> to get the coordinates of the texel within the image.
-    <LI><U>Lines 168-194</U>: The constraints to the linear system are constructed, specifying the target values and gradients:
+    <LI><U>Lines 141-155</U>: The <CODE>GradientDomain</CODE> object is constructed, passing in the resolution of the mesh as well as functor giving the indices of embedding/texture-vertices for each corner, functors giving the positions of embedding/texture-vertices, the texture image resolution, and the number of quadrature points per triangle used for integration (valid values are 1, 3, 6, 12, 24, and 32).
+    <LI><U>Lines 159-164</U>: The input texture values are read from the image into a <CODE>std::vector</CODE>, using the member functions <CODE>GradientDomain::numNodes</CODE> to get the number of (active) texels in the texture map and <CODE>GradientDomain::node</CODE> to get the coordinates of the texel within the image.
+    <LI><U>Lines 166-193</U>: The constraints to the linear system are constructed, specifying the target values and gradients:
     <UL>
-      <LI><U>Lines 172-173</U>: The target value constraints are constructed by applying the mass matrix to the input texel values.
-      <LI><U>Lines 175-188</U>: The target gradient constraints are obtained by computing the target per-edge differences and then computing the divergence:
+      <LI><U>Lines 170-171</U>: The target value constraints are constructed by applying the mass matrix to the input texel values.
+      <LI><U>Lines 173-188</U>: The target gradient constraints are obtained by computing the target per-edge differences and then computing the divergence:
       <UL>
-        <LI><U>Lines 177-186</U>: The target edge differences are obtained by iterating over the edges, computing the difference between the input texel values at the end-points, and scaling by the gradient modulation value (and zeroing out the difference in the case the end-points are assigned different IDs, in the case of stiching). To this end, the member function <CODE>GradientDomain::numEdges</CODE> gives the number of edges, and the member function <CODE>GradientDomain::edge</CODE> returns the indices of the edge's two end-points.
-        <LI><U>Lines 188-189</U>: The target gradient constraints are obtained applying the divergence operator to the computed edge differences.
+        <LI><U>Lines 175-184</U>: The target edge differences are obtained by iterating over the edges, computing the difference between the input texel values at the end-points, and scaling by the gradient modulation value (and zeroing out the difference in the case the end-points are assigned different IDs, in the case of stiching). To this end, the member function <CODE>GradientDomain::numEdges</CODE> gives the number of edges, and the member function <CODE>GradientDomain::edge</CODE> returns the indices of the edge's two end-points.
+        <LI><U>Lines 186-187</U>: The target gradient constraints are obtained applying the divergence operator to the computed edge differences.
       </UL>
-      <LI><U>Lines 192-193</U>: The target value and gradient weights are combined using the weights specified by the user.
+      <LI><U>Lines 190-191</U>: The target value and gradient weights are combined using the weights specified by the user.
     </UL>
-    <LI><U>Lines 196-197</U>: The system matrix is constructed by taking the weighted combination of the mass and stiffness matrices (using the same weights for combining the value and gradient constraints).
-    <LI><U>Lines 201-210</U>: The system matrix is factored.
-    <LI><U>Lines 213-220</U>: The values for the individual image channels are computed by solving the linear system.
-    <LI><U>Lines 223-228</U>: The output texel values are written from the <CODE>std::vector</CODE> back into the texture image.
+    <LI><U>Lines 195-197</U>: The system matrix is constructed by taking the weighted combination of the mass and stiffness matrices (using the same weights for combining the value and gradient constraints).
+    <LI><U>Lines 199-209</U>: The system matrix is factored.
+    <LI><U>Lines 211-219</U>: The values for the individual image channels are computed by solving the linear system.
+    <LI><U>Lines 221-226</U>: The output texel values are written from the <CODE>std::vector</CODE> back into the texture image.
   </UL>
 </UL>
 

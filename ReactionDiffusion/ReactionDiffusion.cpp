@@ -870,7 +870,7 @@ void _main( int argc , char* argv[] )
 	else
 	{
 		Miscellany::Timer timer;
-		for( int i=0 ; i<OutputSteps.value ; i++ )
+		for( unsigned int i=0 ; i<OutputSteps.value ; i++ )
 		{
 			if( Verbose.set ) printf( "%d / %d \r" , i+1 , OutputSteps.value );
 			if( UseDirectSolver.set ) GrayScottReactionDiffusion< PreReal , Real >::UpdateExactSolution();

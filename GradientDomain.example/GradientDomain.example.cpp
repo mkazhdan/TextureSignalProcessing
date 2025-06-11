@@ -118,6 +118,11 @@ int main( int argc , char* argv[] )
 		ReadImage< TextureBitDepth >( mask , Mask.value );
 		if( mask.res(0)!=texture.res(0) || mask.res(1)!=texture.res(1) ) MK_THROW( "Texture and texel ID resolutions don't match: " , texture.res(0) , " x " , texture.res(1) , " != " , mask.res(0) , " x " , mask.res(1) );
 	}
+	if( Verbose.set )
+	{
+		std::cout << "Triangles: " << mesh.numTriangles() << std::endl;
+		std::cout << "Resolution: " << texture.res(0) << " x " << texture.res(1) << std::endl;
+	}
 
 	auto UseEdge = [&]( std::pair< unsigned int , unsigned int > coords0 , std::pair< unsigned int , unsigned int > coords1 )
 		{
@@ -131,21 +136,15 @@ int main( int argc , char* argv[] )
 			return useEdge;
 		};
 
-	if( Verbose.set )
-	{
-		std::cout << "Triangles: " << mesh.numTriangles() << std::endl;
-		std::cout << "Resolution: " << texture.res(0) << " x " << texture.res(1) << std::endl;
-	}
-
 	Miscellany::PerformanceMeter pMeter( '.' );
 
 	// Construct the gradient domain object from the textured mesh
 	GradientDomain< Real > gd
 	(
+		QuadratureSamples.value ,
 		mesh.numTriangles() ,
 		mesh.surface.vertices.size() ,
 		mesh.texture.vertices.size() ,
-		QuadratureSamples.value ,
 		[&]( size_t t ){ return mesh.surface.triangles[t]; } ,
 		[&]( size_t v ){ return mesh.surface.vertices[v]; } ,
 		[&]( size_t t ){ return mesh.texture.triangles[t]; } ,
@@ -153,7 +152,6 @@ int main( int argc , char* argv[] )
 		texture.res(0) ,
 		texture.res(1)
 	);
-
 	if( Verbose.set ) std::cout << pMeter( "Gradient domain" ) << std::endl;
 
 	std::vector< Point< Real , Channels > > x( gd.numNodes() ) , b( gd.numNodes() );
@@ -192,21 +190,21 @@ int main( int argc , char* argv[] )
 		// Combine the constraints
 		for( size_t n=0 ; n<gd.numNodes() ; n++ ) b[n] = valueB[n] * ValueWeight.value + gradientB[n] * GradientWeight.value;
 	}
+	if( Verbose.set ) std::cout << pMeter( "Coefficients" ) << std::endl;
 
 	// Compute the system matrix
 	Eigen::SparseMatrix< Real > M = gd.mass() * ValueWeight.value + gd.stiffness() * GradientWeight.value;
+	if( Verbose.set ) std::cout << pMeter( "Matrix" ) << std::endl;
 
-	if( Verbose.set ) std::cout << pMeter( "System" ) << std::endl;
-
-	// Construct/factorize the solver
+	// Construct/factor the solver
 	Solver< Real > solver( M );
 	switch( solver.info() )
 	{
 	case Eigen::Success: break;
-	case Eigen::NumericalIssue: MK_THROW( "Failed to factorize matrix (numerical issue): "            , typeid( Solver< Real > ).name() ) ; break;
-	case Eigen::NoConvergence:  MK_THROW( "Failed to factorize matrix (no convergence): "             , typeid( Solver< Real > ).name() ) ; break;
-	case Eigen::InvalidInput:   MK_THROW( "Failed to factorize matrix (invalid input): "              , typeid( Solver< Real > ).name() ) ; break;
-	default:                    MK_THROW( "Failed to factorize matrix (info=" , solver.info() , "): " , typeid( Solver< Real > ).name() );
+	case Eigen::NumericalIssue: MK_THROW( "Failed to factor matrix (numerical issue): "            , typeid( Solver< Real > ).name() ) ; break;
+	case Eigen::NoConvergence:  MK_THROW( "Failed to factor matrix (no convergence): "             , typeid( Solver< Real > ).name() ) ; break;
+	case Eigen::InvalidInput:   MK_THROW( "Failed to factor matrix (invalid input): "              , typeid( Solver< Real > ).name() ) ; break;
+	default:                    MK_THROW( "Failed to factor matrix (info=" , solver.info() , "): " , typeid( Solver< Real > ).name() );
 	}
 	if( Verbose.set ) std::cout << pMeter( "Factored" ) << std::endl;
 

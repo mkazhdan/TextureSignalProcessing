@@ -58,10 +58,10 @@ template
 >
 GradientDomain< Real >::GradientDomain
 (
+	unsigned quadraturePointsPerTriangle ,
 	size_t numTriangles ,
 	size_t numSurfaceVertices ,
 	size_t numTextureVertices ,
-	unsigned quadraturePointsPerTriangle ,
 	SurfaceTriangleFunctor && surfaceTriangleFunctor ,
 	SurfaceMetricOrVertexFunctor && surfaceMetricOrVertexFunctor ,
 	TextureTriangleFunctor && textureTriangleFunctor ,
@@ -91,7 +91,7 @@ GradientDomain< Real >::GradientDomain
 
 		// Flip the vertical axis
 		for( size_t i=0 ; i<mesh.texture.vertices.size() ; i++ ) mesh.texture.vertices[i][1] = (Real)1. - mesh.texture.vertices[i][1];
-		for( size_t i=0 ; i<mesh.texture.triangles.size() ; i++ ) if( mesh.texture.triangle(i).measure()==0 ) MK_WARN( "Zero area texture triangle: " , i );
+		for( size_t i=0 ; i<mesh.texture.triangles.size() ; i++ ) if( mesh.texture.triangle( static_cast< unsigned int >(i) ).measure()==0 ) MK_WARN( "Zero area texture triangle: " , i );
 	}
 
 	HierarchicalSystem< Real , Real > hierarchy;

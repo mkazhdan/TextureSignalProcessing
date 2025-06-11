@@ -58,10 +58,10 @@ namespace MishaK
 				>
 			GradientDomain
 			(
+				unsigned quadraturePointsPerTriangle ,
 				size_t numTriangles ,
 				size_t numSurfaceVertices ,
 				size_t numTextureVertices ,
-				unsigned quadraturePointsPerTriangle ,
 				SurfaceTriangleFunctor       && surfaceTriangleFunctor ,
 				SurfaceMetricOrVertexFunctor && surfaceMetricOrVertexFunctor ,
 				TextureTriangleFunctor       && textureTriangleFunctor ,

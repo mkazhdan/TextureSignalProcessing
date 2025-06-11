@@ -342,39 +342,39 @@ Eigen::SparseMatrix< OutReal > MassAndStiffnessOperators< MatrixReal >::_matrix(
 		{
 			if constexpr( Mass )
 			{
-				triplets.emplace_back( current , prevCol-1 , mCoefficients[0] );
-				triplets.emplace_back( current , prevCol   , mCoefficients[1] );
-				triplets.emplace_back( current , prevCol+1 , mCoefficients[2] );
-				triplets.emplace_back( current , current-1 , mCoefficients[3] );
-				triplets.emplace_back( current , current   , mCoefficients[4] );
-				triplets.emplace_back( current , current+1 , mCoefficients[5] );
-				triplets.emplace_back( current , nextCol-1 , mCoefficients[6] );
-				triplets.emplace_back( current , nextCol   , mCoefficients[7] );
-				triplets.emplace_back( current , nextCol+1 , mCoefficients[8] );
+				triplets.emplace_back( static_cast< int >( current ) , static_cast< int >( prevCol-1 ) , mCoefficients[0] );
+				triplets.emplace_back( static_cast< int >( current ) , static_cast< int >( prevCol   ) , mCoefficients[1] );
+				triplets.emplace_back( static_cast< int >( current ) , static_cast< int >( prevCol+1 ) , mCoefficients[2] );
+				triplets.emplace_back( static_cast< int >( current ) , static_cast< int >( current-1 ) , mCoefficients[3] );
+				triplets.emplace_back( static_cast< int >( current ) , static_cast< int >( current   ) , mCoefficients[4] );
+				triplets.emplace_back( static_cast< int >( current ) , static_cast< int >( current+1 ) , mCoefficients[5] );
+				triplets.emplace_back( static_cast< int >( current ) , static_cast< int >( nextCol-1 ) , mCoefficients[6] );
+				triplets.emplace_back( static_cast< int >( current ) , static_cast< int >( nextCol   ) , mCoefficients[7] );
+				triplets.emplace_back( static_cast< int >( current ) , static_cast< int >( nextCol+1 ) , mCoefficients[8] );
 			}
 			else if constexpr( Stiffness )
 			{
-				triplets.emplace_back( current , prevCol-1 , sCoefficients[0] );
-				triplets.emplace_back( current , prevCol   , sCoefficients[1] );
-				triplets.emplace_back( current , prevCol+1 , sCoefficients[2] );
-				triplets.emplace_back( current , current-1 , sCoefficients[3] );
-				triplets.emplace_back( current , current   , sCoefficients[4] );
-				triplets.emplace_back( current , current+1 , sCoefficients[5] );
-				triplets.emplace_back( current , nextCol-1 , sCoefficients[6] );
-				triplets.emplace_back( current , nextCol   , sCoefficients[7] );
-				triplets.emplace_back( current , nextCol+1 , sCoefficients[8] );
+				triplets.emplace_back( static_cast< int >( current ) , static_cast< int >( prevCol-1 ) , sCoefficients[0] );
+				triplets.emplace_back( static_cast< int >( current ) , static_cast< int >( prevCol   ) , sCoefficients[1] );
+				triplets.emplace_back( static_cast< int >( current ) , static_cast< int >( prevCol+1 ) , sCoefficients[2] );
+				triplets.emplace_back( static_cast< int >( current ) , static_cast< int >( current-1 ) , sCoefficients[3] );
+				triplets.emplace_back( static_cast< int >( current ) , static_cast< int >( current   ) , sCoefficients[4] );
+				triplets.emplace_back( static_cast< int >( current ) , static_cast< int >( current+1 ) , sCoefficients[5] );
+				triplets.emplace_back( static_cast< int >( current ) , static_cast< int >( nextCol-1 ) , sCoefficients[6] );
+				triplets.emplace_back( static_cast< int >( current ) , static_cast< int >( nextCol   ) , sCoefficients[7] );
+				triplets.emplace_back( static_cast< int >( current ) , static_cast< int >( nextCol+1 ) , sCoefficients[8] );
 			}
 			else
 			{
-				triplets.emplace_back( current , prevCol-1 , mCoefficients[0]*mWeight + sCoefficients[0]*sWeight );
-				triplets.emplace_back( current , prevCol   , mCoefficients[1]*mWeight + sCoefficients[1]*sWeight );
-				triplets.emplace_back( current , prevCol+1 , mCoefficients[2]*mWeight + sCoefficients[2]*sWeight );
-				triplets.emplace_back( current , current-1 , mCoefficients[3]*mWeight + sCoefficients[3]*sWeight );
-				triplets.emplace_back( current , current   , mCoefficients[4]*mWeight + sCoefficients[4]*sWeight );
-				triplets.emplace_back( current , current+1 , mCoefficients[5]*mWeight + sCoefficients[5]*sWeight );
-				triplets.emplace_back( current , nextCol-1 , mCoefficients[6]*mWeight + sCoefficients[6]*sWeight );
-				triplets.emplace_back( current , nextCol   , mCoefficients[7]*mWeight + sCoefficients[7]*sWeight );
-				triplets.emplace_back( current , nextCol+1 , mCoefficients[8]*mWeight + sCoefficients[8]*sWeight );
+				triplets.emplace_back( static_cast< int >( current ) , static_cast< int >( prevCol-1 ) , mCoefficients[0]*mWeight + sCoefficients[0]*sWeight );
+				triplets.emplace_back( static_cast< int >( current ) , static_cast< int >( prevCol   ) , mCoefficients[1]*mWeight + sCoefficients[1]*sWeight );
+				triplets.emplace_back( static_cast< int >( current ) , static_cast< int >( prevCol+1 ) , mCoefficients[2]*mWeight + sCoefficients[2]*sWeight );
+				triplets.emplace_back( static_cast< int >( current ) , static_cast< int >( current-1 ) , mCoefficients[3]*mWeight + sCoefficients[3]*sWeight );
+				triplets.emplace_back( static_cast< int >( current ) , static_cast< int >( current   ) , mCoefficients[4]*mWeight + sCoefficients[4]*sWeight );
+				triplets.emplace_back( static_cast< int >( current ) , static_cast< int >( current+1 ) , mCoefficients[5]*mWeight + sCoefficients[5]*sWeight );
+				triplets.emplace_back( static_cast< int >( current ) , static_cast< int >( nextCol-1 ) , mCoefficients[6]*mWeight + sCoefficients[6]*sWeight );
+				triplets.emplace_back( static_cast< int >( current ) , static_cast< int >( nextCol   ) , mCoefficients[7]*mWeight + sCoefficients[7]*sWeight );
+				triplets.emplace_back( static_cast< int >( current ) , static_cast< int >( nextCol+1 ) , mCoefficients[8]*mWeight + sCoefficients[8]*sWeight );
 			}
 		}
 	}
@@ -386,43 +386,43 @@ Eigen::SparseMatrix< OutReal > MassAndStiffnessOperators< MatrixReal >::_matrix(
 		if constexpr( Mass )
 		{
 			for( unsigned int j=0 ; j<massCoefficients.boundaryDeepMatrix.RowSize(i) ; j++ )
-				triplets.emplace_back( globalIndex , massCoefficients.boundaryDeepMatrix[i][j].N , massCoefficients.boundaryDeepMatrix[i][j].Value );
+				triplets.emplace_back( static_cast< int >( globalIndex ) , massCoefficients.boundaryDeepMatrix[i][j].N , massCoefficients.boundaryDeepMatrix[i][j].Value );
 
 			for( unsigned int j=0 ; j<massCoefficients.boundaryBoundaryMatrix.RowSize(i) ; j++ )
 			{
 				size_t neighbourGlobalIndex = static_cast< size_t >( indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex( massCoefficients.boundaryBoundaryMatrix[i][j].N ) ) );
-				triplets.emplace_back( globalIndex , neighbourGlobalIndex , massCoefficients.boundaryBoundaryMatrix[i][j].Value );
+				triplets.emplace_back( static_cast< int >( globalIndex ) , static_cast< int >( neighbourGlobalIndex ) , massCoefficients.boundaryBoundaryMatrix[i][j].Value );
 			}
 		}
 		else if constexpr( Stiffness )
 		{
 			for( unsigned int j=0 ; j<stiffnessCoefficients.boundaryDeepMatrix.RowSize(i) ; j++ )
-				triplets.emplace_back( globalIndex , stiffnessCoefficients.boundaryDeepMatrix[i][j].N , stiffnessCoefficients.boundaryDeepMatrix[i][j].Value );
+				triplets.emplace_back( static_cast< int >( globalIndex ) , stiffnessCoefficients.boundaryDeepMatrix[i][j].N , stiffnessCoefficients.boundaryDeepMatrix[i][j].Value );
 
 			for( unsigned int j=0 ; j<stiffnessCoefficients.boundaryBoundaryMatrix.RowSize(i) ; j++ )
 			{
 				size_t neighbourGlobalIndex = static_cast< size_t >( indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex( stiffnessCoefficients.boundaryBoundaryMatrix[i][j].N ) ) );
-				triplets.emplace_back( globalIndex , neighbourGlobalIndex , stiffnessCoefficients.boundaryBoundaryMatrix[i][j].Value );
+				triplets.emplace_back( static_cast< int >( globalIndex ) , static_cast< int >( neighbourGlobalIndex ) , stiffnessCoefficients.boundaryBoundaryMatrix[i][j].Value );
 			}
 		}
 		else
 		{
 			for( unsigned int j=0 ; j<massCoefficients.boundaryDeepMatrix.RowSize(i) ; j++ )
-				triplets.emplace_back( globalIndex , massCoefficients.boundaryDeepMatrix[i][j].N , massCoefficients.boundaryDeepMatrix[i][j].Value*mWeight + stiffnessCoefficients.boundaryDeepMatrix[i][j].Value*sWeight );
+				triplets.emplace_back( static_cast< int >( globalIndex ) , massCoefficients.boundaryDeepMatrix[i][j].N , massCoefficients.boundaryDeepMatrix[i][j].Value*mWeight + stiffnessCoefficients.boundaryDeepMatrix[i][j].Value*sWeight );
 
 			for( unsigned int j=0 ; j<massCoefficients.boundaryBoundaryMatrix.RowSize(i) ; j++ )
 			{
 				size_t neighbourGlobalIndex = static_cast< size_t >( indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex( massCoefficients.boundaryBoundaryMatrix[i][j].N ) ) );
-				triplets.emplace_back( globalIndex , neighbourGlobalIndex , massCoefficients.boundaryBoundaryMatrix[i][j].Value*mWeight + stiffnessCoefficients.boundaryBoundaryMatrix[i][j].Value*sWeight );
+				triplets.emplace_back( static_cast< int >( globalIndex ) , static_cast< int >( neighbourGlobalIndex ) , massCoefficients.boundaryBoundaryMatrix[i][j].Value*mWeight + stiffnessCoefficients.boundaryBoundaryMatrix[i][j].Value*sWeight );
 			}
 		}
 	}
 
 	for( unsigned int r=0 ; r<massCoefficients.boundaryBoundaryMatrix.rows ; r++ )
 		for( unsigned int j=0 ; j<massCoefficients.boundaryBoundaryMatrix.rowSizes[r] ; j++ )
-			if constexpr( Mass ) triplets.emplace_back( r , massCoefficients.boundaryBoundaryMatrix[r][j].N , massCoefficients.boundaryBoundaryMatrix[r][j].Value );
-			else if constexpr( Stiffness ) triplets.emplace_back( r , stiffnessCoefficients.boundaryBoundaryMatrix[r][j].N , stiffnessCoefficients.boundaryBoundaryMatrix[r][j].Value );
-			else triplets.emplace_back( r , massCoefficients.boundaryBoundaryMatrix[r][j].N , massCoefficients.boundaryBoundaryMatrix[r][j].Value*mWeight + stiffnessCoefficients.boundaryBoundaryMatrix[r][j].Value*sWeight );
+			if      constexpr( Mass      ) triplets.emplace_back( static_cast< int >( r ) , massCoefficients.boundaryBoundaryMatrix[r][j].N , massCoefficients.boundaryBoundaryMatrix[r][j].Value );
+			else if constexpr( Stiffness ) triplets.emplace_back( static_cast< int >( r ) , stiffnessCoefficients.boundaryBoundaryMatrix[r][j].N , stiffnessCoefficients.boundaryBoundaryMatrix[r][j].Value );
+			else triplets.emplace_back( static_cast< int >( r ) , massCoefficients.boundaryBoundaryMatrix[r][j].N , massCoefficients.boundaryBoundaryMatrix[r][j].Value*mWeight + stiffnessCoefficients.boundaryBoundaryMatrix[r][j].Value*sWeight );
 
 	M.setFromTriplets( triplets.begin() , triplets.end() );
 	return M;
@@ -1602,8 +1602,8 @@ template< typename Real , typename SampleType >
 template< typename OutData , typename InData >
 typename Integrator< Real , SampleType >::template Scratch< OutData , InData > Integrator< Real , SampleType >::getScratch( void ) const
 {
-	unsigned int numCoarseBoundaryNodes = fineBoundaryCoarseBoundaryRestriction.rows;
-	unsigned int numFineBoundaryNodes = coarseBoundaryFineBoundaryProlongation.rows;
+	size_t numCoarseBoundaryNodes = fineBoundaryCoarseBoundaryRestriction.rows;
+	size_t numFineBoundaryNodes = coarseBoundaryFineBoundaryProlongation.rows;
 
 	Scratch< OutData , InData > scratch;
 	scratch._coarseBoundaryPrimal.resize( numCoarseBoundaryNodes );
