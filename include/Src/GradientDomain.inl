@@ -29,7 +29,7 @@ DAMAGE.
 
 template< typename Real >
 template< typename Functor >
-constexpr bool GradientDomain< Real >::_IsTriangleFunctor( void ){ return std::is_convertible_v< Functor , std::function< SimplexIndex< 2 > ( size_t ) > >; }
+constexpr bool GradientDomain< Real >::_IsTriangleCornerFunctor( void ){ return std::is_convertible_v< Functor , std::function< size_t ( size_t , unsigned int ) > >; }
 
 template< typename Real >
 template< typename Functor >
@@ -47,13 +47,12 @@ template< typename Real >
 template< typename Functor >
 constexpr bool GradientDomain< Real >::_IsTextureVertexFunctor( void ){ return std::is_convertible_v< Functor , std::function< Point< Real , 2 > ( size_t ) > >; }
 
-
 template< typename Real >
 template
 <
-	typename SurfaceTriangleFunctor ,       /* = std::function< SimplexIndex< 2 > ( size_t ) > */
+	typename SurfaceCornerFunctor ,         /* = std::function< size_t ( size_t , unsigned int ) > */
 	typename SurfaceMetricOrVertexFunctor , /* = std::function< SquareMatrix< Real , 2 > ( size_t ) > || std::function< Point< Real ,32 > ( size_t ) > */
-	typename TextureTriangleFunctor ,       /* = std::function< SimplexIndex< 2 > ( size_t ) > */
+	typename TextureCornerFunctor ,         /* = std::function< size_t ( size_t , unsigned int ) > */
 	typename TextureVertexFunctor           /* = std::function< Point< Real , 2 > ( size_t ) > */
 >
 GradientDomain< Real >::GradientDomain
@@ -62,18 +61,18 @@ GradientDomain< Real >::GradientDomain
 	size_t numTriangles ,
 	size_t numSurfaceVertices ,
 	size_t numTextureVertices ,
-	SurfaceTriangleFunctor && surfaceTriangleFunctor ,
+	SurfaceCornerFunctor && surfaceCornerFunctor ,
 	SurfaceMetricOrVertexFunctor && surfaceMetricOrVertexFunctor ,
-	TextureTriangleFunctor && textureTriangleFunctor ,
-	TextureVertexFunctor   && textureVertexFunctor ,
+	TextureCornerFunctor && textureCornerFunctor ,
+	TextureVertexFunctor && textureVertexFunctor ,
 	unsigned int width ,
 	unsigned int height ,
 	bool normalize
 )
 {
-	static_assert( _IsTriangleFunctor< SurfaceTriangleFunctor >()                    , "[ERROR] SurfaceTriangleFunctor poorly formed" );
+	static_assert( _IsTriangleCornerFunctor< SurfaceCornerFunctor >()                , "[ERROR] SurfaceCornerFunctor poorly formed" );
 	static_assert( _IsSurfaceMetricOrVertexFunctor< SurfaceMetricOrVertexFunctor >() , "[ERROR] SurfaceMetricOrVertexFunctor poorly formed" );
-	static_assert( _IsTriangleFunctor< TextureTriangleFunctor >()                    , "[ERROR] TextureTriangleFunctor poorly formed" );
+	static_assert( _IsTriangleCornerFunctor< TextureCornerFunctor >()                , "[ERROR] TextureCornerFunctor poorly formed" );
 	static_assert( _IsTextureVertexFunctor< TextureVertexFunctor >()                 , "[ERROR] TextureVertexFunctor poorly formed" );
 
 	static const bool HasSurfaceMetric = _IsSurfaceMetricFunctor< SurfaceMetricOrVertexFunctor >();
@@ -85,7 +84,8 @@ GradientDomain< Real >::GradientDomain
 		mesh.texture.triangles.resize( numTriangles );
 		if constexpr( HasSurfaceVertex ) mesh.surface.vertices.resize( numSurfaceVertices );
 		mesh.texture.vertices.resize( numTextureVertices );
-		for( size_t i=0 ; i<numTriangles ; i++ ) mesh.surface.triangles[i] = surfaceTriangleFunctor( i ) , mesh.texture.triangles[i] = textureTriangleFunctor( i );
+		for( size_t t=0 ; t<numTriangles ; t++ ) for( unsigned int k=0 ; k<=2 ; k++ )
+			mesh.surface.triangles[t][k] = surfaceCornerFunctor( t , k ) , mesh.texture.triangles[t][k] = textureCornerFunctor( t , k );
 		if constexpr( HasSurfaceVertex ) for( size_t i=0 ; i<numSurfaceVertices ; i++ ) mesh.surface.vertices[i] = surfaceMetricOrVertexFunctor( i );
 		for( size_t i=0 ; i<numTextureVertices ; i++ ) mesh.texture.vertices[i] = textureVertexFunctor( i );
 

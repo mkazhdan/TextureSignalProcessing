@@ -473,15 +473,6 @@ Eigen::SparseMatrix< OutReal > MassAndStiffnessOperators< MatrixReal >::_matrix(
 		}
 	}
 
-#ifdef NEW_CODE
-#else // !NEW_CODE
-	for( unsigned int r=0 ; r<massCoefficients.boundaryBoundaryMatrix.rows ; r++ )
-		for( unsigned int j=0 ; j<massCoefficients.boundaryBoundaryMatrix.rowSizes[r] ; j++ )
-			if      constexpr( Mass      ) triplets.emplace_back( static_cast< int >( r ) , massCoefficients.boundaryBoundaryMatrix[r][j].N , massCoefficients.boundaryBoundaryMatrix[r][j].Value );
-			else if constexpr( Stiffness ) triplets.emplace_back( static_cast< int >( r ) , stiffnessCoefficients.boundaryBoundaryMatrix[r][j].N , stiffnessCoefficients.boundaryBoundaryMatrix[r][j].Value );
-			else triplets.emplace_back( static_cast< int >( r ) , massCoefficients.boundaryBoundaryMatrix[r][j].N , massCoefficients.boundaryBoundaryMatrix[r][j].Value*mWeight + stiffnessCoefficients.boundaryBoundaryMatrix[r][j].Value*sWeight );
-#endif // NEW_CODE
-
 	Eigen::SparseMatrix< OutReal > M( indexConverter.numCombined() , indexConverter.numCombined() );
 	M.setFromTriplets( triplets.begin() , triplets.end() );
 	return M;

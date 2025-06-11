@@ -45,32 +45,32 @@ namespace MishaK
 		struct GradientDomain
 		{
 			// A constructor taking functors mapping:
-			// 1.  Triangle index       -> surface vertex indices at corners
-			// 2a. Triangle index       -> metric tensor associated to the triangle
-			// 2b. Surface vertex index -> position in 3D
-			// 3.  Triangle index       -> texture vertex indices at corners
-			// 4.  Texture vertex index -> position in the unit square
+			// 1.  Triangle index + corner index -> surface vertex index
+			// 2a. Triangle index                -> metric tensor associated to the triangle
+			// 2b. Surface vertex index          -> position in 3D
+			// 3.  Triangle index + corner index -> texture vertex index
+			// 4.  Texture vertex index          -> position in the unit square
 			template
 				<
-				typename SurfaceTriangleFunctor ,       /* = std::function< SimplexIndex< 2 > ( size_t ) > */
-				typename SurfaceMetricOrVertexFunctor , /* = std::function< SquareMatrix< Real , 2 > ( size_t ) > || std::function< Point< Real ,32 > ( size_t ) > */
-				typename TextureTriangleFunctor ,       /* = std::function< SimplexIndex< 2 > ( size_t ) > */
+				typename SurfaceCornerFunctor ,         /* = std::function< size_t ( size_t , unsigned int ) > */
+				typename SurfaceMetricOrVertexFunctor , /* = std::function< SquareMatrix< Real , 2 > ( size_t ) > || std::function< Point< Real , 3 > ( size_t ) > */
+				typename TextureCornerFunctor ,         /* = std::function< size_t ( size_t , unsigned int ) > */
 				typename TextureVertexFunctor           /* = std::function< Point< Real , 2 > ( size_t ) > */
 				>
-			GradientDomain
-			(
-				unsigned quadraturePointsPerTriangle ,
-				size_t numTriangles ,
-				size_t numSurfaceVertices ,
-				size_t numTextureVertices ,
-				SurfaceTriangleFunctor       && surfaceTriangleFunctor ,
-				SurfaceMetricOrVertexFunctor && surfaceMetricOrVertexFunctor ,
-				TextureTriangleFunctor       && textureTriangleFunctor ,
-				TextureVertexFunctor         && textureVertexFunctor ,
-				unsigned int width ,
-				unsigned int height ,
-				bool normalize = true
-			);
+				GradientDomain
+				(
+					unsigned quadraturePointsPerTriangle ,
+					size_t numTriangles ,
+					size_t numSurfaceVertices ,
+					size_t numTextureVertices ,
+					SurfaceCornerFunctor         && surfaceCornerFunctor ,
+					SurfaceMetricOrVertexFunctor && surfaceMetricOrVertexFunctor ,
+					TextureCornerFunctor         && textureCornerFunctor ,
+					TextureVertexFunctor         && textureVertexFunctor ,
+					unsigned int width ,
+					unsigned int height ,
+					bool normalize = true
+				);
 
 			// The number of texel nodes
 			size_t numNodes( void ) const;
@@ -112,10 +112,10 @@ namespace MishaK
 			void unitTests( unsigned int numTest , double eps , bool verbose=false ) const;
 
 		protected:
-			template< typename Functor > static constexpr bool _IsTriangleFunctor( void );
+			template< typename Functor > static constexpr bool _IsTriangleCornerFunctor( void );
 			template< typename Functor > static constexpr bool _IsSurfaceMetricFunctor( void );
-			template< typename Functor > static constexpr bool _IsSurfaceMetricOrVertexFunctor( void );
 			template< typename Functor > static constexpr bool _IsSurfaceVertexFunctor( void );	
+			template< typename Functor > static constexpr bool _IsSurfaceMetricOrVertexFunctor( void );
 			template< typename Functor > static constexpr bool _IsTextureVertexFunctor( void );
 
 			MassAndStiffnessOperators< Real > _massAndStiffnessOperators;
