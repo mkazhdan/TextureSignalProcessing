@@ -136,179 +136,187 @@ template< typename MatrixReal >
 template< bool Add , bool Mass , bool Stiffness , typename Data >
 void MassAndStiffnessOperators< MatrixReal >::_evaluate( double mWeight , double sWeight , ConstPointer( Data ) in , Pointer( Data ) out ) const
 {
-	static_assert( !( Mass && Stiffness ) , "[ERROR] Mass and Stiffness can't both be true" );
-	unsigned int numBoundaryVariables = static_cast< unsigned int >( indexConverter.numBoundary() );
+	static_assert( !( Mass && Stiffness ) , "[ERROR] Mass and Stiffness can't both be enabled" );
 
-	// Pull out the boundary values from the input array
-	std::vector< Data > outBoundaryValues( numBoundaryVariables );
-	std::vector< Data >  inBoundaryValues( numBoundaryVariables );
-	for( unsigned int i=0 ; i<numBoundaryVariables ; i++ ) inBoundaryValues[i] = in[ static_cast< unsigned int >( indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex(i) ) ) ];
-
-	if constexpr( Mass )
+	// Process boundary
 	{
-		//  Perform the boundary -> boundary multiplication
-		massCoefficients.boundaryBoundaryMatrix.template Multiply< Data , MatrixReal >( &inBoundaryValues[0] , &outBoundaryValues[0] , Add ? MULTIPLY_ADD : 0 );
-		// Perform the interior -> boundary multiplication
-		massCoefficients.boundaryDeepMatrix.template Multiply< Data , MatrixReal >( &in[0] , &outBoundaryValues[0] , MULTIPLY_ADD );
-	}
-	else if constexpr( Stiffness )
-	{
-		//  Perform the boundary -> boundary multiplication
-		stiffnessCoefficients.boundaryBoundaryMatrix.template Multiply< Data , MatrixReal >( &inBoundaryValues[0] , &outBoundaryValues[0] , Add ? MULTIPLY_ADD : 0 );
-		// Perform the interior -> boundary multiplication
-		stiffnessCoefficients.boundaryDeepMatrix.template Multiply< Data , MatrixReal >( &in[0] , &outBoundaryValues[0] , MULTIPLY_ADD );
-	}
-	else
-	{
-		std::vector< Data > _outBoundaryValues( numBoundaryVariables );
+		unsigned int numBoundaryVariables = static_cast< unsigned int >( indexConverter.numBoundary() );
 
-		//  Perform the boundary -> boundary multiplication
-		massCoefficients.boundaryBoundaryMatrix.template Multiply< Data , MatrixReal >( &inBoundaryValues[0] , &_outBoundaryValues[0] );
-		// Perform the interior -> boundary multiplication
-		massCoefficients.boundaryDeepMatrix.template Multiply< Data , MatrixReal >( &in[0] , &_outBoundaryValues[0] , MULTIPLY_ADD );
-		if( Add ) ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( size_t i ){ outBoundaryValues[i] += _outBoundaryValues[i] * mWeight; } );
-		else      ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( size_t i ){ outBoundaryValues[i]  = _outBoundaryValues[i] * mWeight; } );
+		// Pull out the boundary values from the input array
+		std::vector< Data > outBoundaryValues( numBoundaryVariables );
+		std::vector< Data >  inBoundaryValues( numBoundaryVariables );
+		for( unsigned int i=0 ; i<numBoundaryVariables ; i++ ) inBoundaryValues[i] = in[ static_cast< unsigned int >( indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex(i) ) ) ];
 
-		//  Perform the boundary -> boundary multiplication
-		stiffnessCoefficients.boundaryBoundaryMatrix.template Multiply< Data , MatrixReal >( &inBoundaryValues[0] , &_outBoundaryValues[0] );
-		// Perform the interior -> boundary multiplication
-		stiffnessCoefficients.boundaryDeepMatrix.template Multiply< Data , MatrixReal >( &in[0] , &_outBoundaryValues[0] , MULTIPLY_ADD );
-		ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( size_t i ){ outBoundaryValues[i] += _outBoundaryValues[i] * sWeight; } );
-	}
-
-	// Write the boundary values back into the output array
-	if( Add ) ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ out[ static_cast< unsigned int >(indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex((unsigned int)i) ) ) ] += outBoundaryValues[i]; } );
-	else      ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ out[ static_cast< unsigned int >(indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex((unsigned int)i) ) ) ] = outBoundaryValues[i]; } );
-
-	// Perform the interior -> interior multiplication
-	auto UpdateRow = [&]( int r )
+		if constexpr( Mass )
 		{
-
-			Data* _out = out + rasterLines[r].lineStartIndex;
-			const Data* _inCurr = in + rasterLines[r].lineStartIndex;
-			const Data* _inPrev = in + rasterLines[r].prevLineIndex;
-			const Data* _inNext = in + rasterLines[r].nextLineIndex;
-
-			int lineLength = ( rasterLines[r].lineEndIndex - rasterLines[r].lineStartIndex + 1 );
-			size_t lineDeepStart = static_cast< size_t >( rasterLines[r].coeffStartIndex );
-			const MatrixReal * _deepM = &massCoefficients.deepCoefficients[ 10 * lineDeepStart ];
-			const MatrixReal * _deepS = &stiffnessCoefficients.deepCoefficients[ 10 * lineDeepStart ];
-
-			for( int i=0 ; i<lineLength ; _deepM+=10 , _deepS+=10 , i++ )
-			{
-				if constexpr( Mass )
-				{
-					if constexpr( Add )
-						_out[i] +=
-						(
-							_inPrev[i-1] * _deepM[0] +
-							_inPrev[i+0] * _deepM[1] +
-							_inPrev[i+1] * _deepM[2] +
-							_inCurr[i-1] * _deepM[3] +
-							_inCurr[i+0] * _deepM[4] +
-							_inCurr[i+1] * _deepM[5] +
-							_inNext[i-1] * _deepM[6] +
-							_inNext[i+0] * _deepM[7] +
-							_inNext[i+1] * _deepM[8]
-							);
-					else
-						_out[i] =
-						(
-							_inPrev[i-1] * _deepM[0] +
-							_inPrev[i+0] * _deepM[1] +
-							_inPrev[i+1] * _deepM[2] +
-							_inCurr[i-1] * _deepM[3] +
-							_inCurr[i+0] * _deepM[4] +
-							_inCurr[i+1] * _deepM[5] +
-							_inNext[i-1] * _deepM[6] +
-							_inNext[i+0] * _deepM[7] +
-							_inNext[i+1] * _deepM[8]
-							);
-				}
-				else if constexpr( Stiffness )
-				{
-					if constexpr( Add )
-						_out[i] +=
-						(
-							_inPrev[i-1] * _deepS[0] +
-							_inPrev[i+0] * _deepS[1] +
-							_inPrev[i+1] * _deepS[2] +
-							_inCurr[i-1] * _deepS[3] +
-							_inCurr[i+0] * _deepS[4] +
-							_inCurr[i+1] * _deepS[5] +
-							_inNext[i-1] * _deepS[6] +
-							_inNext[i+0] * _deepS[7] +
-							_inNext[i+1] * _deepS[8]
-							);
-					else
-						_out[i] =
-						(
-							_inPrev[i-1] * _deepS[0] +
-							_inPrev[i+0] * _deepS[1] +
-							_inPrev[i+1] * _deepS[2] +
-							_inCurr[i-1] * _deepS[3] +
-							_inCurr[i+0] * _deepS[4] +
-							_inCurr[i+1] * _deepS[5] +
-							_inNext[i-1] * _deepS[6] +
-							_inNext[i+0] * _deepS[7] +
-							_inNext[i+1] * _deepS[8]
-							);
-
-				}
-				else
-				{
-					if constexpr( Add )
-						_out[i] =
-						(
-							_inPrev[i-1] * ( _deepM[0]*mWeight + _deepS[0]*sWeight ) +
-							_inPrev[i+0] * ( _deepM[1]*mWeight + _deepS[1]*sWeight ) +
-							_inPrev[i+1] * ( _deepM[2]*mWeight + _deepS[2]*sWeight ) +
-							_inCurr[i-1] * ( _deepM[3]*mWeight + _deepS[3]*sWeight ) +
-							_inCurr[i+0] * ( _deepM[4]*mWeight + _deepS[4]*sWeight ) +
-							_inCurr[i+1] * ( _deepM[5]*mWeight + _deepS[5]*sWeight ) +
-							_inNext[i-1] * ( _deepM[6]*mWeight + _deepS[6]*sWeight ) +
-							_inNext[i+0] * ( _deepM[7]*mWeight + _deepS[7]*sWeight ) +
-							_inNext[i+1] * ( _deepM[8]*mWeight + _deepS[8]*sWeight )
-							);
-					else
-						_out[i] +=
-						(
-							_inPrev[i-1] * ( _deepM[0]*mWeight + _deepS[0]*sWeight ) +
-							_inPrev[i+0] * ( _deepM[1]*mWeight + _deepS[1]*sWeight ) +
-							_inPrev[i+1] * ( _deepM[2]*mWeight + _deepS[2]*sWeight ) +
-							_inCurr[i-1] * ( _deepM[3]*mWeight + _deepS[3]*sWeight ) +
-							_inCurr[i+0] * ( _deepM[4]*mWeight + _deepS[4]*sWeight ) +
-							_inCurr[i+1] * ( _deepM[5]*mWeight + _deepS[5]*sWeight ) +
-							_inNext[i-1] * ( _deepM[6]*mWeight + _deepS[6]*sWeight ) +
-							_inNext[i+0] * ( _deepM[7]*mWeight + _deepS[7]*sWeight ) +
-							_inNext[i+1] * ( _deepM[8]*mWeight + _deepS[8]*sWeight )
-							);
-				}
-			}
-		};
-
-	unsigned int threads = ThreadPool::NumThreads();
-	std::vector< int > lineRange( threads+1 );
-	int blockSize = (int)rasterLines.size() / threads;
-	for( unsigned int t=0 ; t<threads ; t++ ) lineRange[t] = t*blockSize;
-	lineRange[threads] = (int)rasterLines.size();
-	ThreadPool::ParallelFor
-	(
-		0 , threads ,
-		[&]( unsigned int , size_t t )
-		{
-			int firstLine = lineRange[t];
-			int lastLine = lineRange[t+1];
-			for( int r=firstLine ; r<lastLine ; r++ ) UpdateRow(r);
+			// Perform the boundary -> boundary multiplication
+			massCoefficients.boundaryBoundaryMatrix.template Multiply< Data , MatrixReal >( &inBoundaryValues[0] , &outBoundaryValues[0] , Add ? MULTIPLY_ADD : 0 );
+			// Perform the interior -> boundary multiplication
+			massCoefficients.boundaryDeepMatrix.template Multiply< Data , MatrixReal >( &in[0] , &outBoundaryValues[0] , MULTIPLY_ADD );
 		}
-	);
+		else if constexpr( Stiffness )
+		{
+			// Perform the boundary -> boundary multiplication
+			stiffnessCoefficients.boundaryBoundaryMatrix.template Multiply< Data , MatrixReal >( &inBoundaryValues[0] , &outBoundaryValues[0] , Add ? MULTIPLY_ADD : 0 );
+			// Perform the interior -> boundary multiplication
+			stiffnessCoefficients.boundaryDeepMatrix.template Multiply< Data , MatrixReal >( &in[0] , &outBoundaryValues[0] , MULTIPLY_ADD );
+		}
+		else
+		{
+			std::vector< Data > _outBoundaryValues( numBoundaryVariables );
+
+			// Perform the boundary -> boundary multiplication
+			massCoefficients.boundaryBoundaryMatrix.template Multiply< Data , MatrixReal >( &inBoundaryValues[0] , &_outBoundaryValues[0] );
+			// Perform the interior -> boundary multiplication
+			massCoefficients.boundaryDeepMatrix.template Multiply< Data , MatrixReal >( &in[0] , &_outBoundaryValues[0] , MULTIPLY_ADD );
+			if( Add ) ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( size_t i ){ outBoundaryValues[i] += _outBoundaryValues[i] * mWeight; } );
+			else      ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( size_t i ){ outBoundaryValues[i]  = _outBoundaryValues[i] * mWeight; } );
+
+			//  Perform the boundary -> boundary multiplication
+			stiffnessCoefficients.boundaryBoundaryMatrix.template Multiply< Data , MatrixReal >( &inBoundaryValues[0] , &_outBoundaryValues[0] );
+			// Perform the interior -> boundary multiplication
+			stiffnessCoefficients.boundaryDeepMatrix.template Multiply< Data , MatrixReal >( &in[0] , &_outBoundaryValues[0] , MULTIPLY_ADD );
+			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( size_t i ){ outBoundaryValues[i] += _outBoundaryValues[i] * sWeight; } );
+		}
+
+		// Write the boundary values back into the output array
+		if( Add ) ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ out[ static_cast< unsigned int >(indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex((unsigned int)i) ) ) ] += outBoundaryValues[i]; } );
+		else      ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ out[ static_cast< unsigned int >(indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex((unsigned int)i) ) ) ] = outBoundaryValues[i]; } );
+	}
+
+	// Process interior
+	{
+		// Perform the interior -> interior multiplication
+		auto UpdateRow = [&]( int r )
+			{
+
+				Data* _out = out + rasterLines[r].lineStartIndex;
+				const Data* _inCurr = in + rasterLines[r].lineStartIndex;
+				const Data* _inPrev = in + rasterLines[r].prevLineIndex;
+				const Data* _inNext = in + rasterLines[r].nextLineIndex;
+
+				int lineLength = ( rasterLines[r].lineEndIndex - rasterLines[r].lineStartIndex + 1 );
+				size_t lineDeepStart = static_cast< size_t >( rasterLines[r].coeffStartIndex );
+				const MatrixReal * _deepM = &massCoefficients.deepCoefficients[ 10 * lineDeepStart ];
+				const MatrixReal * _deepS = &stiffnessCoefficients.deepCoefficients[ 10 * lineDeepStart ];
+
+				for( int i=0 ; i<lineLength ; _deepM+=10 , _deepS+=10 , i++ )
+				{
+					if constexpr( Mass )
+					{
+						if constexpr( Add )
+							_out[i] +=
+							(
+								_inPrev[i-1] * _deepM[0] +
+								_inPrev[i+0] * _deepM[1] +
+								_inPrev[i+1] * _deepM[2] +
+								_inCurr[i-1] * _deepM[3] +
+								_inCurr[i+0] * _deepM[4] +
+								_inCurr[i+1] * _deepM[5] +
+								_inNext[i-1] * _deepM[6] +
+								_inNext[i+0] * _deepM[7] +
+								_inNext[i+1] * _deepM[8]
+								);
+						else
+							_out[i] =
+							(
+								_inPrev[i-1] * _deepM[0] +
+								_inPrev[i+0] * _deepM[1] +
+								_inPrev[i+1] * _deepM[2] +
+								_inCurr[i-1] * _deepM[3] +
+								_inCurr[i+0] * _deepM[4] +
+								_inCurr[i+1] * _deepM[5] +
+								_inNext[i-1] * _deepM[6] +
+								_inNext[i+0] * _deepM[7] +
+								_inNext[i+1] * _deepM[8]
+								);
+					}
+					else if constexpr( Stiffness )
+					{
+						if constexpr( Add )
+							_out[i] +=
+							(
+								_inPrev[i-1] * _deepS[0] +
+								_inPrev[i+0] * _deepS[1] +
+								_inPrev[i+1] * _deepS[2] +
+								_inCurr[i-1] * _deepS[3] +
+								_inCurr[i+0] * _deepS[4] +
+								_inCurr[i+1] * _deepS[5] +
+								_inNext[i-1] * _deepS[6] +
+								_inNext[i+0] * _deepS[7] +
+								_inNext[i+1] * _deepS[8]
+								);
+						else
+							_out[i] =
+							(
+								_inPrev[i-1] * _deepS[0] +
+								_inPrev[i+0] * _deepS[1] +
+								_inPrev[i+1] * _deepS[2] +
+								_inCurr[i-1] * _deepS[3] +
+								_inCurr[i+0] * _deepS[4] +
+								_inCurr[i+1] * _deepS[5] +
+								_inNext[i-1] * _deepS[6] +
+								_inNext[i+0] * _deepS[7] +
+								_inNext[i+1] * _deepS[8]
+								);
+
+					}
+					else
+					{
+						if constexpr( Add )
+							_out[i] =
+							(
+								_inPrev[i-1] * ( _deepM[0]*mWeight + _deepS[0]*sWeight ) +
+								_inPrev[i+0] * ( _deepM[1]*mWeight + _deepS[1]*sWeight ) +
+								_inPrev[i+1] * ( _deepM[2]*mWeight + _deepS[2]*sWeight ) +
+								_inCurr[i-1] * ( _deepM[3]*mWeight + _deepS[3]*sWeight ) +
+								_inCurr[i+0] * ( _deepM[4]*mWeight + _deepS[4]*sWeight ) +
+								_inCurr[i+1] * ( _deepM[5]*mWeight + _deepS[5]*sWeight ) +
+								_inNext[i-1] * ( _deepM[6]*mWeight + _deepS[6]*sWeight ) +
+								_inNext[i+0] * ( _deepM[7]*mWeight + _deepS[7]*sWeight ) +
+								_inNext[i+1] * ( _deepM[8]*mWeight + _deepS[8]*sWeight )
+								);
+						else
+							_out[i] +=
+							(
+								_inPrev[i-1] * ( _deepM[0]*mWeight + _deepS[0]*sWeight ) +
+								_inPrev[i+0] * ( _deepM[1]*mWeight + _deepS[1]*sWeight ) +
+								_inPrev[i+1] * ( _deepM[2]*mWeight + _deepS[2]*sWeight ) +
+								_inCurr[i-1] * ( _deepM[3]*mWeight + _deepS[3]*sWeight ) +
+								_inCurr[i+0] * ( _deepM[4]*mWeight + _deepS[4]*sWeight ) +
+								_inCurr[i+1] * ( _deepM[5]*mWeight + _deepS[5]*sWeight ) +
+								_inNext[i-1] * ( _deepM[6]*mWeight + _deepS[6]*sWeight ) +
+								_inNext[i+0] * ( _deepM[7]*mWeight + _deepS[7]*sWeight ) +
+								_inNext[i+1] * ( _deepM[8]*mWeight + _deepS[8]*sWeight )
+								);
+					}
+				}
+			};
+
+		unsigned int threads = ThreadPool::NumThreads();
+		std::vector< int > lineRange( threads+1 );
+		int blockSize = (int)rasterLines.size() / threads;
+		for( unsigned int t=0 ; t<threads ; t++ ) lineRange[t] = t*blockSize;
+		lineRange[threads] = (int)rasterLines.size();
+		ThreadPool::ParallelFor
+		(
+			0 , threads ,
+			[&]( unsigned int , size_t t )
+			{
+				int firstLine = lineRange[t];
+				int lastLine = lineRange[t+1];
+				for( int r=firstLine ; r<lastLine ; r++ ) UpdateRow(r);
+			}
+		);
+	}
 }
 
 template< typename MatrixReal >
 template< bool Mass , bool Stiffness , typename OutReal >
 Eigen::SparseMatrix< OutReal > MassAndStiffnessOperators< MatrixReal >::_matrix( double mWeight , double sWeight ) const
 {
-	Eigen::SparseMatrix< OutReal > M( indexConverter.numCombined() , indexConverter.numCombined() );
+	static_assert( !( Mass && Stiffness ) , "[ERROR] Mass and Stiffness can't both be enabled" );
+
 	std::vector< Eigen::Triplet< MatrixReal > > triplets;
 
 	size_t entries = 0;
@@ -320,7 +328,6 @@ Eigen::SparseMatrix< OutReal > MassAndStiffnessOperators< MatrixReal >::_matrix(
 		}
 
 		entries += massCoefficients.boundaryDeepMatrix.Entries();
-
 		entries += massCoefficients.boundaryBoundaryMatrix.Entries();
 	}
 
@@ -379,6 +386,54 @@ Eigen::SparseMatrix< OutReal > MassAndStiffnessOperators< MatrixReal >::_matrix(
 		}
 	}
 
+#if 0
+
+	// Process boundary
+	{
+		unsigned int numBoundaryVariables = static_cast< unsigned int >( indexConverter.numBoundary() );
+
+		// Pull out the boundary values from the input array
+		std::vector< Data > outBoundaryValues( numBoundaryVariables );
+		std::vector< Data >  inBoundaryValues( numBoundaryVariables );
+		for( unsigned int i=0 ; i<numBoundaryVariables ; i++ ) inBoundaryValues[i] = in[ static_cast< unsigned int >( indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex(i) ) ) ];
+
+		if constexpr( Mass )
+		{
+			// Perform the boundary -> boundary multiplication
+			massCoefficients.boundaryBoundaryMatrix.template Multiply< Data , MatrixReal >( &inBoundaryValues[0] , &outBoundaryValues[0] , Add ? MULTIPLY_ADD : 0 );
+			// Perform the interior -> boundary multiplication
+			massCoefficients.boundaryDeepMatrix.template Multiply< Data , MatrixReal >( &in[0] , &outBoundaryValues[0] , MULTIPLY_ADD );
+		}
+		else if constexpr( Stiffness )
+		{
+			// Perform the boundary -> boundary multiplication
+			stiffnessCoefficients.boundaryBoundaryMatrix.template Multiply< Data , MatrixReal >( &inBoundaryValues[0] , &outBoundaryValues[0] , Add ? MULTIPLY_ADD : 0 );
+			// Perform the interior -> boundary multiplication
+			stiffnessCoefficients.boundaryDeepMatrix.template Multiply< Data , MatrixReal >( &in[0] , &outBoundaryValues[0] , MULTIPLY_ADD );
+		}
+		else
+		{
+			std::vector< Data > _outBoundaryValues( numBoundaryVariables );
+
+			// Perform the boundary -> boundary multiplication
+			massCoefficients.boundaryBoundaryMatrix.template Multiply< Data , MatrixReal >( &inBoundaryValues[0] , &_outBoundaryValues[0] );
+			// Perform the interior -> boundary multiplication
+			massCoefficients.boundaryDeepMatrix.template Multiply< Data , MatrixReal >( &in[0] , &_outBoundaryValues[0] , MULTIPLY_ADD );
+			if( Add ) ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( size_t i ){ outBoundaryValues[i] += _outBoundaryValues[i] * mWeight; } );
+			else      ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( size_t i ){ outBoundaryValues[i]  = _outBoundaryValues[i] * mWeight; } );
+
+			//  Perform the boundary -> boundary multiplication
+			stiffnessCoefficients.boundaryBoundaryMatrix.template Multiply< Data , MatrixReal >( &inBoundaryValues[0] , &_outBoundaryValues[0] );
+			// Perform the interior -> boundary multiplication
+			stiffnessCoefficients.boundaryDeepMatrix.template Multiply< Data , MatrixReal >( &in[0] , &_outBoundaryValues[0] , MULTIPLY_ADD );
+			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( size_t i ){ outBoundaryValues[i] += _outBoundaryValues[i] * sWeight; } );
+		}
+
+		// Write the boundary values back into the output array
+		if( Add ) ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ out[ static_cast< unsigned int >(indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex((unsigned int)i) ) ) ] += outBoundaryValues[i]; } );
+		else      ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ out[ static_cast< unsigned int >(indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex((unsigned int)i) ) ) ] = outBoundaryValues[i]; } );
+	}
+#endif
 	for( unsigned int i=0 ; i<indexConverter.numBoundary() ; i++ )
 	{
 		size_t globalIndex = static_cast< size_t >( indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex(i) ) );
@@ -418,12 +473,16 @@ Eigen::SparseMatrix< OutReal > MassAndStiffnessOperators< MatrixReal >::_matrix(
 		}
 	}
 
+#ifdef NEW_CODE
+#else // !NEW_CODE
 	for( unsigned int r=0 ; r<massCoefficients.boundaryBoundaryMatrix.rows ; r++ )
 		for( unsigned int j=0 ; j<massCoefficients.boundaryBoundaryMatrix.rowSizes[r] ; j++ )
 			if      constexpr( Mass      ) triplets.emplace_back( static_cast< int >( r ) , massCoefficients.boundaryBoundaryMatrix[r][j].N , massCoefficients.boundaryBoundaryMatrix[r][j].Value );
 			else if constexpr( Stiffness ) triplets.emplace_back( static_cast< int >( r ) , stiffnessCoefficients.boundaryBoundaryMatrix[r][j].N , stiffnessCoefficients.boundaryBoundaryMatrix[r][j].Value );
 			else triplets.emplace_back( static_cast< int >( r ) , massCoefficients.boundaryBoundaryMatrix[r][j].N , massCoefficients.boundaryBoundaryMatrix[r][j].Value*mWeight + stiffnessCoefficients.boundaryBoundaryMatrix[r][j].Value*sWeight );
+#endif // NEW_CODE
 
+	Eigen::SparseMatrix< OutReal > M( indexConverter.numCombined() , indexConverter.numCombined() );
 	M.setFromTriplets( triplets.begin() , triplets.end() );
 	return M;
 }
@@ -606,18 +665,18 @@ Eigen::SparseMatrix< OutReal > DivergenceOperator< Real >::operator()( void ) co
 
 		for( int i=0 ; i<lineLength ; coeff+=12 , prevCol+=2 , currCol+=2 , nextCol+=2 , i++ )
 		{
-			triplets.emplace_back( row+i , prevCol+0 , static_cast< OutReal >( coeff[ 0] ) );
-			triplets.emplace_back( row+i , prevCol+1 , static_cast< OutReal >( coeff[ 1] ) );
-			triplets.emplace_back( row+i , prevCol+2 , static_cast< OutReal >( coeff[ 2] ) );
-			triplets.emplace_back( row+i , prevCol+3 , static_cast< OutReal >( coeff[ 3] ) );
-			triplets.emplace_back( row+i , prevCol+5 , static_cast< OutReal >( coeff[ 4] ) );
-			triplets.emplace_back( row+i , currCol+0 , static_cast< OutReal >( coeff[ 5] ) );
-			triplets.emplace_back( row+i , currCol+1 , static_cast< OutReal >( coeff[ 6] ) );
-			triplets.emplace_back( row+i , currCol+2 , static_cast< OutReal >( coeff[ 7] ) );
-			triplets.emplace_back( row+i , currCol+3 , static_cast< OutReal >( coeff[ 8] ) );
-			triplets.emplace_back( row+i , currCol+5 , static_cast< OutReal >( coeff[ 9] ) );
-			triplets.emplace_back( row+i , nextCol+0 , static_cast< OutReal >( coeff[10] ) );
-			triplets.emplace_back( row+i , nextCol+2 , static_cast< OutReal >( coeff[11] ) );
+			triplets.emplace_back( static_cast< int >( row+i ) , static_cast< int >( prevCol+0 ) , static_cast< OutReal >( coeff[ 0] ) );
+			triplets.emplace_back( static_cast< int >( row+i ) , static_cast< int >( prevCol+1 ) , static_cast< OutReal >( coeff[ 1] ) );
+			triplets.emplace_back( static_cast< int >( row+i ) , static_cast< int >( prevCol+2 ) , static_cast< OutReal >( coeff[ 2] ) );
+			triplets.emplace_back( static_cast< int >( row+i ) , static_cast< int >( prevCol+3 ) , static_cast< OutReal >( coeff[ 3] ) );
+			triplets.emplace_back( static_cast< int >( row+i ) , static_cast< int >( prevCol+5 ) , static_cast< OutReal >( coeff[ 4] ) );
+			triplets.emplace_back( static_cast< int >( row+i ) , static_cast< int >( currCol+0 ) , static_cast< OutReal >( coeff[ 5] ) );
+			triplets.emplace_back( static_cast< int >( row+i ) , static_cast< int >( currCol+1 ) , static_cast< OutReal >( coeff[ 6] ) );
+			triplets.emplace_back( static_cast< int >( row+i ) , static_cast< int >( currCol+2 ) , static_cast< OutReal >( coeff[ 7] ) );
+			triplets.emplace_back( static_cast< int >( row+i ) , static_cast< int >( currCol+3 ) , static_cast< OutReal >( coeff[ 8] ) );
+			triplets.emplace_back( static_cast< int >( row+i ) , static_cast< int >( currCol+5 ) , static_cast< OutReal >( coeff[ 9] ) );
+			triplets.emplace_back( static_cast< int >( row+i ) , static_cast< int >( nextCol+0 ) , static_cast< OutReal >( coeff[10] ) );
+			triplets.emplace_back( static_cast< int >( row+i ) , static_cast< int >( nextCol+2 ) , static_cast< OutReal >( coeff[11] ) );
 		}
 	}
 	M.setFromTriplets( triplets.begin() , triplets.end() );

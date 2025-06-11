@@ -154,6 +154,28 @@ Eigen::SparseMatrix< Real > GradientDomain< Real >::divergence( void ) const
 }
 
 template< typename Real >
+Eigen::SparseMatrix< Real > GradientDomain< Real >::finiteDifferences( void ) const
+{
+	std::vector< Eigen::Triplet< Real > > triplets( 2*numEdges() );
+
+	ThreadPool::ParallelFor
+		(
+			0 , numEdges() ,
+			[&]( size_t e )
+			{
+				std::pair< size_t , size_t > edge = this->edge( e );
+				triplets[2*e+0] = Eigen::Triplet< Real >( static_cast< int >( e ) , static_cast< int >( edge.first  ) , static_cast< Real >(-1) );
+				triplets[2*e+1] = Eigen::Triplet< Real >( static_cast< int >( e ) , static_cast< int >( edge.second ) , static_cast< Real >( 1) );
+			}
+		);
+
+	Eigen::SparseMatrix< Real > D( numEdges() , numNodes() );
+	D.setFromTriplets( triplets.begin() , triplets.end() );
+	return D;
+}
+
+
+template< typename Real >
 template< typename T >
 void GradientDomain< Real >::mass( const T * in , T * out ) const
 {
@@ -172,4 +194,93 @@ template< typename T >
 void GradientDomain< Real >::divergence( const T * in , T * out ) const
 {
 	return _divergenceOperator( in , out );
+}
+
+template< typename Real >
+template< typename T >
+void GradientDomain< Real >::finiteDifferences( const T * in , T * out ) const
+{
+	ThreadPool::ParallelFor
+	(
+		0 , numEdges() ,
+		[&]( size_t e )
+		{
+			std::pair< size_t , size_t > edge = this->edge( e );
+			out[e] = in[ edge.second ] - in[ edge.first ];
+		}
+	);
+}
+
+template< typename Real >
+void GradientDomain< Real >::unitTests( unsigned int numTests , double eps , bool verbose ) const
+{
+	Eigen::SparseMatrix< Real > M = mass() , S = stiffness() , Div = divergence() , FD = finiteDifferences();
+
+	auto NormalizedDifference = []( const Eigen::VectorXd &x1 , const Eigen::VectorXd &x2 )
+		{
+			double n = ( x1.squaredNorm() + x2.squaredNorm() ) / 2.;
+			return sqrt( ( x1 - x2 ).squaredNorm() / n );
+		};
+
+
+	// Check that the matrices make sense
+	{
+		Eigen::VectorXd one( numNodes() );
+		for( size_t i=0 ; i<numNodes() ; i++ ) one[i] = 1;
+
+		// Check that the area is equal to one (assuming the mass is computed from the area-normalized mesh)
+		{
+			double area = ( M * one ).dot( one );
+			if( verbose || fabs( area-1. )>eps ) std::cout << "Area: " << area << std::endl;
+		}
+
+		// Check that constant functions vanish
+		{
+			double n1 = ( S * one ).squaredNorm() , n2 = ( FD * one ).squaredNorm();
+			n1 = sqrt( n1 / S.squaredNorm() );
+			n2 = sqrt( n2 / FD.squaredNorm() );
+			if( n1>eps || verbose ) std::cout << "Constant (stiffness): " << n1 << std::endl;
+			if( n2>eps || verbose ) std::cout << "Constant (finite-differences): " << n2 << std::endl;
+		}
+
+		// Check that the stiffness matrix is factored as the product of the finite-difference matrix and the divergence operator
+		{
+			Eigen::SparseMatrix< Real > DivFD = Div * FD;
+			double n = ( S.squaredNorm() + ( DivFD ).squaredNorm() ) / 2. , d = ( S - DivFD ).squaredNorm();
+			d = sqrt( d / n );
+			if( verbose || d>eps ) std::cout << "Stiffness factorization: " << d << std::endl;
+		}
+	}
+
+	// Check that the matrices are consistent with the evaluation
+	for( unsigned int n=0 ; n<numTests ; n++ )
+	{
+		Eigen::VectorXd x( numNodes() ) , e( numEdges() );
+		for( size_t i=0 ; i<numNodes() ; i++ ) x[i] = Random< Real >();
+		for( size_t i=0 ; i<numEdges() ; i++ ) e[i] = Random< Real >();
+		{
+			Eigen::VectorXd b( numNodes() );
+			mass( &x[0] , &b[0] );
+			double diff = NormalizedDifference( b , M * x );
+			if( verbose || diff>eps ) std::cout << "\t" << n << "] Mass: " << diff << std::endl;
+		}
+		{
+			Eigen::VectorXd b( numNodes() );
+			stiffness( &x[0] , &b[0] );
+			double diff = NormalizedDifference( b , S * x );
+			if( verbose || diff>eps ) std::cout << "\t" << n << "] Stiffness: " << diff << std::endl;
+		}
+		{
+			Eigen::VectorXd b( numEdges() );
+			finiteDifferences( &x[0] , &b[0] );
+			double diff = NormalizedDifference( b , FD * x );
+			if( verbose || diff>eps ) std::cout << "\t" << n << "] Finite-differences: " << diff << std::endl;
+		}
+		{
+			Eigen::VectorXd b( numNodes() );
+			divergence( &e[0] , &b[0] );
+			double diff = NormalizedDifference( b , Div * e );
+			if( verbose || diff>eps ) std::cout << "\t" << n << "] Divergence: " << diff << std::endl;
+		}
+	}
 }

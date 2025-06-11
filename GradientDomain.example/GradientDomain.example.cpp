@@ -146,9 +146,9 @@ int main( int argc , char* argv[] )
 		mesh.surface.vertices.size() ,
 		mesh.texture.vertices.size() ,
 		[&]( size_t t ){ return mesh.surface.triangles[t]; } ,
-		[&]( size_t v ){ return mesh.surface.vertices[v]; } ,
+		[&]( size_t v ){ return mesh.surface.vertices [v]; } ,
 		[&]( size_t t ){ return mesh.texture.triangles[t]; } ,
-		[&]( size_t v ){ return mesh.texture.vertices[v]; } ,
+		[&]( size_t v ){ return mesh.texture.vertices [v]; } ,
 		texture.res(0) ,
 		texture.res(1)
 	);

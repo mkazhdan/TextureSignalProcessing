@@ -32,6 +32,7 @@ DAMAGE.
 #include <Eigen/Sparse>
 
 #include "Misha/Geometry.h"
+#include "Misha/MultiThreading.h"
 #include "Src/Operators.h"
 #include "Src/Hierarchy.h"
 
@@ -92,6 +93,9 @@ namespace MishaK
 			// The divergence matrix associated with texture map
 			Eigen::SparseMatrix< Real > divergence( void ) const;
 
+			// The finite-difference matrix associated with the texture map
+			Eigen::SparseMatrix< Real > finiteDifferences( void ) const;
+
 			// Computes the mass of the per-node signal
 			template< typename T > void mass( const T * in , T * out ) const;
 
@@ -100,6 +104,12 @@ namespace MishaK
 
 			// Computes the divergence of the per-edge signal
 			template< typename T > void divergence( const T * in , T * out ) const;
+
+			// Compute the finite-differnces of texels along the edges
+			template< typename T > void finiteDifferences( const T * in , T * out ) const;
+
+			// Runs sanity-tests to confirm the definitions of the operators are consistent
+			void unitTests( unsigned int numTest , double eps , bool verbose=false ) const;
 
 		protected:
 			template< typename Functor > static constexpr bool _IsTriangleFunctor( void );
