@@ -184,6 +184,8 @@ int main( int argc , char* argv[] )
 				bool useEdge = UseEdge( gd.node( endPoints.first ) , gd.node( endPoints.second ) );
 				if( useEdge ) edgeDifferences[e] = ( x[ endPoints.second ] - x[ endPoints.first ] ) * GradientScale.value;
 			}
+
+			// Compute the associated divergence
 			gd.divergence( &edgeDifferences[0] , &gradientB[0] );
 		}
 

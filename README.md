@@ -1,8 +1,9 @@
-<center><h2>Gradient Domain Texture Processing (Version 7.00)</h2></center>
+<center><h2>Gradient Domain Texture Processing (Version 8.00)</h2></center>
 <center>
 <a href="#LINKS">links</a>
 <a href="#EXECUTABLES">executables</a>
 <a href="#USAGE">usage</a>
+<a href="#LIBRARY">library</a>
 <a href="#COMPILATION">compilation</a>
 <a href="#CHANGES">changes</a>
 <a href="#SUPPORT">support</a>
@@ -32,6 +33,7 @@ This software supports gradient-domain signal processing within a texture atlas.
 <B>Data:</B>
 <A HREF="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/TSP.Data.zip">ZIP</A><br>
 <b>Older Versions:</b>
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version7.00/">V7.00</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version6.06/">V6.06</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version6.00/">V6.00</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version5.01/">V5.01</a>,
@@ -394,7 +396,6 @@ Identifies the active texels within a texture mask of prescribed resolution, wit
 </dl>
 </ul>
 
-
 <hr>
 <a name="USAGE"><b>USAGE EXAMPLES (WITH SAMPLE DATA)</b></a><br>
 For testing purposes, a number of <A HREF="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/TSP.Data.zip">textured mapped models</A> are provided (using the <U>.ply</U> extension).
@@ -493,6 +494,54 @@ Here a "dots" pattern is written out to an image. (Empirically, we have found th
 </ul>
 
 <hr>
+<a name="library"><b>HEADER-ONLY LIBRARY</b></a><br>
+<UL>
+<DL>
+<DETAILS>
+<SUMMARY>
+<font size="+1"><b>GradientDomain.example.cpp</b></font>
+</SUMMARY>
+In addition to executables, the reconstruction code can be interfaced into through the functionality implemented in <CODE>include/Src/GradientDomain.h</CODE>.
+Using the functionality creating a <CODE>GradientDomain</CODE> object using the texture-mapped geometry. This, in turn can be used to query the active texels/edges, as well as created the standard mass/stiffness/divergence matrices and apply the mass/stiffness/operators to the texel data.
+In the descriptions below, the template parameter <CODE>Real</CODE> is the floating point type used to represent data (typically <code>double</code>) and <CODE>Solver</CODE> is the class used to factor and solve the sparse system of linear equations (<CODE>Eigen::SimplicialLDLT</CODE> by default).
+<BR>
+
+<B>Code Description</B>:<br>
+<UL>
+The code performs basic gradient domain processing applications including texture smoothing/sharpening and stitching.
+This is done by solving for the output texture values which simultaneouly fit value and derivative constraints.
+<UL>
+<LI> Value constraints are described by specifying the desired values at the texels, defined to be the input texel valus.
+<LI> Gradient constraints are described by specifying the desired differences across edges between texels, defined to be the dampened/amplified differences between input texture values (and zerod out if the texels come from different patches, in the case of stitching).
+</UL>
+</UL>
+
+<B>Code walk-through</B>:<br>
+<UL>
+The details of the implementation can be found in the <code>GradientDomain.example.cpp</code> code.
+<UL>
+<LI><U>Lines 113-120</U>: The texture-mapped geometry and the texture image (as well as a mask image describing when texels belong to the same patch, for stitching) are read in.
+<LI><U>Lines 142-155</U>: The <CODE>GradientDomain</CODE> object is constructed, passing in the resolution of the mesh as well as functor giving the indices of embedding/texture-vertices for each corner, functors giving the positions of embedding/texture-vertices, the texture image resolution, and the number of quadrature points per triangle used for integration (valid values are 1, 3, 6, 12, 24, and 32).
+<LI><U>Lines 161-166</U>: The input texture values are read from the image into a <CODE>std::vector</CODE>, using the member functions <CODE>GradientDomain::numNodes</CODE> to get the number of (active) texels in the texture map and <CODE>GradientDomain::node</CODE> to get the coordinates of the texel within the image.
+<LI><U>Lines 168-194</U>: The constraints to the linear system are constructed, specifying the target values and gradients:
+<UL>
+<LI><U>Lines 172-173</U>: The target value constraints are constructed by applying the mass matrix to the input texel values.
+<LI><U>Lines 175-188</U>: The target gradient constraints are obtained by computing the target per-edge differences and then computing the divergence:
+<UL>
+<LI><U>Lines 177-186</U>: The target edge differences are obtained by iterating over the edges, computing the difference between the input texel values at the end-points, and scaling by the gradient modulation value (and zeroing out the difference in the case the end-points are assigned different IDs, in the case of stiching). To this end, the member function <CODE>GradientDomain::numEdges</CODE> gives the number of edges, and the member function <CODE>GradientDomain::edge</CODE> returns the indices of the edge's two end-points.
+<LI><U>Lines 188-189</U>: The target gradient constraints are obtained applying the divergence operator to the computed edge differences.
+</UL>
+<LI><U>Lines 192-193</U>: The target value and gradient weights are combined using the weights specified by the user.
+</UL>
+<LI><U>Lines 196-197</U>: The system matrix is constructed by taking the weighted combination of the mass and stiffness matrices (using the same weights for combining the value and gradient constraints).
+<LI><U>Lines 201-210</U>: The system matrix is factored.
+<LI><U>Lines 213-220</U>: The values for the individual image channels are computed by solving the linear system.
+<LI><U>Lines 223-228</U>: The output texel values are written from the <CODE>std::vector</CODE> back into the texture image.
+</UL>
+</DL>
+</UL>
+
+<hr>
 <details>
 <summary>
 <a name="COMPILATION"><b>COMPILATION AND EXECUTION</b></a><br>
@@ -500,6 +549,7 @@ Here a "dots" pattern is written out to an image. (Empirically, we have found th
 <UL>
 <LI>The Windows executables require both the <B>glew</B> and <B>glut</B> dynamically linked libraries to run. These can be found <A HREF="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/TSP.DLLs.zip">here</A> and should be included either in the directory with the executables, or in the directory from which the executables are run.</LI>
 <LI>Compiling under Windows requires both the <B>glew</B> and <B>glut</B> libraries. These can be found <A HREF="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/TSP.LIBs.zip">here</A> and should be placed in the output directory for linkage.</LI></LI>
+<LI>Compilation requires a linear solver. By default, we use the <CODE>LDLt</CODE> implementation provided by  <A HREF="https://eigen.tuxfamily.org/">Eigen</A>. If you have <A HREF="https://www.intel.com/content/www/us/en/docs/oneapi/programming-guide/2024-1/intel-oneapi-math-kernel-library-onemkl.html">Intel's oneMKL</A>, we encourage you to use Eigen's <CODE>Pardiso</CODE> implementation. To to this you will need to enable the <CODE>USE_EIGEN_PARDISO</CODE> flag in <CODE>include/Src/PreProcessing.h</CODE>
 </UL>
 </details>
 
@@ -607,6 +657,11 @@ Here a "dots" pattern is written out to an image. (Empirically, we have found th
 <LI> Removed dependence on <CODE>Triangle</CODE> code.
 </ul>
 
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version8.00/">Version 8.00</a>:
+<ul>
+<LI> Added header-only library support for standard geometry-prcoessing interfaces, wrapped in <CODE>include/Src/GradientDomain.h</CODE>
+<LI> Added example code showing how to use the libary in <CODE>GradientDomain.example.cpp</CODE>.
+</ul>
 
 </details>
 
