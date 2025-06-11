@@ -201,10 +201,10 @@ int main( int argc , char* argv[] )
 	switch( solver.info() )
 	{
 	case Eigen::Success: break;
-	case Eigen::NumericalIssue: MK_THROW( "Failed to factorize matrix (numerical issue): " , typeid(Solver).name() ) ; break;
-	case Eigen::NoConvergence:  MK_THROW( "Failed to factorize matrix (no convergence): "  , typeid(Solver).name() ) ; break;
-	case Eigen::InvalidInput:   MK_THROW( "Failed to factorize matrix (invalid input): "   , typeid(Solver).name() ) ; break;
-	default:                    MK_THROW( "Failed to factorize matrix: " , typeid(Solver).name() );
+	case Eigen::NumericalIssue: MK_THROW( "Failed to factorize matrix (numerical issue): "            , typeid( Solver< Real > ).name() ) ; break;
+	case Eigen::NoConvergence:  MK_THROW( "Failed to factorize matrix (no convergence): "             , typeid( Solver< Real > ).name() ) ; break;
+	case Eigen::InvalidInput:   MK_THROW( "Failed to factorize matrix (invalid input): "              , typeid( Solver< Real > ).name() ) ; break;
+	default:                    MK_THROW( "Failed to factorize matrix (info=" , solver.info() , "): " , typeid( Solver< Real > ).name() );
 	}
 	if( Verbose.set ) std::cout << pMeter( "Factored" ) << std::endl;
 
