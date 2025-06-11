@@ -72,16 +72,16 @@ namespace MishaK
 				bool normalize = true
 			);
 
-			// The number of (active) texels
+			// The number of texel nodes
 			size_t numNodes( void ) const;
 
-			// The number of edges between texels
+			// The number of edges between texel nodes
 			size_t numEdges( void ) const;
 
 			// The 2D index of a texel
 			std::pair< unsigned int , unsigned int > node( size_t n ) const;
 
-			// The indices of the two texels that are the end-points of the (directed) edge
+			// The indices of the two texels that are the end-points of the edge
 			std::pair< size_t , size_t > edge( size_t e ) const;
 
 			// The mass matrix
