@@ -31,7 +31,7 @@ SRC = ./
 BIN = ./../Bin/Linux/
 BIN = ./../Bin/Linux/
 BIN_O = ./
-INCLUDE = /usr/include/ -I./../include/
+INCLUDE = /usr/include/ -I./../include/ -I./../third_party/include
 
 CC=gcc
 CXX=g++

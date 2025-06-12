@@ -75,7 +75,21 @@ std::vector< unsigned int > SimpleTriangleMesh< Real , Dim >::oppositeHalfEdges(
 	{
 		SimplexIndex< 1 > e = edgeIndex( he ); 
 		if( edgeMap.find(e)==edgeMap.end() ) edgeMap[e] = he;
+#if 0 // NEW_CODE
+		else
+		{
+			SimplexIndex< 1 > _e( e[1] , e[0] );
+			std::cout << "Non manifold edge: " << e << std::endl;
+			for( unsigned int he=0 ; he<triangles.size()*3 ; he++ )
+			{
+				SimplexIndex< 1 > f = edgeIndex( he );
+				if( f==e || f==_e ) std::cout << "\t" << (he/3) << "] " << triangles[he/3] << std::endl;
+			}
+			MK_THROW( "Non manifold mesh" );
+		}
+#else // !NEW_CODE
 		else MK_THROW( "Non manifold mesh" );
+#endif // NEW_CODE
 	}
 
 	for( unsigned int he=0 ; he<triangles.size()*3 ; he++ )

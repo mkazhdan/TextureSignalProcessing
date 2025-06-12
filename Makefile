@@ -4,9 +4,9 @@ NO_VISUAL ?= false
 USE_PARDISO ?= false
 
 ifeq ($(NO_VISUAL),true)
-	programs = TextureFiltering TextureStitching TextureMasking TextureDilation GradientDomain.example
+	programs = TextureFiltering TextureStitching TextureMasking TextureDilation GradientDomain.example SetExteriorTexels
 else
-	programs = Geodesics LineIntegralConvolution TextureFiltering TextureStitching ReactionDiffusion  TextureMasking TextureDilation GradientDomain.example
+	programs = Geodesics LineIntegralConvolution TextureFiltering TextureStitching ReactionDiffusion  TextureMasking TextureDilation GradientDomain.example SetExteriorTexels
 endif
 
 # Allow "make -j" to operate in parallel over the programs.

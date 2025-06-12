@@ -25,7 +25,7 @@ LFLAGS_RELEASE = -O3
 SRC = ./
 BIN = ./../Bin/Linux/
 BIN_O = ./
-INCLUDE = /usr/include/ -I./../include/
+INCLUDE = /usr/include/ -I./../include/ -I./../third_party/include/ -I.
 
 MD=mkdir
 

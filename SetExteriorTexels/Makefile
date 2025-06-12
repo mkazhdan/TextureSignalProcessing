@@ -1,5 +1,5 @@
-TARGET=  TextureDilation
-SOURCE=  TextureDilation.cpp ../third_party/MINIZ/miniz.c ../third_party/TinyExr/tinyexr.cc
+TARGET= SetExteriorTexels
+SOURCE= SetExteriorTexels.cpp
 
 COMPILER ?= gcc
 #COMPILER ?= clang
@@ -14,12 +14,7 @@ else
 	CXX=clang++
 endif
 
-ifeq ($(NO_VISUAL),true)
-	LFLAGS += -lgomp -lz -lpng -ljpeg
-	CFLAGS += -DNO_OPEN_GL_VISUALIZATION
-else
-	LFLAGS += -lgomp -lz -lGL -lGLU -lglut -lGLEW -lpng -ljpeg
-endif
+LFLAGS += -lgomp -lz -lpng -ljpeg
 
 CFLAGS_DEBUG = -DDEBUG -g3
 LFLAGS_DEBUG =
@@ -31,7 +26,7 @@ SRC = ./
 BIN = ./../Bin/Linux/
 BIN = ./../Bin/Linux/
 BIN_O = ./
-INCLUDE = /usr/include/ -I./../include/ -I./../third_party/include/ -I.
+INCLUDE = /usr/include/ -I./../include/ -I./../third_party/include/
 
 CC=gcc
 CXX=g++
@@ -60,9 +55,6 @@ $(BIN)$(TARGET): $(OBJECTS)
 	$(CXX) -o $@ $(OBJECTS) $(LFLAGS)
 
 $(BIN_O)%.o: $(SRC)%.c
-	$(CC) -c -o $@ $(CFLAGS) -I$(INCLUDE) $<
-
-$(BIN_O)%.o: $(SRC)%.cc
 	$(CC) -c -o $@ $(CFLAGS) -I$(INCLUDE) $<
 
 $(BIN_O)%.o: $(SRC)%.cpp

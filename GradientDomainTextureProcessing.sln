@@ -17,69 +17,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Geodesics", "Geodesics\Geod
 		{D3D173AB-D306-4179-BEC4-95CE1B14E647} = {D3D173AB-D306-4179-BEC4-95CE1B14E647}
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PNG", "PNG\PNG.vcxproj", "{B5899B32-FAC2-477E-99AA-86736B97F2FC}"
-EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ZLIB", "ZLIB\ZLIB.vcxproj", "{D3D173AB-D306-4179-BEC4-95CE1B14E647}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Misha", "Misha", "{7DA121C8-3C1A-4FE2-8A3B-61560CC564FB}"
-	ProjectSection(SolutionItems) = preProject
-		include\Misha\Algebra.h = include\Misha\Algebra.h
-		include\Misha\Array.h = include\Misha\Array.h
-		include\Misha\Array.inl = include\Misha\Array.inl
-		include\Misha\Atomic.Geometry.h = include\Misha\Atomic.Geometry.h
-		include\Misha\Atomic.h = include\Misha\Atomic.h
-		include\Misha\BMP.h = include\Misha\BMP.h
-		include\Misha\BMP.inl = include\Misha\BMP.inl
-		include\Misha\Camera.h = include\Misha\Camera.h
-		include\Misha\CmdLineParser.h = include\Misha\CmdLineParser.h
-		include\Misha\CmdLineParser.inl = include\Misha\CmdLineParser.inl
-		include\Misha\Exceptions.h = include\Misha\Exceptions.h
-		include\Misha\ExplicitIndex.h = include\Misha\ExplicitIndex.h
-		include\Misha\FEM.BasisInfo.inc = include\Misha\FEM.BasisInfo.inc
-		include\Misha\FEM.h = include\Misha\FEM.h
-		include\Misha\FEM.inl = include\Misha\FEM.inl
-		include\Misha\Geometry.h = include\Misha\Geometry.h
-		include\Misha\Geometry.inl = include\Misha\Geometry.inl
-		include\Misha\Image.h = include\Misha\Image.h
-		include\Misha\JPEG.h = include\Misha\JPEG.h
-		include\Misha\JPEG.inl = include\Misha\JPEG.inl
-		include\Misha\LinearSolvers.h = include\Misha\LinearSolvers.h
-		include\Misha\MemoryUsage.h = include\Misha\MemoryUsage.h
-		include\Misha\Miscellany.h = include\Misha\Miscellany.h
-		include\Misha\MultiThreading.h = include\Misha\MultiThreading.h
-		include\Misha\PBM.h = include\Misha\PBM.h
-		include\Misha\PBM.inl = include\Misha\PBM.inl
-		include\Misha\Ply.h = include\Misha\Ply.h
-		include\Misha\Ply.inl = include\Misha\Ply.inl
-		include\Misha\PlyFile.h = include\Misha\PlyFile.h
-		include\Misha\PlyFile.inl = include\Misha\PlyFile.inl
-		include\Misha\PlyVertexData.h = include\Misha\PlyVertexData.h
-		include\Misha\PlyVertexData.inl = include\Misha\PlyVertexData.inl
-		include\Misha\PNG.h = include\Misha\PNG.h
-		include\Misha\PNG.inl = include\Misha\PNG.inl
-		include\Misha\Poly34.h = include\Misha\Poly34.h
-		include\Misha\Poly34.inl = include\Misha\Poly34.inl
-		include\Misha\Polynomial.h = include\Misha\Polynomial.h
-		include\Misha\Polynomial.inl = include\Misha\Polynomial.inl
-		include\Misha\Rasterizer2D.h = include\Misha\Rasterizer2D.h
-		include\Misha\Rasterizer2D.inl = include\Misha\Rasterizer2D.inl
-		include\Misha\RegularGrid.h = include\Misha\RegularGrid.h
-		include\Misha\RegularGrid.inl = include\Misha\RegularGrid.inl
-		include\Misha\RightTriangleQuadrature.h = include\Misha\RightTriangleQuadrature.h
-		include\Misha\SimplexBasis.h = include\Misha\SimplexBasis.h
-		include\Misha\SimplexBasis.inl = include\Misha\SimplexBasis.inl
-		include\Misha\SparseMatrix.h = include\Misha\SparseMatrix.h
-		include\Misha\SparseMatrix.inl = include\Misha\SparseMatrix.inl
-		include\Misha\SparseMatrixInterface.h = include\Misha\SparseMatrixInterface.h
-		include\Misha\SparseMatrixInterface.inl = include\Misha\SparseMatrixInterface.inl
-		include\Misha\Texels.h = include\Misha\Texels.h
-		include\Misha\Texels.inl = include\Misha\Texels.inl
-		include\Misha\Vector.h = include\Misha\Vector.h
-		include\Misha\Vector.inl = include\Misha\Vector.inl
-	EndProjectSection
-EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "JPEG", "JPEG\JPEG.vcxproj", "{0BE55595-4080-4265-82AF-51108EC956B2}"
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LineIntegralConvolution", "LineIntegralConvolution\LineIntegralConvolution.vcxproj", "{53350EE4-5B9C-4977-8E91-4FE6E84D9E38}"
 	ProjectSection(ProjectDependencies) = postProject
 		{0BE55595-4080-4265-82AF-51108EC956B2} = {0BE55595-4080-4265-82AF-51108EC956B2}
@@ -165,6 +102,81 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TextureMasking", "TextureMa
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GradientDomain.example", "GradientDomain.example\GradientDomain.example.vcxproj", "{E103EBEE-D5AC-49E4-9B71-32B73C7DEFD5}"
+	ProjectSection(ProjectDependencies) = postProject
+		{0BE55595-4080-4265-82AF-51108EC956B2} = {0BE55595-4080-4265-82AF-51108EC956B2}
+		{B5899B32-FAC2-477E-99AA-86736B97F2FC} = {B5899B32-FAC2-477E-99AA-86736B97F2FC}
+		{D3D173AB-D306-4179-BEC4-95CE1B14E647} = {D3D173AB-D306-4179-BEC4-95CE1B14E647}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SetExteriorTexels", "SetExteriorTexels\SetExteriorTexels.vcxproj", "{0D044FEF-050F-42CB-9A88-63F4F3F394BB}"
+	ProjectSection(ProjectDependencies) = postProject
+		{0BE55595-4080-4265-82AF-51108EC956B2} = {0BE55595-4080-4265-82AF-51108EC956B2}
+		{B5899B32-FAC2-477E-99AA-86736B97F2FC} = {B5899B32-FAC2-477E-99AA-86736B97F2FC}
+		{D3D173AB-D306-4179-BEC4-95CE1B14E647} = {D3D173AB-D306-4179-BEC4-95CE1B14E647}
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Misha", "Misha", "{4B406F54-51A0-47BC-904C-D11D7A0D544E}"
+	ProjectSection(SolutionItems) = preProject
+		third_party\include\Misha\Algebra.h = third_party\include\Misha\Algebra.h
+		third_party\include\Misha\Array.h = third_party\include\Misha\Array.h
+		third_party\include\Misha\Array.inl = third_party\include\Misha\Array.inl
+		third_party\include\Misha\Atomic.Geometry.h = third_party\include\Misha\Atomic.Geometry.h
+		third_party\include\Misha\Atomic.h = third_party\include\Misha\Atomic.h
+		third_party\include\Misha\BMP.h = third_party\include\Misha\BMP.h
+		third_party\include\Misha\BMP.inl = third_party\include\Misha\BMP.inl
+		third_party\include\Misha\Camera.h = third_party\include\Misha\Camera.h
+		third_party\include\Misha\CmdLineParser.h = third_party\include\Misha\CmdLineParser.h
+		third_party\include\Misha\CmdLineParser.inl = third_party\include\Misha\CmdLineParser.inl
+		third_party\include\Misha\Exceptions.h = third_party\include\Misha\Exceptions.h
+		third_party\include\Misha\ExplicitIndex.h = third_party\include\Misha\ExplicitIndex.h
+		third_party\include\Misha\FEM.BasisInfo.inc = third_party\include\Misha\FEM.BasisInfo.inc
+		third_party\include\Misha\FEM.h = third_party\include\Misha\FEM.h
+		third_party\include\Misha\FEM.inl = third_party\include\Misha\FEM.inl
+		third_party\include\Misha\Geometry.h = third_party\include\Misha\Geometry.h
+		third_party\include\Misha\Geometry.inl = third_party\include\Misha\Geometry.inl
+		third_party\include\Misha\Image.h = third_party\include\Misha\Image.h
+		third_party\include\Misha\JPEG.h = third_party\include\Misha\JPEG.h
+		third_party\include\Misha\JPEG.inl = third_party\include\Misha\JPEG.inl
+		third_party\include\Misha\LinearSolvers.h = third_party\include\Misha\LinearSolvers.h
+		third_party\include\Misha\MemoryUsage.h = third_party\include\Misha\MemoryUsage.h
+		third_party\include\Misha\Miscellany.h = third_party\include\Misha\Miscellany.h
+		third_party\include\Misha\MultiThreading.h = third_party\include\Misha\MultiThreading.h
+		third_party\include\Misha\PBM.h = third_party\include\Misha\PBM.h
+		third_party\include\Misha\PBM.inl = third_party\include\Misha\PBM.inl
+		third_party\include\Misha\Ply.h = third_party\include\Misha\Ply.h
+		third_party\include\Misha\Ply.inl = third_party\include\Misha\Ply.inl
+		third_party\include\Misha\PlyFile.h = third_party\include\Misha\PlyFile.h
+		third_party\include\Misha\PlyFile.inl = third_party\include\Misha\PlyFile.inl
+		third_party\include\Misha\PlyVertexData.h = third_party\include\Misha\PlyVertexData.h
+		third_party\include\Misha\PlyVertexData.inl = third_party\include\Misha\PlyVertexData.inl
+		third_party\include\Misha\PNG.h = third_party\include\Misha\PNG.h
+		third_party\include\Misha\PNG.inl = third_party\include\Misha\PNG.inl
+		third_party\include\Misha\Poly34.h = third_party\include\Misha\Poly34.h
+		third_party\include\Misha\Poly34.inl = third_party\include\Misha\Poly34.inl
+		third_party\include\Misha\Polynomial.h = third_party\include\Misha\Polynomial.h
+		third_party\include\Misha\Polynomial.inl = third_party\include\Misha\Polynomial.inl
+		third_party\include\Misha\Rasterizer2D.h = third_party\include\Misha\Rasterizer2D.h
+		third_party\include\Misha\Rasterizer2D.inl = third_party\include\Misha\Rasterizer2D.inl
+		third_party\include\Misha\RegularGrid.h = third_party\include\Misha\RegularGrid.h
+		third_party\include\Misha\RegularGrid.inl = third_party\include\Misha\RegularGrid.inl
+		third_party\include\Misha\RightTriangleQuadrature.h = third_party\include\Misha\RightTriangleQuadrature.h
+		third_party\include\Misha\SimplexBasis.h = third_party\include\Misha\SimplexBasis.h
+		third_party\include\Misha\SimplexBasis.inl = third_party\include\Misha\SimplexBasis.inl
+		third_party\include\Misha\SparseMatrix.h = third_party\include\Misha\SparseMatrix.h
+		third_party\include\Misha\SparseMatrix.inl = third_party\include\Misha\SparseMatrix.inl
+		third_party\include\Misha\SparseMatrixInterface.h = third_party\include\Misha\SparseMatrixInterface.h
+		third_party\include\Misha\SparseMatrixInterface.inl = third_party\include\Misha\SparseMatrixInterface.inl
+		third_party\include\Misha\Texels.h = third_party\include\Misha\Texels.h
+		third_party\include\Misha\Texels.inl = third_party\include\Misha\Texels.inl
+		third_party\include\Misha\Vector.h = third_party\include\Misha\Vector.h
+		third_party\include\Misha\Vector.inl = third_party\include\Misha\Vector.inl
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PNG", "third_party\PNG\PNG.vcxproj", "{B5899B32-FAC2-477E-99AA-86736B97F2FC}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ZLIB", "third_party\ZLIB\ZLIB.vcxproj", "{D3D173AB-D306-4179-BEC4-95CE1B14E647}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "JPEG", "third_party\JPEG\JPEG.vcxproj", "{0BE55595-4080-4265-82AF-51108EC956B2}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -188,26 +200,6 @@ Global
 		{CC79FFAF-4BF9-4A11-94EA-D44BCC5D80F4}.Release|x64.ActiveCfg = Release|x64
 		{CC79FFAF-4BF9-4A11-94EA-D44BCC5D80F4}.Release|x64.Build.0 = Release|x64
 		{CC79FFAF-4BF9-4A11-94EA-D44BCC5D80F4}.Release|x86.ActiveCfg = Release|x64
-		{B5899B32-FAC2-477E-99AA-86736B97F2FC}.Debug|x64.ActiveCfg = Release|x64
-		{B5899B32-FAC2-477E-99AA-86736B97F2FC}.Debug|x64.Build.0 = Release|x64
-		{B5899B32-FAC2-477E-99AA-86736B97F2FC}.Debug|x86.ActiveCfg = Release|x64
-		{B5899B32-FAC2-477E-99AA-86736B97F2FC}.Debug|x86.Build.0 = Release|x64
-		{B5899B32-FAC2-477E-99AA-86736B97F2FC}.Release|x64.ActiveCfg = Release|x64
-		{B5899B32-FAC2-477E-99AA-86736B97F2FC}.Release|x64.Build.0 = Release|x64
-		{B5899B32-FAC2-477E-99AA-86736B97F2FC}.Release|x86.ActiveCfg = Release|x64
-		{D3D173AB-D306-4179-BEC4-95CE1B14E647}.Debug|x64.ActiveCfg = Debug|x64
-		{D3D173AB-D306-4179-BEC4-95CE1B14E647}.Debug|x64.Build.0 = Debug|x64
-		{D3D173AB-D306-4179-BEC4-95CE1B14E647}.Debug|x86.ActiveCfg = Debug|x64
-		{D3D173AB-D306-4179-BEC4-95CE1B14E647}.Release|x64.ActiveCfg = Release|x64
-		{D3D173AB-D306-4179-BEC4-95CE1B14E647}.Release|x64.Build.0 = Release|x64
-		{D3D173AB-D306-4179-BEC4-95CE1B14E647}.Release|x86.ActiveCfg = Release|x64
-		{0BE55595-4080-4265-82AF-51108EC956B2}.Debug|x64.ActiveCfg = Release|x64
-		{0BE55595-4080-4265-82AF-51108EC956B2}.Debug|x64.Build.0 = Release|x64
-		{0BE55595-4080-4265-82AF-51108EC956B2}.Debug|x86.ActiveCfg = Release|x64
-		{0BE55595-4080-4265-82AF-51108EC956B2}.Debug|x86.Build.0 = Release|x64
-		{0BE55595-4080-4265-82AF-51108EC956B2}.Release|x64.ActiveCfg = Release|x64
-		{0BE55595-4080-4265-82AF-51108EC956B2}.Release|x64.Build.0 = Release|x64
-		{0BE55595-4080-4265-82AF-51108EC956B2}.Release|x86.ActiveCfg = Release|x64
 		{53350EE4-5B9C-4977-8E91-4FE6E84D9E38}.Debug|x64.ActiveCfg = Release|x64
 		{53350EE4-5B9C-4977-8E91-4FE6E84D9E38}.Debug|x64.Build.0 = Release|x64
 		{53350EE4-5B9C-4977-8E91-4FE6E84D9E38}.Debug|x86.ActiveCfg = Release|x64
@@ -254,6 +246,38 @@ Global
 		{E103EBEE-D5AC-49E4-9B71-32B73C7DEFD5}.Release|x64.Build.0 = Release|x64
 		{E103EBEE-D5AC-49E4-9B71-32B73C7DEFD5}.Release|x86.ActiveCfg = Release|Win32
 		{E103EBEE-D5AC-49E4-9B71-32B73C7DEFD5}.Release|x86.Build.0 = Release|Win32
+		{0D044FEF-050F-42CB-9A88-63F4F3F394BB}.Debug|x64.ActiveCfg = Debug|x64
+		{0D044FEF-050F-42CB-9A88-63F4F3F394BB}.Debug|x64.Build.0 = Debug|x64
+		{0D044FEF-050F-42CB-9A88-63F4F3F394BB}.Debug|x86.ActiveCfg = Debug|Win32
+		{0D044FEF-050F-42CB-9A88-63F4F3F394BB}.Debug|x86.Build.0 = Debug|Win32
+		{0D044FEF-050F-42CB-9A88-63F4F3F394BB}.Release|x64.ActiveCfg = Release|x64
+		{0D044FEF-050F-42CB-9A88-63F4F3F394BB}.Release|x64.Build.0 = Release|x64
+		{0D044FEF-050F-42CB-9A88-63F4F3F394BB}.Release|x86.ActiveCfg = Release|Win32
+		{0D044FEF-050F-42CB-9A88-63F4F3F394BB}.Release|x86.Build.0 = Release|Win32
+		{B5899B32-FAC2-477E-99AA-86736B97F2FC}.Debug|x64.ActiveCfg = Release|x64
+		{B5899B32-FAC2-477E-99AA-86736B97F2FC}.Debug|x64.Build.0 = Release|x64
+		{B5899B32-FAC2-477E-99AA-86736B97F2FC}.Debug|x86.ActiveCfg = Release|x64
+		{B5899B32-FAC2-477E-99AA-86736B97F2FC}.Debug|x86.Build.0 = Release|x64
+		{B5899B32-FAC2-477E-99AA-86736B97F2FC}.Release|x64.ActiveCfg = Release|x64
+		{B5899B32-FAC2-477E-99AA-86736B97F2FC}.Release|x64.Build.0 = Release|x64
+		{B5899B32-FAC2-477E-99AA-86736B97F2FC}.Release|x86.ActiveCfg = Release|x64
+		{B5899B32-FAC2-477E-99AA-86736B97F2FC}.Release|x86.Build.0 = Release|x64
+		{D3D173AB-D306-4179-BEC4-95CE1B14E647}.Debug|x64.ActiveCfg = Debug|x64
+		{D3D173AB-D306-4179-BEC4-95CE1B14E647}.Debug|x64.Build.0 = Debug|x64
+		{D3D173AB-D306-4179-BEC4-95CE1B14E647}.Debug|x86.ActiveCfg = Debug|x64
+		{D3D173AB-D306-4179-BEC4-95CE1B14E647}.Debug|x86.Build.0 = Debug|x64
+		{D3D173AB-D306-4179-BEC4-95CE1B14E647}.Release|x64.ActiveCfg = Release|x64
+		{D3D173AB-D306-4179-BEC4-95CE1B14E647}.Release|x64.Build.0 = Release|x64
+		{D3D173AB-D306-4179-BEC4-95CE1B14E647}.Release|x86.ActiveCfg = Release|x64
+		{D3D173AB-D306-4179-BEC4-95CE1B14E647}.Release|x86.Build.0 = Release|x64
+		{0BE55595-4080-4265-82AF-51108EC956B2}.Debug|x64.ActiveCfg = Release|x64
+		{0BE55595-4080-4265-82AF-51108EC956B2}.Debug|x64.Build.0 = Release|x64
+		{0BE55595-4080-4265-82AF-51108EC956B2}.Debug|x86.ActiveCfg = Release|x64
+		{0BE55595-4080-4265-82AF-51108EC956B2}.Debug|x86.Build.0 = Release|x64
+		{0BE55595-4080-4265-82AF-51108EC956B2}.Release|x64.ActiveCfg = Release|x64
+		{0BE55595-4080-4265-82AF-51108EC956B2}.Release|x64.Build.0 = Release|x64
+		{0BE55595-4080-4265-82AF-51108EC956B2}.Release|x86.ActiveCfg = Release|x64
+		{0BE55595-4080-4265-82AF-51108EC956B2}.Release|x86.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
