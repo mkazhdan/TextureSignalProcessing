@@ -53,7 +53,7 @@ namespace MishaK
 			template
 				<
 				typename SurfaceCornerFunctor ,         /* = std::function< size_t ( size_t , unsigned int ) > */
-				typename SurfaceMetricOrVertexFunctor , /* = std::function< SquareMatrix< Real , 2 > ( size_t ) > || std::function< Point< Real , 3 > ( size_t ) > */
+				typename SurfaceVertexOrMetricFunctor , /* = std::function< Point< Real , 3 > ( size_t ) > || std::function< SquareMatrix< Real , 2 > ( size_t ) > */
 				typename TextureCornerFunctor ,         /* = std::function< size_t ( size_t , unsigned int ) > */
 				typename TextureVertexFunctor           /* = std::function< Point< Real , 2 > ( size_t ) > */
 				>
@@ -64,7 +64,7 @@ namespace MishaK
 					size_t numSurfaceVertices ,
 					size_t numTextureVertices ,
 					SurfaceCornerFunctor         && surfaceCornerFunctor ,
-					SurfaceMetricOrVertexFunctor && surfaceMetricOrVertexFunctor ,
+					SurfaceVertexOrMetricFunctor && surfaceVertexOrMetricFunctor ,
 					TextureCornerFunctor         && textureCornerFunctor ,
 					TextureVertexFunctor         && textureVertexFunctor ,
 					unsigned int width ,
@@ -80,6 +80,9 @@ namespace MishaK
 
 			// The 2D index of a texel
 			std::pair< unsigned int , unsigned int > node( size_t n ) const;
+
+			// Is the texel covered by a triangle?
+			bool isCovered( size_t n ) const;
 
 			// The indices of the two texels that are the end-points of the edge
 			std::pair< size_t , size_t > edge( size_t e ) const;
@@ -115,7 +118,7 @@ namespace MishaK
 			template< typename Functor > static constexpr bool _IsTriangleCornerFunctor( void );
 			template< typename Functor > static constexpr bool _IsSurfaceMetricFunctor( void );
 			template< typename Functor > static constexpr bool _IsSurfaceVertexFunctor( void );	
-			template< typename Functor > static constexpr bool _IsSurfaceMetricOrVertexFunctor( void );
+			template< typename Functor > static constexpr bool _IsSurfaceVertexOrMetricFunctor( void );
 			template< typename Functor > static constexpr bool _IsTextureVertexFunctor( void );
 
 			MassAndStiffnessOperators< Real > _massAndStiffnessOperators;

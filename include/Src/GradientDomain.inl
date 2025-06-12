@@ -41,7 +41,7 @@ constexpr bool GradientDomain< Real >::_IsSurfaceVertexFunctor( void ){ return s
 
 template< typename Real >
 template< typename Functor >
-constexpr bool GradientDomain< Real >::_IsSurfaceMetricOrVertexFunctor( void ){ return _IsSurfaceMetricFunctor< Functor >() || _IsSurfaceVertexFunctor< Functor >(); }
+constexpr bool GradientDomain< Real >::_IsSurfaceVertexOrMetricFunctor( void ){ return _IsSurfaceVertexFunctor< Functor >() || _IsSurfaceMetricFunctor< Functor >(); }
 
 template< typename Real >
 template< typename Functor >
@@ -51,7 +51,7 @@ template< typename Real >
 template
 <
 	typename SurfaceCornerFunctor ,         /* = std::function< size_t ( size_t , unsigned int ) > */
-	typename SurfaceMetricOrVertexFunctor , /* = std::function< SquareMatrix< Real , 2 > ( size_t ) > || std::function< Point< Real ,32 > ( size_t ) > */
+	typename SurfaceVertexOrMetricFunctor , /* = std::function< Point< Real , 3 > ( size_t ) > || std::function< SquareMatrix< Real , 2 > ( size_t ) > */
 	typename TextureCornerFunctor ,         /* = std::function< size_t ( size_t , unsigned int ) > */
 	typename TextureVertexFunctor           /* = std::function< Point< Real , 2 > ( size_t ) > */
 >
@@ -62,7 +62,7 @@ GradientDomain< Real >::GradientDomain
 	size_t numSurfaceVertices ,
 	size_t numTextureVertices ,
 	SurfaceCornerFunctor && surfaceCornerFunctor ,
-	SurfaceMetricOrVertexFunctor && surfaceMetricOrVertexFunctor ,
+	SurfaceVertexOrMetricFunctor && surfaceVertexOrMetricFunctor ,
 	TextureCornerFunctor && textureCornerFunctor ,
 	TextureVertexFunctor && textureVertexFunctor ,
 	unsigned int width ,
@@ -71,12 +71,12 @@ GradientDomain< Real >::GradientDomain
 )
 {
 	static_assert( _IsTriangleCornerFunctor< SurfaceCornerFunctor >()                , "[ERROR] SurfaceCornerFunctor poorly formed" );
-	static_assert( _IsSurfaceMetricOrVertexFunctor< SurfaceMetricOrVertexFunctor >() , "[ERROR] SurfaceMetricOrVertexFunctor poorly formed" );
+	static_assert( _IsSurfaceVertexOrMetricFunctor< SurfaceVertexOrMetricFunctor >() , "[ERROR] SurfaceVertexOrMetricFunctor poorly formed" );
 	static_assert( _IsTriangleCornerFunctor< TextureCornerFunctor >()                , "[ERROR] TextureCornerFunctor poorly formed" );
 	static_assert( _IsTextureVertexFunctor< TextureVertexFunctor >()                 , "[ERROR] TextureVertexFunctor poorly formed" );
 
-	static const bool HasSurfaceMetric = _IsSurfaceMetricFunctor< SurfaceMetricOrVertexFunctor >();
-	static const bool HasSurfaceVertex = _IsSurfaceVertexFunctor< SurfaceMetricOrVertexFunctor >();
+	static const bool HasSurfaceMetric = _IsSurfaceMetricFunctor< SurfaceVertexOrMetricFunctor >();
+	static const bool HasSurfaceVertex = _IsSurfaceVertexFunctor< SurfaceVertexOrMetricFunctor >();
 
 	TexturedTriangleMesh< Real > mesh;
 	{
@@ -86,7 +86,7 @@ GradientDomain< Real >::GradientDomain
 		mesh.texture.vertices.resize( numTextureVertices );
 		for( size_t t=0 ; t<numTriangles ; t++ ) for( unsigned int k=0 ; k<=2 ; k++ )
 			mesh.surface.triangles[t][k] = surfaceCornerFunctor( t , k ) , mesh.texture.triangles[t][k] = textureCornerFunctor( t , k );
-		if constexpr( HasSurfaceVertex ) for( size_t i=0 ; i<numSurfaceVertices ; i++ ) mesh.surface.vertices[i] = surfaceMetricOrVertexFunctor( i );
+		if constexpr( HasSurfaceVertex ) for( size_t i=0 ; i<numSurfaceVertices ; i++ ) mesh.surface.vertices[i] = surfaceVertexOrMetricFunctor( i );
 		for( size_t i=0 ; i<numTextureVertices ; i++ ) mesh.texture.vertices[i] = textureVertexFunctor( i );
 
 		// Flip the vertical axis
@@ -105,7 +105,7 @@ GradientDomain< Real >::GradientDomain
 	else if constexpr( HasSurfaceMetric )
 	{
 		ExplicitIndexVector< AtlasMeshTriangleIndex , SquareMatrix< Real , 2 > > surfaceMetric( numTriangles );
-		for( size_t t=0 ; t<numTriangles ; t++ ) surfaceMetric[t] = surfaceMetricOrVertexFunctor(t);
+		for( size_t t=0 ; t<numTriangles ; t++ ) surfaceMetric[t] = surfaceVertexOrMetricFunctor(t);
 		if( normalize )
 		{
 			Real totalArea = 0;
@@ -134,6 +134,12 @@ template< typename Real >
 std::pair< unsigned int , unsigned int > GradientDomain< Real >::node( size_t n ) const
 {
 	return std::pair< unsigned int , unsigned int >( _textureNodes[n].ci , _textureNodes[n].cj );
+}
+
+template< typename Real >
+bool GradientDomain< Real >::isCovered( size_t n ) const
+{
+	return _textureNodes[n].isInterior;
 }
 
 template< typename Real >

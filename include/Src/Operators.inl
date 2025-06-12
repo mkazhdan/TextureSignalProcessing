@@ -386,54 +386,6 @@ Eigen::SparseMatrix< OutReal > MassAndStiffnessOperators< MatrixReal >::_matrix(
 		}
 	}
 
-#if 0
-
-	// Process boundary
-	{
-		unsigned int numBoundaryVariables = static_cast< unsigned int >( indexConverter.numBoundary() );
-
-		// Pull out the boundary values from the input array
-		std::vector< Data > outBoundaryValues( numBoundaryVariables );
-		std::vector< Data >  inBoundaryValues( numBoundaryVariables );
-		for( unsigned int i=0 ; i<numBoundaryVariables ; i++ ) inBoundaryValues[i] = in[ static_cast< unsigned int >( indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex(i) ) ) ];
-
-		if constexpr( Mass )
-		{
-			// Perform the boundary -> boundary multiplication
-			massCoefficients.boundaryBoundaryMatrix.template Multiply< Data , MatrixReal >( &inBoundaryValues[0] , &outBoundaryValues[0] , Add ? MULTIPLY_ADD : 0 );
-			// Perform the interior -> boundary multiplication
-			massCoefficients.boundaryDeepMatrix.template Multiply< Data , MatrixReal >( &in[0] , &outBoundaryValues[0] , MULTIPLY_ADD );
-		}
-		else if constexpr( Stiffness )
-		{
-			// Perform the boundary -> boundary multiplication
-			stiffnessCoefficients.boundaryBoundaryMatrix.template Multiply< Data , MatrixReal >( &inBoundaryValues[0] , &outBoundaryValues[0] , Add ? MULTIPLY_ADD : 0 );
-			// Perform the interior -> boundary multiplication
-			stiffnessCoefficients.boundaryDeepMatrix.template Multiply< Data , MatrixReal >( &in[0] , &outBoundaryValues[0] , MULTIPLY_ADD );
-		}
-		else
-		{
-			std::vector< Data > _outBoundaryValues( numBoundaryVariables );
-
-			// Perform the boundary -> boundary multiplication
-			massCoefficients.boundaryBoundaryMatrix.template Multiply< Data , MatrixReal >( &inBoundaryValues[0] , &_outBoundaryValues[0] );
-			// Perform the interior -> boundary multiplication
-			massCoefficients.boundaryDeepMatrix.template Multiply< Data , MatrixReal >( &in[0] , &_outBoundaryValues[0] , MULTIPLY_ADD );
-			if( Add ) ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( size_t i ){ outBoundaryValues[i] += _outBoundaryValues[i] * mWeight; } );
-			else      ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( size_t i ){ outBoundaryValues[i]  = _outBoundaryValues[i] * mWeight; } );
-
-			//  Perform the boundary -> boundary multiplication
-			stiffnessCoefficients.boundaryBoundaryMatrix.template Multiply< Data , MatrixReal >( &inBoundaryValues[0] , &_outBoundaryValues[0] );
-			// Perform the interior -> boundary multiplication
-			stiffnessCoefficients.boundaryDeepMatrix.template Multiply< Data , MatrixReal >( &in[0] , &_outBoundaryValues[0] , MULTIPLY_ADD );
-			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( size_t i ){ outBoundaryValues[i] += _outBoundaryValues[i] * sWeight; } );
-		}
-
-		// Write the boundary values back into the output array
-		if( Add ) ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ out[ static_cast< unsigned int >(indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex((unsigned int)i) ) ) ] += outBoundaryValues[i]; } );
-		else      ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ out[ static_cast< unsigned int >(indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex((unsigned int)i) ) ) ] = outBoundaryValues[i]; } );
-	}
-#endif
 	for( unsigned int i=0 ; i<indexConverter.numBoundary() ; i++ )
 	{
 		size_t globalIndex = static_cast< size_t >( indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex(i) ) );
@@ -774,18 +726,18 @@ void OperatorInitializer::_InitializeChart
 
 	{
 		std::vector< Point2D< GeometryReal > > polygon = { Point2D< GeometryReal >(0,0) , Point2D< GeometryReal >(1,0) , Point2D< GeometryReal >(1,1) , Point2D< GeometryReal >(0,1) };
-		for( int p=2 ; p<polygon.size() ; p++ )
+		for( unsigned int p=2 ; p<polygon.size() ; p++ )
 		{
 			Point2D< GeometryReal > dm[2] = { polygon[p-1]-polygon[0] , polygon[p]-polygon[0] };
 			Point2D< GeometryReal > fragment_samples[Samples];
-			for( int s=0 ; s<Samples ; s++ ) fragment_samples[s] = polygon[0] + dm[0] * (GeometryReal)TriangleIntegrator<Samples>::Positions[s][0] + dm[1] * (GeometryReal)TriangleIntegrator<Samples>::Positions[s][1];
+			for( unsigned int s=0 ; s<Samples ; s++ ) fragment_samples[s] = polygon[0] + dm[0] * (GeometryReal)TriangleIntegrator<Samples>::Positions[s][0] + dm[1] * (GeometryReal)TriangleIntegrator<Samples>::Positions[s][1];
 
 			// Integrate scalar product and gradient field
 			GeometryReal sampleValues[Samples][4];
 			Point2D< GeometryReal > sampleGradients[Samples][4];
 			Point2D< GeometryReal > __sampleGradients[Samples][4];
 
-			for( int s=0 ; s<Samples ; s++ )
+			for( unsigned int s=0 ; s<Samples ; s++ )
 			{
 				BilinearElementValuesAndGradients( fragment_samples[s] , sampleValues[s] , sampleGradients[s] );
 				for( int k=0 ; k<4 ; k++ )
@@ -796,7 +748,7 @@ void OperatorInitializer::_InitializeChart
 				}
 			}
 
-			for( int k=0 ; k<4 ; k++ ) for( int l=0 ; l<4 ; l++ ) for( int s=0 ; s<Samples ; s++ )
+			for( unsigned int k=0 ; k<4 ; k++ ) for( unsigned int l=0 ; l<4 ; l++ ) for( unsigned int s=0 ; s<Samples ; s++ )
 			{
 				interior_cell_mass(l,k) += sampleValues[s][k] * sampleValues[s][l] / 2;
 				for( int m=0 ; m<2 ; m++ ) for( int n=0 ; n<2 ; n++ ) interior_cell_stiffnesses[l][k](m,n) += sampleGradients[s][l][m] * sampleGradients[s][k][n] / 2;
@@ -805,13 +757,13 @@ void OperatorInitializer::_InitializeChart
 			if( computeDivergence )
 			{
 				Point2D< GeometryReal > sampleVectorFields[Samples][4];
-				for( int s=0 ; s<Samples ; s++ )
+				for( unsigned int s=0 ; s<Samples ; s++ )
 				{
 					ReducedVectorFieldBasis( fragment_samples[s] , sampleVectorFields[s] );
-					for( int k=0 ; k<4 ; k++ ) sampleVectorFields[s][k] *= _integrator_sampleWeight[s];
+					for( unsigned int k=0 ; k<4 ; k++ ) sampleVectorFields[s][k] *= _integrator_sampleWeight[s];
 				}
 				for( int k=0 ; k<4 ; k++ ) for( int l=0 ; l<4 ; l++ ) for( unsigned int s=0 ; s<Samples ; s++ )
-					for( int m=0 ; m<2 ; m++ ) for( int n=0 ; n<2 ; n++ ) grad_edge_products[l][k](m,n) += sampleVectorFields[s][k][m] * sampleGradients[s][l][n] / 2;
+					for( unsigned int m=0 ; m<2 ; m++ ) for( int n=0 ; n<2 ; n++ ) grad_edge_products[l][k](m,n) += sampleVectorFields[s][k][m] * sampleGradients[s][l][n] / 2;
 			}
 
 		}
@@ -1195,14 +1147,14 @@ void OperatorInitializer::_InitializeChart
 		unsigned int cellCoarseEdgeIndex[4];
 		bool coarseEdgeIndexInitialized = false;
 
-		for( int k=0 ; k<4 ; k++ )
+		for( unsigned int k=0 ; k<4 ; k++ )
 		{
 			AtlasTexelIndex currentNode = indicesCombined[k];
 			AtlasBoundaryTexelIndex _currentBoundaryIndex = indexConverter.combinedToBoundary( currentNode );
 			AtlasInteriorTexelIndex _currentInteriorIndex = indexConverter.combinedToInterior( currentNode );
 			if( _currentInteriorIndex!=AtlasInteriorTexelIndex(-1) ) //Interior
 			{
-				for( int l=0 ; l<4 ; l++ )
+				for( unsigned int l=0 ; l<4 ; l++ )
 				{
 					deepMassCoefficients[ 10*static_cast< unsigned int >(_currentInteriorIndex) + NeighbourOffset(k,l) ] = (MatrixReal)( cellMass[ ChartInteriorCellIndex(i) ](k,l) + deepMassCoefficients[ 10*static_cast< unsigned int >(_currentInteriorIndex) + NeighbourOffset(k,l) ] );
 					deepStiffnessCoefficients[ 10*static_cast< unsigned int >(_currentInteriorIndex) + NeighbourOffset(k,l) ] = (MatrixReal)( cellStiffness[ ChartInteriorCellIndex(i) ](k,l) + deepStiffnessCoefficients[ 10*static_cast< unsigned int >(_currentInteriorIndex) + NeighbourOffset(k,l) ] );
@@ -1234,7 +1186,7 @@ void OperatorInitializer::_InitializeChart
 				{
 					if( !coarseEdgeIndexInitialized )
 					{
-						for( int l=0 ; l<4 ; l++ )
+						for( unsigned int l=0 ; l<4 ; l++ )
 						{
 							AtlasTexelIndex edgeSourceCoarseIndex = indicesCombined[reducedCellCornerPairs[ 2*l+0 ] ];
 							AtlasTexelIndex edgeTargetCoarseIndex = indicesCombined[reducedCellCornerPairs[ 2*l+1 ] ];
@@ -1246,7 +1198,7 @@ void OperatorInitializer::_InitializeChart
 						}
 						coarseEdgeIndexInitialized = true;
 					}
-					for( int l=0 ; l<4 ; l++ ) boundaryDeepDivergenceTriplets.push_back( Eigen::Triplet< MatrixReal >( static_cast< unsigned int >(currentNode) , cellCoarseEdgeIndex[l] , (MatrixReal)cellDivergence[ ChartInteriorCellIndex(i) ](k,l) ) );
+					for( unsigned int l=0 ; l<4 ; l++ ) boundaryDeepDivergenceTriplets.push_back( Eigen::Triplet< MatrixReal >( static_cast< unsigned int >(currentNode) , cellCoarseEdgeIndex[l] , (MatrixReal)cellDivergence[ ChartInteriorCellIndex(i) ](k,l) ) );
 				}
 			}
 #ifdef SANITY_CHECK
