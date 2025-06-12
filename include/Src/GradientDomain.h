@@ -72,10 +72,10 @@ namespace MishaK
 					bool normalize = true
 				);
 
-			// The number of texel nodes
+			// The number of texels
 			size_t numNodes( void ) const;
 
-			// The number of edges between texel nodes
+			// The number of edges between texels
 			size_t numEdges( void ) const;
 
 			// The 2D index of a texel
@@ -99,16 +99,16 @@ namespace MishaK
 			// The finite-differences matrix
 			Eigen::SparseMatrix< Real > finiteDifferences( void ) const;
 
-			// Computes the mass of the per-node signal
+			// Computes the mass of the per-texel signal
 			template< typename T > void mass( const T * in , T * out ) const;
 
-			// Computes the stiffness of the per-node signal
+			// Computes the stiffness of the per-texel signal
 			template< typename T > void stiffness( const T * in , T * out ) const;
 
 			// Computes the divergence of the per-edge signal
 			template< typename T > void divergence( const T * in , T * out ) const;
 
-			// Compute the finite-differnces of texels along the edges
+			// Compute the finite-differences of texels along the edges
 			template< typename T > void finiteDifferences( const T * in , T * out ) const;
 
 			// Runs unit-tests to confirm the definitions of the operators are consistent
