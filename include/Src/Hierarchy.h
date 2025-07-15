@@ -545,10 +545,10 @@ namespace MishaK
 			}
 
 			// Texel indices (atlas)
-			Image< TexelIndex > texelIndices;
+			RegularGrid< 2 , TexelIndex > texelIndices;
 
 			// Cell indices (chart)
-			Image< CellIndex > cellIndices;
+			RegularGrid< 2 , CellIndex > cellIndices;
 
 			// The indices of the incident nodes
 			ExplicitIndexVector< ChartCellIndex , BilinearElementIndex< AtlasTexelIndex > > combinedCellCombinedTexelBilinearElementIndices;
@@ -572,10 +572,10 @@ namespace MishaK
 
 			std::vector< AuxiliaryNode< GeometryReal > > auxiliaryNodes;
 
-			Image< CellType > cellType;
-			Image< TexelType > texelType;
-			Image< AtlasMeshTriangleIndex > triangleID;
-			Image< Point2D< GeometryReal > > barycentricCoords;
+			RegularGrid< 2 , CellType > cellType;
+			RegularGrid< 2 , TexelType > texelType;
+			RegularGrid< 2 , AtlasMeshTriangleIndex > triangleID;
+			RegularGrid< 2 , Point2D< GeometryReal > > barycentricCoords;
 
 			AtlasInteriorCellIndex chartToAtlasInteriorCellIndex( ChartInteriorCellIndex idx ) const { return static_cast< AtlasInteriorCellIndex >( static_cast< unsigned int >(idx) + _interiorCellOffset ); }
 			ChartInteriorCellIndex atlasToChartInteriorCellIndex( AtlasInteriorCellIndex idx ) const { return static_cast< ChartInteriorCellIndex >( static_cast< unsigned int >(idx) - _interiorCellOffset ); }

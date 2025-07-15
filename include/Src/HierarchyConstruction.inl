@@ -89,23 +89,23 @@ void InitializeGridChartsActiveNodes
 	unsigned int height = gridChart.height;
 	GeometryReal cellSizeW = gridChart.cellSizeW;
 	GeometryReal cellSizeH = gridChart.cellSizeH;
-	Image< TexelType > &texelType = gridChart.texelType;
+	RegularGrid< 2 , TexelType > &texelType = gridChart.texelType;
 	texelType.resize( width , height );
 	for( int i=0 ; i<texelType.size() ; i++ ) texelType[i] = TexelType::Unsupported;
 #ifdef DEBUG_ATLAS
-	Image< AtlasMeshTriangleIndex > nodeOwner;
+	RegularGrid< 2 , AtlasMeshTriangleIndex > nodeOwner;
 	nodeOwner.resize( width , height );
 #endif // DEBUG_ATLAS
 
-	Image< CellType > &cellType = gridChart.cellType;
+	RegularGrid< 2 , CellType > &cellType = gridChart.cellType;
 	cellType.resize( width-1 , height-1 );
 	for( int i=0 ; i<cellType.size() ; i++ ) cellType[i] = CellType::Exterior;
 
-	Image< ChartMeshTriangleIndex > chartTriangleID;
+	RegularGrid< 2 , ChartMeshTriangleIndex > chartTriangleID;
 	chartTriangleID.resize( width , height );
 	for( unsigned int i=0 ; i<chartTriangleID.size() ; i++ ) chartTriangleID[i] = ChartMeshTriangleIndex( -1 );
 
-	Image< Point2D< GeometryReal > > &barycentricCoords = gridChart.barycentricCoords;
+	RegularGrid< 2 , Point2D< GeometryReal > > &barycentricCoords = gridChart.barycentricCoords;
 	barycentricCoords.resize( width , height );
 
 	using Range = RegularGrid< 2 >::Range;
@@ -234,7 +234,7 @@ void InitializeGridChartsActiveNodes
 
 	// Transform from chart triangle indices to atlas triangle indices
 	{
-		Image< AtlasMeshTriangleIndex > &atlasTriangleID = gridChart.triangleID;
+		RegularGrid< 2 , AtlasMeshTriangleIndex > &atlasTriangleID = gridChart.triangleID;
 		atlasTriangleID.resize( width , height );
 		for( unsigned int i=0 ; i<atlasTriangleID.size() ; i++ ) atlasTriangleID[i] = AtlasMeshTriangleIndex( -1 );
 
@@ -245,7 +245,7 @@ void InitializeGridChartsActiveNodes
 	gridChart.setCombinedCellOffset( static_cast< unsigned int >(endCombinedCellIndex) );
 	gridChart.setInteriorCellOffset( static_cast< unsigned int >(endInteriorCellIndex) );
 
-	Image< TexelIndex > & texelIndices = gridChart.texelIndices;
+	RegularGrid< 2 , TexelIndex > & texelIndices = gridChart.texelIndices;
 	texelIndices.resize( width , height );
 
 	// Set the texel indices
@@ -290,7 +290,7 @@ void InitializeGridChartsActiveNodes
 #endif // SANITY_CHECK
 
 
-	Image< CellIndex > & cellIndices = gridChart.cellIndices;
+	RegularGrid< 2 , CellIndex > & cellIndices = gridChart.cellIndices;
 	cellIndices.resize( width-1 , height-1 );
 
 	ExplicitIndexVector< ChartCellIndex , BilinearElementIndex< AtlasTexelIndex > > & combinedCellCombinedTexelBilinearElementIndices = gridChart.combinedCellCombinedTexelBilinearElementIndices;
@@ -550,7 +550,7 @@ void InitializeTextureNodes
 	for( unsigned int c=0 ; c<gridCharts.size() ; c++ )
 	{
 		const GridChart< GeometryReal > &gridChart = gridCharts[ ChartIndex(c) ];
-		const Image< TexelIndex > & texelIndices = gridChart.texelIndices;
+		const RegularGrid< 2 , TexelIndex > & texelIndices = gridChart.texelIndices;
 		for( unsigned int j=0 ; j<gridChart.height ; j++ ) for( unsigned int i=0 ; i<gridChart.width ; i++ ) if( texelIndices(i,j).combined!=AtlasTexelIndex(-1) )
 		{
 			TextureNodeInfo< GeometryReal > textureNode;
