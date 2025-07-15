@@ -161,7 +161,7 @@ public:
 	static HierarchicalSystem< PreReal , Real > hierarchy;
 
 	static std::vector< TextureNodeInfo< PreReal > > textureNodes;
-	static Image< int > nodeIndex;
+	static RegularGrid< 2 , int > nodeIndex;
 
 	static SparseMatrix< Real , int > anisotropicMass;
 	static SparseMatrix< Real , int > anisotropicStiffness;
@@ -268,7 +268,7 @@ template< typename PreReal , typename Real > SparseMatrix< Real , int >									
 template< typename PreReal , typename Real > SparseMatrix< Real , int >									LineConvolution< PreReal , Real >::mass;
 template< typename PreReal , typename Real > SparseMatrix< Real , int >									LineConvolution< PreReal , Real >::stiffness;
 template< typename PreReal , typename Real > std::vector< TextureNodeInfo< PreReal > >					LineConvolution< PreReal , Real >::textureNodes;
-template< typename PreReal , typename Real > Image< int >												LineConvolution< PreReal , Real >::nodeIndex;
+template< typename PreReal , typename Real > RegularGrid< 2 , int >										LineConvolution< PreReal , Real >::nodeIndex;
 
 template< typename PreReal , typename Real > int														LineConvolution< PreReal , Real >::steps;
 template< typename PreReal , typename Real > char														LineConvolution< PreReal , Real >::stepsString[1024];
@@ -480,7 +480,7 @@ void LineConvolution< PreReal , Real >::IncrementUpdateCallBack( Visualization *
 template< typename PreReal , typename Real >
 void LineConvolution< PreReal , Real >::ExportTextureCallBack( Visualization * /*v*/ , const char *prompt )
 {
-	Image< Point3D< float > > outputImage;
+	RegularGrid< 2 , Point3D< float > > outputImage;
 	outputImage.resize( textureWidth , textureHeight );
 	for( int i=0 ; i<outputImage.size() ; i++ ) outputImage[i] = Point3D< float >( outputBuffer[3*i] , outputBuffer[3*i+1] , outputBuffer[3*i+2] ) / 255.f;
 	padding.unpad( outputImage );

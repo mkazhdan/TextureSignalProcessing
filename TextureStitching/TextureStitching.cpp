@@ -165,19 +165,19 @@ public:
 	static bool positiveModulation;
 
 	// Single input mode
-	static Image< int > inputMask;
-	static Image< Point3D< Real > > lowFrequencyTexture;
-	static Image< Point3D< Real > > inputComposition;
-	static Image< Point3D< Real > > inputColorMask;
+	static RegularGrid< 2 , int > inputMask;
+	static RegularGrid< 2 , Point3D< Real > > lowFrequencyTexture;
+	static RegularGrid< 2 , Point3D< Real > > inputComposition;
+	static RegularGrid< 2 , Point3D< Real > > inputColorMask;
 
 	// Multiple input mode
 	static int numTextures;
-	static std::vector< Image< Real > > inputConfidence;
-	static std::vector< Image< Point3D< Real > > > inputTextures;
+	static std::vector< RegularGrid< 2 , Real > > inputConfidence;
+	static std::vector< RegularGrid< 2 , Point3D< Real > > > inputTextures;
 	static std::vector< std::vector< Point3D< Real > > > partialTexelValues;
 	static std::vector< std::vector< Point3D< Real > > > partialEdgeValues;
 
-	static Image< Point3D< Real > > filteredTexture;
+	static RegularGrid< 2 , Point3D< Real > > filteredTexture;
 
 #ifdef NO_OPEN_GL_VISUALIZATION
 #else // !NO_OPEN_GL_VISUALIZATION
@@ -250,7 +250,7 @@ public:
 	static void InterpolationWeightCallBack           ( Visualization *v , const char *prompt );
 #endif // NO_OPEN_GL_VISUALIZATION
 
-	static Image< Point3D< unsigned char > > GetChartMask( void );
+	static RegularGrid< 2 , Point3D< unsigned char > > GetChartMask( void );
 	static void LoadTextures( void );
 	static void LoadMasks( void );
 	static void ParseImages( void );
@@ -313,16 +313,16 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth > Hier
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > bool															Stitching< PreReal , Real , TextureBitDepth >::rhsUpdated = true;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > bool															Stitching< PreReal , Real , TextureBitDepth >::positiveModulation = true;
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > Image< Point3D< Real > >										Stitching< PreReal , Real , TextureBitDepth >::filteredTexture;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > RegularGrid< 2 , Point3D< Real > >								Stitching< PreReal , Real , TextureBitDepth >::filteredTexture;
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > Image< int >												    Stitching< PreReal , Real , TextureBitDepth >::inputMask;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > Image< Point3D< Real > >										Stitching< PreReal , Real , TextureBitDepth >::lowFrequencyTexture;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > Image< Point3D< Real > >										Stitching< PreReal , Real , TextureBitDepth >::inputComposition;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > Image< Point3D< Real > >										Stitching< PreReal , Real , TextureBitDepth >::inputColorMask;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > RegularGrid< 2 , int >										    Stitching< PreReal , Real , TextureBitDepth >::inputMask;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > RegularGrid< 2 , Point3D< Real > >								Stitching< PreReal , Real , TextureBitDepth >::lowFrequencyTexture;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > RegularGrid< 2 , Point3D< Real > >								Stitching< PreReal , Real , TextureBitDepth >::inputComposition;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > RegularGrid< 2 , Point3D< Real > >								Stitching< PreReal , Real , TextureBitDepth >::inputColorMask;
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > int																Stitching< PreReal , Real , TextureBitDepth >::numTextures;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Image< Real > >									Stitching< PreReal , Real , TextureBitDepth >::inputConfidence;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Image< Point3D< Real > > >							Stitching< PreReal , Real , TextureBitDepth >::inputTextures;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< RegularGrid< 2 , Real > >							Stitching< PreReal , Real , TextureBitDepth >::inputConfidence;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< RegularGrid< 2 , Point3D< Real > > >				Stitching< PreReal , Real , TextureBitDepth >::inputTextures;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Point3D< Real > >									Stitching< PreReal , Real , TextureBitDepth >::texelMass;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Point3D< Real > >									Stitching< PreReal , Real , TextureBitDepth >::texelDivergence;
 
@@ -393,7 +393,7 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth >
 void Stitching< PreReal , Real , TextureBitDepth >::WriteTexture( const char *fileName )
 {
 	UpdateFilteredTexture( multigridStitchingVariables[0].x );
-	Image< Point3D< Real > > outputTexture = filteredTexture;
+	RegularGrid< 2 , Point3D< Real > > outputTexture = filteredTexture;
 	padding.unpad( outputTexture );
 	WriteImage< TextureBitDepth >( outputTexture , fileName );
 }
@@ -551,7 +551,7 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth >
 void Stitching< PreReal , Real , TextureBitDepth >::ExportTextureCallBack( Visualization * /*v*/ , const char *prompt )
 {
 	UpdateFilteredTexture( multigridStitchingVariables[0].x );
-	Image< Point3D< Real > > outputTexture = filteredTexture;
+	RegularGrid< 2 , Point3D< Real > > outputTexture = filteredTexture;
 	padding.unpad( outputTexture );
 	WriteImage< TextureBitDepth >( outputTexture , prompt );
 }
@@ -703,11 +703,11 @@ void Stitching< PreReal , Real , TextureBitDepth >::SolveSystem( void )
 }
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth >
-Image< Point3D< unsigned char > > Stitching< PreReal , Real , TextureBitDepth >::GetChartMask( void )
+RegularGrid< 2 , Point3D< unsigned char > > Stitching< PreReal , Real , TextureBitDepth >::GetChartMask( void )
 {
 	auto IsBlack = []( Point3D< unsigned char > c ){ return !c[0] && !c[1] && !c[2]; };
 
-	Image< Point3D< unsigned char > > chartMask;
+	RegularGrid< 2 , Point3D< unsigned char > > chartMask;
 	chartMask.resize( textureWidth , textureHeight );
 	for( unsigned int i=0 ; i<(unsigned int)textureWidth ; i++ ) for( unsigned int j=0 ; j<(unsigned int)textureHeight ; j++ ) chartMask(i,j) = Point3D< unsigned char >(0,0,0);
 
@@ -729,7 +729,7 @@ Image< Point3D< unsigned char > > Stitching< PreReal , Real , TextureBitDepth >:
 	for( int i=0 ; i<textureNodes.size() ; i++ ) chartMask( textureNodes[i].ci , textureNodes[i].cj ) = chartColors[ textureNodes[i].chartID ];
 	for( int e=0 ; e<ChartMaskErode.value ; e++ )
 	{
-		Image< Point3D< unsigned char > > _chartMask = chartMask;
+		RegularGrid< 2 , Point3D< unsigned char > > _chartMask = chartMask;
 		for( int i=0 ; i<textureWidth ; i++ ) for( int j=0 ; j<textureHeight ; j++ ) if( chartMask(i,j)[0] || chartMask(i,j)[1] || chartMask(i,j)[2] )
 			for( int di=-1 ; di<=1 ; di++ ) for( int dj=-1 ; dj<=1 ; dj++ )
 				if( i+di>=0 && i+di<textureWidth && j+dj>0 && j+dj<textureHeight ) if( IsBlack( _chartMask(i+di,j+dj) ) ) chartMask(i,j) = Point3D< unsigned char >();
@@ -789,7 +789,7 @@ void Stitching< PreReal , Real , TextureBitDepth >::LoadMasks( void )
 				{
 					char confidenceName[256];
 					sprintf( confidenceName , InMask.value.c_str() , i );
-					Image< Point3D< Real > > textureConfidence;
+					RegularGrid< 2 , Point3D< Real > > textureConfidence;
 					ReadImage< 8 >( textureConfidence , confidenceName );
 					inputConfidence[i].resize( textureWidth , textureHeight );
 					for( int p=0 ; p<textureConfidence.size() ; p++ ) inputConfidence[i][p] = Point3D< Real >::Dot( textureConfidence[p] , Point3D< Real >( (Real)1./3 , (Real)1./3 , (Real)1./3 ) );
@@ -798,7 +798,7 @@ void Stitching< PreReal , Real , TextureBitDepth >::LoadMasks( void )
 	}
 	else
 	{
-		Image< Point3D< unsigned char > > textureConfidence;
+		RegularGrid< 2 , Point3D< unsigned char > > textureConfidence;
 		if( InMask.set ) ReadImage< 8 >( textureConfidence , InMask.value );
 		else textureConfidence = GetChartMask();
 
@@ -837,8 +837,8 @@ void Stitching< PreReal , Real , TextureBitDepth >::ParseImages( void )
 
 		for( int textureIter=0 ; textureIter<numTextures ; textureIter++ )
 		{
-			const Image< Point3D< Real > > & textureValues = InputLowFrequency.set ? lowFrequencyTexture : inputTextures[textureIter];
-			const Image< Real > & textureConfidence = inputConfidence[textureIter];
+			const RegularGrid< 2 , Point3D< Real > > & textureValues = InputLowFrequency.set ? lowFrequencyTexture : inputTextures[textureIter];
+			const RegularGrid< 2 , Real > & textureConfidence = inputConfidence[textureIter];
 
 			for( unsigned int i=0 ; i<textureNodes.size() ; i++ )
 			{
@@ -1056,7 +1056,7 @@ void Stitching< PreReal , Real , TextureBitDepth >::Init( void )
 
 	{
 		unsigned int multiChartTexelCount = 0;
-		Image< int > texelId;
+		RegularGrid< 2 , int > texelId;
 		texelId.resize( textureWidth , textureHeight );
 		for( int i=0 ; i<texelId.size() ; i++ ) texelId[i] = -1;
 		for( int i=0 ; i<textureNodes.size() ; i++ )

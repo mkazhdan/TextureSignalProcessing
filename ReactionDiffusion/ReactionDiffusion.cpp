@@ -180,7 +180,7 @@ public:
 	static HierarchicalSystem< PreReal , Real > hierarchy;
 
 	static std::vector< TextureNodeInfo< PreReal > > textureNodes;
-	static Image< int > nodeIndex;
+	static RegularGrid< 2 , int > nodeIndex;
 
 	static SparseMatrix< Real , int > mass;
 	static SparseMatrix< Real , int > stiffness;
@@ -267,7 +267,7 @@ template< typename PreReal , typename Real > Real																	GrayScottReact
 template< typename PreReal , typename Real > Real																	GrayScottReactionDiffusion< PreReal , Real >::feed;
 
 template< typename PreReal , typename Real > std::vector< TextureNodeInfo< PreReal > >								GrayScottReactionDiffusion< PreReal , Real >::textureNodes;
-template< typename PreReal , typename Real > Image< int >															GrayScottReactionDiffusion< PreReal , Real >::nodeIndex;
+template< typename PreReal , typename Real > RegularGrid< 2 , int >													GrayScottReactionDiffusion< PreReal , Real >::nodeIndex;
 
 template< typename PreReal , typename Real > int																	GrayScottReactionDiffusion< PreReal , Real >::steps;
 template< typename PreReal , typename Real > char																	GrayScottReactionDiffusion< PreReal , Real >::stepsString[1024];
@@ -510,7 +510,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::MotionFunc( int x , int y )
 template< typename PreReal , typename Real >
 void GrayScottReactionDiffusion< PreReal , Real >::ExportTextureCallBack( Visualization * /*v*/ , const char* prompt )
 {
-	Image< Point3D< Real > > outputImage;
+	RegularGrid< 2 , Point3D< Real > > outputImage;
 	outputImage.resize( textureWidth , textureHeight );
 	for( int i=0 ; i<outputImage.size() ; i++ ) outputImage[i] = Point3D< Real >( outputBuffer[i] , outputBuffer[i] , outputBuffer[i] ) / (Real)255.;
 	padding.unpad( outputImage );

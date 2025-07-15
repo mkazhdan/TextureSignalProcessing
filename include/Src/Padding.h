@@ -90,14 +90,14 @@ namespace MishaK
 			// Add the padding to an image (set new texelv alues to closest boundary texel)
 			// [WARNING] Assuming the image dimensions match those used to define the object
 			template< typename DataType >
-			void pad( Image< DataType > &im ) const
+			void pad( RegularGrid< 2 , DataType > &im ) const
 			{
 				if( !( left || right || bottom || top ) ) return;
 
 				unsigned int newWidth = im.res(0) + left + right;
 				unsigned int newHeight = im.res(1) + bottom + top;
 
-				Image< DataType > newIm;
+				RegularGrid< 2 , DataType > newIm;
 				newIm.resize( newWidth , newHeight );
 				for( unsigned int i=0 ; i<newWidth ; i++ ) for( unsigned int j=0 ; j<newHeight ; j++ )
 				{
@@ -110,13 +110,13 @@ namespace MishaK
 
 			// Remove the padding from an image
 			template< class DataType >
-			void unpad( Image<DataType> &im ) const
+			void unpad( RegularGrid< 2 , DataType> &im ) const
 			{
 				if( !( left || right || bottom || top ) ) return;
 
 				unsigned int outputWidth = im.res(0) - left - right;
 				unsigned int outputHeight = im.res(1) - bottom - top;
-				Image< DataType > newIm;
+				RegularGrid< 2 , DataType > newIm;
 				newIm.resize( outputWidth , outputHeight );
 				for( unsigned int i=0 ; i<outputWidth ; i++ ) for( unsigned int j=0 ; j<outputHeight ; j++ ) newIm(i,j) = im( left+i , bottom+j );
 				im = newIm;

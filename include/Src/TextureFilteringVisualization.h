@@ -58,7 +58,7 @@ namespace MishaK
 			int textureWidth;
 			int textureHeight;
 			template< typename Real >
-			void UpdateTextureBuffer( const Image< Point3D< Real > > &image);
+			void UpdateTextureBuffer( const RegularGrid< 2 , Point3D< Real > > &image);
 			void UpdateColorTextureBuffer();
 			void UpdateMaskTextureBuffer();
 			int slideBarWidth( void );

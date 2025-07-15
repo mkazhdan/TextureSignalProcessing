@@ -37,10 +37,8 @@ namespace MishaK
 {
 	namespace TSP
 	{
-		template< typename Data > using Image = RegularGrid< 2 , Data >;
-
 		template< unsigned int BitDepth , typename Data >
-		void WriteImage( const Image< Data > &image , std::string fileName )
+		void WriteImage( const RegularGrid< 2 , Data > &image , std::string fileName )
 		{
 			using CType = typename ImageChannel< BitDepth >::Type;
 			static const CType Scale = ~((CType )0);
@@ -68,7 +66,7 @@ namespace MishaK
 		}
 
 		template< unsigned int BitDepth , typename Data >
-		void ReadImage( Image< Data > &image , std::string fileName )
+		void ReadImage( RegularGrid< 2 , Data > &image , std::string fileName )
 		{
 			using CType = typename ImageChannel< BitDepth >::Type;
 			static const CType Scale = ~((CType )0);

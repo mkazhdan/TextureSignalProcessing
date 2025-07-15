@@ -143,7 +143,7 @@ public:
 	static HierarchicalSystem< PreReal , Real > hierarchy;
 
 	static std::vector< TextureNodeInfo< PreReal > > textureNodes;
-	static Image< int > nodeIndex;
+	static RegularGrid< 2 , int > nodeIndex;
 
 	static SparseMatrix< Real , int > mass;
 	static SparseMatrix< Real , int > stiffness;
@@ -233,7 +233,7 @@ template< typename PreReal , typename Real > Real															Geodesics< PreRe
 template< typename PreReal , typename Real > Real															Geodesics< PreReal , Real >::geodesicInterpolationWeight = 1e-6;
 
 template< typename PreReal , typename Real > std::vector< TextureNodeInfo< PreReal > >						Geodesics< PreReal , Real >::textureNodes;
-template< typename PreReal , typename Real > Image<int>														Geodesics< PreReal , Real >::nodeIndex;
+template< typename PreReal , typename Real > RegularGrid< 2 ,int>														Geodesics< PreReal , Real >::nodeIndex;
 
 template< typename PreReal , typename Real > int															Geodesics< PreReal , Real >::steps;
 template< typename PreReal , typename Real > char															Geodesics< PreReal , Real >::stepsString[1024];
@@ -503,7 +503,7 @@ template< typename PreReal , typename Real>
 void Geodesics< PreReal , Real >::ExportTextureCallBack( Visualization * /*v*/ , const char* prompt )
 {
 
-	Image< Point3D< float > > outputImage;
+	RegularGrid< 2 , Point3D< float > > outputImage;
 	outputImage.resize( textureWidth , textureHeight );
 	for( int i=0 ; i<outputImage.size() ; i++ ) outputImage[i] = Point3D< float >( outputBuffer[3*i] , outputBuffer[3*i+1] , outputBuffer[3*i+2]) / float(255.0);
 	padding.unpad( outputImage );

@@ -35,6 +35,7 @@ DAMAGE.
 #include <GLSL/GLSLProgram.h>
 
 #include <Misha/Image.h>
+#include <Src/ImageIO.h>
 #ifndef M_PI
 #define M_PI		3.14159265358979323846
 #endif // M_PI
@@ -65,7 +66,7 @@ namespace MishaK
 			GLuint offscreen_color_texture = 0;
 			GLuint offscreen_framebuffer_handle = 0;
 			void SetupOffScreenBuffer( void );
-			void RenderOffScreenBuffer( Image< Point3D< float > > & image );
+			void RenderOffScreenBuffer( RegularGrid< 2 , Point3D< float > > & image );
 
 			std::vector< Point3D< float > > chartBoundaryVertices;
 			bool showBoundaryEdges;
@@ -87,7 +88,7 @@ namespace MishaK
 			std::vector< Point3D< float > > vertices;
 			std::vector< SimplexIndex< 2 > > triangles;
 			std::vector< Point2D< float > > textureCoordinates;
-			Image< Point3D< float > > textureImage;
+			RegularGrid< 2 , Point3D< float > > textureImage;
 			std::vector< FEM::HermiteSamplePoint< float > > vectorField;
 
 			Point< float , 4 > lightAmbient , lightDiffuse , lightSpecular , lightPosition , shapeDiffuse , shapeAmbient , shapeSpecular;

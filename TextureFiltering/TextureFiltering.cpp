@@ -191,9 +191,9 @@ public:
 	static bool gradientModulationUpdated;
 	static bool positiveModulation;
 
-	static Image< Point3D< Real > > filteredTexture;
-	static Image< Point3D< float > > highFrequencyTexture;
-	static Image< Point3D< float > > lowFrequencyTexture;
+	static RegularGrid< 2 , Point3D< Real > > filteredTexture;
+	static RegularGrid< 2 , Point3D< float > > highFrequencyTexture;
+	static RegularGrid< 2 , Point3D< float > > lowFrequencyTexture;
 
 #ifdef NO_OPEN_GL_VISUALIZATION
 #else // !NO_OPEN_GL_VISUALIZATION
@@ -324,9 +324,9 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth > bool
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > bool																TextureFilter< PreReal , Real , TextureBitDepth >::positiveModulation = true;
 
 //UI
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > Image< Point3D< Real > >											TextureFilter< PreReal , Real , TextureBitDepth >::filteredTexture;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > Image< Point3D< float > >											TextureFilter< PreReal , Real , TextureBitDepth >::highFrequencyTexture;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > Image< Point3D< float > >											TextureFilter< PreReal , Real , TextureBitDepth >::lowFrequencyTexture;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > RegularGrid< 2 , Point3D< Real > >									TextureFilter< PreReal , Real , TextureBitDepth >::filteredTexture;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > RegularGrid< 2 , Point3D< float > >									TextureFilter< PreReal , Real , TextureBitDepth >::highFrequencyTexture;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > RegularGrid< 2 , Point3D< float > >									TextureFilter< PreReal , Real , TextureBitDepth >::lowFrequencyTexture;
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Point3D< Real > >										TextureFilter< PreReal , Real , TextureBitDepth >::stiffness_x0;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Point3D< Real > >										TextureFilter< PreReal , Real , TextureBitDepth >::mass_x0;
@@ -353,18 +353,18 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth > Dive
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > int																	TextureFilter< PreReal , Real , TextureBitDepth >::updateCount = -1;
 
 template< typename Real >
-Image< Point3D< Real > > ColorToNormal( const Image< Point3D< Real > > &color )
+RegularGrid< 2 , Point3D< Real > > ColorToNormal( const RegularGrid< 2 , Point3D< Real > > &color )
 {
-	Image< Point3D< Real > > normal( color.res() );
+	RegularGrid< 2 , Point3D< Real > > normal( color.res() );
 	for( unsigned int y=0 ; y<(unsigned int)color.res(1) ; y++ ) for( unsigned int x=0 ; x<(unsigned int)color.res(0) ; x++ )
 		normal(x,y) = color(x,y) * static_cast< Real >( 2 ) - Point3D< Real >(1.f,1.f,1.f);
 	return normal;
 }
 
 template< typename Real >
-Image< Point3D< Real > > NormalToColor( const Image< Point3D< Real > > &normal )
+RegularGrid< 2 , Point3D< Real > > NormalToColor( const RegularGrid< 2 , Point3D< Real > > &normal )
 {
-	Image< Point3D< Real > > color( normal.res() );
+	RegularGrid< 2 , Point3D< Real > > color( normal.res() );
 	for( unsigned int y=0 ; y<(unsigned int)normal.res(1) ; y++ ) for( unsigned int x=0 ; x<(unsigned int)normal.res(0) ; x++ )
 		color(x,y) = ( normal(x,y) + Point3D< Real >( static_cast< Real >( 1. ) , static_cast< Real >( 1. ) , static_cast< Real >( 1. ) ) ) / static_cast< Real >( 2 );
 	return color;
@@ -448,7 +448,7 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth >
 void TextureFilter< PreReal , Real , TextureBitDepth >::WriteTexture( const char* fileName )
 {
 	UpdateFilteredTexture( multigridFilteringVariables[0].x );
-	Image< Point3D< Real > > outputTexture = filteredTexture;
+	RegularGrid< 2 , Point3D< Real > > outputTexture = filteredTexture;
 	padding.unpad( outputTexture );
 
 	std::string ext = ToLower( GetFileExtension( fileName ) );
@@ -674,7 +674,7 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth >
 void TextureFilter< PreReal , Real , TextureBitDepth >::ExportTextureCallBack( Visualization * /*v*/ , const char* prompt )
 {
 	UpdateFilteredTexture( multigridFilteringVariables[0].x );
-	Image< Point3D< Real > > outputTexture = filteredTexture;
+	RegularGrid< 2 , Point3D< Real > > outputTexture = filteredTexture;
 	padding.unpad( outputTexture );
 
 	std::string ext = ToLower( GetFileExtension( prompt ) );
@@ -1060,7 +1060,7 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::Init( void )
 	if( true )
 	{
 		int multiChartTexelCount = 0;
-		Image< int > texelId;
+		RegularGrid< 2 , int > texelId;
 		texelId.resize(textureWidth, textureHeight);
 		for( int i=0 ; i<texelId.size() ; i++ ) texelId[i] = -1;
 		for( int i=0 ; i<textureNodes.size() ; i++)

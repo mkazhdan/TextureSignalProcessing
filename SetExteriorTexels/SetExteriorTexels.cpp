@@ -93,8 +93,8 @@ int main( int argc , char* argv[] )
 	}
 
 	TexturedTriangleMesh< Real > mesh;
-	Image< Point< Real , Channels > > texture;
-	Image< Point< unsigned char , Channels > > mask;
+	RegularGrid< 2 , Point< Real , Channels > > texture;
+	RegularGrid< 2 , Point< unsigned char , Channels > > mask;
 
 	// Read in the mesh and texture
 	mesh.read( In.values[0] , false , 0  , false );

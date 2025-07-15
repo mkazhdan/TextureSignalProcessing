@@ -230,7 +230,7 @@ void TextureFilteringVisualization::UpdateMaskTextureBuffer() {
 }
 
 template< typename Real >
-void TextureFilteringVisualization::UpdateTextureBuffer( const Image< Point3D< Real > > &image )
+void TextureFilteringVisualization::UpdateTextureBuffer( const RegularGrid< 2 , Point3D< Real > > &image )
 {
 	if( !glIsBuffer(textureBuffer) ) glGenTextures( 1 , &textureBuffer );
 	glBindTexture(GL_TEXTURE_2D, textureBuffer);

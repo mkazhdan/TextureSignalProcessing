@@ -51,10 +51,10 @@ namespace MishaK
 			ExplicitIndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > > &interiorCellLineIndex
 		)
 		{
-			const Image< CellType >& cellType = gridChart.cellType;
+			const RegularGrid< 2 , CellType >& cellType = gridChart.cellType;
 			unsigned int width = cellType.res(0) , height = cellType.res(1);
 
-			const Image< TexelIndex > & texelIndices = gridChart.texelIndices;
+			const RegularGrid< 2 , TexelIndex > & texelIndices = gridChart.texelIndices;
 
 			ChartInteriorCellIndex chartInteriorCellIndex(0);
 

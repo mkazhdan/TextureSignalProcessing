@@ -56,25 +56,25 @@ namespace MishaK
 			GLuint compositeTextureBuffer;
 			GLuint maskTextureBuffer;
 			template< typename Real >
-			void UpdateCompositeTextureBuffer( const Image< Point3D< Real > > &composite );
+			void UpdateCompositeTextureBuffer( const RegularGrid< 2 , Point3D< Real > > &composite );
 			template< typename Real >
-			void UpdateMaskTextureBuffer( const Image< Point3D< Real > > &mask );
+			void UpdateMaskTextureBuffer( const RegularGrid< 2 , Point3D< Real > > &mask );
 
 
 			//Multiple input
 			int referenceIndex;
 			std::vector<GLuint> referenceTextureBuffers;
 			template< typename Real >
-			void UpdateReferenceTextureBuffers( const std::vector< Image< Point3D< Real > > > &images );
+			void UpdateReferenceTextureBuffers( const std::vector< RegularGrid< 2 , Point3D< Real > > > &images );
 			std::vector< GLuint > referenceConfidenceBuffers;
 			template< typename Real >
-			void UpdateReferenceConfidenceBuffers( const std::vector< Image< Real > > &confidences );
+			void UpdateReferenceConfidenceBuffers( const std::vector< RegularGrid< 2 , Real > > &confidences );
 
 			unsigned char * colorTextureBuffer;
 			int textureWidth;
 			int textureHeight;
 			template< typename Real >
-			void UpdateTextureBuffer( const Image< Point3D< Real > > &image );
+			void UpdateTextureBuffer( const RegularGrid< 2 , Point3D< Real > > &image );
 			void UpdateColorTextureBuffer();
 
 			void display(void);

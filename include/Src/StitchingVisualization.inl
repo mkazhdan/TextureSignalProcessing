@@ -104,7 +104,7 @@ void StitchingVisualization::UpdateColorTextureBuffer( void )
 }
 
 template< typename Real >
-void StitchingVisualization::UpdateCompositeTextureBuffer( const Image< Point3D< Real > > &composite )
+void StitchingVisualization::UpdateCompositeTextureBuffer( const RegularGrid< 2 , Point3D< Real > > &composite )
 {
 	if( !glIsBuffer(compositeTextureBuffer) ) glGenTextures(1, &compositeTextureBuffer);
 	glBindTexture(GL_TEXTURE_2D, compositeTextureBuffer);
@@ -123,7 +123,7 @@ void StitchingVisualization::UpdateCompositeTextureBuffer( const Image< Point3D<
 }
 
 template< typename Real >
-void StitchingVisualization::UpdateMaskTextureBuffer( const Image< Point3D< Real > > &mask )
+void StitchingVisualization::UpdateMaskTextureBuffer( const RegularGrid< 2 , Point3D< Real > > &mask )
 {
 	if( !glIsBuffer(maskTextureBuffer) ) glGenTextures(1, &maskTextureBuffer);
 	glBindTexture(GL_TEXTURE_2D, maskTextureBuffer);
@@ -142,7 +142,7 @@ void StitchingVisualization::UpdateMaskTextureBuffer( const Image< Point3D< Real
 }
 
 template< typename Real >
-void StitchingVisualization::UpdateReferenceTextureBuffers( const std::vector< Image< Point3D< Real > > > &images )
+void StitchingVisualization::UpdateReferenceTextureBuffers( const std::vector< RegularGrid< 2 , Point3D< Real > > > &images )
 {
 	referenceTextureBuffers.resize( images.size() );
 	for( int i=0 ; i<referenceTextureBuffers.size() ; i++ )
@@ -166,7 +166,7 @@ void StitchingVisualization::UpdateReferenceTextureBuffers( const std::vector< I
 }
 
 template< typename Real >
-void StitchingVisualization::UpdateReferenceConfidenceBuffers( const std::vector< Image< Real > > &confidences )
+void StitchingVisualization::UpdateReferenceConfidenceBuffers( const std::vector< RegularGrid< 2 , Real > > &confidences )
 {
 	referenceConfidenceBuffers.resize( confidences.size() );
 	for( int i=0 ; i<referenceConfidenceBuffers.size() ; i++ )
@@ -190,7 +190,7 @@ void StitchingVisualization::UpdateReferenceConfidenceBuffers( const std::vector
 }
 
 template< typename Real >
-void StitchingVisualization::UpdateTextureBuffer( const Image< Point3D< Real > > &image )
+void StitchingVisualization::UpdateTextureBuffer( const RegularGrid< 2 , Point3D< Real > > &image )
 {
 	if (!glIsBuffer(textureBuffer)) {
 		glGenTextures(1, &textureBuffer);

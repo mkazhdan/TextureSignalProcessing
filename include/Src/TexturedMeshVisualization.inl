@@ -71,7 +71,7 @@ void TexturedMeshVisualization::SetupOffScreenBuffer( void )
 	glBindFramebuffer( GL_FRAMEBUFFER , 0 );
 }
 
-void TexturedMeshVisualization::RenderOffScreenBuffer( Image< Point3D< float > > & image )
+void TexturedMeshVisualization::RenderOffScreenBuffer( RegularGrid< 2 , Point3D< float > > & image )
 {
 	if( !offscreen_framebuffer_handle ) SetupOffScreenBuffer();
 	setViewport();
@@ -125,7 +125,7 @@ void TexturedMeshVisualization::ToggleVectorFieldCallBack( Visualization* v , co
 	tmv->showVectorField = !tmv->showVectorField;
 }
 void TexturedMeshVisualization::ScreenshotCallBack(Visualization* v, const char* prompt) {
-	Image< Point3D< float > > image;
+	RegularGrid< 2 , Point3D< float > > image;
 	TexturedMeshVisualization* av = (TexturedMeshVisualization*)v;
 	av->RenderOffScreenBuffer( image );
 	WriteImage< 8 >( image , prompt );
@@ -708,7 +708,7 @@ void TexturedMeshVisualization::mouseFunc( int button , int /*state*/ , int x , 
 
 void TexturedMeshVisualization::takeScreenshot( const char* fileName )
 {
-	Image< Point3D< float > > image;
+	RegularGrid< 2 , Point3D< float > > image;
 	RenderOffScreenBuffer( image );
 	WriteImage< 8 >( image , fileName );
 }
