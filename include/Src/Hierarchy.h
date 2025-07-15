@@ -41,9 +41,9 @@ DAMAGE.
 #include <Misha/MultiThreading.h>
 #include <Misha/Atomic.h>
 #include <Misha/Atomic.Geometry.h>
-#include "IndexedPolygon.h"
-#include "ImageIO.h"
 #include <Misha/SimplexBasis.h>
+#include "IndexedPolygon.h"
+//#include "ImageIO.h"
 
 namespace MishaK
 {
