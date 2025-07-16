@@ -17,7 +17,7 @@ This software supports gradient-domain signal processing within a texture atlas.
 <LI>simulation of reaction-diffusion following the Gray-Scott model.</LI>
 <LI>dilation of texture into the gutter
 <LI>masking of gutter/interior/boundary texels
-<LI>smoothing chart boundaries
+<LI>smoothing chart boundary texels
 </UL>
 <hr>
 <a name="LINKS"><b>LINKS</b></a><br>
@@ -405,12 +405,12 @@ Identifies the active texels within a texture mask of prescribed resolution, wit
 <font size="+1"><b>SeamStitcher</b></font>:
 Ensures an as-smooth-as-possible transition across chart boundaries by replacing the values of texels at chart boundaries with values minimizing the Dirichlet energy (subject to the constraint that the values of texels in the interior of charts remaine fixes).
 </summary>
-<dt><b>--in</b> &lt;<i>input mesh name</i>&gt;</dt>
-<dd> This string specifies the the name of the mesh.
+<dt><b>--in</b> &lt;<i>input mesh and texture</i>&gt;</dt>
+<dd> These two strings specify the names of the mesh and the texture image.
 </dd>
 
-<dt>[<b>--out</b> &lt;<i>output texture mask</i>&gt;]</dt>
-<dd> This string is the name of the file to which the texture mask will be written.</B>
+<dt>[<b>--out</b> &lt;<i>output texture</i>&gt;]</dt>
+<dd> This string is the name of the file to which the smoothed texture will be written.</B>
 </dd>
 
 <dt>[<b>--exterior</b>]</dt>
