@@ -33,7 +33,7 @@ DAMAGE.
 #include <GL/glut.h>
 #include <vector>
 #include <algorithm>
-#include "Misha/PNG.h"
+#include "Misha/Image.h"
 #include "Misha/Array.h"
 #include "Misha/Miscellany.h"
 #include "Misha/Exceptions.h"

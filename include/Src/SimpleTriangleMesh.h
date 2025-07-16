@@ -33,7 +33,6 @@ DAMAGE.
 #include <Eigen/Sparse>
 #include <Misha/Ply.h>
 #include <Misha/PlyVertexData.h>
-#include <Misha/Image.h>
 #include <Misha/Miscellany.h>
 #include <Misha/Geometry.h>
 #include <Src/VectorIO.h>
