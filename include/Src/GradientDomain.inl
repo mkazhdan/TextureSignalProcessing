@@ -143,6 +143,12 @@ bool GradientDomain< Real >::isCovered( size_t n ) const
 }
 
 template< typename Real >
+bool GradientDomain< Real >::isChartCrossing( size_t e ) const
+{
+	return _textureNodes[ _divergenceOperator.edges[e][0] ].chartID != _textureNodes[ _divergenceOperator.edges[e][1] ].chartID;
+}
+
+template< typename Real >
 std::pair< size_t , size_t > GradientDomain< Real >::edge( size_t e ) const
 {
 	return std::pair< size_t , size_t >( static_cast< size_t >( _divergenceOperator.edges[e][0] ) , static_cast< size_t >( _divergenceOperator.edges[e][1] ) );

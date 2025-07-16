@@ -84,6 +84,9 @@ namespace MishaK
 			// Is the texel covered by a triangle?
 			bool isCovered( size_t n ) const;
 
+			// Does the edge cross between charts?
+			bool isChartCrossing( size_t e ) const;
+
 			// The indices of the two texels that are the end-points of the edge
 			std::pair< size_t , size_t > edge( size_t e ) const;
 

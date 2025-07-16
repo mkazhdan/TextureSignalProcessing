@@ -1,4 +1,4 @@
-<center><h2>Gradient Domain Texture Processing (Version 8.00)</h2></center>
+<center><h2>Gradient Domain Texture Processing (Version 9.00)</h2></center>
 <center>
 <a href="#LINKS">links</a>
 <a href="#EXECUTABLES">executables</a>
@@ -33,6 +33,7 @@ This software supports gradient-domain signal processing within a texture atlas.
 <B>Data:</B>
 <A HREF="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/TSP.Data.zip">ZIP</A><br>
 <b>Older Versions:</b>
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version8.00/">V8.00</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version7.00/">V7.00</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version6.06/">V6.06</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version6.00/">V6.00</a>,
@@ -363,6 +364,11 @@ The default value for this parameter is 0, indicating no dilation.
 </dl>
 </ul>
 
+</details>
+</dl>
+</ul>
+
+
 <ul>
 <dl>
 <details>
@@ -386,10 +392,33 @@ Identifies the active texels within a texture mask of prescribed resolution, wit
 <dd> If this flag is enabled only texels whose center/node overlaps a triangle are rendered. Colors are assigned randomly to triangles and all centers/nodes covered by the same triangle are assigned the same color.
 </dd>
 
-
 </details>
 </dl>
 </ul>
+
+
+<ul>
+<dl>
+<details>
+<summary>
+<font size="+1"><b>SeamStitcher</b></font>:
+Ensures an as-smooth-as-possible transition across chart boundaries by replacing the values of texels at chart boundaries with values minimizing the Dirichlet energy (subject to the constraint that the values of texels in the interior of charts remaine fixes).
+</summary>
+<dt><b>--in</b> &lt;<i>input mesh name</i>&gt;</dt>
+<dd> This string specifies the the name of the mesh.
+</dd>
+
+<dt>[<b>--out</b> &lt;<i>output texture mask</i>&gt;]</dt>
+<dd> This string is the name of the file to which the texture mask will be written.</B>
+</dd>
+
+<dt>[<b>--exterior</b>]</dt>
+<dd> If this flag is enabled, only the values of boundary texels whose centers are outside the charts are updated.
+</dd>
+
+<dt>[<b>--verbose</b>]</dt>
+<dd> If this flag is enabled, performance information is printed to <CODE>stdout</CODE>.
+</dd>
 
 
 </details>
@@ -672,6 +701,11 @@ The code make a number of assumptions about the input geometry:
 <ul>
 <LI> Added header-only library support for standard geometry-prcoessing interfaces, wrapped in <CODE>include/Src/GradientDomain.h</CODE>
 <LI> Added example code showing how to use the libary in <CODE>GradientDomain.example.cpp</CODE>.
+</ul>
+
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version9.00/">Version 9.00</a>:
+<ul>
+<LI> Added <CODE>SeamStitcher</CODE> executable.
 </ul>
 
 </details>
