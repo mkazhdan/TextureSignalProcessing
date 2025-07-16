@@ -17,6 +17,7 @@ This software supports gradient-domain signal processing within a texture atlas.
 <LI>simulation of reaction-diffusion following the Gray-Scott model.</LI>
 <LI>dilation of texture into the gutter
 <LI>masking of gutter/interior/boundary texels
+<LI>smoothing chart boundaries
 </UL>
 <hr>
 <a name="LINKS"><b>LINKS</b></a><br>
