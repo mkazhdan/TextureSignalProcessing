@@ -11,13 +11,13 @@
 <hr>
 This software supports gradient-domain signal processing within a texture atlas. Supported applications include:
 <UL>
-<LI>(localized) texture smoothing and sharpening,</LI>
-<LI>vector-field visualization akin to line-integral convolution,</LI>
-<LI>computation of single-source geodesics, and</LI>
-<LI>simulation of reaction-diffusion following the Gray-Scott model.</LI>
+<LI>(localized) texture smoothing and sharpening
+<LI>vector-field visualization akin to line-integral convolution
+<LI>computation of single-source geodesics
+<LI>simulation of reaction-diffusion following the Gray-Scott model
 <LI>dilation of texture into the gutter
 <LI>masking of gutter/interior/boundary texels
-<LI>smoothing chart boundary texels
+<LI>solving for the smoothest interpolant within a prescribed subset of texels
 </UL>
 <hr>
 <a name="LINKS"><b>LINKS</b></a><br>
@@ -422,7 +422,7 @@ If not specified, values of texels at chart boundaries will be updated.
 </dd>
 
 <dt>[<b>--exterior</b>]</dt>
-<dd> If this flag is enabled (and a <code>--mask</code> parmeter is not specified), only the values of boundary texels whose centers are outside the charts are updated.
+<dd> If this flag is enabled (and a <b>--mask</b> parmeter is not specified), only the values of boundary texels whose centers are outside the charts are updated.
 </dd>
 
 <dt>[<b>--verbose</b>]</dt>
