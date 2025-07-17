@@ -422,7 +422,7 @@ If not specified, values of texels at chart boundaries will be updated.
 </dd>
 
 <dt>[<b>--exterior</b>]</dt>
-<dd> If this flag is enabled, only the values of boundary texels whose centers are outside the charts are updated.
+<dd> If this flag is enabled (and a <code>--mask</code> parmeter is not specified), only the values of boundary texels whose centers are outside the charts are updated.
 </dd>
 
 <dt>[<b>--verbose</b>]</dt>
