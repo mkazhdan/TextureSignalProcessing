@@ -1,4 +1,4 @@
-<center><h2>Gradient Domain Texture Processing (Version 9.00)</h2></center>
+<center><h2>Gradient Domain Texture Processing (Version 9.05)</h2></center>
 <center>
 <a href="#LINKS">links</a>
 <a href="#EXECUTABLES">executables</a>
@@ -34,6 +34,7 @@ This software supports gradient-domain signal processing within a texture atlas.
 <B>Data:</B>
 <A HREF="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/TSP.Data.zip">ZIP</A><br>
 <b>Older Versions:</b>
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version9.00/">V9.00</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version8.00/">V8.00</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version7.00/">V7.00</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version6.06/">V6.06</a>,
@@ -403,10 +404,17 @@ Identifies the active texels within a texture mask of prescribed resolution, wit
 <details>
 <summary>
 <font size="+1"><b>SeamStitcher</b></font>:
-Ensures an as-smooth-as-possible transition across chart boundaries by replacing the values of texels at chart boundaries with values minimizing the Dirichlet energy (subject to the constraint that the values of texels in the interior of charts remaine fixes).
+Ensures an as-smooth-as-possible transition, either across chart boundaries or in regions expressly specified by an input mask, by replacing the values of texels with values minimizing the Dirichlet energy (subject to the constraint that the values of other texels remaine fixed).
 </summary>
 <dt><b>--in</b> &lt;<i>input mesh and texture</i>&gt;</dt>
 <dd> These two strings specify the names of the mesh and the texture image.
+</dd>
+
+<dt>[<b>--mask</b> &lt;<i>input mask</i>&gt;]</dt>
+<dd> This string specifies the name of the mask image used to define texels whose value is to be replaced.<br>
+Black pixels in the mask file indicate that the associated texels values should be updated to produce an as-smooth-as-possible image. (Results may be unpredictable if it is encoded using lossy compression.)<BR>
+If specified, the mask resolution should match that of the input texture.<br>
+If not specified, values of texels at chart boundaries will be updated.
 </dd>
 
 <dt>[<b>--out</b> &lt;<i>output texture</i>&gt;]</dt>
@@ -707,6 +715,11 @@ The code make a number of assumptions about the input geometry:
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version9.00/">Version 9.00</a>:
 <ul>
 <LI> Added <CODE>SeamStitcher</CODE> executable.
+</ul>
+
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version9.00/">Version 9.05</a>:
+<ul>
+<LI> Added the option to provide a mask to the <CODE>SeamStitcher</CODE> executable to indicate which texels are to be locked.
 </ul>
 
 </details>

@@ -53,6 +53,7 @@ CmdLineParameterArray< std::string , 2 >
 	In( "in" );
 
 CmdLineParameter< std::string >
+	Mask( "mask" ) ,
 	Out( "out" );
 
 CmdLineParameter< unsigned int >
@@ -78,6 +79,7 @@ void ShowUsage( const char *ex )
 {
 	printf( "Usage %s:\n" , ex );
 	printf( "\t --%s <input mesh and texels>\n" , In.name.c_str() );
+	printf( "\t[--%s <input texel mask>]\n" , Mask.name.c_str() );
 	printf( "\t[--%s <output texels>]\n" , Out.name.c_str() );
 	printf( "\t[--%s <quadrature samples per triangle>=%d]\n" , QuadratureSamples.name.c_str() , QuadratureSamples.value );
 	printf( "\t[--%s]\n" , ExteriorBoundary.name.c_str() );
@@ -109,10 +111,17 @@ int main( int argc , char* argv[] )
 
 	TexturedTriangleMesh< Real > mesh;
 	RegularGrid< 2 , Point< Real , Channels > > texture;
+	RegularGrid< 2 , Point< unsigned char , Channels > > mask;
 
 	// Read in the mesh and texture
 	mesh.read( In.values[0] , false , 0  , false );
 	ReadImage< TextureBitDepth >( texture , In.values[1] );
+	if( Mask.set )
+	{
+		ReadImage< TextureBitDepth >( mask , Mask.value );
+		if( mask.res(0)!=texture.res(0) || mask.res(1)!=texture.res(1) )
+			MK_THROW( "Texture and mask resolutions don't match: " , texture.res(0) , " x " , texture.res(1) , " != " , mask.res(0) , " x " , mask.res(1) );
+	}
 	if( Verbose.set )
 	{
 		std::cout << "Triangles: " << mesh.numTriangles() << std::endl;
@@ -137,11 +146,23 @@ int main( int argc , char* argv[] )
 	);
 	if( Verbose.set ) std::cout << pMeter( "Gradient domain" ) << std::endl;
 
-	// Compute the prolongation matrix from the degrees of freedom to texels
+	// Compute the set of degrees of freedom
 	std::set< size_t > dofSet;
-	Eigen::SparseMatrix< double > P , Pt;
 	{
-		std::vector< Eigen::Triplet< double > > triplets;
+		if( Mask.set )
+		{
+			auto IsDoF = []( Point< unsigned char , Channels > pixel )
+				{
+					for( unsigned int c=0 ; c<Channels ; c++ ) if( pixel[c] ) return false;
+					return true;
+				};
+			for( size_t n=0 ; n<gd.numNodes() ; n++ )
+			{
+				std::pair< unsigned int , unsigned int > p = gd.node(n);
+				if( IsDoF( mask( p.first , p.second ) ) ) dofSet.insert( n );
+			}
+		}
+		else
 		{
 			if( ExteriorBoundary.set ) for( size_t n=0 ; n<gd.numNodes() ; n++ ) if( !gd.isCovered(n) ) dofSet.insert( n );
 			else
@@ -152,6 +173,20 @@ int main( int argc , char* argv[] )
 					dofSet.insert( edge.first ) , dofSet.insert( edge.second );
 				}
 			}
+		}
+	}
+	if( Verbose.set )
+	{
+		std::stringstream sStream;
+		sStream << "DoFs " << dofSet.size();
+		std::cout << pMeter( sStream.str() ) << std::endl;
+	}
+
+	// Compute the prolongation matrix from the degrees of freedom to texels
+	Eigen::SparseMatrix< double > P , Pt;
+	{
+		std::vector< Eigen::Triplet< double > > triplets;
+		{
 			triplets.reserve( dofSet.size() );
 			size_t idx = 0;
 			for( auto iter=dofSet.begin() ; iter!=dofSet.end() ; iter++ )
