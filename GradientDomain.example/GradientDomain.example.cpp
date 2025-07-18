@@ -111,7 +111,7 @@ int main( int argc , char* argv[] )
 	RegularGrid< 2 , Point< unsigned char , Channels > > mask;
 
 	// Read in the mesh and texture
-	mesh.read( In.values[0] , false , 0  , false );
+	mesh.read( In.values[0] , false , 0 , false );
 	ReadImage< TextureBitDepth >( texture , In.values[1] );
 	if( Mask.set )
 	{

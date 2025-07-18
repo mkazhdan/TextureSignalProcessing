@@ -497,6 +497,78 @@ namespace MishaK
 			else MK_THROW( "Unrecognized file type: " , fileName , " -> " , ext );
 		}
 
+#ifdef NEW_CODE
+		template< typename Index , typename Real , unsigned int Dim , unsigned int TDim >
+		void WriteTexturedMesh
+		(
+			std::string fileName ,
+			const std::vector< Point< Real ,  Dim > > &vertices ,
+			const std::vector< Point< Real , TDim > > &textures ,
+			const std::vector< SimplexIndex< 2 , Index > > &vSimplices ,
+			const std::vector< SimplexIndex< 2 , Index > > &tSimplices
+		)
+		{
+			static const unsigned int K = 2;
+
+			if( vSimplices.size()!=tSimplices.size() ) MK_THROW( "Number of simplex mismatch: " , vSimplices.size() , " != " , tSimplices.size() );
+
+			std::string ext = ToLower( GetFileExtension( fileName ) );
+			if( ext==std::string( "ply" ) )
+			{
+				using VertexFactory = VertexFactory::PositionFactory< Real , Dim >;
+				using Vertex = typename VertexFactory::VertexType;
+				using Face = PlyTexturedFace< unsigned int , Real >;
+
+				VertexFactory factory;
+
+				std::vector< Face > faces( vSimplices.size() );
+				for( size_t i=0 ; i<faces.size() ; i++ )
+				{
+					faces[i].resize( K+1 );
+					for( unsigned int k=0 ; k<=K ; k++ ) faces[i][k] = vSimplices[i][k] , faces[i].texture(k) = textures[ tSimplices[i][k] ];
+				}
+				PLY::WritePolygons< VertexFactory , Face >( fileName , factory , vertices , faces , Face::Properties , Face::NumProperties , PLY_BINARY_NATIVE  );
+			}
+			else if( ext==std::string( "obj" ) )
+			{
+				struct ObjFaceIndex{ int vIndex , tIndex; };
+				std::vector< std::vector< ObjFaceIndex > > faces( vSimplices.size() );
+				for( size_t i=0 ; i<faces.size() ; i++ )
+				{
+					faces[i].resize( K+1 );
+					for( unsigned int k=0 ; k<=K ; k++ )
+					{
+						faces[i][k].vIndex = static_cast< int >( vSimplices[i][k]+1 );
+						faces[i][k].tIndex = static_cast< int >( tSimplices[i][k]+1 );
+					}
+				}
+
+				std::ofstream out( fileName );
+				if( !out.is_open() ) MK_THROW( "Could not open file for writing: " , fileName );
+
+				for( size_t i=0 ; i<vertices.size() ; i++ )
+				{
+					out << "v";
+					for( unsigned int d=0 ; d<Dim ; d++ ) out << " " << vertices[i][d];
+					out << std::endl;
+				}
+				for( size_t i=0 ; i<textures.size() ; i++ )
+				{
+					out << "vt";
+					for( unsigned int d=0 ; d<TDim ; d++ ) out << " " << textures[i][d];
+					out << std::endl;
+				}
+				for( size_t i=0 ; i<vSimplices.size() ; i++ )
+				{
+					out << "f";
+					for( unsigned int k=0 ; k<=K ; k++ ) out << " " << faces[i][k].vIndex << "/" << faces[i][k].tIndex;
+					out << std::endl;
+				}
+			}
+			else MK_THROW( "Unrecognized file type: " , fileName , " -> " , ext );
+		}
+#endif // NEW_CODE
+
 		template< typename Index , typename Real , unsigned int Dim >
 		void CollapseVertices( std::vector< Point< Real , Dim > > &vertices , std::vector< SimplexIndex< 2 , Index > > &simplices , double eps )
 		{

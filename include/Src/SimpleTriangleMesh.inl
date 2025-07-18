@@ -200,6 +200,14 @@ void TexturedTriangleMesh< Real >::read( std::string meshName , bool verbose , d
 	for( unsigned int i=0 ; i<texture.triangles.size() ; i++ ) if( texture.triangle(i).measure()==0 ) MK_WARN( "Zero area texture triangle: " , i );
 }
 
+#ifdef NEW_CODE
+template< typename Real >
+void TexturedTriangleMesh< Real >::write( std::string meshName ) const
+{
+	WriteTexturedMesh( meshName , surface.vertices , texture.vertices , surface.triangles , texture.triangles );
+}
+#endif // NEW_CODE
+
 template< typename Real >
 Simplex< Real , 3 , 2 > TexturedTriangleMesh< Real >::surfaceTriangle( unsigned int t ) const { return surface.triangle(t); }
 

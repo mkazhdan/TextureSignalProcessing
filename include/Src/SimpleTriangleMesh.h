@@ -89,6 +89,9 @@ namespace MishaK
 			Simplex< Real , 2 , 2 > textureTriangle( unsigned int t ) const;
 
 			void read( std::string meshName , bool verbose , double eps , bool flip=true );
+#ifdef NEW_CODE
+			void write( std::string meshName ) const;
+#endif // NEW_CODE
 
 			// Sets the boundary half-edge information
 			void setBoundaryHalfEdgeInfo( std::vector< unsigned int > &textureBoundaryHalfEdges , std::vector< unsigned int > &oppositeSurfaceHalfEdges ) const;
