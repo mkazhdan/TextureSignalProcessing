@@ -63,7 +63,11 @@ namespace MishaK
 		int DefaultFileType( void );
 
 		// PLY read functionality
+		int ReadElementHeader( std::string fileName , std::string elementName , const GregTurk::PlyProperty *properties , int propertyNum , bool *readFlags );
+
+		// PLY read functionality
 		int ReadHeader( std::string fileName , const GregTurk::PlyProperty *properties , int propertyNum , bool *readFlags );
+
 
 		std::vector< GregTurk::PlyProperty > ReadVertexHeader( std::string fileName );
 		std::vector< GregTurk::PlyProperty > ReadVertexHeader( std::string fileName , int &file_type );

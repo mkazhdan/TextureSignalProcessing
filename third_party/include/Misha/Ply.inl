@@ -62,6 +62,22 @@ const GregTurk::PlyProperty EdgeProps[] =
 };
 
 // Read
+inline int ReadElementHeader( std::string fileName , std::string elementName , const GregTurk::PlyProperty *properties , int propertyNum , bool *readFlags )
+{
+	int file_type;
+	std::vector< std::string > elist;
+	float version;
+
+	GregTurk::PlyFile *ply = GregTurk::PlyFile::Read( fileName , elist , file_type , version );
+	if( !ply ) MK_THROW( "could not read ply file: " , fileName );
+
+	for( int i=0 ; i<(int)elist.size() ; i++ ) if( elist[i]==elementName ) for( int j=0 ; j<propertyNum ; j++ ) if( readFlags ) readFlags[j] = ply->get_property( elist[i] , &properties[j] )!=0;
+
+	delete ply;
+	return file_type;
+}
+
+// Read
 inline int ReadHeader( std::string fileName , const GregTurk::PlyProperty *properties , int propertyNum , bool *readFlags )
 {
 	int file_type;
@@ -541,7 +557,7 @@ void WriteSimplices
 	const std::vector< typename VertexFactory::VertexType > &vertices ,
 	const std::vector< SimplexIndex< K , Index > > &simplexIndices ,
 	int file_type ,
-	std::vector< std::string > *comments=NULL
+	std::vector< std::string > *comments=nullptr
 )
 {
 	std::vector< std::vector< Index > > polygons( simplexIndices.size() );
@@ -881,7 +897,7 @@ void WritePoints
 	const VertexFactory &vFactory ,
 	const std::vector< typename VertexFactory::VertexType > &vertices ,
 	int file_type ,
-	const std::vector< std::string > *comments=NULL
+	const std::vector< std::string > *comments=nullptr
 )
 {
 	int nr_vertices = int(vertices.size());

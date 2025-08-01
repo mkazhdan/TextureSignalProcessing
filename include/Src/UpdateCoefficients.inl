@@ -216,7 +216,7 @@ void FullMatrixConstruction( const GridAtlas< GeometryReal , MatrixReal > &gridA
 		}
 	}
 
-	//Update deep
+	// Update deep
 	for( int r=0 ; r<rasterLines.size() ; r++ )
 	{
 		const RasterLine & currentLine = rasterLines[r];
@@ -257,6 +257,17 @@ void FullMatrixConstruction( const GridAtlas< GeometryReal , MatrixReal > &gridA
 	SparseMatrix< MatrixReal , int > _fullMatrix;
 	CompressSparseMatrix( fullMatrix , _fullMatrix );
 	fullMatrix = _fullMatrix;
+
+	for( unsigned int i=0 ; i<fullMatrix.Rows() ; i++ ) for( unsigned int j=0 ; j<fullMatrix.RowSize(i) ; j++ )
+		if( fullMatrix[i][j].N==i )
+		{
+			if( fullMatrix[i][j].Value<-0 )
+			{
+				if( std::is_same_v< MatrixReal , float > ) MK_WARN( "Non-positive diagonal entry @ " , i , ": " , fullMatrix[i][j].Value , " (try double)" );
+				else                                       MK_WARN( "Non-positive diagonal entry @ " , i , ": " , fullMatrix[i][j].Value );
+			}
+			fullMatrix[i][j].Value = std::max< MatrixReal >( DIAGONAL_CLAMP , fullMatrix[i][j].Value );
+		}
 }
 
 template< typename GeometryReal , typename MatrixReal >
@@ -382,6 +393,7 @@ void UpdateMultigridCoefficientsAndSolvers( const HierarchicalSystem< GeometryRe
 	if( detailVerbose ) printf( "Hierarchy coefficients update =  %.4f \n" , timer.elapsed() );
 
 	timer.reset();
+
 	UpdateMultigridSolvers( hierarchy , coarseSystemMatrix , multigridCoefficients , vCycleSolvers , detailVerbose , initSolvers );
 	if( detailVerbose ) printf( "Hierarchy solvers =  %.4f \n" , timer.elapsed() );
 }

@@ -147,7 +147,7 @@ void InitializeAtlasHierachicalProlongation( GridAtlas< GeometryReal , MatrixRea
 		typedef Eigen::Matrix< MatrixReal , Eigen::Dynamic , 1 > EVector;
 		EVector ones = EVector::Ones( static_cast< unsigned int >(coarseAtlas.endCombinedTexelIndex) );
 		EVector prolongedOnes = prolongation*ones;
-		for( unsigned int i=0 ; i<static_cast< unsigned int >(fineAtlas.endCombinedTexelIndex) ; i++ ) if( fabs( prolongedOnes[i]-1.0 )>1e-10 ) MK_THROW( "Prolongation does not add up to one! " , i , " -> " , prolongedOnes[i] );
+		for( unsigned int i=0 ; i<static_cast< unsigned int >(fineAtlas.endCombinedTexelIndex) ; i++ ) if( fabs( prolongedOnes[i]-1.0 )>PROLONGATION_EPSILON ) MK_THROW( "Prolongation does not add up to one! " , i , " -> " , prolongedOnes[i] );
 	}
 #endif // SANITY_CHECK
 }
@@ -193,7 +193,7 @@ void InitializeProlongationMatrix( const GridAtlas< GeometryReal , MatrixReal > 
 			{
 				MatrixReal sum = 0;
 				for( int j=0 ; j<__prolongation.rowSizes[i] ; j++ ) sum += __prolongation[i][j].Value;
-				if( fabs(sum-1.0)>1e-10 ) MK_THROW( "Prolongation does not add up to one! " , i , " -> " , sum );
+				if( fabs(sum-1.0)>PROLONGATION_EPSILON ) MK_THROW( "Prolongation does not add up to one! " , i , " -> " , sum );
 			}
 		);
 #endif // SANITY_CHECK

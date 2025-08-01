@@ -567,7 +567,7 @@ GetChartBoundaryPolygons
 						if( true ) // Add orthogonal perturbation to avoid colinearity. Delanauy triangulation library failed for colinear inputs on some systems.
 						{
 							Point2D< GeometryReal > segmentDir = nextPos - currentPos;
-							interpolatedPos += Point2D< GeometryReal >( -segmentDir[1] , segmentDir[0] ) * (GeometryReal)( ( Random< GeometryReal >()*2 - 1. ) * 1e-10 );
+							interpolatedPos += Point2D< GeometryReal >( -segmentDir[1] , segmentDir[0] ) * (GeometryReal)( ( Random< GeometryReal >()*2 - 1. ) * ORTHOGONAL_PERTURBATION );
 						}
 
 						// Validate that the added node is not an original atlas vertex (and has been processed)
@@ -870,7 +870,7 @@ void InitializeCoarseBoundaryToFineBoundaryProlongation
 		}
 	}
 
-	GeometryReal precision_error = (GeometryReal)1e-10;
+	GeometryReal precision_error = (GeometryReal)SANITY_PRECISION_EPSILON;
 
 	std::vector< MatrixReal > auxiliaryNodesCumWeight( numFineNodes - static_cast< unsigned int >(gridAtlas.endCoveredTexelIndex) , 0 );
 
@@ -899,7 +899,7 @@ void InitializeCoarseBoundaryToFineBoundaryProlongation
 			for( unsigned int k=0 ; k<4 ; k++ )
 			{
 				MatrixReal texelWeight = (MatrixReal)BilinearElementValue(k, nodePosition) / nodeDegree;
-				if( fabs(texelWeight)>1e-11 )
+				if( fabs(texelWeight)>MIN_TEXEL_WEIGHT )
 				{
 					auxiliaryNodesCumWeight[auxiliaryID] += texelWeight;
 					AtlasTexelIndex texelIndex = gridChart.combinedCellCombinedTexelBilinearElementIndices[cellID][k];
@@ -932,4 +932,10 @@ void InitializeBoundaryProlongationData
 {
 	InitializeCoarseBoundaryToFineBoundaryProlongation( gridAtlas , boundaryProlongation.coarseBoundaryFineBoundaryProlongation , boundaryProlongation.fineBoundaryIndex , boundaryProlongation.numFineBoundaryNodes );
 	boundaryProlongation.fineBoundaryCoarseBoundaryRestriction = boundaryProlongation.coarseBoundaryFineBoundaryProlongation.transpose();
+#ifdef SANITY_CHECK
+	{
+		const SparseMatrix< MatrixReal , int > & R = boundaryProlongation.fineBoundaryCoarseBoundaryRestriction;
+		for( unsigned int i=0 ; i<R.Rows() ; i++ ) if( R.RowSize(i)==0 ) MK_WARN( "Empty prolongation column at boundary index " , i , ". Try running with jittering." );
+	}
+#endif // SANITY_CHECK
 }

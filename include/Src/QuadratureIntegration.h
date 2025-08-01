@@ -237,10 +237,11 @@ namespace MishaK
 		)
 		{
 			// Rasterize
-			const GeometryReal PRECISION_ERROR = 1e-3;
+			const GeometryReal precision_error = PRECISION_EPSILON;
 
-			auto InUnitSquare =   [&]( Point2D< GeometryReal > p ){ return !( p[0]<0-PRECISION_ERROR || p[1]<0-PRECISION_ERROR || p[0]>1+PRECISION_ERROR || p[1]>1+PRECISION_ERROR ); };
-			auto InUnitTriangle = [&]( Point2D< GeometryReal > p ){ return !( p[0]<0-PRECISION_ERROR || p[1]<0-PRECISION_ERROR || ( p[0]+p[1] )>1+PRECISION_ERROR ); };
+
+			auto InUnitSquare =   [&]( Point2D< GeometryReal > p ){ return !( p[0]<0-precision_error || p[1]<0-precision_error || p[0]>1+precision_error || p[1]>1+precision_error ); };
+			auto InUnitTriangle = [&]( Point2D< GeometryReal > p ){ return !( p[0]<0-precision_error || p[1]<0-precision_error || ( p[0]+p[1] )>1+precision_error ); };
 			auto CellInTriangle = [&]( int i , int j , const std::vector< Point2D< GeometryReal > >& vertices )
 				{
 					Point2D< GeometryReal > points[] = { gridChart.nodePosition(i,j) , gridChart.nodePosition(i+1,j) , gridChart.nodePosition(i+1,j+1) , gridChart.nodePosition(i,j+1) };

@@ -89,7 +89,7 @@ namespace MishaK
 			for( unsigned int i=0 ; i<futures.size() ; i++ ) futures[i].get();
 		}
 
-		template< typename Kernel /* = std::function< void  ( unsigned int , size_t ) >*/ >
+		template< typename Kernel /* = std::function< void ( unsigned int , size_t ) >*/ >
 		static void ParallelFor( size_t begin , size_t end , Kernel && kernel , unsigned int numThreads=_NumThreads , ParallelType pType=ParallelizationType , ScheduleType schedule=Schedule , size_t chunkSize=ChunkSize )
 		{
 			static_assert( std::is_convertible_v< Kernel , std::function< void ( unsigned int , size_t  ) > > || std::is_convertible_v< Kernel , std::function< void ( size_t  ) > > , "[ERROR] Kernel poorly formed" );
@@ -183,7 +183,7 @@ namespace MishaK
 		};
 
 	//inline ThreadPool::ParallelType ThreadPool::ParallelizationType = ThreadPool::ParallelType::NONE; // Default is threading disabled
-	inline ThreadPool::ParallelType ThreadPool::ParallelizationType = (ThreadPool::ParallelType)0; // Default is threading enable
+	inline ThreadPool::ParallelType ThreadPool::ParallelizationType = (ThreadPool::ParallelType)0; // Default is threading enabled
 	inline unsigned int ThreadPool::_NumThreads = std::thread::hardware_concurrency();
 	inline ThreadPool::ScheduleType ThreadPool::Schedule = ThreadPool::DYNAMIC;
 	inline size_t ThreadPool::ChunkSize = 128;

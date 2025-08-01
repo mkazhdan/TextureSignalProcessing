@@ -138,94 +138,102 @@ int main( int argc , char* argv[] )
 
 	Miscellany::PerformanceMeter pMeter( '.' );
 
-	// Construct the gradient domain object from the textured mesh
-	GradientDomain< Real > gd
-	(
-		QuadratureSamples.value ,
-		mesh.numTriangles() ,
-		mesh.surface.vertices.size() ,
-		mesh.texture.vertices.size() ,
-		[&]( size_t t , unsigned int k ){ return mesh.surface.triangles[t][k]; } ,
-		[&]( size_t v ){ return mesh.surface.vertices [v]; } ,
-		[&]( size_t t , unsigned int k ){ return mesh.texture.triangles[t][k]; } ,
-		[&]( size_t v ){ return mesh.texture.vertices [v]; } ,
-		texture.res(0) ,
-		texture.res(1)
-	);
-	if( Verbose.set ) std::cout << pMeter( "Gradient domain" ) << std::endl;
-
-	std::vector< Point< Real , Channels > > x( gd.numNodes() ) , b( gd.numNodes() );
-
-	// Copy the texture values into the vector
-	for( size_t n=0 ; n<gd.numNodes() ; n++ )
+	try
 	{
-		std::pair< unsigned int , unsigned int > coords = gd.node(n);
-		x[n] = texture( coords.first , coords.second );
-	}
+		// Construct the gradient domain object from the textured mesh
+		GradientDomain< Real > gd
+		(
+			QuadratureSamples.value ,
+			mesh.numTriangles() ,
+			mesh.surface.vertices.size() ,
+			mesh.texture.vertices.size() ,
+			[&]( size_t t , unsigned int k ){ return mesh.surface.triangles[t][k]; } ,
+			[&]( size_t v ){ return mesh.surface.vertices [v]; } ,
+			[&]( size_t t , unsigned int k ){ return mesh.texture.triangles[t][k]; } ,
+			[&]( size_t v ){ return mesh.texture.vertices [v]; } ,
+			texture.res(0) ,
+			texture.res(1)
+		);
+		if( Verbose.set ) std::cout << pMeter( "Gradient domain" ) << std::endl;
 
-	// Construct the constraints
-	{
-		std::vector< Point< Real , Channels > > valueB( gd.numNodes() ) , gradientB( gd.numNodes() );
+		std::vector< Point< Real , Channels > > x( gd.numNodes() ) , b( gd.numNodes() );
 
-		// Get the constraints from the values
-		gd.mass( &x[0] , &valueB[0] );
-
-		// Get the constraints from the gradients
+		// Copy the texture values into the vector
+		for( size_t n=0 ; n<gd.numNodes() ; n++ )
 		{
-			// Compute the edge differences
-			std::vector< Point< Real , Channels > > edgeDifferences( gd.numEdges() );
-			for( size_t e=0 ; e<gd.numEdges() ; e++ )
-			{
-				std::pair< size_t , size_t > endPoints = gd.edge( e );
-
-				// If using a texel mask, check if the two end-points are assigned the same id
-				bool useEdge = UseEdge( gd.node( endPoints.first ) , gd.node( endPoints.second ) );
-				if( useEdge ) edgeDifferences[e] = ( x[ endPoints.second ] - x[ endPoints.first ] ) * GradientScale.value;
-			}
-
-			// Compute the associated divergence
-			gd.divergence( &edgeDifferences[0] , &gradientB[0] );
+			std::pair< unsigned int , unsigned int > coords = gd.node(n);
+			x[n] = texture( coords.first , coords.second );
 		}
 
-		// Combine the constraints
-		for( size_t n=0 ; n<gd.numNodes() ; n++ ) b[n] = valueB[n] * ValueWeight.value + gradientB[n] * GradientWeight.value;
+		// Construct the constraints
+		{
+			std::vector< Point< Real , Channels > > valueB( gd.numNodes() ) , gradientB( gd.numNodes() );
+
+			// Get the constraints from the values
+			gd.mass( &x[0] , &valueB[0] );
+
+			// Get the constraints from the gradients
+			{
+				// Compute the edge differences
+				std::vector< Point< Real , Channels > > edgeDifferences( gd.numEdges() );
+				for( size_t e=0 ; e<gd.numEdges() ; e++ )
+				{
+					std::pair< size_t , size_t > endPoints = gd.edge( e );
+
+					// If using a texel mask, check if the two end-points are assigned the same id
+					bool useEdge = UseEdge( gd.node( endPoints.first ) , gd.node( endPoints.second ) );
+					if( useEdge ) edgeDifferences[e] = ( x[ endPoints.second ] - x[ endPoints.first ] ) * GradientScale.value;
+				}
+
+				// Compute the associated divergence
+				gd.divergence( &edgeDifferences[0] , &gradientB[0] );
+			}
+
+			// Combine the constraints
+			for( size_t n=0 ; n<gd.numNodes() ; n++ ) b[n] = valueB[n] * ValueWeight.value + gradientB[n] * GradientWeight.value;
+		}
+		if( Verbose.set ) std::cout << pMeter( "Coefficients" ) << std::endl;
+
+		// Compute the system matrix
+		Eigen::SparseMatrix< Real > M = gd.mass() * ValueWeight.value + gd.stiffness() * GradientWeight.value;
+		if( Verbose.set ) std::cout << pMeter( "Matrix" ) << std::endl;
+
+		// Construct/factor the solver
+		Solver< Real > solver( M );
+		switch( solver.info() )
+		{
+		case Eigen::Success: break;
+		case Eigen::NumericalIssue: MK_THROW( "Failed to factor matrix (numerical issue): "            , typeid( Solver< Real > ).name() ) ; break;
+		case Eigen::NoConvergence:  MK_THROW( "Failed to factor matrix (no convergence): "             , typeid( Solver< Real > ).name() ) ; break;
+		case Eigen::InvalidInput:   MK_THROW( "Failed to factor matrix (invalid input): "              , typeid( Solver< Real > ).name() ) ; break;
+		default:                    MK_THROW( "Failed to factor matrix (info=" , solver.info() , "): " , typeid( Solver< Real > ).name() );
+		}
+		if( Verbose.set ) std::cout << pMeter( "Factored" ) << std::endl;
+
+		// Solve the system per channel
+		for( unsigned int c=0 ; c<Channels ; c++ )
+		{
+			Eigen::VectorXd _b( gd.numNodes() );
+			for( size_t n=0 ; n<gd.numNodes() ; n++ ) _b[n] = b[n][c];
+			Eigen::VectorXd _x = solver.solve( _b );
+			for( size_t n=0 ; n<gd.numNodes() ; n++ ) x[n][c] = _x[n];
+		}
+		if( Verbose.set ) std::cout << pMeter( "Solved" ) << std::endl;
+
+		// Put the texel values back into the texture
+		for( size_t n=0 ; n<gd.numNodes() ; n++ )
+		{
+			std::pair< unsigned int , unsigned int > coords = gd.node(n);
+			texture( coords.first , coords.second ) = x[n];
+		}
+
+		if( Out.set ) WriteImage< TextureBitDepth >( texture , Out.value );
 	}
-	if( Verbose.set ) std::cout << pMeter( "Coefficients" ) << std::endl;
-
-	// Compute the system matrix
-	Eigen::SparseMatrix< Real > M = gd.mass() * ValueWeight.value + gd.stiffness() * GradientWeight.value;
-	if( Verbose.set ) std::cout << pMeter( "Matrix" ) << std::endl;
-
-	// Construct/factor the solver
-	Solver< Real > solver( M );
-	switch( solver.info() )
+	catch( const Exception & e )
 	{
-	case Eigen::Success: break;
-	case Eigen::NumericalIssue: MK_THROW( "Failed to factor matrix (numerical issue): "            , typeid( Solver< Real > ).name() ) ; break;
-	case Eigen::NoConvergence:  MK_THROW( "Failed to factor matrix (no convergence): "             , typeid( Solver< Real > ).name() ) ; break;
-	case Eigen::InvalidInput:   MK_THROW( "Failed to factor matrix (invalid input): "              , typeid( Solver< Real > ).name() ) ; break;
-	default:                    MK_THROW( "Failed to factor matrix (info=" , solver.info() , "): " , typeid( Solver< Real > ).name() );
+		std::cout << e.what() << std::endl;
+		return EXIT_FAILURE;
 	}
-	if( Verbose.set ) std::cout << pMeter( "Factored" ) << std::endl;
-
-	// Solve the system per channel
-	for( unsigned int c=0 ; c<Channels ; c++ )
-	{
-		Eigen::VectorXd _b( gd.numNodes() );
-		for( size_t n=0 ; n<gd.numNodes() ; n++ ) _b[n] = b[n][c];
-		Eigen::VectorXd _x = solver.solve( _b );
-		for( size_t n=0 ; n<gd.numNodes() ; n++ ) x[n][c] = _x[n];
-	}
-	if( Verbose.set ) std::cout << pMeter( "Solved" ) << std::endl;
-
-	// Put the texel values back into the texture
-	for( size_t n=0 ; n<gd.numNodes() ; n++ )
-	{
-		std::pair< unsigned int , unsigned int > coords = gd.node(n);
-		texture( coords.first , coords.second ) = x[n];
-	}
-
-	if( Out.set ) WriteImage< TextureBitDepth >( texture , Out.value );
 
 	return EXIT_SUCCESS;
 }

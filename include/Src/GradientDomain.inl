@@ -99,7 +99,6 @@ GradientDomain< Real >::GradientDomain
 	MultigridBlockInfo multigridBlockInfo;
 
 	InitializeHierarchy( mesh , width , height , 1 , _textureNodes , hierarchy , atlasCharts , multigridBlockInfo );
-
 	ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< Real , 2 > > > parameterMetric;
 	if constexpr( HasSurfaceVertex ) InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric , normalize );
 	else if constexpr( HasSurfaceMetric )
@@ -114,7 +113,6 @@ GradientDomain< Real >::GradientDomain
 		}
 		InitializeParameterMetric( mesh , surfaceMetric , atlasCharts , parameterMetric );
 	}
-
 	OperatorInitializer::Initialize( quadraturePointsPerTriangle , _massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , _divergenceOperator );
 }
 

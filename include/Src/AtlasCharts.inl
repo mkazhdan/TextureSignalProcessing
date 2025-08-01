@@ -104,8 +104,10 @@ const
 			if( isBoundaryHalfEdge[ static_cast< unsigned int >( atlasChart.atlasHalfEdge( ChartMeshHalfEdgeIndex(he) ) ) ] )
 				boundaryHalfEdges.push_back( ChartMeshHalfEdgeIndex(he) );
 	}
+
 	return atlasCharts;
 }
+
 
 
 template< typename GeometryReal >
@@ -115,11 +117,11 @@ AtlasChart< GeometryReal >::GetCharts
 	const TexturedTriangleMesh< GeometryReal > &mesh ,
 	unsigned int width ,
 	unsigned int height ,
-	AtlasInfo &atlasInfo
+	AtlasInfo &atlasInfo ,
+	AtlasMesh< GeometryReal > &atlasMesh
 )
 {
 	// Compute the 2D atlas
-	AtlasMesh< GeometryReal > atlasMesh;
 	atlasMesh.initialize( mesh );
 	atlasMesh.jitter( width , height );
 
@@ -147,4 +149,17 @@ AtlasChart< GeometryReal >::GetCharts
 	}
 
 	return atlasMesh.getCharts( isTextureBoundaryHalfEdge , width , height );
+}
+template< typename GeometryReal >
+ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > >
+AtlasChart< GeometryReal >::GetCharts
+(
+	const TexturedTriangleMesh< GeometryReal > &mesh ,
+	unsigned int width ,
+	unsigned int height ,
+	AtlasInfo &atlasInfo
+)
+{
+	AtlasMesh< GeometryReal > atlasMesh;
+	return GetCharts( mesh , width , height , atlasInfo , atlasMesh );
 }

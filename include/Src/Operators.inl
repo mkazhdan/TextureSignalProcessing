@@ -665,7 +665,7 @@ void OperatorInitializer::_InitializeChart
 
 	//// Rasterize
 	int zeroAreaElementCount = 0;
-	GeometryReal PRECISION_ERROR = (GeometryReal)1e-3;
+	GeometryReal precision_error = (GeometryReal)PRECISION_EPSILON;
 
 	// Node indexing
 	//		0 ---- 1
@@ -695,8 +695,8 @@ void OperatorInitializer::_InitializeChart
 	//		+--2---+
 
 
-	auto InUnitSquare =   [&]( Point2D< GeometryReal > p ){ return !( p[0]<0-PRECISION_ERROR || p[1]<0-PRECISION_ERROR || p[0]>1+PRECISION_ERROR || p[1]>1+PRECISION_ERROR ); };
-	auto InUnitTriangle = [&]( Point2D< GeometryReal > p ){ return !( p[0]<0-PRECISION_ERROR || p[1]<0-PRECISION_ERROR || ( p[0]+p[1] )>1+PRECISION_ERROR ); };
+	auto InUnitSquare =   [&]( Point2D< GeometryReal > p ){ return !( p[0]<0-precision_error || p[1]<0-precision_error || p[0]>1+precision_error || p[1]>1+precision_error ); };
+	auto InUnitTriangle = [&]( Point2D< GeometryReal > p ){ return !( p[0]<0-precision_error || p[1]<0-precision_error || ( p[0]+p[1] )>1+precision_error ); };
 	auto CellInTriangle = [&]( int i , int j , const std::vector< Point2D< GeometryReal > >& vertices )
 		{
 			Point2D< GeometryReal > points[] = { gridChart.nodePosition(i,j) , gridChart.nodePosition(i+1,j) , gridChart.nodePosition(i+1,j+1) , gridChart.nodePosition(i,j+1) };
@@ -914,7 +914,9 @@ void OperatorInitializer::_InitializeChart
 
 					GeometryReal integratedPolygonMass = 0;
 					for( int k=0 ; k<6 ; k++ ) for( int l=0 ; l<6 ; l++ ) integratedPolygonMass += polygonMass(k,l);
-					if( fabs( integratedPolygonMass - polygonArea )>PRECISION_ERROR ) MK_WARN( "Out of precision" );
+#ifdef SANITY_CHECK
+					if( fabs( integratedPolygonMass - polygonArea )>precision_error ) MK_WARN( "Out of precision" );
+#endif // SANITY_CHECK
 					{
 						for( int dk=0 ; dk<6 ; dk++ ) for( int dl=0 ; dl<6 ; dl++ )
 						{
@@ -1389,7 +1391,9 @@ void OperatorInitializer::_Initialize
 		std::vector< MatrixReal > in ( massAndStiffnessOperators.massCoefficients.boundaryBoundaryMatrix.Rows() , (MatrixReal)1. );
 		std::vector< MatrixReal > out( massAndStiffnessOperators.massCoefficients.boundaryBoundaryMatrix.Rows() , (MatrixReal)0. );
 		massAndStiffnessOperators.massCoefficients.boundaryBoundaryMatrix.Multiply( GetPointer(in) , GetPointer(out) );
-		for( int i=0 ; i<out.size() ; i++ ) if( out[i]==0 ) MK_WARN( "Zero row at boundary index " , i , ". Try running with jittering." );
+		for( int i=0 ; i<out.size() ; i++ ) if( out[i]==0 )
+			if( massAndStiffnessOperators.massCoefficients.boundaryBoundaryMatrix.RowSize(i)==0 ) MK_WARN( "Emptry row at boundary index " , i , ". Try running with jittering." );
+			else                                                                                  MK_WARN( "Zero row at boundary index " , i , ". Try running with jittering." );
 	}
 
 	if( computeDivergence )

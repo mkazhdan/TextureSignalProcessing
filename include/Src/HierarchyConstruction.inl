@@ -282,7 +282,11 @@ void InitializeGridChartsActiveNodes
 					unsigned int count = 0;
 					auto SubKernel = [&]( Index I ){ if( texelIndices(I).covered!=AtlasCoveredTexelIndex(-1) ){ count++; } };
 					Range::NodesSupportedOnCell( I ).process( SubKernel );
-					if( count!=4 ) MK_THROW( "Interior cell adjacent to non interior node" );
+					if( count!=4 )
+					{
+						Index _I( I[0]+gridChart.cornerCoords[0] , I[1]+gridChart.cornerCoords[1] );
+						MK_THROW( "Interior cell adjacent to non interior node(s): " , I , " -> " , _I , " : " , count );
+					}
 				}
 			};
 		cellRange.process( Kernel );
@@ -758,6 +762,7 @@ void InitializeHierarchy
 	const MultigridBlockInfo &multigridBlockInfo
 )
 {
+
 	std::vector< GridAtlas< GeometryReal , MatrixReal > > &gridAtlases = hierarchy.gridAtlases;
 	gridAtlases.resize( levels );
 

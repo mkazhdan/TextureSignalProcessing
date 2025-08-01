@@ -50,7 +50,12 @@ DAMAGE.
 
 
 #define INSERTION_EPSILON 1e-12			// Separation from interval end-points required for insertion
-
-
+#define MIN_TEXEL_WEIGHT 1e-12
+#define DEFAULT_JITTER 1e-6
+#define ORTHOGONAL_PERTURBATION 1e-10
+#define SANITY_PRECISION_EPSILON 1e-10
+#define PRECISION_EPSILON 1e-10
+#define PROLONGATION_EPSILON 1e-10
+#define DIAGONAL_CLAMP 1e-10
 
 #endif // PRE_PROCESSING_INCLUDED

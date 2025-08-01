@@ -39,6 +39,7 @@ DAMAGE.
 #include <Src/Solver.h>
 #include <Src/Operators.h>
 #include <Src/Padding.h>
+#include <Src/ImageIO.h>
 #ifdef NO_OPEN_GL_VISUALIZATION
 #else // !NO_OPEN_GL_VISUALIZATION
 #include <Src/TextureFilteringVisualization.h>
@@ -333,7 +334,7 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth > std:
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< SystemCoefficients< Real > >							TextureFilter< PreReal , Real , TextureBitDepth >::multigridFilteringCoefficients;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< MultigridLevelVariables< Point3D< Real > > >			TextureFilter< PreReal , Real , TextureBitDepth >::multigridFilteringVariables;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector<MultigridLevelIndices<Real>>							TextureFilter< PreReal , Real , TextureBitDepth >::multigridIndices;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< MultigridLevelIndices< Real > >						TextureFilter< PreReal , Real , TextureBitDepth >::multigridIndices;
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > VCycleSolvers< typename TextureFilter< PreReal , Real , TextureBitDepth >::DirectSolver >		TextureFilter< PreReal , Real , TextureBitDepth >::vCycleSolvers;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > typename TextureFilter< PreReal , Real , TextureBitDepth >::DirectSolver						TextureFilter< PreReal , Real , TextureBitDepth >::directSolver;

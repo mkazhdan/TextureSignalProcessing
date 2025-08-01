@@ -96,10 +96,12 @@ namespace MishaK
 
 			static Range CellsSupportedOnNode( Index I );
 			static Range NodesSupportedOnCell( Index I );
+			template< typename ... Ranges >
+			static Range Intersect( Ranges ... rs );
 
 			Range( void );
 			Range( Index I );
-			template< typename ... Ranges > static Range Intersect( Ranges ... rs );
+			Range( const int * end );
 
 			Range dilate( unsigned int radius ) const;
 			Range dilate( unsigned int leftRadius , unsigned int rightRadius ) const;
@@ -110,7 +112,7 @@ namespace MishaK
 			template< typename IndexFunctor /* = std::function< void ( Index ) > */ >
 			void process( IndexFunctor f ) const { return this->template _process< 1 >( f ); }
 
-			template< typename IndexFunctor /* = std::function< void ( Index ) > */  >
+			template< typename IndexFunctor /* = std::function< void ( unsigned int , Index ) > */  >
 			void processParallel( IndexFunctor f ) const { return this->template _processParallel< 1 >( f ); }
 
 			// IndexFunctor is a function taking in Count Index< Dim > arguments
@@ -130,6 +132,9 @@ namespace MishaK
 
 			friend struct RegularGrid< Dim+1 >::Range;
 		};
+
+		static Range IsotropicRange( int begin , int end );
+		static Range IsotropicRange( int end ){ return IsotropicRange( 0 , end ); }
 
 		static bool ReadDimension( std::string fileName , unsigned int &dim );
 		static bool ReadHeader( std::string fileName , unsigned int &dataDim , std::string &dataName );

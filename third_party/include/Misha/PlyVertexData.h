@@ -104,6 +104,34 @@ namespace MishaK
 
 			virtual bool operator == ( const FactoryType &factory ) const = 0;
 			bool operator != ( const FactoryType &factory ) const { return !( (*this)==factory ); }
+
+			std::vector< GregTurk::PlyProperty > plyReadProperties( void ) const
+			{
+				std::vector< GregTurk::PlyProperty > props( plyReadNum() );
+				for( unsigned int i=0 ; i<plyReadNum() ; i++ ) props[i] = plyReadProperty( i );
+				return props;
+			}
+
+			std::vector< GregTurk::PlyProperty > plyWriteProperties( void ) const
+			{
+				std::vector< GregTurk::PlyProperty > props( plyWriteNum() );
+				for( unsigned int i=0 ; i<plyWriteNum() ; i++ ) props[i] = plyWriteProperty( i );
+				return props;
+			}
+
+			std::vector< GregTurk::PlyProperty > plyStaticReadProperties( void ) const
+			{
+				std::vector< GregTurk::PlyProperty > props( plyReadNum() );
+				for( unsigned int i=0 ; i<plyReadNum() ; i++ ) props[i] = plyStaticReadProperty( i );
+				return props;
+			}
+
+			std::vector< GregTurk::PlyProperty > plyStaticWriteProperties( void ) const
+			{
+				std::vector< GregTurk::PlyProperty > props( plyWriteNum() );
+				for( unsigned int i=0 ; i<plyWriteNum() ; i++ ) props[i] = plyStaticWriteProperty( i );
+				return props;
+			}
 		};
 
 		// An empty factory

@@ -75,21 +75,7 @@ std::vector< unsigned int > SimpleTriangleMesh< Real , Dim >::oppositeHalfEdges(
 	{
 		SimplexIndex< 1 > e = edgeIndex( he ); 
 		if( edgeMap.find(e)==edgeMap.end() ) edgeMap[e] = he;
-#if 0 // NEW_CODE
-		else
-		{
-			SimplexIndex< 1 > _e( e[1] , e[0] );
-			std::cout << "Non manifold edge: " << e << std::endl;
-			for( unsigned int he=0 ; he<triangles.size()*3 ; he++ )
-			{
-				SimplexIndex< 1 > f = edgeIndex( he );
-				if( f==e || f==_e ) std::cout << "\t" << (he/3) << "] " << triangles[he/3] << std::endl;
-			}
-			MK_THROW( "Non manifold mesh" );
-		}
-#else // !NEW_CODE
 		else MK_THROW( "Non manifold mesh" );
-#endif // NEW_CODE
 	}
 
 	for( unsigned int he=0 ; he<triangles.size()*3 ; he++ )
@@ -135,7 +121,6 @@ Real SimpleTriangleMesh< Real , Dim >::boundingRadius( Point< Real , Dim > cente
 	return l;
 }
 
-
 template< typename Real , unsigned int Dim >
 std::vector< unsigned int > SimpleTriangleMesh< Real , Dim >::trianglesToComponents( unsigned int &numComponents ) const
 {
@@ -174,7 +159,33 @@ std::vector< unsigned int > SimpleTriangleMesh< Real , Dim >::trianglesToCompone
 
 	numComponents = 0;
 	for( unsigned int t=0 ; t<triangles.size() ; t++ ) if( components[t]==-1 ) AddComponent( t , numComponents++ );
+
+#ifdef SANITY_CHECK
+	{
+		std::vector< unsigned int > vertexComponents( vertices.size() , -1 );
+		for( unsigned int t=0 ; t<triangles.size() ; t++ ) for( unsigned int k=0 ; k<=2 ; k++ )
+		{
+			if( components[t]>=vertexComponents.size() ) MK_ERROR_OUT( "Bad component" );
+			if( vertexComponents[ triangles[t][k] ]==-1 || vertexComponents[ triangles[t][k] ]==components[t] ) vertexComponents[ triangles[t][k] ]=components[t];
+			else
+			{
+				unsigned int v = triangles[t][k];
+				std::cout << "Vertex[" << v << "]";
+				for( unsigned int t=0 ; t<triangles.size() ; t++ ) for( unsigned int k=0 ; k<=2 ; k++ ) if( triangles[t][k]==v )
+					std::cout << " { " << t << " , " << components[t] << " }";
+				std::cout << std::endl;
+				MK_THROW( "Bad components" );
+			}
+		}
+	}
+#endif // SANITY_CHECK
 	return components;
+}
+
+template< typename Real , unsigned int Dim >
+void SimpleTriangleMesh< Real , Dim >::write( std::string meshName ) const
+{
+	WriteMesh( meshName , vertices , triangles );
 }
 
 //////////////////////////
@@ -197,16 +208,15 @@ void TexturedTriangleMesh< Real >::read( std::string meshName , bool verbose , d
 
 	// Flip the vertical axis
 	if( flip ) for( int i=0 ; i<texture.vertices.size() ; i++ ) texture.vertices[i][1] = (Real)1. - texture.vertices[i][1];
-	for( unsigned int i=0 ; i<texture.triangles.size() ; i++ ) if( texture.triangle(i).measure()==0 ) MK_WARN( "Zero area texture triangle: " , i );
+	for( unsigned int i=0 ; i<texture.triangles.size() ; i++ ) if( texture.triangle(i).measure()==0 )
+		MK_WARN( "Zero area texture triangle: " , i , " : " , texture.triangle(i) , " <-> " , surface.triangle(i) );
 }
 
-#ifdef NEW_CODE
 template< typename Real >
 void TexturedTriangleMesh< Real >::write( std::string meshName ) const
 {
 	WriteTexturedMesh( meshName , surface.vertices , texture.vertices , surface.triangles , texture.triangles );
 }
-#endif // NEW_CODE
 
 template< typename Real >
 Simplex< Real , 3 , 2 > TexturedTriangleMesh< Real >::surfaceTriangle( unsigned int t ) const { return surface.triangle(t); }

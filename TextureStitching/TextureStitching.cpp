@@ -46,6 +46,7 @@ enum
 #include <Src/Solver.h>
 #include <Src/Operators.h>
 #include <Src/Padding.h>
+#include <Src/ImageIO.h>
 #ifdef NO_OPEN_GL_VISUALIZATION
 #else // !NO_OPEN_GL_VISUALIZATION
 #include <Src/StitchingVisualization.h>

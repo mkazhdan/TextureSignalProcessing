@@ -29,8 +29,8 @@ DAMAGE.
 #ifndef GEOMETRY_INCLUDED
 #define GEOMETRY_INCLUDED
 
-#define NEW_GEOMETRY_CODE
 #define NEW_MAT_CODE
+#define NEW_GEOMETRY_CODE
 
 //#include <concepts>
 #include <cmath>
@@ -184,11 +184,16 @@ namespace MishaK
 		Point( T *c ){ for( unsigned int d=0 ; d<Dim ; d++ ) coords[d] = c[d]; }
 		Point( const T *c ){ for( unsigned int d=0 ; d<Dim ; d++ ) coords[d] = c[d]; }
 
+#if 0 // def NEW_CODE
+		template< typename _T , typename _Real >
+		explicit operator Point< _T , Dim , _Real >() const { Point< _T , Dim , _Real > p ; for( unsigned int d=0 ; d<Dim ; d++ ) p[d] = static_cast< _T >( coords[d] ) ; return p; }
+#else // !NEW_CODE
 		template< typename _T , typename _Real >
 		Point( const Point< _T , Dim , _Real > &p ){ for( unsigned int d=0 ; d<Dim ; d++ ) coords[d] = static_cast< T >( p[d] ); }
 
 		template< typename _T , typename _Real >
 		Point( Point< _T , Dim , _Real > &p ){ for( unsigned int d=0 ; d<Dim ; d++ ) coords[d] = static_cast< T >( p[d] ); }
+#endif // NEW_CODE
 
 		T& operator [] ( int idx ) { return coords[idx]; }
 		const T& operator [] ( int idx ) const { return coords[idx]; }
@@ -811,7 +816,7 @@ namespace MishaK
 			}
 			bool success;
 			Minv = M.inverse( success );
-			if( !success ){ MK_THROW( "Could not inverse matrix" ); }
+			if( !success ){ MK_THROW( "Could not invert matrix" ); }
 
 #if 1
 			// [WARNING] Apparently "offset" could have been initialized to something awful so that multiplication by zero is still awful
@@ -960,6 +965,20 @@ namespace MishaK
 		Point< Real , Dim >& operator[]( unsigned int k ){ return p[k]; }
 		const Point< Real , Dim >& operator[]( unsigned int k ) const { return p[k]; }
 		Real measure( void ) const { return (Real)sqrt( squareMeasure() ); }
+
+#if 1 // NEW_CODE
+		template< unsigned int _K=K >
+		std::enable_if_t< _K==Dim , Real > volume( bool signedVolume=false ) const
+		{
+			SquareMatrix< double , K > M;
+			for( unsigned int k=0 ; k<K ; k++ )
+			{
+				Point< double , Dim > d = p[k+1] - p[0];
+				for( unsigned int j=0 ; j<K ; j++ ) M(k,j) = d[j];
+			}
+			return ( signedVolume ? -M.determinant() : fabs( -M.determinant() ) ) / Factorial< K >::Value;
+		}
+#endif // NEW_CODE
 		Real squareMeasure( void ) const { return metric().determinant() / ( Factorial< K >::Value * Factorial< K >::Value ); }
 		SquareMatrix< Real , K > metric( void ) const
 		{
@@ -1042,12 +1061,15 @@ namespace MishaK
 			return count==0 || count==Dim+1;
 		}
 
+#if 1 // NEW_CODE
+#else // !NEW_CODE
 		Real volume( void ) const
 		{
 			SquareMatrix< double , K > M;
 			for( unsigned int i=0 ; i<K ; i++ ) for( unsigned j=0 ; j<K ; j++ ) M(i,j) = Point< Real , Dim >::Dot( p[i+1]-p[0] , p[j+1]-p[0] );
 			return (Real)sqrt( fabs( M.determinant() ) );
 		}
+#endif // NEW_CODE
 
 		Point< Real , K+1 > barycentricCoordinates( Point< Real , Dim > q ) const
 		{
@@ -1065,7 +1087,6 @@ namespace MishaK
 			return b;
 		}
 
-#ifdef NEW_GEOMETRY_CODE
 		std::pair< Real , Point< Real , K+1 > > barycentricCoordinates( Ray< Real , Dim > r ) const
 		{
 			// Solve for (t,a_1,..,a_K) minimizing:
@@ -1084,31 +1105,51 @@ namespace MishaK
 			a[0] = (Real)1 - sum;
 			return std::pair< Real , Point< Real , K+1 > >( t , a );
 		}
-#endif // NEW_GEOMETRY_CODE
-
 
 		Point< Real , K+1 > nearestBC( Point< Real , Dim > p ) const
 		{
 			Point< Real , K+1 > bc = barycentricCoordinates( p );
 			if constexpr( K==0 ) return bc;
+#ifdef NEW_GEOMETRY_CODE
+			else if constexpr( K==1 )
+			{
+				if( bc[0]<0 ) return Point< Real , 2 >( 0 , 1 );
+				else if( bc[1]<0 ) return Point< Real , 2 >( 1 , 0 );
+				else return bc;
+			}
+#endif // NEW_GEOMETRY_CODE
 			else
 			{
+//#ifdef NEW_GEOMETRY_CODE
+				// I think this is right, but it needs double-checking
+#if 0
+				for( unsigned int k=0 ; k<=K ; k++ ) if( bc[k]<0 )
+				{
+					Simplex< double , Dim , K-1 > _s;
+					for( unsigned int i=0 ; i<K ; i++ ) _s[i] = this->p[(k+1+i)%(K+1)];
+					Point< Real , K > _bc = _s.nearestBC( p );
+					bc[k] = 0;
+					for( unsigned int i=0 ; i<K ; i++ ) bc[(k+1+i)%(K+1)] = _bc[k];
+					return bc;
+				}
+				return bc;
+#else // !NEW_GEOMETRY_CODE
 				unsigned int count = 0;
 				for( unsigned int k=0 ; k<=K ; k++ ) if( bc[k]<0 ) count++;
 				if( !count ) return bc;
 				else
 				{
-					Real dist = std::numeric_limits< Real >::infinity();
+					Real dist2 = std::numeric_limits< Real >::infinity();
 					Point< Real , K+1 > bc;
 					for( unsigned int k=0 ; k<=K ; k++ )
 					{
 						Simplex< Real , Dim , K-1 > _simplex;
 						for( unsigned int _k=0 , idx=0 ; _k<=K ; _k++ ) if( k!=_k ) _simplex[idx++] = operator[](_k);
 						Point< Real , K > _bc = _simplex.nearestBC( p );
-						double _dist = Point< double , Dim >::Length( _simplex(_bc) - p );
-						if( _dist<dist )
+						double _dist2 = Point< double , Dim >::SquareNorm( _simplex(_bc) - p );
+						if( _dist2<dist2 )
 						{
-							dist = _dist;
+							dist2 = _dist2;
 							for( unsigned int _k=0 , idx=0 ; _k<=K ; _k++ )
 								if( k!=_k ) bc[_k] = _bc[idx++];
 								else        bc[_k] = 0;
@@ -1116,6 +1157,7 @@ namespace MishaK
 					}
 					return bc;
 				}
+#endif // NEW_GEOMETRY_CODE
 			}
 		}
 		Point< Real , Dim > nearest( Point< Real , Dim > p ) const { return operator()( nearestBC(p) ); }
@@ -1134,6 +1176,7 @@ namespace MishaK
 
 	protected:
 		void _init( const Point< Real , Dim > p[K+1] ){ for( unsigned int k=0 ; k<=K ; k++ ) this->p[k] = p[k]; }
+
 	};
 
 	template< class Real , unsigned int Dim >	
@@ -1163,7 +1206,12 @@ namespace MishaK
 		Point< Real , 1 > barycentricCoordinates( Point< Real , Dim > q ) const { return Point< Real , 1 >( 1 ); };
 		Point< Real , Dim > operator()( Point< Real , 1 > bc ) const { return p[0] * bc[0]; }
 
+#if 1 // NEW_CODE
+		template< unsigned int _K=0 >
+		std::enable_if_t< _K==Dim , double > volume( bool ) const { return 1.; }
+#else // !NEW_CODE
 		double volume( void ) const { return 1.; }
+#endif // NEW_CODE
 
 		friend std::ostream &operator << ( std::ostream &os , const Simplex &s )
 		{

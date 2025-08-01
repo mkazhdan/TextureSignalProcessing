@@ -46,6 +46,12 @@ namespace MishaK
 		template< typename Index , typename Real , unsigned int Dim , unsigned int TDim >
 		void ReadTexturedMesh( std::string fileName , std::vector< Point< Real , Dim > > &vertices , std::vector< Point< Real , TDim > > &textureCoordinates , std::vector< SimplexIndex< 2 , Index > > &vSimplices , std::vector< SimplexIndex< 2 , Index > > &tSimplices , bool fuseTextureCoordinates=true );
 
+		template< typename Index , typename Real , unsigned int Dim , unsigned int TDim >
+		void WriteTexturedMesh( std::string fileName , const std::vector< Point< Real ,  Dim > > &vertices , const std::vector< Point< Real , TDim > > &textures , const std::vector< SimplexIndex< 2 , Index > > &vSimplices , const std::vector< SimplexIndex< 2 , Index > > &tSimplices );
+
+		template< typename Index , typename Real , unsigned int Dim >
+		void WriteMesh( std::string fileName , const std::vector< Point< Real ,  Dim > > &vertices , const std::vector< SimplexIndex< 2 , Index > > &vSimplices );
+
 		template< typename Index , typename Real , unsigned int Dim >
 		void CollapseVertices( std::vector< Point< Real , Dim > > &vertices , std::vector< SimplexIndex< 2 , Index > > &simplices , double eps );
 
@@ -497,7 +503,6 @@ namespace MishaK
 			else MK_THROW( "Unrecognized file type: " , fileName , " -> " , ext );
 		}
 
-#ifdef NEW_CODE
 		template< typename Index , typename Real , unsigned int Dim , unsigned int TDim >
 		void WriteTexturedMesh
 		(
@@ -567,7 +572,54 @@ namespace MishaK
 			}
 			else MK_THROW( "Unrecognized file type: " , fileName , " -> " , ext );
 		}
-#endif // NEW_CODE
+
+		template< typename Index , typename Real , unsigned int Dim >
+		void WriteMesh
+		(
+			std::string fileName ,
+			const std::vector< Point< Real ,  Dim > > &vertices ,
+			const std::vector< SimplexIndex< 2 , Index > > &vSimplices
+		)
+		{
+			static const unsigned int K = 2;
+
+			std::string ext = ToLower( GetFileExtension( fileName ) );
+			if( ext==std::string( "ply" ) )
+			{
+				using VertexFactory = VertexFactory::PositionFactory< Real , Dim >;
+				using Vertex = typename VertexFactory::VertexType;
+
+				VertexFactory factory;
+
+				PLY::WriteSimplices( fileName , factory , vertices , vSimplices , PLY_BINARY_NATIVE );
+			}
+			else if( ext==std::string( "obj" ) )
+			{
+				std::vector< std::vector< int > > faces( vSimplices.size() );
+				for( size_t i=0 ; i<faces.size() ; i++ )
+				{
+					faces[i].resize( K+1 );
+					for( unsigned int k=0 ; k<=K ; k++ ) faces[i][k] = static_cast< int >( vSimplices[i][k]+1 );
+				}
+
+				std::ofstream out( fileName );
+				if( !out.is_open() ) MK_THROW( "Could not open file for writing: " , fileName );
+
+				for( size_t i=0 ; i<vertices.size() ; i++ )
+				{
+					out << "v";
+					for( unsigned int d=0 ; d<Dim ; d++ ) out << " " << vertices[i][d];
+					out << std::endl;
+				}
+				for( size_t i=0 ; i<vSimplices.size() ; i++ )
+				{
+					out << "f";
+					for( unsigned int k=0 ; k<=K ; k++ ) out << " " << faces[i][k];
+					out << std::endl;
+				}
+			}
+			else MK_THROW( "Unrecognized file type: " , fileName , " -> " , ext );
+		}
 
 		template< typename Index , typename Real , unsigned int Dim >
 		void CollapseVertices( std::vector< Point< Real , Dim > > &vertices , std::vector< SimplexIndex< 2 , Index > > &simplices , double eps )

@@ -64,6 +64,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Src", "Src", "{02EA681E-C7D
 		include\Src\IterativeSolvers.inl = include\Src\IterativeSolvers.inl
 		include\Src\MeshIO.h = include\Src\MeshIO.h
 		include\Src\Metric.inl = include\Src\Metric.inl
+		include\Src\MultiIndex.h = include\Src\MultiIndex.h
 		include\Src\Operators.h = include\Src\Operators.h
 		include\Src\Operators.inl = include\Src\Operators.inl
 		include\Src\Padding.h = include\Src\Padding.h

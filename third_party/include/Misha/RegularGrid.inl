@@ -81,6 +81,14 @@ bool RegularGrid< Dim >::ReadHeader( std::string fileName , unsigned int &dataDi
 	return true;
 }
 
+template< unsigned int Dim >
+typename RegularGrid< Dim >::Range RegularGrid< Dim >::IsotropicRange( int begin , int end )
+{
+	Range range;
+	for( unsigned int d=0 ; d<Dim ; d++ ) range.first[d] = begin , range.second[d] = end;
+	return range;
+}
+
 ////////////////////////
 // RegularGrid::Index //
 ////////////////////////
@@ -159,6 +167,10 @@ RegularGrid< Dim >::Range::Range( void ){}
 
 template< unsigned int Dim >
 RegularGrid< Dim >::Range::Range( Index I ){ for( unsigned int d=0 ; d<Dim ; d++ ) first[d] = I[d] , second[d] = I[d]+1; }
+
+template< unsigned int Dim >
+RegularGrid< Dim >::Range::Range( const int * end ){ for( unsigned int d=0 ; d<Dim ; d++ ) first[d] = 0 , second[d] = end[d]; }
+
 
 template< unsigned int Dim >
 template< typename ... Ranges > 
