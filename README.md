@@ -605,7 +605,7 @@ The code make a number of assumptions about the input geometry:
 <font size="+1"><CODE>HierarchicalGradientDomain</CODE></font>:
 This class derives from <CODE>GradientDomain</CODE> and additionally supports an iterative multigrid solver for computing the solution to the gradient problem without requiring a potentially expensive matrix factorization.
 </SUMMARY>
-The interface is simlar to that of <CODE>GradientDomain</CODE> with the following differences:
+The interface is simlar to that of <CODE>GradientDomain</CODE> and the details of the implementation can be found in <CODE>HierarchicalGradientDomain.example.cpp</CODE>. What follows is a list of the minor changes needed in order to access and use the hierarchical solver:
 <UL>
 <LI><U>Line 152-167</U>: The interface uses the class <CODE>HierarchicalGradientDomain</CODE>, whose constructor takes an additional parameter describing the number of levels in the multigrid hierarchy.<BR>
 <B>Note</B>: Because the class is also responsible for relaxing the gradient-domain system, it is templated off the type of the direct solver used to solve the system at the coarsest resolution (second argument) and the type data being solved for (third argument). <BR>
