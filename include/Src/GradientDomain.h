@@ -159,6 +159,12 @@ namespace MishaK
 		template< typename Real , typename Solver , typename Data >
 		struct HierarchicalGradientDomain : public GradientDomain< Real >
 		{
+			// A constructor taking functors mapping:
+			// 1.  Triangle index + corner index -> surface vertex index
+			// 2a. Triangle index                -> metric tensor associated to the triangle
+			// 2b. Surface vertex index          -> position in 3D
+			// 3.  Triangle index + corner index -> texture vertex index
+			// 4.  Texture vertex index          -> position in the unit square
 			template
 				<
 				typename SurfaceCornerFunctor ,         /* = std::function< size_t ( size_t , unsigned int ) > */
@@ -182,18 +188,22 @@ namespace MishaK
 					bool normalize = true
 				);
 
+			// Access to the system constraints
 			Data * b( void );
 			const Data * b( void ) const;
 			Data & b( size_t n );
 			const Data & b( size_t n ) const;
 
+			// Access to the system solution
 			Data * x( void );
 			const Data * x( void ) const;
 			Data & x( size_t n );
 			const Data & x( size_t n ) const;
 
+			// Updates the internal representation of the system matrix to represent the prescribed combination of mass and stiffness weights
 			void updateSystem( Real massWeight , Real stiffnessWeight );
 
+			// Performs a v-cycle relaxation with the prescribed number of Gauss-Seidel relaxations per level
 			void vCycle( unsigned int numIterations );
 
 		protected:
