@@ -700,16 +700,14 @@ void OperatorInitializer::_InitializeChart
 	auto CellInTriangle = [&]( int i , int j , const std::vector< Point2D< GeometryReal > >& vertices )
 		{
 			Point2D< GeometryReal > points[] = { gridChart.nodePosition(i,j) , gridChart.nodePosition(i+1,j) , gridChart.nodePosition(i+1,j+1) , gridChart.nodePosition(i,j+1) };
-			EdgeEquation< GeometryReal > eq[3];
-			Point2D< GeometryReal > c = ( vertices[0] + vertices[1] + vertices[2] ) / 3;
+			unsigned int count = 0;
 			for( unsigned int i=0 ; i<3 ; i++ )
 			{
 				SimplexIndex< 1 > eIndex = OutgoingEdgeIndex(i);
-				eq[i] = EdgeEquation< GeometryReal >( vertices[ eIndex[0] ] , vertices[ eIndex[1] ] );
-				eq[i].makePositive(c);
+				EdgeEquation< GeometryReal > eq = EdgeEquation< GeometryReal >( vertices[ eIndex[0] ] , vertices[ eIndex[1] ] );
+				for( unsigned int k=0 ; k<4 ; k++ ) if( eq( points[k] )<0 ) count++;
 			}
-			for( int k=0 ; k<4 ; k++ ) for( unsigned int i=0 ; i<3 ; i++ ) if( eq[i]( points[k] )<0 ) return false;
-			return true;
+			return count==0 || count==12;
 		};
 
 	// Compute the square-root of the weights to make taking the weighted dot-product faster
@@ -786,295 +784,292 @@ void OperatorInitializer::_InitializeChart
 		};
 
 	// Add the bounday cell contribution
-	ThreadPool::ParallelFor
-	(
-		0 , gridChart.cellIndices.size() ,
-		[&]( unsigned int , size_t i )
+	for( size_t i=0 ; i<gridChart.cellIndices.size() ; i++ )
+	{
+		if( gridChart.cellIndices[i].boundary!=ChartBoundaryCellIndex(-1) )
 		{
-			if( gridChart.cellIndices[i].boundary!=ChartBoundaryCellIndex(-1) )
+			Index I( static_cast< unsigned int >( i % gridChart.cellIndices.res(0) ) , static_cast< unsigned int >( i / gridChart.cellIndices.res(0) ) );
+			auto TextureToCell = [&]( Point2D< GeometryReal > p ){ return Point2D< GeometryReal >( (GeometryReal)( p[0] / gridChart.cellSizeW ) - I[0] , (GeometryReal)( p[1] / gridChart.cellSizeH ) - I[1] ); };
+
+			ChartBoundaryCellIndex boundaryIndex = gridChart.cellIndices[i].boundary;
+			const std::vector< BoundaryIndexedTriangle< GeometryReal > > & boundaryTriangles = gridChart.boundaryTriangles[boundaryIndex];
+
+			// Iterate over all elements associated with the cell
+			for( unsigned int bt=0 ; bt<boundaryTriangles.size() ; bt++ )
 			{
-				Index I( static_cast< unsigned int >( i % gridChart.cellIndices.res(0) ) , static_cast< unsigned int >( i / gridChart.cellIndices.res(0) ) );
-				auto TextureToCell = [&]( Point2D< GeometryReal > p ){ return Point2D< GeometryReal >( (GeometryReal)( p[0] / gridChart.cellSizeW ) - I[0] , (GeometryReal)( p[1] / gridChart.cellSizeH ) - I[1] ); };
+				BoundaryIndexedTriangle< GeometryReal > element = boundaryTriangles[bt];
+				ChartMeshTriangleIndex tIdx = element.sourceIdx;
 
-				ChartBoundaryCellIndex boundaryIndex = gridChart.cellIndices[i].boundary;
-				const std::vector< BoundaryIndexedTriangle< GeometryReal > > & boundaryTriangles = gridChart.boundaryTriangles[boundaryIndex];
+				// Grab the vertices in the cell frame
+				std::vector< Point2D< GeometryReal > > element_vertices(3);
+				for( unsigned int ii=0 ; ii<3 ; ii++ ) element_vertices[ii] = TextureToCell( element[ii] );
+				ChartBoundaryTriangleIndex boundaryTriangleIndex = element.idx;
 
-				// Iterate over all elements associated with the cell
-				for( unsigned int bt=0 ; bt<boundaryTriangles.size() ; bt++ )
+				IndexedPolygon< GeometryReal > polygon;
+
+				SetIndexedPolygonFromBoundaryTriangle( element , polygon );
+
+				// Convert the polygon vertices from the texture frame to the cell frame
+				for( int ii=0 ; ii<polygon.size() ; ii++ ) polygon[ii] = TextureToCell( polygon[ii] );
+
+				SquareMatrix< GeometryReal , 2 > element_to_cell_differential , cell_to_element_differential;
+				Point2D< GeometryReal > dm[] = { element_vertices[1]-element_vertices[0] , element_vertices[2]-element_vertices[0] };
+				for( unsigned int x=0 ; x<2 ; x++ ) for( unsigned int y=0 ; y<2 ; y++ ) element_to_cell_differential(x,y) = dm[x][y];
+				cell_to_element_differential = element_to_cell_differential.inverse();
+				auto CellToElement = [&]( Point2D< GeometryReal > p ){ return cell_to_element_differential * ( p - element_vertices[0] ); };
+				// Convert the polygon vertices from the cell frame to the element frame
+				for( int ii=0 ; ii<polygon.size() ; ii++ ) polygon[ii] = CellToElement( polygon[ii] );
+
+				SquareMatrix< GeometryReal , 2 > cell_metric = cell_to_texture_differential.transpose() * texture_metrics[ tIdx ] * cell_to_texture_differential;
+				SquareMatrix< GeometryReal , 2 > element_metric = element_to_cell_differential.transpose() * cell_metric * element_to_cell_differential;
+				SquareMatrix< GeometryReal , 2 > element_metric_inverse = element_metric.inverse();
+				GeometryReal element_area_scale_factor = sqrt( element_metric.determinant() );
+				SquareMatrix< GeometryReal , 6 > polygonStiffness , polygonMass;
+				Matrix< GeometryReal , 6 , 15 > polygonDivergence;
+				GeometryReal polygonArea = 0;
+
+				for( unsigned int p=2 ; p<polygon.size() ; p++ )
 				{
-					BoundaryIndexedTriangle< GeometryReal > element = boundaryTriangles[bt];
-					ChartMeshTriangleIndex tIdx = element.sourceIdx;
+					Point2D< GeometryReal > d[] = { polygon[p-1]-polygon[0] , polygon[p]-polygon[0] };
 
-					// Grab the vertices in the cell frame
-					std::vector< Point2D< GeometryReal > > element_vertices(3);
-					for( unsigned int ii=0 ; ii<3 ; ii++ ) element_vertices[ii] = TextureToCell( element[ii] );
-					ChartBoundaryTriangleIndex boundaryTriangleIndex = element.idx;
-
-					IndexedPolygon< GeometryReal > polygon;
-
-					SetIndexedPolygonFromBoundaryTriangle( element , polygon );
-
-					// Convert the polygon vertices from the texture frame to the cell frame
-					for( int ii=0 ; ii<polygon.size() ; ii++ ) polygon[ii] = TextureToCell( polygon[ii] );
-
-					SquareMatrix< GeometryReal , 2 > element_to_cell_differential , cell_to_element_differential;
-					Point2D< GeometryReal > dm[] = { element_vertices[1]-element_vertices[0] , element_vertices[2]-element_vertices[0] };
-					for( unsigned int x=0 ; x<2 ; x++ ) for( unsigned int y=0 ; y<2 ; y++ ) element_to_cell_differential(x,y) = dm[x][y];
-					cell_to_element_differential = element_to_cell_differential.inverse();
-					auto CellToElement = [&]( Point2D< GeometryReal > p ){ return cell_to_element_differential * ( p - element_vertices[0] ); };
-					// Convert the polygon vertices from the cell frame to the element frame
-					for( int ii=0 ; ii<polygon.size() ; ii++ ) polygon[ii] = CellToElement( polygon[ii] );
-
-					SquareMatrix< GeometryReal , 2 > cell_metric = cell_to_texture_differential.transpose() * texture_metrics[ tIdx ] * cell_to_texture_differential;
-					SquareMatrix< GeometryReal , 2 > element_metric = element_to_cell_differential.transpose() * cell_metric * element_to_cell_differential;
-					SquareMatrix< GeometryReal , 2 > element_metric_inverse = element_metric.inverse();
-					GeometryReal element_area_scale_factor = sqrt( element_metric.determinant() );
-					SquareMatrix< GeometryReal , 6 > polygonStiffness , polygonMass;
-					Matrix< GeometryReal , 6 , 15 > polygonDivergence;
-					GeometryReal polygonArea = 0;
-
-					for( unsigned int p=2 ; p<polygon.size() ; p++ )
+					SquareMatrix< GeometryReal , 2 > fragment_to_element_differential;
+					for( int x=0 ; x<2 ; x++ ) for( int y=0 ; y<2 ; y++ ) fragment_to_element_differential(x,y) = d[x][y];
+					GeometryReal fragment_to_element_area_scale_factor = fabs( fragment_to_element_differential.determinant() );
+					GeometryReal fragment_area = fragment_to_element_area_scale_factor * element_area_scale_factor / 2;
+					if( fragment_area>0 )
 					{
-						Point2D< GeometryReal > d[] = { polygon[p-1]-polygon[0] , polygon[p]-polygon[0] };
+						polygonArea += fragment_area;
 
-						SquareMatrix< GeometryReal , 2 > fragment_to_element_differential;
-						for( int x=0 ; x<2 ; x++ ) for( int y=0 ; y<2 ; y++ ) fragment_to_element_differential(x,y) = d[x][y];
-						GeometryReal fragment_to_element_area_scale_factor = fabs( fragment_to_element_differential.determinant() );
-						GeometryReal fragment_area = fragment_to_element_area_scale_factor * element_area_scale_factor / 2;
-						if( fragment_area>0 )
+						Point2D< GeometryReal > fragment_samples[Samples];
+						for( int s=0 ; s<Samples ; s++ )
 						{
-							polygonArea += fragment_area;
+							fragment_samples[s] = polygon[0] + d[0] * (GeometryReal)TriangleIntegrator<Samples>::Positions[s][0] + d[1] * (GeometryReal)TriangleIntegrator<Samples>::Positions[s][1];
+#ifdef SANITY_CHECK
+							if( !InUnitTriangle( fragment_samples[s] ) ) MK_THROW( "Boundary sample out of unit right triangle! (" , fragment_samples[s][0] , " " , fragment_samples[s][1] , ")" );
+							else
+#endif // SANITY_CHECK
+							{
+								fragment_samples[s][0] = std::max< GeometryReal >( fragment_samples[s][0] , 0 );
+								fragment_samples[s][1] = std::max< GeometryReal >( fragment_samples[s][1] , 0 );
+								GeometryReal excess = ( fragment_samples[s][0] + fragment_samples[s][1] ) - 1;
+								if( excess>0 ) fragment_samples[s][0] -= excess/2 , fragment_samples[s][1] -= excess/2;
+							}
+						}
+						GeometryReal sampleValues[Samples][6];
+						Point2D< GeometryReal > sampleGradients[Samples][6] , _sampleGradients[Samples][6], __sampleGradients[Samples][6];
+						for( int s=0 ; s<Samples ; s++ )
+						{
+							QuadraticElement::ValuesAndDifferentials( fragment_samples[s] , sampleValues[s] , sampleGradients[s] );
+							for( int k=0 ; k<6 ; k++ )
+							{
+								sampleValues[s][k] *= _integrator_sampleWeight[s];
+								__sampleGradients[s][k] = sampleGradients[s][k];
+								sampleGradients[s][k] *= _integrator_sampleWeight[s];
+								_sampleGradients[s][k] = element_metric_inverse * sampleGradients[s][k];										
+							}
+						}
+
+						for( int k=0 ; k<6 ; k++ ) for( int l=0 ; l<6 ; l++ )
+						{
+							GeometryReal vIntegral=0 , gIntegral=0;
+							for( int s=0 ; s<Samples ; s++ )
+							{
+								vIntegral += sampleValues[s][k] * sampleValues[s][l];
+								gIntegral += Point2D< GeometryReal >::Dot( sampleGradients[s][k] , _sampleGradients[s][l] );
+							}
+							polygonMass( l , k ) += vIntegral * fragment_area;
+							polygonStiffness( l , k ) += gIntegral * fragment_area;
+						}
+
+						if( computeDivergence )
+						{
+							Point2D< GeometryReal > sampleVectorFields[Samples][15];
+
+							for( int k=1 ; k<6 ; k++ ) for( int l=0 ; l<k ; l++ )
+							{
+								int edgeId = (k*(k - 1)) / 2 + l;
+								for( int s=0 ; s<Samples ; s++ )
+									sampleVectorFields[s][edgeId] = sampleValues[s][k] * __sampleGradients[s][l] - sampleValues[s][l] * __sampleGradients[s][k];
+							}
+
+							for( int k=0 ; k<15 ; k++ ) for( int l=0 ; l<6 ; l++ )
+							{
+								GeometryReal dIntegral = 0;
+								for( int s=0 ; s<Samples ; s++ ) dIntegral += Point2D< GeometryReal >::Dot( sampleVectorFields[s][k] , _sampleGradients[s][l] );
+								polygonDivergence(l,k) += dIntegral * fragment_area;
+							}
+						}
+					}
+					else
+					{
+						zeroAreaElementCount++;
+						MK_WARN( "Zero area polygon at cell " , gridChart.cornerCoords[0] + I[0] , " " , gridChart.cornerCoords[1] + I[1] );
+					}
+				}
+
+				GeometryReal integratedPolygonMass = 0;
+				for( int k=0 ; k<6 ; k++ ) for( int l=0 ; l<6 ; l++ ) integratedPolygonMass += polygonMass(k,l);
+#ifdef SANITY_CHECK
+				if( fabs( integratedPolygonMass - polygonArea )>precision_error ) MK_WARN( "Out of precision" );
+#endif // SANITY_CHECK
+				{
+					for( int dk=0 ; dk<6 ; dk++ ) for( int dl=0 ; dl<6 ; dl++ )
+					{
+						triangleElementStiffness[ boundaryTriangleIndex ](dk,dl) += (polygonStiffness(dk, dl) + polygonStiffness(dl, dk)) / 2;
+						triangleElementMass[ boundaryTriangleIndex ](dk,dl) += (polygonMass(dk, dl) + polygonMass(dl, dk)) / 2;
+					}
+					if( computeDivergence ) triangleElementDivergence[ boundaryTriangleIndex ] += polygonDivergence;
+				}
+			}
+		}
+	}
+
+	for( size_t t=0 ; t<atlasChart.numTriangles() ; t++ )
+	{
+		Point2D< GeometryReal > tPos[3];
+		SimplexIndex< 2 , ChartMeshVertexIndex > tri = atlasChart.triangleIndex( ChartMeshTriangleIndex(t) );
+		for( unsigned int i=0 ; i<3 ; i++ ) tPos[i] = atlasChart.vertex( tri[i] ) - gridChart.corner;
+
+		SquareMatrix< GeometryReal , 2 > texture_metric = texture_metrics[ ChartMeshTriangleIndex(t) ];
+		SquareMatrix< GeometryReal , 2 > cell_metric = cell_to_texture_differential.transpose() * texture_metric * cell_to_texture_differential;
+		SquareMatrix< GeometryReal , 2 > cell_metric_inverse = cell_metric.inverse();
+		GeometryReal cell_area_scale_factor = (GeometryReal)sqrt( cell_metric.determinant() );
+
+		std::vector< Point2D< GeometryReal > > parametricVertices(3);
+		parametricVertices[0] = tPos[0] , parametricVertices[1] = tPos[1] , parametricVertices[2] = tPos[2];
+
+		IndexedTriangle< GeometryReal > atlasTriangle;
+		for( unsigned int k=0 ; k<3 ; k++ )
+		{
+			atlasTriangle.vertices[k] = tPos[k];
+			atlasTriangle.atlasEdgeIndices[k] = atlasChart.atlasEdge( GetChartMeshHalfEdgeIndex( ChartMeshTriangleIndex(t) , k ) );
+			atlasTriangle.vertexIndices[k] = atlasChart.triangleIndex( ChartMeshTriangleIndex(t) )[k];
+			atlasTriangle.atlasVertexParentEdge[k] = AtlasMeshEdgeIndex( -1 );
+		}
+
+		auto Kernel = [&]( Index I )
+			{
+				int i = I[0] , j = I[1];
+				auto TextureToCell = [&]( Point2D< GeometryReal > p ){ return Point2D< GeometryReal >( (GeometryReal)( p[0] / gridChart.cellSizeW ) - i , (GeometryReal)( p[1] / gridChart.cellSizeH ) - j ); };
+
+				ChartInteriorCellIndex interiorIndex = gridChart.cellIndices(i,j).interior;
+				ChartBoundaryCellIndex boundaryIndex = gridChart.cellIndices(i,j).boundary;
+#ifdef SANITY_CHECK
+				if( interiorIndex!=ChartInteriorCellIndex(-1) && boundaryIndex!=ChartBoundaryCellIndex(-1) ) MK_THROW( "Cell simultaneously interior and boundary" );
+#endif // SANITY_CHECK
+
+				// If the cell is entirely within the triangle...
+				if( CellInTriangle( i , j , parametricVertices ) && interiorIndex!=ChartInteriorCellIndex(-1) )
+				{
+					SquareMatrix< GeometryReal , 4 > polygonMass , polygonStiffness;
+
+					polygonMass = interior_cell_mass * cell_area_scale_factor;
+					for( unsigned int k=0 ; k<4 ; k++ ) for( unsigned int l=0 ; l<=k ; l++ )
+						polygonStiffness(l,k) = polygonStiffness(k,l) = SquareMatrix< GeometryReal , 2 >::Dot( cell_metric_inverse , interior_cell_stiffnesses[k][l] ) * cell_area_scale_factor;
+					cellMass[interiorIndex] += polygonMass;
+					cellStiffness[interiorIndex] += polygonStiffness;
+
+					if( computeDivergence )
+					{
+						SquareMatrix< GeometryReal , 4 > polygonDivergence;
+						for( unsigned int k=0 ; k<4 ; k++ ) for( unsigned int l=0 ; l<4 ; l++ )
+							polygonDivergence(l,k) = SquareMatrix< GeometryReal , 2 >::Dot( cell_metric_inverse , grad_edge_products[l][k] ) * cell_area_scale_factor;
+						cellDivergence[interiorIndex] += polygonDivergence;
+					}
+				}
+				else if( interiorIndex!=ChartInteriorCellIndex(-1) )
+				{
+					// For interior cells, the cell and the element are the same thing
+					auto TextureToElement = TextureToCell;
+
+					SquareMatrix< GeometryReal , 2 > element_metric = cell_metric , element_metric_inverse = cell_metric_inverse;
+					GeometryReal element_area_scale_factor = cell_area_scale_factor;
+					CellClippedTriangle< GeometryReal > polygon = parametricVertices;
+
+					// Clip the triangle to the cell
+					if( ClipTriangleToPrimalCell( polygon , i , j , gridChart.cellSizeW , gridChart.cellSizeH ) )
+					{
+						// Transform the polygon vertices into the coordinate frame of the cell
+						for( unsigned int ii=0 ; ii<polygon.size() ; ii++ ) polygon[ii] = TextureToElement( polygon[ii] );
+						SquareMatrix< GeometryReal , 4 > polygonStiffness , polygonMass;
+						SquareMatrix< GeometryReal , 4 > polygonDivergence;
+
+						for( unsigned int p=2 ; p<polygon.size() ; p++ )
+						{
+							Point2D< GeometryReal > dm[2] = { polygon[p-1]-polygon[0] , polygon[p]-polygon[0] };
+
+							SquareMatrix< GeometryReal , 2 > fragment_to_element_differential;
+							for( int x=0 ; x<2 ; x++ ) for( int y=0 ; y<2 ; y++ ) fragment_to_element_differential(x,y) = dm[x][y];
+							GeometryReal fragment_to_element_area_scale_factor = fabs( fragment_to_element_differential.determinant() );
 
 							Point2D< GeometryReal > fragment_samples[Samples];
 							for( int s=0 ; s<Samples ; s++ )
 							{
-								fragment_samples[s] = polygon[0] + d[0] * (GeometryReal)TriangleIntegrator<Samples>::Positions[s][0] + d[1] * (GeometryReal)TriangleIntegrator<Samples>::Positions[s][1];
+								fragment_samples[s] = polygon[0] + dm[0] * (GeometryReal)TriangleIntegrator<Samples>::Positions[s][0] + dm[1] * (GeometryReal)TriangleIntegrator<Samples>::Positions[s][1];
 #ifdef SANITY_CHECK
-								if( !InUnitTriangle( fragment_samples[s] ) ) MK_THROW( "Boundary sample out of unit right triangle! (" , fragment_samples[s][0] , " " , fragment_samples[s][1] , ")" );
-								else
+								if( !InUnitSquare( fragment_samples[s] ) ) MK_THROW( "Interior sample out of unit box! (" , fragment_samples[s][0] , " " , fragment_samples[s][1] , ")" );
 #endif // SANITY_CHECK
-								{
-									fragment_samples[s][0] = std::max< GeometryReal >( fragment_samples[s][0] , 0 );
-									fragment_samples[s][1] = std::max< GeometryReal >( fragment_samples[s][1] , 0 );
-									GeometryReal excess = ( fragment_samples[s][0] + fragment_samples[s][1] ) - 1;
-									if( excess>0 ) fragment_samples[s][0] -= excess/2 , fragment_samples[s][1] -= excess/2;
-								}
 							}
-							GeometryReal sampleValues[Samples][6];
-							Point2D< GeometryReal > sampleGradients[Samples][6] , _sampleGradients[Samples][6], __sampleGradients[Samples][6];
-							for( int s=0 ; s<Samples ; s++ )
+
+							// Integrate scalar product and gradient field
+							// Make the code more efficient by:
+							// -- pre-multiplying the values and gradients by the square-root of the quadrature weight
+							// -- pre-multiplying the gradients by the inverse of the metric
+							// so that the computation within the inner loop is faster.
+							GeometryReal fragment_area = element_area_scale_factor * fragment_to_element_area_scale_factor / 2;
+							GeometryReal sampleValues[Samples][4];
+							Point2D< GeometryReal > sampleGradients[Samples][4] , _sampleGradients[Samples][4], __sampleGradients[Samples][4];
+							for( unsigned int s=0 ; s<Samples ; s++ )
 							{
-								QuadraticElement::ValuesAndDifferentials( fragment_samples[s] , sampleValues[s] , sampleGradients[s] );
-								for( int k=0 ; k<6 ; k++ )
+								BilinearElementValuesAndGradients( fragment_samples[s] , sampleValues[s] , sampleGradients[s] );
+								for( unsigned int k=0 ; k<4 ; k++ )
 								{
 									sampleValues[s][k] *= _integrator_sampleWeight[s];
 									__sampleGradients[s][k] = sampleGradients[s][k];
 									sampleGradients[s][k] *= _integrator_sampleWeight[s];
-									_sampleGradients[s][k] = element_metric_inverse * sampleGradients[s][k];										
+									_sampleGradients[s][k] = element_metric_inverse * sampleGradients[s][k];
 								}
 							}
-
-							for( int k=0 ; k<6 ; k++ ) for( int l=0 ; l<6 ; l++ )
+							for( unsigned int k=0 ; k<4 ; k++ ) for( unsigned int l=0 ; l<=k ; l++ )
 							{
 								GeometryReal vIntegral=0 , gIntegral=0;
 								for( int s=0 ; s<Samples ; s++ )
 								{
 									vIntegral += sampleValues[s][k] * sampleValues[s][l];
-									gIntegral += Point2D< GeometryReal >::Dot( sampleGradients[s][k] , _sampleGradients[s][l] );
+									gIntegral += Point2D< GeometryReal >::Dot( sampleGradients[s][l] , _sampleGradients[s][k] );
 								}
-								polygonMass( l , k ) += vIntegral * fragment_area;
-								polygonStiffness( l , k ) += gIntegral * fragment_area;
+								polygonMass(l,k) += vIntegral * fragment_area;
+								polygonStiffness(l,k) += gIntegral * fragment_area;
 							}
-
 							if( computeDivergence )
 							{
-								Point2D< GeometryReal > sampleVectorFields[Samples][15];
-
-								for( int k=1 ; k<6 ; k++ ) for( int l=0 ; l<k ; l++ )
+								Point2D< GeometryReal > sampleVectorFields[Samples][4];
+								for( unsigned int s=0 ; s<Samples ; s++ )
 								{
-									int edgeId = (k*(k - 1)) / 2 + l;
-									for( int s=0 ; s<Samples ; s++ )
-										sampleVectorFields[s][edgeId] = sampleValues[s][k] * __sampleGradients[s][l] - sampleValues[s][l] * __sampleGradients[s][k];
+									ReducedVectorFieldBasis(fragment_samples[s], sampleVectorFields[s]);
+									for( unsigned int k=0 ; k<4 ; k++ ) sampleVectorFields[s][k] *= _integrator_sampleWeight[s];
 								}
-
-								for( int k=0 ; k<15 ; k++ ) for( int l=0 ; l<6 ; l++ )
+								for( unsigned int k=0 ; k<4 ; k++ ) for( unsigned int l=0 ; l<4 ; l++ )
 								{
 									GeometryReal dIntegral = 0;
-									for( int s=0 ; s<Samples ; s++ ) dIntegral += Point2D< GeometryReal >::Dot( sampleVectorFields[s][k] , _sampleGradients[s][l] );
+									for( unsigned int s=0 ; s<Samples ; s++ ) dIntegral += Point2D< GeometryReal >::Dot( sampleVectorFields[s][k] , _sampleGradients[s][l] );
 									polygonDivergence(l,k) += dIntegral * fragment_area;
 								}
 							}
 						}
-						else
+						for( unsigned int k=0 ; k<4 ; k++ ) for( unsigned int l=0 ; l<k ; l++ )
 						{
-							zeroAreaElementCount++;
-							MK_WARN( "Zero area polygon at cell " , gridChart.cornerCoords[0] + I[0] , " " , gridChart.cornerCoords[1] + I[1] );
+							polygonMass(k,l) = polygonMass(l,k);
+							polygonStiffness(k,l) = polygonStiffness(l,k);
 						}
-					}
-
-					GeometryReal integratedPolygonMass = 0;
-					for( int k=0 ; k<6 ; k++ ) for( int l=0 ; l<6 ; l++ ) integratedPolygonMass += polygonMass(k,l);
-#ifdef SANITY_CHECK
-					if( fabs( integratedPolygonMass - polygonArea )>precision_error ) MK_WARN( "Out of precision" );
-#endif // SANITY_CHECK
-					{
-						for( int dk=0 ; dk<6 ; dk++ ) for( int dl=0 ; dl<6 ; dl++ )
-						{
-							triangleElementStiffness[ boundaryTriangleIndex ](dk,dl) += (polygonStiffness(dk, dl) + polygonStiffness(dl, dk)) / 2;
-							triangleElementMass[ boundaryTriangleIndex ](dk,dl) += (polygonMass(dk, dl) + polygonMass(dl, dk)) / 2;
-						}
-						if( computeDivergence ) triangleElementDivergence[ boundaryTriangleIndex ] += polygonDivergence;
+						cellMass[interiorIndex] += polygonMass;
+						cellStiffness[interiorIndex] += polygonStiffness;
+						if( computeDivergence ) cellDivergence[interiorIndex] += polygonDivergence;
 					}
 				}
-			}
-		}
-	);
-
-	ThreadPool::ParallelFor
-	(
-		0 , atlasChart.numTriangles() ,
-		[&]( size_t t )
-		{
-			Point2D< GeometryReal > tPos[3];
-			SimplexIndex< 2 , ChartMeshVertexIndex > tri = atlasChart.triangleIndex( ChartMeshTriangleIndex(t) );
-			for( unsigned int i=0 ; i<3 ; i++ ) tPos[i] = atlasChart.vertex( tri[i] ) - gridChart.corner;
-
-			SquareMatrix< GeometryReal , 2 > texture_metric = texture_metrics[ ChartMeshTriangleIndex(t) ];
-			SquareMatrix< GeometryReal , 2 > cell_metric = cell_to_texture_differential.transpose() * texture_metric * cell_to_texture_differential;
-			SquareMatrix< GeometryReal , 2 > cell_metric_inverse = cell_metric.inverse();
-			GeometryReal cell_area_scale_factor = (GeometryReal)sqrt( cell_metric.determinant() );
-
-			std::vector< Point2D< GeometryReal > > parametricVertices(3);
-			parametricVertices[0] = tPos[0] , parametricVertices[1] = tPos[1] , parametricVertices[2] = tPos[2];
-
-			IndexedTriangle< GeometryReal > atlasTriangle;
-			for( unsigned int k=0 ; k<3 ; k++ )
-			{
-				atlasTriangle.vertices[k] = tPos[k];
-				atlasTriangle.atlasEdgeIndices[k] = atlasChart.atlasEdge( GetChartMeshHalfEdgeIndex( ChartMeshTriangleIndex(t) , k ) );
-				atlasTriangle.vertexIndices[k] = atlasChart.triangleIndex( ChartMeshTriangleIndex(t) )[k];
-				atlasTriangle.atlasVertexParentEdge[k] = AtlasMeshEdgeIndex( -1 );
-			}
-
-			auto Kernel = [&]( Index I )
-				{
-					int i = I[0] , j = I[1];
-					auto TextureToCell = [&]( Point2D< GeometryReal > p ){ return Point2D< GeometryReal >( (GeometryReal)( p[0] / gridChart.cellSizeW ) - i , (GeometryReal)( p[1] / gridChart.cellSizeH ) - j ); };
-
-					ChartInteriorCellIndex interiorIndex = gridChart.cellIndices(i,j).interior;
-					ChartBoundaryCellIndex boundaryIndex = gridChart.cellIndices(i,j).boundary;
-#ifdef SANITY_CHECK
-					if( interiorIndex!=ChartInteriorCellIndex(-1) && boundaryIndex!=ChartBoundaryCellIndex(-1) ) MK_THROW( "Cell simultaneously interior and boundary" );
-#endif // SANITY_CHECK
-
-					// If the cell is entirely within the triangle...
-					if( CellInTriangle( i , j , parametricVertices ) && interiorIndex!=ChartInteriorCellIndex(-1) )
-					{
-						SquareMatrix< GeometryReal , 4 > polygonMass , polygonStiffness;
-
-						polygonMass = interior_cell_mass * cell_area_scale_factor;
-						for( unsigned int k=0 ; k<4 ; k++ ) for( int l=0 ; l<4 ; l++ )
-							polygonStiffness(k,l) = SquareMatrix< GeometryReal , 2 >::Dot( cell_metric_inverse , interior_cell_stiffnesses[k][l] ) * cell_area_scale_factor;
-						Atomic< SquareMatrix< GeometryReal , 4 > >::Add( cellMass[interiorIndex] , polygonMass );
-						Atomic< SquareMatrix< GeometryReal , 4 > >::Add( cellStiffness[interiorIndex] , polygonStiffness );
-
-						if( computeDivergence )
-						{
-							SquareMatrix< GeometryReal , 4 > polygonDivergence;
-							for( unsigned int k=0 ; k<4 ; k++ ) for( int l=0 ; l<4 ; l++ )
-								polygonDivergence(l,k) = SquareMatrix< GeometryReal , 2 >::Dot( cell_metric_inverse , grad_edge_products[l][k] ) * cell_area_scale_factor;
-							Atomic< SquareMatrix< GeometryReal , 4 > >::Add( cellDivergence[interiorIndex] , polygonDivergence );
-						}
-					}
-					else if( interiorIndex!=ChartInteriorCellIndex(-1) )
-					{
-						// For interior cells, the cell and the element are the same thing
-						auto TextureToElement = TextureToCell;
-
-						SquareMatrix< GeometryReal , 2 > element_metric = cell_metric , element_metric_inverse = cell_metric_inverse;
-						GeometryReal element_area_scale_factor = cell_area_scale_factor;
-						CellClippedTriangle< GeometryReal > polygon = parametricVertices;
-
-						// Clip the triangle to the cell
-						if( ClipTriangleToPrimalCell( polygon , i , j , gridChart.cellSizeW , gridChart.cellSizeH ) )
-						{
-							// Transform the polygon vertices into the coordinate frame of the cell
-							for( unsigned int ii=0 ; ii<polygon.size() ; ii++ ) polygon[ii] = TextureToElement( polygon[ii] );
-							SquareMatrix< GeometryReal , 4 > polygonStiffness , polygonMass;
-							SquareMatrix< GeometryReal , 4 > polygonDivergence;
-
-							for( unsigned int p=2 ; p<polygon.size() ; p++ )
-							{
-								Point2D< GeometryReal > dm[2] = { polygon[p-1]-polygon[0] , polygon[p]-polygon[0] };
-
-								SquareMatrix< GeometryReal , 2 > fragment_to_element_differential;
-								for( int x=0 ; x<2 ; x++ ) for( int y=0 ; y<2 ; y++ ) fragment_to_element_differential(x,y) = dm[x][y];
-								GeometryReal fragment_to_element_area_scale_factor = fabs( fragment_to_element_differential.determinant() );
-
-								Point2D< GeometryReal > fragment_samples[Samples];
-								for( int s=0 ; s<Samples ; s++ )
-								{
-									fragment_samples[s] = polygon[0] + dm[0] * (GeometryReal)TriangleIntegrator<Samples>::Positions[s][0] + dm[1] * (GeometryReal)TriangleIntegrator<Samples>::Positions[s][1];
-#ifdef SANITY_CHECK
-									if( !InUnitSquare( fragment_samples[s] ) ) MK_THROW( "Interior sample out of unit box! (" , fragment_samples[s][0] , " " , fragment_samples[s][1] , ")" );
-#endif // SANITY_CHECK
-								}
-
-								// Integrate scalar product and gradient field
-								// Make the code more efficient by:
-								// -- pre-multiplying the values and gradients by the square-root of the quadrature weight
-								// -- pre-multiplying the gradients by the inverse of the metric
-								// so that the computation within the inner loop is faster.
-								GeometryReal fragment_area = element_area_scale_factor * fragment_to_element_area_scale_factor / 2;
-								GeometryReal sampleValues[Samples][4];
-								Point2D< GeometryReal > sampleGradients[Samples][4] , _sampleGradients[Samples][4], __sampleGradients[Samples][4];
-								for( int s=0 ; s<Samples ; s++ )
-								{
-									BilinearElementValuesAndGradients( fragment_samples[s] , sampleValues[s] , sampleGradients[s] );
-									for( int k=0 ; k<4 ; k++ )
-									{
-										sampleValues[s][k] *= _integrator_sampleWeight[s];
-										__sampleGradients[s][k] = sampleGradients[s][k];
-										sampleGradients[s][k] *= _integrator_sampleWeight[s];
-										_sampleGradients[s][k] = element_metric_inverse * sampleGradients[s][k];
-									}
-								}
-								for( int k=0 ; k<4 ; k++ ) for( int l=0 ; l<4 ; l++ )
-								{
-									GeometryReal vIntegral=0 , gIntegral=0;
-									for( int s=0 ; s<Samples ; s++ )
-									{
-										vIntegral += sampleValues[s][k] * sampleValues[s][l];
-										gIntegral += Point2D< GeometryReal >::Dot( sampleGradients[s][l] , _sampleGradients[s][k] );
-									}
-									polygonMass(l,k) += vIntegral * fragment_area;
-									polygonStiffness(l,k) += gIntegral * fragment_area;
-								}
-								if( computeDivergence )
-								{
-									Point2D< GeometryReal > sampleVectorFields[Samples][4];
-									for (int s = 0; s < Samples; s++)
-									{
-										ReducedVectorFieldBasis(fragment_samples[s], sampleVectorFields[s]);
-										for( int k=0 ; k<4 ; k++ ) sampleVectorFields[s][k] *= _integrator_sampleWeight[s];
-									}
-									for( int k=0 ; k<4 ; k++ ) for( int l=0 ; l<4 ; l++ )
-									{
-										GeometryReal dIntegral = 0;
-										for( int s=0 ; s<Samples ; s++ ) dIntegral += Point2D< GeometryReal >::Dot( sampleVectorFields[s][k] , _sampleGradients[s][l] );
-										polygonDivergence(l, k) += dIntegral * fragment_area;
-									}
-								}
-							}
-							Atomic< SquareMatrix< GeometryReal , 4 > >::Add( cellMass[interiorIndex] , polygonMass );
-							Atomic< SquareMatrix< GeometryReal , 4 > >::Add( cellStiffness[interiorIndex] , polygonStiffness );
-							if( computeDivergence ) Atomic< SquareMatrix< GeometryReal , 4 > >::Add( cellDivergence[interiorIndex] , polygonDivergence );
-						}
-					}
-				};
-			Rasterizer2D::RasterizeSupports< true , true >( GetSimplex( static_cast< unsigned int >(t) ) , Kernel , cellRange );
-		}
-	);
+			};
+		Rasterizer2D::RasterizeSupports< true , true >( GetSimplex( static_cast< unsigned int >(t) ) , Kernel , cellRange );
+	}
 
 	if( zeroAreaElementCount ) MK_WARN( "Element with zero area = " , zeroAreaElementCount );
 

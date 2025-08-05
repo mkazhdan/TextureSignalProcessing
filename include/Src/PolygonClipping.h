@@ -52,12 +52,15 @@ namespace MishaK
 
 			unsigned int size( void ) const { return sz; }
 			void push_back( Point2D< GeometryReal > p ){ vertices[sz++] = p; }
+			Point2D< GeometryReal > & push_back( void ){ return vertices[sz++]; }
+			Point2D< GeometryReal > & back( void ){ return vertices[sz-1]; }
+			const Point2D< GeometryReal > & back( void ) const{ return vertices[sz-1]; }
 			Point2D< GeometryReal >& operator[] ( unsigned int idx ) { return vertices[idx]; }
 			const Point2D< GeometryReal >& operator[] ( unsigned int idx ) const { return vertices[idx]; }
 		};
 
 		template< typename GeometryReal >
-		void ClipConvexPolygon( CellClippedTriangle< GeometryReal > &vertices , const Point2D< GeometryReal > &normal , const GeometryReal &bOff , const GeometryReal &fOff )
+		void ClipConvexPolygon( CellClippedTriangle< GeometryReal > &vertices , unsigned int dir , const GeometryReal &bOff , const GeometryReal &fOff )
 		{
 			enum
 			{
@@ -65,13 +68,13 @@ namespace MishaK
 				INSIDE ,
 				FRONT
 			};
-			int vCount = (int)vertices.size();
+			unsigned int vCount = static_cast< unsigned int >( vertices.size() );
 
 
 			CellClippedTriangle< GeometryReal > _vertices;
 
-			Point2D< GeometryReal > pVertex = vertices[vCount - 1];
-			GeometryReal pDot = Point2D< GeometryReal >::Dot( pVertex , normal );
+			Point2D< GeometryReal > pVertex = vertices[vCount-1];
+			GeometryReal pDot = pVertex[dir];
 			auto GetLabel = [&]( GeometryReal dot )
 				{
 					if     ( dot< bOff ) return BACK;
@@ -79,39 +82,41 @@ namespace MishaK
 					else                 return INSIDE;
 				};
 			int pLabel = GetLabel( pDot );
-			for( int i=0 ; i<vCount ; i++ )
+			for( unsigned int i=0 ; i<vCount ; i++ )
 			{
 				Point2D< GeometryReal > cVertex = vertices[i];
-				GeometryReal cDot = Point2D< GeometryReal >::Dot( cVertex , normal );
+				GeometryReal cDot = cVertex[dir];
 				int cLabel = GetLabel( cDot );
 				GeometryReal bAlpha , fAlpha;
+				Point2D< GeometryReal > delta = pVertex - cVertex;
+				GeometryReal denom = static_cast< GeometryReal >( 1. / ( cDot - pDot ) );
 				switch( cLabel+pLabel )
 				{
 				case -1:
-					bAlpha = (cDot-bOff)/(cDot-pDot);
-					_vertices.push_back( pVertex*bAlpha + cVertex*( (GeometryReal)1.-bAlpha ) );
+					bAlpha = (cDot-bOff) * denom;
+					_vertices.push_back() = cVertex + delta*bAlpha;
 					break;
 				case 1:
-					fAlpha = (cDot-fOff)/(cDot-pDot);
-					_vertices.push_back( pVertex*fAlpha + cVertex*( (GeometryReal)1.-fAlpha ) );
+					fAlpha = (cDot-fOff) * denom;
+					_vertices.push_back() = cVertex + delta*fAlpha;
 					break;
 				case 0:
 					if( pLabel==BACK )
 					{
-						bAlpha = (cDot-bOff)/(cDot-pDot);
-						fAlpha = (cDot-fOff)/(cDot-pDot);
-						_vertices.push_back( pVertex*bAlpha + cVertex*( (GeometryReal)1.-bAlpha ) );
-						_vertices.push_back( pVertex*fAlpha + cVertex*( (GeometryReal)1.-fAlpha ) );
+						bAlpha = (cDot-bOff) * denom;
+						fAlpha = (cDot-fOff) * denom;
+						_vertices.push_back() = cVertex + delta*bAlpha;
+						_vertices.push_back() = cVertex + delta*fAlpha;
 					}
 					else if( pLabel==FRONT )
 					{
-						fAlpha = (cDot-fOff)/(cDot-pDot);
-						bAlpha = (cDot-bOff)/(cDot-pDot);
-						_vertices.push_back( pVertex*fAlpha + cVertex*( (GeometryReal)1.-fAlpha ) );
-						_vertices.push_back( pVertex*bAlpha + cVertex*( (GeometryReal)1.-bAlpha ) );
+						fAlpha = (cDot-fOff) * denom;
+						bAlpha = (cDot-bOff) * denom;
+						_vertices.push_back() = cVertex + delta*fAlpha;
+						_vertices.push_back() = cVertex + delta*bAlpha;
 					}
 				}
-				if( cLabel==INSIDE ) _vertices.push_back( cVertex );
+				if( cLabel==INSIDE ) _vertices.push_back() = cVertex;
 				pVertex = cVertex , pDot = cDot , pLabel = cLabel;
 			}
 
@@ -121,9 +126,9 @@ namespace MishaK
 		template< typename GeometryReal >
 		unsigned int ClipTriangleToPrimalCell( CellClippedTriangle< GeometryReal >&tri , int i , int j , GeometryReal cellSizeW , GeometryReal cellSizeH )
 		{
-			ClipConvexPolygon( tri , Point2D< GeometryReal >(0,1) , cellSizeH*j , cellSizeH*(j+1) );
-			ClipConvexPolygon( tri , Point2D< GeometryReal >(1,0) , cellSizeW*i , cellSizeW*(i+1) );
-			return (unsigned int)tri.size();
+			ClipConvexPolygon( tri , 1 , cellSizeH*j , cellSizeH*(j+1) );
+			ClipConvexPolygon( tri , 0 , cellSizeW*i , cellSizeW*(i+1) );
+			return static_cast< unsigned int >( tri.size() );
 		}
 
 		//Vertex type 
