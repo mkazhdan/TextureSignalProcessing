@@ -209,7 +209,7 @@ int main( int argc , char* argv[] )
 		hgd.updateSystem( ValueWeight.value , GradientWeight.value );
 		if( Verbose.set ) std::cout << pMeter( "Matrix" ) << std::endl;
 
-		// Construct/factor the solver
+		// Relax the solution
 		for( unsigned int v=0 ; v<VCycles.value ; v++ ) hgd.vCycle( GSIterations.value );
 		if( Verbose.set ) std::cout << pMeter( "Solved" ) << std::endl;
 
