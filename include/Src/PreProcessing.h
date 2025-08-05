@@ -28,7 +28,6 @@ DAMAGE.
 
 // To do:
 // -- Pull edges out of the divergence operator
-// -- Solver.h -> EigenSolverWrapper.h
 
 // To do:
 // -- Use analytic integration

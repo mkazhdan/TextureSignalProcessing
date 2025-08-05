@@ -41,7 +41,7 @@ DAMAGE.
 #include <Misha/Atomic.h>
 #include <Misha/Atomic.Geometry.h>
 #include <Misha/SimplexBasis.h>
-#include "Solver.h"
+#include "EigenSolverWrapper.h"
 #include "IndexedPolygon.h"
 //#include "ImageIO.h"
 

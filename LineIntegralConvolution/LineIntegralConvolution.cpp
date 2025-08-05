@@ -37,7 +37,7 @@ DAMAGE.
 #include <Misha/FEM.h>
 #include <Src/Hierarchy.h>
 #include <Src/Basis.h>
-#include <Src/Solver.h>
+#include <Src/EigenSolverWrapper.h>
 #include <Src/Operators.h>
 #include <Src/Padding.h>
 #include <Src/TexturedMeshVisualization.h>
