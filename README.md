@@ -608,6 +608,7 @@ This class derives from <CODE>GradientDomain</CODE> and additionally supports an
 The interface is simlar to that of <CODE>GradientDomain</CODE> with the following differences:
 <UL>
 <LI><U>Line 152-167</U>: The interface uses the class <CODE>HierarchicalGradientDomain</CODE>, whose constructor takes an additional parameter describing the number of levels in the multigrid hierarchy.<BR>
+<B>Note</B>: Because the class is also responsible for relaxing the gradient-domain system, it is templated off the type of the direct solver used to solve the system at the coarsest resolution (second argument) and the type data being solved for (third argument). <BR>
 [Compare to <U>Lines 143-157</U> of <CODE>GradientDomainExample.cpp</CODE>]
 <LI><U>Line 170</U>: The <CODE>HierarchicalGradientDomain</CODE> class maintains its own constraint and solution vectors. So rather than allocating the constraint and solution vectors separately, the interface uses pointers to the data maintained in the <CODE>hgd</code> object.<BR>
 [Compare to <U>Line 159</U> of <CODE>GradientDomainExample.cpp</CODE>]
