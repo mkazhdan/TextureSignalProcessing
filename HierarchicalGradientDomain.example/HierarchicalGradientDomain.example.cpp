@@ -205,8 +205,7 @@ int main( int argc , char* argv[] )
 		}
 		if( Verbose.set ) std::cout << pMeter( "Coefficients" ) << std::endl;
 
-
-		// Compute the system matrix
+		// Set the system matrix
 		hgd.updateSystem( ValueWeight.value , GradientWeight.value );
 		if( Verbose.set ) std::cout << pMeter( "Matrix" ) << std::endl;
 

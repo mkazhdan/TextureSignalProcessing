@@ -607,13 +607,14 @@ This class derives from <CODE>GradientDomain</CODE> and additionally supports an
 </SUMMARY>
 The interface is simlar to that of <CODE>GradientDomain</CODE> with the following differences:
 <UL>
-<LI><U>Line 153</U>: The object is of type <CODE>HierarchicalGradientDomain</CODE> rather than <CODE>GradientDomain</CODE>.<BR>
-[Compare to <U>Line 144</U> of <CODE>GradientDomainExample.cpp</CODE>]
-<LI><U>Line 165</U>: The constructor takes an additional argument describing the number of levels in the hierarchy.
+<LI><U>Line 152-167</U>: The interface uses the class <CODE>HierarchicalGradientDomain</CODE>, whose constructor takes an additional parameter describing the number of levels in the multigrid hierarchy.<BR>
+[Compare to <U>Lines 143-157</U> of <CODE>GradientDomainExample.cpp</CODE>]
 <LI><U>Line 170</U>: The <CODE>HierarchicalGradientDomain</CODE> class maintains its own constraint and solution vectors. So rather than allocating the constraint and solution vectors separately, the interface uses pointers to the data maintained in the <CODE>hgd</code> object.<BR>
 [Compare to <U>Line 159</U> of <CODE>GradientDomainExample.cpp</CODE>]
-<LI><U>Line 210</U>: The <CODE>HierarchicalGradientDomain</CODE> class maintains its own representation of the system matrix. This initialized by specifying the mass and stiffness weights of the system.<BR>
-[Compare to <U>Line 198</U> of <CODE>GradientDomainExample.cpp</CODE>]
+<LI><U>Lines 208-210</U>: The <CODE>HierarchicalGradientDomain</CODE> class maintains its own representation of the system matrix. This initialized by specifying the mass and stiffness weights of the system.<BR>
+[Compare to <U>Lines 197-199</U> of <CODE>GradientDomainExample.cpp</CODE>]
+<LI><U>Line 212-214</U>: The solution is relaxed by running the prescribed number of v-cycles with the prescribed number of Gauss-Seidel relaxations per level.<BR>
+[Compare to <U>Lines 201-221</U> of <CODE>GradientDomainExample.cpp</CODE>]
 </UL>
 </DETAILS>
 </UL>
