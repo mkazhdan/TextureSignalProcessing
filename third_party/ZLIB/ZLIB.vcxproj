@@ -106,7 +106,8 @@
       <PrecompiledHeader>
       </PrecompiledHeader>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
-      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <DebugInformationFormat>
+      </DebugInformationFormat>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <AdditionalIncludeDirectories>../include/ZLIB</AdditionalIncludeDirectories>
     </ClCompile>

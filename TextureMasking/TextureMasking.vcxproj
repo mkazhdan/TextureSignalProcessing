@@ -128,12 +128,13 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <AdditionalIncludeDirectories>../third_party/include;../include;..</AdditionalIncludeDirectories>
       <OpenMPSupport>true</OpenMPSupport>
+      <DebugInformationFormat />
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(OutDir)</AdditionalLibraryDirectories>
       <AdditionalDependencies>ZLIB.lib;JPEG.lib;PNG.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
     </Link>

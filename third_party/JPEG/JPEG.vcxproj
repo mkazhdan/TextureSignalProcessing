@@ -103,6 +103,7 @@
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <AdditionalIncludeDirectories>../include/JPEG</AdditionalIncludeDirectories>
+      <DebugInformationFormat />
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
