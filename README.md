@@ -1,4 +1,4 @@
-<center><h2>Gradient Domain Texture Processing (Version 9.05)</h2></center>
+<center><h2>Gradient Domain Texture Processing (Version 9.50)</h2></center>
 <center>
 <a href="#LINKS">links</a>
 <a href="#EXECUTABLES">executables</a>
@@ -34,6 +34,8 @@ This software supports gradient-domain signal processing within a texture atlas.
 <B>Data:</B>
 <A HREF="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/TSP.Data.zip">ZIP</A><br>
 <b>Older Versions:</b>
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version9.10/">V9.10</a>,
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version9.05/">V9.05</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version9.00/">V9.00</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version8.00/">V8.00</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version7.00/">V7.00</a>,
@@ -390,8 +392,16 @@ Identifies the active texels within a texture mask of prescribed resolution, wit
 <dd> This string is the name of the file to which the texture mask will be written.</B>
 </dd>
 
-<dt>[<b>--id</b>]</dt>
-<dd> If this flag is enabled only texels whose center/node overlaps a triangle are rendered. Colors are assigned randomly to triangles and all centers/nodes covered by the same triangle are assigned the same color.
+<dt>[<b>--rasterizer</b>]</dt>
+<dd> This integer specifies the type of information to be rasterized. Valid values are:
+<UL>
+<LI><b>0</b>: active -- all texels whose support overlaps the texture atlas
+<LI><b>1</b>: boundary -- all texels whose support overlaps the texture chart boundaries
+<LI><b>2</b>: id -- colors texels by the triangle covering them
+<LI><b>3</b>: node incidence count (unsigned) -- colors texels by the number of triangles sitting over them
+<LI><b>4</b>: node incidence count (signed) -- colors texels by the number of positively oriented triangles over them, minus the number of negatively oriented triangles over them
+</UL>
+The default value for this parameter is <b>0</B> (active)
 </dd>
 
 </details>
@@ -535,13 +545,15 @@ Here a "dots" pattern is written out to an image. (Empirically, we have found th
 <a name="library"><b>HEADER-ONLY LIBRARY</b></a><br>
 <UL>
 <DL>
+<font size="+1"><b>include/Src/GradientDomain.h</b></font>
+In addition to executables, the gradient-domain processing code can be interfaced through either the <CODE>GradientDomain</CODE> class or the <CODE>HierarchicalGradientDomain</CODE> class declared in <CODE>include/Src/GradientDomain.h</CODE>.
+<UL>
+
 <DETAILS>
 <SUMMARY>
-<font size="+1"><b>include/Src/GradientDomain.h</b></font>
-In addition to executables, the gradient-domain processing code can be interfaced through the <CODE>GradientDomain</CODE> class declared in <CODE>include/Src/GradientDomain.h</CODE>.
+<font size="+1"><CODE>GradientDomain</CODE></font>:
 Once constructed, this object can be used to query the active texels/edges, as well as create the standard mass/stiffness/divergence matrices and apply the mass/stiffness/operators to the texel data. In the descriptions below, the template parameter <CODE>Real</CODE> is the floating point type used to represent data (typically <code>double</code>) and <CODE>Solver</CODE> is the class used to factor and solve the sparse system of linear equations (<CODE>Eigen::SimplicialLDLT</CODE> by default).
 </SUMMARY>
-
 <B>Code Description</B>:<br>
 <UL>
 The code performs basic gradient domain processing applications including texture smoothing/sharpening and stitching.
@@ -556,23 +568,23 @@ This is done by solving for the output texture values which simultaneouly fit va
 <UL>
   The details of the implementation can be found in the <code>GradientDomain.example.cpp</code> code.
   <UL>
-    <LI><U>Lines 113-120</U>: The texture-mapped geometry and the texture image (as well as a mask image describing when texels belong to the same patch, for stitching) are read in.
-    <LI><U>Lines 141-155</U>: The <CODE>GradientDomain</CODE> object is constructed, passing in the resolution of the mesh as well as functor giving the indices of embedding/texture-vertices for each corner, functors giving the positions of embedding/texture-vertices, the texture image resolution, and the number of quadrature points per triangle used for integration (valid values are 1, 3, 6, 12, 24, and 32).
-    <LI><U>Lines 159-164</U>: The input texture values are read from the image into a <CODE>std::vector</CODE>, using the member functions <CODE>GradientDomain::numNodes</CODE> to get the number of (active) texels in the texture map and <CODE>GradientDomain::node</CODE> to get the coordinates of the texel within the image.
-    <LI><U>Lines 166-193</U>: The constraints to the linear system are constructed, specifying the target values and gradients:
+    <LI><U>Lines 113-125</U>: The texture-mapped geometry and the texture image (as well as a mask image describing when texels belong to the same patch, for stitching) are read in.
+    <LI><U>Lines 143-157</U>: The <CODE>GradientDomain</CODE> object is constructed, passing in the resolution of the mesh as well as functor giving the indices of embedding/texture-vertices for each corner, functors giving the positions of embedding/texture-vertices, the texture image resolution, and the number of quadrature points per triangle used for integration (valid values are 1, 3, 6, 12, 24, and 32).
+    <LI><U>Lines 161-166</U>: The input texture values are read from the image into a <CODE>std::vector</CODE>, using the member functions <CODE>GradientDomain::numNodes</CODE> to get the number of (active) texels in the texture map and <CODE>GradientDomain::node</CODE> to get the coordinates of the texel within the image.
+    <LI><U>Lines 168-195</U>: The constraints to the linear system are constructed, specifying the target values and gradients:
     <UL>
-      <LI><U>Lines 170-171</U>: The target value constraints are constructed by applying the mass matrix to the input texel values.
-      <LI><U>Lines 173-188</U>: The target gradient constraints are obtained by computing the target per-edge differences and then computing the divergence:
+      <LI><U>Lines 172-173</U>: The target value constraints are constructed by applying the mass matrix to the input texel values.
+      <LI><U>Lines 175-190</U>: The target gradient constraints are obtained by computing the target per-edge differences and then computing the divergence:
       <UL>
-        <LI><U>Lines 175-184</U>: The target edge differences are obtained by iterating over the edges, computing the difference between the input texel values at the end-points, and scaling by the gradient modulation value (and zeroing out the difference in the case the end-points are assigned different IDs, in the case of stiching). To this end, the member function <CODE>GradientDomain::numEdges</CODE> gives the number of edges, and the member function <CODE>GradientDomain::edge</CODE> returns the indices of the edge's two end-points.
-        <LI><U>Lines 186-187</U>: The target gradient constraints are obtained applying the divergence operator to the computed edge differences.
+        <LI><U>Lines 177-186</U>: The target edge differences are obtained by iterating over the edges, computing the difference between the input texel values at the end-points, and scaling by the gradient modulation value (and zeroing out the difference in the case the end-points are assigned different IDs, in the case of stiching). To this end, the member function <CODE>GradientDomain::numEdges</CODE> gives the number of edges, and the member function <CODE>GradientDomain::edge</CODE> returns the indices of the edge's two end-points.
+        <LI><U>Lines 188-189</U>: The target gradient constraints are obtained applying the divergence operator to the computed edge differences.
       </UL>
-      <LI><U>Lines 190-191</U>: The target value and gradient weights are combined using the weights specified by the user.
+      <LI><U>Lines 192-193</U>: The target value and gradient weights are combined using the weights specified by the user.
     </UL>
-    <LI><U>Lines 195-197</U>: The system matrix is constructed by taking the weighted combination of the mass and stiffness matrices (using the same weights for combining the value and gradient constraints).
-    <LI><U>Lines 199-209</U>: The system matrix is factored.
-    <LI><U>Lines 211-219</U>: The values for the individual image channels are computed by solving the linear system.
-    <LI><U>Lines 221-226</U>: The output texel values are written from the <CODE>std::vector</CODE> back into the texture image.
+    <LI><U>Lines 197-199</U>: The system matrix is constructed by taking the weighted combination of the mass and stiffness matrices (using the same weights for combining the value and gradient constraints).
+    <LI><U>Lines 201-211</U>: The system matrix is factored.
+    <LI><U>Lines 213-221</U>: The values for the individual image channels are computed by solving the linear system.
+    <LI><U>Lines 223-228</U>: The output texel values are written from the <CODE>std::vector</CODE> back into the texture image.
   </UL>
 </UL>
 
@@ -586,6 +598,26 @@ The code make a number of assumptions about the input geometry:
 <LI>The indexing of texture vertices is such that the topology implied by the vertex indexing matches the toplogy of the texture atlas. (i.e. A single surface vertex can be associated with different texture vertices if the associated corners are in different charts.)
 </UL>
 </UL>
+</DETAILS>
+
+<DETAILS>
+<SUMMARY>
+<font size="+1"><CODE>HierarchicalGradientDomain</CODE></font>:
+This class derives from <CODE>GradientDomain</CODE> and additionally supports an iterative multigrid solver for computing the solution to the gradient problem without requiring a potentially expensive matrix factorization.
+</SUMMARY>
+The interface is simlar to that of <CODE>GradientDomain</CODE> with the following differences:
+<UL>
+<LI><U>Line 153</U>: The object is of type <CODE>HierarchicalGradientDomain</CODE> rather than <CODE>GradientDomain</CODE>.<BR>
+[Compare to <U>Line 144</U> of <CODE>GradientDomainExample.cpp</CODE>]
+<LI><U>Line 165</U>: The constructor takes an additional argument describing the number of levels in the hierarchy.
+<LI><U>Line 170</U>: The <CODE>HierarchicalGradientDomain</CODE> class maintains its own constraint and solution vectors. So rather than allocating the constraint and solution vectors separately, the interface uses pointers to the data maintained in the <CODE>hgd</code> object.<BR>
+[Compare to <U>Line 159</U> of <CODE>GradientDomainExample.cpp</CODE>]
+<LI><U>Line 210</U>: The <CODE>HierarchicalGradientDomain</CODE> class maintains its own representation of the system matrix. This initialized by specifying the mass and stiffness weights of the system.<BR>
+[Compare to <U>Line 198</U> of <CODE>GradientDomainExample.cpp</CODE>]
+</UL>
+</DETAILS>
+</UL>
+
 
 </DL>
 </UL>
@@ -708,7 +740,7 @@ The code make a number of assumptions about the input geometry:
 
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version8.00/">Version 8.00</a>:
 <ul>
-<LI> Added header-only library support for standard geometry-prcoessing interfaces, wrapped in <CODE>include/Src/GradientDomain.h</CODE>
+<LI> Added header-only library for standard geometry-prcoessing interfaces, wrapped in <CODE>include/Src/GradientDomain.h</CODE>
 <LI> Added example code showing how to use the libary in <CODE>GradientDomain.example.cpp</CODE>.
 </ul>
 
@@ -717,9 +749,21 @@ The code make a number of assumptions about the input geometry:
 <LI> Added <CODE>SeamStitcher</CODE> executable.
 </ul>
 
-<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version9.00/">Version 9.05</a>:
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version9.05/">Version 9.05</a>:
 <ul>
 <LI> Added the option to provide a mask to the <CODE>SeamStitcher</CODE> executable to indicate which texels are to be locked.
+</ul>
+
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version9.10/">Version 9.10</a>:
+<ul>
+<LI> Added options for <CODE>TextureMasking</CODE>.
+<LI> Added more numerical stability.
+</ul>
+
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version9.10/">Version 9.10</a>:
+<ul>
+<LI> Added header-only library for a multigrid solver supporting standard geometry-prcoessing interfaces, wrapped in <CODE>include/Src/GradientDomain.h</CODE>
+<LI> Added example code showing how to use the libary in <CODE>HierarchicalGradientDomain.example.cpp</CODE>.
 </ul>
 
 </details>
@@ -728,3 +772,6 @@ The code make a number of assumptions about the input geometry:
 <hr>
 <a name="SUPPORT"><b>SUPPORT</b></a><br>
 This work genersouly supported by NSF grant #1422325.
+
+<hr>
+<a href="http://www.cs.jhu.edu/~misha">HOME</a>
