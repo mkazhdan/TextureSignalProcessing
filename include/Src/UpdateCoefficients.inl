@@ -398,7 +398,7 @@ void UpdateMultigridCoefficientsAndSolvers( const HierarchicalSystem< GeometryRe
 	if( detailVerbose ) printf( "Hierarchy solvers =  %.4f \n" , timer.elapsed() );
 }
 
-template< typename GeometryReal , typename MatrixReal  , class DirectSolver >
+template< typename GeometryReal , typename MatrixReal , class DirectSolver >
 void UpdateLinearSystem
 (
 	MatrixReal screenWeight ,
@@ -406,9 +406,12 @@ void UpdateLinearSystem
 	const HierarchicalSystem< GeometryReal , MatrixReal > &hierarchy ,
 	std::vector< SystemCoefficients< MatrixReal > > &multigridCoefficients ,
 	const MassAndStiffnessOperators< MatrixReal > & massAndStiffnessOperators ,
-	VCycleSolvers< DirectSolver > &vCycleSolvers , DirectSolver &fineSolver ,
-	const SparseMatrix< MatrixReal , int > &fineSystemMatrix ,
-	bool detailVerbose=false , bool initSolvers=true , bool updateFineSolver=false
+	VCycleSolvers< DirectSolver > &vCycleSolvers ,
+	EigenSolverWrapper< DirectSolver > *fineSolver ,
+	const SparseMatrix< MatrixReal , int > *fineSystemMatrix ,
+	bool detailVerbose ,
+	bool initSolvers ,
+	bool updateFineSolver
 )
 {
 	SystemCoefficients< MatrixReal > fineCoefficients;
@@ -440,11 +443,43 @@ void UpdateLinearSystem
 	if( updateFineSolver )
 	{
 		Miscellany::Timer timer;
-		if( initSolvers ) fineSolver.init(fineSystemMatrix);
+		if( initSolvers ) fineSolver->init( *fineSystemMatrix );
 		if( detailVerbose ) printf( "Analyze =  %.4f\n" , timer.elapsed() );
 
 		if( detailVerbose ) timer.reset();
-		fineSolver.update(fineSystemMatrix);
+		fineSolver->update( *fineSystemMatrix );
 		if( detailVerbose ) printf( "Factorize =  %.4f\n" , timer.elapsed() );
 	}
+}
+
+template< typename GeometryReal , typename MatrixReal , class DirectSolver >
+void UpdateLinearSystem
+(
+	MatrixReal screenWeight ,
+	MatrixReal stiffnessWeight ,
+	const HierarchicalSystem< GeometryReal , MatrixReal > &hierarchy ,
+	std::vector< SystemCoefficients< MatrixReal > > &multigridCoefficients ,
+	const MassAndStiffnessOperators< MatrixReal > & massAndStiffnessOperators ,
+	VCycleSolvers< DirectSolver > &vCycleSolvers ,
+	EigenSolverWrapper< DirectSolver > &fineSolver ,
+	const SparseMatrix< MatrixReal , int > &fineSystemMatrix ,
+	bool detailVerbose=false , bool initSolvers=true , bool updateFineSolver=false
+)
+{
+	UpdateLinearSystem( screenWeight , stiffnessWeight , hierarchy , multigridCoefficients , massAndStiffnessOperators , vCycleSolvers , &fineSolver , &fineSystemMatrix , detailVerbose , initSolvers , updateFineSolver );
+}
+template< typename GeometryReal , typename MatrixReal  , class DirectSolver >
+void UpdateLinearSystem
+(
+	MatrixReal screenWeight ,
+	MatrixReal stiffnessWeight ,
+	const HierarchicalSystem< GeometryReal , MatrixReal > &hierarchy ,
+	std::vector< SystemCoefficients< MatrixReal > > &multigridCoefficients ,
+	const MassAndStiffnessOperators< MatrixReal > & massAndStiffnessOperators ,
+	VCycleSolvers< DirectSolver > &vCycleSolvers ,
+	bool detailVerbose=false ,
+	bool initSolvers=true
+)
+{
+	UpdateLinearSystem< GeometryReal , MatrixReal , DirectSolver >( screenWeight , stiffnessWeight , hierarchy , multigridCoefficients , massAndStiffnessOperators , vCycleSolvers , nullptr , nullptr , detailVerbose , initSolvers , false );
 }

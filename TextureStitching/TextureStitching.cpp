@@ -35,6 +35,10 @@ enum
 
 #include <Src/PreProcessing.h>
 
+#ifdef USE_EIGEN_PARDISO
+#include <Eigen/PardisoSupport>
+#endif // USE_EIGEN_PARDISO
+
 #include <Misha/CmdLineParser.h> 
 #include <Misha/Miscellany.h>
 #include <Misha/Exceptions.h>
@@ -203,18 +207,13 @@ public:
 	static std::vector< MultigridLevelVariables< Point3D< Real > > > multigridStitchingVariables;
 	static std::vector< MultigridLevelIndices< Real > > multigridIndices;
 
-#if defined( USE_CHOLMOD )
-	typedef CholmodCholeskySolver< Real , 3 > DirectSolver;
-#elif defined( USE_EIGEN )
-	typedef EigenCholeskySolver< Real , 3 > DirectSolver;
-#elif defined( USE_EIGEN_PARDISO )
-	typedef EigenPardisoSolver< Real , 3 > DirectSolver;
-#else
-#error "[ERROR] No solver defined!"
-#endif
-
-	static VCycleSolvers< DirectSolver > vCycleSolvers;
-	static DirectSolver directSolver;
+#ifdef USE_EIGEN_PARDISO
+	using EigenSolver = Eigen::PardisoLDLT< Eigen::SparseMatrix< double > >;
+#else // !USE_EIGEN_PARDISO
+	using EigenSolver = Eigen::SimplicialLDLT< Eigen::SparseMatrix< double > >;
+#endif // USE_EIGEN_PARDISO
+	static VCycleSolvers< EigenSolver > vCycleSolvers;
+	static EigenSolverWrapper< EigenSolver > directSolver;
 
 
 	static DivergenceOperator< Real > divergenceOperator;
@@ -331,8 +330,8 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth > std:
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< MultigridLevelVariables< Point3D< Real > > >		Stitching< PreReal , Real , TextureBitDepth >::multigridStitchingVariables;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< MultigridLevelIndices< Real > >					Stitching< PreReal , Real , TextureBitDepth >::multigridIndices;
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > VCycleSolvers< typename Stitching< PreReal , Real , TextureBitDepth >::DirectSolver >		Stitching< PreReal , Real , TextureBitDepth >::vCycleSolvers;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > typename Stitching< PreReal , Real , TextureBitDepth >::DirectSolver				Stitching< PreReal , Real , TextureBitDepth >::directSolver;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > VCycleSolvers< typename Stitching< PreReal , Real , TextureBitDepth >::EigenSolver >		Stitching< PreReal , Real , TextureBitDepth >::vCycleSolvers;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > EigenSolverWrapper< typename Stitching< PreReal , Real , TextureBitDepth >::EigenSolver >	Stitching< PreReal , Real , TextureBitDepth >::directSolver;
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Point3D< float > >									Stitching< PreReal , Real , TextureBitDepth >::textureNodePositions;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Point3D< float > >									Stitching< PreReal , Real , TextureBitDepth >::textureEdgePositions;
@@ -574,7 +573,7 @@ void  Stitching< PreReal , Real , TextureBitDepth >::InterpolationWeightCallBack
 	ThreadPool::ParallelFor( 0 , multigridStitchingVariables[0].rhs.size() , [&]( unsigned int , size_t i ){ multigridStitchingVariables[0].rhs[i] = texelMass[i] * interpolationWeight + texelDivergence[i]; } );
 
 	if( UseDirectSolver.set ) ComputeExactSolution(Verbose.set);
-	else for( int i=0 ; i<OutputVCycles.value ; i++ ) VCycle( multigridStitchingVariables , multigridStitchingCoefficients , multigridIndices , vCycleSolvers , false , false );
+	else for( int i=0 ; i<OutputVCycles.value ; i++ ) VCycle( multigridStitchingVariables , multigridStitchingCoefficients , multigridIndices , vCycleSolvers , 2 , false , false );
 
 	UpdateFilteredColorTexture( multigridStitchingVariables[0].x );
 	visualization.UpdateColorTextureBuffer();
@@ -587,7 +586,7 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth >
 void Stitching< PreReal , Real , TextureBitDepth >::ComputeExactSolution( bool verbose )
 {
 	Miscellany::PerformanceMeter pMeter( '.' );
-	solve( directSolver , multigridStitchingVariables[0].x , multigridStitchingVariables[0].rhs );
+	directSolver.solve( multigridStitchingVariables[0].x , multigridStitchingVariables[0].rhs );
 	if( verbose ) std::cout << pMeter( "Solved" ) << std::endl;
 }
 
@@ -606,7 +605,7 @@ void Stitching< PreReal , Real , TextureBitDepth >::UpdateSolution( bool verbose
 		rhsUpdated = true;
 	}
 
-	VCycle( multigridStitchingVariables , multigridStitchingCoefficients , multigridIndices , vCycleSolvers , verbose , detailVerbose );
+	VCycle( multigridStitchingVariables , multigridStitchingCoefficients , multigridIndices , vCycleSolvers , 2 , verbose , detailVerbose );
 }
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth >
@@ -699,7 +698,7 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth >
 void Stitching< PreReal , Real , TextureBitDepth >::SolveSystem( void )
 {
 	if( UseDirectSolver.set ) ComputeExactSolution( Verbose.set );
-	else for( int i=0 ; i<OutputVCycles.value ; i++ ) VCycle( multigridStitchingVariables , multigridStitchingCoefficients , multigridIndices , vCycleSolvers , false , false );	
+	else for( int i=0 ; i<OutputVCycles.value ; i++ ) VCycle( multigridStitchingVariables , multigridStitchingCoefficients , multigridIndices , vCycleSolvers , 2 , false , false );
 	UpdateFilteredTexture( multigridStitchingVariables[0].x );
 }
 

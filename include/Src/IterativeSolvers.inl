@@ -39,7 +39,7 @@ void Relaxation
 	std::vector< Data > &boundaryRHS ,
 	std::vector< Data > &boundarySolution ,
 	std::vector< Data > &variableBoundaryRHS ,
-	int numIterations=2 ,
+	unsigned int numIterations=2 ,
 	bool boundaryFirst=true ,
 	bool verbose=false
 )
@@ -51,7 +51,7 @@ void Relaxation
 	Miscellany::Timer timer;
 
 	int it_offset = boundaryFirst ? 0 : 1;
-	for( int it=0 ; it<numIterations ; it++ )
+	for( unsigned int it=0 ; it<numIterations ; it++ )
 	{
 		if( (it+it_offset)%2==0 )
 		{
@@ -212,7 +212,7 @@ void Relaxation
 			if( verbose ) printf( "\t Boundary initialization =  %.4f \n" , timer.elapsed() );
 
 			if( verbose ) timer.reset();
-			solve(boundarySolver, boundarySolution, variableBoundaryRHS);
+			boundarySolver.solve( boundarySolution , variableBoundaryRHS );
 			if( verbose ) printf( "\t Boundary update =  %.4f\n" , timer.elapsed() );
 
 			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ x0[ static_cast< unsigned int >( boundaryToCombined[ AtlasBoundaryTexelIndex(i) ] ) ] = boundarySolution[i]; } );
@@ -323,7 +323,7 @@ void RelaxationAndResidual
 
 
 			if( verbose ) timer.reset();
-			solve(boundarySolver, boundaryValue, variableBoundaryRHS);
+			boundarySolver.solve( boundaryValue , variableBoundaryRHS );
 
 			if( verbose ) printf( "\t Boundary update =  %.4f\n" , timer.elapsed() );
 			ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ x0[ static_cast< unsigned int >( boundaryToCombined[ AtlasBoundaryTexelIndex(i) ] ) ] = boundaryValue[i]; } );
@@ -453,7 +453,8 @@ void RelaxationAndResidual
 	const std::vector< SegmentedRasterLine > &segmentedLines ,
 	const std::vector< Data > &rhs , std::vector< Data > &x0 , std::vector< Data > &boundaryRHS , std::vector< Data > &boundaryValue , std::vector< Data > &variableBoundaryRHS ,
 	const SparseMatrix< Real , int > &boundaryBoundaryMatrix , std::vector< Data > &residual ,
-	int numIterations=2 , bool verbose=false
+	unsigned int numIterations=2 ,
+	bool verbose=false
 )
 {
 	unsigned int numBoundaryVariables = boundaryToCombined.size();
@@ -461,7 +462,7 @@ void RelaxationAndResidual
 	ThreadPool::ParallelFor( 0 , numBoundaryVariables , [&]( unsigned int , size_t i ){ boundaryRHS[i] = rhs[ static_cast< unsigned int >( boundaryToCombined[ AtlasBoundaryTexelIndex(i) ] ) ]; } );
 
 	Miscellany::Timer timer;
-	for( int it=0 ; it<numIterations ; it++ )
+	for( unsigned int it=0 ; it<numIterations ; it++ )
 	{
 		if( it%2==0 )
 		{
@@ -1041,6 +1042,7 @@ void VCycle
 	const std::vector< SystemCoefficients< Real > > &coefficients ,
 	const std::vector< MultigridLevelIndices< Real > > &indices ,
 	VCycleSolvers< DirectSolver > &vCycleSolvers ,
+	unsigned int iterationsPerLevel ,
 	bool verbose ,
 	bool detailVerbose
 )
@@ -1065,8 +1067,8 @@ void VCycle
 		if( verbose ) printf( "Level %d\n" , i );
 
 		Miscellany::Timer tmr;
-		RelaxationAndResidual( _coefficients.deepCoefficients , _coefficients.boundaryDeepMatrix , vCycleSolvers.boundary[i] , _indices.boundaryToCombined , _indices.threadTasks , _variables.rhs , _variables.x , _variables.boundary_rhs , _variables.boundary_value , _variables.variable_boundary_value , _coefficients.boundaryBoundaryMatrix , _variables.residual , 2 , detailVerbose );
-		if( verbose ) printf("Relaxation  + Residual %.4f\n" , tmr.elapsed() );
+		RelaxationAndResidual( _coefficients.deepCoefficients , _coefficients.boundaryDeepMatrix , vCycleSolvers.boundary[i] , _indices.boundaryToCombined , _indices.threadTasks , _variables.rhs , _variables.x , _variables.boundary_rhs , _variables.boundary_value , _variables.variable_boundary_value , _coefficients.boundaryBoundaryMatrix , _variables.residual , iterationsPerLevel , detailVerbose );
+		if( verbose ) printf( "Relaxation  + Residual %.4f\n" , tmr.elapsed() );
 
 		if( verbose ) tmr.reset();
 		MultiplyByRestriction( _indices.boundaryRestriction , nextLevelIndices.boundaryToCombined , nextLevelVariables.boundary_value , nextLevelIndices.restrictionLines, _variables.residual, nextLevelVariables.rhs , detailVerbose );
@@ -1086,7 +1088,7 @@ void VCycle
 			MultigridLevelVariables<DataType> & _variables = variables[i];
 
 			if( verbose ) tmr.reset();
-			Relaxation( _coefficients.deepCoefficients , _coefficients.boundaryDeepMatrix , vCycleSolvers.boundary[i] , _indices.boundaryToCombined , _indices.threadTasks , _variables.rhs , _variables.x , _variables.boundary_rhs , _variables.boundary_value , _variables.variable_boundary_value , 2 , true , detailVerbose );
+			Relaxation( _coefficients.deepCoefficients , _coefficients.boundaryDeepMatrix , vCycleSolvers.boundary[i] , _indices.boundaryToCombined , _indices.threadTasks , _variables.rhs , _variables.x , _variables.boundary_rhs , _variables.boundary_value , _variables.variable_boundary_value , iterationsPerLevel , true , detailVerbose );
 			if( verbose ) printf( "Gauss Seidel %.4f\n" , tmr.elapsed() );
 		}
 		else if( i==(int)levels-1 )
@@ -1094,7 +1096,7 @@ void VCycle
 			MultigridLevelVariables<DataType> & _variables = variables[i];
 			Miscellany::Timer tmr;
 			if( verbose ) tmr.reset();
-			solve( vCycleSolvers.coarse , _variables.x , _variables.rhs );
+			vCycleSolvers.coarse.solve( _variables.x , _variables.rhs );
 			if( verbose ) printf( "Direct solver %.4f\n" , tmr.elapsed() );
 		}
 

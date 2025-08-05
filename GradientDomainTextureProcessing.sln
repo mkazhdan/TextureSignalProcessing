@@ -138,7 +138,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Misha", "Misha", "{4B406F54
 		third_party\include\Misha\Image.h = third_party\include\Misha\Image.h
 		third_party\include\Misha\JPEG.h = third_party\include\Misha\JPEG.h
 		third_party\include\Misha\JPEG.inl = third_party\include\Misha\JPEG.inl
-		third_party\include\Misha\LinearSolvers.h = third_party\include\Misha\LinearSolvers.h
 		third_party\include\Misha\MemoryUsage.h = third_party\include\Misha\MemoryUsage.h
 		third_party\include\Misha\Miscellany.h = third_party\include\Misha\Miscellany.h
 		third_party\include\Misha\MultiThreading.h = third_party\include\Misha\MultiThreading.h
@@ -180,6 +179,13 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "JPEG", "third_party\JPEG\JPEG.vcxproj", "{0BE55595-4080-4265-82AF-51108EC956B2}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SeamStitcher", "SeamStitcher\SeamStitcher.vcxproj", "{F93C2A28-2846-4232-94D8-2C5CE38071AD}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "HierarchicalGradientDomain.example", "HierarchicalGradientDomain.example\HierarchicalGradientDomain.example.vcxproj", "{1DFB92B7-60C3-44F0-9AE1-43AD799EF7DF}"
+	ProjectSection(ProjectDependencies) = postProject
+		{0BE55595-4080-4265-82AF-51108EC956B2} = {0BE55595-4080-4265-82AF-51108EC956B2}
+		{B5899B32-FAC2-477E-99AA-86736B97F2FC} = {B5899B32-FAC2-477E-99AA-86736B97F2FC}
+		{D3D173AB-D306-4179-BEC4-95CE1B14E647} = {D3D173AB-D306-4179-BEC4-95CE1B14E647}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -289,6 +295,14 @@ Global
 		{F93C2A28-2846-4232-94D8-2C5CE38071AD}.Release|x64.Build.0 = Release|x64
 		{F93C2A28-2846-4232-94D8-2C5CE38071AD}.Release|x86.ActiveCfg = Release|Win32
 		{F93C2A28-2846-4232-94D8-2C5CE38071AD}.Release|x86.Build.0 = Release|Win32
+		{1DFB92B7-60C3-44F0-9AE1-43AD799EF7DF}.Debug|x64.ActiveCfg = Debug|x64
+		{1DFB92B7-60C3-44F0-9AE1-43AD799EF7DF}.Debug|x64.Build.0 = Debug|x64
+		{1DFB92B7-60C3-44F0-9AE1-43AD799EF7DF}.Debug|x86.ActiveCfg = Debug|Win32
+		{1DFB92B7-60C3-44F0-9AE1-43AD799EF7DF}.Debug|x86.Build.0 = Debug|Win32
+		{1DFB92B7-60C3-44F0-9AE1-43AD799EF7DF}.Release|x64.ActiveCfg = Release|x64
+		{1DFB92B7-60C3-44F0-9AE1-43AD799EF7DF}.Release|x64.Build.0 = Release|x64
+		{1DFB92B7-60C3-44F0-9AE1-43AD799EF7DF}.Release|x86.ActiveCfg = Release|Win32
+		{1DFB92B7-60C3-44F0-9AE1-43AD799EF7DF}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -28,6 +28,10 @@ DAMAGE.
 
 #include <Src/PreProcessing.h>
 
+#ifdef USE_EIGEN_PARDISO
+#include <Eigen/PardisoSupport>
+#endif // USE_EIGEN_PARDISO
+
 #include <Misha/CmdLineParser.h> 
 #include <Misha/Miscellany.h>
 #include <Misha/Exceptions.h>
@@ -226,19 +230,13 @@ public:
 	static std::vector< MultigridLevelVariables< Point3D< Real > > > multigridFilteringVariables;
 	static std::vector< MultigridLevelIndices< Real > > multigridIndices;
 
-#if defined( USE_CHOLMOD )
-	typedef CholmodCholeskySolver< Real , 3 > DirectSolver;
-#elif defined( USE_EIGEN )
-	typedef EigenCholeskySolver< Real , 3 > DirectSolver;
-#elif defined( USE_EIGEN_PARDISO )
-	typedef EigenPardisoSolver< Real , 3 > DirectSolver;
-#else
-#error "[ERROR] No solver defined!"
-#endif
-
-	static VCycleSolvers< DirectSolver > vCycleSolvers;
-	static DirectSolver directSolver;
-
+#ifdef USE_EIGEN_PARDISO
+	using EigenSolver = Eigen::PardisoLDLT< Eigen::SparseMatrix< double > >;
+#else // !USE_EIGEN_PARDISO
+	using EigenSolver = Eigen::SimplicialLDLT< Eigen::SparseMatrix< double > >;
+#endif // USE_EIGEN_PARDISO
+	static VCycleSolvers< EigenSolver > vCycleSolvers;
+	static EigenSolverWrapper< EigenSolver > directSolver;
 
 	//Linear Operators
 	static MassAndStiffnessOperators< Real > massAndStiffnessOperators;
@@ -336,8 +334,8 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth > std:
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< MultigridLevelVariables< Point3D< Real > > >			TextureFilter< PreReal , Real , TextureBitDepth >::multigridFilteringVariables;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< MultigridLevelIndices< Real > >						TextureFilter< PreReal , Real , TextureBitDepth >::multigridIndices;
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > VCycleSolvers< typename TextureFilter< PreReal , Real , TextureBitDepth >::DirectSolver >		TextureFilter< PreReal , Real , TextureBitDepth >::vCycleSolvers;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > typename TextureFilter< PreReal , Real , TextureBitDepth >::DirectSolver						TextureFilter< PreReal , Real , TextureBitDepth >::directSolver;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > VCycleSolvers< typename TextureFilter< PreReal , Real , TextureBitDepth >::EigenSolver >		TextureFilter< PreReal , Real , TextureBitDepth >::vCycleSolvers;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > EigenSolverWrapper< typename TextureFilter< PreReal , Real , TextureBitDepth >::EigenSolver >	TextureFilter< PreReal , Real , TextureBitDepth >::directSolver;
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Point3D< Real > >										TextureFilter< PreReal , Real , TextureBitDepth >::high_x0;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Point3D< Real > >										TextureFilter< PreReal , Real , TextureBitDepth >::edgeDifferences;
@@ -723,8 +721,12 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::InterpolationWeightCallB
 	Miscellany::PerformanceMeter pMeter( '.' );
 
 	interpolationWeight = atof(prompt);
-	if( UseDirectSolver.set ) filteringMatrix = mass*interpolationWeight + stiffness;
-	UpdateLinearSystem( interpolationWeight , (Real)1. , hierarchy , multigridFilteringCoefficients , massAndStiffnessOperators , vCycleSolvers , directSolver , filteringMatrix , DetailVerbose.set , false , UseDirectSolver.set );
+	if( UseDirectSolver.set )
+	{
+		filteringMatrix = mass*interpolationWeight + stiffness;
+		UpdateLinearSystem( interpolationWeight , (Real)1. , hierarchy , multigridFilteringCoefficients , massAndStiffnessOperators , vCycleSolvers , directSolver , filteringMatrix , DetailVerbose.set , false , UseDirectSolver.set );
+	}
+	else UpdateLinearSystem( interpolationWeight , (Real)1. , hierarchy , multigridFilteringCoefficients , massAndStiffnessOperators , vCycleSolvers , DetailVerbose.set , false );
 	if( Verbose.set ) std::cout << pMeter( "Initialized MG" ) << std::endl;
 
 	ThreadPool::ParallelFor( 0 ,multigridFilteringVariables[0].rhs.size() , [&]( unsigned int , size_t i ){ multigridFilteringVariables[0].rhs[i] = mass_x0[i]*interpolationWeight + stiffness_x0[i] * gradientModulation; } );
@@ -751,7 +753,7 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth >
 void TextureFilter< PreReal , Real , TextureBitDepth >::ComputeExactSolution( bool verbose )
 {
 	Miscellany::PerformanceMeter pMeter( '.' );
-	solve( directSolver , multigridFilteringVariables[0].x , multigridFilteringVariables[0].rhs );
+	directSolver.solve( multigridFilteringVariables[0].x , multigridFilteringVariables[0].rhs );
 	if( verbose ) std::cout << pMeter( "Solved" ) << std::endl;
 }
 
@@ -779,7 +781,7 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::UpdateSolution( bool ver
 		gradientModulationUpdated = true;
 	}
 
-	VCycle( multigridFilteringVariables , multigridFilteringCoefficients , multigridIndices , vCycleSolvers , verbose , detailVerbose );
+	VCycle( multigridFilteringVariables , multigridFilteringCoefficients , multigridIndices , vCycleSolvers , 2 , verbose , detailVerbose );
 }
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth >

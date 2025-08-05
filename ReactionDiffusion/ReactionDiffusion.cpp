@@ -29,6 +29,10 @@ DAMAGE.
 
 #include <Src/PreProcessing.h>
 
+#ifdef USE_EIGEN_PARDISO
+#include <Eigen/PardisoSupport>
+#endif // USE_EIGEN_PARDISO
+
 #include <Misha/CmdLineParser.h> 
 #include <Misha/Miscellany.h>
 #include <Misha/Exceptions.h>
@@ -191,18 +195,13 @@ public:
 	static std::vector< SystemCoefficients< Real > > multigridCoefficients[2];
 	static std::vector< MultigridLevelVariables< Real > > multigridVariables[2];
 
-#if defined( USE_CHOLMOD )
-	typedef CholmodCholeskySolver< Real , 1 > DirectSolver;
-#elif defined( USE_EIGEN )
-	typedef EigenCholeskySolver< Real , 1 > DirectSolver;
-#elif defined( USE_EIGEN_PARDISO )
-	typedef EigenPardisoSolver< Real , 1 > DirectSolver;
-#else
-#error "[ERROR] No solver defined!"
-#endif
-
-	static VCycleSolvers< DirectSolver > vCycleSolvers[2];
-	static DirectSolver fineSolvers[2];
+#ifdef USE_EIGEN_PARDISO
+	using EigenSolver = Eigen::PardisoLDLT< Eigen::SparseMatrix< double > >;
+#else // !USE_EIGEN_PARDISO
+	using EigenSolver = Eigen::SimplicialLDLT< Eigen::SparseMatrix< double > >;
+#endif // USE_EIGEN_PARDISO
+	static VCycleSolvers< EigenSolver > vCycleSolvers[2];
+	static EigenSolverWrapper< EigenSolver > fineSolvers[2];
 
 	static std::vector< MultigridLevelIndices< Real > > multigridIndices;
 
@@ -279,8 +278,8 @@ template< typename PreReal , typename Real > std::vector< MultigridLevelIndices<
 
 template< typename PreReal , typename Real > std::vector< SystemCoefficients< Real > >								GrayScottReactionDiffusion< PreReal , Real >::multigridCoefficients[2];
 template< typename PreReal , typename Real > std::vector< MultigridLevelVariables< Real > >							GrayScottReactionDiffusion< PreReal , Real >::multigridVariables[2];
-template< typename PreReal , typename Real > VCycleSolvers< typename GrayScottReactionDiffusion< PreReal , Real >::DirectSolver >	GrayScottReactionDiffusion< PreReal , Real >::vCycleSolvers[2];
-template< typename PreReal , typename Real > typename GrayScottReactionDiffusion< PreReal , Real >::DirectSolver	GrayScottReactionDiffusion< PreReal , Real >::fineSolvers[2];
+template< typename PreReal , typename Real > VCycleSolvers< typename GrayScottReactionDiffusion< PreReal , Real >::EigenSolver >		GrayScottReactionDiffusion< PreReal , Real >::vCycleSolvers[2];
+template< typename PreReal , typename Real > EigenSolverWrapper< typename GrayScottReactionDiffusion< PreReal , Real >::EigenSolver >	GrayScottReactionDiffusion< PreReal , Real >::fineSolvers[2];
 
 
 
@@ -340,7 +339,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::UpdateExactSolution( bool ver
 	{
 		for( int ab=0 ; ab<2 ; ab++ )
 		{
-			solve( fineSolvers[ab] , multigridVariables[ab][0].x , multigridVariables[ab][0].rhs );
+			fineSolvers[ab].solve( multigridVariables[ab][0].x , multigridVariables[ab][0].rhs );
 			for( int i=0 ; i<multigridVariables[ab][0].x.size() ; i++ ) multigridVariables[ab][0].x[i] = std::max< Real >( multigridVariables[ab][0].x[i] , 0 );
 		}
 		if( verbose ) std::cout << pMeter( "Direct solve" ) << std::endl;
@@ -362,7 +361,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::UpdateApproximateSolution( bo
 	{
 		for( int ab=0 ; ab<2 ; ab++ )
 		{
-			VCycle( multigridVariables[ab] , multigridCoefficients[ab] , multigridIndices , vCycleSolvers[ab] , detailVerbose , detailVerbose );
+			VCycle( multigridVariables[ab] , multigridCoefficients[ab] , multigridIndices , vCycleSolvers[ab] , 2 , detailVerbose , detailVerbose );
 			ThreadPool::ParallelFor( 0 , multigridVariables[ab][0].x.size() , [&]( unsigned int , size_t i ){ multigridVariables[ab][0].x[i] = std::max< Real >( multigridVariables[ab][0].x[i] , 0 ); } );
 		}
 		if( verbose ) std::cout << pMeter( "V-Cycle solve" ) << std::endl;

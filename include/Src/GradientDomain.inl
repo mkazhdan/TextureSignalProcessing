@@ -26,6 +26,9 @@ ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF S
 DAMAGE.
 */
 
+////////////////////
+// GradientDomain //
+////////////////////
 
 template< typename Real >
 template< typename Functor >
@@ -47,6 +50,7 @@ template< typename Real >
 template< typename Functor >
 constexpr bool GradientDomain< Real >::_IsTextureVertexFunctor( void ){ return std::is_convertible_v< Functor , std::function< Point< Real , 2 > ( size_t ) > >; }
 
+
 template< typename Real >
 template
 <
@@ -67,6 +71,52 @@ GradientDomain< Real >::GradientDomain
 	TextureVertexFunctor && textureVertexFunctor ,
 	unsigned int width ,
 	unsigned int height ,
+	bool normalize
+)
+{
+	using PreReal = Real;
+	HierarchicalSystem< PreReal , Real > hierarchy;
+	_init
+	(
+		quadraturePointsPerTriangle ,
+		numTriangles ,
+		numSurfaceVertices ,
+		numTextureVertices ,
+		std::forward< SurfaceCornerFunctor >( surfaceCornerFunctor ) ,
+		std::forward< SurfaceVertexOrMetricFunctor >( surfaceVertexOrMetricFunctor ) ,
+		std::forward< TextureCornerFunctor >( textureCornerFunctor ) ,
+		std::forward< TextureVertexFunctor >( textureVertexFunctor ) ,
+		hierarchy ,
+		width ,
+		height ,
+		1 ,
+		normalize
+	);
+}
+
+template< typename Real >
+template
+<
+	typename PreReal ,
+	typename SurfaceCornerFunctor ,         /* = std::function< size_t ( size_t , unsigned int ) > */
+	typename SurfaceVertexOrMetricFunctor , /* = std::function< Point< Real , 3 > ( size_t ) > || std::function< SquareMatrix< Real , 2 > ( size_t ) > */
+	typename TextureCornerFunctor ,         /* = std::function< size_t ( size_t , unsigned int ) > */
+	typename TextureVertexFunctor           /* = std::function< Point< Real , 2 > ( size_t ) > */
+>
+void GradientDomain< Real >::_init
+(
+	unsigned quadraturePointsPerTriangle ,
+	size_t numTriangles ,
+	size_t numSurfaceVertices ,
+	size_t numTextureVertices ,
+	SurfaceCornerFunctor && surfaceCornerFunctor ,
+	SurfaceVertexOrMetricFunctor && surfaceVertexOrMetricFunctor ,
+	TextureCornerFunctor && textureCornerFunctor ,
+	TextureVertexFunctor && textureVertexFunctor ,
+	HierarchicalSystem< PreReal , Real > & hierarchy ,
+	unsigned int width ,
+	unsigned int height ,
+	unsigned int levels ,
 	bool normalize
 )
 {
@@ -94,12 +144,11 @@ GradientDomain< Real >::GradientDomain
 		for( size_t i=0 ; i<mesh.texture.triangles.size() ; i++ ) if( mesh.texture.triangle( static_cast< unsigned int >(i) ).measure()==0 ) MK_WARN( "Zero area texture triangle: " , i );
 	}
 
-	HierarchicalSystem< Real , Real > hierarchy;
-	ExplicitIndexVector< ChartIndex , AtlasChart< Real > > atlasCharts;
+	ExplicitIndexVector< ChartIndex , AtlasChart< PreReal > > atlasCharts;
 	MultigridBlockInfo multigridBlockInfo;
 
-	InitializeHierarchy( mesh , width , height , 1 , _textureNodes , hierarchy , atlasCharts , multigridBlockInfo );
-	ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< Real , 2 > > > parameterMetric;
+	InitializeHierarchy( mesh , width , height , levels , _textureNodes , hierarchy , atlasCharts , multigridBlockInfo );
+	ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > > parameterMetric;
 	if constexpr( HasSurfaceVertex ) InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric , normalize );
 	else if constexpr( HasSurfaceMetric )
 	{
@@ -300,4 +349,110 @@ void GradientDomain< Real >::unitTests( unsigned int numTests , double eps , boo
 			if( verbose || diff>eps ) std::cout << "\t" << n << "] Divergence: " << diff << std::endl;
 		}
 	}
+}
+
+////////////////////////////////
+// HierarchicalGradientDomain //
+////////////////////////////////
+template< typename Real , typename Solver , typename Data >
+template
+<
+	typename SurfaceCornerFunctor ,         /* = std::function< size_t ( size_t , unsigned int ) > */
+	typename SurfaceVertexOrMetricFunctor , /* = std::function< Point< Real , 3 > ( size_t ) > || std::function< SquareMatrix< Real , 2 > ( size_t ) > */
+	typename TextureCornerFunctor ,         /* = std::function< size_t ( size_t , unsigned int ) > */
+	typename TextureVertexFunctor           /* = std::function< Point< Real , 2 > ( size_t ) > */
+>
+HierarchicalGradientDomain< Real , Solver , Data >::HierarchicalGradientDomain
+(
+	unsigned quadraturePointsPerTriangle ,
+	size_t numTriangles ,
+	size_t numSurfaceVertices ,
+	size_t numTextureVertices ,
+	SurfaceCornerFunctor && surfaceCornerFunctor ,
+	SurfaceVertexOrMetricFunctor && surfaceVertexOrMetricFunctor ,
+	TextureCornerFunctor && textureCornerFunctor ,
+	TextureVertexFunctor && textureVertexFunctor ,
+	unsigned int width ,
+	unsigned int height ,
+	unsigned int levels ,
+	bool normalize
+)
+{
+	GradientDomain< Real >::_init
+	(
+		quadraturePointsPerTriangle ,
+		numTriangles ,
+		numSurfaceVertices ,
+		numTextureVertices ,
+		std::forward< SurfaceCornerFunctor >( surfaceCornerFunctor ) ,
+		std::forward< SurfaceVertexOrMetricFunctor >( surfaceVertexOrMetricFunctor ) ,
+		std::forward< TextureCornerFunctor >( textureCornerFunctor ) ,
+		std::forward< TextureVertexFunctor >( textureVertexFunctor ) ,
+		_hierarchy ,
+		width ,
+		height ,
+		levels ,
+		normalize
+	);
+	_multigridIndices.resize( levels );
+	_multigridVariables.resize( levels );
+
+	for( unsigned int l=0 ; l<levels ; l++ )
+	{
+		const typename GridAtlas<>::IndexConverter & indexConverter = _hierarchy.gridAtlases[l].indexConverter;
+		const GridAtlas< PreReal , Real > &gridAtlas = _hierarchy.gridAtlases[l];
+		MultigridLevelIndices< Real > & indices = _multigridIndices[l];
+		MultigridLevelVariables< Data > & variables = _multigridVariables[l];
+
+		indices.threadTasks = gridAtlas.threadTasks;
+		indices.boundaryToCombined = indexConverter.boundaryToCombined();
+		indices.segmentedLines = gridAtlas.segmentedLines;
+		indices.rasterLines = gridAtlas.rasterLines;
+		indices.restrictionLines = gridAtlas.restrictionLines;
+		indices.prolongationLines = gridAtlas.prolongationLines;
+		if( l<levels-1 ) indices.boundaryRestriction = _hierarchy.boundaryRestriction[l];
+
+		variables.x.resize( indexConverter.numCombined() );
+		variables.rhs.resize( indexConverter.numCombined() );
+		variables.residual.resize( indexConverter.numCombined() );
+		variables.boundary_rhs.resize( indexConverter.numBoundary() );
+		variables.boundary_value.resize( indexConverter.numBoundary() );
+		variables.variable_boundary_value.resize( indexConverter.numBoundary() );
+	}
+}
+
+template< typename Real , typename Solver , typename Data >
+Data * HierarchicalGradientDomain< Real , Solver , Data >::b( void ){ return &_multigridVariables[0].rhs[0]; }
+
+template< typename Real , typename Solver , typename Data >
+const Data * HierarchicalGradientDomain< Real , Solver , Data >::b( void ) const { return &_multigridVariables[0].rhs[0]; }
+
+template< typename Real , typename Solver , typename Data >
+Data & HierarchicalGradientDomain< Real , Solver , Data >::b( size_t n ){ return _multigridVariables[0].rhs[n]; }
+
+template< typename Real , typename Solver , typename Data >
+const Data & HierarchicalGradientDomain< Real , Solver , Data >::b( size_t n ) const { return _multigridVariables[0].rhs[n]; }
+
+template< typename Real , typename Solver , typename Data >
+Data * HierarchicalGradientDomain< Real , Solver , Data >::x( void ) { return &_multigridVariables[0].x[0]; }
+
+template< typename Real , typename Solver , typename Data >
+const Data * HierarchicalGradientDomain< Real , Solver , Data >::x( void ) const { return &_multigridVariables[0].x[0]; }
+
+template< typename Real , typename Solver , typename Data >
+Data & HierarchicalGradientDomain< Real , Solver , Data >::x( size_t n ) { return _multigridVariables[0].x[n]; }
+
+template< typename Real , typename Solver , typename Data >
+const Data & HierarchicalGradientDomain< Real , Solver , Data >::x( size_t n ) const { return _multigridVariables[0].x[n]; }
+
+template< typename Real , typename Solver , typename Data >
+void HierarchicalGradientDomain< Real , Solver , Data >::updateSystem( Real massWeight , Real stiffnessWeight )
+{
+	UpdateLinearSystem( massWeight , stiffnessWeight , _hierarchy , _multigridCoefficients , GradientDomain< Real >::_massAndStiffnessOperators , _vCycleSolvers , false , true );
+}
+
+template< typename Real , typename Solver , typename Data >
+void HierarchicalGradientDomain< Real , Solver , Data >::vCycle( unsigned int numIterations )
+{
+	VCycle( _multigridVariables , _multigridCoefficients , _multigridIndices , _vCycleSolvers , numIterations , false , false );
 }

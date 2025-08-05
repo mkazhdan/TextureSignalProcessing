@@ -127,6 +127,83 @@ namespace MishaK
 			MassAndStiffnessOperators< Real > _massAndStiffnessOperators;
 			DivergenceOperator< Real > _divergenceOperator;
 			std::vector< TextureNodeInfo< Real > > _textureNodes;
+
+			GradientDomain( void ){}
+
+			template
+				<
+				typename PreReal ,
+				typename SurfaceCornerFunctor ,         /* = std::function< size_t ( size_t , unsigned int ) > */
+				typename SurfaceVertexOrMetricFunctor , /* = std::function< Point< Real , 3 > ( size_t ) > || std::function< SquareMatrix< Real , 2 > ( size_t ) > */
+				typename TextureCornerFunctor ,         /* = std::function< size_t ( size_t , unsigned int ) > */
+				typename TextureVertexFunctor           /* = std::function< Point< Real , 2 > ( size_t ) > */
+				>
+				void _init
+				(
+					unsigned quadraturePointsPerTriangle ,
+					size_t numTriangles ,
+					size_t numSurfaceVertices ,
+					size_t numTextureVertices ,
+					SurfaceCornerFunctor         && surfaceCornerFunctor ,
+					SurfaceVertexOrMetricFunctor && surfaceVertexOrMetricFunctor ,
+					TextureCornerFunctor         && textureCornerFunctor ,
+					TextureVertexFunctor         && textureVertexFunctor ,
+					HierarchicalSystem< PreReal , Real > & hierarchy ,
+					unsigned int width ,
+					unsigned int height ,
+					unsigned int levels ,
+					bool normalize
+				);
+		};
+
+		template< typename Real , typename Solver , typename Data >
+		struct HierarchicalGradientDomain : public GradientDomain< Real >
+		{
+			template
+				<
+				typename SurfaceCornerFunctor ,         /* = std::function< size_t ( size_t , unsigned int ) > */
+				typename SurfaceVertexOrMetricFunctor , /* = std::function< Point< Real , 3 > ( size_t ) > || std::function< SquareMatrix< Real , 2 > ( size_t ) > */
+				typename TextureCornerFunctor ,         /* = std::function< size_t ( size_t , unsigned int ) > */
+				typename TextureVertexFunctor           /* = std::function< Point< Real , 2 > ( size_t ) > */
+				>
+				HierarchicalGradientDomain
+				(
+					unsigned quadraturePointsPerTriangle ,
+					size_t numTriangles ,
+					size_t numSurfaceVertices ,
+					size_t numTextureVertices ,
+					SurfaceCornerFunctor         && surfaceCornerFunctor ,
+					SurfaceVertexOrMetricFunctor && surfaceVertexOrMetricFunctor ,
+					TextureCornerFunctor         && textureCornerFunctor ,
+					TextureVertexFunctor         && textureVertexFunctor ,
+					unsigned int width ,
+					unsigned int height ,
+					unsigned int levels ,
+					bool normalize = true
+				);
+
+			Data * b( void );
+			const Data * b( void ) const;
+			Data & b( size_t n );
+			const Data & b( size_t n ) const;
+
+			Data * x( void );
+			const Data * x( void ) const;
+			Data & x( size_t n );
+			const Data & x( size_t n ) const;
+
+			void updateSystem( Real massWeight , Real stiffnessWeight );
+
+			void vCycle( unsigned int numIterations );
+
+		protected:
+			using PreReal = Real;
+
+			HierarchicalSystem< PreReal , Real > _hierarchy;
+			std::vector< MultigridLevelIndices< Real > > _multigridIndices;
+			std::vector< SystemCoefficients< Real > > _multigridCoefficients;
+			VCycleSolvers< Solver > _vCycleSolvers;
+			std::vector< MultigridLevelVariables< Data > > _multigridVariables;
 		};
 #include "GradientDomain.inl"
 	}

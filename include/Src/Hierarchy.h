@@ -31,7 +31,6 @@ DAMAGE.
 #include <algorithm>
 #include <unordered_set>
 #include <Eigen/Sparse>
-#include <Misha/LinearSolvers.h>
 #include <Misha/RegularGrid.h>
 #include <Misha/Miscellany.h>
 #include <Misha/Exceptions.h>
@@ -42,6 +41,7 @@ DAMAGE.
 #include <Misha/Atomic.h>
 #include <Misha/Atomic.Geometry.h>
 #include <Misha/SimplexBasis.h>
+#include "Solver.h"
 #include "IndexedPolygon.h"
 //#include "ImageIO.h"
 
@@ -723,11 +723,11 @@ namespace MishaK
 			SparseMatrix< Real , int > boundaryRestriction;
 		};
 
-		template< typename DirectSolver >
+		template< typename Solver >
 		struct VCycleSolvers
 		{
-			std::vector< DirectSolver > boundary;
-			DirectSolver coarse;
+			std::vector< EigenSolverWrapper< Solver > > boundary;
+			EigenSolverWrapper< Solver > coarse;
 		};
 	}
 }

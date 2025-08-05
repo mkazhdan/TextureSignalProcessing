@@ -28,6 +28,10 @@ DAMAGE.
 
 #include <Src/PreProcessing.h>
 
+#ifdef USE_EIGEN_PARDISO
+#include <Eigen/PardisoSupport>
+#endif // USE_EIGEN_PARDISO
+
 #include <Misha/CmdLineParser.h>
 #include <Misha/Miscellany.h>
 #include <Misha/FEM.h>
@@ -188,21 +192,15 @@ public:
 	static std::vector< SystemCoefficients< Real > > multigridModulationCoefficients;
 	static std::vector< MultigridLevelVariables< Point3D< Real > > > multigridModulationVariables;
 
-#if defined( USE_CHOLMOD )
-	typedef CholmodCholeskySolver< Real , 3 > DirectSolver;
-#elif defined( USE_EIGEN )
-	typedef EigenCholeskySolver< Real , 3 > DirectSolver;
-#elif defined( USE_EIGEN_PARDISO )
-	typedef EigenPardisoSolver< Real , 3 > DirectSolver;
-#else
-#error "[ERROR] No solver defined!"
-#endif
-
-	static VCycleSolvers< DirectSolver > lineConvolutionSolvers;
-	static VCycleSolvers< DirectSolver > modulationSolvers;
-
-	static DirectSolver fineLineConvolutionSolver;
-	static DirectSolver fineModulationSolver;
+#ifdef USE_EIGEN_PARDISO
+	using EigenSolver = Eigen::PardisoLDLT< Eigen::SparseMatrix< double > >;
+#else // !USE_EIGEN_PARDISO
+	using EigenSolver = Eigen::SimplicialLDLT< Eigen::SparseMatrix< double > >;
+#endif // USE_EIGEN_PARDISO
+	static VCycleSolvers< EigenSolver > lineConvolutionSolvers;
+	static VCycleSolvers< EigenSolver > modulationSolvers;
+	static EigenSolverWrapper< EigenSolver > fineLineConvolutionSolver;
+	static EigenSolverWrapper< EigenSolver > fineModulationSolver;
 
 	static std::vector<MultigridLevelIndices<Real>> multigridIndices;
 
@@ -281,15 +279,15 @@ template< typename PreReal , typename Real > std::vector< MultigridLevelIndices<
 //Impulse Smoothing
 template< typename PreReal , typename Real > std::vector< SystemCoefficients< Real > >					LineConvolution< PreReal , Real >::multigridLineConvolutionCoefficients;
 template< typename PreReal , typename Real > std::vector< MultigridLevelVariables< Point3D< Real > > >	LineConvolution< PreReal , Real >::multigridLineConvolutionVariables;
-template< typename PreReal , typename Real > VCycleSolvers< typename LineConvolution< PreReal , Real >::DirectSolver >		LineConvolution< PreReal , Real >::lineConvolutionSolvers;
+template< typename PreReal , typename Real > VCycleSolvers< typename LineConvolution< PreReal , Real >::EigenSolver >		LineConvolution< PreReal , Real >::lineConvolutionSolvers;
 
 //Geodesic Distance
 template< typename PreReal , typename Real > std::vector< SystemCoefficients< Real > >					LineConvolution< PreReal , Real >::multigridModulationCoefficients;
 template< typename PreReal , typename Real > std::vector< MultigridLevelVariables< Point3D< Real > > >	LineConvolution< PreReal , Real >::multigridModulationVariables;
-template< typename PreReal , typename Real > VCycleSolvers< typename LineConvolution< PreReal , Real >::DirectSolver >		LineConvolution< PreReal , Real >::modulationSolvers;
+template< typename PreReal , typename Real > VCycleSolvers< typename LineConvolution< PreReal , Real >::EigenSolver >		LineConvolution< PreReal , Real >::modulationSolvers;
 
-template< typename PreReal , typename Real > typename LineConvolution< PreReal , Real >::DirectSolver	LineConvolution< PreReal , Real >::fineLineConvolutionSolver;
-template< typename PreReal , typename Real > typename LineConvolution< PreReal , Real >::DirectSolver	LineConvolution< PreReal , Real >::fineModulationSolver;
+template< typename PreReal , typename Real > EigenSolverWrapper< typename LineConvolution< PreReal , Real >::EigenSolver >	LineConvolution< PreReal , Real >::fineLineConvolutionSolver;
+template< typename PreReal , typename Real > EigenSolverWrapper< typename LineConvolution< PreReal , Real >::EigenSolver >	LineConvolution< PreReal , Real >::fineModulationSolver;
 
 template< typename PreReal , typename Real > std::vector< Point3D< Real > >								LineConvolution< PreReal , Real >::randSignal;
 template< typename PreReal , typename Real > std::vector< Point3D< Real > >								LineConvolution< PreReal , Real >::mass_x0;
@@ -321,7 +319,7 @@ void LineConvolution< PreReal , Real >::ComputeExactSolution( bool verbose )
 	ThreadPool::ParallelFor( 0 , textureNodes.size() , [&]( unsigned int , size_t i ){ multigridLineConvolutionVariables[0].rhs[i] *= licInterpolationWeight; } );
 
 	pMeter.reset();
-	solve( fineLineConvolutionSolver , multigridLineConvolutionVariables[0].x , multigridLineConvolutionVariables[0].rhs );
+	fineLineConvolutionSolver.solve( multigridLineConvolutionVariables[0].x , multigridLineConvolutionVariables[0].rhs );
 	if( verbose ) std::cout << pMeter( "Line convolution" ) << std::endl;
 
 	//(2) Compute modulation RHS
@@ -335,7 +333,7 @@ void LineConvolution< PreReal , Real >::ComputeExactSolution( bool verbose )
 
 	//(3) Modulation
 	pMeter.reset();
-	solve( fineModulationSolver , multigridModulationVariables[0].x , multigridModulationVariables[0].rhs );
+	fineModulationSolver.solve( multigridModulationVariables[0].x , multigridModulationVariables[0].rhs );
 	if( verbose ) std::cout << pMeter( "Modulation" ) << std::endl;
 }
 
@@ -497,7 +495,7 @@ void LineConvolution< PreReal , Real >::UpdateSolution( bool verbose , bool deta
 	ThreadPool::ParallelFor( 0 , textureNodes.size() , [&]( unsigned int , size_t i ){ multigridLineConvolutionVariables[0].rhs[i] *= licInterpolationWeight; } );
 
 	pMeter.reset();
-	VCycle( multigridLineConvolutionVariables , multigridLineConvolutionCoefficients , multigridIndices , lineConvolutionSolvers , detailVerbose , detailVerbose );
+	VCycle( multigridLineConvolutionVariables , multigridLineConvolutionCoefficients , multigridIndices , lineConvolutionSolvers , 2 , detailVerbose , detailVerbose );
 	if( verbose ) std::cout << pMeter( "Impulse" ) << std::endl;
 
 	// (2) Compute modulation RHS
@@ -511,7 +509,7 @@ void LineConvolution< PreReal , Real >::UpdateSolution( bool verbose , bool deta
 
 	// (3) Update geodesic distance solution
 	pMeter.reset();
-	VCycle( multigridModulationVariables , multigridModulationCoefficients , multigridIndices , modulationSolvers , detailVerbose , detailVerbose );
+	VCycle( multigridModulationVariables , multigridModulationCoefficients , multigridIndices , modulationSolvers , 2 , detailVerbose , detailVerbose );
 	if( verbose ) std::cout << pMeter( "Goedesic" ) << std::endl;
 }
 
@@ -616,7 +614,11 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 				std::vector< Point3D< PreReal > > tangents( normals.size()*2 );
 				std::vector< PreReal > b( normals.size()*2 ) , o( normals.size()*2 );
 
+#ifdef NEW_CODE
+				typedef EigenSolverWrapper< EigenSolver > Solver;
+#else // !NEW_CODE
 				typedef EigenSolverCholeskyLDLt< PreReal , typename SparseMatrix< PreReal , int >::RowIterator > Solver;
+#endif // NEW_CODE
 				Solver solver( M , true );
 
 				for( unsigned int iter=0 ; iter<NormalSmoothingIterations.value ; iter++ )

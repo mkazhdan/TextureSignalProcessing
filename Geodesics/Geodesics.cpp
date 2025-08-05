@@ -28,6 +28,10 @@ DAMAGE.
 
 #include <Src/PreProcessing.h>
 
+#ifdef USE_EIGEN_PARDISO
+#include <Eigen/PardisoSupport>
+#endif // USE_EIGEN_PARDISO
+
 #include <Misha/CmdLineParser.h> 
 #include <Misha/Miscellany.h>
 #include <Misha/Exceptions.h>
@@ -166,20 +170,15 @@ public:
 	static std::vector< SystemCoefficients< Real > > multigridGeodesicDistanceCoefficients;
 	static std::vector< MultigridLevelVariables< Real > > multigridGeodesicDistanceVariables;
 
-#if defined( USE_CHOLMOD )
-	typedef CholmodCholeskySolver< Real , 1 > DirectSolver;
-#elif defined( USE_EIGEN )
-	typedef EigenCholeskySolver< Real , 1 > DirectSolver;
-#elif defined( USE_EIGEN_PARDISO )
-	typedef EigenPardisoSolver< Real , 1 > DirectSolver;
-#else
-#error "[ERROR] No solver defined!"
-#endif
-
-	static VCycleSolvers< DirectSolver > smoothImpulseSolvers;
-	static VCycleSolvers< DirectSolver > geodesicDistanceSolvers;
-	static DirectSolver fineSmoothImpulseSolver;
-	static DirectSolver fineGeodesicDistanceSolver;
+#ifdef USE_EIGEN_PARDISO
+	using EigenSolver = Eigen::PardisoLDLT< Eigen::SparseMatrix< double > >;
+#else // !USE_EIGEN_PARDISO
+	using EigenSolver = Eigen::SimplicialLDLT< Eigen::SparseMatrix< double > >;
+#endif // USE_EIGEN_PARDISO
+	static VCycleSolvers< EigenSolver > smoothImpulseSolvers;
+	static VCycleSolvers< EigenSolver > geodesicDistanceSolvers;
+	static EigenSolverWrapper< EigenSolver > fineSmoothImpulseSolver;
+	static EigenSolverWrapper< EigenSolver > fineGeodesicDistanceSolver;
 
 	static std::vector<MultigridLevelIndices<Real>> multigridIndices;
 
@@ -247,15 +246,15 @@ template< typename PreReal , typename Real > std::vector< MultigridLevelIndices<
 //Impulse Smoothing
 template< typename PreReal , typename Real > std::vector< SystemCoefficients< Real > >						Geodesics< PreReal , Real >::multigridSmoothImpulseCoefficients;
 template< typename PreReal , typename Real > std::vector<MultigridLevelVariables<Real>>						Geodesics< PreReal , Real >::multigridSmoothImpulseVariables;
-template< typename PreReal , typename Real > VCycleSolvers< typename Geodesics< PreReal , Real >::DirectSolver > Geodesics< PreReal , Real >::smoothImpulseSolvers;
+template< typename PreReal , typename Real > VCycleSolvers< typename Geodesics< PreReal , Real >::EigenSolver > Geodesics< PreReal , Real >::smoothImpulseSolvers;
 
 //Geodesic Distance
 template< typename PreReal , typename Real > std::vector< SystemCoefficients< Real > >						Geodesics< PreReal , Real >::multigridGeodesicDistanceCoefficients;
 template< typename PreReal , typename Real > std::vector<MultigridLevelVariables<Real>>						Geodesics< PreReal , Real >::multigridGeodesicDistanceVariables;
-template< typename PreReal , typename Real > VCycleSolvers< typename Geodesics< PreReal , Real >::DirectSolver > Geodesics< PreReal , Real >::geodesicDistanceSolvers;
+template< typename PreReal , typename Real > VCycleSolvers< typename Geodesics< PreReal , Real >::EigenSolver > Geodesics< PreReal , Real >::geodesicDistanceSolvers;
 
-template< typename PreReal , typename Real > typename Geodesics< PreReal , Real >::DirectSolver				Geodesics< PreReal , Real >::fineSmoothImpulseSolver;
-template< typename PreReal , typename Real > typename Geodesics< PreReal , Real >::DirectSolver				Geodesics< PreReal , Real >::fineGeodesicDistanceSolver;
+template< typename PreReal , typename Real > EigenSolverWrapper< typename Geodesics< PreReal , Real >::EigenSolver >			Geodesics< PreReal , Real >::fineSmoothImpulseSolver;
+template< typename PreReal , typename Real > EigenSolverWrapper< typename Geodesics< PreReal , Real >::EigenSolver >			Geodesics< PreReal , Real >::fineGeodesicDistanceSolver;
 
 //Samples
 template< typename PreReal , typename Real > unsigned int													Geodesics< PreReal , Real >::impulseTexel = static_cast< unsigned int >(-1);
@@ -274,7 +273,7 @@ template< typename PreReal , typename Real >
 void Geodesics< PreReal , Real >::ComputeExactSolution( void )
 {
 	//(1) Smoothing impulse	
-	solve( fineSmoothImpulseSolver , multigridSmoothImpulseVariables[0].x , multigridSmoothImpulseVariables[0].rhs );
+	fineSmoothImpulseSolver.solve( multigridSmoothImpulseVariables[0].x , multigridSmoothImpulseVariables[0].rhs );
 
 	//(1) Integrating vector field	
 	std::vector< Real >& fineGeodesicDistanceRHS = multigridGeodesicDistanceVariables[0].rhs;
@@ -289,9 +288,8 @@ void Geodesics< PreReal , Real >::ComputeExactSolution( void )
 
 	gradientIntegrator( multigridSmoothImpulseVariables[0].x , VectorFunction , gradientIntegratorScratch , fineGeodesicDistanceRHS );
 
-	//(3) Update geodesic distance solution	
-	solve( fineGeodesicDistanceSolver , multigridGeodesicDistanceVariables[0].x , fineGeodesicDistanceRHS );
-
+	//(3) Update geodesic distance solution
+	fineGeodesicDistanceSolver.solve( multigridGeodesicDistanceVariables[0].x , fineGeodesicDistanceRHS );
 	Real expectedMinDistance = multigridGeodesicDistanceVariables[0].x[impulseTexel];
 
 	ThreadPool::ParallelFor
@@ -514,7 +512,7 @@ template< typename PreReal , typename Real >
 void Geodesics< PreReal , Real >::UpdateSolution( void )
 {
 	// (1) Update smoothed input solution
-	VCycle( multigridSmoothImpulseVariables , multigridSmoothImpulseCoefficients , multigridIndices , smoothImpulseSolvers , false , false );
+	VCycle( multigridSmoothImpulseVariables , multigridSmoothImpulseCoefficients , multigridIndices , smoothImpulseSolvers , 2 , false , false );
 
 	// (2) Integrate normalized vector field
 	auto VectorFunction = []( Point2D< Real > v , SquareMatrix< Real , 2 > tensor )
@@ -528,7 +526,7 @@ void Geodesics< PreReal , Real >::UpdateSolution( void )
 	gradientIntegrator( multigridSmoothImpulseVariables[0].x , VectorFunction , gradientIntegratorScratch , multigridGeodesicDistanceVariables[0].rhs );
 
 	// (3) Update geodesic distance solution	
-	VCycle( multigridGeodesicDistanceVariables , multigridGeodesicDistanceCoefficients , multigridIndices, geodesicDistanceSolvers , false , false );
+	VCycle( multigridGeodesicDistanceVariables , multigridGeodesicDistanceCoefficients , multigridIndices, geodesicDistanceSolvers , 2 , false , false );
 
 	Real expectedMinDistance = multigridGeodesicDistanceVariables[0].x[impulseTexel];
 

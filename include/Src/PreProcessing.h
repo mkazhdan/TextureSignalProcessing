@@ -28,6 +28,7 @@ DAMAGE.
 
 // To do:
 // -- Pull edges out of the divergence operator
+// -- Solver.h -> EigenSolverWrapper.h
 
 // To do:
 // -- Use analytic integration
@@ -44,8 +45,6 @@ DAMAGE.
 //#define DEBUG_INDEXING				// Use separate classes to sanity check indexing
 //#define SANITY_CHECK					// Enables sanity checks for debugging purposes
 
-#define USE_EIGEN
-//#define USE_CHOLMOD
 //#define USE_EIGEN_PARDISO
 
 
