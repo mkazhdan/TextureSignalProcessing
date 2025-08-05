@@ -89,7 +89,7 @@ CmdLineReadable
 
 CmdLineReadable* params[] =
 {
-	&Input , &Output , &MinimalCurvature , &InVectorField , &OutVectorField , &IntrinsicVectorField , &Width,&Height , &LICInterpolationWeight , &SharpeningInterpolationWeight , &SharpeningGradientModulation , &CameraConfig, &Levels,&UseDirectSolver,&Serial,&DisplayMode,&MultigridBlockHeight,&MultigridBlockWidth,&MultigridPaddedHeight,&MultigridPaddedWidth,&Verbose,
+	&Input , &Output , &MinimalCurvature , &InVectorField , &OutVectorField , &IntrinsicVectorField , &Width,&Height , &LICInterpolationWeight , &SharpeningInterpolationWeight , &SharpeningGradientModulation , &CameraConfig , &Levels , &UseDirectSolver,&Serial,&DisplayMode,&MultigridBlockHeight,&MultigridBlockWidth,&MultigridPaddedHeight,&MultigridPaddedWidth,&Verbose,
 	&DetailVerbose , &RandomJitter ,
 	&Double ,
 	&MatrixQuadrature ,
@@ -510,7 +510,7 @@ void LineConvolution< PreReal , Real >::UpdateSolution( bool verbose , bool deta
 	// (3) Update geodesic distance solution
 	pMeter.reset();
 	VCycle( multigridModulationVariables , multigridModulationCoefficients , multigridIndices , modulationSolvers , 2 , detailVerbose , detailVerbose );
-	if( verbose ) std::cout << pMeter( "Goedesic" ) << std::endl;
+	if( verbose ) std::cout << pMeter( "Geodesic" ) << std::endl;
 }
 
 template< typename PreReal , typename Real >
@@ -614,12 +614,8 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 				std::vector< Point3D< PreReal > > tangents( normals.size()*2 );
 				std::vector< PreReal > b( normals.size()*2 ) , o( normals.size()*2 );
 
-#ifdef NEW_CODE
 				typedef EigenSolverWrapper< EigenSolver > Solver;
-#else // !NEW_CODE
-				typedef EigenSolverCholeskyLDLt< PreReal , typename SparseMatrix< PreReal , int >::RowIterator > Solver;
-#endif // NEW_CODE
-				Solver solver( M , true );
+				Solver solver( M , false );
 
 				for( unsigned int iter=0 ; iter<NormalSmoothingIterations.value ; iter++ )
 				{
@@ -661,7 +657,7 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 					}
 					{
 						solver.update( M );
-						solver.solve( GetPointer( b ) , GetPointer( o ) );
+						solver.solve( GetPointer( o ) , GetPointer( b ) );
 
 						ThreadPool::ParallelFor
 						(

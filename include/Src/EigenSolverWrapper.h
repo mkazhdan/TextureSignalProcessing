@@ -93,6 +93,8 @@ namespace MishaK
 				Eigen::SparseMatrix< double > _M = ToEigen( M );
 				_solver->factorize( _M );
 				if( _solver->info()!=Eigen::Success ) MK_THROW( "Failed to factorize matrix" );
+				_rows = _M.rows();
+				_cols = _M.cols();
 			}
 
 			template< typename Real >
