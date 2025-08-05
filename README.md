@@ -608,13 +608,13 @@ This class derives from <CODE>GradientDomain</CODE> and additionally supports an
 The interface is simlar to that of <CODE>GradientDomain</CODE> and the details of the implementation can be found in <CODE>HierarchicalGradientDomain.example.cpp</CODE>. What follows is a list of the minor changes needed in order to access and use the hierarchical solver:
 <UL>
 <LI><U>Line 152-167</U>: The interface uses the class <CODE>HierarchicalGradientDomain</CODE>, whose constructor takes an additional parameter describing the number of levels in the multigrid hierarchy.<BR>
-<B>Note</B>: Because the class is also responsible for relaxing the gradient-domain system, it is templated off the type of the direct solver used to solve the system at the coarsest resolution (second argument) and the type data being solved for (third argument). <BR>
+<B>Note</B>: Because the class is also responsible for relaxing the gradient-domain system, it is templated off the type of the direct solver used to solve the system at the coarsest resolution (second argument) and the type of data being solved for (third argument). <BR>
 [Compare to <U>Lines 143-157</U> of <CODE>GradientDomainExample.cpp</CODE>]
 <LI><U>Line 170</U>: The <CODE>HierarchicalGradientDomain</CODE> class maintains its own constraint and solution vectors. So rather than allocating the constraint and solution vectors separately, the interface uses pointers to the data maintained in the <CODE>hgd</code> object.<BR>
 [Compare to <U>Line 159</U> of <CODE>GradientDomainExample.cpp</CODE>]
-<LI><U>Lines 208-210</U>: The <CODE>HierarchicalGradientDomain</CODE> class maintains its own representation of the system matrix. This initialized by specifying the mass and stiffness weights of the system.<BR>
+<LI><U>Lines 208-210</U>: The <CODE>HierarchicalGradientDomain</CODE> class maintains its own representation of the system matrix. This is initialized by specifying the mass and stiffness weights for the system.<BR>
 [Compare to <U>Lines 197-199</U> of <CODE>GradientDomainExample.cpp</CODE>]
-<LI><U>Line 212-214</U>: The solution is relaxed by running the prescribed number of v-cycles with the prescribed number of Gauss-Seidel relaxations per level.<BR>
+<LI><U>Line 212-214</U>: The solution is relaxed by running the prescribed number of v-cycles with the prescribed number of Gauss-Seidel relaxations per hierarchy level.<BR>
 [Compare to <U>Lines 201-221</U> of <CODE>GradientDomainExample.cpp</CODE>]
 </UL>
 </DETAILS>
@@ -777,3 +777,4 @@ This work genersouly supported by NSF grant #1422325.
 
 <hr>
 <a href="http://www.cs.jhu.edu/~misha">HOME</a>
+
