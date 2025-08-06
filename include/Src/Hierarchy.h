@@ -323,7 +323,7 @@ namespace MishaK
 			std::vector< std::vector< Bilinear > > bilinear;
 			std::vector< Quadratic > quadratic;
 			void resize( size_t sz ){ bilinear.resize( sz ); }
-			void sort( void ){ for( int i=0 ; i<bilinear.size() ; i++ ) std::sort( bilinear[i].begin() , bilinear[i].end() ); }
+			void sort( void ){ ThreadPool::ParallelFor( 0 , bilinear.size() , [&]( size_t i ){ std::sort( bilinear[i].begin() , bilinear[i].end() ); } ); }
 		};
 
 		template< typename _Real >
@@ -335,7 +335,7 @@ namespace MishaK
 			std::vector< std::vector< Bilinear > > bilinear;
 			std::vector< Quadratic > quadratic;
 			void resize( size_t sz ){ bilinear.resize( sz ); }
-			void sort( void ){ for( int i=0 ; i<bilinear.size() ; i++ ) std::sort( bilinear[i].begin() , bilinear[i].end() ); }
+			void sort( void ){ ThreadPool::ParallelFor( 0 , bilinear.size() , [&]( size_t i ){ std::sort( bilinear[i].begin() , bilinear[i].end() ); } ); }
 		};
 
 		struct RasterLine

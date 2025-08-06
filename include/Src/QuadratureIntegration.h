@@ -153,7 +153,7 @@ namespace MishaK
 			Real element_area
 		)
 		{
-			for( int k=0 ; k<4 ; k++ ) sampleData.dualValues[k] = interiorSampleData.dualValues[k] * element_area;
+			for( unsigned int k=0 ; k<4 ; k++ ) sampleData.dualValues[k] = interiorSampleData.dualValues[k] * element_area;
 		}
 
 		template< unsigned int Samples , typename Real >
@@ -165,7 +165,7 @@ namespace MishaK
 			Real element_area
 		)
 		{
-			for( int k=0 ; k<4 ; k++ ) sampleData.dualGradients[k] = sample.tensor * interiorSampleData.dualGradients[k] * element_area;
+			for( unsigned int k=0 ; k<4 ; k++ ) sampleData.dualGradients[k] = sample.tensor * interiorSampleData.dualGradients[k] * element_area;
 		}
 
 		template< unsigned int Samples , typename Real >
@@ -179,7 +179,7 @@ namespace MishaK
 		{
 			// Compute the integrated gradients of each bilinear basis functions in the frame of the cell, weighted by the area of the unit triangle
 			// Dualize the samples so that integration is simple a dot-product
-			for( int k=0 ; k<4 ; k++ ) sampleData.dualValues[k] += (Real)BilinearElementValue( k , pos ) * fragment_quadrature_weight;
+			for( unsigned int k=0 ; k<4 ; k++ ) sampleData.dualValues[k] += (Real)BilinearElementValue( k , pos ) * fragment_quadrature_weight;
 		}
 
 		template< unsigned int Samples , typename Real >
@@ -193,7 +193,7 @@ namespace MishaK
 		{
 			// Compute the integrated gradients of each bilinear basis functions in the frame of the cell, weighted by the area of the unit triangle
 			// Dualize the samples so that integration is simple a dot-product
-			for( int k=0 ; k<4 ; k++ ) sampleData.dualGradients[k] += sample.tensor * Point2D< Real >( BilinearElementGradient( k , pos ) * fragment_quadrature_weight );
+			for( unsigned int k=0 ; k<4 ; k++ ) sampleData.dualGradients[k] += sample.tensor * Point2D< Real >( BilinearElementGradient( k , pos ) * fragment_quadrature_weight );
 		}
 
 		template< unsigned int Samples , typename Real >
@@ -238,7 +238,6 @@ namespace MishaK
 		{
 			// Rasterize
 			const GeometryReal precision_error = PRECISION_EPSILON;
-
 
 			auto InUnitSquare =   [&]( Point2D< GeometryReal > p ){ return !( p[0]<0-precision_error || p[1]<0-precision_error || p[0]>1+precision_error || p[1]>1+precision_error ); };
 			auto InUnitTriangle = [&]( Point2D< GeometryReal > p ){ return !( p[0]<0-precision_error || p[1]<0-precision_error || ( p[0]+p[1] )>1+precision_error ); };

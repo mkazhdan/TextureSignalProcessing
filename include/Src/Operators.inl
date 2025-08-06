@@ -763,9 +763,9 @@ void OperatorInitializer::_InitializeChart
 				for( int k=0 ; k<4 ; k++ ) for( int l=0 ; l<4 ; l++ ) for( unsigned int s=0 ; s<Samples ; s++ )
 					for( unsigned int m=0 ; m<2 ; m++ ) for( int n=0 ; n<2 ; n++ ) grad_edge_products[l][k](m,n) += sampleVectorFields[s][k][m] * sampleGradients[s][l][n] / 2;
 			}
-
 		}
 	}
+
 	using Index = RegularGrid< 2 >::Index;
 	using Range = RegularGrid< 2 >::Range;
 	Range cellRange;
@@ -869,7 +869,7 @@ void OperatorInitializer::_InitializeChart
 							}
 						}
 
-						for( int k=0 ; k<6 ; k++ ) for( int l=0 ; l<6 ; l++ )
+						for( unsigned int k=0 ; k<6 ; k++ ) for( unsigned int l=0 ; l<=k ; l++ )
 						{
 							GeometryReal vIntegral=0 , gIntegral=0;
 							for( int s=0 ; s<Samples ; s++ )
@@ -877,8 +877,8 @@ void OperatorInitializer::_InitializeChart
 								vIntegral += sampleValues[s][k] * sampleValues[s][l];
 								gIntegral += Point2D< GeometryReal >::Dot( sampleGradients[s][k] , _sampleGradients[s][l] );
 							}
-							polygonMass( l , k ) += vIntegral * fragment_area;
-							polygonStiffness( l , k ) += gIntegral * fragment_area;
+							polygonMass(l,k) += vIntegral * fragment_area;
+							polygonStiffness(l,k) += gIntegral * fragment_area;
 						}
 
 						if( computeDivergence )
@@ -906,6 +906,11 @@ void OperatorInitializer::_InitializeChart
 						MK_WARN( "Zero area polygon at cell " , gridChart.cornerCoords[0] + I[0] , " " , gridChart.cornerCoords[1] + I[1] );
 					}
 				}
+				for( unsigned int k=0 ; k<6 ; k++ ) for( unsigned int l=0 ; l<k ; l++ )
+				{
+					polygonMass(k,l) = polygonMass(l,k);
+					polygonStiffness(k,l) = polygonStiffness(l,k);
+				}
 
 				GeometryReal integratedPolygonMass = 0;
 				for( int k=0 ; k<6 ; k++ ) for( int l=0 ; l<6 ; l++ ) integratedPolygonMass += polygonMass(k,l);
@@ -913,11 +918,8 @@ void OperatorInitializer::_InitializeChart
 				if( fabs( integratedPolygonMass - polygonArea )>precision_error ) MK_WARN( "Out of precision" );
 #endif // SANITY_CHECK
 				{
-					for( int dk=0 ; dk<6 ; dk++ ) for( int dl=0 ; dl<6 ; dl++ )
-					{
-						triangleElementStiffness[ boundaryTriangleIndex ](dk,dl) += (polygonStiffness(dk, dl) + polygonStiffness(dl, dk)) / 2;
-						triangleElementMass[ boundaryTriangleIndex ](dk,dl) += (polygonMass(dk, dl) + polygonMass(dl, dk)) / 2;
-					}
+					triangleElementMass[ boundaryTriangleIndex ] += polygonMass;
+					triangleElementStiffness[ boundaryTriangleIndex ] += polygonStiffness;
 					if( computeDivergence ) triangleElementDivergence[ boundaryTriangleIndex ] += polygonDivergence;
 				}
 			}
@@ -1204,6 +1206,7 @@ void OperatorInitializer::_InitializeChart
 		}
 	}
 
+
 	for( unsigned int c=0 ; c<gridChart.boundaryTriangles.size() ; c++ )
 	{
 		AtlasCellIndex cellIndex = gridChart.chartToAtlasCombinedCellIndex( gridChart.boundaryCellIndexToCombinedCellIndex[c] );
@@ -1272,10 +1275,7 @@ void OperatorInitializer::_Initialize
 {
 	auto MergeTriplets = [] ( const std::vector< std::vector< Eigen::Triplet< MatrixReal > > > &inTriplets , std::vector< Eigen::Triplet< MatrixReal > > &outTriplets )
 		{
-			size_t count = 0;
-			for( int i=0 ; i<inTriplets.size() ; i++ ) count += inTriplets[i].size();
-			outTriplets.reserve( count );
-			for( int i=0 ; i<inTriplets.size() ; i++ ) for( int j=0 ; j<inTriplets[i].size() ; j++ ) outTriplets.push_back( inTriplets[i][j] );
+			for( unsigned int i=0 ; i<inTriplets.size() ; i++ ) outTriplets.insert( outTriplets.end() , inTriplets[i].begin() , inTriplets[i].end() );
 		};
 
 	const ExplicitIndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts = gridAtlas.gridCharts;
