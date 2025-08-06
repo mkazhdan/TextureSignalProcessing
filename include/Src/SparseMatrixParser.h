@@ -35,6 +35,144 @@ namespace MishaK
 {
 	namespace TSP
 	{
+		template< typename Real >
+		struct MassAndStiffnessCoefficient
+		{
+			unsigned int row , col;
+			Real mass , stiffness;
+
+			MassAndStiffnessCoefficient( void ){}
+			MassAndStiffnessCoefficient( unsigned int r , unsigned int c , Real m , Real s ) : mass(m) , stiffness(s) , row(r) , col(c) {}
+		};
+
+		template< class Real , class RealOut=Real >
+		void SetSparseSymmetricMatrices( const std::vector< MassAndStiffnessCoefficient< Real > >& coeffs , unsigned int dim , SparseMatrix< RealOut , int > & M , SparseMatrix< RealOut , int > & S )
+		{
+			M.resize( dim );
+			S.resize( dim );
+			ThreadPool::ParallelFor
+			(
+				0 , coeffs.size() ,
+				[&]( size_t i )
+				{
+					AddAtomic< size_t >( M.rowSizes[ coeffs[i].col ] , 1 );
+					if( coeffs[i].col!=coeffs[i].row ) AddAtomic< size_t >( M.rowSizes[ coeffs[i].row ] , 1 );
+				}
+			);
+
+			ThreadPool::ParallelFor
+			(
+				0 , dim ,
+				[&]( size_t i )
+				{
+					if( M.rowSizes[i] )
+					{
+						int s = (int)M.rowSizes[i];
+						M.SetRowSize(i,s);
+						M.rowSizes[i] = 0;
+						S.SetRowSize(i,s);
+						S.rowSizes[i] = 0;
+					}
+				}
+			);
+
+			for( size_t i=0 ; i<coeffs.size() ; i++ )
+			{
+				unsigned int row = coeffs[i].row , col = coeffs[i].col;
+				M[row][M.rowSizes[row]++] = MatrixEntry< RealOut , int >( col , (RealOut)coeffs[i].mass );
+				S[row][S.rowSizes[row]++] = MatrixEntry< RealOut , int >( col , (RealOut)coeffs[i].stiffness );
+				if( row!=col )
+				{
+					M[col][M.rowSizes[col]++] = MatrixEntry< RealOut , int >( row , (RealOut)coeffs[i].mass );
+					S[col][S.rowSizes[col]++] = MatrixEntry< RealOut , int >( row , (RealOut)coeffs[i].stiffness );
+				}
+			}
+
+			struct Values { RealOut m , s ; Values( void ) : m(0) , s(0){} };
+
+			ThreadPool::ParallelFor
+			(
+				0 , dim ,
+				[&]( size_t i )
+				{
+					std::map< unsigned int , Values > rowMap;
+					for( unsigned int j=0 ; j<M.rowSizes[i] ; j++ )
+					{
+						Values & values = rowMap[ M[i][j].N ];
+						values.m += M[i][j].Value;
+						values.s += S[i][j].Value;
+					}
+					M.SetRowSize( i , rowMap.size() );
+					S.SetRowSize( i , rowMap.size() );
+					unsigned int count = 0;
+					for( auto it=rowMap.begin() ; it!=rowMap.end() ; it++ )
+					{
+						M[i][count] = MatrixEntry< RealOut , int >( it->first , it->second.m );
+						S[i][count] = MatrixEntry< RealOut , int >( it->first , it->second.s );
+						count++;
+					}
+				}
+			);
+		}
+
+		template< class Real , class RealOut=Real >
+		void SetSparseMatrices( const std::vector< MassAndStiffnessCoefficient< Real > >& coeffs , int cols , int /*rows*/ , bool rowMajor , SparseMatrix< RealOut , int > & M , SparseMatrix< RealOut , int > & S )
+		{
+			M.resize( cols );
+			S.resize( cols );
+			if( rowMajor ) ThreadPool::ParallelFor( 0 , coeffs.size() , [&]( unsigned int , size_t i ){ AddAtomic< size_t >( M.rowSizes[ coeffs[i].col ] , 1 ); } );
+			else           ThreadPool::ParallelFor( 0 , coeffs.size() , [&]( unsigned int , size_t i ){ AddAtomic< size_t >( M.rowSizes[ coeffs[i].row ] , 1 ); } );
+
+			ThreadPool::ParallelFor
+			(
+				0 , cols ,
+				[&]( size_t i )
+				{
+					if( M.rowSizes[i] )
+					{
+						int s = (int)M.rowSizes[i];
+						M.SetRowSize(i,s);
+						S.SetRowSize(i,s);
+						M.rowSizes[i] = 0;
+						S.rowSizes[i] = 0;
+					}
+				}
+			);
+
+			for( unsigned int i=0 ; i<coeffs.size() ; i++ )
+			{
+				int col = rowMajor ? coeffs[i].row : coeffs[i].col , row = rowMajor ? coeffs[i].col : coeffs[i].row;
+				M[row][M.rowSizes[row]++] = MatrixEntry< RealOut , int >( col , (RealOut)coeffs[i].mass );
+				S[row][S.rowSizes[row]++] = MatrixEntry< RealOut , int >( col , (RealOut)coeffs[i].stiffness );
+			}
+
+			struct Values { RealOut m , s ; Values( void ) : m(0) , s(0){} };
+
+			ThreadPool::ParallelFor
+			(
+				0 , M.rows ,
+				[&]( size_t i )
+				{
+					std::map< unsigned int , Values > rowMap;
+					for( unsigned int j=0 ; j<M.rowSizes[i] ; j++ )
+					{
+						Values & values = rowMap[ M[i][j].N ];
+						values.m += M[i][j].Value;
+						values.s += S[i][j].Value;
+					}
+					M.SetRowSize( i , rowMap.size() );
+					S.SetRowSize( i , rowMap.size() );
+					unsigned int count = 0;
+					for( auto it=rowMap.begin() ; it!=rowMap.end() ; it++ )
+					{
+						M[i][count] = MatrixEntry< RealOut , int >( it->first , it->second.m );
+						S[i][count] = MatrixEntry< RealOut , int >( it->first , it->second.s );
+						count++;
+					}
+				}
+			);
+		}
+
 		template< class Real , class RealOut=Real >
 		SparseMatrix< RealOut , int > SetSparseMatrix( const std::vector< Eigen::Triplet< Real > >& triplets , int cols , int /*rows*/ , bool rowMajor )
 		{
@@ -78,6 +216,8 @@ namespace MishaK
 
 			return M;
 		}
+
+
 		template< typename Real >
 		class matrixRowEntry
 		{

@@ -640,10 +640,8 @@ void OperatorInitializer::_InitializeChart
 	const std::vector< AtlasInteriorOrBoundaryNodeIndex >& fineBoundaryIndex ,
 	std::vector< MatrixReal >& deepMassCoefficients ,
 	std::vector< MatrixReal >& deepStiffnessCoefficients ,
-	std::vector< Eigen::Triplet< MatrixReal > >& boundaryBoundaryMassTriplets ,
-	std::vector< Eigen::Triplet< MatrixReal > >& boundaryBoundaryStiffnessTriplets ,
-	std::vector< Eigen::Triplet< MatrixReal > >& boundaryDeepMassTriplets ,
-	std::vector< Eigen::Triplet< MatrixReal > >& boundaryDeepStiffnessTriplets ,
+	std::vector< MassAndStiffnessCoefficient< MatrixReal > > & boundaryBoundaryMassAndStiffness ,
+	std::vector< MassAndStiffnessCoefficient< MatrixReal > > & boundaryDeepMassAndStiffness ,
 	bool computeDivergence ,
 	Map< SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex > , AtlasRefinedBoundaryEdgeIndex > & fineBoundaryEdgeIndex,
 	Map< SimplexIndex< 1 , AtlasTexelIndex > , unsigned int > & coarseEdgeIndex,
@@ -1169,13 +1167,13 @@ void OperatorInitializer::_InitializeChart
 					AtlasInteriorTexelIndex neighborInteriorIndex = indexConverter.combinedToInterior( neighborNode );
 					if( neighborInteriorIndex!=AtlasInteriorTexelIndex(-1) )
 					{
-						boundaryDeepMassTriplets.emplace_back( static_cast< unsigned int >(_currentBoundaryIndex) , static_cast< unsigned int >(neighborNode) , (MatrixReal)cellMass[ ChartInteriorCellIndex(i) ](k,l) );
-						boundaryDeepStiffnessTriplets.emplace_back( static_cast< unsigned int >(_currentBoundaryIndex) , static_cast< unsigned int >(neighborNode) , (MatrixReal)cellStiffness[ ChartInteriorCellIndex(i) ](k,l) );
+						boundaryDeepMassAndStiffness.emplace_back( static_cast< unsigned int >(_currentBoundaryIndex) , static_cast< unsigned int >(neighborNode) , (MatrixReal)cellMass[ ChartInteriorCellIndex(i) ](k,l) , (MatrixReal)cellStiffness[ ChartInteriorCellIndex(i) ](k,l) );
 					}
 					else if( neighborBoundaryIndex!=AtlasBoundaryTexelIndex(-1) )
 					{
-						boundaryBoundaryMassTriplets.push_back( Eigen::Triplet< MatrixReal >( static_cast< unsigned int >( fineBoundaryIndex[ static_cast< unsigned int >(indicesInterior[k]) ] ) , static_cast< unsigned int >( fineBoundaryIndex[ static_cast< unsigned int >(indicesInterior[l]) ] ) , (MatrixReal)cellMass[ ChartInteriorCellIndex(i) ](k,l) ) );
-						boundaryBoundaryStiffnessTriplets.push_back( Eigen::Triplet< MatrixReal >( static_cast< unsigned int >( fineBoundaryIndex[ static_cast< unsigned int >(indicesInterior[k]) ] ) , static_cast< unsigned int >( fineBoundaryIndex[ static_cast< unsigned int >(indicesInterior[l]) ] ) , (MatrixReal)cellStiffness[ ChartInteriorCellIndex(i) ](k,l) ) );
+						int r = static_cast< unsigned int >( fineBoundaryIndex[ static_cast< unsigned int >(indicesInterior[k]) ] );
+						int c = static_cast< unsigned int >( fineBoundaryIndex[ static_cast< unsigned int >(indicesInterior[l]) ] );
+						if( r<=c ) boundaryBoundaryMassAndStiffness.emplace_back( r , c , (MatrixReal)cellMass[ ChartInteriorCellIndex(i) ](k,l) , (MatrixReal)cellStiffness[ ChartInteriorCellIndex(i) ](k,l) );
 					}
 #ifdef SANITY_CHECK
 					else MK_THROW( "Expected supported index" );
@@ -1221,8 +1219,9 @@ void OperatorInitializer::_InitializeChart
 
 			for( unsigned int k=0 ; k<6 ; k++ ) for( unsigned int l=0 ; l<6 ; l++ )
 			{
-				boundaryBoundaryMassTriplets.push_back( Eigen::Triplet< MatrixReal >( static_cast< unsigned int >( fineTriangleElementIndices[k] ) ,  static_cast< unsigned int >( fineTriangleElementIndices[l] ) , (MatrixReal)triangleElementMass[boundaryTriangleIndex](l,k) ) );
-				boundaryBoundaryStiffnessTriplets.push_back(Eigen::Triplet< MatrixReal >( static_cast< unsigned int >( fineTriangleElementIndices[k] ) ,  static_cast< unsigned int >( fineTriangleElementIndices[l] ) , (MatrixReal)triangleElementStiffness[boundaryTriangleIndex](l,k) ) );
+				int r = static_cast< unsigned int >( fineTriangleElementIndices[k] );
+				int c = static_cast< unsigned int >( fineTriangleElementIndices[l] );
+				if( r<=c ) boundaryBoundaryMassAndStiffness.emplace_back( r , c , (MatrixReal)triangleElementMass[boundaryTriangleIndex](l,k) , (MatrixReal)triangleElementStiffness[boundaryTriangleIndex](l,k) );
 			}
 
 			if( computeDivergence ) for( unsigned int k=1 ; k<6 ; k++ ) for( unsigned int l=0 ; l<k ; l++ )
@@ -1277,19 +1276,19 @@ void OperatorInitializer::_Initialize
 		{
 			for( unsigned int i=0 ; i<inTriplets.size() ; i++ ) outTriplets.insert( outTriplets.end() , inTriplets[i].begin() , inTriplets[i].end() );
 		};
+	auto MergeMassAndStiffnessCoefficients = [] ( const std::vector< std::vector< MassAndStiffnessCoefficient< MatrixReal > > > &in , std::vector< MassAndStiffnessCoefficient< MatrixReal > > &out )
+		{
+			for( unsigned int i=0 ; i<in.size() ; i++ ) out.insert( out.end() , in[i].begin() , in[i].end() );
+		};
 
 	const ExplicitIndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts = gridAtlas.gridCharts;
 	const typename GridAtlas<>::IndexConverter & indexConverter = gridAtlas.indexConverter;
 
-	std::vector< Eigen::Triplet< MatrixReal > > boundaryBoundaryMassTriplets;
-	std::vector< Eigen::Triplet< MatrixReal > > boundaryBoundaryStiffnessTriplets;
-	std::vector< Eigen::Triplet< MatrixReal > > boundaryDeepMassTriplets;
-	std::vector< Eigen::Triplet< MatrixReal > > boundaryDeepStiffnessTriplets;
+	std::vector< MassAndStiffnessCoefficient< MatrixReal > > boundaryBoundaryMassAndStiffness;
+	std::vector< MassAndStiffnessCoefficient< MatrixReal > > boundaryDeepMassAndStiffness;
 
-	std::vector< std::vector< Eigen::Triplet< MatrixReal > > > _boundaryBoundaryMassTriplets              ( ThreadPool::NumThreads() );
-	std::vector< std::vector< Eigen::Triplet< MatrixReal > > > _boundaryBoundaryStiffnessTriplets         ( ThreadPool::NumThreads() );
-	std::vector< std::vector< Eigen::Triplet< MatrixReal > > > _boundaryDeepMassTriplets                  ( ThreadPool::NumThreads() );
-	std::vector< std::vector< Eigen::Triplet< MatrixReal > > > _boundaryDeepStiffnessTriplets             ( ThreadPool::NumThreads() );
+	std::vector< std::vector< MassAndStiffnessCoefficient< MatrixReal > > > _boundaryBoundaryMassAndStiffness( ThreadPool::NumThreads() );
+	std::vector< std::vector< MassAndStiffnessCoefficient< MatrixReal > > > _boundaryDeepMassAndStiffness    ( ThreadPool::NumThreads() );
 	std::vector< std::vector< Eigen::Triplet< MatrixReal > > > _boundaryDeepDivergenceTriplets            ( ThreadPool::NumThreads() );
 	std::vector< std::vector< Eigen::Triplet< MatrixReal > > > _boundaryBoundaryDivergenceTriplets        ( ThreadPool::NumThreads() );
 
@@ -1307,10 +1306,8 @@ void OperatorInitializer::_Initialize
 					fineBoundaryIndex ,
 					deepMassCoefficients ,
 					deepStiffnessCoefficients , 
-					_boundaryBoundaryMassTriplets[thread] ,
-					_boundaryBoundaryStiffnessTriplets[thread] ,
-					_boundaryDeepMassTriplets[thread] ,
-					_boundaryDeepStiffnessTriplets[thread] ,
+					_boundaryBoundaryMassAndStiffness[thread] ,
+					_boundaryDeepMassAndStiffness[thread] ,
 					computeDivergence ,
 					fineBoundaryEdgeIndex ,
 					coarseEdgeIndex ,
@@ -1321,17 +1318,13 @@ void OperatorInitializer::_Initialize
 		}
 	);
 
-	MergeTriplets( _boundaryBoundaryMassTriplets , boundaryBoundaryMassTriplets );
-	MergeTriplets( _boundaryBoundaryStiffnessTriplets , boundaryBoundaryStiffnessTriplets );
-	MergeTriplets( _boundaryDeepMassTriplets , boundaryDeepMassTriplets );
-	MergeTriplets( _boundaryDeepStiffnessTriplets , boundaryDeepStiffnessTriplets );
+	MergeMassAndStiffnessCoefficients( _boundaryBoundaryMassAndStiffness , boundaryBoundaryMassAndStiffness );
+	MergeMassAndStiffnessCoefficients( _boundaryDeepMassAndStiffness , boundaryDeepMassAndStiffness );
 	MergeTriplets( _boundaryDeepDivergenceTriplets , boundaryDeepDivergenceTriplets );
 	MergeTriplets( _boundaryBoundaryDivergenceTriplets , boundaryBoundaryDivergenceTriplets );
 
-	boundaryBoundaryMassMatrix      = SetSparseMatrix( boundaryBoundaryMassTriplets , numFineBoundaryNodes , numFineBoundaryNodes , true );
-	boundaryBoundaryStiffnessMatrix = SetSparseMatrix( boundaryBoundaryStiffnessTriplets , numFineBoundaryNodes , numFineBoundaryNodes , true );
-	boundaryDeepMassMatrix          = SetSparseMatrix( boundaryDeepMassTriplets , static_cast< unsigned int >(gridAtlas.endBoundaryTexelIndex) , static_cast< unsigned int >(gridAtlas.endCombinedTexelIndex) , false );
-	boundaryDeepStiffnessMatrix     = SetSparseMatrix( boundaryDeepStiffnessTriplets , static_cast< unsigned int >(gridAtlas.endBoundaryTexelIndex) , static_cast< unsigned int >(gridAtlas.endCombinedTexelIndex) , false );
+	SetSparseSymmetricMatrices( boundaryBoundaryMassAndStiffness , numFineBoundaryNodes , boundaryBoundaryMassMatrix , boundaryBoundaryStiffnessMatrix );
+	SetSparseMatrices( boundaryDeepMassAndStiffness , static_cast< unsigned int >(gridAtlas.endBoundaryTexelIndex) , static_cast< unsigned int >(gridAtlas.endCombinedTexelIndex) , false , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix );
 }
 
 template< unsigned int Samples , typename GeometryReal , typename MatrixReal >
