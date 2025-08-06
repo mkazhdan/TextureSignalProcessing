@@ -35,6 +35,7 @@ DAMAGE.
 #include "Misha/Geometry.h"
 #include "Misha/CmdLineParser.h"
 #include "Misha/RegularGrid.h"
+#include "Indices.h"
 
 namespace MishaK
 {
@@ -657,7 +658,7 @@ namespace MishaK
 					return I;
 				};
 
-			std::map< typename RegularGrid< Dim >::Index , std::vector< unsigned int > > vMap;
+			Map< typename RegularGrid< Dim >::Index , std::vector< unsigned int > > vMap;
 			for( unsigned int i=0 ; i<vertices.size() ; i++ ) vMap[ VIndex( Point< Real , Dim >( vertices[i] ) ) ].push_back( i );
 
 			for( unsigned int i=0 ; i<vertices.size() ; i++ ) if( old2new[i]==i )
@@ -688,7 +689,7 @@ namespace MishaK
 				for( unsigned int j=0 ; j<matches.size() ; j++ ) old2new[ NewIndex( matches[j] ) ] = i;
 
 			}
-			std::map< int , int > _vMap;
+			Map< int , int > _vMap;
 			for( unsigned int i=0 ; i<vertices.size() ; i++ ) _vMap[ NewIndex( i ) ] = 0;
 			{
 				int idx = 0;

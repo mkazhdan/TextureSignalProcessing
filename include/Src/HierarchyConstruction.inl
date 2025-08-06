@@ -762,7 +762,6 @@ void InitializeHierarchy
 	const MultigridBlockInfo &multigridBlockInfo
 )
 {
-
 	std::vector< GridAtlas< GeometryReal , MatrixReal > > &gridAtlases = hierarchy.gridAtlases;
 	gridAtlases.resize( levels );
 
@@ -807,17 +806,23 @@ void InitializeHierarchy
 	const MultigridBlockInfo &multigridBlockInfo
 )
 {
+	bool verbose = false;
+	Miscellany::PerformanceMeter pMeter( '.' );
 	typename AtlasChart< GeometryReal >::AtlasInfo atlasInfo;
 
 	//(1) Initialize atlas charts
 	atlasCharts = AtlasChart< GeometryReal >::GetCharts( mesh , width , height , atlasInfo );
+	if( verbose ) std::cout << pMeter( "Atlas charts" ) << std::endl;
 
 	//(2) Initialize hierarchy
 	InitializeHierarchy( width , height , hierarchy , atlasCharts , levels , multigridBlockInfo );
+	if( verbose ) std::cout << pMeter( "Initialized hierarchy" ) << std::endl;
 
 	//(3) Initialize fine level texture nodes and cells
 	InitializeTextureNodes( hierarchy.gridAtlases[0].gridCharts , textureNodes );
+	if( verbose ) std::cout << pMeter( "Initialized texture nodes" ) << std::endl;
 
 	//(4) Initialize boundary triangulation
 	InitializeBoundaryTriangulation( hierarchy.gridAtlases[0] , atlasCharts , atlasInfo );
+	if( verbose ) std::cout << pMeter( "Initialized boundary triangles" ) << std::endl;
 }

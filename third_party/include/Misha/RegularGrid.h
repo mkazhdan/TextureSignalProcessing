@@ -87,6 +87,8 @@ namespace MishaK
 			bool operator <= ( Index i ) const;
 			bool operator >  ( Index i ) const;
 			bool operator >= ( Index i ) const;
+
+			struct Hasher{ size_t operator()( const Index & I ) const { return static_cast< size_t >( I[0] ); } };
 		};
 
 		struct Range : public std::pair< Index , Index >
@@ -318,4 +320,5 @@ namespace MishaK
 	};
 #include "RegularGrid.inl"
 }
+
 #endif // REGULAR_GRID_INCLUDED

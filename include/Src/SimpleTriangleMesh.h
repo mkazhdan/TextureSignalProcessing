@@ -29,12 +29,12 @@ DAMAGE.
 #define SIMPLE_TRIANGLE_MESH_INCLUDED
 
 #include <fstream>
-#include <queue>
 #include <Eigen/Sparse>
 #include <Misha/Ply.h>
 #include <Misha/PlyVertexData.h>
 #include <Misha/Miscellany.h>
 #include <Misha/Geometry.h>
+#include <Misha/UnionFind.h>
 #include <Src/VectorIO.h>
 #include <Src/MeshIO.h>
 
@@ -97,7 +97,7 @@ namespace MishaK
 			void setBoundaryHalfEdgeInfo( std::vector< unsigned int > &textureBoundaryHalfEdges , std::vector< unsigned int > &oppositeSurfaceHalfEdges ) const;
 
 			// Sets the boundary vertex information
-			void setBoundaryVertexInfo( const std::vector< unsigned int > &textureBoundaryHalfEdges , std::map< unsigned int , unsigned int > &surfaceBoundaryVertexToIndex ) const;		
+			void setBoundaryVertexInfo( const std::vector< unsigned int > &textureBoundaryHalfEdges , Map< unsigned int , unsigned int > &surfaceBoundaryVertexToIndex ) const;		
 		};
 #include "SimpleTriangleMesh.inl"
 	}

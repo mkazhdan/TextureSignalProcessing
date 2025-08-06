@@ -126,11 +126,11 @@ void
 InitializeChartBoundaryTriangleGridIntersections
 (
 	const AtlasChart< GeometryReal > & atlasChart ,
-	const std::map< AtlasMeshVertexIndex , AtlasMeshBoundaryVertexIndex > & atlasMeshVertexToBoundaryVertex ,
+	const Map< AtlasMeshVertexIndex , AtlasMeshBoundaryVertexIndex > & atlasMeshVertexToBoundaryVertex ,
 	GridChart< GeometryReal > & gridChart ,
 	AtlasCoveredTexelIndex endCoveredTexelIndex ,
 	AtlasRefinedBoundaryVertexIndex & endBoundaryVertex ,
-	std::map< GridMeshIntersectionKey , NodeInfo< GeometryReal , AtlasRefinedBoundaryVertexIndex > > & gridMeshIntersectionKeyToNodeInfo
+	Map< GridMeshIntersectionKey , NodeInfo< GeometryReal , AtlasRefinedBoundaryVertexIndex > > & gridMeshIntersectionKeyToNodeInfo
 )
 {
 	// Assuming the boundary edges have processed. Now processing intersections of triangles with boundary cells.
@@ -221,13 +221,13 @@ template< typename GeometryReal >
 void InitializeChartBoundaryEdgeGridIntersections
 (
 	const AtlasChart< GeometryReal > & atlasChart ,
-	const std::map< AtlasMeshVertexIndex , AtlasMeshBoundaryVertexIndex > & atlasMeshVertexToBoundaryVertex ,
+	const Map< AtlasMeshVertexIndex , AtlasMeshBoundaryVertexIndex > & atlasMeshVertexToBoundaryVertex ,
 	GridChart< GeometryReal > & gridChart ,
 	AtlasCoveredTexelIndex endCoveredTexelIndex ,
 	AtlasRefinedBoundaryVertexIndex & endBoundaryVertex ,
-	std::map< AtlasMeshHalfEdgeIndex , std::vector< IntersectionInfo< GeometryReal > > > &atlasBoundaryHalfEdgeToIntersectionInfos ,
-	std::map< SimplexIndex< 1 , AtlasRefinedBoundaryVertexIndex > , BoundarySegmentInfo< GeometryReal > > &segmentToBoundarySegmentInfo ,
-	std::map< GridMeshIntersectionKey , NodeInfo< GeometryReal , AtlasRefinedBoundaryVertexIndex > > & gridMeshIntersectionKeyToNodeInfo
+	Map< AtlasMeshHalfEdgeIndex , std::vector< IntersectionInfo< GeometryReal > > > &atlasBoundaryHalfEdgeToIntersectionInfos ,
+	Map< SimplexIndex< 1 , AtlasRefinedBoundaryVertexIndex > , BoundarySegmentInfo< GeometryReal > > &segmentToBoundarySegmentInfo ,
+	Map< GridMeshIntersectionKey , NodeInfo< GeometryReal , AtlasRefinedBoundaryVertexIndex > > & gridMeshIntersectionKeyToNodeInfo
 )
 {
 	for( unsigned int b=0 ; b<atlasChart.boundaryHalfEdges.size() ; b++ )
@@ -319,14 +319,14 @@ GetChartBoundaryPolygons
 #ifdef SANITY_CHECK
 	AtlasRefinedBoundaryVertexIndex endBoundaryVertex ,
 #endif // SANITY_CHECK
-	const std::map< AtlasMeshHalfEdgeIndex , std::vector< IntersectionInfo< GeometryReal > > > & atlasBoundaryHalfEdgeToIntersectionInfos ,
-	const std::map< SimplexIndex< 1 , AtlasRefinedBoundaryVertexIndex > , BoundarySegmentInfo< GeometryReal > > & segmentToBoundarySegmentInfo ,
-	const std::map< GridMeshIntersectionKey , NodeInfo< GeometryReal , AtlasRefinedBoundaryVertexIndex > > & gridMeshIntersectionKeyToNodeInfo
+	const Map< AtlasMeshHalfEdgeIndex , std::vector< IntersectionInfo< GeometryReal > > > & atlasBoundaryHalfEdgeToIntersectionInfos ,
+	const Map< SimplexIndex< 1 , AtlasRefinedBoundaryVertexIndex > , BoundarySegmentInfo< GeometryReal > > & segmentToBoundarySegmentInfo ,
+	const Map< GridMeshIntersectionKey , NodeInfo< GeometryReal , AtlasRefinedBoundaryVertexIndex > > & gridMeshIntersectionKeyToNodeInfo
 )
 {
 	ExplicitIndexVector< ChartBoundaryCellIndex , std::vector< std::pair< ChartMeshTriangleIndex , IndexedPolygon< GeometryReal > > > > boundaryPolygons;
 	// A mapping giving the clipped polygons, keyed off of cell index
-	std::map< ChartBoundaryCellIndex , std::vector< std::pair< ChartMeshTriangleIndex , std::vector< GridMeshIntersectionKey > > > > cellPolygons;
+	Map< ChartBoundaryCellIndex , std::vector< std::pair< ChartMeshTriangleIndex , std::vector< GridMeshIntersectionKey > > > > cellPolygons;
 
 	auto GetIndexedTriangle = [&]( ChartMeshTriangleIndex t )
 		{
@@ -628,13 +628,13 @@ GetBoundaryPolygons
 	gridAtlas.endBoundaryVertexIndex = AtlasRefinedBoundaryVertexIndex( atlasInfo.atlasMeshVertexToBoundaryVertex.size() );
 
 	// A map taking (atlas) boundary half-edge indices to their decomposition by grid edges
-	std::map< AtlasMeshHalfEdgeIndex , std::vector< IntersectionInfo< GeometryReal > > > atlasBoundaryHalfEdgeToIntersectionInfos;
+	Map< AtlasMeshHalfEdgeIndex , std::vector< IntersectionInfo< GeometryReal > > > atlasBoundaryHalfEdgeToIntersectionInfos;
 
 	// Maps taking a segment to the associated segment information
-	std::vector< std::map< SimplexIndex< 1 , AtlasRefinedBoundaryVertexIndex > , BoundarySegmentInfo< GeometryReal > > > segmentToBoundarySegmentInfo( gridCharts.size() );
+	std::vector< Map< SimplexIndex< 1 , AtlasRefinedBoundaryVertexIndex > , BoundarySegmentInfo< GeometryReal > > > segmentToBoundarySegmentInfo( gridCharts.size() );
 
 	// Maps taking an intersection key to the associated node information
-	std::vector< std::map< GridMeshIntersectionKey , NodeInfo< GeometryReal , AtlasRefinedBoundaryVertexIndex > > > gridMeshIntersectionKeyToNodeInfo( gridCharts.size() );
+	std::vector< Map< GridMeshIntersectionKey , NodeInfo< GeometryReal , AtlasRefinedBoundaryVertexIndex > > > gridMeshIntersectionKeyToNodeInfo( gridCharts.size() );
 
 	for( unsigned int i=0 ; i<gridCharts.size() ; i++ )
 	{
@@ -698,7 +698,7 @@ template< typename GeometryReal >
 void InitializeChartQuadraticElements
 (
 	GridChart< GeometryReal > &gridChart ,
-	std::map< SimplexIndex< 1 > , BoundaryMidPointIndex > &midPointMap ,
+	Map< SimplexIndex< 1 > , BoundaryMidPointIndex > &midPointMap ,
 	BoundaryMidPointIndex & endMidPointIndex ,
 	const ExplicitIndexVector< ChartBoundaryCellIndex , std::vector< std::pair< ChartMeshTriangleIndex , IndexedPolygon< GeometryReal > > > > & boundaryPolygons ,
 	unsigned int previouslyAddedNodes
@@ -789,7 +789,7 @@ void InitializeBoundaryTriangulation
 	ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartBoundaryCellIndex , std::vector< std::pair< ChartMeshTriangleIndex , IndexedPolygon< GeometryReal > > > > > boundaryPolygons = GetBoundaryPolygons( gridAtlas , atlasCharts , atlasInfo );
 
 	// Add the (mid-edge) nodes, fuse, and create triangles
-	std::map< SimplexIndex< 1 > , BoundaryMidPointIndex > midPointMap;
+	Map< SimplexIndex< 1 > , BoundaryMidPointIndex > midPointMap;
 
 	gridAtlas.endMidPointIndex = BoundaryMidPointIndex(0);
 	for( unsigned int i=0 ; i<gridAtlas.gridCharts.size() ; i++ ) InitializeChartQuadraticElements( gridAtlas.gridCharts[ ChartIndex(i) ] , midPointMap , gridAtlas.endMidPointIndex , boundaryPolygons[ ChartIndex(i) ] , static_cast< unsigned int >(gridAtlas.endBoundaryVertexIndex) + static_cast< unsigned int >(gridAtlas.endCoveredTexelIndex) );

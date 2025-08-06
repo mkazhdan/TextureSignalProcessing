@@ -111,7 +111,7 @@ namespace MishaK
 
 				static std::vector< DivergenceRasterLine > GetRasterLines
 				(
-					const std::map< SimplexIndex< 1 , AtlasTexelIndex > , unsigned int > &coarseEdgeIndex ,
+					const Map< SimplexIndex< 1 , AtlasTexelIndex > , unsigned int > &coarseEdgeIndex ,
 					const std::vector< RasterLine > &rasterLines
 				);
 			};
@@ -276,8 +276,8 @@ namespace MishaK
 				std::vector< Eigen::Triplet< MatrixReal > >& boundaryDeepMassTriplets ,
 				std::vector< Eigen::Triplet< MatrixReal > >& boundaryDeepStiffnessTriplets ,
 				bool computeDivergence ,
-				std::map< SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex > , AtlasRefinedBoundaryEdgeIndex > & fineBoundaryEdgeIndex,
-				std::map< SimplexIndex< 1 , AtlasTexelIndex > , unsigned int > & coarseEdgeIndex,
+				Map< SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex > , AtlasRefinedBoundaryEdgeIndex > & fineBoundaryEdgeIndex,
+				Map< SimplexIndex< 1 , AtlasTexelIndex > , unsigned int > & coarseEdgeIndex,
 				std::vector< Eigen::Triplet< MatrixReal > > & boundaryDeepDivergenceTriplets,
 				std::vector< Eigen::Triplet< MatrixReal > > & boundaryBoundaryDivergenceTriplets,
 				std::vector< MatrixReal > & deepDivergenceCoefficients
@@ -298,8 +298,8 @@ namespace MishaK
 				SparseMatrix< MatrixReal , int >& boundaryDeepMassMatrix ,
 				SparseMatrix< MatrixReal , int >& boundaryDeepStiffnessMatrix ,
 				bool computeDivergence ,
-				std::map< SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex > , AtlasRefinedBoundaryEdgeIndex > & fineBoundaryEdgeIndex,
-				std::map< SimplexIndex< 1 , AtlasTexelIndex > , unsigned int > & coarseEdgeIndex,
+				Map< SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex > , AtlasRefinedBoundaryEdgeIndex > & fineBoundaryEdgeIndex,
+				Map< SimplexIndex< 1 , AtlasTexelIndex > , unsigned int > & coarseEdgeIndex,
 				std::vector< Eigen::Triplet< MatrixReal > > & boundaryDeepDivergenceTriplets,
 				std::vector< Eigen::Triplet< MatrixReal > > & boundaryBoundaryDivergenceTriplets,
 				std::vector< MatrixReal >& deepDivergenceCoefficients

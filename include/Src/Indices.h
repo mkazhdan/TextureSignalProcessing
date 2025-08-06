@@ -28,6 +28,11 @@ DAMAGE.
 #pragma once
 
 #include <optional>
+#ifdef USE_UNORDERED_MAP
+#include "Misha/UnorderedMapsAndSets.h"
+#else // !USE_UNORDERED_MAP
+#include <map>
+#endif // USE_UNORDERED_MAP
 #ifdef DEBUG_INDEXING
 #include "Misha/ExplicitIndex.h"
 #endif // DEBUG_INDEXING
@@ -174,4 +179,12 @@ namespace MishaK
 			return std::make_pair( ChartMeshTriangleIndex( _he/3 ) , _he%3 );
 		}
 	}
+
+#ifdef USE_UNORDERED_MAP
+	template< typename Key , typename Value >
+	using Map = UnorderedMap< Key , Value >;
+#else // !USE_UNORDERED_MAP
+	template< typename Key , typename Value >
+	using Map = std::map< Key , Value >;
+#endif // USE_UNORDERED_MAP
 }

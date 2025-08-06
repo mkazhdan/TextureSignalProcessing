@@ -75,7 +75,7 @@ void AtlasMesh< GeometryReal >::initialize
 	// Set the mapping from half-edges to edges
 	{
 		// A map from vertex to pairs to half-edge indices
-		std::map< SimplexIndex< 1 > , unsigned int > edgeMap;
+		Map< SimplexIndex< 1 > , unsigned int > edgeMap;
 		for( unsigned int he=0 ; he<SimpleTriangleMesh< GeometryReal , 2 >::triangles.size()*3 ; he++ )
 		{
 			SimplexIndex< 1 > e = SimpleTriangleMesh< GeometryReal , 2 >::edgeIndex(he);

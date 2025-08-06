@@ -70,7 +70,7 @@ std::vector< unsigned int > SimpleTriangleMesh< Real , Dim >::oppositeHalfEdges(
 {
 	std::vector< unsigned int > oppositeHalfEdges( 3*triangles.size() , static_cast< unsigned int >(-1) );
 
-	std::map< SimplexIndex< 1 > , unsigned int > edgeMap;
+	Map< SimplexIndex< 1 > , unsigned int > edgeMap;
 	for( unsigned int he=0 ; he<triangles.size()*3 ; he++ )
 	{
 		SimplexIndex< 1 > e = edgeIndex( he ); 
@@ -124,41 +124,25 @@ Real SimpleTriangleMesh< Real , Dim >::boundingRadius( Point< Real , Dim > cente
 template< typename Real , unsigned int Dim >
 std::vector< unsigned int > SimpleTriangleMesh< Real , Dim >::trianglesToComponents( unsigned int &numComponents ) const
 {
-	std::vector< std::vector< unsigned int > > neighbours( triangles.size() );
-	{
-		std::vector< unsigned int > oppositeHalfEdges = this->oppositeHalfEdges();
-		for( unsigned int he=0 ; he<triangles.size()*3 ; he++ )
-			if( oppositeHalfEdges[he]!=-1 ) neighbours[he/3].push_back( oppositeHalfEdges[he]/3 );
-	}
+	UnionFind uf( triangles.size() );
+	std::vector< unsigned int > oppositeHalfEdges = this->oppositeHalfEdges();
+	for( unsigned int he=0 ; he<triangles.size()*3 ; he++ ) if( oppositeHalfEdges[he]!=-1 ) uf.merge( he/3 , oppositeHalfEdges[he]/3 );
 
 	std::vector< unsigned int > components( triangles.size() , static_cast< unsigned int >(-1) );
-
-	auto AddComponent = [&]( unsigned int t , unsigned int c )
-		{
-			components[t] = c;
-			std::queue< unsigned int > visitingQueue;
-			visitingQueue.push(t);
-
-			while( !visitingQueue.empty() )
+	std::atomic< unsigned int > componentIndex = 0;
+	ThreadPool::ParallelFor
+		(
+			0 , triangles.size() ,
+			[&]( size_t t )
 			{
-				unsigned int currentVertex = visitingQueue.front();
-				visitingQueue.pop();
-				const std::vector< unsigned int > & _neighbors = neighbours[ currentVertex ];
-				for( unsigned int i=0 ; i<_neighbors.size() ; i++ )
+				if( uf.isRoot(t) )
 				{
-					if( components[ _neighbors[i] ]==-1 )
-					{
-						components[ _neighbors[i] ] = c;
-						visitingQueue.push( _neighbors[i] );
-					}
-					else if( components[ _neighbors[i] ]==c ) ;
-					else MK_THROW( "Unexpected Condition on a connected component. Expected " , c , ". Obtained " , components[ _neighbors[i] ] , "." );
+					unsigned int idx = componentIndex++;
+					uf.process( t , [&]( size_t t ){ components[t] = idx; } );
 				}
 			}
-		};
-
-	numComponents = 0;
-	for( unsigned int t=0 ; t<triangles.size() ; t++ ) if( components[t]==-1 ) AddComponent( t , numComponents++ );
+		);
+	numComponents = componentIndex;
 
 #ifdef SANITY_CHECK
 	{
@@ -248,7 +232,7 @@ template< typename Real >
 void TexturedTriangleMesh< Real >::setBoundaryVertexInfo
 (
 	const std::vector< unsigned int > &textureBoundaryHalfEdges ,
-	std::map< unsigned int , unsigned int > &surfaceBoundaryVertexToIndex
+	Map< unsigned int , unsigned int > &surfaceBoundaryVertexToIndex
 )
 const
 {

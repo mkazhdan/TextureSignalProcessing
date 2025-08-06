@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2024, Michael Kazhdan
+Copyright (c) 2025, Michael Kazhdan
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -26,35 +26,47 @@ ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF S
 DAMAGE.
 */
 
-// To do:
-// -- Pull edges out of the divergence operator
+#ifndef UNORDERED_MAPS_AND_SETS
+#define UNORDERED_MAPS_AND_SETS
 
-// To do:
-// -- Use analytic integration
-// -- Remove GridChart::cellType and GridChart::texelType
-// -- Change coefficient vector std::vector -> IndexVector (in IterativeSolvers.inl)
-// -- Minimize static_cast< unsigned int >(...)
-// 1. Modify code to distinguish between grid-based indexing and normalized coordinates
-#ifndef PRE_PROCESSING_INCLUDED
-#define PRE_PROCESSING_INCLUDED
+#include <unordered_map>
+#include <unordered_set>
 
-#define NEW_CODE						// General-purpose experimental code encapsulation
-#define USE_UNORDERED_MAP				// Use a std::unordered_map for associative array instead of std::map
+namespace MishaK
+{
+	// If the Key type does not have a Hasher subclass, depend on std::hash to work its magic
+	template< typename Key , typename Value , typename = void >
+	struct _UnorderedMap
+	{
+		using Type = std::unordered_map< Key , Value >;
+	};
 
-//#define NO_OPEN_GL_VISUALIZATION		// Disable OpenGL visualization
-//#define DEBUG_INDEXING				// Use separate classes to sanity check indexing
-//#define SANITY_CHECK					// Enables sanity checks for debugging purposes
+	template< typename Key , typename = void >
+	struct _UnorderedSet
+	{
+		using Type = std::unordered_set< Key >;
+	};
 
-//#define USE_EIGEN_PARDISO
+	// Otherwise, use the Key::Hasher subclass
+	template< typename Key , typename Value >
+	struct _UnorderedMap< Key , Value , std::void_t< typename Key::Hasher > >
+	{
+		using Type = std::unordered_map< Key , Value , typename Key::Hasher >;
+	};
+
+	template< typename Key >
+	struct _UnorderedSet< Key , std::void_t< typename Key::Hasher > >
+	{
+		using Type = std::unordered_set< Key , typename Key::Hasher >;
+	};
 
 
-#define INSERTION_EPSILON 1e-12			// Separation from interval end-points required for insertion
-#define MIN_TEXEL_WEIGHT 1e-12
-#define DEFAULT_JITTER 1e-6
-#define ORTHOGONAL_PERTURBATION 1e-10
-#define SANITY_PRECISION_EPSILON 1e-10
-#define PRECISION_EPSILON 1e-10
-#define PROLONGATION_EPSILON 1e-10
-#define DIAGONAL_CLAMP 1e-10
+	template< typename Key , typename Value >
+	using UnorderedMap = typename _UnorderedMap< Key , Value >::Type;
 
-#endif // PRE_PROCESSING_INCLUDED
+	template< typename Key >
+	using UnorderedSet = typename _UnorderedSet< Key >::Type;
+
+};
+
+#endif // UNORDERED_MAPS_AND_SETS

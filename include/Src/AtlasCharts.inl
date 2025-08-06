@@ -96,14 +96,18 @@ const
 	}
 
 	// Add the boundary edges to the chart
-	for( unsigned int i=0 ; i<atlasCharts.size() ; i++ )
-	{
-		AtlasChart< GeometryReal > &atlasChart = atlasCharts[ ChartIndex(i) ];
-		std::vector< ChartMeshHalfEdgeIndex > & boundaryHalfEdges = atlasChart.boundaryHalfEdges;
-		for( unsigned int he=0 ; he<atlasChart.numTriangles()*3 ; he++ )
-			if( isBoundaryHalfEdge[ static_cast< unsigned int >( atlasChart.atlasHalfEdge( ChartMeshHalfEdgeIndex(he) ) ) ] )
-				boundaryHalfEdges.push_back( ChartMeshHalfEdgeIndex(he) );
-	}
+	ThreadPool::ParallelFor
+		(
+			0 , atlasCharts.size() ,
+			[&]( size_t i )
+			{
+				AtlasChart< GeometryReal > &atlasChart = atlasCharts[ ChartIndex(i) ];
+				std::vector< ChartMeshHalfEdgeIndex > & boundaryHalfEdges = atlasChart.boundaryHalfEdges;
+				for( unsigned int he=0 ; he<atlasChart.numTriangles()*3 ; he++ )
+					if( isBoundaryHalfEdge[ static_cast< unsigned int >( atlasChart.atlasHalfEdge( ChartMeshHalfEdgeIndex(he) ) ) ] )
+						boundaryHalfEdges.push_back( ChartMeshHalfEdgeIndex(he) );
+			}
+		);
 
 	return atlasCharts;
 }
@@ -142,7 +146,7 @@ AtlasChart< GeometryReal >::GetCharts
 
 	// Set the map taking the indices of surface vertices lying on the texture boundary to vertex indices
 	{
-		std::map< unsigned int , unsigned int > atlasBoundaryVertexToIndex;
+		Map< unsigned int , unsigned int > atlasBoundaryVertexToIndex;
 		mesh.setBoundaryVertexInfo( textureBoundaryHalfEdges , atlasBoundaryVertexToIndex );
 		for( auto iter=atlasBoundaryVertexToIndex.begin() ; iter!=atlasBoundaryVertexToIndex.end() ; iter++ )
 			atlasInfo.atlasMeshVertexToBoundaryVertex[ AtlasMeshVertexIndex( iter->first ) ] = AtlasMeshBoundaryVertexIndex( iter->second );
@@ -150,6 +154,7 @@ AtlasChart< GeometryReal >::GetCharts
 
 	return atlasMesh.getCharts( isTextureBoundaryHalfEdge , width , height );
 }
+
 template< typename GeometryReal >
 ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > >
 AtlasChart< GeometryReal >::GetCharts

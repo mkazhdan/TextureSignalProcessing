@@ -65,6 +65,8 @@ namespace MishaK
 			static GridMeshIntersectionKey ChartVertexKey( ChartMeshVertexIndex m ){ return _Init( -1 , static_cast< unsigned int >(m) ); }
 
 			friend std::ostream &operator << ( std::ostream &s ,  const GridMeshIntersectionKey &iKey ){ return s << "( " << iKey._gridIndex << " , " << iKey._meshIndex << " )"; }
+
+			struct Hasher{ size_t operator()( const GridMeshIntersectionKey &key ) const { return key._gridIndex==static_cast< unsigned int >(-1) ? key._meshIndex : key._gridIndex; } };
 		protected:
 			static GridMeshIntersectionKey _Init( unsigned int g , unsigned int m )
 			{

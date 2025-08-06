@@ -437,7 +437,7 @@ template< typename MatrixReal >
 std::vector< typename DivergenceOperator< MatrixReal >::DivergenceRasterLine >
 DivergenceOperator< MatrixReal >::DivergenceRasterLine::GetRasterLines
 (
-	const std::map< SimplexIndex< 1 , AtlasTexelIndex > , unsigned int > &edgeToIndex ,
+	const Map< SimplexIndex< 1 , AtlasTexelIndex > , unsigned int > &edgeToIndex ,
 	const std::vector< RasterLine > &rasterLines
 )
 {
@@ -645,8 +645,8 @@ void OperatorInitializer::_InitializeChart
 	std::vector< Eigen::Triplet< MatrixReal > >& boundaryDeepMassTriplets ,
 	std::vector< Eigen::Triplet< MatrixReal > >& boundaryDeepStiffnessTriplets ,
 	bool computeDivergence ,
-	std::map< SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex > , AtlasRefinedBoundaryEdgeIndex > & fineBoundaryEdgeIndex,
-	std::map< SimplexIndex< 1 , AtlasTexelIndex > , unsigned int > & coarseEdgeIndex,
+	Map< SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex > , AtlasRefinedBoundaryEdgeIndex > & fineBoundaryEdgeIndex,
+	Map< SimplexIndex< 1 , AtlasTexelIndex > , unsigned int > & coarseEdgeIndex,
 	std::vector< Eigen::Triplet< MatrixReal > > & boundaryDeepDivergenceTriplets,
 	std::vector< Eigen::Triplet< MatrixReal > > & boundaryBoundaryDivergenceTriplets,
 	std::vector< MatrixReal > & deepDivergenceCoefficients
@@ -1263,8 +1263,8 @@ void OperatorInitializer::_Initialize
 	SparseMatrix< MatrixReal , int >& boundaryDeepMassMatrix ,
 	SparseMatrix< MatrixReal , int >& boundaryDeepStiffnessMatrix ,
 	bool computeDivergence ,
-	std::map< SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex > , AtlasRefinedBoundaryEdgeIndex > & fineBoundaryEdgeIndex,
-	std::map< SimplexIndex< 1 , AtlasTexelIndex > , unsigned int > & coarseEdgeIndex,
+	Map< SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex > , AtlasRefinedBoundaryEdgeIndex > & fineBoundaryEdgeIndex,
+	Map< SimplexIndex< 1 , AtlasTexelIndex > , unsigned int > & coarseEdgeIndex,
 	std::vector< Eigen::Triplet< MatrixReal > > & boundaryDeepDivergenceTriplets,
 	std::vector< Eigen::Triplet< MatrixReal > > & boundaryBoundaryDivergenceTriplets,
 	std::vector< MatrixReal >& deepDivergenceCoefficients
@@ -1352,7 +1352,7 @@ void OperatorInitializer::_Initialize
 	//(2) Initialize mass and stiffness
 	massAndStiffnessOperators.massCoefficients.deepCoefficients.resize( 10 * static_cast< unsigned int >( gridAtlas.endInteriorTexelIndex ) , 0 );
 	massAndStiffnessOperators.stiffnessCoefficients.deepCoefficients.resize( 10 * static_cast< unsigned int >( gridAtlas.endInteriorTexelIndex ) , 0 );
-	std::map< SimplexIndex< 1 , AtlasTexelIndex > , unsigned int > edgeToIndex;
+	Map< SimplexIndex< 1 , AtlasTexelIndex > , unsigned int > edgeToIndex;
 	if( computeDivergence )
 	{
 		InitializeIntraChartEdgeIndexing( gridAtlas.gridCharts , edgeToIndex );
@@ -1364,7 +1364,7 @@ void OperatorInitializer::_Initialize
 
 	std::vector< Eigen::Triplet< MatrixReal > > boundaryDivergenceTriplets;
 	std::vector< Eigen::Triplet< MatrixReal > > boundaryBoundaryDivergenceTriplets;
-	std::map< SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex > , AtlasRefinedBoundaryEdgeIndex > fineBoundaryEdgeIndex;
+	Map< SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex > , AtlasRefinedBoundaryEdgeIndex > fineBoundaryEdgeIndex;
 
 	if( computeDivergence ) InitializeFineBoundaryEdgeIndexing( boundaryProlongation.fineBoundaryIndex , fineBoundaryEdgeIndex , gridAtlas.gridCharts );
 
@@ -1395,7 +1395,7 @@ void OperatorInitializer::_Initialize
 	{
 		SparseMatrix< MatrixReal , int > fineBoundaryBoundaryDivergenceMatrix = SetSparseMatrix( boundaryBoundaryDivergenceTriplets , boundaryProlongation.numFineBoundaryNodes , (int)fineBoundaryEdgeIndex.size() , false );
 
-		std::map< SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex > , AtlasRefinedBoundaryEdgeIndex > boundaryCoarseEdgeIndex;
+		Map< SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex > , AtlasRefinedBoundaryEdgeIndex > boundaryCoarseEdgeIndex;
 		std::vector< unsigned int > boundaryCoarseEdgeToGlobalEdge;
 
 		InitializeBoundaryEdgeIndexing( massAndStiffnessOperators.massCoefficients.boundaryBoundaryMatrix , gridAtlas.indexConverter , edgeToIndex , boundaryCoarseEdgeToGlobalEdge , boundaryCoarseEdgeIndex );

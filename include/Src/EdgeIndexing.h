@@ -39,7 +39,7 @@ namespace MishaK
 		template< typename GeometryReal >
 		void InitializeIntraChartEdgeIndexing
 		(
-			std::map< SimplexIndex< 1 , AtlasTexelIndex > , unsigned int > &boundaryCoarseEdgeIndex ,
+			Map< SimplexIndex< 1 , AtlasTexelIndex > , unsigned int > &boundaryCoarseEdgeIndex ,
 			const GridChart< GeometryReal > &gridChart ,
 			unsigned int &lastAddedEdgeIndex
 		)
@@ -83,7 +83,7 @@ namespace MishaK
 		void InitializeIntraChartEdgeIndexing
 		(
 			const ExplicitIndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts ,
-			std::map< SimplexIndex< 1 , AtlasTexelIndex > , unsigned int > &boundaryCoarseEdgeIndex
+			Map< SimplexIndex< 1 , AtlasTexelIndex > , unsigned int > &boundaryCoarseEdgeIndex
 		)
 		{
 			//Add edges within charts
@@ -96,9 +96,9 @@ namespace MishaK
 		(
 			const SparseMatrix< MatrixReal , int > &boundaryAdjancencyMatrix ,
 			const typename GridAtlas<>::IndexConverter & indexConverter ,
-			std::map< SimplexIndex< 1 , AtlasTexelIndex > , unsigned int > &coarseEdgeIndex ,
+			Map< SimplexIndex< 1 , AtlasTexelIndex > , unsigned int > &coarseEdgeIndex ,
 			std::vector< unsigned int > &boundaryEdgeToGlobalEdge ,
-			std::map< SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex > , AtlasRefinedBoundaryEdgeIndex > &boundaryEdgeIndex
+			Map< SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex > , AtlasRefinedBoundaryEdgeIndex > &boundaryEdgeIndex
 		)
 		{
 			int lastAddedCoarseEdgeIndex = (int)coarseEdgeIndex.size();
@@ -147,7 +147,7 @@ namespace MishaK
 		void InitializeFineBoundaryEdgeChartIndexing
 		(
 			const std::vector< AtlasInteriorOrBoundaryNodeIndex > &fineBoundaryNodeIndex ,
-			std::map< SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex > , AtlasRefinedBoundaryEdgeIndex > &fineBoundaryEdgeIndex ,
+			Map< SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex > , AtlasRefinedBoundaryEdgeIndex > &fineBoundaryEdgeIndex ,
 			const GridChart< GeometryReal > &gridChart ,
 			AtlasRefinedBoundaryEdgeIndex & endRefinedBoundaryEdgeIndex
 		)
@@ -177,7 +177,7 @@ namespace MishaK
 		void InitializeFineBoundaryEdgeIndexing
 		(
 			const std::vector< AtlasInteriorOrBoundaryNodeIndex > &fineBoundaryNodeIndex ,
-			std::map< SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex > , AtlasRefinedBoundaryEdgeIndex > &fineBoundaryEdgeIndex ,
+			Map< SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex > , AtlasRefinedBoundaryEdgeIndex > &fineBoundaryEdgeIndex ,
 			const ExplicitIndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts
 		)
 		{
@@ -189,8 +189,8 @@ namespace MishaK
 		void InitializeBoundaryCoarseToFineBoundaryOneFormProlongation
 		(
 			const SparseMatrix< MatrixReal , int > &boundaryCoarseToFineNodeProlongation ,
-			std::map< SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex > , AtlasRefinedBoundaryEdgeIndex > &boundaryCoarseEdgeIndex ,
-			std::map< SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex > , AtlasRefinedBoundaryEdgeIndex > &boundaryFineEdgeIndex ,
+			Map< SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex > , AtlasRefinedBoundaryEdgeIndex > &boundaryCoarseEdgeIndex ,
+			Map< SimplexIndex< 1 , AtlasInteriorOrBoundaryNodeIndex > , AtlasRefinedBoundaryEdgeIndex > &boundaryFineEdgeIndex ,
 			SparseMatrix< MatrixReal , int > &boundaryFineToBoundaryCoarseOneFormProlongation
 		)
 		{

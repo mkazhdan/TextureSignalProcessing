@@ -129,7 +129,7 @@ namespace MishaK
 				ExplicitIndexVector< AtlasMeshHalfEdgeIndex , AtlasMeshHalfEdgeIndex > oppositeHalfEdges;
 
 				// A map assigning an index to atlas boundary vertices
-				std::map< AtlasMeshVertexIndex , AtlasMeshBoundaryVertexIndex > atlasMeshVertexToBoundaryVertex;
+				Map< AtlasMeshVertexIndex , AtlasMeshBoundaryVertexIndex > atlasMeshVertexToBoundaryVertex;
 
 				// Is the atlas mesh water-tight
 				bool isClosed;

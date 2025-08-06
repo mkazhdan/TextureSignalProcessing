@@ -168,6 +168,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Misha", "Misha", "{4B406F54
 		third_party\include\Misha\SparseMatrixInterface.inl = third_party\include\Misha\SparseMatrixInterface.inl
 		third_party\include\Misha\Texels.h = third_party\include\Misha\Texels.h
 		third_party\include\Misha\Texels.inl = third_party\include\Misha\Texels.inl
+		third_party\include\Misha\UnorderedMapsAndSets.h = third_party\include\Misha\UnorderedMapsAndSets.h
 		third_party\include\Misha\Vector.h = third_party\include\Misha\Vector.h
 		third_party\include\Misha\Vector.inl = third_party\include\Misha\Vector.inl
 	EndProjectSection
