@@ -402,7 +402,7 @@ namespace MishaK
 			std::vector< BlockTask > blockTasks;
 		};
 
-		bool threadTaskComparison( const ThreadTask & task1 , const ThreadTask & task2 ){ return task1.taskDeepTexels < task2.taskDeepTexels; }
+		inline bool threadTaskComparison( const ThreadTask & task1 , const ThreadTask & task2 ){ return task1.taskDeepTexels < task2.taskDeepTexels; }
 
 		struct InteriorTexelToCellLine
 		{
@@ -459,10 +459,10 @@ namespace MishaK
 			AtlasInteriorTexelIndex interior;
 		};
 
-		bool IsCovered( TexelType texelType ){ return texelType==TexelType::BoundarySupportedAndCovered || texelType==TexelType::InteriorSupported; }
-		bool IsBoundarySupported( TexelType texelType ){ return texelType==TexelType::BoundarySupportedAndCovered || texelType==TexelType::BoundarySupportedAndUncovered; }
+		inline bool IsCovered( TexelType texelType ){ return texelType==TexelType::BoundarySupportedAndCovered || texelType==TexelType::InteriorSupported; }
+		inline bool IsBoundarySupported( TexelType texelType ){ return texelType==TexelType::BoundarySupportedAndCovered || texelType==TexelType::BoundarySupportedAndUncovered; }
 
-		std::string CellTypeName( CellType cellType )
+		inline std::string CellTypeName( CellType cellType )
 		{
 			if     ( cellType==CellType::Exterior ) return std::string( "Exterior" );
 			else if( cellType==CellType::Boundary ) return std::string( "Boundary" );
@@ -474,7 +474,7 @@ namespace MishaK
 			}
 		}
 
-		std::string TexelTypeName( TexelType texelType )
+		inline std::string TexelTypeName( TexelType texelType )
 		{
 			if     ( texelType==TexelType::Unsupported ) return std::string( "Unsupported" );
 			else if( texelType==TexelType::BoundarySupportedAndCovered ) return std::string( "Boundary supported and covered" );

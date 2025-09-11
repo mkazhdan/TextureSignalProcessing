@@ -166,14 +166,14 @@ namespace MishaK
 			_EdgeType _type;
 		};
 
-		AtlasMeshHalfEdgeIndex GetAtlasMeshHalfEdgeIndex( AtlasMeshTriangleIndex t , unsigned int k ){ return AtlasMeshHalfEdgeIndex( static_cast< unsigned int >(t)*3+k ); }
-		ChartMeshHalfEdgeIndex GetChartMeshHalfEdgeIndex( ChartMeshTriangleIndex t , unsigned int k ){ return ChartMeshHalfEdgeIndex( static_cast< unsigned int >(t)*3+k ); }
-		std::pair< AtlasMeshTriangleIndex , unsigned int > FactorAtlasMeshHalfEdgeIndex( AtlasMeshHalfEdgeIndex he )
+		inline AtlasMeshHalfEdgeIndex GetAtlasMeshHalfEdgeIndex( AtlasMeshTriangleIndex t , unsigned int k ){ return AtlasMeshHalfEdgeIndex( static_cast< unsigned int >(t)*3+k ); }
+		inline ChartMeshHalfEdgeIndex GetChartMeshHalfEdgeIndex( ChartMeshTriangleIndex t , unsigned int k ){ return ChartMeshHalfEdgeIndex( static_cast< unsigned int >(t)*3+k ); }
+		inline std::pair< AtlasMeshTriangleIndex , unsigned int > FactorAtlasMeshHalfEdgeIndex( AtlasMeshHalfEdgeIndex he )
 		{
 			unsigned int _he = static_cast< unsigned int >( he );
 			return std::make_pair( AtlasMeshTriangleIndex( _he/3 ) , _he%3 );
 		}
-		std::pair< ChartMeshTriangleIndex , unsigned int > FactorChartMeshHalfEdgeIndex( ChartMeshHalfEdgeIndex he )
+		inline std::pair< ChartMeshTriangleIndex , unsigned int > FactorChartMeshHalfEdgeIndex( ChartMeshHalfEdgeIndex he )
 		{
 			unsigned int _he = static_cast< unsigned int >( he );
 			return std::make_pair( ChartMeshTriangleIndex( _he/3 ) , _he%3 );
