@@ -1013,7 +1013,6 @@ void Stitching< PreReal , Real , TextureBitDepth >::Init( void )
 		padding.pad( textureWidth , textureHeight , mesh.texture.vertices );
 		if( inputMode==MULTIPLE_INPUT_MODE ) for( int i=0 ; i<numTextures ; i++ ) padding.pad( inputTextures[i] ) , padding.pad( inputConfidence[i] );
 		else padding.pad( inputComposition ) , padding.pad( inputMask );
-
 		textureWidth  += padding.width();
 		textureHeight += padding.height();
 	}
@@ -1076,8 +1075,8 @@ void _main( int argc , char *argv[] )
 	Stitching< PreReal , Real , TextureBitDepth >::updateCount = Run.set ? static_cast< unsigned int >(-1) : 0;
 
 	Stitching< PreReal , Real , TextureBitDepth >::LoadTextures();
-	Stitching< PreReal , Real , TextureBitDepth >::Init();
 	Stitching< PreReal , Real , TextureBitDepth >::LoadMasks();
+	Stitching< PreReal , Real , TextureBitDepth >::Init();
 	Stitching< PreReal , Real , TextureBitDepth >::ParseImages();
 	Stitching< PreReal , Real , TextureBitDepth >::SetUpSystem();
 
