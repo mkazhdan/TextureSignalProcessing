@@ -1,4 +1,4 @@
-<center><h2>Gradient Domain Texture Processing (Version 9.50)</h2></center>
+<center><h2>Gradient Domain Texture Processing (Version 9.55)</h2></center>
 <center>
 <a href="#LINKS">links</a>
 <a href="#EXECUTABLES">executables</a>
@@ -34,6 +34,7 @@ This software supports gradient-domain signal processing within a texture atlas.
 <B>Data:</B>
 <A HREF="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/TSP.Data.zip">ZIP</A><br>
 <b>Older Versions:</b>
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version9.50/">V9.50</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version9.10/">V9.10</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version9.05/">V9.05</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version9.00/">V9.00</a>,
@@ -766,6 +767,11 @@ The interface is simlar to that of <CODE>GradientDomain</CODE> and the details o
 <ul>
 <LI> Added header-only library for a multigrid solver supporting standard geometry-prcoessing interfaces, wrapped in <CODE>include/Src/GradientDomain.h</CODE>
 <LI> Added example code showing how to use the libary in <CODE>HierarchicalGradientDomain.example.cpp</CODE>.
+</ul>
+
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version9.55/">Version 9.55</a>:
+<ul>
+<LI> Added support for reading/writing <CODE>.exr</CODE> images.
 </ul>
 
 </details>

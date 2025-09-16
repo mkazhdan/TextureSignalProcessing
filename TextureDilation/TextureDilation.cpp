@@ -35,8 +35,7 @@ DAMAGE.
 #include <Misha/MultiThreading.h>
 #include <Misha/Texels.h>
 #include <Src/MeshIO.h>
-#include <Src/TextureIO.h>
-#include "tinyexr.h"
+#include <Src/ImageIO.h>
 
 using namespace MishaK;
 using namespace MishaK::TSP;
@@ -65,6 +64,13 @@ void ShowUsage( const char* ex )
 	printf( "\t[--%s]\n" , Verbose.name.c_str() );
 }
 
+template< typename Data >
+RegularGrid< 2 , Data > FlipVertical( const RegularGrid< 2 , Data > & grid )
+{
+	RegularGrid< 2 , Data > _grid( grid.res() );
+	for( unsigned int i=0 ; i<grid.res(0) ; i++ ) for( unsigned int j=0 ; j<grid.res(1) ; j++ ) _grid( i , grid.res(1)-1-j ) = grid(i,j);
+	return _grid;
+}
 
 int main( int argc , char* argv[] )
 {
@@ -92,7 +98,9 @@ int main( int argc , char* argv[] )
 
 	ReadTexturedMesh( Input.values[0] , vertices , textureCoordinates , simplices );
 	if( CollapseEpsilon.value>0 ) CollapseVertices( vertices , simplices , CollapseEpsilon.value );
-	RegularGrid< K , Point< double , 3 > > texture = ReadTexture( Input.values[1] );
+	RegularGrid< K , Point< double , 3 > > texture;
+	ReadImage< 8 >( texture , Input.values[1] );
+	texture = FlipVertical( texture );
 
 	if( Verbose.set ) std::cout << "Vertices / texture coordinates / simplices: " << vertices.size() << " / " << textureCoordinates.size() << " / " << simplices.size() << std::endl;
 	if( Verbose.set ) std::cout << "Texture resolution: " << texture.res(0) << " x " << texture.res(1) << std::endl;
@@ -132,10 +140,16 @@ int main( int argc , char* argv[] )
 		};
 	RegularGrid< K , Point< float , Dim > > texturePositions = Texels< NodeAtCellCenter , Index >::GetTexelPositions< float , Dim >( simplices.size() , SimplexEmbeddingFunctor , dilatedTexelInfo );
 
-	if( Output.set ) WriteTexture( Output.value , texture );
+	if( Output.set )
+	{
+		RegularGrid< K , Point< double , 3 > > _texture = FlipVertical( texture );
+		WriteImage< 8 >( _texture , Output.value );
+	}
 	if( OutputTexturePositions.set )
-		if( SaveEXR( &texturePositions[0][0] , (int)texture.res(0) , (int)texture.res(1) , Dim , 0, OutputTexturePositions.value.c_str() , nullptr )!=TINYEXR_SUCCESS )
-			MK_THROW( "Failed to save EXR file: " , OutputTexturePositions.value );
+	{
+		RegularGrid< K , Point< float , Dim > > _texturePositions = FlipVertical( texturePositions );
+		WriteImage< 8 >( _texturePositions , OutputTexturePositions.value );
+	}
 
 	return EXIT_SUCCESS;
 }

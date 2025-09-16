@@ -1,5 +1,5 @@
 TARGET=  TextureDilation
-SOURCE=  TextureDilation.cpp ../third_party/MINIZ/miniz.c ../third_party/TinyExr/tinyexr.cc
+SOURCE=  TextureDilation.cpp
 
 COMPILER ?= gcc
 #COMPILER ?= clang

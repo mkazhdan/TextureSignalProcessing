@@ -1153,7 +1153,7 @@ int main(int argc, char* argv[])
 	if( ext!=std::string( "normap" ) )
 	{
 		unsigned int width , height , channels;
-		ImageReader< 8 >::GetInfo( Input.values[1].c_str() , width , height , channels , bitDepth );
+		GetImageInfo( Input.values[1].c_str() , width , height , channels , bitDepth );
 	}
 
 	if( Serial.set ) ThreadPool::ParallelizationType = ThreadPool::ParallelType::NONE;

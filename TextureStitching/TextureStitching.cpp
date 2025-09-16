@@ -1164,7 +1164,7 @@ int main( int argc , char* argv[] )
 				{
 					fclose( file );
 					unsigned int _width , _height , _channels , _bitDepth;
-					ImageReader< 8 >::GetInfo( textureName , _width , _height , _channels , _bitDepth );
+					GetImageInfo( textureName , _width , _height , _channels , _bitDepth );
 					if( !numTextures ) width = _width , height = _height , channels = _channels , bitDepth = _bitDepth;
 					else if( width!=_width || height!=_height || channels!=_channels || bitDepth!=_bitDepth )
 						MK_THROW( "Image properties don't match: (" , width , " " , height , " " , channels , " " , bitDepth , ") != (" , _width , " " , _height , " " , _channels , " " , _bitDepth , ")" );
@@ -1173,7 +1173,7 @@ int main( int argc , char* argv[] )
 				else break;
 			}
 		}
-		else ImageReader< 8 >::GetInfo( In.values[1].c_str() , width , height , channels , bitDepth );
+		else GetImageInfo( In.values[1].c_str() , width , height , channels , bitDepth );
 	}
 
 	if( Serial.set ) ThreadPool::ParallelizationType = ThreadPool::ParallelType::NONE;

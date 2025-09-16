@@ -36,7 +36,7 @@ DAMAGE.
 #include <Misha/MultiThreading.h>
 #include <Misha/Texels.h>
 #include <Misha/MultiIndex.h>
-#include <Src/TextureIO.h>
+#include <Src/ImageIO.h>
 #include <Src/MeshIO.h>
 
 using namespace MishaK;
@@ -111,6 +111,14 @@ void ShowUsage( const char* ex )
 
 static const unsigned int K = 2;
 static const unsigned int Dim = 3;
+
+template< typename Data >
+RegularGrid< 2 , Data > FlipVertical( const RegularGrid< 2 , Data > & grid )
+{
+	RegularGrid< 2 , Data > _grid( grid.res() );
+	for( unsigned int i=0 ; i<grid.res(0) ; i++ ) for( unsigned int j=0 ; j<grid.res(1) ; j++ ) _grid( i , grid.res(1)-1-j ) = grid(i,j);
+	return _grid;
+}
 
 template< bool Nearest , bool NodeAtCellCenter >
 RegularGrid< K , int > Execute
@@ -248,7 +256,8 @@ int main( int argc , char* argv[] )
 			{
 				for( size_t i=0 ; i<mask.size() ; i++ ) _mask[i] = mask[i]==0 ? Point< double , 3 >(1.,0.,.0) : Point< double , 3 >(0.,0.,1.);
 			}
-			WriteTexture( Output.value , _mask );
+			_mask = FlipVertical( _mask );
+			WriteImage< 8 >( _mask , Output.value );
 		}
 	}
 
