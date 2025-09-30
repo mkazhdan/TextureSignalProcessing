@@ -69,7 +69,8 @@ namespace MishaK
 					TextureVertexFunctor         && textureVertexFunctor ,
 					unsigned int width ,
 					unsigned int height ,
-					bool normalize = true
+					bool normalize = true ,
+					bool sanityCheck = false
 				);
 
 			// The number of texels
@@ -152,7 +153,8 @@ namespace MishaK
 					unsigned int width ,
 					unsigned int height ,
 					unsigned int levels ,
-					bool normalize
+					bool normalize ,
+					bool sanityCheck
 				);
 		};
 
@@ -185,7 +187,8 @@ namespace MishaK
 					unsigned int width ,
 					unsigned int height ,
 					unsigned int levels ,
-					bool normalize = true
+					bool normalize = true ,
+					bool sanityCheck = false
 				);
 
 			// Access to the system constraints

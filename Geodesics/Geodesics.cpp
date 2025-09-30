@@ -71,6 +71,7 @@ CmdLineParameter< double >
 	CollapseEpsilon( "collapse" , 0 );
 
 CmdLineReadable
+	SanityCheck( "sanityCheck" ) ,
 	Serial( "serial" ) , 
 	Verbose( "verbose" ) ,
 	NoHelp( "noHelp" ) ,
@@ -92,6 +93,7 @@ CmdLineReadable* params[] =
 	&NoHelp ,
 	&Nearest ,
 	&CollapseEpsilon ,
+	&SanityCheck ,
 	NULL
 };
 
@@ -122,6 +124,7 @@ void ShowUsage( const char* ex )
 	printf( "\t[--%s <collapse epsilon>=%g]\n" , CollapseEpsilon.name.c_str() , CollapseEpsilon.value );
 	printf( "\t[--%s]\n" , Nearest.name.c_str() );
 	printf( "\t[--%s]\n" , Serial.name.c_str() );
+	printf( "\t[--%s]\n" , SanityCheck.name.c_str() );
 	printf( "\t[--%s]\n" , NoHelp.name.c_str() );
 }
 
@@ -500,7 +503,6 @@ void Geodesics< PreReal , Real >::MotionFunc( int x , int y )
 template< typename PreReal , typename Real>
 void Geodesics< PreReal , Real >::ExportTextureCallBack( Visualization * /*v*/ , const char* prompt )
 {
-
 	RegularGrid< 2 , Point3D< float > > outputImage;
 	outputImage.resize( textureWidth , textureHeight );
 	for( int i=0 ; i<outputImage.size() ; i++ ) outputImage[i] = Point3D< float >( outputBuffer[3*i] , outputBuffer[3*i+1] , outputBuffer[3*i+2]) / float(255.0);
@@ -543,7 +545,7 @@ void Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 	Miscellany::PerformanceMeter pMeter( '.' );
 	ExplicitIndexVector< ChartIndex , AtlasChart< PreReal > > atlasCharts;
 	MultigridBlockInfo multigridBlockInfo( MultigridBlockWidth.value , MultigridBlockHeight.value , MultigridPaddedWidth.value , MultigridPaddedHeight.value );
-	InitializeHierarchy( mesh , width , height , levels , textureNodes , hierarchy , atlasCharts , multigridBlockInfo );
+	InitializeHierarchy( mesh , width , height , levels , textureNodes , hierarchy , atlasCharts , multigridBlockInfo , SanityCheck.set );
 	if( Verbose.set ) std::cout << pMeter( "Hierarchy" ) << std::endl;
 
 	//Initialize node index
@@ -551,15 +553,12 @@ void Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 	for( int i=0 ; i<nodeIndex.size() ; i++ ) nodeIndex[i] = -1;
 	for( int i=0 ; i<textureNodes.size() ; i++ ) nodeIndex( textureNodes[i].ci , textureNodes[i].cj ) = i;
 
-	BoundaryProlongationData< Real > boundaryProlongation;
-	InitializeBoundaryProlongationData( hierarchy.gridAtlases[0] , boundaryProlongation );
-
 	MassAndStiffnessOperators< Real > massAndStiffnessOperators;
 
 	InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric );
 
 	pMeter.reset();
-	OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , gradientIntegrator , VectorFieldQuadrature.value , !PreciseIntegration.set );
+	OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , gradientIntegrator , VectorFieldQuadrature.value , !PreciseIntegration.set , SanityCheck.set);
 	gradientIntegratorScratch = gradientIntegrator.template getScratch< Real , Real >();
 	if( Verbose.set ) std::cout << pMeter( "System" ) << std::endl;
 
@@ -746,11 +745,8 @@ void Geodesics< PreReal , Real >::Init( void )
 			_p.p = Point2D< PreReal >( (PreReal)1./3 , (PreReal)1./3 );
 			_p.v = textureNodes[i].barycentricCoords - _p.p;
 
-#ifdef SANITY_CHECK
-			rMesh.exp( xForms , _p , 0 , false );
-#else // !SANITY_CHECK
-			rMesh.exp( xForms , _p );
-#endif // SANITY_CHECK
+			if( SanityCheck.set ) rMesh.exp( xForms , _p , 0 , false );
+			else rMesh.exp( xForms , _p );
 
 			textureNodes[i].tID = AtlasMeshTriangleIndex( _p.tIdx );
 			textureNodes[i].barycentricCoords = _p.p;

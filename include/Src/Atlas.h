@@ -68,7 +68,7 @@ namespace MishaK
 
 			unsigned int numCharts( void ) const { return _numCharts; }
 
-			void initialize( const TexturedTriangleMesh< GeometryReal > &inputMesh );
+			void initialize( const TexturedTriangleMesh< GeometryReal > &inputMesh , bool sanityCheck );
 
 			// Displace vertex positions if they are too close to the axes
 			void jitter( unsigned int width , unsigned int height , GeometryReal epsilon=(GeometryReal)DEFAULT_JITTER );
@@ -140,7 +140,8 @@ namespace MishaK
 				const TexturedTriangleMesh< GeometryReal > &mesh ,
 				unsigned int width ,
 				unsigned int height ,
-				AtlasInfo &atlasInfo
+				AtlasInfo &atlasInfo ,
+				bool sanityCheck
 			);
 
 			static ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > > GetCharts
@@ -149,7 +150,8 @@ namespace MishaK
 				unsigned int width ,
 				unsigned int height ,
 				AtlasInfo &atlasInfo ,
-				AtlasMesh< GeometryReal > &atlasMesh
+				AtlasMesh< GeometryReal > &atlasMesh ,
+				bool sanityCheck
 			);
 
 		protected:

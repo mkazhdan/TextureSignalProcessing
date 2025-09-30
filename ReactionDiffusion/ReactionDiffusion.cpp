@@ -86,6 +86,7 @@ CmdLineParameter< float >
 	AnisotropyExponent( "aExp" , 0.f );
 
 CmdLineReadable
+	SanityCheck( "sanityCheck" ) ,
 	Verbose( "verbose" ) , 
 	NearestSampling( "nearest" ) , 
 	NoHelp( "noHelp" ) ,
@@ -114,6 +115,7 @@ CmdLineReadable* params[] =
 	&CollapseEpsilon ,
 	&Run ,
 	&NearestSampling ,
+	&SanityCheck ,
 	NULL
 };
 
@@ -157,6 +159,7 @@ void ShowUsage( const char* ex )
 	printf( "\t[--%s]\n" , Serial.name.c_str() );
 	printf( "\t[--%s]\n" , NearestSampling.name.c_str() );
 
+	printf( "\t[--%s]\n" , SanityCheck.name.c_str() );
 	printf( "\t[--%s]\n" , NoHelp.name.c_str() );
 }
 
@@ -545,7 +548,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 	ExplicitIndexVector< ChartIndex , AtlasChart< PreReal > > atlasCharts;
 	ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > > parameterMetric;
 	MultigridBlockInfo multigridBlockInfo( MultigridBlockWidth.value , MultigridBlockHeight.value , MultigridPaddedWidth.value , MultigridPaddedHeight.value );
-	InitializeHierarchy( mesh , width , height , levels , textureNodes , hierarchy , atlasCharts , multigridBlockInfo );
+	InitializeHierarchy( mesh , width , height , levels , textureNodes , hierarchy , atlasCharts , multigridBlockInfo , SanityCheck.set );
 	if( Verbose.set ) std::cout << pMeter( "Hierarchy" ) << std::endl;
 
 	//Initialize node index
@@ -556,9 +559,6 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 		if( nodeIndex( textureNodes[i].ci , textureNodes[i].cj )!=-1 ) if( false ) MK_WARN( "Multiple nodes mapped to pixel " , textureNodes[i].ci , " " , textureNodes[i].cj );
 		nodeIndex( textureNodes[i].ci , textureNodes[i].cj ) = i;
 	}
-
-	BoundaryProlongationData< Real > boundaryProlongation;
-	InitializeBoundaryProlongationData( hierarchy.gridAtlases[0] , boundaryProlongation );
 
 	if( VectorField.set )
 	{
@@ -626,7 +626,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 	for( unsigned int i=0 ; i<parameterMetric.size() ; i++ ) for( unsigned int j=0 ; j<parameterMetric[ ChartIndex(i) ].size() ; j++ ) parameterMetric[ ChartIndex(i) ][ ChartMeshTriangleIndex(j) ] *= textureNodes.size() / 2;
 
 	pMeter.reset();
-	OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , scalarIntegrator , RHSQuadrature.value , ApproximateIntegration.set );
+	OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , scalarIntegrator , RHSQuadrature.value , ApproximateIntegration.set , SanityCheck.set );
 	scalarIntegratorScratch = scalarIntegrator.template getScratch< Point< Real , 2 > , Point< Real , 2 > >();
 	if( Verbose.set ) std::cout << pMeter( "Mass and stiffness" ) << std::endl;
 
@@ -815,11 +815,8 @@ void GrayScottReactionDiffusion< PreReal , Real >::Init( void )
 			_p.p = Point2D< PreReal >( (PreReal)1./3 , (PreReal)1./3 );
 			_p.v = textureNodes[i].barycentricCoords - _p.p;
 
-#ifdef SANITY_CHECK
-			rMesh.exp( xForms , _p , 0 , false );
-#else // !SANITY_CHECK
-			rMesh.exp( xForms , _p );
-#endif // SANITY_CHECK
+			if( SanityCheck.set ) rMesh.exp( xForms , _p , 0 , false );
+			else rMesh.exp( xForms , _p );
 
 			textureNodes[i].tID = AtlasMeshTriangleIndex( _p.tIdx );
 			textureNodes[i].barycentricCoords = _p.p;

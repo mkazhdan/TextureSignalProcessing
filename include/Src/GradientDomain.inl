@@ -71,7 +71,8 @@ GradientDomain< Real >::GradientDomain
 	TextureVertexFunctor && textureVertexFunctor ,
 	unsigned int width ,
 	unsigned int height ,
-	bool normalize
+	bool normalize ,
+	bool sanityCheck
 )
 {
 	using PreReal = Real;
@@ -90,7 +91,8 @@ GradientDomain< Real >::GradientDomain
 		width ,
 		height ,
 		1 ,
-		normalize
+		normalize ,
+		sanityCheck
 	);
 }
 
@@ -117,7 +119,8 @@ void GradientDomain< Real >::_init
 	unsigned int width ,
 	unsigned int height ,
 	unsigned int levels ,
-	bool normalize
+	bool normalize ,
+	bool sanityCheck
 )
 {
 	static_assert( _IsTriangleCornerFunctor< SurfaceCornerFunctor >()                , "[ERROR] SurfaceCornerFunctor poorly formed" );
@@ -147,7 +150,7 @@ void GradientDomain< Real >::_init
 	ExplicitIndexVector< ChartIndex , AtlasChart< PreReal > > atlasCharts;
 	MultigridBlockInfo multigridBlockInfo;
 
-	InitializeHierarchy( mesh , width , height , levels , _textureNodes , hierarchy , atlasCharts , multigridBlockInfo );
+	InitializeHierarchy( mesh , width , height , levels , _textureNodes , hierarchy , atlasCharts , multigridBlockInfo , sanityCheck );
 	ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > > parameterMetric;
 	if constexpr( HasSurfaceVertex ) InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric , normalize );
 	else if constexpr( HasSurfaceMetric )
@@ -162,7 +165,7 @@ void GradientDomain< Real >::_init
 		}
 		InitializeParameterMetric( mesh , surfaceMetric , atlasCharts , parameterMetric );
 	}
-	OperatorInitializer::Initialize( quadraturePointsPerTriangle , _massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , _divergenceOperator );
+	OperatorInitializer::Initialize( quadraturePointsPerTriangle , _massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , _divergenceOperator , sanityCheck );
 }
 
 template< typename Real >
@@ -375,7 +378,8 @@ HierarchicalGradientDomain< Real , Solver , Data >::HierarchicalGradientDomain
 	unsigned int width ,
 	unsigned int height ,
 	unsigned int levels ,
-	bool normalize
+	bool normalize ,
+	bool sanityCheck
 )
 {
 	GradientDomain< Real >::_init
@@ -392,7 +396,8 @@ HierarchicalGradientDomain< Real , Solver , Data >::HierarchicalGradientDomain
 		width ,
 		height ,
 		levels ,
-		normalize
+		normalize ,
+		sanityCheck
 	);
 	_multigridIndices.resize( levels );
 	_multigridVariables.resize( levels );

@@ -122,11 +122,12 @@ AtlasChart< GeometryReal >::GetCharts
 	unsigned int width ,
 	unsigned int height ,
 	AtlasInfo &atlasInfo ,
-	AtlasMesh< GeometryReal > &atlasMesh
+	AtlasMesh< GeometryReal > &atlasMesh ,
+	bool sanityCheck
 )
 {
 	// Compute the 2D atlas
-	atlasMesh.initialize( mesh );
+	atlasMesh.initialize( mesh , sanityCheck );
 	atlasMesh.jitter( width , height );
 
 	// Compute the opposite half-edges on the surface mesh and mark whether half-edges are boundaries on the texture mesh
@@ -162,9 +163,10 @@ AtlasChart< GeometryReal >::GetCharts
 	const TexturedTriangleMesh< GeometryReal > &mesh ,
 	unsigned int width ,
 	unsigned int height ,
-	AtlasInfo &atlasInfo
+	AtlasInfo &atlasInfo ,
+	bool sanityCheck
 )
 {
 	AtlasMesh< GeometryReal > atlasMesh;
-	return GetCharts( mesh , width , height , atlasInfo , atlasMesh );
+	return GetCharts( mesh , width , height , atlasInfo , atlasMesh , sanityCheck );
 }

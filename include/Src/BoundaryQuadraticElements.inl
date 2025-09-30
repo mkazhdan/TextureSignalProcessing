@@ -121,7 +121,7 @@ void AddEdgeGridIntersection
 	}
 }
 
-template< typename GeometryReal >
+template< bool SanityCheck , typename GeometryReal >
 void
 InitializeChartBoundaryTriangleGridIntersections
 (
@@ -181,14 +181,10 @@ InitializeChartBoundaryTriangleGridIntersections
 				if( gridChart.cellType(I)==CellType::Boundary )
 				{
 					ChartBoundaryCellIndex cellID = gridChart.cellIndices(I).boundary;
-#ifdef SANITY_CHECK
-					if( cellID==ChartBoundaryCellIndex(-1) ) MK_THROW( "Boundary cell invalid ID" );
-#endif // SANITY_CHECK
+					if constexpr( SanityCheck ) if( cellID==ChartBoundaryCellIndex(-1) ) MK_THROW( "Boundary cell invalid ID" );
 					IndexedIntersectionPolygon< GeometryReal > poly = GetIndexedIntersectionPolygon( I[0] , I[1] );
-					ClipIndexedIntersectionPolygonToIndexedIntersectionTriangle( poly , indexedTriangle );
-#ifdef SANITY_CHECK
-					if( !poly.vertices.size() ) MK_THROW( "Expected triangle to intersect cell" );
-#endif // SANITY_CHECK
+					ClipIndexedIntersectionPolygonToIndexedIntersectionTriangle< SanityCheck >( poly , indexedTriangle );
+					if constexpr( SanityCheck ) if( !poly.vertices.size() ) MK_THROW( "Expected triangle to intersect cell" );
 
 					// Assign indices to the boundary-edge/grid intersections
 					for( unsigned int i=0 ; i<poly.cornerKeys.size() ; i++ )
@@ -196,11 +192,10 @@ InitializeChartBoundaryTriangleGridIntersections
 						// If we haven't seen this vertex before...
 						if( gridMeshIntersectionKeyToNodeInfo.find( poly.cornerKeys[i] )==gridMeshIntersectionKeyToNodeInfo.end() )
 						{
-#ifdef SANITY_CHECK
-							if( std::optional< ChartMeshVertexIndex > v = poly.cornerKeys[i].chartVertex() )
-								if( atlasMeshVertexToBoundaryVertex.find( atlasChart.atlasVertex( *v ) )!=atlasMeshVertexToBoundaryVertex.end() )
-									MK_THROW( "Boundary vertices should have already been processed" );
-#endif // SANITY_CHECK
+							if constexpr( SanityCheck )
+								if( std::optional< ChartMeshVertexIndex > v = poly.cornerKeys[i].chartVertex() )
+									if( atlasMeshVertexToBoundaryVertex.find( atlasChart.atlasVertex( *v ) )!=atlasMeshVertexToBoundaryVertex.end() )
+										MK_THROW( "Boundary vertices should have already been processed" );
 							AtlasRefinedBoundaryVertexIndex boundaryVertex = endBoundaryVertex++;
 
 							gridMeshIntersectionKeyToNodeInfo[ poly.cornerKeys[i] ] = NodeInfo< GeometryReal , AtlasRefinedBoundaryVertexIndex >( boundaryVertex , poly.vertices[i] );
@@ -217,7 +212,7 @@ InitializeChartBoundaryTriangleGridIntersections
 	}
 }
 
-template< typename GeometryReal >
+template< bool SanityCheck , typename GeometryReal >
 void InitializeChartBoundaryEdgeGridIntersections
 (
 	const AtlasChart< GeometryReal > & atlasChart ,
@@ -260,13 +255,9 @@ void InitializeChartBoundaryEdgeGridIntersections
 				AtlasRefinedBoundaryVertexIndex boundaryVertex;
 				if( std::optional< ChartMeshVertexIndex > v = boundaryHalfEdgeIntersectionsInfo[i].intersectionKey.chartVertex() )	// Start/end vertex
 				{
-#ifdef SANITY_CHECK
-					if( i!=0 && i!=boundaryHalfEdgeIntersectionsInfo.size()-1 ) MK_THROW( "Expected boundary vertex" );
-#endif // SANITY_CHECK
+					if constexpr( SanityCheck ) if( i!=0 && i!=boundaryHalfEdgeIntersectionsInfo.size()-1 ) MK_THROW( "Expected boundary vertex" );
 					auto iter = atlasMeshVertexToBoundaryVertex.find( atlasChart.atlasVertex( *v ) );
-#ifdef SANITY_CHECK
-					if( iter==atlasMeshVertexToBoundaryVertex.end() ) MK_THROW( "Boundary vertex not found" );
-#endif // SANITY_CHECK
+					if constexpr( SanityCheck ) if( iter==atlasMeshVertexToBoundaryVertex.end() ) MK_THROW( "Boundary vertex not found" );
 #ifdef SANITY_CHECK
 #pragma message( "[WARNING] Converting AtlasMeshBoundaryVertexIndex -> AtlasRefinedBoundaryVertexIndex" )
 #endif // SANITY_CHECK
@@ -274,9 +265,7 @@ void InitializeChartBoundaryEdgeGridIntersections
 				}
 				else // Interior (intersection) vertex
 				{
-#ifdef SANITY_CHECK
-					if( i==0 || i==boundaryHalfEdgeIntersectionsInfo.size()-1 ) MK_THROW( "Expected interior vertex" );
-#endif // SANITY_CHECK
+					if constexpr( SanityCheck ) if( i==0 || i==boundaryHalfEdgeIntersectionsInfo.size()-1 ) MK_THROW( "Expected interior vertex" );
 					boundaryVertex = endBoundaryVertex++;
 				}
 
@@ -297,9 +286,7 @@ void InitializeChartBoundaryEdgeGridIntersections
 			SimplexIndex< 1 , AtlasRefinedBoundaryVertexIndex > eIndex( gridMeshIntersectionKeyToNodeInfo[ boundaryHalfEdgeIntersectionsInfo[i].intersectionKey ].index , gridMeshIntersectionKeyToNodeInfo[ boundaryHalfEdgeIntersectionsInfo[i+1].intersectionKey ].index );
 			BoundarySegmentInfo< GeometryReal > segmentInfo( boundaryHalfEdgeIntersectionsInfo[i].time , boundaryHalfEdgeIntersectionsInfo[i+1].time , chartHalfEdge );
 
-#ifdef SANITY_CHECK
-			if( segmentToBoundarySegmentInfo.find( eIndex )!=segmentToBoundarySegmentInfo.end() ) MK_THROW( "Replicated segment key" );
-#endif // SANITY_CHECK
+			if constexpr( SanityCheck ) if( segmentToBoundarySegmentInfo.find( eIndex )!=segmentToBoundarySegmentInfo.end() ) MK_THROW( "Replicated segment key" );
 			segmentToBoundarySegmentInfo[ eIndex ] = segmentInfo;
 		}
 
@@ -307,7 +294,7 @@ void InitializeChartBoundaryEdgeGridIntersections
 	}
 }
 
-template< typename GeometryReal >
+template< bool SanityCheck , typename GeometryReal >
 ExplicitIndexVector< ChartBoundaryCellIndex , std::vector< std::pair< ChartMeshTriangleIndex , IndexedPolygon< GeometryReal > > > >
 GetChartBoundaryPolygons
 (
@@ -316,9 +303,7 @@ GetChartBoundaryPolygons
 	GridChart< GeometryReal > &gridChart ,
 	AtlasCoveredTexelIndex endCoveredTexelIndex ,
 	unsigned int numBoundaryVertices ,
-#ifdef SANITY_CHECK
 	AtlasRefinedBoundaryVertexIndex endBoundaryVertex ,
-#endif // SANITY_CHECK
 	const Map< AtlasMeshHalfEdgeIndex , std::vector< IntersectionInfo< GeometryReal > > > & atlasBoundaryHalfEdgeToIntersectionInfos ,
 	const Map< SimplexIndex< 1 , AtlasRefinedBoundaryVertexIndex > , BoundarySegmentInfo< GeometryReal > > & segmentToBoundarySegmentInfo ,
 	const Map< GridMeshIntersectionKey , NodeInfo< GeometryReal , AtlasRefinedBoundaryVertexIndex > > & gridMeshIntersectionKeyToNodeInfo
@@ -375,15 +360,10 @@ GetChartBoundaryPolygons
 				if( gridChart.cellType(I)==CellType::Boundary )
 				{
 					ChartBoundaryCellIndex cellID = gridChart.cellIndices(I).boundary;
-#ifdef SANITY_CHECK
-					if( cellID==ChartBoundaryCellIndex(-1) ) MK_THROW( "Boundary cell invalid ID" );
-#endif // SANITY_CHECK
+					if constexpr( SanityCheck ) if( cellID==ChartBoundaryCellIndex(-1) ) MK_THROW( "Boundary cell invalid ID" );
 					IndexedIntersectionPolygon< GeometryReal > poly = GetIndexedIntersectionPolygon( I[0] , I[1] );
-					ClipIndexedIntersectionPolygonToIndexedIntersectionTriangle( poly , indexedTriangle );
-#ifdef SANITY_CHECK
-					if( !poly.vertices.size() ) MK_THROW( "Expected triangle to intersect cell" );
-#endif // SANITY_CHECK
-
+					ClipIndexedIntersectionPolygonToIndexedIntersectionTriangle< SanityCheck >( poly , indexedTriangle );
+					if constexpr( SanityCheck ) if( !poly.vertices.size() ) MK_THROW( "Expected triangle to intersect cell" );
 					std::vector< std::pair< ChartMeshTriangleIndex , std::vector< GridMeshIntersectionKey > > > & polygons = cellPolygons[cellID];
 					polygons.emplace_back( ChartMeshTriangleIndex(t) , poly.cornerKeys );
 				}
@@ -422,10 +402,8 @@ GetChartBoundaryPolygons
 
 					AtlasCoveredTexelIndex coveredTexelIndex = gridChart.texelIndices(pi,pj).covered;
 
-#ifdef SANITY_CHECK
 					// Confirm that the texel is inside the chart
-					if( coveredTexelIndex==AtlasCoveredTexelIndex(-1) ) MK_THROW( "Invalid texel: " , Point2D< int >( pi , pj ) , " -> " , gridChart.texelIndices(pi,pj).covered , " : " , gridChart.texelIndices(pi, pj).interior );
-#endif // SANITY_CHECK
+					if constexpr( SanityCheck ) if( coveredTexelIndex==AtlasCoveredTexelIndex(-1) ) MK_THROW( "Invalid texel: " , Point2D< int >( pi , pj ) , " -> " , gridChart.texelIndices(pi,pj).covered , " : " , gridChart.texelIndices(pi, pj).interior );
 
 #ifdef SANITY_CHECK
 #pragma message( "[WARNING] Converting AtlasCoveredTexelIndex -> AtlasInteriorOrBoundaryNodeIndex" )
@@ -446,9 +424,7 @@ GetChartBoundaryPolygons
 						if( std::optional< ChartMeshVertexIndex > v = currentVertexKey.chartVertex() ) loopAtlasVertexIndices[i].push_back( *v );
 						else                                                                           loopAtlasVertexIndices[i].push_back( ChartMeshVertexIndex(-1) );
 					}
-#ifdef SANITY_CHECK
-					else MK_THROW( "Could not find vertex" );
-#endif // SANITY_CHECK
+					else if constexpr( SanityCheck ) MK_THROW( "Could not find vertex" );
 				}
 			}
 		}
@@ -491,10 +467,8 @@ GetChartBoundaryPolygons
 
 							// Find the information for the opposite half-edge
 							auto atlasBoundaryHalfEdgeToIntersectionInfosIter = atlasBoundaryHalfEdgeToIntersectionInfos.find( oppHalfEdge );
-#ifdef SANITY_CHECK
-							if( atlasBoundaryHalfEdgeToIntersectionInfosIter==atlasBoundaryHalfEdgeToIntersectionInfos.end() )
+							if constexpr( SanityCheck ) if( atlasBoundaryHalfEdgeToIntersectionInfosIter==atlasBoundaryHalfEdgeToIntersectionInfos.end() )
 								MK_THROW( "Opposite edge intersections not found. Current  edge " , atlasChart.atlasHalfEdge( segmentInfo.chartHalfEdge ) , ". Opposite " , oppHalfEdge );
-#endif // SANITY_CHECK
 
 							std::vector< AtlasRefinedBoundaryVertexIndex > segmentIndicesToInsert;
 							std::vector< GeometryReal > segmentTimesToInsert;
@@ -556,9 +530,7 @@ GetChartBoundaryPolygons
 					Point2D< GeometryReal > currentPos = loopNodes[i][j].position;
 					Point2D< GeometryReal >    nextPos = loopNodes[i][ (j+1)%loopKeys[i].second.size() ].position;
 
-#ifdef SANITY_CHECK
-					if( currentSegmentAtlasEdgeIndex==AtlasMeshEdgeIndex(-1) ) MK_THROW( "Invalid atlas edge index" );
-#endif // SANITY_CHECK
+					if constexpr( SanityCheck ) if( currentSegmentAtlasEdgeIndex==AtlasMeshEdgeIndex(-1) ) MK_THROW( "Invalid atlas edge index" );
 
 					for( unsigned int k=0 ; k<_indices.size() ; k++ )
 					{
@@ -571,10 +543,8 @@ GetChartBoundaryPolygons
 						}
 
 						// Validate that the added node is not an original atlas vertex (and has been processed)
-#ifdef SANITY_CHECK
-						if( static_cast< unsigned int >(_indices[k])<numBoundaryVertices || static_cast< unsigned int >(_indices[k])>static_cast< unsigned int >(endBoundaryVertex) )
+						if constexpr( SanityCheck ) if( static_cast< unsigned int >(_indices[k])<numBoundaryVertices || static_cast< unsigned int >(_indices[k])>static_cast< unsigned int >(endBoundaryVertex) )
 							MK_THROW( "Out of bounds index: " , _indices[k] , " not in " , numBoundaryVertices , " " , endBoundaryVertex );				
-#endif // SANITY_CHECK
 
 #ifdef SANITY_CHECK
 #pragma message( "[WARNING] Converting AtlasRefinedBoundaryVertexIndex -> AtlasInteriorOrBoundaryNodeIndex" )
@@ -589,9 +559,7 @@ GetChartBoundaryPolygons
 					insertionCount++;
 				}
 			}
-#ifdef SANITY_CHECK
-			if( insertionCount!=indicesToInsert.size() ) MK_THROW( "Intersection chains count does not match" );
-#endif // SANITY_CHECK
+			if constexpr( SanityCheck ) if( insertionCount!=indicesToInsert.size() ) MK_THROW( "Intersection chains count does not match" );
 			loopNodes[i] = expandedLoopNodes;
 			loopAtlasVertexIndices[i] = expandedLoopAtlasVertexIndices;
 			loopAtlasEdges[i] = expandedLoopAtlasEdgeIndex;
@@ -612,8 +580,7 @@ GetChartBoundaryPolygons
 	return boundaryPolygons;
 }
 
-
-template< typename GeometryReal , typename MatrixReal >
+template< bool SanityCheck , typename GeometryReal , typename MatrixReal >
 ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartBoundaryCellIndex , std::vector< std::pair< ChartMeshTriangleIndex , IndexedPolygon< GeometryReal > > > > >
 GetBoundaryPolygons
 (
@@ -641,7 +608,7 @@ GetBoundaryPolygons
 		// -- Split the chart's boundary half-edges to the edges of the grid
 		// -- Add associated auxiliary nodes
 		// -- Add associated segments
-		InitializeChartBoundaryEdgeGridIntersections
+		InitializeChartBoundaryEdgeGridIntersections< SanityCheck >
 		(
 			atlasCharts[ ChartIndex(i) ] ,
 			atlasInfo.atlasMeshVertexToBoundaryVertex ,
@@ -655,7 +622,7 @@ GetBoundaryPolygons
 
 		// -- Split boundary-cell-inersecting triangles to the edges of the grid
 		// -- Add associated auxiliary nodes
-		InitializeChartBoundaryTriangleGridIntersections
+		InitializeChartBoundaryTriangleGridIntersections< SanityCheck >
 		(
 			atlasCharts[ ChartIndex(i) ] ,
 			atlasInfo.atlasMeshVertexToBoundaryVertex ,
@@ -670,16 +637,14 @@ GetBoundaryPolygons
 	{
 		try
 		{
-			boundaryPolygons[ ChartIndex(i) ] = GetChartBoundaryPolygons
+			boundaryPolygons[ ChartIndex(i) ] = GetChartBoundaryPolygons< SanityCheck >
 			(
 				atlasInfo.oppositeHalfEdges ,
 				atlasCharts[ ChartIndex(i) ] ,
 				gridCharts[ ChartIndex(i) ] ,
 				gridAtlas.endCoveredTexelIndex ,
 				(unsigned int)atlasInfo.atlasMeshVertexToBoundaryVertex.size() ,
-#ifdef SANITY_CHECK
 				gridAtlas.endBoundaryVertexIndex ,
-#endif // SANITY_CHECK
 				atlasBoundaryHalfEdgeToIntersectionInfos ,
 				segmentToBoundarySegmentInfo[i] ,
 				gridMeshIntersectionKeyToNodeInfo[i]
@@ -777,7 +742,7 @@ void InitializeChartQuadraticElements
 	}
 }
 
-template< typename GeometryReal , typename MatrixReal >
+template< bool SanityCheck , typename GeometryReal , typename MatrixReal >
 void InitializeBoundaryTriangulation
 (
 	GridAtlas< GeometryReal , MatrixReal > &gridAtlas ,
@@ -786,7 +751,7 @@ void InitializeBoundaryTriangulation
 )
 {
 	// Add the vertices
-	ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartBoundaryCellIndex , std::vector< std::pair< ChartMeshTriangleIndex , IndexedPolygon< GeometryReal > > > > > boundaryPolygons = GetBoundaryPolygons( gridAtlas , atlasCharts , atlasInfo );
+	ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartBoundaryCellIndex , std::vector< std::pair< ChartMeshTriangleIndex , IndexedPolygon< GeometryReal > > > > > boundaryPolygons = GetBoundaryPolygons< SanityCheck >( gridAtlas , atlasCharts , atlasInfo );
 
 	// Add the (mid-edge) nodes, fuse, and create triangles
 	Map< SimplexIndex< 1 > , BoundaryMidPointIndex > midPointMap;
@@ -805,7 +770,7 @@ struct BoundaryProlongationData
 	SparseMatrix< MatrixReal , int > fineBoundaryCoarseBoundaryRestriction;
 };
 
-template< typename GeometryReal , typename MatrixReal >
+template< bool SanityCheck , typename GeometryReal , typename MatrixReal >
 void InitializeCoarseBoundaryToFineBoundaryProlongation
 (
 	const GridAtlas< GeometryReal , MatrixReal > &gridAtlas ,
@@ -835,9 +800,7 @@ void InitializeCoarseBoundaryToFineBoundaryProlongation
 				AtlasTexelIndex coarseCombinedIndex = gridChart.texelIndices[j].combined;
 
 				AtlasBoundaryTexelIndex boundaryIndex = indexConverter.combinedToBoundary( coarseCombinedIndex );
-#ifdef SANITY_CHECK
-				if( boundaryIndex==AtlasBoundaryTexelIndex(-1) ) MK_THROW( "Coarse node is not boundary. Combined index " , coarseCombinedIndex , ". Boundary index " , boundaryIndex );
-#endif // SANITY_CHECK
+				if constexpr( SanityCheck ) if( boundaryIndex==AtlasBoundaryTexelIndex(-1) ) MK_THROW( "Coarse node is not boundary. Combined index " , coarseCombinedIndex , ". Boundary index " , boundaryIndex );
 				prolongationTriplets.emplace_back( numFineBoundaryNodes , static_cast< unsigned int >(boundaryIndex) , (MatrixReal)1. );
 				fineBoundaryIndex[ static_cast< unsigned int >(gridChart.texelIndices[j].covered) ] = static_cast< AtlasInteriorOrBoundaryNodeIndex >( numFineBoundaryNodes );
 				numFineBoundaryNodes++;
@@ -885,17 +848,14 @@ void InitializeCoarseBoundaryToFineBoundaryProlongation
 			Point2D< GeometryReal >nodePosition = gridChart.auxiliaryNodes[j].position;
 			int corner[2] = { (int)floor(nodePosition[0] / gridChart.cellSizeW), (int)floor(nodePosition[1] / gridChart.cellSizeH) };
 			ChartCellIndex cellID = gridChart.cellIndices( corner[0] , corner[1] ).combined;
-#ifdef SANITY_CHECK
-			if( cellID==ChartCellIndex(-1) ) MK_THROW( "Invalid cell index. Node position " , nodePosition[0] / gridChart.cellSizeW , " " , nodePosition[1] / gridChart.cellSizeH );
-#endif // SANITY_CHECK
+			if constexpr( SanityCheck ) if( cellID==ChartCellIndex(-1) ) MK_THROW( "Invalid cell index. Node position " , nodePosition[0] / gridChart.cellSizeW , " " , nodePosition[1] / gridChart.cellSizeH );
 			nodePosition[0] /= gridChart.cellSizeW;
 			nodePosition[1] /= gridChart.cellSizeH;
 			nodePosition[0] -= (GeometryReal)corner[0];
 			nodePosition[1] -= (GeometryReal)corner[1];
-#ifdef SANITY_CHECK
-			if( nodePosition[0] < 0-precision_error || nodePosition[0] > 1+precision_error || nodePosition[1] < 0-precision_error || nodePosition[1] > 1+precision_error )
-				MK_THROW( "Sample out of unit box! (" , nodePosition[0] , " " , nodePosition[0] , ")" );
-#endif // SANITY_CHECK
+			if constexpr( SanityCheck )
+				if( nodePosition[0] < 0-precision_error || nodePosition[0] > 1+precision_error || nodePosition[1] < 0-precision_error || nodePosition[1] > 1+precision_error )
+					MK_THROW( "Sample out of unit box! (" , nodePosition[0] , " " , nodePosition[0] , ")" );
 			for( unsigned int k=0 ; k<4 ; k++ )
 			{
 				MatrixReal texelWeight = (MatrixReal)BilinearElementValue(k, nodePosition) / nodeDegree;
@@ -903,17 +863,16 @@ void InitializeCoarseBoundaryToFineBoundaryProlongation
 				{
 					auxiliaryNodesCumWeight[auxiliaryID] += texelWeight;
 					AtlasTexelIndex texelIndex = gridChart.combinedCellCombinedTexelBilinearElementIndices[cellID][k];
-#ifdef SANITY_CHECK
-					if( texelInfo[texelIndex].texelType==TexelType::InteriorSupported )
-						MK_THROW( "Interior-supported texel cannot be in the support of an auxiliary node. Weight " , texelWeight , " (A)" );
+					if constexpr( SanityCheck )
+					{
+						if( texelInfo[texelIndex].texelType==TexelType::InteriorSupported )
+							MK_THROW( "Interior-supported texel cannot be in the support of an auxiliary node. Weight " , texelWeight , " (A)" );
 
-					if( static_cast< unsigned int >(gridChart.auxiliaryNodes[j].index)<static_cast< unsigned int >(gridAtlas.endCoveredTexelIndex) || static_cast< unsigned int >(gridChart.auxiliaryNodes[j].index)>numFineNodes || texelIndex==AtlasTexelIndex(-1) || static_cast< unsigned int >(texelIndex)>static_cast< unsigned int >(gridAtlas.endCombinedTexelIndex) ) MK_THROW( "Out of bounds index" );
-#endif // SANITY_CHECK
+						if( static_cast< unsigned int >(gridChart.auxiliaryNodes[j].index)<static_cast< unsigned int >(gridAtlas.endCoveredTexelIndex) || static_cast< unsigned int >(gridChart.auxiliaryNodes[j].index)>numFineNodes || texelIndex==AtlasTexelIndex(-1) || static_cast< unsigned int >(texelIndex)>static_cast< unsigned int >(gridAtlas.endCombinedTexelIndex) ) MK_THROW( "Out of bounds index" );
+					}
 
 					AtlasBoundaryTexelIndex boundaryIndex = indexConverter.combinedToBoundary( AtlasTexelIndex(texelIndex) );
-#ifdef SANITY_CHECK
-					if( boundaryIndex==AtlasBoundaryTexelIndex(-1) ) MK_THROW( "Coarse node is not boundary" );
-#endif // SANITY_CHECK
+					if constexpr( SanityCheck ) if( boundaryIndex==AtlasBoundaryTexelIndex(-1) ) MK_THROW( "Coarse node is not boundary" );
 					prolongationTriplets.emplace_back( static_cast< unsigned int >(fineBoundaryID) , static_cast< unsigned int >(boundaryIndex) , texelWeight );
 				}
 			}
@@ -927,15 +886,16 @@ template< typename GeometryReal , typename MatrixReal >
 void InitializeBoundaryProlongationData
 (
 	const GridAtlas< GeometryReal , MatrixReal > &gridAtlas ,
-	BoundaryProlongationData< MatrixReal > &boundaryProlongation
+	BoundaryProlongationData< MatrixReal > &boundaryProlongation ,
+	bool sanityCheck
 )
 {
-	InitializeCoarseBoundaryToFineBoundaryProlongation( gridAtlas , boundaryProlongation.coarseBoundaryFineBoundaryProlongation , boundaryProlongation.fineBoundaryIndex , boundaryProlongation.numFineBoundaryNodes );
+	if( sanityCheck ) InitializeCoarseBoundaryToFineBoundaryProlongation< true  >( gridAtlas , boundaryProlongation.coarseBoundaryFineBoundaryProlongation , boundaryProlongation.fineBoundaryIndex , boundaryProlongation.numFineBoundaryNodes );
+	else              InitializeCoarseBoundaryToFineBoundaryProlongation< false >( gridAtlas , boundaryProlongation.coarseBoundaryFineBoundaryProlongation , boundaryProlongation.fineBoundaryIndex , boundaryProlongation.numFineBoundaryNodes );
 	boundaryProlongation.fineBoundaryCoarseBoundaryRestriction = boundaryProlongation.coarseBoundaryFineBoundaryProlongation.transpose();
-#ifdef SANITY_CHECK
+	if( sanityCheck )
 	{
 		const SparseMatrix< MatrixReal , int > & R = boundaryProlongation.fineBoundaryCoarseBoundaryRestriction;
 		for( unsigned int i=0 ; i<R.Rows() ; i++ ) if( R.RowSize(i)==0 ) MK_WARN( "Empty prolongation column at boundary index " , i , ". Try running with jittering." );
 	}
-#endif // SANITY_CHECK
 }

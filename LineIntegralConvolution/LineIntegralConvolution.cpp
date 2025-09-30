@@ -75,6 +75,7 @@ CmdLineParameter< double >
 	CollapseEpsilon( "collapse" , 0 );
 
 CmdLineReadable
+	SanityCheck( "sanityCheck" ) ,
 	MinimalCurvature( "minimal" ) , 
 	Double( "double" ) ,
 	Verbose("verbose" ) ,
@@ -98,6 +99,7 @@ CmdLineReadable* params[] =
 	&NormalSmoothingIterations , &NormalSmoothingInterpolation ,
 	&CollapseEpsilon ,
 	&Nearest ,
+	&SanityCheck ,
 	&Run ,
 	NULL
 };
@@ -140,6 +142,7 @@ void ShowUsage(const char* ex)
 	printf( "\t[--%s]\n" , Run.name.c_str() );
 	printf( "\t[--%s]\n" , Serial.name.c_str() );
 	printf( "\t[--%s]\n" , Nearest.name.c_str() );
+	printf( "\t[--%s]\n" , SanityCheck.name.c_str() );
 	printf( "\t[--%s]\n" , NoHelp.name.c_str() );
 	printf( "\t[--%s]\n" , Double.name.c_str() );
 }
@@ -520,7 +523,7 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 	ExplicitIndexVector< ChartIndex , AtlasChart< PreReal > > atlasCharts;
 	ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > > parameterMetric;
 	MultigridBlockInfo multigridBlockInfo( MultigridBlockWidth.value , MultigridBlockHeight.value , MultigridPaddedWidth.value , MultigridPaddedHeight.value );
-	InitializeHierarchy( mesh , width , height , levels , textureNodes , hierarchy , atlasCharts , multigridBlockInfo );
+	InitializeHierarchy( mesh , width , height , levels , textureNodes , hierarchy , atlasCharts , multigridBlockInfo , SanityCheck.set );
 	if( Verbose.set ) std::cout << pMeter( "Hierarchy" ) << std::endl;
 
 	//Initialize node index
@@ -753,7 +756,7 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 		InitializeAnisotropicMetric( mesh , atlasCharts , vectorField , LengthToAnisotropy , parameterMetric );
 
 		pMeter.reset();
-		OperatorInitializer::Initialize( MatrixQuadrature.value , anisoMassAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts );
+		OperatorInitializer::Initialize( MatrixQuadrature.value , anisoMassAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , SanityCheck.set );
 		if( Verbose.set ) std::cout << pMeter( "System" ) << std::endl;
 
 		if( UseDirectSolver.set )
@@ -774,7 +777,7 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 		InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric );
 
 		pMeter.reset();
-		OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts );
+		OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , SanityCheck.set );
 		if( Verbose.set ) std::cout << pMeter( "Mass and stiffness" ) << std::endl;
 
 		if( UseDirectSolver.set )
@@ -942,11 +945,8 @@ void LineConvolution< PreReal , Real >::Init( void )
 			_p.p = Point2D< PreReal >( (PreReal)1./3 , (PreReal)1./3 );
 			_p.v = textureNodes[i].barycentricCoords - _p.p;
 
-#ifdef SANITY_CHECK
-			rMesh.exp( xForms , _p , 0 , false );
-#else // !SANITY_CHECK
-			rMesh.exp( xForms , _p );
-#endif // SANITY_CHECK
+			if( SanityCheck.set ) rMesh.exp( xForms , _p , 0 , false );
+			else rMesh.exp( xForms , _p );
 
 			textureNodes[i].tID = AtlasMeshTriangleIndex( _p.tIdx );
 			textureNodes[i].barycentricCoords = _p.p;

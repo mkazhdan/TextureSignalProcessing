@@ -36,7 +36,7 @@ namespace MishaK
 {
 	namespace TSP
 	{
-		template< typename GeometryReal >
+		template< bool SanityCheck , typename GeometryReal >
 		void InitializeIntraChartEdgeIndexing
 		(
 			Map< SimplexIndex< 1 , AtlasTexelIndex > , unsigned int > &boundaryCoarseEdgeIndex ,
@@ -65,21 +65,25 @@ namespace MishaK
 				{
 					AtlasTexelIndex vIndices[2] = { indices[ pairsToAdd[2*k] ] , indices[ pairsToAdd[2*k+1] ] };
 					SimplexIndex< 1 , AtlasTexelIndex > edgeKey( vIndices[0] , vIndices[1] );
-#ifdef SANITY_CHECK
-					if( boundaryCoarseEdgeIndex.find(edgeKey)==boundaryCoarseEdgeIndex.end() )
-#endif // SANITY_CHECK
+					if constexpr( SanityCheck )
+					{
+						if( boundaryCoarseEdgeIndex.find(edgeKey)==boundaryCoarseEdgeIndex.end() )
+						{
+							boundaryCoarseEdgeIndex[edgeKey] = lastAddedEdgeIndex;
+							lastAddedEdgeIndex++;
+						}
+						else MK_THROW( "Edge already added" );
+					}
+					else
 					{
 						boundaryCoarseEdgeIndex[edgeKey] = lastAddedEdgeIndex;
 						lastAddedEdgeIndex++;
 					}
-#ifdef SANITY_CHECK
-					else MK_THROW( "Edge already added" );
-#endif // SANITY_CHECK
 				}
 			}
 		}
 
-		template< typename GeometryReal >
+		template< bool SanityCheck , typename GeometryReal >
 		void InitializeIntraChartEdgeIndexing
 		(
 			const ExplicitIndexVector< ChartIndex , GridChart< GeometryReal > > &gridCharts ,
@@ -88,7 +92,7 @@ namespace MishaK
 		{
 			//Add edges within charts
 			unsigned int lastAddedEdgeIndex = 0;
-			for( unsigned int i=0 ; i<gridCharts.size() ; i++ ) InitializeIntraChartEdgeIndexing( boundaryCoarseEdgeIndex , gridCharts[ ChartIndex(i) ] , lastAddedEdgeIndex );
+			for( unsigned int i=0 ; i<gridCharts.size() ; i++ ) InitializeIntraChartEdgeIndexing< SanityCheck >( boundaryCoarseEdgeIndex , gridCharts[ ChartIndex(i) ] , lastAddedEdgeIndex );
 		}
 
 		template< typename MatrixReal >
@@ -185,7 +189,7 @@ namespace MishaK
 			for( unsigned int i=0 ; i<gridCharts.size() ; i++ ) InitializeFineBoundaryEdgeChartIndexing( fineBoundaryNodeIndex , fineBoundaryEdgeIndex , gridCharts[ ChartIndex(i) ] , endRefinedBoundaryEdgeIndex );
 		}
 
-		template< typename MatrixReal >
+		template< bool SanityCheck , typename MatrixReal >
 		void InitializeBoundaryCoarseToFineBoundaryOneFormProlongation
 		(
 			const SparseMatrix< MatrixReal , int > &boundaryCoarseToFineNodeProlongation ,
@@ -242,9 +246,7 @@ namespace MishaK
 										_coarseToFineOneFormProlongation[thread].push_back( Eigen::Triplet< MatrixReal >( static_cast< unsigned int >(fineEdgeId) , static_cast< unsigned int >(coarseEdgeId) , -coarseValue1 *coarseValue2 ) );
 									}
 								}
-#ifdef SANITY_CHECK
-								if( !foundEdge ) MK_THROW( "Edge (" , coarseIndex1 , "," , coarseIndex2 , ") not found" );
-#endif // SANITY_CHECK
+								if constexpr( SanityCheck ) if( !foundEdge ) MK_THROW( "Edge (" , coarseIndex1 , "," , coarseIndex2 , ") not found" );
 							}
 						}
 					}

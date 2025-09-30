@@ -137,7 +137,7 @@ namespace MishaK
 		// 0 on edge
 		// 1 interior
 
-		template< typename GeometryReal >
+		template< bool SanityCheck , typename GeometryReal >
 		void ClipPartiallyIndexedPolygonToIndexedEdge
 		(
 			IndexedPolygon< GeometryReal > &polygon ,
@@ -206,11 +206,14 @@ namespace MishaK
 					currentVertexType = currentLevel > 0 ? 1 : -1;
 				}
 
-				if (previousVertexType == -1){
-					if (currentVertexType == -1){
+				if( previousVertexType==-1 )
+				{
+					if( currentVertexType==-1 )
+					{
 						//Do nothing
 					}
-					else if (currentVertexType == -0){
+					else if( currentVertexType==-0 )
+					{
 						//Do nothing
 					}
 					else //Entrying edge
@@ -224,22 +227,27 @@ namespace MishaK
 						//lastAddedVertexType = 0;
 					}
 				}
-				else if (previousVertexType == 0){
+				else if( previousVertexType==0 )
+				{
 					outputVertices.push_back(previousVertex);
 					outputVertexIndices.push_back(previousVertexIndex);
 					outputParentVertexEdgeIndices.push_back(previousVertexEdgeSupport);
 					//lastAddedVertexType = 0;
-					if (currentVertexType < 0){
+					if( currentVertexType<0 )
+					{
 						outputEdgeIndices.push_back(edgeIndex);
 					}
-					else if (currentVertexType == 0){
+					else if( currentVertexType==0 )
+					{
 						outputEdgeIndices.push_back(edgeIndex);
 					}
-					else{
+					else
+					{
 						outputEdgeIndices.push_back(previousEdgeIndex);
 					}
 				}
-				else{
+				else
+				{
 					outputVertices.push_back(previousVertex);
 					outputVertexIndices.push_back(previousVertexIndex);
 					outputParentVertexEdgeIndices.push_back(previousVertexEdgeSupport);
@@ -272,32 +280,35 @@ namespace MishaK
 				previousVertexEdgeSupport = currentVertexEdgeSupport;
 			}
 
-			if (emptyPolygon){
+			if( emptyPolygon )
+			{
 				polygon.vertices.clear();
 				polygon.vertexIndices.clear();
 				polygon.atlasEdgeIndices.clear();
 				polygon.atlasVertexParentEdge.clear();
 			}
-			else{
+			else
+			{
 				polygon.vertices = outputVertices;
 				polygon.vertexIndices = outputVertexIndices;
 				polygon.atlasEdgeIndices = outputEdgeIndices;
 				polygon.atlasVertexParentEdge = outputParentVertexEdgeIndices;
 
-#ifdef SANITY_CHECK
-				if( polygon.vertices.size()!=polygon.vertexIndices.size() || polygon.vertices.size()!=polygon.atlasEdgeIndices.size() || polygon.vertices.size()!=polygon.atlasVertexParentEdge.size() )
-					MK_THROW( "Polygon array size does not match" );
+				if constexpr( SanityCheck )
+				{
+					if( polygon.vertices.size()!=polygon.vertexIndices.size() || polygon.vertices.size()!=polygon.atlasEdgeIndices.size() || polygon.vertices.size()!=polygon.atlasVertexParentEdge.size() )
+						MK_THROW( "Polygon array size does not match" );
 
-				//Check for non consecutive colinear edges
-				for( unsigned int i=0 ; i<polygon.atlasEdgeIndices.size() ; i++ )
-					if( polygon.atlasEdgeIndices[i]!=AtlasMeshEdgeIndex(-1) && polygon.atlasEdgeIndices[i]==polygon.atlasEdgeIndices[ (i+1)%polygon.atlasEdgeIndices.size() ] )
-						MK_THROW( "Unexpected consecutive colinear edges" );
-#endif // SANITY_CHECK
+					//Check for non consecutive colinear edges
+					for( unsigned int i=0 ; i<polygon.atlasEdgeIndices.size() ; i++ )
+						if( polygon.atlasEdgeIndices[i]!=AtlasMeshEdgeIndex(-1) && polygon.atlasEdgeIndices[i]==polygon.atlasEdgeIndices[ (i+1)%polygon.atlasEdgeIndices.size() ] )
+							MK_THROW( "Unexpected consecutive colinear edges" );
+				}
 			}
 		}
 
 		// Only for convex polygons
-		template< typename GeometryReal >
+		template< bool SanityCheck , typename GeometryReal >
 		unsigned int ClipPartiallyIndexedPolygonToIndexedTriangle( IndexedPolygon< GeometryReal > &polygon , const IndexedTriangle< GeometryReal > &triangle )
 		{
 			Point2D< GeometryReal > triangleCenter = ( triangle.vertices[0] + triangle.vertices[1] + triangle.vertices[2] ) / 3;
@@ -310,7 +321,7 @@ namespace MishaK
 				edgeEquation.makePositive( triangleCenter );
 
 				ChartMeshVertexIndex vertexIndices[2] = { triangle.vertexIndices[ eIndex[0] ] , triangle.vertexIndices[ eIndex[1] ] };
-				ClipPartiallyIndexedPolygonToIndexedEdge( polygon , edgeEquation , triangle.atlasEdgeIndices[k] , vertexIndices );
+				ClipPartiallyIndexedPolygonToIndexedEdge< SanityCheck >( polygon , edgeEquation , triangle.atlasEdgeIndices[k] , vertexIndices );
 			}
 
 			return (unsigned int)polygon.vertices.size();
@@ -331,7 +342,7 @@ namespace MishaK
 
 		// Points in general positions
 		// Clipping a convex polygon with an edge equation associated to the given edge index
-		template< typename GeometryReal , typename MeshEdgesToKey /* = std::function< GridMeshIntersectionKey ( AtlasMeshEdgeIndex , AtlasMeshIndex ) > */ >
+		template< bool SanityCheck , typename GeometryReal , typename MeshEdgesToKey /* = std::function< GridMeshIntersectionKey ( AtlasMeshEdgeIndex , AtlasMeshIndex ) > */ >
 		void ClipIndexedIntersectionPolygonToIndexedIntersectionEdge
 		(
 			IndexedIntersectionPolygon< GeometryReal > &polygon ,
@@ -384,13 +395,9 @@ namespace MishaK
 						// [WARNING] In the case that the previous edge index is of atlas type, we are creating an invalid GridMeshIntersectionKey
 						if     ( std::optional< AtlasGridEdgeIndex >  g = previousEdgeIndex.grid() ) outputCornerKeys.push_back( GridMeshIntersectionKey( * g , *m ) );
 						else if( std::optional< AtlasMeshEdgeIndex > _m = previousEdgeIndex.mesh() ) outputCornerKeys.push_back( m2k( *_m , *m ) );
-#ifdef SANITY_CHECK
-						else MK_THROW( "Bad previous edge index" );
-#endif // SANITY_CHECK
+						else if constexpr( SanityCheck ) MK_THROW( "Bad previous edge index" );
 					}
-#ifdef SANITY_CHECK
-					else MK_THROW( "Expected mesh edge type" );
-#endif // SANITY_CHECK
+					else if constexpr( SanityCheck ) MK_THROW( "Expected mesh edge type" );
 
 					// If the previous is interior, the edge emenating from the new vertex follows the introduced edge
 					outputEdgeIndices.push_back( isPreviousInterior ? edgeIndex : previousEdgeIndex );
@@ -410,7 +417,7 @@ namespace MishaK
 		}
 
 		// A function clipping the edges of a (convex) cell to the sides of a triangle
-		template< typename GeometryReal >
+		template< bool SanityCheck , typename GeometryReal >
 		unsigned int ClipIndexedIntersectionPolygonToIndexedIntersectionTriangle
 		(
 			IndexedIntersectionPolygon< GeometryReal > &polygon ,
@@ -426,9 +433,7 @@ namespace MishaK
 			{
 				std::optional< AtlasMeshEdgeIndex > m1 = triangle.outgoingEdgeIndices[k].mesh();
 				std::optional< AtlasMeshEdgeIndex > m2 = triangle.outgoingEdgeIndices[(k+2)%3].mesh();
-#ifdef SANITY_CHECK
-				if( !m1 || !m2 ) MK_THROW( "Expected incident edges to be mesh edges" );
-#endif // SANITY_CHECK
+				if constexpr( SanityCheck ) if( !m1 || !m2 ) MK_THROW( "Expected incident edges to be mesh edges" );
 				cornerEdges[2*k+0] = std::make_pair( *m1 , *m2 );
 				cornerEdges[2*k+1] = std::make_pair( *m2 , *m1 );
 			}
@@ -437,9 +442,7 @@ namespace MishaK
 				{
 					std::pair< AtlasMeshEdgeIndex , AtlasMeshEdgeIndex > m = std::make_pair( m1 , m2 );
 					for( unsigned int i=0 ; i<6 ; i++ ) if( m==cornerEdges[i] ) return triangle.cornerKeys[i/2];
-#ifdef SANITY_CHECK
-					MK_THROW( "Could not match mesh edges: " , m1 , " : " , m2 );
-#endif // SANITY_CHECK
+					if constexpr( SanityCheck ) MK_THROW( "Could not match mesh edges: " , m1 , " : " , m2 );
 					return GridMeshIntersectionKey();
 				};
 
@@ -449,15 +452,15 @@ namespace MishaK
 				// Compute edge normal (pointing inside)
 				SimplexIndex< 1 > eIndex = OutgoingEdgeIndex( k );
 				EdgeEquation< GeometryReal > edgeEquation( triangle.vertices[ eIndex[0] ] , triangle.vertices[ eIndex[1] ] , true );
-#ifdef SANITY_CHECK
-				bool _reverseOrientation = edgeEquation.makePositive( triangleCenter );
-				if( !k ) reverseOrientation = _reverseOrientation;
-				else if( reverseOrientation!=_reverseOrientation ) MK_THROW( "Inconsistent orientation" );
-#else // !SANITY_CHECK
-				reverseOrientation = edgeEquation.makePositive( triangleCenter );
-#endif // SANITY_CHECK
+				if constexpr( SanityCheck )
+				{
+					bool _reverseOrientation = edgeEquation.makePositive( triangleCenter );
+					if( !k ) reverseOrientation = _reverseOrientation;
+					else if( reverseOrientation!=_reverseOrientation ) MK_THROW( "Inconsistent orientation" );
+				}
+				else reverseOrientation = edgeEquation.makePositive( triangleCenter );
 
-				ClipIndexedIntersectionPolygonToIndexedIntersectionEdge( polygon , edgeEquation , triangle.outgoingEdgeIndices[k] , IntersectingMeshEdgesToCornerKey );
+				ClipIndexedIntersectionPolygonToIndexedIntersectionEdge< SanityCheck >( polygon , edgeEquation , triangle.outgoingEdgeIndices[k] , IntersectingMeshEdgesToCornerKey );
 			}
 
 			if( reverseOrientation )

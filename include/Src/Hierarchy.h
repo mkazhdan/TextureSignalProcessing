@@ -624,7 +624,7 @@ namespace MishaK
 				size_t numBoundary( void ) const { return _boundaryToCombined.size(); }
 				size_t numInterior( void ) const { return _interiorToCombined.size(); }
 			protected:
-				template< typename GeometryReal >
+				template< bool SanityCheck , typename GeometryReal >
 				friend void InitializeIndexConverter( const ExplicitIndexVector< ChartIndex , GridChart< GeometryReal > > & , AtlasTexelIndex , IndexConverter & );
 
 				ExplicitIndexVector< AtlasTexelIndex , std::pair< bool , unsigned int > > _combinedToBoundaryOrInterior;

@@ -71,7 +71,7 @@ namespace MishaK
 
 			std::vector< unsigned int > oppositeHalfEdges( void ) const;
 			std::vector< unsigned int > boundaryHalfEdges( void ) const;
-			std::vector< unsigned int > trianglesToComponents( unsigned int &numComponents ) const;
+			std::vector< unsigned int > trianglesToComponents( unsigned int &numComponents , bool sanityCheck ) const;
 
 			Point< Real , Dim > centroid( void ) const;
 			Real boundingRadius( Point< Real , Dim > center=Point< Real , Dim >() ) const;

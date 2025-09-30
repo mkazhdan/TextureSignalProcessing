@@ -92,6 +92,7 @@ CmdLineReadable Double( "double" );
 CmdLineReadable Seamless( "seamless" );
 CmdLineReadable Serial( "serial" );
 CmdLineReadable ColorAsNormal( "colorAsNormal" );
+CmdLineReadable SanityCheck( "sanityCheck" );
 #ifdef NO_OPEN_GL_VISUALIZATION
 #else // !NO_OPEN_GL_VISUALIZATION
 CmdLineReadable Nearest( "nearest" );
@@ -124,6 +125,7 @@ CmdLineReadable* params[] =
 	&Nearest ,
 #endif // NO_OPEN_GL_VISUALIZATION
 	&NoHelp ,
+	&SanityCheck ,
 	NULL
 };
 
@@ -170,6 +172,7 @@ void ShowUsage( const char* ex )
 	printf( "\t[--%s <multigrid padded height>=%d]\n"  , MultigridPaddedHeight.name.c_str()  , MultigridPaddedHeight.value  );
 	printf( "\t[--%s <collapse epsilon>=%g]\n" , CollapseEpsilon.name.c_str() , CollapseEpsilon.value );
 	printf( "\t[--%s]\n" , Serial.name.c_str() );
+	printf( "\t[--%s]\n" , SanityCheck.name.c_str() );
 	printf( "\t[--%s]\n" , NoHelp.name.c_str() );
 	printf( "\t[--%s]\n" , Paused.name.c_str() );
 }
@@ -791,7 +794,7 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::InitializeSystem( int wi
 	ExplicitIndexVector< ChartIndex , AtlasChart< PreReal > > atlasCharts;
 
 	MultigridBlockInfo multigridBlockInfo( MultigridBlockWidth.value , MultigridBlockHeight.value , MultigridPaddedWidth.value , MultigridPaddedHeight.value );
-	InitializeHierarchy( mesh , width , height , levels , textureNodes , hierarchy , atlasCharts , multigridBlockInfo );
+	InitializeHierarchy( mesh , width , height , levels , textureNodes , hierarchy , atlasCharts , multigridBlockInfo , SanityCheck.set );
 	if( Verbose.set ) std::cout << pMeter( "Hierarchy" ) << std::endl;
 
 	std::vector< Point3D< Real > > low_x0( textureNodes.size() );
@@ -802,7 +805,7 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::InitializeSystem( int wi
 	{
 		ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > > parameterMetric;
 		InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric );
-		OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , divergenceOperator );
+		OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , divergenceOperator , SanityCheck.set );
 	}
 	if( Verbose.set ) std::cout << pMeter( "Mass and stiffness" ) << std::endl;
 
@@ -1043,11 +1046,8 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::Init( void )
 			_p.p = Point2D< PreReal >( (PreReal)1./3 , (PreReal)1./3 );
 			_p.v = textureNodes[i].barycentricCoords - _p.p;
 
-#ifdef SANITY_CHECK
-			rMesh.exp( xForms , _p , 0 , false );
-#else // !SANITY_CHECK
-			rMesh.exp( xForms , _p );
-#endif // SANITY_CHECK
+			if( SanityCheck.set ) rMesh.exp( xForms , _p , 0 , false );
+			else rMesh.exp( xForms , _p );
 
 			textureNodes[i].tID = AtlasMeshTriangleIndex( _p.tIdx );
 			textureNodes[i].barycentricCoords = _p.p;

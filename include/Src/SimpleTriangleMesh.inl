@@ -122,7 +122,7 @@ Real SimpleTriangleMesh< Real , Dim >::boundingRadius( Point< Real , Dim > cente
 }
 
 template< typename Real , unsigned int Dim >
-std::vector< unsigned int > SimpleTriangleMesh< Real , Dim >::trianglesToComponents( unsigned int &numComponents ) const
+std::vector< unsigned int > SimpleTriangleMesh< Real , Dim >::trianglesToComponents( unsigned int &numComponents , bool sanityCheck ) const
 {
 	UnionFind uf( triangles.size() );
 	std::vector< unsigned int > oppositeHalfEdges = this->oppositeHalfEdges();
@@ -144,7 +144,7 @@ std::vector< unsigned int > SimpleTriangleMesh< Real , Dim >::trianglesToCompone
 		);
 	numComponents = componentIndex;
 
-#ifdef SANITY_CHECK
+	if( sanityCheck )
 	{
 		std::vector< unsigned int > vertexComponents( vertices.size() , -1 );
 		for( unsigned int t=0 ; t<triangles.size() ; t++ ) for( unsigned int k=0 ; k<=2 ; k++ )
@@ -162,7 +162,6 @@ std::vector< unsigned int > SimpleTriangleMesh< Real , Dim >::trianglesToCompone
 			}
 		}
 	}
-#endif // SANITY_CHECK
 	return components;
 }
 

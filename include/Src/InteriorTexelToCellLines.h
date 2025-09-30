@@ -31,7 +31,7 @@ namespace MishaK
 {
 	namespace TSP
 	{
-		template< typename GeometryReal , typename MatrixReal >
+		template< bool SanityCheck , typename GeometryReal , typename MatrixReal >
 		void InitializeInteriorTexelToCellLines( std::vector< InteriorTexelToCellLine > &interiorTexeltoCellLine , const GridAtlas< GeometryReal , MatrixReal > &gridAtlas )
 		{
 			const std::vector<RasterLine> & rasterLines = gridAtlas.rasterLines;
@@ -49,14 +49,10 @@ namespace MishaK
 				interiorTexeltoCellLine[i].texelEndIndex = rasterLines[i].lineEndIndex;
 				interiorTexeltoCellLine[i].coeffOffset = rasterLines[i].coeffStartIndex;
 
-#ifdef SANITY_CHECK
-				if( gridCharts[chartID].cellType(ci-1,cj-1)!=CellType::Interior ) MK_THROW( "Non interior cell" );
-#endif // SANITY_CHECK
+				if constexpr( SanityCheck ) if( gridCharts[chartID].cellType(ci-1,cj-1)!=CellType::Interior ) MK_THROW( "Non interior cell" );
 				interiorTexeltoCellLine[i].previousCellStartIndex = gridCharts[chartID].chartToAtlasCombinedCellIndex( gridCharts[chartID].cellIndices( ci-1 , cj-1 ).combined );
 
-#ifdef SANITY_CHECK
-				if( gridCharts[chartID].cellType(ci-1,cj)!=CellType::Interior ) MK_THROW( "Non interior cell" );
-#endif // SANITY_CHECK
+				if constexpr( SanityCheck ) if( gridCharts[chartID].cellType(ci-1,cj)!=CellType::Interior ) MK_THROW( "Non interior cell" );
 				interiorTexeltoCellLine[i].nextCellStartIndex = gridCharts[chartID].chartToAtlasCombinedCellIndex( gridCharts[chartID].cellIndices( ci-1 , cj ).combined );
 			}
 		}

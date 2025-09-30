@@ -30,12 +30,13 @@ DAMAGE.
 template< typename GeometryReal >
 void AtlasMesh< GeometryReal >::initialize
 (
-	const TexturedTriangleMesh< GeometryReal > &inputMesh
+	const TexturedTriangleMesh< GeometryReal > &inputMesh ,
+	bool sanityCheck
 )
 {
 	// Compute the mapping from triangles to charts
 	{
-		std::vector< unsigned int > triangleToChart = inputMesh.texture.trianglesToComponents( _numCharts );
+		std::vector< unsigned int > triangleToChart = inputMesh.texture.trianglesToComponents( _numCharts , sanityCheck );
 		_triangleToChart.resize( triangleToChart.size() );
 		for( unsigned int i=0 ; i<triangleToChart.size() ; i++ ) _triangleToChart[ AtlasMeshTriangleIndex(i) ] = ChartIndex( triangleToChart[i] );
 	}

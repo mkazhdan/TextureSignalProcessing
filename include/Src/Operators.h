@@ -109,6 +109,7 @@ namespace MishaK
 				AtlasTexelIndex texelStart;
 				AtlasTexelIndex texelEnd;
 
+				template< bool SanityCheck >
 				static std::vector< DivergenceRasterLine > GetRasterLines
 				(
 					const Map< SimplexIndex< 1 , AtlasTexelIndex > , unsigned int > &coarseEdgeIndex ,
@@ -195,7 +196,8 @@ namespace MishaK
 				MassAndStiffnessOperators< MatrixReal > & massAndStiffnessOperators ,
 				const GridAtlas< GeometryReal , MatrixReal > & gridAtlas ,
 				const ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > > & parameterMetric ,
-				const ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > > & atlasCharts
+				const ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > > & atlasCharts ,
+				bool sanityCheck
 			);
 
 			template< typename GeometryReal , typename MatrixReal >
@@ -206,7 +208,8 @@ namespace MishaK
 				const GridAtlas< GeometryReal , MatrixReal > & gridAtlas ,
 				const ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > > & parameterMetric ,
 				const ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > > & atlasCharts ,
-				DivergenceOperator< MatrixReal > & divergenceOperator 
+				DivergenceOperator< MatrixReal > & divergenceOperator ,
+				bool sanityCheck
 			);
 
 			template< typename GeometryReal , typename MatrixReal >
@@ -217,7 +220,8 @@ namespace MishaK
 				const GridAtlas< GeometryReal , MatrixReal > & gridAtlas ,
 				const ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > > & parameterMetric ,
 				const ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > > & atlasCharts ,
-				const BoundaryProlongationData< MatrixReal > & boundaryProlongation
+				const BoundaryProlongationData< MatrixReal > & boundaryProlongation ,
+				bool sanityCheck
 			);
 
 			template< typename GeometryReal , typename MatrixReal >
@@ -229,7 +233,8 @@ namespace MishaK
 				const ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > > & parameterMetric ,
 				const ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > > & atlasCharts ,
 				const BoundaryProlongationData< MatrixReal > &boundaryProlongation ,
-				DivergenceOperator< MatrixReal > & divergenceOperator 
+				DivergenceOperator< MatrixReal > & divergenceOperator ,
+				bool sanityCheck
 			);
 
 			template< typename GeometryReal , typename MatrixReal , typename SampleType >
@@ -242,7 +247,8 @@ namespace MishaK
 				const ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > > & atlasCharts ,
 				Integrator< MatrixReal , SampleType > & integrator ,
 				unsigned int numSamples ,
-				bool approximate
+				bool approximate ,
+				bool sanityCheck
 			);
 
 			template< typename GeometryReal , typename MatrixReal , typename SampleType >
@@ -256,12 +262,13 @@ namespace MishaK
 				DivergenceOperator< MatrixReal > & divergenceOperator ,
 				Integrator< MatrixReal , SampleType > & integrator ,
 				unsigned int numSamples ,
-				bool approximate
+				bool approximate ,
+				bool sanityCheck
 			);
 
 		protected:
 
-			template< unsigned int Samples , typename GeometryReal , typename MatrixReal >
+			template< unsigned int Samples , bool SanityCheck , typename GeometryReal , typename MatrixReal >
 			static void _InitializeChart
 			(
 				const ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > &texture_metrics ,
@@ -281,7 +288,7 @@ namespace MishaK
 				std::vector< MatrixReal > & deepDivergenceCoefficients
 			);
 
-			template< unsigned int Samples , typename GeometryReal , typename MatrixReal >
+			template< unsigned int Samples , bool SanityCheck , typename GeometryReal , typename MatrixReal >
 			static void _Initialize
 			(
 				const ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > > &parameterMetric ,
@@ -303,7 +310,7 @@ namespace MishaK
 				std::vector< MatrixReal >& deepDivergenceCoefficients
 			);
 
-			template< unsigned int Samples , typename GeometryReal , typename MatrixReal >
+			template< unsigned int Samples , bool SanityCheck , typename GeometryReal , typename MatrixReal >
 			static void _Initialize
 			(
 				MassAndStiffnessOperators< MatrixReal > & massAndStiffnessOperators ,
@@ -315,7 +322,7 @@ namespace MishaK
 				DivergenceOperator< MatrixReal > & divergenceOperator
 			);
 
-			template< typename GeometryReal , typename MatrixReal >
+			template< bool SanityCheck , typename GeometryReal , typename MatrixReal >
 			static void _Initialize
 			(
 				unsigned int samples ,
