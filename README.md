@@ -1,4 +1,4 @@
-<center><h2>Gradient Domain Texture Processing (Version 9.55)</h2></center>
+<center><h2>Gradient Domain Texture Processing (Version 9.60)</h2></center>
 <center>
 <a href="#LINKS">links</a>
 <a href="#EXECUTABLES">executables</a>
@@ -34,6 +34,7 @@ This software supports gradient-domain signal processing within a texture atlas.
 <B>Data:</B>
 <A HREF="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/TSP.Data.zip">ZIP</A><br>
 <b>Older Versions:</b>
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version9.55/">V9.55</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version9.50/">V9.50</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version9.10/">V9.10</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version9.05/">V9.05</a>,
@@ -109,6 +110,9 @@ The default value for this parameter is 1.
 <dd> If enabled, this flag specifies that a direct solver should be used (instead of the default multigrid solver).
 </dd>
 
+</dd><dt>[<b>--sanityCheck</B>]</dt>
+<dd> If enabled, this flag specifies that sanity-checks should be run to confirm that the texture-mapping is valid (e.g. that flipped triangles do not extend beyond the boundaries of the charts) and an exception is thrown if the mapping is found to be invalid.
+</dd>
 
 </details>
 </dl>
@@ -165,15 +169,14 @@ The default value for this parameter is -1, indicating no dilation.
 <dd> If specified, this integer value is used to seed the random number generation for jittering. (This is used to avoid singular situations when mesh vertices fall directly on edges in the texture grid. In such a situation, the executable will issue a warning <B>"Zero row at index ..."</B>.)
 </dd>
 
-</dd><dt>[<b>--useDirectSolver</B>]</dt>
-<dd> If enabled, this flag specifies that a direct solver should be used (instead of the default multigrid solver).
-</dd>
-
 </dd><dt>[<b>--multi</B>]</dt>
 <dd> If enabled, this flag specifies that the second and third arguments to the <b>--in</b> parameter are to be interpreted as format specifiers for the textures confidence map files.<BR>
 <B>Note:</B> If this flat is enabled, the input masks must be specified using the <b>--mask</b> parameter.
 </dd>
 
+</dd><dt>[<b>--sanityCheck</B>]</dt>
+<dd> If enabled, this flag specifies that sanity-checks should be run to confirm that the texture-mapping is valid (e.g. that flipped triangles do not extend beyond the boundaries of the charts) and an exception is thrown if the mapping is found to be invalid.
+</dd>
 
 </details>
 </dl>
@@ -249,6 +252,10 @@ The default value for this parameter is 2048.
 <dd> If enabled, this flag specifies that a direct solver should be used (instead of the default multigrid solver).
 </dd>
 
+</dd><dt>[<b>--sanityCheck</B>]</dt>
+<dd> If enabled, this flag specifies that sanity-checks should be run to confirm that the texture-mapping is valid (e.g. that flipped triangles do not extend beyond the boundaries of the charts) and an exception is thrown if the mapping is found to be invalid.
+</dd>
+
 </details>
 </dl>
 </ul>
@@ -287,6 +294,10 @@ The default value for this parameter is 1024.
 
 </dd><dt>[<b>--useDirectSolver</B>]</dt>
 <dd> If enabled, this flag specifies that a direct solver should be used (instead of the default multigrid solver).
+</dd>
+
+</dd><dt>[<b>--sanityCheck</B>]</dt>
+<dd> If enabled, this flag specifies that sanity-checks should be run to confirm that the texture-mapping is valid (e.g. that flipped triangles do not extend beyond the boundaries of the charts) and an exception is thrown if the mapping is found to be invalid.
 </dd>
 
 
@@ -330,12 +341,16 @@ The default value for this parameter is 512.
 <dd> If specified, this integer value is used to seed the random number generation for jittering. (This is used to avoid singular situations when mesh vertices fall directly on edges in the texture grid. In such a situation, the executable will issue a warning <B>"Zero row at index ..."</B>.)
 </dd>
 
+</dd><dt>[<b>--dots</B>]</dt>
+<dd> If enabled, this flag specifies that the feed/kill parameters for dot-formation should be used. Otherwise, the feed/kill parameters for stripes are used.
+</dd>
+
 </dd><dt>[<b>--useDirectSolver</B>]</dt>
 <dd> If enabled, this flag specifies that a direct solver should be used (instead of the default multigrid solver).
 </dd>
 
-</dd><dt>[<b>--dots</B>]</dt>
-<dd> If enabled, this flag specifies that the feed/kill parameters for dot-formation should be used. Otherwise, the feed/kill parameters for stripes are used.
+</dd><dt>[<b>--sanityCheck</B>]</dt>
+<dd> If enabled, this flag specifies that sanity-checks should be run to confirm that the texture-mapping is valid (e.g. that flipped triangles do not extend beyond the boundaries of the charts) and an exception is thrown if the mapping is found to be invalid.
 </dd>
 
 </details>
@@ -772,6 +787,11 @@ The interface is simlar to that of <CODE>GradientDomain</CODE> and the details o
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version9.55/">Version 9.55</a>:
 <ul>
 <LI> Added support for reading/writing <CODE>.exr</CODE> images.
+</ul>
+
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version9.60/">Version 9.60</a>:
+<ul>
+<LI> Added <CODE>--sanityCheck</CODE> flag to support testing if the texture mapping is corrupted.
 </ul>
 
 </details>
