@@ -715,7 +715,7 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 						_vectorField[ AtlasMeshTriangleIndex(i) ] = (s[1]-s[0]) * vectorField[ AtlasMeshTriangleIndex(i) ][0] + (s[2]-s[0]) * vectorField[ AtlasMeshTriangleIndex(i) ][1];
 					}
 				);
-			WriteVector( ( const std::vector< Point3D< PreReal > > & )_vectorField , OutVectorField.value );
+			WriteVector( ( const std::vector< Point3D< PreReal > > & )_vectorField , OutVectorField.value , false );
 #else
 			if( IntrinsicVectorField.set ) WriteVector( vectorField , OutVectorField.value );
 			else

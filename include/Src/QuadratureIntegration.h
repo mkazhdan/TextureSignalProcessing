@@ -159,7 +159,11 @@ namespace MishaK
 			Real element_area
 		)
 		{
+#ifdef SUPPORT_CONFIDENCE
+			for( unsigned int k=0 ; k<4 ; k++ ) sampleData.dualGradients[k] = sample.invTensor * interiorSampleData.dualGradients[k] * element_area;
+#else // !SUPPORT_CONFIDENCE
 			for( unsigned int k=0 ; k<4 ; k++ ) sampleData.dualGradients[k] = sample.tensor * interiorSampleData.dualGradients[k] * element_area;
+#endif // SUPPORT_CONFIDENCE
 		}
 
 		template< unsigned int Samples , typename Real >
@@ -187,7 +191,11 @@ namespace MishaK
 		{
 			// Compute the integrated gradients of each bilinear basis functions in the frame of the cell, weighted by the area of the unit triangle
 			// Dualize the samples so that integration is simple a dot-product
+#ifdef SUPPORT_CONFIDENCE
+			for( unsigned int k=0 ; k<4 ; k++ ) sampleData.dualGradients[k] += sample.invTensor * Point2D< Real >( BilinearElementGradient( k , pos ) * fragment_quadrature_weight );
+#else // !SUPPORT_CONFIDENCE
 			for( unsigned int k=0 ; k<4 ; k++ ) sampleData.dualGradients[k] += sample.tensor * Point2D< Real >( BilinearElementGradient( k , pos ) * fragment_quadrature_weight );
+#endif // SUPPORT_CONFIDENCE
 		}
 
 		template< unsigned int Samples , typename Real >
@@ -215,7 +223,11 @@ namespace MishaK
 		{
 			// Compute the integrated gradients of each quadratic basis functions in the frame of the cell, weighted by the area of the unit triangle
 			// Dualize the samples so that integration is simple a dot-product
+#ifdef SUPPORT_CONFIDENCE
+			for( unsigned int k=0 ; k<6 ; k++ ) sampleData.dualGradients[k] += sample.invTensor * Point2D< Real >( QuadraticElement::Differential( k , pos ) * fragment_quadrature_weight );
+#else // !SUPPORT_CONFIDENCE
 			for( unsigned int k=0 ; k<6 ; k++ ) sampleData.dualGradients[k] += sample.tensor * Point2D< Real >( QuadraticElement::Differential( k , pos ) * fragment_quadrature_weight );
+#endif // SUPPORT_CONFIDENCE
 		}
 
 		template< unsigned int Samples , bool SanityCheck , typename GeometryReal , typename ElementSamples >
@@ -371,7 +383,12 @@ namespace MishaK
 
 								typename ElementSamples::Bilinear bilinearElementSample( fastIntegration ? 1 : 2*Samples );
 								bilinearElementSample.cellOffset = cellLineOffset;
+#ifdef SUPPORT_CONFIDENCE
+								bilinearElementSample.cellIndex = I;
+								for( unsigned int x=0 ; x<2 ; x++ ) for( unsigned int y=0 ; y<2 ; y++ ) bilinearElementSample.invTensor(x,y) = (typename ElementSamples::Real)element_metric_inverse(x,y);
+#else // !SUPPORT_CONFIDENCE
 								for( unsigned int x=0 ; x<2 ; x++ ) for( unsigned int y=0 ; y<2 ; y++ ) bilinearElementSample.tensor(x,y) = (typename ElementSamples::Real)element_metric_inverse(x,y);
+#endif // SUPPORT_CONFIDENCE
 
 								if( fastIntegration )
 								{
@@ -411,7 +428,12 @@ namespace MishaK
 									// There is a single sample for the whole polygon
 									typename ElementSamples::Bilinear bilinearElementSample( fastIntegration ? 1 : (polygon.size()-2)*Samples );
 									bilinearElementSample.cellOffset = cellLineOffset;
+#ifdef SUPPORT_CONFIDENCE
+									bilinearElementSample.cellIndex = I;
+									for( unsigned int x=0 ; x<2 ; x++ ) for( unsigned int y=0 ; y<2 ; y++ ) bilinearElementSample.invTensor(x,y) = (typename ElementSamples::Real)element_metric_inverse(x,y);
+#else // !SUPPORT_CONFIDENCE
 									for( unsigned int x=0 ; x<2 ; x++ ) for( unsigned int y=0 ; y<2 ; y++ ) bilinearElementSample.tensor(x,y) = (typename ElementSamples::Real)element_metric_inverse(x,y);
+#endif // SUPPORT_CONFIDENCE
 
 									for( unsigned int p=2 ; p<polygon.size() ; p++ )
 									{
@@ -469,7 +491,12 @@ namespace MishaK
 										SquareMatrix< GeometryReal , 2 > element_metric_inverse = element_metric.inverse();
 										GeometryReal element_area = sqrt( element_metric.determinant() );
 										typename ElementSamples::Quadratic quadraticElementSample( fastIntegration ? 1 : (unsigned int)(polygon.size()-2)*Samples );
+#ifdef SUPPORT_CONFIDENCE
+										quadraticElementSample.cellIndex = I;
+										for( int x=0 ; x<2 ; x++ ) for( int y=0 ; y<2 ; y++ ) quadraticElementSample.invTensor(x,y) = (typename ElementSamples::Real)element_metric_inverse(x,y);
+#else // !SUPPORT_CONFIDENCE
 										for( int x=0 ; x<2 ; x++ ) for( int y=0 ; y<2 ; y++ ) quadraticElementSample.tensor(x,y) = (typename ElementSamples::Real)element_metric_inverse(x,y);
+#endif // SUPPORT_CONFIDENCE
 										const QuadraticElement::Index& triangleElementIndices = gridChart.boundaryTriangles[chartBoundaryIndex][bt].indices;
 										for( unsigned int k=0 ; k<6 ; k++ )
 										{
@@ -557,12 +584,24 @@ namespace MishaK
 			const BilinearElementScalarSample< Real > &sample ,
 			const ValueFunctionType &ValueFunction ,
 			const InT cornerValues[] ,
+#ifdef SUPPORT_CONFIDENCE
+			OutT rhsValues[] ,
+			Real metricScale
+#else // !SUPPORT_CONFIDENCE
 			OutT rhsValues[]
+#endif // SUPPORT_CONFIDENCE
 		)
 		{
+#ifdef SUPPORT_CONFIDENCE
+			Real metricScale2 = metricScale * metricScale;
+#endif // SUPPORT_CONFIDENCE
 			for( unsigned int s=0 ; s<sample.size() ; s++ )
 			{
+#ifdef SUPPORT_CONFIDENCE
+				OutT scalar = ValueFunction( sample[s]( cornerValues ) , sample.invTensor ) * metricScale;
+#else // !SUPPORT_CONFIDENCE
 				OutT scalar = ValueFunction( sample[s]( cornerValues ) , sample.tensor );
+#endif // SUPPORT_CONFIDENCE
 				for( unsigned int k=0 ; k<4 ; k++ ) rhsValues[k] += scalar * sample[s].dualValues[k];
 			}
 		}
@@ -573,12 +612,21 @@ namespace MishaK
 			const BilinearElementGradientSample< Real > &sample ,
 			const GradientFunctionType &GradientFunction ,
 			const InT cornerValues[] ,
+#ifdef SUPPORT_CONFIDENCE
+			OutT rhsValues[] ,
+			Real metricScale
+#else // !SUPPORT_CONFIDENCE
 			OutT rhsValues[]
+#endif // SUPPORT_CONFIDENCE
 		)
 		{
 			for( unsigned int s=0 ; s<sample.size() ; s++ )
 			{
+#ifdef SUPPORT_CONFIDENCE
+				Point2D< OutT > gradientVector = GradientFunction( sample[s]( cornerValues ) , sample.invTensor );
+#else // !SUPPORT_CONFIDENCE
 				Point2D< OutT > gradientVector = GradientFunction( sample[s]( cornerValues ) , sample.tensor );
+#endif // SUPPORT_CONFIDENCE
 				for( unsigned int k=0 ; k<4 ; k++ ) for( int d=0 ; d<2 ; d++ ) rhsValues[k] += gradientVector[d] * sample[s].dualGradients[k][d];
 			}
 		}
@@ -589,12 +637,24 @@ namespace MishaK
 			const QuadraticElementScalarSample< Real >& sample ,
 			const ValueFunctionType& ValueFunction ,
 			const InT cornerValues[] ,
+#ifdef SUPPORT_CONFIDENCE
+			OutT rhsValues[] ,
+			Real metricScale
+#else // !SUPPORT_CONFIDENCE
 			OutT rhsValues[]
+#endif // SUPPORT_CONFIDENCE
 		)
 		{
+#ifdef SUPPORT_CONFIDENCE
+			Real metricScale2 = metricScale * metricScale;
+#endif // SUPPORT_CONFIDENCE
 			for( unsigned int s=0 ; s<sample.size() ; s++ )
 			{
+#ifdef SUPPORT_CONFIDENCE
+				OutT scalar = ValueFunction( sample[s]( cornerValues ) , sample.invTensor ) * metricScale2;
+#else // !SUPPORT_CONFIDENCE
 				OutT scalar = ValueFunction( sample[s]( cornerValues ) , sample.tensor );
+#endif // SUPPORT_CONFIDENCE
 				for( unsigned int k=0 ; k<6 ; k++ ) rhsValues[k] += scalar * sample[s].dualValues[k];
 			}
 		}
@@ -605,17 +665,30 @@ namespace MishaK
 			const QuadraticElementGradientSample< Real >& sample ,
 			const GradientFunctionType& VectorFunction ,
 			const InT cornerValues[] ,
+#ifdef SUPPORT_CONFIDENCE
+			OutT rhsValues[] ,
+			Real metricScale
+#else // !SUPPORT_CONFIDENCE
 			OutT rhsValues[]
+#endif // SUPPORT_CONFIDENCE
 		)
 		{
 			for( unsigned int s=0 ; s<sample.size() ; s++ )
 			{
+#ifdef SUPPORT_CONFIDENCE
+				Point2D< OutT > gradientVector = VectorFunction( sample[s]( cornerValues ) , sample.invTensor );
+#else // !SUPPORT_CONFIDENCE
 				Point2D< OutT > gradientVector = VectorFunction( sample[s]( cornerValues ) , sample.tensor );
+#endif // SUPPORT_CONFIDENCE
 				for( unsigned int k=0 ; k<6 ; k++ ) for( unsigned int d=0 ; d<2 ; d++ ) rhsValues[k] += gradientVector[d] * sample[s].dualGradients[k][d];
 			}
 		}
 
+#if defined( NEW_CODE ) && defined( SUPPORT_CONFIDENCE )
+		template< typename Real , typename OutT , typename InT , typename ElementSamples , typename SampleFunctionType , typename ConfidenceFunction = std::function< Real ( typename RegularGrid< 2 >::Index ) > >
+#else // !NEW_CODE || !SUPPORT_CONFIDENCE
 		template< typename Real , typename OutT , typename InT , typename ElementSamples , typename SampleFunctionType >
+#endif // NEW_CODE && SUPPORT_CONFIDENCE
 		void Integrate
 		(
 			const std::vector< InteriorCellLine >& interiorCellLines ,
@@ -625,13 +698,28 @@ namespace MishaK
 			const SampleFunctionType& SampleFunction ,
 			std::vector< OutT >& rhs ,
 			std::vector< OutT >& boundary_rhs ,
+#ifdef SUPPORT_CONFIDENCE
+#ifdef NEW_CODE
+			const ConfidenceFunction & metricScaleFunctor = []( typename RegularGrid< 2 >::Index ){ return static_cast< Real >(1.); } ,
+#else // !NEW_CODE
+			std::function< Real ( typename RegularGrid< 2 >::Index ) > metricScaleFunctor = []( typename RegularGrid< 2 >::Index ){ return static_cast< Real >(1.); } ,
+#endif // NEW_CODE
+#endif // SUPPORT_CONFIDENCE
 			bool verbose=false
 		)
 		{
+#ifdef SUPPORT_CONFIDENCE
+			return Integrate< Real >( interiorCellLines , elementSamples , GetPointer( potential ) , GetPointer( boundary_potential ) , SampleFunction , GetPointer( rhs ) , GetPointer( boundary_rhs ) , metricScaleFunctor , verbose );
+#else // !SUPPORT_CONFIDENCE
 			return Integrate< Real >( interiorCellLines , elementSamples , GetPointer( potential ) , GetPointer( boundary_potential ) , SampleFunction , GetPointer( rhs ) , GetPointer( boundary_rhs ) , verbose );
+#endif // SUPPORT_CONFIDENCE
 		}
 
+#if defined( NEW_CODE ) && defined( SUPPORT_CONFIDENCE )
+		template< typename Real , typename OutT , typename InT , typename ElementSamples , typename SampleFunctionType , typename ConfidenceFunction = std::function< Real ( typename RegularGrid< 2 >::Index ) > >
+#else // !NEW_CODE || !SUPPORT_CONFIDENCE
 		template< typename Real , typename OutT , typename InT , typename ElementSamples , typename SampleFunctionType >
+#endif // NEW_CODE && SUPPORT_CONFIDENCE
 		void Integrate
 		(
 			const std::vector< InteriorCellLine >& interiorCellLines ,
@@ -641,6 +729,13 @@ namespace MishaK
 			const SampleFunctionType& SampleFunction ,
 			Pointer( OutT ) rhs ,
 			Pointer( OutT ) boundary_rhs ,
+#ifdef SUPPORT_CONFIDENCE
+#ifdef NEW_CODE
+			const ConfidenceFunction & metricScaleFunctor = []( typename RegularGrid< 2 >::Index ){ return static_cast< Real >(1.); } ,
+#else // !NEW_CODE
+			std::function< Real ( typename RegularGrid< 2 >::Index ) > metricScaleFunctor = []( typename RegularGrid< 2 >::Index ){ return static_cast< Real >(1.); } ,
+#endif // NEW_CODE
+#endif // SUPPORT_CONFIDENCE
 			bool verbose=false
 		)
 		{
@@ -667,9 +762,10 @@ namespace MishaK
 					const typename ElementSamples::Bilinear *samplePtr = &elementSamples.bilinear[r][0];
 					unsigned int currentOffset = 0;
 
+
 					for( unsigned int j=0 ; j<numSamples ; j++ )
 					{
-						const typename ElementSamples::Bilinear &sample = *samplePtr;
+						const typename ElementSamples::Bilinear & sample = *samplePtr;
 						if( sample.cellOffset>currentOffset )
 						{
 							cornerValues[0] = cornerValues[1];
@@ -691,7 +787,11 @@ namespace MishaK
 							currentOffset++;
 						}
 
+#ifdef SUPPORT_CONFIDENCE
+						IntegrateBilinear< Real , OutT , InT >( sample , SampleFunction , cornerValues , rhsValues , metricScaleFunctor( sample.cellIndex ) );
+#else // !SUPPORT_CONFIDENCE
 						IntegrateBilinear< Real , OutT , InT >( sample , SampleFunction , cornerValues , rhsValues );
+#endif // SUPPORT_CONFIDENCE
 						samplePtr++;
 					}
 
@@ -721,7 +821,11 @@ namespace MishaK
 					boundary_potential[ static_cast< unsigned int >(sample.fineNodes[5]) ]
 				};
 				OutT rhsValues[] = { OutT() , OutT() , OutT() , OutT() , OutT() , OutT() };
+#ifdef SUPPORT_CONFIDENCE
+				IntegrateQuadratic< Real , OutT , InT >( sample , SampleFunction , cornerValues , rhsValues , metricScaleFunctor( sample.cellIndex ) );
+#else // !SUPPORT_CONFIDENCE
 				IntegrateQuadratic< Real , OutT , InT >( sample , SampleFunction , cornerValues , rhsValues );
+#endif // SUPPORT_CONFIDENCE
 				for( unsigned int k=0 ; k<6 ; k++ ) boundary_rhs[ static_cast< unsigned int >( sample.fineNodes[k] ) ] += rhsValues[k];
 			}
 			if( verbose ) printf( "Integrated quadratic: %.2f(s)\n" , timer.elapsed() );

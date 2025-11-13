@@ -278,7 +278,7 @@ void Geodesics< PreReal , Real >::ComputeExactSolution( void )
 	//(1) Smoothing impulse	
 	fineSmoothImpulseSolver.solve( multigridSmoothImpulseVariables[0].x , multigridSmoothImpulseVariables[0].rhs );
 
-	//(1) Integrating vector field	
+	//(2) Integrating vector field	
 	std::vector< Real >& fineGeodesicDistanceRHS = multigridGeodesicDistanceVariables[0].rhs;
 
 	auto VectorFunction = []( Point2D< Real > v , SquareMatrix< Real , 2 > tensor )
@@ -558,7 +558,7 @@ void Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 	InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric );
 
 	pMeter.reset();
-	OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , gradientIntegrator , VectorFieldQuadrature.value , !PreciseIntegration.set , SanityCheck.set);
+	OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , gradientIntegrator , VectorFieldQuadrature.value , !PreciseIntegration.set , SanityCheck.set );
 	gradientIntegratorScratch = gradientIntegrator.template getScratch< Real , Real >();
 	if( Verbose.set ) std::cout << pMeter( "System" ) << std::endl;
 

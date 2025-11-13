@@ -72,6 +72,7 @@ CmdLineParameter< double >
 	CollapseEpsilon( "collapse" , 0 );
 
 CmdLineParameter< unsigned int >
+	CheckerWidth( "cWidth" ) ,
 	RasterizationType( "rasterize" , Rasterization::ACTIVE ) ,
 	DilationRadius( "radius" , 0 );
 
@@ -90,6 +91,7 @@ CmdLineReadable* params[] =
 	&CollapseEpsilon ,
 	&RasterizationType ,
 	&DilationRadius ,
+	&CheckerWidth ,
 	&Verbose ,
 	NULL
 };
@@ -104,6 +106,7 @@ void ShowUsage( const char* ex )
 	printf( "\t[--%s <dilation radius>]\n" , DilationRadius.name.c_str() );
 	printf( "\t[--%s <rasterization type>=%d]\n" , RasterizationType.name.c_str() , RasterizationType.value );
 	for( unsigned int i=0 ; i<Rasterization::COUNT ; i++ ) printf( "\t\t%d] %s\n" , i , RasterizationNames[i].c_str() );
+	printf( "\t[--%s <checker width>]\n" , CheckerWidth.name.c_str() );
 	printf( "\t[--%s]\n" , UseNearest.name.c_str() );
 	printf( "\t[--%s]\n" , NodeAtCorner.name.c_str() );
 	printf( "\t[--%s]\n" , Verbose.name.c_str() );
@@ -254,7 +257,16 @@ int main( int argc , char* argv[] )
 			}
 			else
 			{
-				for( size_t i=0 ; i<mask.size() ; i++ ) _mask[i] = mask[i]==0 ? Point< double , 3 >(1.,0.,.0) : Point< double , 3 >(0.,0.,1.);
+				if( CheckerWidth.value>0 )
+				{
+					auto CheckerColor = []( unsigned int x , unsigned int y , unsigned int cWidth )
+					{
+						return ( x/cWidth + y/cWidth ) % 2 ? Point3D< double >(0.,0.,0.) : Point3D< double >(1.,1.,1.);
+					};
+
+					for( unsigned int i=0 ; i<mask.res(0) ; i++ ) for( unsigned int j=0 ; j<mask.res(1) ; j++ ) _mask(i,j) = mask(i,j)==0 ? Point< double , 3 >(1.,0.,.0) : CheckerColor( i , j , CheckerWidth.value );
+				}
+				else for( size_t i=0 ; i<mask.size() ; i++ ) _mask[i] = mask[i]==0 ? Point< double , 3 >(1.,0.,.0) : Point< double , 3 >(0.,0.,1.);
 			}
 			_mask = FlipVertical( _mask );
 			WriteImage< 8 >( _mask , Output.value );

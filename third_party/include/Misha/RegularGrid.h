@@ -154,7 +154,7 @@ namespace MishaK
 			resize( grid._res );
 			for( size_t i=0 ; i<grid.resolution() ; i++ ) _values[i] = grid._values[i];
 		}
-		RegularGrid( const unsigned int *res ) : RegularGrid() { resize( res ); }
+		RegularGrid( const unsigned int * res ) : RegularGrid() { resize( res ); }
 		RegularGrid &operator = ( RegularGrid &&grid ){ _Swap( *this , grid ) ; return *this; }
 		RegularGrid &operator = ( const RegularGrid &grid )
 		{

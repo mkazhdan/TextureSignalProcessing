@@ -51,14 +51,24 @@ namespace MishaK
 		}
 
 		template<typename T>
-		void WriteVector(const std::vector<T> & vec, std::string fileName){
-
+		void WriteVector( const std::vector<T> & vec , std::string fileName , bool binary )
+		{
 			FILE * file;
-			file = fopen(fileName.c_str(), "wb");
-			int vecSize = (int)vec.size();
-			fwrite(&vecSize, sizeof(int), 1, file);
-			fwrite(&vec[0], sizeof(T), vecSize, file);
-			fclose(file);
+			if( binary )
+			{
+				file = fopen(fileName.c_str(), "wb");
+				int vecSize = (int)vec.size();
+				fwrite(&vecSize, sizeof(int), 1, file);
+				fwrite(&vec[0], sizeof(T), vecSize, file);
+			}
+			else
+			{
+				file = fopen( fileName.c_str() , "w");
+				int vecSize = (int)vec.size();
+				fprintf( file , "%d\n" , vecSize );
+				for( unsigned int i=0 ; i<vec.size() ; i++ ) fprintf( file , "%f %f %f\n" , vec[i][0] , vec[i][1] , vec[i][2] );
+			}
+			fclose( file );
 		}
 
 

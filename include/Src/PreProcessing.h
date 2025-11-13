@@ -47,6 +47,8 @@ DAMAGE.
 
 //#define USE_EIGEN_PARDISO
 
+#define SUPPORT_CONFIDENCE				// Supports weghting integrals by confidence
+
 
 #define INSERTION_EPSILON 1e-12			// Separation from interval end-points required for insertion
 #define MIN_TEXEL_WEIGHT 1e-12
