@@ -588,11 +588,11 @@ Eigen::SparseMatrix< OutReal > DivergenceOperator< Real >::operator()( void ) co
 // OperatorInitializer //
 /////////////////////////
 
-#if defined( NEW_CODE ) && defined( SUPPORT_CONFIDENCE )
+#ifdef SUPPORT_CONFIDENCE
 template< unsigned int Samples , bool SanityCheck , typename GeometryReal , typename MatrixReal , typename ConfidenceFunction /* = std::function< MatrixReal ( typename RegularGrid< 2 >::Index ) > */ >
-#else // !NEW_CODE || !SUPPORT_CONFIDENCE
+#else // !SUPPORT_CONFIDENCE
 template< unsigned int Samples , bool SanityCheck , typename GeometryReal , typename MatrixReal >
-#endif // NEW_CODE && SUPPORT_CONFIDENCE
+#endif // SUPPORT_CONFIDENCE
 void OperatorInitializer::_InitializeChart
 (
 	const ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > &texture_metrics ,
@@ -611,11 +611,7 @@ void OperatorInitializer::_InitializeChart
 	std::vector< Eigen::Triplet< MatrixReal > > & boundaryBoundaryDivergenceTriplets,
 #ifdef SUPPORT_CONFIDENCE
 	std::vector< MatrixReal > & deepDivergenceCoefficients ,
-#ifdef NEW_CODE
 	const ConfidenceFunction & metricScaleFunctor
-#else // !NEW_CODE
-	const std::function< MatrixReal ( typename RegularGrid< 2 >::Index ) > & metricScaleFunctor
-#endif // NEW_CODE
 #else // !SUPPORT_CONFIDENCE
 	std::vector< MatrixReal > & deepDivergenceCoefficients
 #endif // SUPPORT_CONFIDENCE
@@ -1226,11 +1222,11 @@ void OperatorInitializer::_InitializeChart
 	}
 }
 
-#if defined( NEW_CODE ) && defined( SUPPORT_CONFIDENCE )
+#ifdef SUPPORT_CONFIDENCE
 template< unsigned int Samples , bool SanityCheck , typename GeometryReal , typename MatrixReal , typename ConfidenceFunction /* = std::function< MatrixReal ( typename RegularGrid< 2 >::Index ) > */ >
-#else // !NEW_CODE || !SUPPORT_CONFIDENCE
+#else // !SUPPORT_CONFIDENCE
 template< unsigned int Samples , bool SanityCheck , typename GeometryReal , typename MatrixReal >
-#endif // NEW_CODE && SUPPORT_CONFIDENCE
+#endif // SUPPORT_CONFIDENCE
 void OperatorInitializer::_Initialize
 (
 	const ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< GeometryReal , 2 > > > &parameterMetric ,
@@ -1251,11 +1247,7 @@ void OperatorInitializer::_Initialize
 	std::vector< Eigen::Triplet< MatrixReal > > & boundaryBoundaryDivergenceTriplets,
 #ifdef SUPPORT_CONFIDENCE
 	std::vector< MatrixReal >& deepDivergenceCoefficients ,
-#ifdef NEW_CODE
 	const ConfidenceFunction & metricScaleFunctor
-#else // !NEW_CODE
-	const std::function< MatrixReal ( typename RegularGrid< 2 >::Index ) > & metricScaleFunctor
-#endif // NEW_CODE
 #else // !SUPPORT_CONFIDENCE
 	std::vector< MatrixReal >& deepDivergenceCoefficients
 #endif // SUPPORT_CONFIDENCE
@@ -1321,11 +1313,11 @@ void OperatorInitializer::_Initialize
 	SetSparseMatrices( boundaryDeepMassAndStiffness , static_cast< unsigned int >(gridAtlas.endBoundaryTexelIndex) , static_cast< unsigned int >(gridAtlas.endCombinedTexelIndex) , false , boundaryDeepMassMatrix , boundaryDeepStiffnessMatrix );
 }
 
-#if defined( NEW_CODE ) && defined( SUPPORT_CONFIDENCE )
+#ifdef SUPPORT_CONFIDENCE
 template< unsigned int Samples , bool SanityCheck , typename GeometryReal , typename MatrixReal , typename ConfidenceFunction /* = std::function< MatrixReal ( typename RegularGrid< 2 >::Index ) > */ >
-#else // !NEW_CODE || !SUPPORT_CONFIDENCE
+#else // !SUPPORT_CONFIDENCE
 template< unsigned int Samples , bool SanityCheck , typename GeometryReal , typename MatrixReal >
-#endif // NEW_CODE && SUPPORT_CONFIDENCE
+#endif // SUPPORT_CONFIDENCE
 void OperatorInitializer::_Initialize
 (
 	MassAndStiffnessOperators< MatrixReal > & massAndStiffnessOperators ,
@@ -1336,11 +1328,7 @@ void OperatorInitializer::_Initialize
 	bool computeDivergence ,
 #ifdef SUPPORT_CONFIDENCE
 	DivergenceOperator< MatrixReal > & divergenceOperator ,
-#ifdef NEW_CODE
 	const ConfidenceFunction & metricScaleFunctor
-#else // !NEW_CODE
-	const std::function< MatrixReal ( typename RegularGrid< 2 >::Index ) > & metricScaleFunctor
-#endif // NEW_CODE
 #else // !SUPPORT_CONFIDENCE
 	DivergenceOperator< MatrixReal > & divergenceOperator
 #endif // SUPPORT_CONFIDENCE
@@ -1423,11 +1411,11 @@ void OperatorInitializer::_Initialize
 	}
 }
 
-#if defined( NEW_CODE ) && defined( SUPPORT_CONFIDENCE )
+#ifdef SUPPORT_CONFIDENCE
 template< bool SanityCheck , typename GeometryReal , typename MatrixReal , typename ConfidenceFunction /* = std::function< MatrixReal ( typename RegularGrid< 2 >::Index ) > */ >
-#else // !NEW_CODE || !SUPPORT_CONFIDENCE
+#else // !SUPPORT_CONFIDENCE
 template< bool SanityCheck , typename GeometryReal , typename MatrixReal >
-#endif // NEW_CODE && SUPPORT_CONFIDENCE
+#endif // SUPPORT_CONFIDENCE
 void OperatorInitializer::_Initialize
 (
 	unsigned int samples ,
@@ -1439,11 +1427,7 @@ void OperatorInitializer::_Initialize
 	bool computeDivergence ,
 #ifdef SUPPORT_CONFIDENCE
 	DivergenceOperator< MatrixReal > & divergenceOperator ,
-#ifdef NEW_CODE
 	const ConfidenceFunction & metricScaleFunctor
-#else // !NEW_CODE
-	const std::function< MatrixReal ( typename RegularGrid< 2 >::Index ) > & metricScaleFunctor
-#endif // NEW_CODE
 #else // !SUPPORT_CONFIDENCE
 	DivergenceOperator< MatrixReal > & divergenceOperator
 #endif // SUPPORT_CONFIDENCE
@@ -1470,11 +1454,11 @@ void OperatorInitializer::_Initialize
 	}
 }
 
-#if defined( NEW_CODE ) && defined( SUPPORT_CONFIDENCE )
+#ifdef SUPPORT_CONFIDENCE
 template< typename GeometryReal , typename MatrixReal , typename ConfidenceFunction /* = std::function< MatrixReal ( typename RegularGrid< 2 >::Index ) > */ >
-#else // !NEW_CODE || !SUPPORT_CONFIDENCE
+#else // !SUPPORT_CONFIDENCE
 template< typename GeometryReal , typename MatrixReal >
-#endif // NEW_CODE && SUPPORT_CONFIDENCE
+#endif // SUPPORT_CONFIDENCE
 void OperatorInitializer::Initialize
 (
 	unsigned int samples ,
@@ -1485,11 +1469,7 @@ void OperatorInitializer::Initialize
 	DivergenceOperator< MatrixReal > & divergenceOperator ,
 #ifdef SUPPORT_CONFIDENCE
 	bool sanityCheck , 
-#ifdef NEW_CODE
 	const ConfidenceFunction & metricScaleFunctor
-#else // !NEW_CODE
-	const std::function< MatrixReal ( typename RegularGrid< 2 >::Index ) > & metricScaleFunctor
-#endif // NEW_CODE
 #else // !SUPPORT_CONFIDENCE
 	bool sanityCheck
 #endif // SUPPORT_CONFIDENCE
@@ -1506,11 +1486,11 @@ void OperatorInitializer::Initialize
 #endif // SUPPORT_CONFIDENCE
 }
 
-#if defined( NEW_CODE ) && defined( SUPPORT_CONFIDENCE )
+#ifdef SUPPORT_CONFIDENCE
 template< typename GeometryReal , typename MatrixReal , typename ConfidenceFunction /* = std::function< MatrixReal ( typename RegularGrid< 2 >::Index ) > */ >
-#else // !NEW_CODE || !SUPPORT_CONFIDENCE
+#else // !SUPPORT_CONFIDENCE
 template< typename GeometryReal , typename MatrixReal >
-#endif // NEW_CODE && SUPPORT_CONFIDENCE
+#endif // SUPPORT_CONFIDENCE
 void OperatorInitializer::Initialize
 (
 	unsigned int samples ,
@@ -1520,11 +1500,7 @@ void OperatorInitializer::Initialize
 	const ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > > &atlasCharts ,
 #ifdef SUPPORT_CONFIDENCE
 	bool sanityCheck , 
-#ifdef NEW_CODE
 	const ConfidenceFunction & metricScaleFunctor
-#else // !NEW_CODE
-	const std::function< MatrixReal ( typename RegularGrid< 2 >::Index ) > & metricScaleFunctor
-#endif // NEW_CODE
 #else // !SUPPORT_CONFIDENCE
 	bool sanityCheck
 #endif // SUPPORT_CONFIDENCE
@@ -1542,11 +1518,11 @@ void OperatorInitializer::Initialize
 #endif // SUPPORT_CONFIDENCE
 }
 
-#if defined( NEW_CODE ) && defined( SUPPORT_CONFIDENCE )
+#ifdef SUPPORT_CONFIDENCE
 template< typename GeometryReal , typename MatrixReal , typename ConfidenceFunction /* = std::function< MatrixReal ( typename RegularGrid< 2 >::Index ) > */ >
-#else // !NEW_CODE || !SUPPORT_CONFIDENCE
+#else // !SUPPORT_CONFIDENCE
 template< typename GeometryReal , typename MatrixReal >
-#endif // NEW_CODE && SUPPORT_CONFIDENCE
+#endif // SUPPORT_CONFIDENCE
 void OperatorInitializer::Initialize
 (
 	unsigned int samples ,
@@ -1557,11 +1533,7 @@ void OperatorInitializer::Initialize
 	const BoundaryProlongationData< MatrixReal > &boundaryProlongation ,
 #ifdef SUPPORT_CONFIDENCE
 	bool sanityCheck , 
-#ifdef NEW_CODE
 	const ConfidenceFunction & metricScaleFunctor
-#else // !NEW_CODE
-	const std::function< MatrixReal ( typename RegularGrid< 2 >::Index ) > & metricScaleFunctor
-#endif // NEW_CODE
 #else // !SUPPORT_CONFIDENCE
 	bool sanityCheck
 #endif // SUPPORT_CONFIDENCE
@@ -1577,11 +1549,11 @@ void OperatorInitializer::Initialize
 #endif // SUPPORT_CONFIDENCE
 }
 
-#if defined( NEW_CODE ) && defined( SUPPORT_CONFIDENCE )
+#ifdef SUPPORT_CONFIDENCE
 template< typename GeometryReal , typename MatrixReal , typename ConfidenceFunction /* = std::function< MatrixReal ( typename RegularGrid< 2 >::Index ) > */ >
-#else // !NEW_CODE || !SUPPORT_CONFIDENCE
+#else // !SUPPORT_CONFIDENCE
 template< typename GeometryReal , typename MatrixReal >
-#endif // NEW_CODE && SUPPORT_CONFIDENCE
+#endif // SUPPORT_CONFIDENCE
 void OperatorInitializer::Initialize
 (
 	unsigned int samples ,
@@ -1593,11 +1565,7 @@ void OperatorInitializer::Initialize
 	DivergenceOperator< MatrixReal > & divergenceOperator ,
 #ifdef SUPPORT_CONFIDENCE
 	bool sanityCheck ,
-#ifdef NEW_CODE
 	const ConfidenceFunction & metricScaleFunctor
-#else // !NEW_CODE
-	const std::function< MatrixReal ( typename RegularGrid< 2 >::Index ) > & metricScaleFunctor
-#endif // NEW_CODE
 #else // !SUPPORT_CONFIDENCE
 	bool sanityCheck
 #endif // SUPPORT_CONFIDENCE
@@ -1612,12 +1580,11 @@ void OperatorInitializer::Initialize
 #endif // SUPPORT_CONFIDENCE
 }
 
-
-#if defined( NEW_CODE ) && defined( SUPPORT_CONFIDENCE )
+#ifdef SUPPORT_CONFIDENCE
 template< typename GeometryReal , typename MatrixReal , typename SampleType , typename ConfidenceFunction /* = std::function< MatrixReal ( typename RegularGrid< 2 >::Index ) > */ >
-#else // !NEW_CODE || !SUPPORT_CONFIDENCE
+#else // !SUPPORT_CONFIDENCE
 template< typename GeometryReal , typename MatrixReal , typename SampleType >
-#endif // NEW_CODE && SUPPORT_CONFIDENCE
+#endif // SUPPORT_CONFIDENCE
 void OperatorInitializer::Initialize
 (
 	unsigned int samples ,
@@ -1630,11 +1597,7 @@ void OperatorInitializer::Initialize
 	bool approximate ,
 #ifdef SUPPORT_CONFIDENCE
 	bool sanityCheck ,
-#ifdef NEW_CODE
 	const ConfidenceFunction & metricScaleFunctor
-#else // !NEW_CODE
-	const std::function< MatrixReal ( typename RegularGrid< 2 >::Index ) > & metricScaleFunctor
-#endif // NEW_CODE
 #else // !SUPPORT_CONFIDENCE
 	bool sanityCheck
 #endif // SUPPORT_CONFIDENCE
@@ -1694,11 +1657,11 @@ void OperatorInitializer::Initialize
 	integrator.samples.sort();
 }
 
-#if defined( NEW_CODE ) && defined( SUPPORT_CONFIDENCE )
+#ifdef SUPPORT_CONFIDENCE
 template< typename GeometryReal , typename MatrixReal , typename SampleType , typename ConfidenceFunction /* = std::function< MatrixReal ( typename RegularGrid< 2 >::Index ) > */ >
-#else // !NEW_CODE || !SUPPORT_CONFIDENCE
+#else // !SUPPORT_CONFIDENCE
 template< typename GeometryReal , typename MatrixReal , typename SampleType >
-#endif // NEW_CODE && SUPPORT_CONFIDENCE
+#endif // SUPPORT_CONFIDENCE
 void OperatorInitializer::Initialize
 (
 	unsigned int samples ,
@@ -1712,28 +1675,36 @@ void OperatorInitializer::Initialize
 	bool approximate ,
 #ifdef SUPPORT_CONFIDENCE
 	bool sanityCheck ,
-#ifdef NEW_CODE
 	const ConfidenceFunction & metricScaleFunctor
-#else // !NEW_CODE
-	const std::function< MatrixReal ( typename RegularGrid< 2 >::Index ) > & metricScaleFunctor
-#endif // NEW_CODE
 #else // !SUPPORT_CONFIDENCE
 	bool sanityCheck
 #endif // SUPPORT_CONFIDENCE
 )
 {
 	BoundaryProlongationData< MatrixReal > boundaryProlongation;
-	InitializeBoundaryProlongationData( gridAtlas , boundaryProlongation );
+#ifdef NEW_CODE
+	InitializeBoundaryProlongationData( gridAtlas , boundaryProlongation , sanityCheck );
 #ifdef SUPPORT_CONFIDENCE
-	_Initialize( samples , massAndStiffnessOperators , gridAtlas , parameterMetric , atlasCharts , boundaryProlongation , true , divergenceOperator , metricScaleFunctor );
+	if( sanityCheck ) _Initialize< true  >( samples , massAndStiffnessOperators , gridAtlas , parameterMetric , atlasCharts , boundaryProlongation , true , divergenceOperator , metricScaleFunctor );
+	else              _Initialize< false >( samples , massAndStiffnessOperators , gridAtlas , parameterMetric , atlasCharts , boundaryProlongation , true , divergenceOperator , metricScaleFunctor );
 #else // !SUPPORT_CONFIDENCE
-	_Initialize( samples , massAndStiffnessOperators , gridAtlas , parameterMetric , atlasCharts , boundaryProlongation , true , divergenceOperator );
+	if( sanityCheck ) _Initialize< true  >( samples , massAndStiffnessOperators , gridAtlas , parameterMetric , atlasCharts , boundaryProlongation , true , divergenceOperator );
+	else              _Initialize< false >( samples , massAndStiffnessOperators , gridAtlas , parameterMetric , atlasCharts , boundaryProlongation , true , divergenceOperator );
 #endif // SUPPORT_CONFIDENCE
+#else // !NEW_CODE
+	InitializeBoundaryProlongationData( gridAtlas , boundaryProlongation );
+	_Initialize( samples , massAndStiffnessOperators , gridAtlas , parameterMetric , atlasCharts , boundaryProlongation , true , divergenceOperator );
+#endif // NEW_CODE
 
 	// Set integrator
 	ExplicitIndexVector< AtlasInteriorCellIndex , std::pair< unsigned int , unsigned int > > interiorCellLineIndex;
 
+#ifdef NEW_CODE
+	if( sanityCheck ) InitializeGridAtlasInteriorCellLines< true  >( gridAtlas.gridCharts , integrator.interiorCellLines , interiorCellLineIndex );
+	else              InitializeGridAtlasInteriorCellLines< false >( gridAtlas.gridCharts , integrator.interiorCellLines , interiorCellLineIndex );
+#else // !NEW_CODE
 	InitializeGridAtlasInteriorCellLines( gridAtlas.gridCharts , integrator.interiorCellLines , interiorCellLineIndex );
+#endif // NEW_CODE
 	if( interiorCellLineIndex.size()!=static_cast< unsigned int >( gridAtlas.endInteriorCellIndex) ) MK_THROW( "Inconsistent number of interior cells! Expected " , gridAtlas.endInteriorCellIndex , " . Result " , interiorCellLineIndex.size() , "." );
 
 	integrator.indexConverter = gridAtlas.indexConverter;
@@ -1791,78 +1762,53 @@ typename Integrator< Real , SampleType >::template Scratch< OutData , InData > I
 
 	return scratch;
 }
-#ifdef SUPPORT_CONFIDENCE
 
-#ifdef NEW_CODE
+#ifdef SUPPORT_CONFIDENCE
 template< typename Real , typename SampleType >
 template< typename OutData , typename InData , typename SampleFunction /* = std::function< OutData ( InData , SquareMatrix< Real , 2 > ) */ , typename ConfidenceFunction /* std::function< Real ( typename RegularGrid< 2 >::Index ) > */ >
 void Integrator< Real , SampleType >::operator()( const std::vector< InData > & primal , const SampleFunction & SF , std::vector< OutData > & dual , const ConfidenceFunction & metricScaleFunctor ) const
 {
+	static_assert( std::is_convertible_v< ConfidenceFunction , std::function< Real ( typename RegularGrid< 2 >::Index ) > > , "[ERROR] ConfidenceFunction is poorly formed" );
 	Scratch< OutData , InData > scratch = getScratch< OutData , InData >();
 	return operator()( primal , SF , scratch , dual , metricScaleFunctor );
 }
-#else // !NEW_CODE
-template< typename Real , typename SampleType >
-template< typename OutData , typename InData , typename SampleFunction /* = std::function< OutData ( InData , SquareMatrix< Real , 2 > ) */ >
-void Integrator< Real , SampleType >::operator()( const std::vector< InData > & primal , const SampleFunction & SF , std::vector< OutData > & dual , std::function< Real ( typename RegularGrid< 2 >::Index ) > metricScaleFunctor ) const
-{
-	Scratch< OutData , InData > scratch = getScratch< OutData , InData >();
-	return operator()( primal , SF , scratch , dual , metricScaleFunctor );
-}
-#endif // NEW_CODE
 
 template< typename Real , typename SampleType >
-#ifdef NEW_CODE
 template< typename OutData , typename InData , typename SampleFunction /* = std::function< OutData ( InData , SquareMatrix< Real , 2 > ) */ , typename ConfidenceFunction /* = std::function< MatrixReal ( typename RegularGrid< 2 >::Index ) > */ >
 std::vector< OutData > Integrator< Real , SampleType >::operator()( const std::vector< InData > &primal , const SampleFunction & SF , const ConfidenceFunction & metricScaleFunctor ) const
-#else // !NEW_CODE
-template< typename OutData , typename InData , typename SampleFunction /* = std::function< OutData ( InData , SquareMatrix< Real , 2 > ) */ >
-std::vector< OutData > Integrator< Real , SampleType >::operator()( const std::vector< InData > &primal , const SampleFunction & SF , std::function< Real ( typename RegularGrid< 2 >::Index ) > metricScaleFunctor ) const
-#endif // NEW_CODE
 {
+	static_assert( std::is_convertible_v< ConfidenceFunction , std::function< Real ( typename RegularGrid< 2 >::Index ) > > , "[ERROR] ConfidenceFunction is poorly formed" );
 	Scratch< OutData , InData > scratch = getScratch< OutData , InData >();
 	return operator()( primal , SF , scratch , metricScaleFunctor );
 }
 
 template< typename Real , typename SampleType >
-#ifdef NEW_CODE
 template< typename OutData , typename InData , typename SampleFunction /* = std::function< OutData ( InData , SquareMatrix< Real , 2 > ) */ , typename ConfidenceFunction /* = std::function< MatrixReal ( typename RegularGrid< 2 >::Index ) > */ >
 void Integrator< Real , SampleType >::operator()( ConstPointer( InData ) primal , const SampleFunction & SF , Pointer( OutData ) dual , const ConfidenceFunction & metricScaleFunctor ) const
-#else // !NEW_CODE
-template< typename OutData , typename InData , typename SampleFunction /* = std::function< OutData ( InData , SquareMatrix< Real , 2 > ) */ >
-void Integrator< Real , SampleType >::operator()( ConstPointer( InData ) primal , const SampleFunction & SF , Pointer( OutData ) dual , std::function< Real ( typename RegularGrid< 2 >::Index ) > metricScaleFunctor ) const
-#endif // NEW_CODE
 {
+	static_assert( std::is_convertible_v< ConfidenceFunction , std::function< Real ( typename RegularGrid< 2 >::Index ) > > , "[ERROR] ConfidenceFunction is poorly formed" );
 	Scratch< OutData , InData > scratch = getScratch< OutData , InData >();
 	return operator()( primal , SF , scratch , dual , metricScaleFunctor );
 }
 
-
 template< typename Real , typename SampleType >
-#ifdef NEW_CODE
 template< typename OutData , typename InData , typename SampleFunction /* = std::function< OutData ( InData , SquareMatrix< Real , 2 > ) */ , typename ConfidenceFunction /* = std::function< MatrixReal ( typename RegularGrid< 2 >::Index ) > */ >
 void Integrator< Real , SampleType >::operator()( const std::vector< InData > & primal , const SampleFunction & SF , Scratch< OutData , InData > & scratch , std::vector< OutData > & dual , const ConfidenceFunction & metricScaleFunctor ) const
-#else // !NEW_CODE
-template< typename OutData , typename InData , typename SampleFunction /* = std::function< OutData ( InData , SquareMatrix< Real , 2 > ) */ >
-void Integrator< Real , SampleType >::operator()( const std::vector< InData > & primal , const SampleFunction & SF , Scratch< OutData , InData > & scratch , std::vector< OutData > & dual , std::function< Real ( typename RegularGrid< 2 >::Index ) > metricScaleFunctor ) const
-#endif // NEW_CODE
 {
+	static_assert( std::is_convertible_v< ConfidenceFunction , std::function< Real ( typename RegularGrid< 2 >::Index ) > > , "[ERROR] ConfidenceFunction is poorly formed" );
 	return operator()( GetPointer( primal ) , SF , scratch , GetPointer( dual ) , metricScaleFunctor );
 }
 
 template< typename Real , typename SampleType >
-#ifdef NEW_CODE
 template< typename OutData , typename InData , typename SampleFunction /* = std::function< OutData ( InData , SquareMatrix< Real , 2 > ) */ , typename ConfidenceFunction /* = std::function< MatrixReal ( typename RegularGrid< 2 >::Index ) > */ >
 std::vector< OutData > Integrator< Real , SampleType >::operator()( const std::vector< InData > &primal , const SampleFunction & SF , Scratch< OutData , InData > & scratch , const ConfidenceFunction & metricScaleFunctor ) const
-#else // !NEW_CODE
-template< typename OutData , typename InData , typename SampleFunction /* = std::function< OutData ( InData , SquareMatrix< Real , 2 > ) */ >
-std::vector< OutData > Integrator< Real , SampleType >::operator()( const std::vector< InData > &primal , const SampleFunction & SF , Scratch< OutData , InData > & scratch , std::function< Real ( typename RegularGrid< 2 >::Index ) > metricScaleFunctor ) const
-#endif // NEW_CODE
 {
+	static_assert( std::is_convertible_v< ConfidenceFunction , std::function< Real ( typename RegularGrid< 2 >::Index ) > > , "[ERROR] ConfidenceFunction is poorly formed" );
 	std::vector< OutData > dual( indexConverter.numCombined() );
 	operator()( primal , SF , scratch , dual , metricScaleFunctor );
 	return dual;
 }
+
 #else // !SUPPORT_CONFIDENCE
 
 template< typename Real , typename SampleType >
@@ -1909,18 +1855,16 @@ std::vector< OutData > Integrator< Real , SampleType >::operator()( const std::v
 
 template< typename Real , typename SampleType >
 #ifdef SUPPORT_CONFIDENCE
-#ifdef NEW_CODE
-template< typename OutData , typename InData , typename SampleFunction /* = std::function< OutData ( InData , SquareMatrix< Real , 2 > ) */ , typename ConfidenceFunction /* = std::function< MatrixReal ( typename RegularGrid< 2 >::Index ) > */ >
+template< typename OutData , typename InData , typename SampleFunction /* = std::function< OutData ( InData , SquareMatrix< Real , 2 > ) */ , typename ConfidenceFunction /* = std::function< Real ( typename RegularGrid< 2 >::Index ) > */ >
 void Integrator< Real , SampleType >::operator()( ConstPointer( InData ) primal , const SampleFunction & SF , Scratch< OutData , InData > & scratch , Pointer( OutData ) dual , const ConfidenceFunction & metricScaleFunctor ) const
-#else // !NEW_CODE
-template< typename OutData , typename InData , typename SampleFunction /* = std::function< OutData ( InData , SquareMatrix< Real , 2 > ) */ >
-void Integrator< Real , SampleType >::operator()( ConstPointer( InData ) primal , const SampleFunction & SF , Scratch< OutData , InData > & scratch , Pointer( OutData ) dual , std::function< Real ( typename RegularGrid< 2 >::Index ) > metricScaleFunctor ) const
-#endif // NEW_CODE
 #else // !SUPPORT_CONFIDENCE
 template< typename OutData , typename InData , typename SampleFunction /* = std::function< OutData ( InData , SquareMatrix< Real , 2 > ) */ >
 void Integrator< Real , SampleType >::operator()( ConstPointer( InData ) primal , const SampleFunction & SF , Scratch< OutData , InData > & scratch , Pointer( OutData ) dual ) const
 #endif // SUPPORT_CONFIDENCE
 {
+#ifdef SUPPORT_CONFIDENCE
+	static_assert( std::is_convertible_v< ConfidenceFunction , std::function< Real ( typename RegularGrid< 2 >::Index ) > > , "[ERROR] ConfidenceFunction is poorly formed" );
+#endif // SUPPORT_CONFIDENCE
 	// Extract the coarse (texel) boundary values
 	ThreadPool::ParallelFor( 0 , indexConverter.numBoundary() , [&]( size_t i ){ scratch._coarseBoundaryPrimal[i] = primal[ static_cast< unsigned int >(indexConverter.boundaryToCombined( AtlasBoundaryTexelIndex(i) ) ) ]; } );
 
@@ -1933,10 +1877,9 @@ void Integrator< Real , SampleType >::operator()( ConstPointer( InData ) primal 
 
 #ifdef SUPPORT_CONFIDENCE
 	Integrate< Real >( interiorCellLines , samples , primal , GetPointer( scratch._fineBoundaryPrimal ) , SF , dual , GetPointer( scratch._fineBoundaryDual ) , metricScaleFunctor );
-	#else // !SUPPORT_CONFIDENCE
+#else // !SUPPORT_CONFIDENCE
 	Integrate< Real >( interiorCellLines , samples , primal , GetPointer( scratch._fineBoundaryPrimal ) , SF , dual , GetPointer( scratch._fineBoundaryDual ) );
 #endif //SUPPORT_CONFIDENCE
-	Integrate< Real >( interiorCellLines , samples , primal , GetPointer( scratch._fineBoundaryPrimal ) , SF , dual , GetPointer( scratch._fineBoundaryDual ) );
 
 	// Restrict the fine (node) boundary values to the coarse (texel) boundary values
 	fineBoundaryCoarseBoundaryRestriction.Multiply( GetPointer( scratch._fineBoundaryDual ) , GetPointer( scratch._coarseBoundaryDual ) );

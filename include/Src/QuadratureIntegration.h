@@ -684,11 +684,7 @@ namespace MishaK
 			}
 		}
 
-#if defined( NEW_CODE ) && defined( SUPPORT_CONFIDENCE )
-		template< typename Real , typename OutT , typename InT , typename ElementSamples , typename SampleFunctionType , typename ConfidenceFunction = std::function< Real ( typename RegularGrid< 2 >::Index ) > >
-#else // !NEW_CODE || !SUPPORT_CONFIDENCE
 		template< typename Real , typename OutT , typename InT , typename ElementSamples , typename SampleFunctionType >
-#endif // NEW_CODE && SUPPORT_CONFIDENCE
 		void Integrate
 		(
 			const std::vector< InteriorCellLine >& interiorCellLines ,
@@ -699,11 +695,7 @@ namespace MishaK
 			std::vector< OutT >& rhs ,
 			std::vector< OutT >& boundary_rhs ,
 #ifdef SUPPORT_CONFIDENCE
-#ifdef NEW_CODE
-			const ConfidenceFunction & metricScaleFunctor = []( typename RegularGrid< 2 >::Index ){ return static_cast< Real >(1.); } ,
-#else // !NEW_CODE
 			std::function< Real ( typename RegularGrid< 2 >::Index ) > metricScaleFunctor = []( typename RegularGrid< 2 >::Index ){ return static_cast< Real >(1.); } ,
-#endif // NEW_CODE
 #endif // SUPPORT_CONFIDENCE
 			bool verbose=false
 		)
@@ -715,11 +707,7 @@ namespace MishaK
 #endif // SUPPORT_CONFIDENCE
 		}
 
-#if defined( NEW_CODE ) && defined( SUPPORT_CONFIDENCE )
-		template< typename Real , typename OutT , typename InT , typename ElementSamples , typename SampleFunctionType , typename ConfidenceFunction = std::function< Real ( typename RegularGrid< 2 >::Index ) > >
-#else // !NEW_CODE || !SUPPORT_CONFIDENCE
 		template< typename Real , typename OutT , typename InT , typename ElementSamples , typename SampleFunctionType >
-#endif // NEW_CODE && SUPPORT_CONFIDENCE
 		void Integrate
 		(
 			const std::vector< InteriorCellLine >& interiorCellLines ,
@@ -730,11 +718,7 @@ namespace MishaK
 			Pointer( OutT ) rhs ,
 			Pointer( OutT ) boundary_rhs ,
 #ifdef SUPPORT_CONFIDENCE
-#ifdef NEW_CODE
-			const ConfidenceFunction & metricScaleFunctor = []( typename RegularGrid< 2 >::Index ){ return static_cast< Real >(1.); } ,
-#else // !NEW_CODE
 			std::function< Real ( typename RegularGrid< 2 >::Index ) > metricScaleFunctor = []( typename RegularGrid< 2 >::Index ){ return static_cast< Real >(1.); } ,
-#endif // NEW_CODE
 #endif // SUPPORT_CONFIDENCE
 			bool verbose=false
 		)
