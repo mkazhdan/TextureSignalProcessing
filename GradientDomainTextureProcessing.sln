@@ -188,6 +188,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "HierarchicalGradientDomain.
 		{D3D173AB-D306-4179-BEC4-95CE1B14E647} = {D3D173AB-D306-4179-BEC4-95CE1B14E647}
 	EndProjectSection
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TestSystem", "TestSystem\TestSystem.vcxproj", "{4E0352B8-CE12-4971-8107-E47C72AD2F9F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -304,6 +306,14 @@ Global
 		{1DFB92B7-60C3-44F0-9AE1-43AD799EF7DF}.Release|x64.Build.0 = Release|x64
 		{1DFB92B7-60C3-44F0-9AE1-43AD799EF7DF}.Release|x86.ActiveCfg = Release|Win32
 		{1DFB92B7-60C3-44F0-9AE1-43AD799EF7DF}.Release|x86.Build.0 = Release|Win32
+		{4E0352B8-CE12-4971-8107-E47C72AD2F9F}.Debug|x64.ActiveCfg = Debug|x64
+		{4E0352B8-CE12-4971-8107-E47C72AD2F9F}.Debug|x64.Build.0 = Debug|x64
+		{4E0352B8-CE12-4971-8107-E47C72AD2F9F}.Debug|x86.ActiveCfg = Debug|Win32
+		{4E0352B8-CE12-4971-8107-E47C72AD2F9F}.Debug|x86.Build.0 = Debug|Win32
+		{4E0352B8-CE12-4971-8107-E47C72AD2F9F}.Release|x64.ActiveCfg = Release|x64
+		{4E0352B8-CE12-4971-8107-E47C72AD2F9F}.Release|x64.Build.0 = Release|x64
+		{4E0352B8-CE12-4971-8107-E47C72AD2F9F}.Release|x86.ActiveCfg = Release|Win32
+		{4E0352B8-CE12-4971-8107-E47C72AD2F9F}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

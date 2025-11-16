@@ -162,23 +162,23 @@ namespace MishaK
 			Scratch< OutData , InData > getScratch( void ) const;
 
 #ifdef SUPPORT_CONFIDENCE
-			template< typename OutData , typename InData , typename SampleFunction /* = std::function< OutData ( InData , SquareMatrix< Real , 2 > ) */ , typename ConfidenceFunction = std::function< Real ( typename RegularGrid< 2 >::Index ) > >
-			void operator()( const std::vector< InData > &primal , const SampleFunction & SF , std::vector< OutData > &dual , const ConfidenceFunction & metricScaleFunctor = []( typename RegularGrid< 2 >::Index ){ return 1.; } ) const;
+			template< typename OutData , typename InData , typename SampleFunction /* = std::function< OutData ( InData , SquareMatrix< Real , 2 > ) */ , typename TensorScaleFunctor = std::function< Real ( typename RegularGrid< 2 >::Index ) > >
+			void operator()( const std::vector< InData > &primal , const SampleFunction & SF , std::vector< OutData > &dual , const TensorScaleFunctor & tensorScaleFunctor = []( typename RegularGrid< 2 >::Index ){ return 1.; } ) const;
 
-			template< typename OutData , typename InData , typename SampleFunction /* = std::function< OutData ( InData , SquareMatrix< Real , 2 > ) */ , typename ConfidenceFunction = std::function< Real ( typename RegularGrid< 2 >::Index ) > >
-			std::vector< OutData > operator()( const std::vector< InData > &primal , const SampleFunction & SF , const ConfidenceFunction &  metricScaleFunctor = []( typename RegularGrid< 2 >::Index ){ return 1.; } ) const;
+			template< typename OutData , typename InData , typename SampleFunction /* = std::function< OutData ( InData , SquareMatrix< Real , 2 > ) */ , typename TensorScaleFunctor = std::function< Real ( typename RegularGrid< 2 >::Index ) > >
+			std::vector< OutData > operator()( const std::vector< InData > &primal , const SampleFunction & SF , const TensorScaleFunctor & tensorScaleFunctor = []( typename RegularGrid< 2 >::Index ){ return 1.; } ) const;
 
-			template< typename OutData , typename InData , typename SampleFunction /* = std::function< OutData ( InData , SquareMatrix< Real , 2 > ) */ , typename ConfidenceFunction = std::function< Real ( typename RegularGrid< 2 >::Index ) > >
-			void operator()( ConstPointer( InData ) primal , const SampleFunction & SF , Pointer( OutData ) dual , const ConfidenceFunction &  metricScaleFunctor = []( typename RegularGrid< 2 >::Index ){ return 1.; } ) const;
+			template< typename OutData , typename InData , typename SampleFunction /* = std::function< OutData ( InData , SquareMatrix< Real , 2 > ) */ , typename TensorScaleFunctor = std::function< Real ( typename RegularGrid< 2 >::Index ) > >
+			void operator()( ConstPointer( InData ) primal , const SampleFunction & SF , Pointer( OutData ) dual , const TensorScaleFunctor & tensorScaleFunctor = []( typename RegularGrid< 2 >::Index ){ return 1.; } ) const;
 
-			template< typename OutData , typename InData , typename SampleFunction /* = std::function< OutData ( InData , SquareMatrix< Real , 2 > ) */ , typename ConfidenceFunction = std::function< Real ( typename RegularGrid< 2 >::Index ) > >
-			void operator()( const std::vector< InData > &primal , const SampleFunction & SF , Scratch< OutData , InData > & scratch , std::vector< OutData > &dual , const ConfidenceFunction & metricScaleFunctor = []( typename RegularGrid< 2 >::Index ){ return 1.; } ) const;
+			template< typename OutData , typename InData , typename SampleFunction /* = std::function< OutData ( InData , SquareMatrix< Real , 2 > ) */ , typename TensorScaleFunctor = std::function< Real ( typename RegularGrid< 2 >::Index ) > >
+			void operator()( const std::vector< InData > &primal , const SampleFunction & SF , Scratch< OutData , InData > & scratch , std::vector< OutData > &dual , const TensorScaleFunctor & tensorScaleFunctor = []( typename RegularGrid< 2 >::Index ){ return 1.; } ) const;
 
-			template< typename OutData , typename InData , typename SampleFunction /* = std::function< OutData ( InData , SquareMatrix< Real , 2 > ) */ , typename ConfidenceFunction = std::function< Real ( typename RegularGrid< 2 >::Index ) > >
-			std::vector< OutData > operator()( const std::vector< InData > &primal , const SampleFunction & SF , Scratch< OutData , InData > & scratch , const ConfidenceFunction & metricScaleFunctor = []( typename RegularGrid< 2 >::Index ){ return 1.; } ) const;
+			template< typename OutData , typename InData , typename SampleFunction /* = std::function< OutData ( InData , SquareMatrix< Real , 2 > ) */ , typename TensorScaleFunctor = std::function< Real ( typename RegularGrid< 2 >::Index ) > >
+			std::vector< OutData > operator()( const std::vector< InData > &primal , const SampleFunction & SF , Scratch< OutData , InData > & scratch , const TensorScaleFunctor & tensorScaleFunctor = []( typename RegularGrid< 2 >::Index ){ return 1.; } ) const;
 
-			template< typename OutData , typename InData , typename SampleFunction /* = std::function< OutData ( InData , SquareMatrix< Real , 2 > ) */ , typename ConfidenceFunction = std::function< Real ( typename RegularGrid< 2 >::Index ) > >
-			void operator()( ConstPointer( InData ) primal , const SampleFunction & SF , Scratch< OutData , InData > & scratch , Pointer( OutData ) dual , const ConfidenceFunction & metricScaleFunctor = []( typename RegularGrid< 2 >::Index ){ return 1.; } ) const;
+			template< typename OutData , typename InData , typename SampleFunction /* = std::function< OutData ( InData , SquareMatrix< Real , 2 > ) */ , typename TensorScaleFunctor = std::function< Real ( typename RegularGrid< 2 >::Index ) > >
+			void operator()( ConstPointer( InData ) primal , const SampleFunction & SF , Scratch< OutData , InData > & scratch , Pointer( OutData ) dual , const TensorScaleFunctor & tensorScaleFunctor = []( typename RegularGrid< 2 >::Index ){ return 1.; } ) const;
 #else // !SUPPORT_CONFIDENCE
 			template< typename OutData , typename InData , typename SampleFunction /* = std::function< OutData ( InData , SquareMatrix< Real , 2 > ) */ >
 			void operator()( const std::vector< InData > &primal , const SampleFunction & SF , std::vector< OutData > &dual ) const;
@@ -209,7 +209,7 @@ namespace MishaK
 		struct OperatorInitializer
 		{
 #ifdef SUPPORT_CONFIDENCE
-			template< typename GeometryReal , typename MatrixReal , typename ConfidenceFunction=std::function< MatrixReal ( typename RegularGrid< 2 >::Index ) > >
+			template< typename GeometryReal , typename MatrixReal , typename TensorScaleFunctor=std::function< MatrixReal ( typename RegularGrid< 2 >::Index ) > >
 #else // !SUPPORT_CONFIDENCE
 			template< typename GeometryReal , typename MatrixReal >
 #endif // SUPPORT_CONFIDENCE
@@ -222,14 +222,14 @@ namespace MishaK
 				const ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > > & atlasCharts ,
 #ifdef SUPPORT_CONFIDENCE
 				bool sanityCheck , 
-				const ConfidenceFunction & metricScaleFunctor = []( typename RegularGrid< 2 >::Index ){ return static_cast< MatrixReal >(1); } 
+				const TensorScaleFunctor & tensorScaleFunctor = []( typename RegularGrid< 2 >::Index ){ return static_cast< MatrixReal >(1); } 
 #else // !SUPPORT_CONFIDENCE
 				bool sanityCheck
 #endif // SUPPORT_CONFIDENCE
 			);
 
 #ifdef SUPPORT_CONFIDENCE
-			template< typename GeometryReal , typename MatrixReal , typename ConfidenceFunction = std::function< MatrixReal ( typename RegularGrid< 2 >::Index ) > >
+			template< typename GeometryReal , typename MatrixReal , typename TensorScaleFunctor = std::function< MatrixReal ( typename RegularGrid< 2 >::Index ) > >
 #else // !SUPPORT_CONFIDENCE
 			template< typename GeometryReal , typename MatrixReal >
 #endif // SUPPORT_CONFIDENCE
@@ -243,13 +243,14 @@ namespace MishaK
 				DivergenceOperator< MatrixReal > & divergenceOperator ,
 #ifdef SUPPORT_CONFIDENCE
 				bool sanityCheck , 
-				const ConfidenceFunction & metricScaleFunctor = []( typename RegularGrid< 2 >::Index ){ return static_cast< MatrixReal >(1); } 
+				const TensorScaleFunctor & tensorScaleFunctor = []( typename RegularGrid< 2 >::Index ){ return static_cast< MatrixReal >(1); } 
 #else // !SUPPORT_CONFIDENCE
 				bool sanityCheck
 #endif // SUPPORT_CONFIDENCE
 			);
+
 #ifdef SUPPORT_CONFIDENCE
-			template< typename GeometryReal , typename MatrixReal , typename ConfidenceFunction = std::function< MatrixReal ( typename RegularGrid< 2 >::Index ) > >
+			template< typename GeometryReal , typename MatrixReal , typename TensorScaleFunctor = std::function< MatrixReal ( typename RegularGrid< 2 >::Index ) > >
 #else // !SUPPORT_CONFIDENCE
 			template< typename GeometryReal , typename MatrixReal >
 #endif // SUPPORT_CONFIDENCE
@@ -263,14 +264,14 @@ namespace MishaK
 				const BoundaryProlongationData< MatrixReal > & boundaryProlongation ,
 #ifdef SUPPORT_CONFIDENCE
 				bool sanityCheck , 
-				const ConfidenceFunction & metricScaleFunctor = []( typename RegularGrid< 2 >::Index ){ return static_cast< MatrixReal >(1); } 
+				const TensorScaleFunctor & tensorScaleFunctor = []( typename RegularGrid< 2 >::Index ){ return static_cast< MatrixReal >(1); } 
 #else // !SUPPORT_CONFIDENCE
 				bool sanityCheck
 #endif // SUPPORT_CONFIDENCE
 			);
 
 #ifdef SUPPORT_CONFIDENCE
-			template< typename GeometryReal , typename MatrixReal , typename ConfidenceFunction = std::function< MatrixReal ( typename RegularGrid< 2 >::Index ) > >
+			template< typename GeometryReal , typename MatrixReal , typename TensorScaleFunctor = std::function< MatrixReal ( typename RegularGrid< 2 >::Index ) > >
 #else // !SUPPORT_CONFIDENCE
 			template< typename GeometryReal , typename MatrixReal >
 #endif // SUPPORT_CONFIDENCE
@@ -285,14 +286,14 @@ namespace MishaK
 				DivergenceOperator< MatrixReal > & divergenceOperator ,
 #ifdef SUPPORT_CONFIDENCE
 				bool sanityCheck , 
-				const ConfidenceFunction & metricScaleFunctor = []( typename RegularGrid< 2 >::Index ){ return static_cast< MatrixReal >(1); } 
+				const TensorScaleFunctor & tensorScaleFunctor = []( typename RegularGrid< 2 >::Index ){ return static_cast< MatrixReal >(1); } 
 #else // !SUPPORT_CONFIDENCE
 				bool sanityCheck
 #endif // SUPPORT_CONFIDENCE
 			);
 
 #ifdef SUPPORT_CONFIDENCE
-			template< typename GeometryReal , typename MatrixReal , typename SampleType , typename ConfidenceFunction = std::function< MatrixReal ( typename RegularGrid< 2 >::Index ) > >
+			template< typename GeometryReal , typename MatrixReal , typename SampleType , typename TensorScaleFunctor = std::function< MatrixReal ( typename RegularGrid< 2 >::Index ) > >
 #else // !SUPPORT_CONFIDENCE
 			template< typename GeometryReal , typename MatrixReal , typename SampleType >
 #endif // SUPPORT_CONFIDENCE
@@ -308,14 +309,14 @@ namespace MishaK
 				bool approximate ,
 #ifdef SUPPORT_CONFIDENCE
 				bool sanityCheck ,
-				const ConfidenceFunction & metricScaleFunctor = []( typename RegularGrid< 2 >::Index ){ return static_cast< MatrixReal >(1); } 
+				const TensorScaleFunctor & tensorScaleFunctor = []( typename RegularGrid< 2 >::Index ){ return static_cast< MatrixReal >(1); } 
 #else // !SUPPORT_CONFIDENCE
 				bool sanityCheck
 #endif // SUPPORT_CONFIDENCE
 			);
 
 #ifdef SUPPORT_CONFIDENCE
-			template< typename GeometryReal , typename MatrixReal , typename SampleType , typename ConfidenceFunction = std::function< MatrixReal ( typename RegularGrid< 2 >::Index ) > >
+			template< typename GeometryReal , typename MatrixReal , typename SampleType , typename TensorScaleFunctor = std::function< MatrixReal ( typename RegularGrid< 2 >::Index ) > >
 #else // !SUPPORT_CONFIDENCE
 			template< typename GeometryReal , typename MatrixReal , typename SampleType >
 #endif // SUPPORT_CONFIDENCE
@@ -332,7 +333,7 @@ namespace MishaK
 				bool approximate ,
 #ifdef SUPPORT_CONFIDENCE
 				bool sanityCheck ,
-				const ConfidenceFunction & metricScaleFunctor = []( typename RegularGrid< 2 >::Index ){ return static_cast< MatrixReal >(1); } 
+				const TensorScaleFunctor & tensorScaleFunctor = []( typename RegularGrid< 2 >::Index ){ return static_cast< MatrixReal >(1); } 
 #else // !SUPPORT_CONFIDENCE
 				bool sanityCheck
 #endif // SUPPORT_CONFIDENCE
@@ -341,7 +342,7 @@ namespace MishaK
 		protected:
 
 #ifdef SUPPORT_CONFIDENCE
-			template< unsigned int Samples , bool SanityCheck , typename GeometryReal , typename MatrixReal , typename ConfidenceFunction /* = std::function< MatrixReal ( typename RegularGrid< 2 >::Index ) > */ >
+			template< unsigned int Samples , bool SanityCheck , typename GeometryReal , typename MatrixReal , typename TensorScaleFunctor /* = std::function< MatrixReal ( typename RegularGrid< 2 >::Index ) > */ >
 #else // !SUPPORT_CONFIDENCE
 			template< unsigned int Samples , bool SanityCheck , typename GeometryReal , typename MatrixReal >
 #endif // SUPPORT_CONFIDENCE
@@ -363,14 +364,14 @@ namespace MishaK
 				std::vector< Eigen::Triplet< MatrixReal > > & boundaryBoundaryDivergenceTriplets,
 #ifdef SUPPORT_CONFIDENCE
 				std::vector< MatrixReal > & deepDivergenceCoefficients ,
-				const ConfidenceFunction & metricScaleFunctor
+				const TensorScaleFunctor & tensorScaleFunctor
 #else // !SUPPORT_CONFIDENCE
 				std::vector< MatrixReal > & deepDivergenceCoefficients
 #endif // SUPPORT_CONFIDENCE
 			);
 
 #ifdef SUPPORT_CONFIDENCE
-			template< unsigned int Samples , bool SanityCheck , typename GeometryReal , typename MatrixReal , typename ConfidenceFunction /* std::function< MatrixReal ( typename RegularGrid< 2 >::Index ) > */ >
+			template< unsigned int Samples , bool SanityCheck , typename GeometryReal , typename MatrixReal , typename TensorScaleFunctor /* std::function< MatrixReal ( typename RegularGrid< 2 >::Index ) > */ >
 #else // !SUPPORT_CONFIDENCE
 			template< unsigned int Samples , bool SanityCheck , typename GeometryReal , typename MatrixReal >
 #endif // SUPPORT_CONFIDENCE
@@ -394,14 +395,14 @@ namespace MishaK
 				std::vector< Eigen::Triplet< MatrixReal > > & boundaryBoundaryDivergenceTriplets,
 #ifdef SUPPORT_CONFIDENCE
 				std::vector< MatrixReal > & deepDivergenceCoefficients ,
-				const ConfidenceFunction & metricScaleFunctor
+				const TensorScaleFunctor & tensorScaleFunctor
 #else // !SUPPORT_CONFIDENCE
 				std::vector< MatrixReal > & deepDivergenceCoefficients
 #endif // SUPPORT_CONFIDENCE
 			);
 
 #ifdef SUPPORT_CONFIDENCE
-			template< unsigned int Samples , bool SanityCheck , typename GeometryReal , typename MatrixReal , typename ConfidenceFunction /* std::function< MatrixReal ( typename RegularGrid< 2 >::Index ) > */ >
+			template< unsigned int Samples , bool SanityCheck , typename GeometryReal , typename MatrixReal , typename TensorScaleFunctor /* std::function< MatrixReal ( typename RegularGrid< 2 >::Index ) > */ >
 #else // !SUPPORT_CONFIDENCE
 			template< unsigned int Samples , bool SanityCheck , typename GeometryReal , typename MatrixReal >
 #endif // SUPPORT_CONFIDENCE
@@ -415,14 +416,14 @@ namespace MishaK
 				bool computeDivergence ,
 #ifdef SUPPORT_CONFIDENCE
 				DivergenceOperator< MatrixReal > & divergenceOperator ,
-				const ConfidenceFunction & metricScaleFunctor
+				const TensorScaleFunctor & tensorScaleFunctor
 #else // !SUPPORT_CONFIDENCE
 				DivergenceOperator< MatrixReal > & divergenceOperator
 #endif // SUPPORT_CONFIDENCE
 			);
 
 #ifdef SUPPORT_CONFIDENCE
-			template< bool SanityCheck , typename GeometryReal , typename MatrixReal , typename ConfidenceFunction /* std::function< MatrixReal ( typename RegularGrid< 2 >::Index ) > */ >
+			template< bool SanityCheck , typename GeometryReal , typename MatrixReal , typename TensorScaleFunctor /* std::function< MatrixReal ( typename RegularGrid< 2 >::Index ) > */ >
 #else // !SUPPORT_CONFIDENCE
 			template< bool SanityCheck , typename GeometryReal , typename MatrixReal >
 #endif // SUPPORT_CONFIDENCE
@@ -437,7 +438,7 @@ namespace MishaK
 				bool computeDivergence ,
 #ifdef SUPPORT_CONFIDENCE
 				DivergenceOperator< MatrixReal > & divergenceOperator ,
-				const ConfidenceFunction & metricScaleFunctor
+				const TensorScaleFunctor & tensorScaleFunctor
 #else // !SUPPORT_CONFIDENCE
 				DivergenceOperator< MatrixReal > & divergenceOperator
 #endif // SUPPORT_CONFIDENCE

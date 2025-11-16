@@ -52,7 +52,7 @@ void StitchingVisualization::display(void)
 	// Show the output texture
 	{
 #if 1
-		// Show the mask / confidnce
+		// Show the mask / confidence
 		GLuint mBuffer = visualizationMode==MULTIPLE_INPUT_MODE ? referenceConfidenceBuffers[referenceIndex] : maskTextureBuffer;
 #else
 		// Show the result

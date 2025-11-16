@@ -59,47 +59,83 @@ enum
 using namespace MishaK;
 using namespace MishaK::TSP;
 
-CmdLineParameterArray< std::string , 2 > In( "in" );
-CmdLineParameter< std::string > InMask( "mask" );
-CmdLineParameter< std::string > InputLowFrequency( "inLow" );
-CmdLineParameter< std::string > Output( "out" );
-CmdLineParameter< int   > OutputVCycles( "outVCycles" , 6 );
-CmdLineParameter< float > InterpolationWeight( "interpolation" , 1e2 );
-CmdLineParameter< unsigned int > Levels( "levels" , 4 );
-CmdLineParameter< int   > MatrixQuadrature( "mQuadrature" , 6 );
+CmdLineParameterArray< std::string , 2 >
+	In( "in" );
 
-CmdLineParameter< int   > MultigridBlockHeight ( "mBlockH" ,  16 );
-CmdLineParameter< int   > MultigridBlockWidth  ( "mBlockW" , 128 );
-CmdLineParameter< int   > MultigridPaddedHeight( "mPadH"   ,   0 );
-CmdLineParameter< int   > MultigridPaddedWidth ( "mPadW"   ,   2 );
+CmdLineParameter< std::string >
+	InMask( "mask" ),
+	InputLowFrequency( "inLow" ) ,
+	Output( "out" );
 
-CmdLineParameter< int    > RandomJitter( "jitter" , 0 );
-CmdLineParameter< int    > ChartMaskErode( "erode" , 0 );
+CmdLineParameter< unsigned int >
+	Levels( "levels" , 4 ) ,
+	OutputVCycles( "outVCycles" , 6 ) ,
+	MatrixQuadrature( "mQuadrature" , 6 ) ,
+#ifdef SUPPORT_CONFIDENCE
+	VectorQuadrature( "vQuadrature" , 6 ) ,
+#endif // SUPPORT_CONFIDENCE
+	MultigridBlockHeight ( "mBlockH" ,  16 ) ,
+	MultigridBlockWidth  ( "mBlockW" , 128 ) ,
+	MultigridPaddedHeight( "mPadH"   ,   0 ) ,
+	MultigridPaddedWidth ( "mPadW"   ,   2 ) ,
+	RandomJitter( "jitter" , 0 ) ,
+	ChartMaskErode( "erode" , 0 );
+
+CmdLineParameter< double >
+	InterpolationWeight( "interpolation" , 1e2 ) ,
+	CollapseEpsilon( "collapse" , 0 );
+
+
 #ifdef NO_OPEN_GL_VISUALIZATION
 #else // !NO_OPEN_GL_VISUALIZATION
-CmdLineParameter< std::string > CameraConfig( "camera" );
+CmdLineParameter< std::string >
+	CameraConfig( "camera" );
 #endif // NO_OPEN_GL_VISUALIZATION
-CmdLineReadable UseDirectSolver( "useDirectSolver" );
-CmdLineReadable Verbose( "verbose" );
-CmdLineReadable NoHelp( "noHelp" );
-CmdLineReadable DetailVerbose( "detail" );
-CmdLineReadable Double( "double" );
-CmdLineReadable MultiInput( "multi" );
-CmdLineReadable Serial( "serial" );
-CmdLineReadable Run( "run" );
-CmdLineReadable SanityCheck( "sanityCheck" );
+
+CmdLineReadable
+	UseDirectSolver( "useDirectSolver" ) ,
+	SanityCheck( "sanityCheck" ) ,
+	NoHelp( "noHelp" ) ,
+	DetailVerbose( "detail" ) ,
+	Double( "double" ) ,
+	MultiInput( "multi" ) ,
+	Serial( "serial" ) ,
+	Run( "run" ) ,
 #ifdef NO_OPEN_GL_VISUALIZATION
 #else // !NO_OPEN_GL_VISUALIZATION
-CmdLineReadable Nearest( "nearest" );
+	Nearest( "nearest" ) ,
 #endif // NO_OPEN_GL_VISUALIZATION
-CmdLineParameter< double > CollapseEpsilon( "collapse" , 0 );
+#ifdef SUPPORT_CONFIDENCE
+	NewConfidence( "newConfidence" ) ,
+#endif // SUPPORT_CONFIDENCE
+	Verbose( "verbose" );
 
 CmdLineReadable* params[] =
 {
-	&In , &InMask , &Output , &InterpolationWeight , &Levels , &UseDirectSolver , &Serial, &Verbose ,
+	&In ,
+	&InMask ,
+	&Output ,
+	&InterpolationWeight ,
+	&Levels ,
+	&UseDirectSolver ,
+	&Serial,
+	&Verbose ,
 	&InputLowFrequency ,
-	&DetailVerbose , &MultigridBlockHeight , &MultigridBlockWidth , &MultigridPaddedHeight , &MultigridPaddedWidth , &RandomJitter ,
-	&Double , &MatrixQuadrature , &OutputVCycles , &NoHelp , &MultiInput ,
+	&DetailVerbose ,
+	&MultigridBlockHeight ,
+	&MultigridBlockWidth ,
+	&MultigridPaddedHeight ,
+	&MultigridPaddedWidth ,
+	&RandomJitter ,
+	&Double ,
+	&MatrixQuadrature ,
+#ifdef SUPPORT_CONFIDENCE
+	&VectorQuadrature ,
+	&NewConfidence ,
+#endif // SUPPORT_CONFIDENCE
+	&OutputVCycles ,
+	&NoHelp ,
+	&MultiInput ,
 #ifdef NO_OPEN_GL_VISUALIZATION
 #else // !NO_OPEN_GL_VISUALIZATION
 	&CameraConfig ,
@@ -131,6 +167,9 @@ void ShowUsage( const char *ex )
 	printf( "\t[--%s <output v-cycles>=%d]\n" , OutputVCycles.name.c_str() , OutputVCycles.value );
 	printf( "\t[--%s <interpolation weight>=%f]\n" , InterpolationWeight.name.c_str() , InterpolationWeight.value );
 	printf( "\t[--%s <system matrix quadrature points per triangle>=%d]\n" , MatrixQuadrature.name.c_str(), MatrixQuadrature.value );
+#ifdef SUPPORT_CONFIDENCE
+	printf( "\t[--%s <system vector quadrature points per triangle>=%d]\n" , VectorQuadrature.name.c_str(), VectorQuadrature.value );
+#endif // SUPPORT_CONFIDENCE
 	printf( "\t[--%s]\n" , UseDirectSolver.name.c_str() );
 	printf( "\t[--%s]\n" , MultiInput.name.c_str() );
 	printf( "\t[--%s <jittering seed>]\n" , RandomJitter.name.c_str() );
@@ -138,6 +177,9 @@ void ShowUsage( const char *ex )
 #else // !NO_OPEN_GL_VISUALIZATION
 	printf( "\t[--%s]\n" , Nearest.name.c_str() );
 #endif // NO_OPEN_GL_VISUALIZATION
+#ifdef SUPPORT_CONFIDENCE
+	printf( "\t[--%s]\n" , NewConfidence.name.c_str() );
+#endif // SUPPORT_CONFIDENCE
 	printf( "\t[--%s]\n" , Verbose.name.c_str() );
 
 #ifdef NO_OPEN_GL_VISUALIZATION
@@ -180,7 +222,10 @@ public:
 
 	// Multiple input mode
 	static int numTextures;
-	static std::vector< RegularGrid< 2 , Real > > inputConfidence;
+	static std::vector< RegularGrid< 2 , Real > > inputTexelConfidence;
+#ifdef SUPPORT_CONFIDENCE
+	static std::vector< RegularGrid< 2 , Real > > inputCellConfidence;
+#endif // SUPPORT_CONFIDENCE
 	static std::vector< RegularGrid< 2 , Point3D< Real > > > inputTextures;
 	static std::vector< std::vector< Point3D< Real > > > partialTexelValues;
 	static std::vector< std::vector< Point3D< Real > > > partialEdgeValues;
@@ -227,6 +272,9 @@ public:
 
 	// Linear Operators
 	static MassAndStiffnessOperators< Real > massAndStiffnessOperators;
+#ifdef SUPPORT_CONFIDENCE
+	static ScalarIntegrator< Real > scalarIntegrator;
+#endif // SUPPORT_CONFIDENCE
 
 	// Stitching UI
 	static int textureIndex;
@@ -324,7 +372,10 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth > Regu
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > RegularGrid< 2 , Point3D< Real > >								Stitching< PreReal , Real , TextureBitDepth >::inputColorMask;
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > int																Stitching< PreReal , Real , TextureBitDepth >::numTextures;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< RegularGrid< 2 , Real > >							Stitching< PreReal , Real , TextureBitDepth >::inputConfidence;
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< RegularGrid< 2 , Real > >							Stitching< PreReal , Real , TextureBitDepth >::inputTexelConfidence;
+#ifdef SUPPORT_CONFIDENCE
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< RegularGrid< 2 , Real > >							Stitching< PreReal , Real , TextureBitDepth >::inputCellConfidence;
+#endif // SUPPORT_CONFIDENCE
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< RegularGrid< 2 , Point3D< Real > > >				Stitching< PreReal , Real , TextureBitDepth >::inputTextures;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Point3D< Real > >									Stitching< PreReal , Real , TextureBitDepth >::texelMass;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Point3D< Real > >									Stitching< PreReal , Real , TextureBitDepth >::texelDivergence;
@@ -342,6 +393,9 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth > std:
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > Padding															Stitching< PreReal , Real , TextureBitDepth >::padding;
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > MassAndStiffnessOperators< Real >								Stitching< PreReal , Real , TextureBitDepth >::massAndStiffnessOperators;
+#ifdef SUPPORT_CONFIDENCE
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > ScalarIntegrator< Real >										Stitching< PreReal , Real , TextureBitDepth >::scalarIntegrator;
+#endif // SUPPORT_CONFIDENCE
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > unsigned int													Stitching< PreReal , Real , TextureBitDepth >::updateCount = static_cast< unsigned int >(-1);
 
@@ -567,16 +621,17 @@ void  Stitching< PreReal , Real , TextureBitDepth >::InterpolationWeightCallBack
 	interpolationWeight = atof(prompt);
 	if( UseDirectSolver.set )
 	{
-		stitchingMatrix = mass*interpolationWeight + stiffness;
+		stitchingMatrix = mass * interpolationWeight + stiffness;
 		if( Verbose.set ) std::cout << pMeter( "Stitching matrix" ) << std::endl;
 	}
+
 	UpdateLinearSystem( interpolationWeight , (Real)1. , hierarchy , multigridStitchingCoefficients , massAndStiffnessOperators , vCycleSolvers , directSolver , stitchingMatrix , DetailVerbose.set , false , UseDirectSolver.set );
 	if( Verbose.set ) std::cout << pMeter( "Initialized MG" ) << std::endl;
 
-	ThreadPool::ParallelFor( 0 , multigridStitchingVariables[0].rhs.size() , [&]( unsigned int , size_t i ){ multigridStitchingVariables[0].rhs[i] = texelMass[i] * interpolationWeight + texelDivergence[i]; } );
+	ThreadPool::ParallelFor( 0 , multigridStitchingVariables[0].rhs.size() , [&]( size_t i ){ multigridStitchingVariables[0].rhs[i] = texelMass[i] * interpolationWeight + texelDivergence[i]; } );
 
 	if( UseDirectSolver.set ) ComputeExactSolution(Verbose.set);
-	else for( int i=0 ; i<OutputVCycles.value ; i++ ) VCycle( multigridStitchingVariables , multigridStitchingCoefficients , multigridIndices , vCycleSolvers , 2 , false , false );
+	else for( unsigned int i=0 ; i<OutputVCycles.value ; i++ ) VCycle( multigridStitchingVariables , multigridStitchingCoefficients , multigridIndices , vCycleSolvers , 2 , false , false );
 
 	UpdateFilteredColorTexture( multigridStitchingVariables[0].x );
 	visualization.UpdateColorTextureBuffer();
@@ -599,10 +654,24 @@ void Stitching< PreReal , Real , TextureBitDepth >::UpdateSolution( bool verbose
 	Miscellany::PerformanceMeter pMeter( '.' );
 	if( !rhsUpdated )
 	{
+#ifdef SUPPORT_CONFIDENCE
+		if( inputMode==MULTIPLE_INPUT_MODE && inputCellConfidence.size() && NewConfidence.set )
+		{
+			std::vector< Point3D< Real > > _texelMass( textureNodes.size() );
+			for( unsigned int i=0 ; i<partialTexelValues.size() ; i++ )
+			{
+				auto ScalarFunction = []( Point3D< Real > v , SquareMatrix< Real , 2 >  ){ return v; };
+				scalarIntegrator( partialTexelValues[i] , ScalarFunction , _texelMass , [&]( typename RegularGrid< 2 >::Index I ){ return inputCellConfidence[i]( I ); } );
+				for( unsigned int i=0 ; i<_texelMass.size() ; i++ ) texelMass[i] += _texelMass[i];
+			}
+		}
+		else massAndStiffnessOperators.mass( texelValues , texelMass );
+#else // !SUPPORT_CONFIDENCE
 		massAndStiffnessOperators.mass( texelValues , texelMass );
+#endif // SUPPORT_CONFIDENCE
 		divergenceOperator( edgeValues , texelDivergence );
 
-		ThreadPool::ParallelFor( 0 , textureNodes.size() , [&]( unsigned int , size_t i ){ multigridStitchingVariables[0].rhs[i] = texelMass[i] * interpolationWeight + texelDivergence[i]; } );
+		ThreadPool::ParallelFor( 0 , textureNodes.size() , [&]( size_t i ){ multigridStitchingVariables[0].rhs[i] = texelMass[i] * interpolationWeight + texelDivergence[i]; } );
 
 		if( verbose ) std::cout << pMeter( "RHS" ) << std::endl;
 		rhsUpdated = true;
@@ -627,7 +696,19 @@ void Stitching< PreReal , Real , TextureBitDepth >::InitializeSystem( int width 
 	InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric );
 
 	pMeter.reset();
+#ifdef SUPPORT_CONFIDENCE
+	if( inputMode==MULTIPLE_INPUT_MODE && inputCellConfidence.size() )
+	{
+		RegularGrid< 2 , Real > cellConfidence( inputCellConfidence[0].res() );
+		for( unsigned int j=0 ; j<cellConfidence.size() ; j++ ) cellConfidence[j] = 0;
+		for( unsigned int i=0 ; i<inputCellConfidence.size() ; i++ ) for( size_t j=0 ; j<cellConfidence.size() ; j++ ) cellConfidence[j] += inputCellConfidence[i][j];
+		if( NewConfidence.set ) OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , divergenceOperator , scalarIntegrator , VectorQuadrature.value , false , SanityCheck.set , [&]( typename RegularGrid< 2 >::Index I ){ return cellConfidence(I); } );
+		else                    OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , divergenceOperator , scalarIntegrator , VectorQuadrature.value , false , SanityCheck.set );
+	}
+	else OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , divergenceOperator , SanityCheck.set );
+#else // !SUPPORT_CONFIDENCE
 	OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , divergenceOperator , SanityCheck.set );
+#endif // SUPPORT_CONFIDENCE
 	if( Verbose.set ) std::cout << pMeter( "Mass and stiffness" ) << std::endl;
 
 	texelMass.resize( textureNodes.size() );
@@ -637,10 +718,10 @@ void Stitching< PreReal , Real , TextureBitDepth >::InitializeSystem( int width 
 	{
 		FullMatrixConstruction( hierarchy.gridAtlases[0] , massAndStiffnessOperators.massCoefficients , mass );
 		FullMatrixConstruction( hierarchy.gridAtlases[0] , massAndStiffnessOperators.stiffnessCoefficients , stiffness );
-		stitchingMatrix = mass*interpolationWeight + stiffness;
+		stitchingMatrix = mass * interpolationWeight + stiffness;
 	}
 
-	multigridIndices.resize(levels);
+	multigridIndices.resize( levels );
 	for( unsigned int i=0 ; i<levels ; i++ )
 	{
 		const typename GridAtlas<>::IndexConverter & indexConverter = hierarchy.gridAtlases[i].indexConverter;
@@ -658,7 +739,7 @@ void Stitching< PreReal , Real , TextureBitDepth >::InitializeSystem( int width 
 	UpdateLinearSystem( interpolationWeight , (Real)1. , hierarchy , multigridStitchingCoefficients , massAndStiffnessOperators , vCycleSolvers , directSolver , stitchingMatrix , DetailVerbose.set, true, UseDirectSolver.set );
 	if( Verbose.set ) std::cout << pMeter( "Initialize MG" ) << std::endl;
 
-	multigridStitchingVariables.resize(levels);
+	multigridStitchingVariables.resize( levels );
 	for( unsigned int i=0 ; i<levels ; i++ )
 	{
 		const typename GridAtlas<>::IndexConverter & indexConverter = hierarchy.gridAtlases[i].indexConverter;
@@ -677,14 +758,28 @@ void Stitching< PreReal , Real , TextureBitDepth >::SetUpSystem( void )
 {
 	texelMass.resize( textureNodes.size() );
 
+#ifdef SUPPORT_CONFIDENCE
+	if( inputMode==MULTIPLE_INPUT_MODE && inputCellConfidence.size() && NewConfidence.set )
+	{
+		std::vector< Point3D< Real > > _texelMass( textureNodes.size() );
+		for( unsigned int i=0 ; i<partialTexelValues.size() ; i++ )
+		{
+			auto ScalarFunction = []( Point3D< Real > v , SquareMatrix< Real , 2 > ){ return v; };
+			scalarIntegrator( partialTexelValues[i] , ScalarFunction , _texelMass , [&]( typename RegularGrid< 2 >::Index I ){ return inputCellConfidence[i]( I ); } );
+			for( unsigned int j=0 ; j<_texelMass.size() ; j++ ) texelMass[j] += _texelMass[j];
+		}
+	}
+	else massAndStiffnessOperators.mass( texelValues , texelMass );
+#else // !SUPPORT_CONFIDENCE
 	massAndStiffnessOperators.mass( texelValues , texelMass );
+#endif // SUPPORT_CONFIDENCE
 
 	divergenceOperator( edgeValues , texelDivergence );
 
 	ThreadPool::ParallelFor
 		(
 			0 , texelValues.size() ,
-			[&]( unsigned int , size_t i )
+			[&]( size_t i )
 			{
 				multigridStitchingVariables[0].x[i] = texelValues[i];
 				multigridStitchingVariables[0].rhs[i] = texelMass[i] * interpolationWeight + texelDivergence[i];
@@ -701,7 +796,7 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth >
 void Stitching< PreReal , Real , TextureBitDepth >::SolveSystem( void )
 {
 	if( UseDirectSolver.set ) ComputeExactSolution( Verbose.set );
-	else for( int i=0 ; i<OutputVCycles.value ; i++ ) VCycle( multigridStitchingVariables , multigridStitchingCoefficients , multigridIndices , vCycleSolvers , 2 , false , false );
+	else for( unsigned int i=0 ; i<OutputVCycles.value ; i++ ) VCycle( multigridStitchingVariables , multigridStitchingCoefficients , multigridIndices , vCycleSolvers , 2 , false , false );
 	UpdateFilteredTexture( multigridStitchingVariables[0].x );
 }
 
@@ -730,7 +825,7 @@ RegularGrid< 2 , Point3D< unsigned char > > Stitching< PreReal , Real , TextureB
 	}
 
 	for( int i=0 ; i<textureNodes.size() ; i++ ) chartMask( textureNodes[i].ci , textureNodes[i].cj ) = chartColors[ textureNodes[i].chartID ];
-	for( int e=0 ; e<ChartMaskErode.value ; e++ )
+	for( unsigned int e=0 ; e<ChartMaskErode.value ; e++ )
 	{
 		RegularGrid< 2 , Point3D< unsigned char > > _chartMask = chartMask;
 		for( int i=0 ; i<textureWidth ; i++ ) for( int j=0 ; j<textureHeight ; j++ ) if( chartMask(i,j)[0] || chartMask(i,j)[1] || chartMask(i,j)[2] )
@@ -784,18 +879,26 @@ void Stitching< PreReal , Real , TextureBitDepth >::LoadMasks( void )
 {
 	if( inputMode==MULTIPLE_INPUT_MODE )
 	{
-		inputConfidence.resize( numTextures );
+		inputTexelConfidence.resize( numTextures );
+#ifdef SUPPORT_CONFIDENCE
+		inputCellConfidence.resize( numTextures );
+#endif // SUPPORT_CONFIDENCE
 		ThreadPool::ParallelFor
 			(
 				0 , numTextures ,
-				[&]( unsigned int , size_t i )
+				[&]( size_t i )
 				{
 					char confidenceName[256];
 					sprintf( confidenceName , InMask.value.c_str() , i );
 					RegularGrid< 2 , Point3D< Real > > textureConfidence;
 					ReadImage< 8 >( textureConfidence , confidenceName );
-					inputConfidence[i].resize( textureWidth , textureHeight );
-					for( int p=0 ; p<textureConfidence.size() ; p++ ) inputConfidence[i][p] = Point3D< Real >::Dot( textureConfidence[p] , Point3D< Real >( (Real)1./3 , (Real)1./3 , (Real)1./3 ) );
+					inputTexelConfidence[i].resize( textureWidth , textureHeight );
+					for( int p=0 ; p<textureConfidence.size() ; p++ ) inputTexelConfidence[i][p] = Point3D< Real >::Dot( textureConfidence[p] , Point3D< Real >( (Real)1./3 , (Real)1./3 , (Real)1./3 ) );
+#ifdef SUPPORT_CONFIDENCE
+					inputCellConfidence[i].resize( textureWidth-1 , textureHeight-1 );
+					for( unsigned int x=0 ; x<static_cast< unsigned int >( textureWidth-1 ) ; x++ ) for( unsigned int y=0 ; y<static_cast< unsigned int >( textureHeight-1 ) ; y++ )
+						inputCellConfidence[i](x,y) = pow( inputTexelConfidence[i](x,y) * inputTexelConfidence[i](x+1,y) * inputTexelConfidence[i](x+1,y+1) * inputTexelConfidence[i](x,y+1) , 0.25 );
+#endif // SUPPORT_CONFIDENCE
 				}
 			);
 	}
@@ -841,7 +944,7 @@ void Stitching< PreReal , Real , TextureBitDepth >::ParseImages( void )
 		for( int textureIter=0 ; textureIter<numTextures ; textureIter++ )
 		{
 			const RegularGrid< 2 , Point3D< Real > > & textureValues = InputLowFrequency.set ? lowFrequencyTexture : inputTextures[textureIter];
-			const RegularGrid< 2 , Real > & textureConfidence = inputConfidence[textureIter];
+			const RegularGrid< 2 , Real > & textureConfidence = inputTexelConfidence[textureIter];
 
 			for( unsigned int i=0 ; i<textureNodes.size() ; i++ )
 			{
@@ -876,7 +979,11 @@ void Stitching< PreReal , Real , TextureBitDepth >::ParseImages( void )
 			if( texelWeight[i]>0 ) texelValues[i] /= texelWeight[i];
 		}
 
+#ifdef SUPPORT_CONFIDENCE
+		if( !NewConfidence.set ) for( unsigned int i=0 ; i<numEdges ; i++ ) if( edgeWeight[i]>0 ) edgeValues[i] /= edgeWeight[i];
+#else // !SUPPORT_CONFIDENCE
 		for( unsigned int i=0 ; i<numEdges ; i++ ) if( edgeWeight[i]>0 ) edgeValues[i] /= edgeWeight[i];
+#endif // SUPPORT_CONFIDENCE
 	}
 	else
 	{
@@ -909,7 +1016,7 @@ void Stitching< PreReal , Real , TextureBitDepth >::ParseImages( void )
 	avgObservedTexel /= (Real)observedTexelCount;
 	for( int i=0 ; i<unobservedTexel.size() ; i++ ) if( unobservedTexel[i] ) texelValues[i] = avgObservedTexel;
 
-	ThreadPool::ParallelFor( 0 , textureNodes.size() , [&]( unsigned int , size_t i ){ multigridStitchingVariables[0].x[i] = texelValues[i]; } );
+	ThreadPool::ParallelFor( 0 , textureNodes.size() , [&]( size_t i ){ multigridStitchingVariables[0].x[i] = texelValues[i]; } );
 }
 
 #ifdef NO_OPEN_GL_VISUALIZATION
@@ -980,7 +1087,7 @@ void Stitching< PreReal , Real , TextureBitDepth >::InitializeVisualization( voi
 	visualization.UpdateTextureBuffer( filteredTexture );
 
 	if( inputMode==MULTIPLE_INPUT_MODE ) visualization.UpdateReferenceTextureBuffers( inputTextures );
-	if( inputMode==MULTIPLE_INPUT_MODE ) visualization.UpdateReferenceConfidenceBuffers( inputConfidence );
+	if( inputMode==MULTIPLE_INPUT_MODE ) visualization.UpdateReferenceConfidenceBuffers( inputTexelConfidence );
 	if( inputMode==SINGLE_INPUT_MODE )   visualization.UpdateCompositeTextureBuffer( inputComposition );
 	if( inputMode==SINGLE_INPUT_MODE )   visualization.UpdateMaskTextureBuffer( inputColorMask );
 
@@ -1014,7 +1121,7 @@ void Stitching< PreReal , Real , TextureBitDepth >::Init( void )
 	{
 		padding = Padding::Init( textureWidth , textureHeight , mesh.texture.vertices , DetailVerbose.set );
 		padding.pad( textureWidth , textureHeight , mesh.texture.vertices );
-		if( inputMode==MULTIPLE_INPUT_MODE ) for( int i=0 ; i<numTextures ; i++ ) padding.pad( inputTextures[i] ) , padding.pad( inputConfidence[i] );
+		if( inputMode==MULTIPLE_INPUT_MODE ) for( int i=0 ; i<numTextures ; i++ ) padding.pad( inputTextures[i] ) , padding.pad( inputTexelConfidence[i] );
 		else padding.pad( inputComposition ) , padding.pad( inputMask );
 		textureWidth  += padding.width();
 		textureHeight += padding.height();
@@ -1147,6 +1254,9 @@ int main( int argc , char* argv[] )
 		return EXIT_FAILURE;
 	}
 #endif // NO_OPEN_GL_VISUALIZATION
+#ifdef SUPPORT_CONFIDENCE
+	MK_WARN_ONCE( "Remove --" , NewConfidence.name , " flag" );
+#endif // SUPPORT_CONFIDENCE
 	if( MultiInput.set && !InMask.set ) MK_THROW( "Input mask required for multi-input" );
 
 	unsigned int bitDepth;
