@@ -558,7 +558,11 @@ void Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 	InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric );
 
 	pMeter.reset();
+#ifdef NEW_CODE
+	OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , std::tie( gradientIntegrator ) , VectorFieldQuadrature.value , !PreciseIntegration.set , SanityCheck.set );
+#else // !NEW_CODE
 	OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , gradientIntegrator , VectorFieldQuadrature.value , !PreciseIntegration.set , SanityCheck.set );
+#endif // NEW_CODE
 	gradientIntegratorScratch = gradientIntegrator.template getScratch< Real , Real >();
 	if( Verbose.set ) std::cout << pMeter( "System" ) << std::endl;
 

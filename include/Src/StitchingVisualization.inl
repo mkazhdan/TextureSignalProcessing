@@ -53,7 +53,11 @@ void StitchingVisualization::display(void)
 	{
 #if 1
 		// Show the mask / confidence
+#ifdef SHOW_CUMULATIVE_CONFIDENCE
+		GLuint mBuffer = visualizationMode==MULTIPLE_INPUT_MODE ? cumulativeConfidenceBuffer : maskTextureBuffer;
+#else // !SHOW_CUMULATIVE_CONFIDENCE
 		GLuint mBuffer = visualizationMode==MULTIPLE_INPUT_MODE ? referenceConfidenceBuffers[referenceIndex] : maskTextureBuffer;
+#endif // SHOW_CUMULATIVE_CONFIDENCE
 #else
 		// Show the result
 		GLuint mBuffer = visualizationMode==MULTIPLE_INPUT_MODE ? textureBuffer : compositeTextureBuffer;
@@ -187,6 +191,29 @@ void StitchingVisualization::UpdateReferenceConfidenceBuffers( const std::vector
 
 		glBindTexture( GL_TEXTURE_2D , 0 );
 	}
+#ifdef SHOW_CUMULATIVE_CONFIDENCE
+	RegularGrid< 2 , Real > confidence( confidences[0].res() );
+	for( size_t j=0 ; j<confidence.size() ; j++ ) confidence[j] = 0.;
+	for( unsigned int i=0 ; i<confidences.size() ; i++ ) for( size_t j=0 ; j<confidence.size() ; j++ ) confidence[j] += confidences[i][j];
+	Real max = 0;
+	for( size_t j=0 ; j<confidence.size() ; j++ ) max = std::max< Real >( max , confidence[j] );
+	for( size_t j=0 ; j<confidence.size() ; j++ ) confidence[j] /= max;
+	if( !glIsBuffer( cumulativeConfidenceBuffer ) ) glGenTextures( 1 , &cumulativeConfidenceBuffer );
+
+	glBindTexture( GL_TEXTURE_2D , cumulativeConfidenceBuffer );
+	glTexParameteri( GL_TEXTURE_2D , GL_TEXTURE_WRAP_S , GL_MIRRORED_REPEAT );
+	glTexParameteri( GL_TEXTURE_2D , GL_TEXTURE_WRAP_T , GL_MIRRORED_REPEAT );
+
+	glTexParameteri( GL_TEXTURE_2D , GL_TEXTURE_MIN_FILTER , GL_LINEAR );
+	glTexParameteri( GL_TEXTURE_2D , GL_TEXTURE_MAG_FILTER , GL_LINEAR );
+
+	unsigned char * imValues = new unsigned char[confidence.size() * 3];
+	for( int j=0 ; j<confidence.size() ; j++ ) for( int c=0 ; c<3 ; c++ ) imValues[ 3*j + c ] = (unsigned char)(confidence[j]*255.0);
+	glTexImage2D( GL_TEXTURE_2D , 0 , GL_RGBA , confidence.res(0) , confidence.res(1) , 0 , GL_RGB , GL_UNSIGNED_BYTE , (GLvoid*)&imValues[0] );
+	delete[] imValues;
+
+	glBindTexture( GL_TEXTURE_2D , 0 );
+#endif // SHOW_CUMULATIVE_CONFIDENCE
 }
 
 template< typename Real >

@@ -74,11 +74,7 @@ namespace MishaK
 #ifdef SUPPORT_CONFIDENCE
 			typename RegularGrid< 2 >::Index cellIndex;
 #endif // SUPPORT_CONFIDENCE
-#ifdef NEW_CODE
 			SquareMatrix< Real , 2 > invTensor; // The inverse metric tensor defined by the intersecting triangle
-#else // !NEW_CODE
-			SquareMatrix< Real , 2 > tensor;	// The inverse metric tensor defined by the intersecting triangle
-#endif // NEW_CODE
 			unsigned int cellOffset;
 			bool operator < ( const BilinearElementScalarSample& sample ) const { return cellOffset<sample.cellOffset; }
 
@@ -91,11 +87,7 @@ namespace MishaK
 #ifdef SUPPORT_CONFIDENCE
 				cellIndex = bilinearElementScalarSample.cellIndex;
 #endif // SUPPORT_CONFIDENCE
-#ifdef NEW_CODE
 				invTensor = bilinearElementScalarSample.invTensor;
-#else // !NEW_CODE
-				tensor = bilinearElementScalarSample.tensor;
-#endif // NEW_CODE
 				cellOffset = bilinearElementScalarSample.cellOffset;
 			}
 
@@ -106,11 +98,7 @@ namespace MishaK
 #ifdef SUPPORT_CONFIDENCE
 				cellIndex = bilinearElementScalarSample.cellIndex;
 #endif // SUPPORT_CONFIDENCE
-#ifdef NEW_CODE
 				invTensor = bilinearElementScalarSample.invTensor;
-#else // !NEW_CODE
-				tensor = bilinearElementScalarSample.tensor;
-#endif // NEW_CODE
 				cellOffset = bilinearElementScalarSample.cellOffset;
 				return *this;
 			}
@@ -157,11 +145,7 @@ namespace MishaK
 #ifdef SUPPORT_CONFIDENCE
 			typename RegularGrid< 2 >::Index cellIndex;
 #endif // SUPPORT_CONFIDENCE
-#ifdef NEW_CODE
 			SquareMatrix< Real , 2 > invTensor; // The inverse metric tensor defined by the intersecting triangle
-#else // !NEW_CODE
-			SquareMatrix< Real , 2 > tensor;	// The inverse metric tensor defined by the intersecting triangle
-#endif // NEW_CODE
 			AtlasInteriorOrBoundaryNodeIndex fineNodes[6];
 
 			QuadraticElementScalarSample( void ) : _sampleNum(0) , _samples(nullptr) {}
@@ -173,11 +157,7 @@ namespace MishaK
 #ifdef SUPPORT_CONFIDENCE
 				cellIndex = quadraticElementScalarSample.cellIndex;
 #endif // SUPPORT_CONFIDENCE
-#ifdef NEW_CODE
 				invTensor = quadraticElementScalarSample.invTensor;
-#else // !NEW_CODE
-				tensor = quadraticElementScalarSample.tensor;
-#endif // NEW_CODE
 				memcpy( fineNodes , quadraticElementScalarSample.fineNodes , sizeof(int)*6 );
 			}
 			QuadraticElementScalarSample& operator = ( const QuadraticElementScalarSample& quadraticElementScalarSample )
@@ -187,11 +167,7 @@ namespace MishaK
 #ifdef SUPPORT_CONFIDENCE
 				cellIndex = quadraticElementScalarSample.cellIndex;
 #endif // SUPPORT_CONFIDENCE
-#ifdef NEW_CODE
 				invTensor = quadraticElementScalarSample.invTensor;
-#else // !NEW_CODE
-				tensor = quadraticElementScalarSample.tensor;
-#endif // NEW_CODE
 				memcpy( fineNodes , quadraticElementScalarSample.fineNodes , sizeof(int)*6 );
 				return *this;
 			}
@@ -250,11 +226,7 @@ namespace MishaK
 #ifdef SUPPORT_CONFIDENCE
 			typename RegularGrid< 2 >::Index cellIndex;
 #endif // SUPPORT_CONFIDENCE
-#ifdef NEW_CODE
 			SquareMatrix< Real , 2 > invTensor; // The inverse metric tensor defined by the intersecting triangle
-#else // !NEW_CODE
-			SquareMatrix< Real , 2 > tensor;		// The inverse metric tensor defined by the intersecting triangle
-#endif // NEW_CODE
 			unsigned int cellOffset;
 			bool operator < ( const BilinearElementGradientSample& sample ) const { return cellOffset < sample.cellOffset; }
 
@@ -267,11 +239,7 @@ namespace MishaK
 #ifdef SUPPORT_CONFIDENCE
 				cellIndex = bilinearElementGradientSample.cellIndex;
 #endif // SUPPORT_CONFIDENCE
-#ifdef NEW_CODE
 				invTensor = bilinearElementGradientSample.invTensor;
-#else // !NEW_CODE
-				tensor = bilinearElementGradientSample.tensor;
-#endif // NEW_CODE
 				cellOffset = bilinearElementGradientSample.cellOffset;
 			}
 			BilinearElementGradientSample& operator = ( const BilinearElementGradientSample& bilinearElementGradientSample )
@@ -281,11 +249,7 @@ namespace MishaK
 #ifdef SUPPORT_CONFIDENCE
 				cellIndex = bilinearElementGradientSample.cellIndex;
 #endif // SUPPORT_CONFIDENCE
-#ifdef NEW_CODE
 				invTensor = bilinearElementGradientSample.invTensor;
-#else // !NEW_CODE
-				tensor = bilinearElementGradientSample.tensor;
-#endif // NEW_CODE
 				cellOffset = bilinearElementGradientSample.cellOffset;
 				return *this;
 			}
@@ -333,11 +297,7 @@ namespace MishaK
 #ifdef SUPPORT_CONFIDENCE
 			typename RegularGrid< 2 >::Index cellIndex;
 #endif // SUPPORT_CONFIDENCE
-#ifdef NEW_CODE
 			SquareMatrix< Real , 2 > invTensor; // The inverse metric tensor defined by the intersecting triangle
-#else // !NEW_CODE
-			SquareMatrix< Real , 2 > tensor;		// The inverse metric tensor defined by the intersecting triangle
-#endif // NEW_CODE
 			AtlasInteriorOrBoundaryNodeIndex fineNodes[6];
 
 			QuadraticElementGradientSample( void ) : _sampleNum(0) , _samples(nullptr) {}
@@ -349,11 +309,7 @@ namespace MishaK
 #ifdef SUPPORT_CONFIDENCE
 				cellIndex = quadraticElementGradientSample.cellIndex;
 #endif // SUPPORT_CONFIDENCE
-#ifdef NEW_CODE
 				invTensor = quadraticElementGradientSample.invTensor;
-#else // !NEW_CODE
-				tensor = quadraticElementGradientSample.tensor;
-#endif // NEW_CODE
 				memcpy( fineNodes , quadraticElementGradientSample.fineNodes , sizeof(int)*6 );
 			}
 			QuadraticElementGradientSample& operator = ( const QuadraticElementGradientSample& quadraticElementGradientSample )
@@ -363,11 +319,7 @@ namespace MishaK
 #ifdef SUPPORT_CONFIDENCE
 				cellIndex = quadraticElementGradientSample.cellIndex;
 #endif // SUPPORT_CONFIDENCE
-#ifdef NEW_CODE
 				invTensor = quadraticElementGradientSample.invTensor;
-#else // !NEW_CODE
-				tensor = quadraticElementGradientSample.tensor;
-#endif // NEW_CODE
 				memcpy( fineNodes , quadraticElementGradientSample.fineNodes , sizeof(int)*6 );
 				return *this;
 			}
@@ -669,6 +621,8 @@ namespace MishaK
 			// [WARNING] This should really be done through friendship
 			void setInteriorCellOffset( unsigned int interiorCellOffset ){ _interiorCellOffset = interiorCellOffset; }
 			void setCombinedCellOffset( unsigned int combinedCellOffset ){ _combinedCellOffset = combinedCellOffset; }
+
+			typename RegularGrid< 2 >::Index chartToAtlasIndex( typename RegularGrid< 2 >::Index I ) const { return typename RegularGrid< 2 >::Index( I[0] + cornerCoords[0] , I[1] + cornerCoords[1] ); }
 		protected:
 			unsigned int _interiorCellOffset;
 			unsigned int _combinedCellOffset;

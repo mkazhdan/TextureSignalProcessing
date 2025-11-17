@@ -26,6 +26,11 @@ ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF S
 DAMAGE.
 */
 
+// [CHANGES]
+// 1. Added per texel confidence support
+// 2. Fixed off-by-a-factor-of-two bug in integration (geodesics)
+// 3. Changed interpolation-weight -> gradient-fitting-weight (texture stitching)
+
 // To do:
 // -- Pull edges out of the divergence operator
 

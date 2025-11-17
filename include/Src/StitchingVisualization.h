@@ -29,6 +29,8 @@ DAMAGE.
 #ifndef STITCHING_VISUALIZATION
 #define STITCHING_VISUALIZATION
 
+#define SHOW_CUMULATIVE_CONFIDENCE
+
 #include <Src/TexturedMeshVisualization.h>
 
 namespace MishaK
@@ -67,6 +69,9 @@ namespace MishaK
 			template< typename Real >
 			void UpdateReferenceTextureBuffers( const std::vector< RegularGrid< 2 , Point3D< Real > > > &images );
 			std::vector< GLuint > referenceConfidenceBuffers;
+#ifdef SHOW_CUMULATIVE_CONFIDENCE
+			GLuint cumulativeConfidenceBuffer;
+#endif // SHOW_CUMULATIVE_CONFIDENCE
 			template< typename Real >
 			void UpdateReferenceConfidenceBuffers( const std::vector< RegularGrid< 2 , Real > > &confidences );
 

@@ -114,7 +114,11 @@ Eigen::SparseMatrix< Real > Execute( unsigned int textureWidth , unsigned int te
 		InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric );
 
 		pMeter.reset();
+#ifdef NEW_CODE
+		OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , divergenceOperator , std::tie( scalarIntegrator ) , VectorQuadrature.value , Approximate.set , SanityCheck.set , Conf );
+#else // !NEW_CODE
 		OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , divergenceOperator , scalarIntegrator , VectorQuadrature.value , Approximate.set , SanityCheck.set , Conf );
+#endif // NEW_CODE
 		std::cout << pMeter( "Mass and stiffness" ) << std::endl;
 	}
 	std::cout << pMeter( "Initialized" ) << std::endl;

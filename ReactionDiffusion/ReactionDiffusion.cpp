@@ -626,7 +626,11 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 	for( unsigned int i=0 ; i<parameterMetric.size() ; i++ ) for( unsigned int j=0 ; j<parameterMetric[ ChartIndex(i) ].size() ; j++ ) parameterMetric[ ChartIndex(i) ][ ChartMeshTriangleIndex(j) ] *= textureNodes.size() / 2;
 
 	pMeter.reset();
+#ifdef NEW_CODE
+	OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , std::tie( scalarIntegrator ) , RHSQuadrature.value , ApproximateIntegration.set , SanityCheck.set );
+#else // !NEW_CODE
 	OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , scalarIntegrator , RHSQuadrature.value , ApproximateIntegration.set , SanityCheck.set );
+#endif // NEW_CODE
 	scalarIntegratorScratch = scalarIntegrator.template getScratch< Point< Real , 2 > , Point< Real , 2 > >();
 	if( Verbose.set ) std::cout << pMeter( "Mass and stiffness" ) << std::endl;
 
