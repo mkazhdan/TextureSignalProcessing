@@ -46,21 +46,26 @@ const
 		atlasCharts[ ChartIndex(i) ].maxCorner = Point2D< GeometryReal >(0,0);
 	}
 
-	// The map taking a vertex index in the atlas and giving the index of the corresponding vertex within the chart
+	// The map taking a vertex index in the atlas and giving the index of the corresponding vertex within the chart.
+	// Also track which chart the vertex was assigned to, so that vertices shared between charts (pinch points)
+	// are correctly added to each chart independently.
 	std::vector< unsigned int > chartVertexID( SimpleTriangleMesh< GeometryReal , 2 >::vertices.size() , static_cast< unsigned int >(-1) );
+	std::vector< unsigned int > chartVertexChart( SimpleTriangleMesh< GeometryReal , 2 >::vertices.size() , static_cast< unsigned int >(-1) );
 
 	for( unsigned int t=0 ; t<SimpleTriangleMesh< GeometryReal , 2 >::triangles.size() ; t++ )
 	{
-		AtlasChart< GeometryReal > &atlasChart = atlasCharts[ triangleToChart( AtlasMeshTriangleIndex( t ) ) ];
+		unsigned int chartIdx = static_cast< unsigned int >( triangleToChart( AtlasMeshTriangleIndex( t ) ) );
+		AtlasChart< GeometryReal > &atlasChart = atlasCharts[ ChartIndex( chartIdx ) ];
 
 		SimplexIndex< 2 > tri;
 		for( unsigned int k=0 ; k<3 ; k++ )
 		{
 			atlasChart._chartHalfEdgeToAtlasEdge.push_back( halfEdgeToEdge( AtlasMeshHalfEdgeIndex( 3*t+k ) ) );
 			unsigned int v = SimpleTriangleMesh< GeometryReal , 2 >::triangles[t][k];
-			if( chartVertexID[v]==-1 )
+			if( chartVertexID[v]==static_cast< unsigned int >(-1) || chartVertexChart[v]!=chartIdx )
 			{
 				chartVertexID[v] = (unsigned int)atlasChart.vertices.size();
+				chartVertexChart[v] = chartIdx;
 				Point2D< GeometryReal > vertexPos = SimpleTriangleMesh< GeometryReal , 2 >::vertices[v];
 				for( unsigned int c=0 ; c<2 ; c++ )
 				{
