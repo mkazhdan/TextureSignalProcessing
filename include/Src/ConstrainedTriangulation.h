@@ -42,7 +42,7 @@ namespace MishaK
 					Point< GeometryReal , 2 > d[] = { vertices[i1]-vertices[i0] , vertices[i2]-vertices[i0] };
 					SquareMatrix< double , 2 > M;
 					for( int i=0 ; i<2 ; i++ ) for( int j=0 ; j<2 ; j++ ) M(i,j) = Point< GeometryReal , 2 >::Dot( d[i] , d[j] );
-					return M.determinant();
+					return std::max< double >( 0. , M.determinant() );
 				};
 			MinimalAreaTriangulation::GetTriangulation( SquaredArea , static_cast< unsigned int >( vertices.size() ) , outputTriangles );
 		}
