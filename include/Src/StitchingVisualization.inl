@@ -42,37 +42,67 @@ void StitchingVisualization::LoadGeometryData() {
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, faceBuffer);
 }
 
-void StitchingVisualization::display(void)
+void StitchingVisualization::display( void )
 {
 	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
 	glEnable( GL_TEXTURE_2D );
 	glEnable( GL_DEPTH_TEST );
 
-	// Show the output texture
+	if( displayMode==ONE_REGION_DISPLAY )
 	{
+		if( showSource )
+		{
+			GLuint mBuffer = visualizationMode==MULTIPLE_INPUT_MODE ? referenceConfidenceBuffers[referenceIndex] : maskTextureBuffer;
+			GLuint tBuffer = visualizationMode==MULTIPLE_INPUT_MODE ? referenceTextureBuffers[referenceIndex] : compositeTextureBuffer;
+			setViewport( 0 );
+			DrawRegion( showMesh , showMask ? mBuffer : tBuffer , false , false );
+		}
+		else
+		{
 #if 1
-		// Show the mask / confidence
+			// Show the mask / confidence
 #ifdef SHOW_CUMULATIVE_CONFIDENCE
-		GLuint mBuffer = visualizationMode==MULTIPLE_INPUT_MODE ? cumulativeConfidenceBuffer : maskTextureBuffer;
+			GLuint mBuffer = visualizationMode==MULTIPLE_INPUT_MODE ? cumulativeConfidenceBuffer : maskTextureBuffer;
 #else // !SHOW_CUMULATIVE_CONFIDENCE
-		GLuint mBuffer = visualizationMode==MULTIPLE_INPUT_MODE ? referenceConfidenceBuffers[referenceIndex] : maskTextureBuffer;
+			GLuint mBuffer = visualizationMode==MULTIPLE_INPUT_MODE ? referenceConfidenceBuffers[referenceIndex] : maskTextureBuffer;
 #endif // SHOW_CUMULATIVE_CONFIDENCE
 #else
-		// Show the result
-		GLuint mBuffer = visualizationMode==MULTIPLE_INPUT_MODE ? textureBuffer : compositeTextureBuffer;
+			// Show the result
+			GLuint mBuffer = visualizationMode==MULTIPLE_INPUT_MODE ? textureBuffer : compositeTextureBuffer;
 #endif
-		GLuint tBuffer = textureBuffer;
-		setViewport( 1 );
-		DrawRegion( showMesh , showMask ? mBuffer : tBuffer , false , false );
+			GLuint tBuffer = textureBuffer;
+			setViewport( 0 );
+			DrawRegion( showMesh , showMask ? mBuffer : tBuffer , false , false );
+		}
 	}
-
-	// Show the input texture
+	else
 	{
-		GLuint mBuffer = visualizationMode==MULTIPLE_INPUT_MODE ? referenceConfidenceBuffers[referenceIndex] : maskTextureBuffer;
-		GLuint tBuffer = visualizationMode==MULTIPLE_INPUT_MODE ? referenceTextureBuffers[referenceIndex] : compositeTextureBuffer;
-		setViewport( 0 );
-		DrawRegion( showMesh , showMask ? mBuffer : tBuffer , false , false );
+		// Show the output texture
+		{
+#if 1
+			// Show the mask / confidence
+#ifdef SHOW_CUMULATIVE_CONFIDENCE
+			GLuint mBuffer = visualizationMode==MULTIPLE_INPUT_MODE ? cumulativeConfidenceBuffer : maskTextureBuffer;
+#else // !SHOW_CUMULATIVE_CONFIDENCE
+			GLuint mBuffer = visualizationMode==MULTIPLE_INPUT_MODE ? referenceConfidenceBuffers[referenceIndex] : maskTextureBuffer;
+#endif // SHOW_CUMULATIVE_CONFIDENCE
+#else
+			// Show the result
+			GLuint mBuffer = visualizationMode==MULTIPLE_INPUT_MODE ? textureBuffer : compositeTextureBuffer;
+#endif
+			GLuint tBuffer = textureBuffer;
+			setViewport( 1 );
+			DrawRegion( showMesh , showMask ? mBuffer : tBuffer , false , false );
+		}
+
+		// Show the input texture
+		{
+			GLuint mBuffer = visualizationMode==MULTIPLE_INPUT_MODE ? referenceConfidenceBuffers[referenceIndex] : maskTextureBuffer;
+			GLuint tBuffer = visualizationMode==MULTIPLE_INPUT_MODE ? referenceTextureBuffers[referenceIndex] : compositeTextureBuffer;
+			setViewport( 0 );
+			DrawRegion( showMesh , showMask ? mBuffer : tBuffer , false , false );
+		}
 	}
 
 	glDisable( GL_TEXTURE_2D );
@@ -80,7 +110,7 @@ void StitchingVisualization::display(void)
 	
 	setViewport();
 
-	if (showDisk && isBrushActive)
+	if( showDisk && isBrushActive )
 	{
 		glDisable( GL_DEPTH_TEST );
 		glMatrixMode( GL_PROJECTION );
@@ -238,7 +268,7 @@ void StitchingVisualization::UpdateTextureBuffer( const RegularGrid< 2 , Point3D
 
 }
 
-StitchingVisualization::StitchingVisualization(void)
+StitchingVisualization::StitchingVisualization( void )
 {
 	TexturedMeshVisualization();
 	referenceIndex = 0;
@@ -247,4 +277,6 @@ StitchingVisualization::StitchingVisualization(void)
 	showMask = false;
 	compositeTextureBuffer = 0;
 	maskTextureBuffer = 0;
+	showSource = false;
+
 }

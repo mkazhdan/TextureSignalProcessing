@@ -25,15 +25,15 @@ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING 
 ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
 DAMAGE.
 */
-#ifndef PLY_VERTEX_DATA
-#define PLY_VERTEX_DATA
+#ifndef PLY_DATA
+#define PLY_DATA
 
 #include "Ply.h"
 #include "Geometry.h"
 
 namespace MishaK
 {
-	namespace VertexFactory
+	namespace DataFactory
 	{
 		// Mimicking the scalar types in Ply.inl
 		// Assuming Real is something that is castable to/from a double
@@ -53,7 +53,7 @@ namespace MishaK
 		template< typename Real > TypeOnDisk GetTypeOnDisk( void );
 
 		template< typename Real >
-		struct VertexIO
+		struct DataIO
 		{
 			static bool ReadASCII  ( FILE *fp , TypeOnDisk typeOnDisk ,       Real &s );
 			static bool ReadBinary ( FILE *fp , TypeOnDisk typeOnDisk ,       Real &s );
@@ -70,35 +70,32 @@ namespace MishaK
 			template< typename Type > static void _WriteBinary( FILE *fp , Real  s );
 		};
 
-		template< typename _VertexType , typename FactoryType >
+		template< typename _DataType , typename FactoryType >
 		struct _Factory
 		{
-			typedef _VertexType VertexType;
-			virtual VertexType operator()( void ) const = 0;
+			typedef _DataType DataType;
+			virtual DataType operator()( void ) const = 0;
 
 			// Reading/writing methods for PLY format
 			virtual unsigned int  plyReadNum( void ) const = 0;
 			virtual unsigned int plyWriteNum( void ) const = 0;
 			virtual bool plyValidReadProperties( const bool *flags ) const = 0;
+			virtual bool plyValidReadProperties( const std::vector< bool > & flags ) const = 0;
 			virtual bool plyValidReadProperties( const std::vector< GregTurk::PlyProperty > &plyProperties ) const;
 
 			virtual GregTurk::PlyProperty  plyReadProperty( unsigned int idx ) const = 0;
 			virtual GregTurk::PlyProperty plyWriteProperty( unsigned int idx ) const = 0;
 
 			// Reading/writing methods for ASCII/Binary files
-			virtual bool   readASCII( FILE *fp ,       VertexType &dt ) const = 0;
-			virtual bool  readBinary( FILE *fp ,       VertexType &dt ) const = 0;
-			virtual void  writeASCII( FILE *fp , const VertexType &dt ) const = 0;
-			virtual void writeBinary( FILE *fp , const VertexType &dt ) const = 0;
+			virtual bool   readASCII( FILE *fp ,       DataType &dt ) const = 0;
+			virtual bool  readBinary( FILE *fp ,       DataType &dt ) const = 0;
+			virtual void  writeASCII( FILE *fp , const DataType &dt ) const = 0;
+			virtual void writeBinary( FILE *fp , const DataType &dt ) const = 0;
 
 			virtual size_t bufferSize( void ) const = 0;
-			virtual void toBuffer( const VertexType &dt , char *buffer ) const = 0;
-			virtual void fromBuffer( const char *buffer , VertexType &dt ) const = 0;
+			virtual void toBuffer( const DataType &dt , char *buffer ) const = 0;
+			virtual void fromBuffer( const char *buffer , DataType &dt ) const = 0;
 
-#if 1
-#else
-			virtual bool isStaticallyAllocated( void ) const = 0;
-#endif
 			virtual GregTurk::PlyProperty  plyStaticReadProperty( unsigned int idx ) const = 0;
 			virtual GregTurk::PlyProperty plyStaticWriteProperty( unsigned int idx ) const = 0;
 
@@ -138,40 +135,37 @@ namespace MishaK
 		template< typename Real >
 		struct EmptyFactory : _Factory< EmptyVectorType< Real > , EmptyFactory< Real > >
 		{
-			typedef typename _Factory< EmptyVectorType< Real > , EmptyFactory< Real > >::VertexType VertexType;
+			typedef typename _Factory< EmptyVectorType< Real > , EmptyFactory< Real > >::DataType DataType;
 			using _Factory< EmptyVectorType< Real > , EmptyFactory< Real > >::plyValidReadProperties;
 
 			struct Transform
 			{
 				Transform( void ){}
 				template< typename X > Transform( X ){}
-				VertexType operator()( VertexType dt ) const { return dt; }
+				DataType operator()( DataType dt ) const { return dt; }
 			};
 
-			VertexType operator()( void ) const { return VertexType(); }
+			DataType operator()( void ) const { return DataType(); }
 
 			unsigned int  plyReadNum( void ) const { return 0; }
 			unsigned int plyWriteNum( void ) const { return 0; }
 			bool plyValidReadProperties( const bool *flags ) const { return true; }
+			bool plyValidReadProperties( const std::vector< bool > & flags ) const { return true; }
 
 			GregTurk::PlyProperty  plyReadProperty( unsigned int idx ) const { if( idx>= plyReadNum() ) MK_ERROR_OUT(  "read property out of bounds" ) ; return GregTurk::PlyProperty(); }
 			GregTurk::PlyProperty plyWriteProperty( unsigned int idx ) const { if( idx>=plyWriteNum() ) MK_ERROR_OUT( "write property out of bounds" ) ; return GregTurk::PlyProperty(); }
-			bool   readASCII( FILE *fp ,       VertexType &dt ) const { return true; }
-			bool  readBinary( FILE *fp ,       VertexType &dt ) const { return true; }
-			void  writeASCII( FILE *fp , const VertexType &dt ) const {}
-			void writeBinary( FILE *fp , const VertexType &dt ) const {};
+			bool   readASCII( FILE *fp ,       DataType &dt ) const { return true; }
+			bool  readBinary( FILE *fp ,       DataType &dt ) const { return true; }
+			void  writeASCII( FILE *fp , const DataType &dt ) const {}
+			void writeBinary( FILE *fp , const DataType &dt ) const {};
 
-#if 1
 			static constexpr bool IsStaticallyAllocated( void ){ return true; }
-#else
-			bool isStaticallyAllocated( void ) const { return true; }
-#endif
 			GregTurk::PlyProperty  plyStaticReadProperty( unsigned int idx ) const { if( idx>= plyReadNum() ) MK_ERROR_OUT(  "read property out of bounds" ) ; return GregTurk::PlyProperty(); }
 			GregTurk::PlyProperty plyStaticWriteProperty( unsigned int idx ) const { if( idx>=plyWriteNum() ) MK_ERROR_OUT( "write property out of bounds" ) ; return GregTurk::PlyProperty(); }
 
 			size_t bufferSize( void ) const { return 0; }
-			void toBuffer( const VertexType &dt , char *buffer ) const {}
-			void fromBuffer( const char* buffer , VertexType &dt ) const {}
+			void toBuffer( const DataType &dt , char *buffer ) const {}
+			void fromBuffer( const char* buffer , DataType &dt ) const {}
 
 			bool operator == ( const EmptyFactory &factory ) const { return true; }
 
@@ -181,41 +175,38 @@ namespace MishaK
 		template< typename Real , unsigned int Dim >
 		struct PointFactory : _Factory< Point< Real , Dim > , PointFactory< Real , Dim > >
 		{
-			typedef typename _Factory< Point< Real , Dim > , PointFactory< Real , Dim > >::VertexType VertexType;
+			typedef typename _Factory< Point< Real , Dim > , PointFactory< Real , Dim > >::DataType DataType;
 			using _Factory< Point< Real , Dim > , PointFactory< Real , Dim > >::plyValidReadProperties;
 
 			struct Transform
 			{
 				Transform( void ){}
 				template< typename XForm > Transform( XForm xForm ){}
-				VertexType operator()( VertexType dt ) const { return dt; }
+				DataType operator()( DataType dt ) const { return dt; }
 			};
 
-			VertexType operator()( void ) const { return VertexType(); }
+			DataType operator()( void ) const { return DataType(); }
 
 			unsigned int  plyReadNum( void ) const { return Dim; }
 			unsigned int plyWriteNum( void ) const { return Dim; }
 			bool plyValidReadProperties( const bool *flags ) const { for( int d=0 ; d<Dim ; d++ ) if( !flags[d] ) return false ; return true ; }
+			bool plyValidReadProperties( const std::vector< bool > & flags ) const { for( int d=0 ; d<Dim ; d++ ) if( !flags[d] ) return false ; return true ; }
 			GregTurk::PlyProperty  plyReadProperty( unsigned int idx ) const;
 			GregTurk::PlyProperty plyWriteProperty( unsigned int idx ) const;
-			bool   readASCII( FILE *fp ,       VertexType &dt ) const { return VertexIO< Real >:: ReadASCII( fp , _typeOnDisk , Dim , &dt[0] ); }
-			bool  readBinary( FILE *fp ,       VertexType &dt ) const { return VertexIO< Real >::ReadBinary( fp , _typeOnDisk , Dim , &dt[0] ); }
-			void  writeASCII( FILE *fp , const VertexType &dt ) const { VertexIO< Real >:: WriteASCII( fp , _typeOnDisk , Dim , &dt[0] ); }
-			void writeBinary( FILE *fp , const VertexType &dt ) const { VertexIO< Real >::WriteBinary( fp , _typeOnDisk , Dim , &dt[0] ); }
+			bool   readASCII( FILE *fp ,       DataType &dt ) const { return DataIO< Real >:: ReadASCII( fp , _typeOnDisk , Dim , &dt[0] ); }
+			bool  readBinary( FILE *fp ,       DataType &dt ) const { return DataIO< Real >::ReadBinary( fp , _typeOnDisk , Dim , &dt[0] ); }
+			void  writeASCII( FILE *fp , const DataType &dt ) const { DataIO< Real >:: WriteASCII( fp , _typeOnDisk , Dim , &dt[0] ); }
+			void writeBinary( FILE *fp , const DataType &dt ) const { DataIO< Real >::WriteBinary( fp , _typeOnDisk , Dim , &dt[0] ); }
 
-#if 1
 			static constexpr bool IsStaticallyAllocated( void ){ return true; }
-#else
-			bool isStaticallyAllocated( void ) const { return true; }
-#endif
 			GregTurk::PlyProperty  plyStaticReadProperty( unsigned int idx ) const;
 			GregTurk::PlyProperty plyStaticWriteProperty( unsigned int idx ) const;
 
 			PointFactory( std::string header , TypeOnDisk typeOnDisk=GetTypeOnDisk< Real >() ) : _header(header) , _typeOnDisk( typeOnDisk ) {}
 
-			size_t bufferSize( void ) const { return sizeof( VertexType ); }
-			void toBuffer( const VertexType &dt , char *buffer ) const { *( (VertexType*)buffer ) = dt; }
-			void fromBuffer( const char *buffer , VertexType &dt ) const { dt = *( (VertexType*)buffer ); }
+			size_t bufferSize( void ) const { return sizeof( DataType ); }
+			void toBuffer( const DataType &dt , char *buffer ) const { *( (DataType*)buffer ) = dt; }
+			void fromBuffer( const char *buffer , DataType &dt ) const { dt = *( (DataType*)buffer ); }
 
 			bool operator == ( const PointFactory &factory ) const { return _typeOnDisk==factory._typeOnDisk && _header==factory._header; }
 		protected:
@@ -229,41 +220,38 @@ namespace MishaK
 		template< typename Real , unsigned int Cols , unsigned int Rows >
 		struct MatrixFactory : _Factory< Matrix< Real , Cols , Rows > , MatrixFactory< Real , Cols , Rows > >
 		{
-			typedef typename _Factory< Matrix< Real , Cols , Rows > , MatrixFactory< Real , Cols , Rows > >::VertexType VertexType;
+			typedef typename _Factory< Matrix< Real , Cols , Rows > , MatrixFactory< Real , Cols , Rows > >::DataType DataType;
 			using _Factory< Matrix< Real , Cols , Rows > , MatrixFactory< Real , Cols , Rows > >::plyValidReadProperties;
 
 			struct Transform
 			{
 				Transform( void ){}
 				template< typename XForm > Transform( XForm xForm ){}
-				VertexType operator()( VertexType dt ) const { return dt; }
+				DataType operator()( DataType dt ) const { return dt; }
 			};
 
-			VertexType operator()( void ) const { return VertexType(); }
+			DataType operator()( void ) const { return DataType(); }
 
 			unsigned int  plyReadNum( void ) const { return Cols*Rows; }
 			unsigned int plyWriteNum( void ) const { return Cols*Rows; }
 			bool plyValidReadProperties( const bool *flags ) const { for( int d=0 ; d<Cols*Rows ; d++ ) if( !flags[d] ) return false ; return true ; }
+			bool plyValidReadProperties( const std::vector< bool > & flags ) const { for( int d=0 ; d<Cols*Rows ; d++ ) if( !flags[d] ) return false ; return true ; }
 			GregTurk::PlyProperty  plyReadProperty( unsigned int idx ) const;
 			GregTurk::PlyProperty plyWriteProperty( unsigned int idx ) const;
-			bool   readASCII( FILE *fp ,       VertexType &dt ) const { return VertexIO< Real >:: ReadASCII( fp , _typeOnDisk , Cols*Rows , &dt(0,0) ); }
-			bool  readBinary( FILE *fp ,       VertexType &dt ) const { return VertexIO< Real >::ReadBinary( fp , _typeOnDisk , Cols*Rows , &dt(0,0) ); }
-			void  writeASCII( FILE *fp , const VertexType &dt ) const { VertexIO< Real >:: WriteASCII( fp , _typeOnDisk , Cols*Rows , &dt(0,0) ); }
-			void writeBinary( FILE *fp , const VertexType &dt ) const { VertexIO< Real >::WriteBinary( fp , _typeOnDisk , Cols*Rows , &dt(0,0) ); }
+			bool   readASCII( FILE *fp ,       DataType &dt ) const { return DataIO< Real >:: ReadASCII( fp , _typeOnDisk , Cols*Rows , &dt(0,0) ); }
+			bool  readBinary( FILE *fp ,       DataType &dt ) const { return DataIO< Real >::ReadBinary( fp , _typeOnDisk , Cols*Rows , &dt(0,0) ); }
+			void  writeASCII( FILE *fp , const DataType &dt ) const { DataIO< Real >:: WriteASCII( fp , _typeOnDisk , Cols*Rows , &dt(0,0) ); }
+			void writeBinary( FILE *fp , const DataType &dt ) const { DataIO< Real >::WriteBinary( fp , _typeOnDisk , Cols*Rows , &dt(0,0) ); }
 
-#if 1
 			static constexpr bool IsStaticallyAllocated( void ){ return true; }
-#else
-			bool isStaticallyAllocated( void ) const { return true; }
-#endif
 			GregTurk::PlyProperty  plyStaticReadProperty( unsigned int idx ) const;
 			GregTurk::PlyProperty plyStaticWriteProperty( unsigned int idx ) const;
 
 			MatrixFactory( std::string header , TypeOnDisk typeOnDisk=GetTypeOnDisk< Real >() ) : _header(header) , _typeOnDisk( typeOnDisk ) {}
 
-			size_t bufferSize( void ) const { return sizeof( VertexType ); }
-			void toBuffer( const VertexType &dt , char *buffer ) const { *( (VertexType*)buffer ) = dt; }
-			void fromBuffer( const char *buffer , VertexType &dt ) const { dt = *( (VertexType*)buffer ); }
+			size_t bufferSize( void ) const { return sizeof( DataType ); }
+			void toBuffer( const DataType &dt , char *buffer ) const { *( (DataType*)buffer ) = dt; }
+			void fromBuffer( const char *buffer , DataType &dt ) const { dt = *( (DataType*)buffer ); }
 
 			bool operator == ( const MatrixFactory &factory ) const { return _typeOnDisk==factory._typeOnDisk && _header==factory._header; }
 		protected:
@@ -272,11 +260,17 @@ namespace MishaK
 			TypeOnDisk _typeOnDisk;
 		};
 
+		template< typename Real , unsigned int Dim >
+		struct VectorFieldFactory : public PointFactory< Real , Dim >
+		{
+			VectorFieldFactory( std::string header="vf" , TypeOnDisk typeOnDisk=GetTypeOnDisk< Real >() ) : PointFactory< Real , Dim >( header , typeOnDisk ) {}
+		};
+
 		// The position factory
 		template< typename Real , unsigned int Dim >
 		struct PositionFactory : _Factory< Point< Real , Dim > , PositionFactory< Real , Dim > >
 		{
-			typedef typename _Factory< Point< Real , Dim > , PositionFactory< Real , Dim > >::VertexType VertexType;
+			typedef typename _Factory< Point< Real , Dim > , PositionFactory< Real , Dim > >::DataType DataType;
 			using _Factory< Point< Real , Dim > , PositionFactory< Real , Dim > >::plyValidReadProperties;
 
 			struct Transform
@@ -284,36 +278,33 @@ namespace MishaK
 				Transform( void ){ _xForm = XForm< Real , Dim+1 >::Identity(); }
 				Transform( XForm< Real , Dim > xForm ){ _xForm = XForm< Real , Dim+1 >::Identity() ; for( int i=0 ; i<Dim ; i++ ) for( int j=0 ; j<Dim ; j++ ) _xForm(i,j) = xForm(i,j); }
 				Transform( XForm< Real , Dim+1 > xForm ) : _xForm(xForm) {}
-				VertexType operator()( VertexType dt ) const { return _xForm * dt; }
+				DataType operator()( DataType dt ) const { return _xForm * dt; }
 			protected:
 				XForm< Real , Dim+1 > _xForm;
 			};
 
-			VertexType operator()( void ) const { return VertexType(); }
+			DataType operator()( void ) const { return DataType(); }
 
 			unsigned int  plyReadNum( void ) const { return Dim; }
 			unsigned int plyWriteNum( void ) const { return Dim; }
 			bool plyValidReadProperties( const bool *flags ) const { for( int d=0 ; d<Dim ; d++ ) if( !flags[d] ) return false ; return true ; }
+			bool plyValidReadProperties( const std::vector< bool > & flags ) const { for( int d=0 ; d<Dim ; d++ ) if( !flags[d] ) return false ; return true ; }
 			GregTurk::PlyProperty  plyReadProperty( unsigned int idx ) const;
 			GregTurk::PlyProperty plyWriteProperty( unsigned int idx ) const;
-			bool   readASCII( FILE *fp ,       VertexType &dt ) const { return VertexIO< Real >:: ReadASCII( fp , _typeOnDisk , Dim , &dt[0] ); }
-			bool  readBinary( FILE *fp ,       VertexType &dt ) const { return VertexIO< Real >::ReadBinary( fp , _typeOnDisk , Dim , &dt[0] ); }
-			void  writeASCII( FILE *fp , const VertexType &dt ) const { VertexIO< Real >:: WriteASCII( fp , _typeOnDisk , Dim , &dt[0] ); }
-			void writeBinary( FILE *fp , const VertexType &dt ) const { VertexIO< Real >::WriteBinary( fp , _typeOnDisk , Dim , &dt[0] ); }
+			bool   readASCII( FILE *fp ,       DataType &dt ) const { return DataIO< Real >:: ReadASCII( fp , _typeOnDisk , Dim , &dt[0] ); }
+			bool  readBinary( FILE *fp ,       DataType &dt ) const { return DataIO< Real >::ReadBinary( fp , _typeOnDisk , Dim , &dt[0] ); }
+			void  writeASCII( FILE *fp , const DataType &dt ) const { DataIO< Real >:: WriteASCII( fp , _typeOnDisk , Dim , &dt[0] ); }
+			void writeBinary( FILE *fp , const DataType &dt ) const { DataIO< Real >::WriteBinary( fp , _typeOnDisk , Dim , &dt[0] ); }
 
-#if 1
 			static constexpr bool IsStaticallyAllocated( void ){ return true; }
-#else
-			bool isStaticallyAllocated( void ) const { return true; }
-#endif
 			GregTurk::PlyProperty  plyStaticReadProperty( unsigned int idx ) const;
 			GregTurk::PlyProperty plyStaticWriteProperty( unsigned int idx ) const;
 
 			PositionFactory( TypeOnDisk typeOnDisk=GetTypeOnDisk< Real >() ) : _typeOnDisk( typeOnDisk ) {}
 
-			size_t bufferSize( void ) const { return sizeof( VertexType ); }
-			void toBuffer( const VertexType &dt , char *buffer ) const { *( (VertexType*)buffer ) = dt; }
-			void fromBuffer( const char *buffer , VertexType &dt ) const { dt = *( (VertexType*)buffer ); }
+			size_t bufferSize( void ) const { return sizeof( DataType ); }
+			void toBuffer( const DataType &dt , char *buffer ) const { *( (DataType*)buffer ) = dt; }
+			void fromBuffer( const char *buffer , DataType &dt ) const { dt = *( (DataType*)buffer ); }
 
 			bool operator == ( const PositionFactory &factory ) const { return _typeOnDisk==factory._typeOnDisk; }
 		protected:
@@ -325,7 +316,7 @@ namespace MishaK
 		template< typename Real , unsigned int Dim >
 		struct NormalFactory : public _Factory< Point< Real , Dim > , NormalFactory< Real , Dim > >
 		{
-			typedef typename _Factory< Point< Real , Dim > , NormalFactory< Real , Dim > >::VertexType VertexType;
+			typedef typename _Factory< Point< Real , Dim > , NormalFactory< Real , Dim > >::DataType DataType;
 			using _Factory< Point< Real , Dim > , NormalFactory< Real , Dim > >::plyValidReadProperties;
 
 			struct Transform
@@ -337,36 +328,33 @@ namespace MishaK
 					for( int i=0 ; i<Dim ; i++ ) for( int j=0 ; j<Dim ; j++ ) _xForm(i,j) = xForm(i,j);
 					_xForm = _xForm.inverse().transpose();
 				}
-				VertexType operator()( VertexType dt ) const { return _xForm * dt; }
+				DataType operator()( DataType dt ) const { return _xForm * dt; }
 			protected:
 				XForm< Real , Dim > _xForm;
 			};
 
-			VertexType operator()( void ) const { return VertexType(); }
+			DataType operator()( void ) const { return DataType(); }
 
 			unsigned int  plyReadNum( void ) const { return Dim; }
 			unsigned int plyWriteNum( void ) const { return Dim; }
 			bool plyValidReadProperties( const bool *flags ) const { for( int d=0 ; d<Dim ; d++ ) if( !flags[d] ) return false ; return true ; }
+			bool plyValidReadProperties( const std::vector< bool > & flags ) const { for( int d=0 ; d<Dim ; d++ ) if( !flags[d] ) return false ; return true ; }
 			GregTurk::PlyProperty  plyReadProperty( unsigned int idx ) const;
 			GregTurk::PlyProperty plyWriteProperty( unsigned int idx ) const;
-			bool   readASCII( FILE *fp ,       VertexType &dt ) const { return VertexIO< Real >:: ReadASCII( fp , _typeOnDisk , Dim , &dt[0] ); }
-			bool  readBinary( FILE *fp ,       VertexType &dt ) const { return VertexIO< Real >::ReadBinary( fp , _typeOnDisk , Dim , &dt[0] ); }
-			void  writeASCII( FILE *fp , const VertexType &dt ) const { VertexIO< Real >:: WriteASCII( fp , _typeOnDisk , Dim , &dt[0] ); }
-			void writeBinary( FILE *fp , const VertexType &dt ) const { VertexIO< Real >::WriteBinary( fp , _typeOnDisk , Dim , &dt[0] ); }
+			bool   readASCII( FILE *fp ,       DataType &dt ) const { return DataIO< Real >:: ReadASCII( fp , _typeOnDisk , Dim , &dt[0] ); }
+			bool  readBinary( FILE *fp ,       DataType &dt ) const { return DataIO< Real >::ReadBinary( fp , _typeOnDisk , Dim , &dt[0] ); }
+			void  writeASCII( FILE *fp , const DataType &dt ) const { DataIO< Real >:: WriteASCII( fp , _typeOnDisk , Dim , &dt[0] ); }
+			void writeBinary( FILE *fp , const DataType &dt ) const { DataIO< Real >::WriteBinary( fp , _typeOnDisk , Dim , &dt[0] ); }
 
-#if 1
 			static constexpr bool IsStaticallyAllocated( void ){ return true; }
-#else
-			bool isStaticallyAllocated( void ) const { return true; }
-#endif
 			GregTurk::PlyProperty  plyStaticReadProperty( unsigned int idx ) const;
 			GregTurk::PlyProperty plyStaticWriteProperty( unsigned int idx ) const;
 
 			NormalFactory( TypeOnDisk typeOnDisk=GetTypeOnDisk< Real >() ) : _typeOnDisk( typeOnDisk ) {}
 
-			size_t bufferSize( void ) const { return sizeof( VertexType ); }
-			void toBuffer( const VertexType &dt , char *buffer ) const { *( (VertexType*)buffer ) = dt; }
-			void fromBuffer( const char *buffer , VertexType &dt ) const { dt = *( (VertexType*)buffer ); }
+			size_t bufferSize( void ) const { return sizeof( DataType ); }
+			void toBuffer( const DataType &dt , char *buffer ) const { *( (DataType*)buffer ) = dt; }
+			void fromBuffer( const char *buffer , DataType &dt ) const { dt = *( (DataType*)buffer ); }
 
 			bool operator == ( const NormalFactory &factory ) const { return _typeOnDisk==factory._typeOnDisk; }
 		protected:
@@ -378,40 +366,37 @@ namespace MishaK
 		template< typename Real , unsigned int Dim >
 		struct TextureFactory : public _Factory< Point< Real , Dim > , TextureFactory< Real , Dim > >
 		{
-			typedef typename _Factory< Point< Real , Dim > , TextureFactory< Real , Dim > >::VertexType VertexType;
+			typedef typename _Factory< Point< Real , Dim > , TextureFactory< Real , Dim > >::DataType DataType;
 			using _Factory< Point< Real , Dim > , TextureFactory< Real , Dim > >::plyValidReadProperties;
 
 			struct Transform
 			{
 				Transform( void ){}
 				template< typename XForm > Transform( XForm xForm ){}
-				VertexType operator()( VertexType dt ) const { return dt; }
+				DataType operator()( DataType dt ) const { return dt; }
 			};
 
-			VertexType operator()( void ) const { return VertexType(); }
+			DataType operator()( void ) const { return DataType(); }
 
 			unsigned int  plyReadNum( void ) const { return Dim; }
 			unsigned int plyWriteNum( void ) const { return Dim; }
 			bool plyValidReadProperties( const bool *flags ) const { for( int d=0 ; d<Dim ; d++ ) if( !flags[d] ) return false ; return true ; }
+			bool plyValidReadProperties( const std::vector< bool > & flags ) const { for( int d=0 ; d<Dim ; d++ ) if( !flags[d] ) return false ; return true ; }
 			GregTurk::PlyProperty  plyReadProperty( unsigned int idx ) const;
 			GregTurk::PlyProperty plyWriteProperty( unsigned int idx ) const;
-			bool   readASCII( FILE *fp ,       VertexType &dt ) const { return VertexIO< Real >:: ReadASCII( fp , _typeOnDisk , Dim , &dt[0] ); }
-			bool  readBinary( FILE *fp ,       VertexType &dt ) const { return VertexIO< Real >::ReadBinary( fp , _typeOnDisk , Dim , &dt[0] ); }
-			void  writeASCII( FILE *fp , const VertexType &dt ) const { VertexIO< Real >:: WriteASCII( fp , _typeOnDisk , Dim , &dt[0] ); }
-			void writeBinary( FILE *fp , const VertexType &dt ) const { VertexIO< Real >::WriteBinary( fp , _typeOnDisk , Dim , &dt[0] ); }
+			bool   readASCII( FILE *fp ,       DataType &dt ) const { return DataIO< Real >:: ReadASCII( fp , _typeOnDisk , Dim , &dt[0] ); }
+			bool  readBinary( FILE *fp ,       DataType &dt ) const { return DataIO< Real >::ReadBinary( fp , _typeOnDisk , Dim , &dt[0] ); }
+			void  writeASCII( FILE *fp , const DataType &dt ) const { DataIO< Real >:: WriteASCII( fp , _typeOnDisk , Dim , &dt[0] ); }
+			void writeBinary( FILE *fp , const DataType &dt ) const { DataIO< Real >::WriteBinary( fp , _typeOnDisk , Dim , &dt[0] ); }
 
-#if 1
 			static constexpr bool IsStaticallyAllocated( void ){ return true; }
-#else
-			bool isStaticallyAllocated( void ) const { return true; }
-#endif
 			GregTurk::PlyProperty  plyStaticReadProperty( unsigned int idx ) const;
 			GregTurk::PlyProperty plyStaticWriteProperty( unsigned int idx ) const;
 
 			TextureFactory( TypeOnDisk typeOnDisk=GetTypeOnDisk< Real >() ) : _typeOnDisk( typeOnDisk ) {}
-			size_t bufferSize( void ) const { return sizeof( VertexType ); }
-			void toBuffer( const VertexType &dt , char *buffer ) const { *( (VertexType*)buffer ) = dt; }
-			void fromBuffer( const char *buffer , VertexType &dt ) const { dt = *( (VertexType*)buffer ); }
+			size_t bufferSize( void ) const { return sizeof( DataType ); }
+			void toBuffer( const DataType &dt , char *buffer ) const { *( (DataType*)buffer ) = dt; }
+			void fromBuffer( const char *buffer , DataType &dt ) const { dt = *( (DataType*)buffer ); }
 
 			bool operator == ( const TextureFactory &factory ) const { return _typeOnDisk==factory._typeOnDisk; }
 
@@ -424,40 +409,37 @@ namespace MishaK
 		template< typename Real >
 		struct RGBColorFactory : public _Factory< Point< Real , 3 > , RGBColorFactory< Real > >
 		{
-			typedef typename _Factory< Point< Real , 3 > , RGBColorFactory< Real > >::VertexType VertexType;
+			typedef typename _Factory< Point< Real , 3 > , RGBColorFactory< Real > >::DataType DataType;
 
 			struct Transform
 			{
 				Transform( void ){}
 				template< typename XForm > Transform( XForm xForm ){}
-				VertexType operator()( VertexType dt ) const { return dt; }
+				DataType operator()( DataType dt ) const { return dt; }
 			};
 
-			VertexType operator()( void ) const { return VertexType(); }
+			DataType operator()( void ) const { return DataType(); }
 
 			unsigned int  plyReadNum( void ) const { return 6; }
 			unsigned int plyWriteNum( void ) const { return 3; }
 			bool plyValidReadProperties( const bool *flags ) const { for( int d=0 ; d<3 ; d++ ) if( !flags[d] && !flags[d+3] ) return false ; return true ; }
+			bool plyValidReadProperties( const std::vector< bool > & flags ) const { for( int d=0 ; d<3 ; d++ ) if( !flags[d] && !flags[d+3] ) return false ; return true ; }
 			bool plyValidReadProperties( const std::vector< GregTurk::PlyProperty > &plyProperties ) const;
 			GregTurk::PlyProperty  plyReadProperty( unsigned int idx ) const;
 			GregTurk::PlyProperty plyWriteProperty( unsigned int idx ) const;
-			bool   readASCII( FILE *fp ,       VertexType &dt ) const { return VertexIO< Real >:: ReadASCII( fp , _typeOnDisk , 3 , &dt[0] ); }
-			bool  readBinary( FILE *fp ,       VertexType &dt ) const { return VertexIO< Real >::ReadBinary( fp , _typeOnDisk , 3 , &dt[0] ); }
-			void  writeASCII( FILE *fp , const VertexType &dt ) const { VertexIO< Real >:: WriteASCII( fp , _typeOnDisk , 3 , &dt[0] ); }
-			void writeBinary( FILE *fp , const VertexType &dt ) const { VertexIO< Real >::WriteBinary( fp , _typeOnDisk , 3 , &dt[0] ); }
+			bool   readASCII( FILE *fp ,       DataType &dt ) const { return DataIO< Real >:: ReadASCII( fp , _typeOnDisk , 3 , &dt[0] ); }
+			bool  readBinary( FILE *fp ,       DataType &dt ) const { return DataIO< Real >::ReadBinary( fp , _typeOnDisk , 3 , &dt[0] ); }
+			void  writeASCII( FILE *fp , const DataType &dt ) const { DataIO< Real >:: WriteASCII( fp , _typeOnDisk , 3 , &dt[0] ); }
+			void writeBinary( FILE *fp , const DataType &dt ) const { DataIO< Real >::WriteBinary( fp , _typeOnDisk , 3 , &dt[0] ); }
 
-#if 1
 			static constexpr bool IsStaticallyAllocated( void ){ return true; }
-#else
-			bool isStaticallyAllocated( void ) const { return true; }
-#endif
 			GregTurk::PlyProperty  plyStaticReadProperty( unsigned int idx ) const;
 			GregTurk::PlyProperty plyStaticWriteProperty( unsigned int idx ) const;
 
 			RGBColorFactory( TypeOnDisk typeOnDisk=GetTypeOnDisk< unsigned char >() ) : _typeOnDisk( typeOnDisk ) {}
-			size_t bufferSize( void ) const { return sizeof( VertexType ); }
-			void toBuffer( const VertexType &dt , char *buffer ) const { *( (VertexType*)buffer ) = dt; }
-			void fromBuffer( const char *buffer , VertexType &dt ) const { dt = *( (VertexType*)buffer ); }
+			size_t bufferSize( void ) const { return sizeof( DataType ); }
+			void toBuffer( const DataType &dt , char *buffer ) const { *( (DataType*)buffer ) = dt; }
+			void fromBuffer( const char *buffer , DataType &dt ) const { dt = *( (DataType*)buffer ); }
 
 			bool operator == ( const RGBColorFactory &factory ) const { return _typeOnDisk==factory._typeOnDisk; }
 		protected:
@@ -469,16 +451,16 @@ namespace MishaK
 		template< typename Real >
 		struct RGBAColorFactory : public _Factory< Point< Real , 4 > , RGBAColorFactory< Real > >
 		{
-			typedef typename _Factory< Point< Real , 4 > , RGBAColorFactory< Real > >::VertexType VertexType;
+			typedef typename _Factory< Point< Real , 4 > , RGBAColorFactory< Real > >::DataType DataType;
 
 			struct Transform
 			{
 				Transform( void ){}
 				template< typename XForm > Transform( XForm xForm ){}
-				VertexType operator()( VertexType dt ) const { return dt; }
+				DataType operator()( DataType dt ) const { return dt; }
 			};
 
-			VertexType operator()( void ) const { return VertexType(); }
+			DataType operator()( void ) const { return DataType(); }
 
 			unsigned int  plyReadNum( void ) const { return 8; }
 			unsigned int plyWriteNum( void ) const { return 4; }
@@ -486,23 +468,19 @@ namespace MishaK
 			bool plyValidReadProperties( const std::vector< GregTurk::PlyProperty > &plyProperties ) const;
 			GregTurk::PlyProperty  plyReadProperty( unsigned int idx ) const;
 			GregTurk::PlyProperty plyWriteProperty( unsigned int idx ) const;
-			bool   readASCII( FILE *fp ,       VertexType &dt ) const { return VertexIO< Real >:: ReadASCII( fp , _typeOnDisk , 4 , &dt[0] ); }
-			bool  readBinary( FILE *fp ,       VertexType &dt ) const { return VertexIO< Real >::ReadBinary( fp , _typeOnDisk , 4 , &dt[0] ); }
-			void  writeASCII( FILE *fp , const VertexType &dt ) const { VertexIO< Real >:: WriteASCII( fp , _typeOnDisk , 4 , &dt[0] ); }
-			void writeBinary( FILE *fp , const VertexType &dt ) const { VertexIO< Real >::WriteBinary( fp , _typeOnDisk , 4 , &dt[0] ); }
+			bool   readASCII( FILE *fp ,       DataType &dt ) const { return DataIO< Real >:: ReadASCII( fp , _typeOnDisk , 4 , &dt[0] ); }
+			bool  readBinary( FILE *fp ,       DataType &dt ) const { return DataIO< Real >::ReadBinary( fp , _typeOnDisk , 4 , &dt[0] ); }
+			void  writeASCII( FILE *fp , const DataType &dt ) const { DataIO< Real >:: WriteASCII( fp , _typeOnDisk , 4 , &dt[0] ); }
+			void writeBinary( FILE *fp , const DataType &dt ) const { DataIO< Real >::WriteBinary( fp , _typeOnDisk , 4 , &dt[0] ); }
 
-#if 1
 			static constexpr bool IsStaticallyAllocated( void ){ return true; }
-#else
-			bool isStaticallyAllocated( void ) const { return true; }
-#endif
 			GregTurk::PlyProperty  plyStaticReadProperty( unsigned int idx ) const;
 			GregTurk::PlyProperty plyStaticWriteProperty( unsigned int idx ) const;
 
 			RGBAColorFactory( TypeOnDisk typeOnDisk=GetTypeOnDisk< unsigned char >() ) : _typeOnDisk( typeOnDisk ) {}
-			size_t bufferSize( void ) const { return sizeof( VertexType ); }
-			void toBuffer( const VertexType &dt , char *buffer ) const { *( (VertexType*)buffer ) = dt; }
-			void fromBuffer( const char *buffer , VertexType &dt ) const { dt = *( (VertexType*)buffer ); }
+			size_t bufferSize( void ) const { return sizeof( DataType ); }
+			void toBuffer( const DataType &dt , char *buffer ) const { *( (DataType*)buffer ) = dt; }
+			void fromBuffer( const char *buffer , DataType &dt ) const { dt = *( (DataType*)buffer ); }
 
 			bool operator == ( const RGBAColorFactory &factory ) const { return _typeOnDisk==factory._typeOnDisk; }
 		protected:
@@ -514,40 +492,37 @@ namespace MishaK
 		template< typename Real >
 		struct ValueFactory : public _Factory< Real , ValueFactory< Real > >
 		{
-			typedef typename _Factory< Real , ValueFactory< Real > >::VertexType VertexType;
+			typedef typename _Factory< Real , ValueFactory< Real > >::DataType DataType;
 			using _Factory< Real , ValueFactory< Real > >::plyValidReadProperties;
 
 			struct Transform
 			{
 				Transform( void ){}
 				template< typename XForm > Transform( XForm xForm ){}
-				VertexType operator()( VertexType dt ) const { return dt; }
+				DataType operator()( DataType dt ) const { return dt; }
 			};
 
-			VertexType operator()( void ) const { return (Real)0; }
+			DataType operator()( void ) const { return (Real)0; }
 
 			unsigned int  plyReadNum( void ) const { return 1; }
 			unsigned int plyWriteNum( void ) const { return 1; }
 			bool plyValidReadProperties( const bool *flags ) const { if( !flags[0] ) return false ; return true ; }
+			bool plyValidReadProperties( const std::vector< bool > & flags ) const { if( !flags[0] ) return false ; return true ; }
 			GregTurk::PlyProperty  plyReadProperty( unsigned int idx ) const;
 			GregTurk::PlyProperty plyWriteProperty( unsigned int idx ) const;
-			bool   readASCII( FILE *fp ,       VertexType &dt ) const { return VertexIO< Real >:: ReadASCII( fp , _typeOnDisk , 1 , &dt ); }
-			bool  readBinary( FILE *fp ,       VertexType &dt ) const { return VertexIO< Real >::ReadBinary( fp , _typeOnDisk , 1 , &dt ); }
-			void  writeASCII( FILE *fp , const VertexType &dt ) const { VertexIO< Real >:: WriteASCII( fp , _typeOnDisk , 1 , &dt ); }
-			void writeBinary( FILE *fp , const VertexType &dt ) const { VertexIO< Real >::WriteBinary( fp , _typeOnDisk , 1 , &dt ); }
+			bool   readASCII( FILE *fp ,       DataType &dt ) const { return DataIO< Real >:: ReadASCII( fp , _typeOnDisk , 1 , &dt ); }
+			bool  readBinary( FILE *fp ,       DataType &dt ) const { return DataIO< Real >::ReadBinary( fp , _typeOnDisk , 1 , &dt ); }
+			void  writeASCII( FILE *fp , const DataType &dt ) const { DataIO< Real >:: WriteASCII( fp , _typeOnDisk , 1 , &dt ); }
+			void writeBinary( FILE *fp , const DataType &dt ) const { DataIO< Real >::WriteBinary( fp , _typeOnDisk , 1 , &dt ); }
 
-#if 1
 			static constexpr bool IsStaticallyAllocated( void ){ return true; }
-#else
-			bool isStaticallyAllocated( void ) const { return true; }
-#endif
 			GregTurk::PlyProperty  plyStaticReadProperty( unsigned int idx ) const;
 			GregTurk::PlyProperty plyStaticWriteProperty( unsigned int idx ) const;
 
 			ValueFactory( TypeOnDisk typeOnDisk=GetTypeOnDisk< Real >() ) : _typeOnDisk( typeOnDisk ) {}
-			size_t bufferSize( void ) const { return sizeof( VertexType ); }
-			void toBuffer( const VertexType &dt , char *buffer ) const { *( (VertexType*)buffer ) = dt; }
-			void fromBuffer( const char *buffer , VertexType &dt ) const { dt = *( (VertexType*)buffer ); }
+			size_t bufferSize( void ) const { return sizeof( DataType ); }
+			void toBuffer( const DataType &dt , char *buffer ) const { *( (DataType*)buffer ) = dt; }
+			void fromBuffer( const char *buffer , DataType &dt ) const { dt = *( (DataType*)buffer ); }
 
 			bool operator == ( const ValueFactory &factory ) const { return _typeOnDisk==factory._typeOnDisk; }
 		protected:
@@ -559,40 +534,37 @@ namespace MishaK
 		template< typename Real , unsigned int Dim >
 		struct StaticFactory : public _Factory< Point< Real , Dim > , StaticFactory< Real , Dim > >
 		{
-			typedef typename _Factory< Point< Real , Dim > , StaticFactory< Real , Dim > >::VertexType VertexType;
+			typedef typename _Factory< Point< Real , Dim > , StaticFactory< Real , Dim > >::DataType DataType;
 			using _Factory< Point< Real , Dim > , StaticFactory< Real , Dim > >::plyValidReadProperties;
 
 			struct Transform
 			{
 				Transform( void ){}
 				template< typename XForm > Transform( XForm xForm ){}
-				VertexType operator()( VertexType dt ) const { return dt; }
+				DataType operator()( DataType dt ) const { return dt; }
 			};
 
-			VertexType operator()( void ) const { return Point< Real , Dim >(); }
+			DataType operator()( void ) const { return Point< Real , Dim >(); }
 			unsigned int  plyReadNum( void ) const { return Dim; }
 			unsigned int plyWriteNum( void ) const { return Dim; }
 			bool plyValidReadProperties( const bool *flags ) const { for( int d=0 ; d<Dim ; d++ ) if( !flags[d] ) return false ; return true ; }
+			bool plyValidReadProperties( const std::vector< bool > & flags ) const { for( int d=0 ; d<Dim ; d++ ) if( !flags[d] ) return false ; return true ; }
 			GregTurk::PlyProperty plyReadProperty( unsigned int idx ) const;
 			GregTurk::PlyProperty plyWriteProperty( unsigned int idx ) const;
 
-			bool   readASCII( FILE *fp ,       VertexType &dt ) const { return VertexIO< Real >:: ReadASCII( fp , _typeOnDisk , Dim , &dt[0] ); }
-			bool  readBinary( FILE *fp ,       VertexType &dt ) const { return VertexIO< Real >::ReadBinary( fp , _typeOnDisk , Dim , &dt[0] ); }
-			void  writeASCII( FILE *fp , const VertexType &dt ) const { VertexIO< Real >:: WriteASCII( fp , _typeOnDisk , Dim , &dt[0] ); }
-			void writeBinary( FILE *fp , const VertexType &dt ) const { VertexIO< Real >::WriteBinary( fp , _typeOnDisk , Dim , &dt[0] ); }
+			bool   readASCII( FILE *fp ,       DataType &dt ) const { return DataIO< Real >:: ReadASCII( fp , _typeOnDisk , Dim , &dt[0] ); }
+			bool  readBinary( FILE *fp ,       DataType &dt ) const { return DataIO< Real >::ReadBinary( fp , _typeOnDisk , Dim , &dt[0] ); }
+			void  writeASCII( FILE *fp , const DataType &dt ) const { DataIO< Real >:: WriteASCII( fp , _typeOnDisk , Dim , &dt[0] ); }
+			void writeBinary( FILE *fp , const DataType &dt ) const { DataIO< Real >::WriteBinary( fp , _typeOnDisk , Dim , &dt[0] ); }
 
-#if 1
 			static constexpr bool IsStaticallyAllocated( void ){ return true; }
-#else
-			bool isStaticallyAllocated( void ) const { return true; }
-#endif
 			GregTurk::PlyProperty  plyStaticReadProperty( unsigned int idx ) const;
 			GregTurk::PlyProperty plyStaticWriteProperty( unsigned int idx ) const;
 
 			StaticFactory( const std::string plyNames[] , TypeOnDisk typeOnDisk=GetTypeOnDisk< Real >() );
-			size_t bufferSize( void ) const { return sizeof( VertexType ); }
-			void toBuffer( const VertexType &dt , char *buffer ) const { *( (VertexType*)buffer ) = dt; }
-			void fromBuffer( const char *buffer , VertexType &dt ) const { dt = *( (VertexType*)buffer ); }
+			size_t bufferSize( void ) const { return sizeof( DataType ); }
+			void toBuffer( const DataType &dt , char *buffer ) const { *( (DataType*)buffer ) = dt; }
+			void fromBuffer( const char *buffer , DataType &dt ) const { dt = *( (DataType*)buffer ); }
 
 			bool operator == ( const StaticFactory &factory ) const;
 		protected:
@@ -605,33 +577,30 @@ namespace MishaK
 		template< typename Real >
 		struct DynamicFactory : public _Factory< Point< Real , (unsigned int)-1 > , DynamicFactory< Real > >
 		{
-			typedef typename _Factory< Point< Real , (unsigned int)-1 > , DynamicFactory< Real > >::VertexType VertexType;
+			typedef typename _Factory< Point< Real , (unsigned int)-1 > , DynamicFactory< Real > >::DataType DataType;
 			using _Factory< Point< Real , (unsigned int)-1 > , DynamicFactory< Real > >::plyValidReadProperties;
 
 			struct Transform
 			{
 				Transform( void ){}
 				template< typename XForm > Transform( XForm xForm ){}
-				VertexType operator()( VertexType dt ) const { return dt; }
+				DataType operator()( DataType dt ) const { return dt; }
 			};
 
-			VertexType operator()( void ) const { return Point< Real , (unsigned int)-1 >( _namesAndTypesOnDisk.size() ); }
+			DataType operator()( void ) const { return Point< Real , (unsigned int)-1 >( _namesAndTypesOnDisk.size() ); }
 			unsigned int  plyReadNum( void ) const { return (unsigned int )_namesAndTypesOnDisk.size(); }
 			unsigned int plyWriteNum( void ) const { return (unsigned int )_namesAndTypesOnDisk.size(); }
 			bool plyValidReadProperties( const bool *flags ) const { for( int d=0 ; d<_namesAndTypesOnDisk.size() ; d++ ) if( !flags[d] ) return false ; return true ; }
+			bool plyValidReadProperties( const std::vector< bool > & flags ) const { for( int d=0 ; d<_namesAndTypesOnDisk.size() ; d++ ) if( !flags[d] ) return false ; return true ; }
 			GregTurk::PlyProperty plyReadProperty( unsigned int idx ) const;
 			GregTurk::PlyProperty plyWriteProperty( unsigned int idx ) const;
 
-			bool   readASCII( FILE *fp ,       VertexType &dt ) const;
-			bool  readBinary( FILE *fp ,       VertexType &dt ) const;
-			void  writeASCII( FILE *fp , const VertexType &dt ) const;
-			void writeBinary( FILE *fp , const VertexType &dt ) const;
+			bool   readASCII( FILE *fp ,       DataType &dt ) const;
+			bool  readBinary( FILE *fp ,       DataType &dt ) const;
+			void  writeASCII( FILE *fp , const DataType &dt ) const;
+			void writeBinary( FILE *fp , const DataType &dt ) const;
 
-#if 1
 			static constexpr bool IsStaticallyAllocated( void ){ return false; }
-#else
-			bool isStaticallyAllocated( void ) const { return false; }
-#endif
 			GregTurk::PlyProperty  plyStaticReadProperty( unsigned int idx ) const { MK_ERROR_OUT( "does not support static allocation" ) ; return GregTurk::PlyProperty(); }
 			GregTurk::PlyProperty plyStaticWriteProperty( unsigned int idx ) const { MK_ERROR_OUT( "does not support static allocation" ) ; return GregTurk::PlyProperty(); }
 
@@ -640,8 +609,8 @@ namespace MishaK
 			DynamicFactory( const std::vector< std::pair< std::string , TypeOnDisk > > &namesAndTypesOnDisk );
 			DynamicFactory( const std::vector< GregTurk::PlyProperty > &plyProperties );
 			size_t bufferSize( void ) const { return sizeof(Real) * _namesAndTypesOnDisk.size(); }
-			void toBuffer( const VertexType &dt , char *buffer ) const { for( size_t i=0 ; i<_namesAndTypesOnDisk.size() ; i++ ) ( (Real*)buffer )[i] = dt[i]; }
-			void fromBuffer( const char *buffer , VertexType &dt ) const { for( size_t i=0 ; i<_namesAndTypesOnDisk.size() ; i++ ) dt[i] = ( (const Real*)buffer )[i]; }
+			void toBuffer( const DataType &dt , char *buffer ) const { for( size_t i=0 ; i<_namesAndTypesOnDisk.size() ; i++ ) ( (Real*)buffer )[i] = dt[i]; }
+			void fromBuffer( const char *buffer , DataType &dt ) const { for( size_t i=0 ; i<_namesAndTypesOnDisk.size() ; i++ ) dt[i] = ( (const Real*)buffer )[i]; }
 
 			bool operator == ( const DynamicFactory &factory ) const;
 		protected:
@@ -650,13 +619,13 @@ namespace MishaK
 
 		// A factory for building the union of multiple components
 		template< typename Real , typename ... Factories >
-		struct Factory : public _Factory< VectorTypeUnion< Real , typename Factories::VertexType ... > , Factory< Real , Factories ... > >
+		struct Factory : public _Factory< VectorTypeUnion< Real , typename Factories::DataType ... > , Factory< Real , Factories ... > >
 		{
-			using _Factory< VectorTypeUnion< Real , typename Factories::VertexType ... > , Factory< Real , Factories ... > >::plyValidReadProperties;
+			using _Factory< VectorTypeUnion< Real , typename Factories::DataType ... > , Factory< Real , Factories ... > >::plyValidReadProperties;
 		protected:
 			typedef std::tuple< Factories ... > _FactoryTuple;
 		public:
-			typedef typename _Factory< VectorTypeUnion< Real , typename Factories::VertexType ... > , Factory< Real , Factories ... > >::VertexType VertexType;
+			typedef typename _Factory< VectorTypeUnion< Real , typename Factories::DataType ... > , Factory< Real , Factories ... > >::DataType DataType;
 			template< unsigned int I > using FactoryType = typename std::tuple_element< I , _FactoryTuple >::type;
 			template< unsigned int I >       FactoryType< I >& get( void )       { return std::get< I >( _factoryTuple ); }
 			template< unsigned int I > const FactoryType< I >& get( void ) const { return std::get< I >( _factoryTuple ); }
@@ -669,7 +638,7 @@ namespace MishaK
 				Transform( void ){}
 				template< typename XForm >
 				Transform( XForm xForm ){ _set<0>( xForm ); }
-				VertexType operator()( VertexType in ) const { VertexType out ; _xForm< 0 >( in , out ) ; return out; }
+				DataType operator()( DataType in ) const { DataType out ; _xForm< 0 >( in , out ) ; return out; }
 
 				template< unsigned int I > using TransformType = typename std::tuple_element< I , _TransformTuple >::type;
 				template< unsigned int I >       TransformType< I >& get( void )       { return std::get< I >( _transformTuple ); }
@@ -678,44 +647,40 @@ namespace MishaK
 				_TransformTuple _transformTuple;
 				template< unsigned int I , typename XForm > typename std::enable_if< I!=sizeof...(Factories) >::type _set( XForm xForm ){ this->template get<I>() = xForm ; _set< I+1 >( xForm ); }
 				template< unsigned int I , typename XForm > typename std::enable_if< I==sizeof...(Factories) >::type _set( XForm xForm ){}
-				template< unsigned int I > typename std::enable_if< I!=sizeof...(Factories) >::type _xForm( const VertexType &in , VertexType &out ) const { out.template get<I>() = this->template get<I>()( in.template get<I>() ) ; _xForm< I+1 >( in , out ); }
-				template< unsigned int I > typename std::enable_if< I==sizeof...(Factories) >::type _xForm( const VertexType &in , VertexType &out ) const {}
+				template< unsigned int I > typename std::enable_if< I!=sizeof...(Factories) >::type _xForm( const DataType &in , DataType &out ) const { out.template get<I>() = this->template get<I>()( in.template get<I>() ) ; _xForm< I+1 >( in , out ); }
+				template< unsigned int I > typename std::enable_if< I==sizeof...(Factories) >::type _xForm( const DataType &in , DataType &out ) const {}
 			};
 
 			Factory( void ){}
 			Factory( Factories ... factories ) : _factoryTuple( factories ... ){ }
 
-			VertexType operator()( void ) const{ return _VertexType( std::make_index_sequence< sizeof...(Factories) >() ); }
+			DataType operator()( void ) const{ return _DataType( std::make_index_sequence< sizeof...(Factories) >() ); }
 
 			unsigned int  plyReadNum( void ) const { return  _plyReadNum<0>(); }
 			unsigned int plyWriteNum( void ) const { return _plyWriteNum<0>(); }
 			bool plyValidReadProperties( const bool *flags ) const { return _plyValidReadProperties<0>( flags ) ; }
-			template< unsigned int I > bool plyValidReadProperties( const bool* flags ) const { return get< I >().plyValidReadProperties( flags + _readOffset< I >() ) ; }
+			bool plyValidReadProperties( const std::vector< bool > & flags ) const { return _plyValidReadProperties<0>( flags ) ; }
+			template< unsigned int I > bool plyValidReadProperties( const bool * flags ) const { return get< I >().plyValidReadProperties( flags + _readOffset< I >() ) ; }
+			template< unsigned int I > bool plyValidReadProperties( const std::vector< bool > & flags ) const { return get< I >().plyValidReadProperties( std::vector< bool >( flags.begin() + _readOffset< I >() , flags.end() ) ) ; }
 			GregTurk::PlyProperty  plyReadProperty( unsigned int idx ) const { return  _plyReadProperty<0>( idx , 0 ); }
 			GregTurk::PlyProperty plyWriteProperty( unsigned int idx ) const { return _plyWriteProperty<0>( idx , 0 ); }
-			bool   readASCII( FILE *fp ,       VertexType &dt ) const { return  _readASCII<0>( fp , dt ); }
-			bool  readBinary( FILE *fp ,       VertexType &dt ) const { return _readBinary<0>( fp , dt ); }
-			void  writeASCII( FILE *fp , const VertexType &dt ) const {  _writeASCII<0>( fp , dt ); }
-			void writeBinary( FILE *fp , const VertexType &dt ) const { _writeBinary<0>( fp , dt ); }
+			bool   readASCII( FILE *fp ,       DataType &dt ) const { return  _readASCII<0>( fp , dt ); }
+			bool  readBinary( FILE *fp ,       DataType &dt ) const { return _readBinary<0>( fp , dt ); }
+			void  writeASCII( FILE *fp , const DataType &dt ) const {  _writeASCII<0>( fp , dt ); }
+			void writeBinary( FILE *fp , const DataType &dt ) const { _writeBinary<0>( fp , dt ); }
 
-#if 1
 			static constexpr bool IsStaticallyAllocated( void ){ return _IsStaticallyAllocated<0>(); }
 			GregTurk::PlyProperty  plyStaticReadProperty( unsigned int idx ) const { if constexpr( IsStaticallyAllocated() ) return  _plyStaticReadProperty<0>( idx ) ; else return GregTurk::PlyProperty(); }
 			GregTurk::PlyProperty plyStaticWriteProperty( unsigned int idx ) const { if constexpr( IsStaticallyAllocated() ) return _plyStaticWriteProperty<0>( idx ) ; else return GregTurk::PlyProperty(); }
-#else
-			bool isStaticallyAllocated( void ) const { return _isStaticallyAllocated<0>(); }
-			GregTurk::PlyProperty  plyStaticReadProperty( unsigned int idx ) const { return  _plyStaticReadProperty<0>( idx ); }
-			GregTurk::PlyProperty plyStaticWriteProperty( unsigned int idx ) const { return _plyStaticWriteProperty<0>( idx ); }
-#endif
 
 			size_t bufferSize( void ) const { return _bufferSize<0>(); }
-			void toBuffer( const VertexType &dt , char *buffer ) const { _toBuffer<0>( dt , buffer ); }
-			void fromBuffer( const char *buffer , VertexType &dt ) const { _fromBuffer<0>( buffer , dt ); }
+			void toBuffer( const DataType &dt , char *buffer ) const { _toBuffer<0>( dt , buffer ); }
+			void fromBuffer( const char *buffer , DataType &dt ) const { _fromBuffer<0>( buffer , dt ); }
 
 			bool operator == ( const Factory &factory ) const { return _equal<0>( factory ); }
 		protected:
 			_FactoryTuple _factoryTuple;
-			template< size_t ... Is > VertexType _VertexType( std::index_sequence< Is ... > ) const{ return VertexType( get<Is>().operator()() ... ); }
+			template< size_t ... Is > DataType _DataType( std::index_sequence< Is ... > ) const{ return DataType( get<Is>().operator()() ... ); }
 
 			template< typename Factory1 , typename Factory2 >
 			static typename std::enable_if< !std::is_same< Factory1 , Factory1 >::value , bool >::type _EqualFactories( const Factory1 &f1 , const Factory1 &f2 ){ return false; }
@@ -729,31 +694,28 @@ namespace MishaK
 			template< unsigned int I > typename std::enable_if< I==sizeof...(Factories) , unsigned int >::type _plyWriteNum( void ) const { return 0; }
 			template< unsigned int I > typename std::enable_if< I!=sizeof...(Factories) , bool >::type _plyValidReadProperties( const bool *flags ) const { return get< I >().plyValidReadProperties( flags ) && _plyValidReadProperties< I+1 >( flags + get< I >().plyReadNum() ); }
 			template< unsigned int I > typename std::enable_if< I==sizeof...(Factories) , bool >::type _plyValidReadProperties( const bool *flags ) const { return true; }
+			template< unsigned int I > typename std::enable_if< I!=sizeof...(Factories) , bool >::type _plyValidReadProperties( const std::vector< bool > & flags ) const { return get< I >().plyValidReadProperties( flags ) && _plyValidReadProperties< I+1 >( std::vector< bool >( flags.begin() + get< I >().plyReadNum() , flags.end() ) ); }
+			template< unsigned int I > typename std::enable_if< I==sizeof...(Factories) , bool >::type _plyValidReadProperties( const std::vector< bool > & flags ) const { return true; }
 			template< unsigned int I > typename std::enable_if< I!=sizeof...(Factories) , GregTurk::PlyProperty >::type _plyReadProperty( unsigned int idx , size_t offset ) const;
 			template< unsigned int I > typename std::enable_if< I!=sizeof...(Factories) , GregTurk::PlyProperty >::type _plyWriteProperty( unsigned int idx , size_t offset ) const;
 			template< unsigned int I > typename std::enable_if< I==sizeof...(Factories) , GregTurk::PlyProperty >::type _plyReadProperty( unsigned int idx , size_t offset ) const { MK_ERROR_OUT( "read property out of bounds" ) ; return GregTurk::PlyProperty(); }
 			template< unsigned int I > typename std::enable_if< I==sizeof...(Factories) , GregTurk::PlyProperty >::type _plyWriteProperty( unsigned int idx , size_t offset ) const { MK_ERROR_OUT( "write property out of bounds" ) ; return GregTurk::PlyProperty(); }
 			template< unsigned int I > typename std::enable_if< I==0 , unsigned int >::type _readOffset( void ) const { return 0; }
 			template< unsigned int I > typename std::enable_if< I!=0 , unsigned int >::type _readOffset( void ) const { return _readOffset< I-1 >() + get< I-1 >().plyReadNum(); }
-			template< unsigned int I > typename std::enable_if< I!=sizeof...(Factories) , bool >::type _readASCII( FILE *fp , VertexType &dt ) const { return this->template get<I>().readASCII( fp , dt.template get<I>() ) && _readASCII< I+1 >( fp , dt ); }
-			template< unsigned int I > typename std::enable_if< I==sizeof...(Factories) , bool >::type _readASCII( FILE *fp , VertexType &dt ) const { return true; }
-			template< unsigned int I > typename std::enable_if< I!=sizeof...(Factories) , bool >::type _readBinary( FILE *fp , VertexType &dt ) const { return this->template get<I>().readBinary( fp , dt.template get<I>() ) && _readBinary< I+1 >( fp , dt ); }
-			template< unsigned int I > typename std::enable_if< I==sizeof...(Factories) , bool >::type _readBinary( FILE *fp , VertexType &dt ) const { return true; }
-			template< unsigned int I > typename std::enable_if< I!=sizeof...(Factories) >::type  _writeASCII( FILE *fp , const VertexType &dt ) const { this->template get<I>().writeASCII( fp , dt.template get<I>() ) ; _writeASCII< I+1 >( fp , dt ); }
-			template< unsigned int I > typename std::enable_if< I==sizeof...(Factories) >::type  _writeASCII( FILE *fp , const VertexType &dt ) const {}
-			template< unsigned int I > typename std::enable_if< I!=sizeof...(Factories) >::type _writeBinary( FILE *fp , const VertexType &dt ) const { this->template get<I>().writeBinary( fp , dt.template get<I>() ) ; _writeBinary< I+1 >( fp , dt ); }
-			template< unsigned int I > typename std::enable_if< I==sizeof...(Factories) >::type _writeBinary( FILE *fp , const VertexType &dt ) const {}
+			template< unsigned int I > typename std::enable_if< I!=sizeof...(Factories) , bool >::type _readASCII( FILE *fp , DataType &dt ) const { return this->template get<I>().readASCII( fp , dt.template get<I>() ) && _readASCII< I+1 >( fp , dt ); }
+			template< unsigned int I > typename std::enable_if< I==sizeof...(Factories) , bool >::type _readASCII( FILE *fp , DataType &dt ) const { return true; }
+			template< unsigned int I > typename std::enable_if< I!=sizeof...(Factories) , bool >::type _readBinary( FILE *fp , DataType &dt ) const { return this->template get<I>().readBinary( fp , dt.template get<I>() ) && _readBinary< I+1 >( fp , dt ); }
+			template< unsigned int I > typename std::enable_if< I==sizeof...(Factories) , bool >::type _readBinary( FILE *fp , DataType &dt ) const { return true; }
+			template< unsigned int I > typename std::enable_if< I!=sizeof...(Factories) >::type  _writeASCII( FILE *fp , const DataType &dt ) const { this->template get<I>().writeASCII( fp , dt.template get<I>() ) ; _writeASCII< I+1 >( fp , dt ); }
+			template< unsigned int I > typename std::enable_if< I==sizeof...(Factories) >::type  _writeASCII( FILE *fp , const DataType &dt ) const {}
+			template< unsigned int I > typename std::enable_if< I!=sizeof...(Factories) >::type _writeBinary( FILE *fp , const DataType &dt ) const { this->template get<I>().writeBinary( fp , dt.template get<I>() ) ; _writeBinary< I+1 >( fp , dt ); }
+			template< unsigned int I > typename std::enable_if< I==sizeof...(Factories) >::type _writeBinary( FILE *fp , const DataType &dt ) const {}
 
-#if 1
 			template< unsigned int I > static constexpr bool _IsStaticallyAllocated( void )
 			{
 				if constexpr( I<sizeof...(Factories) ) return FactoryType< I >::IsStaticallyAllocated() && _IsStaticallyAllocated< I+1 >();
 				else return true;
 			}
-#else
-			template< unsigned int I > typename std::enable_if< I!=sizeof...(Factories) , bool >::type _isStaticallyAllocated( void ) const { return this->template get< I >().isStaticallyAllocated() && _isStaticallyAllocated< I+1 >(); }
-			template< unsigned int I > typename std::enable_if< I==sizeof...(Factories) , bool >::type _isStaticallyAllocated( void ) const { return true; }
-#endif
 			template< unsigned int I > typename std::enable_if< I!=sizeof...(Factories) , GregTurk::PlyProperty >::type _plyStaticReadProperty ( unsigned int idx ) const;
 			template< unsigned int I > typename std::enable_if< I!=sizeof...(Factories) , GregTurk::PlyProperty >::type _plyStaticWriteProperty( unsigned int idx ) const;
 			template< unsigned int I > typename std::enable_if< I==sizeof...(Factories) , GregTurk::PlyProperty >::type _plyStaticReadProperty ( unsigned int idx ) const { MK_ERROR_OUT(  "read property out of bounds" ) ; return GregTurk::PlyProperty(); }
@@ -761,15 +723,15 @@ namespace MishaK
 
 			template< unsigned int I > typename std::enable_if< I!=sizeof...(Factories) , size_t >::type _bufferSize( void ) const { return this->template get<I>().bufferSize() + _bufferSize< I+1 >(); }
 			template< unsigned int I > typename std::enable_if< I==sizeof...(Factories) , size_t >::type _bufferSize( void ) const { return 0; }
-			template< unsigned int I > typename std::enable_if< I!=sizeof...(Factories) >::type _toBuffer( const VertexType &dt , char *buffer ) const { this->template get<I>().toBuffer( dt.template get<I>() , buffer ) ; _toBuffer< I+1 >( dt , buffer + this->template get<I>().bufferSize() ); }
-			template< unsigned int I > typename std::enable_if< I==sizeof...(Factories) >::type _toBuffer( const VertexType &dt , char *buffer ) const {}
-			template< unsigned int I > typename std::enable_if< I!=sizeof...(Factories) >::type _fromBuffer( const char * buffer , VertexType &dt ) const {this->template  get<I>().fromBuffer( buffer , dt.template get<I>() ) ; _fromBuffer< I+1 >( buffer + this->template get<I>().bufferSize() , dt ); }
-			template< unsigned int I > typename std::enable_if< I==sizeof...(Factories) >::type _fromBuffer( const char * buffer , VertexType &dt ) const {}
+			template< unsigned int I > typename std::enable_if< I!=sizeof...(Factories) >::type _toBuffer( const DataType &dt , char *buffer ) const { this->template get<I>().toBuffer( dt.template get<I>() , buffer ) ; _toBuffer< I+1 >( dt , buffer + this->template get<I>().bufferSize() ); }
+			template< unsigned int I > typename std::enable_if< I==sizeof...(Factories) >::type _toBuffer( const DataType &dt , char *buffer ) const {}
+			template< unsigned int I > typename std::enable_if< I!=sizeof...(Factories) >::type _fromBuffer( const char * buffer , DataType &dt ) const {this->template  get<I>().fromBuffer( buffer , dt.template get<I>() ) ; _fromBuffer< I+1 >( buffer + this->template get<I>().bufferSize() , dt ); }
+			template< unsigned int I > typename std::enable_if< I==sizeof...(Factories) >::type _fromBuffer( const char * buffer , DataType &dt ) const {}
 
 			template< unsigned int I > typename std::enable_if< I!=sizeof...(Factories) , bool >::type _equal( const Factory &factory ) const { return _EqualFactories< FactoryType<I> , Factory >( this->template get< I >() , factory.template get<I>() ) && _equal< I+1 >( factory ); }
 			template< unsigned int I > typename std::enable_if< I==sizeof...(Factories) , bool >::type _equal( const Factory &factory ) const { return true; }
 		};
-#include "PlyVertexData.inl"
+#include "PlyData.inl"
 	}
 }
-#endif // PLY_VERTEX_DATA
+#endif // PLY_DATA

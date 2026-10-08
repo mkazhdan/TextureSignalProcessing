@@ -651,8 +651,8 @@ void LineConvolution< PreReal , Real >::InitializeSystem( const FEM::RiemannianM
 									b[2*i+ii] = 0;
 									for( int j=0 ; j<_M.rowSizes[i] ; j++ )
 									{
-										for( int jj=0 ; jj<2 ; jj++ ) M[2*i+ii][2*j+jj].Value = ( _M[i][j].Value*NormalSmoothingInterpolation.value + _S[i][j].Value ) * Point3D< Real >::Dot( tangents[2*i+ii] , tangents[ 2*_M[i][j].N+jj ] );
-										b[2*i+ii] -= _S[i][j].Value * Point3D< Real >::Dot( normals[ _S[i][j].N ] , tangents[2*i+ii] );
+										for( int jj=0 ; jj<2 ; jj++ ) M[2*i+ii][2*j+jj].Value = ( _M[i][j].Value*NormalSmoothingInterpolation.value + _S[i][j].Value ) * Point3D< PreReal >::Dot( tangents[2*i+ii] , tangents[ 2*_M[i][j].N+jj ] );
+										b[2*i+ii] -= _S[i][j].Value * Point3D< PreReal >::Dot( normals[ _S[i][j].N ] , tangents[2*i+ii] );
 									}
 								}
 							}
@@ -858,15 +858,15 @@ void LineConvolution< PreReal , Real >::InitializeVisualization( void )
 
 	for( unsigned int t=0 , idx=0 ; t<tCount ; t++ )
 	{
-		Point3D< float > n = mesh.surfaceTriangle(t).normal();
+		Point3D< float > n = static_cast< Point3D< float > >( mesh.surfaceTriangle(t).normal() );
 		n /= Point3D< float >::Length( n );
 
 		for( int k=0 ; k<3 ; k++ , idx++ )
 		{
 			visualization.triangles[t][k] = idx;
-			visualization.vertices[idx] = mesh.surface.vertices[ mesh.surface.triangles[t][k] ];
+			visualization.vertices[idx] = static_cast< Point3D< float > >( mesh.surface.vertices[ mesh.surface.triangles[t][k] ] );
 			visualization.normals[idx] = n;
-			visualization.textureCoordinates[idx] = mesh.texture.vertices[ mesh.texture.triangles[t][k] ];
+			visualization.textureCoordinates[idx] = static_cast< Point2D< float > >( mesh.texture.vertices[ mesh.texture.triangles[t][k] ] );
 		}
 	}
 
@@ -875,7 +875,7 @@ void LineConvolution< PreReal , Real >::InitializeVisualization( void )
 	for( int e=0; e<boundaryHalfEdges.size(); e++ )
 	{
 		SimplexIndex< 1 > eIndex = mesh.surface.edgeIndex( boundaryHalfEdges[e] );
-		for( int i=0 ; i<2 ; i++ ) visualization.chartBoundaryVertices.push_back( mesh.surface.vertices[ eIndex[i] ] );
+		for( int i=0 ; i<2 ; i++ ) visualization.chartBoundaryVertices.push_back( static_cast< Point3D< float > >( mesh.surface.vertices[ eIndex[i] ] ) );
 	}
 
 	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , 'f' , "lic interpolation weight" , "LIC Interpolation Weight" , LICInterpolationWeightCallBack ) );

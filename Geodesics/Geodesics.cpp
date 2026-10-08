@@ -28,6 +28,7 @@ DAMAGE.
 
 #include <Src/PreProcessing.h>
 
+#include <Eigen/Sparse>
 #ifdef USE_EIGEN_PARDISO
 #include <Eigen/PardisoSupport>
 #endif // USE_EIGEN_PARDISO
@@ -261,7 +262,7 @@ template< typename PreReal , typename Real > EigenSolverWrapper< typename Geodes
 
 //Samples
 template< typename PreReal , typename Real > unsigned int													Geodesics< PreReal , Real >::impulseTexel = static_cast< unsigned int >(-1);
-template< typename PreReal , typename Real > std::vector<Point3D< float > >									Geodesics< PreReal , Real >::textureNodePositions;
+template< typename PreReal , typename Real > std::vector< Point3D< float > >								Geodesics< PreReal , Real >::textureNodePositions;
 
 template< typename PreReal , typename Real > Real															Geodesics< PreReal , Real >::smoothImpulseRange;
 template< typename PreReal , typename Real > Real															Geodesics< PreReal , Real >::geodesicDistanceRange;
@@ -558,11 +559,7 @@ void Geodesics< PreReal , Real >::InitializeSystem( int width , int height )
 	InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric );
 
 	pMeter.reset();
-#ifdef NEW_CODE
 	OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , std::tie( gradientIntegrator ) , VectorFieldQuadrature.value , !PreciseIntegration.set , SanityCheck.set );
-#else // !NEW_CODE
-	OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , gradientIntegrator , VectorFieldQuadrature.value , !PreciseIntegration.set , SanityCheck.set );
-#endif // NEW_CODE
 	gradientIntegratorScratch = gradientIntegrator.template getScratch< Real , Real >();
 	if( Verbose.set ) std::cout << pMeter( "System" ) << std::endl;
 
@@ -641,15 +638,15 @@ void Geodesics< PreReal , Real >::InitializeVisualization( int width , int heigh
 
 	for( unsigned int t=0 , idx=0 ; t<tCount ; t++ )
 	{
-		Point3D< float > n = mesh.surfaceTriangle( t ).normal();
+		Point3D< float > n = static_cast< Point3D< float > >( mesh.surfaceTriangle( t ).normal() );
 		n /= Point3D< float >::Length( n );
 
 		for( int k=0 ; k<3 ; k++ , idx++ )
 		{
 			visualization.triangles[t][k] = idx;
-			visualization.vertices[idx] = mesh.surface.vertices[ mesh.surface.triangles[t][k] ];
+			visualization.vertices[idx] = static_cast< Point3D< float > >( mesh.surface.vertices[ mesh.surface.triangles[t][k] ] );
 			visualization.normals[idx] = n;
-			visualization.textureCoordinates[idx] = mesh.texture.vertices[ mesh.texture.triangles[t][k] ];
+			visualization.textureCoordinates[idx] = static_cast< Point2D< float > >( mesh.texture.vertices[ mesh.texture.triangles[t][k] ] );
 		}
 	}
 	
@@ -758,7 +755,7 @@ void Geodesics< PreReal , Real >::Init( void )
 	}
 
 	textureNodePositions.resize( textureNodes.size() );
-	for( int i=0 ; i<textureNodePositions.size() ; i++ ) textureNodePositions[i] = mesh.surface( textureNodes[i] );
+	for( int i=0 ; i<textureNodePositions.size() ; i++ ) textureNodePositions[i] = static_cast< Point3D< float > >( mesh.surface( textureNodes[i] ) );
 }
 
 template< typename PreReal , typename Real >

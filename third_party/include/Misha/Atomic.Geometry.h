@@ -46,6 +46,13 @@ namespace MishaK
 		using Value = Matrix< Real , Cols , Rows >;
 		static void Add( volatile Value &a , const Value &b ){ for( unsigned int c=0 ; c<Cols ; c++ ) for( unsigned int r=0 ; r<Rows ; r++ ) Atomic< Real >::Add( a(c,r) , b(c,r) ); }
 	};
+
+	template< typename T , typename Real >
+	struct Atomic< ProjectiveData< Real , T > >
+	{
+		using Value = ProjectiveData< Real , T >;
+		static void Add( volatile Value &a , const Value &b ){ Atomic< T >::Add( a.data , b.data ) ; Atomic< Real >::Add( a.weight , b.weight ); }
+	};
 }
 
 #endif // ATOMIC_GEOMETRY_INCLUDED

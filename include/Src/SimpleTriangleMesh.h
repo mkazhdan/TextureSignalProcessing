@@ -30,8 +30,7 @@ DAMAGE.
 
 #include <fstream>
 #include <Eigen/Sparse>
-#include <Misha/Ply.h>
-#include <Misha/PlyVertexData.h>
+#include "Misha/PlyData.h"
 #include <Misha/Miscellany.h>
 #include <Misha/Geometry.h>
 #include <Misha/UnionFind.h>

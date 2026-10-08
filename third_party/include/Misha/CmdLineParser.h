@@ -36,6 +36,7 @@ DAMAGE.
 #include <iostream>
 #include <sstream>
 #include <fstream>
+#include <filesystem>
 #include <algorithm>
 #include <cassert>
 #include <string.h>
@@ -99,6 +100,9 @@ namespace MishaK
 		/** Constructor with the name of the argument and the default values */
 		CmdLineParameterArray( const std::string &name, const Type* v=NULL );
 
+		/** Constructor with the name of the argument and the default values */
+		CmdLineParameterArray( const std::string &name, const std::vector< Type > & v );
+
 		/** Try to set the argument from the list of command line arguments.
 		*** Returns thenumber of arguments ingested.*/ 
 		int read( char **argv , int argc );
@@ -142,6 +146,12 @@ namespace MishaK
 	/** Converts a string to lower case*/
 	std::string ToLower( const std::string &str );
 
+	/** Returns the file header */
+	std::string GetFileHeader( const std::string &fileName );
+
+	/** Returns the file header */
+	std::string GetFilePath( const std::string &fileName );
+
 	/** Returns the file extension */
 	std::string GetFileExtension( const std::string &fileName );
 
@@ -153,6 +163,9 @@ namespace MishaK
 
 	/** Returns and array of individual words read from a file */
 	std::vector< std::string > ReadWords( const std::string &fileName );
+
+	/** Tokenizes a string based on the specified characters */
+	std::vector< std::string > Tokenize( const std::string & str , char delim );
 
 #include "CmdLineParser.inl"
 }

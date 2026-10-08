@@ -1,4 +1,4 @@
-<center><h2>Gradient Domain Texture Processing (Version 9.60)</h2></center>
+<center><h2>Gradient Domain Texture Processing (Version 10.00)</h2></center>
 <center>
 <a href="#LINKS">links</a>
 <a href="#EXECUTABLES">executables</a>
@@ -34,6 +34,7 @@ This software supports gradient-domain signal processing within a texture atlas.
 <B>Data:</B>
 <A HREF="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/TSP.Data.zip">ZIP</A><br>
 <b>Older Versions:</b>
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version9.60/">V9.60</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version9.55/">V9.55</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version9.50/">V9.50</a>,
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version9.10/">V9.10</a>,
@@ -153,10 +154,22 @@ Black pixels in the mask file should be used to denote regions where the texel v
 The default value for this parameter is 6.
 </dd>
 
-<dt>[<b>--interpolation</b> &lt;<i>interpolation weight</i>&gt;]</dt>
-<dd> This floating point values gives the interpolation weight.<BR>
-The default value for this parameter is 100.
+<dt>[<b>--gWeight</b> &lt;<i>gradient fitting weight</i>&gt;]</dt>
+<dd> This floating point values gives the gradient fitting weight.<BR>
+The default value for this parameter is 0.01.
 </dd>
+
+<dt>[<b>--wType</b> &lt;<i>weight type</i>&gt;]</dt>
+<dd> This integer value specifies how weights are to be used when multiple value/confidence images are provided. Supported values are:
+<UL>
+<LI> 0: the weights are used to modulate the computation of the metric. (Since the modulation is isotropic, this affects the mass but no the stiffncess.)
+<LI> 1: the weights are used to modulate the contribution of a texel to integral computations. (This affects both the mass and the stiffness.)
+<LI> 2: the weights are used to modulate the gradients.
+</UL>
+Aside from texels at which the sum of confidence is zero, confidence weights are normalized to sum to one. <BR>
+The default value for this parameter is 2.
+</dd>
+
 
 <!--
 <dt>[<b>--dilateBounaries</b> &lt;<i>dilation radius</i>&gt;]</dt>
@@ -225,7 +238,7 @@ The default value for this parameter is 10000.
 The default value for this parameter is 10000.
 </dd>
 
-<dt>[<b>--modulation</b> &lt;<i>sharpening gradient modulation</i>&gt;]</dt>
+<dt>[<b>--sharpModulation</b> &lt;<i>sharpening gradient modulation</i>&gt;]</dt>
 <dd> This floating point values gives the gradient modulation used for sharpening the line-integral-convolution results.<BR>
 The default value for this parameter is 100.
 </dd>
@@ -244,7 +257,7 @@ The default value for this parameter is 2048.
 <dd> If specified, this integer value is used to seed the random number generation for jittering. (This is used to avoid singular situations when mesh vertices fall directly on edges in the texture grid. In such a situation, the executable will issue a warning <B>"Zero row at index ..."</B>.)
 </dd>
 
-</dd><dt>[<b>--minor</B>]</dt>
+</dd><dt>[<b>--minimal</B>]</dt>
 <dd> If enabled, this flag specifies that the directions of minimal principal curvature should be used to define the vector-field (instead of the default maximal principal curvature directions).
 </dd>
 
@@ -408,7 +421,7 @@ Identifies the active texels within a texture mask of prescribed resolution, wit
 <dd> This string is the name of the file to which the texture mask will be written.</B>
 </dd>
 
-<dt>[<b>--rasterizer</b>]</dt>
+<dt>[<b>--rasterize</b>]</dt>
 <dd> This integer specifies the type of information to be rasterized. Valid values are:
 <UL>
 <LI><b>0</b>: active -- all texels whose support overlaps the texture atlas
@@ -792,6 +805,11 @@ The interface is simlar to that of <CODE>GradientDomain</CODE> and the details o
 <a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version9.60/">Version 9.60</a>:
 <ul>
 <LI> Added <CODE>--sanityCheck</CODE> flag to support testing if the texture mapping is corrupted.
+</ul>
+
+<a href="http://www.cs.jhu.edu/~misha/Code/TextureSignalProcessing/Version9.60/">Version 10.00</a>:
+<ul>
+<LI> Added support for weighted confidence in texture stitching.
 </ul>
 
 </details>

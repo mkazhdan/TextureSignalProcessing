@@ -7,11 +7,11 @@ USE_PARDISO ?= false
 
 
 ifeq ($(COMPILER),gcc)
-	CFLAGS += -fpermissive -fopenmp -Wno-deprecated -Wno-unused-result -Wno-format -msse2 -std=c++17
+	CFLAGS += -fpermissive -fopenmp -Wno-deprecated -Wno-unused-result -Wno-format -msse2 -std=c++20
 	CC=gcc
 	CXX=g++
 else
-	CFLAGS += -fpermissive -Wno-deprecated -Wno-unused-result -Wno-format -msse2 -std=c++17
+	CFLAGS += -fpermissive -Wno-deprecated -Wno-unused-result -Wno-format -msse2 -std=c++20
 	CC=clang
 	CXX=clang++
 endif

@@ -799,7 +799,7 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::InitializeSystem( int wi
 
 	std::vector< Point3D< Real > > low_x0( textureNodes.size() );
 	high_x0.resize( textureNodes.size() );
-	for( int i=0 ; i<textureNodes.size() ; i++ ) high_x0[i] = highFrequencyTexture( textureNodes[i].ci , textureNodes[i].cj ) , low_x0[i] = lowFrequencyTexture( textureNodes[i].ci , textureNodes[i].cj );
+	for( int i=0 ; i<textureNodes.size() ; i++ ) high_x0[i] = static_cast< Point3D< Real > >( highFrequencyTexture( textureNodes[i].ci , textureNodes[i].cj ) ) , low_x0[i] = static_cast< Point3D< Real > >( lowFrequencyTexture( textureNodes[i].ci , textureNodes[i].cj ) );
 
 	pMeter.reset();
 	{
@@ -903,15 +903,15 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::InitializeVisualization(
 	{
 		Simplex< PreReal , 3 , 2 > sTriangle = mesh.surfaceTriangle(t);
 		Simplex< PreReal , 2 , 2 > tTriangle = mesh.textureTriangle(t);
-		Point3D< float > n = sTriangle.normal();
+		Point3D< float > n = static_cast< Point3D< float > >( sTriangle.normal() );
 		n /= Point3D< float >::Length( n );
 
 		for( int k=0 ; k<3 ; k++ , idx++ )
 		{
 			visualization.triangles[t][k] = idx;
-			visualization.vertices[idx] = sTriangle[k];
+			visualization.vertices[idx] = static_cast< Point3D< float > >( sTriangle[k] );
 			visualization.normals[idx] = n;
-			visualization.textureCoordinates[idx] = tTriangle[k];
+			visualization.textureCoordinates[idx] = static_cast< Point2D< float > >( tTriangle[k] );
 		}
 	}
 
@@ -920,7 +920,7 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::InitializeVisualization(
 	for( int e=0 ; e<boundaryHalfEdges.size() ; e++ )
 	{
 		SimplexIndex< 1 > eIndex = mesh.surface.edgeIndex( boundaryHalfEdges[e] );
-		for( int i=0 ; i<2 ; i++ ) visualization.chartBoundaryVertices.push_back( mesh.surface.vertices[ eIndex[i] ] );
+		for( int i=0 ; i<2 ; i++ ) visualization.chartBoundaryVertices.push_back( static_cast< Point3D< float > >( mesh.surface.vertices[ eIndex[i] ] ) );
 	}
 
 	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , 's' , "export texture" , "Output Texture", ExportTextureCallBack ) );
@@ -1055,7 +1055,7 @@ void TextureFilter< PreReal , Real , TextureBitDepth >::Init( void )
 	}
 
 	textureNodePositions.resize( textureNodes.size() );
-	for( int i=0 ; i<textureNodePositions.size() ; i++ ) textureNodePositions[i] = mesh.surface( textureNodes[i] );
+	for( int i=0 ; i<textureNodePositions.size() ; i++ ) textureNodePositions[i] = static_cast< Point3D< float > >( mesh.surface( textureNodes[i] ) );
 
 	uniformTexelModulationMask.resize( textureNodes.size() , 0.5 );
 	texelModulationMask.resize( textureNodes.size() , 1.0 );

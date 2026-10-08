@@ -75,7 +75,7 @@ Texels< NodeAtCellCenter , Index , Dim >::GetTexelPositions
 		0 , texelInfo.resolution() ,
 		[&]( unsigned int , size_t i )
 		{
-			if( texelInfo[i].sIdx==-1 ) texturePositions[i] = badPosition;
+			if( texelInfo[i].sIdx==-1 ) texturePositions[i] = static_cast< Point< Real , EmbeddingDim > >( badPosition );
 			else texturePositions[i] = Point< Real , EmbeddingDim >( texelInfo[i].template position< EmbeddingDim >( SEF ) );
 		}
 	);
@@ -145,9 +145,16 @@ Texels< NodeAtCellCenter , Index , Dim >::GetSupportedSimplexIndices
 		}
 	);
 
+	auto InBounds = [&]( typename RegularGrid< Dim >::Index I )
+		{
+			for( unsigned int d=0 ; d<Dim ; d++ ) if( I[d]<0 || I[d]>=static_cast< int >( res[d] ) ) return false;
+			return true;
+		};
+
 	// Add the simplex indices to the associated texels in the grid
 	RegularGrid< Dim , std::vector< Index > > tIndices( res );
-	for( unsigned int i=0 ; i<_tIndices.size() ; i++ ) for( unsigned int j=0 ; j<_tIndices[i].size() ; j++ ) tIndices( _tIndices[i][j].first ).push_back( _tIndices[i][j].second );
+	for( unsigned int i=0 ; i<_tIndices.size() ; i++ ) for( unsigned int j=0 ; j<_tIndices[i].size() ; j++ )
+		if( InBounds( _tIndices[i][j].first ) ) tIndices( _tIndices[i][j].first ).push_back( _tIndices[i][j].second );
 
 	// Remove redundant indices
 	ThreadPool::ParallelFor
@@ -694,7 +701,7 @@ Texels< NodeAtCellCenter , Index , Dim >::FlowTexelInfoToInterior
 				{
 					// Get the representation of the texel center in the tangent frame of the closest simplex
 					FEM::HermiteSamplePoint< double > h;
-					h.tIdx = texelInfo[i].sIdx;
+					h.tIdx = static_cast< int >( texelInfo[i].sIdx );
 					for( unsigned int d=0 ; d<Dim ; d++ ) h.p[d] = 1./(Dim+1) , h.v[d] = texelInfo[i].bc[d+1] - 1./(Dim+1);
 
 					// Walk along the tangent direction

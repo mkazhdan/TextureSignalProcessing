@@ -39,6 +39,7 @@ DAMAGE.
 #include <limits>
 #include <sys/timeb.h>
 #if defined( _WIN32 ) || defined( _WIN64 )
+#define NOMINMAX
 #include <Windows.h>
 #include <Psapi.h>
 #else // !_WIN32 && !_WIN64
@@ -145,6 +146,19 @@ namespace MishaK
 			int idx = int( ( std::max< double >( -1. , std::min< double >( 1. , s ) ) + 1 ) / 2 * 255 );
 			for( unsigned int c=0 ; c<3 ; c++ ) rgb[c] = (Real)darray[idx][c];
 		}
+
+#if 1 // NEW_CODE
+		// Takes a value in the range [-1,1] and returns the associated color in [0,1]^3
+		inline void TemperatureValueToColor( double s , double rgb[3] )
+		{
+			double value = (s+1.)/2.;
+
+			double cold[] = { 2.*M_PI   , fabs(value-0.5)*2 , fabs(value-0.5)/2+0.75 };
+			double  hot[] = { 4.*M_PI/3 , fabs(value-0.5)*2 , fabs(value-0.5)/2+0.75 };
+			double  hsv[] = { cold[0]*(1.-value) + hot[0]*value , cold[1]*(1.-value) + hot[1]*value , cold[2]*(1.-value) + hot[2]*value };
+			HSVtoRGB( hsv , rgb );
+		}
+#endif // NEW_CODE
 
 		////////////////
 		// Time Stuff //

@@ -30,8 +30,7 @@ DAMAGE.
 #define PLY_IO_INCLUDED
 
 #include <string>
-#include "Misha/Ply.h"
-#include "Misha/PlyVertexData.h"
+#include "Misha/PlyData.h"
 #include "Misha/Geometry.h"
 #include "Misha/CmdLineParser.h"
 #include "Misha/RegularGrid.h"
@@ -67,8 +66,8 @@ namespace MishaK
 			std::string ext = ToLower( GetFileExtension( fileName ) );
 			if( ext==std::string( "ply" ) )
 			{
-				using VertexFactory = VertexFactory::PositionFactory< Real , Dim >;
-				using Vertex = typename VertexFactory::VertexType;
+				using VertexFactory = DataFactory::PositionFactory< Real , Dim >;
+				using Vertex = typename VertexFactory::DataType;
 				using Face = PlyTexturedFace< unsigned int , Real >;
 
 				VertexFactory factory;
@@ -267,8 +266,8 @@ namespace MishaK
 			std::string ext = ToLower( GetFileExtension( fileName ) );
 			if( ext==std::string( "ply" ) )
 			{
-				using VertexFactory = VertexFactory::Factory< Real , VertexFactory::PositionFactory< Real , Dim > , VertexFactory::TextureFactory< Real , TDim > >;
-				using Vertex = typename VertexFactory::VertexType;
+				using VertexFactory = DataFactory::Factory< Real , DataFactory::PositionFactory< Real , Dim > , DataFactory::TextureFactory< Real , TDim > >;
+				using Vertex = typename VertexFactory::DataType;
 				using Face = PlyTexturedFace< unsigned int , Real >;
 
 				VertexFactory factory;
@@ -521,8 +520,8 @@ namespace MishaK
 			std::string ext = ToLower( GetFileExtension( fileName ) );
 			if( ext==std::string( "ply" ) )
 			{
-				using VertexFactory = VertexFactory::PositionFactory< Real , Dim >;
-				using Vertex = typename VertexFactory::VertexType;
+				using VertexFactory = DataFactory::PositionFactory< Real , Dim >;
+				using Vertex = typename VertexFactory::DataType;
 				using Face = PlyTexturedFace< unsigned int , Real >;
 
 				VertexFactory factory;
@@ -587,8 +586,8 @@ namespace MishaK
 			std::string ext = ToLower( GetFileExtension( fileName ) );
 			if( ext==std::string( "ply" ) )
 			{
-				using VertexFactory = VertexFactory::PositionFactory< Real , Dim >;
-				using Vertex = typename VertexFactory::VertexType;
+				using VertexFactory = DataFactory::PositionFactory< Real , Dim >;
+				using Vertex = typename VertexFactory::DataType;
 
 				VertexFactory factory;
 

@@ -1211,8 +1211,8 @@ namespace {
 		static const Real eps;
 	};
 
-	template<> const float CGConstants<float>::eps = float(1e-12);
-	template<> const double CGConstants<double>::eps = 1e-16;
+	template<> inline const float CGConstants<float>::eps = float(1e-12);
+	template<> inline const double CGConstants<double>::eps = 1e-16;
 }
 
 template< class MType , class IndexType , class VType >

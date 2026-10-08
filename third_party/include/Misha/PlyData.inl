@@ -26,7 +26,7 @@ ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF S
 DAMAGE.
 */
 
-int ToPlyType( TypeOnDisk typeOnDisk )
+inline int ToPlyType( TypeOnDisk typeOnDisk )
 {
 	switch( typeOnDisk )
 	{
@@ -41,7 +41,7 @@ int ToPlyType( TypeOnDisk typeOnDisk )
 	return -1;
 }
 
-TypeOnDisk FromPlyType( int plyType )
+inline TypeOnDisk FromPlyType( int plyType )
 {
 	switch( plyType )
 	{
@@ -56,16 +56,16 @@ TypeOnDisk FromPlyType( int plyType )
 	return TypeOnDisk::UNKNOWN;
 }
 
-template<> TypeOnDisk GetTypeOnDisk<          char >( void ){ return TypeOnDisk::CHAR;  }
-template<> TypeOnDisk GetTypeOnDisk< unsigned char >( void ){ return TypeOnDisk::UCHAR; }
-template<> TypeOnDisk GetTypeOnDisk<           int >( void ){ return TypeOnDisk::INT;  }
-template<> TypeOnDisk GetTypeOnDisk< unsigned  int >( void ){ return TypeOnDisk::UINT; }
-template<> TypeOnDisk GetTypeOnDisk<         float >( void ){ return TypeOnDisk::FLOAT;  }
-template<> TypeOnDisk GetTypeOnDisk<        double >( void ){ return TypeOnDisk::DOUBLE; }
+template<> inline TypeOnDisk GetTypeOnDisk<          char >( void ){ return TypeOnDisk::CHAR;  }
+template<> inline TypeOnDisk GetTypeOnDisk< unsigned char >( void ){ return TypeOnDisk::UCHAR; }
+template<> inline TypeOnDisk GetTypeOnDisk<           int >( void ){ return TypeOnDisk::INT;  }
+template<> inline TypeOnDisk GetTypeOnDisk< unsigned  int >( void ){ return TypeOnDisk::UINT; }
+template<> inline TypeOnDisk GetTypeOnDisk<         float >( void ){ return TypeOnDisk::FLOAT;  }
+template<> inline TypeOnDisk GetTypeOnDisk<        double >( void ){ return TypeOnDisk::DOUBLE; }
 
 template< typename Real >
 template< typename Type >
-bool VertexIO< Real >::_ReadBinary( FILE *fp , Real &r )
+bool DataIO< Real >::_ReadBinary( FILE *fp , Real &r )
 {
 	Type t;
 	if( fread( &t , sizeof(Type) , 1 , fp )!=1 ) return false;
@@ -75,10 +75,10 @@ bool VertexIO< Real >::_ReadBinary( FILE *fp , Real &r )
 
 template< typename Real >
 template< typename Type >
-void VertexIO< Real >::_WriteBinary( FILE *fp , Real r ){ Type t = (Type)r ; fwrite(  &t , sizeof(Type) , 1 , fp ); }
+void DataIO< Real >::_WriteBinary( FILE *fp , Real r ){ Type t = (Type)r ; fwrite(  &t , sizeof(Type) , 1 , fp ); }
 
 template< typename Real >
-bool VertexIO< Real >::ReadASCII( FILE *fp , TypeOnDisk , Real &s )
+bool DataIO< Real >::ReadASCII( FILE *fp , TypeOnDisk , Real &s )
 {
 	double d;
 #if _WIN32 || _WIN64
@@ -91,7 +91,7 @@ bool VertexIO< Real >::ReadASCII( FILE *fp , TypeOnDisk , Real &s )
 }
 
 template< typename Real >
-bool VertexIO< Real >::ReadBinary( FILE *fp , TypeOnDisk typeOnDisk , Real &s )
+bool DataIO< Real >::ReadBinary( FILE *fp , TypeOnDisk typeOnDisk , Real &s )
 {
 	if( TypeOnDisk()==typeOnDisk ) return fread( &s , sizeof(Real) , 1 , fp )==1;
 	switch( typeOnDisk )
@@ -107,7 +107,7 @@ bool VertexIO< Real >::ReadBinary( FILE *fp , TypeOnDisk typeOnDisk , Real &s )
 	return true;
 }
 template< typename Real >
-void VertexIO< Real >::WriteASCII( FILE *fp , TypeOnDisk typeOnDisk , const Real &s )
+void DataIO< Real >::WriteASCII( FILE *fp , TypeOnDisk typeOnDisk , const Real &s )
 {
 	switch( typeOnDisk )
 	{
@@ -122,7 +122,7 @@ void VertexIO< Real >::WriteASCII( FILE *fp , TypeOnDisk typeOnDisk , const Real
 }
 
 template< typename Real >
-void VertexIO< Real >::WriteBinary( FILE *fp , TypeOnDisk typeOnDisk , const Real &s )
+void DataIO< Real >::WriteBinary( FILE *fp , TypeOnDisk typeOnDisk , const Real &s )
 {
 	if( TypeOnDisk()==typeOnDisk ) fwrite( &s , sizeof(Real) , 1 , fp );
 	switch( typeOnDisk )
@@ -138,14 +138,14 @@ void VertexIO< Real >::WriteBinary( FILE *fp , TypeOnDisk typeOnDisk , const Rea
 }
 
 template< typename Real >
-bool VertexIO< Real >::ReadASCII( FILE *fp , TypeOnDisk typeOnDisk , size_t sz , Real *s )
+bool DataIO< Real >::ReadASCII( FILE *fp , TypeOnDisk typeOnDisk , size_t sz , Real *s )
 {
 	for( size_t i=0 ; i<sz ; i++ ) if( !ReadASCII( fp , typeOnDisk , s[i] ) ) return false;
 	return true;
 }
 
 template< typename Real >
-bool VertexIO< Real >::ReadBinary( FILE *fp , TypeOnDisk typeOnDisk , size_t sz , Real *s )
+bool DataIO< Real >::ReadBinary( FILE *fp , TypeOnDisk typeOnDisk , size_t sz , Real *s )
 {
 #if defined( _WIN32 ) || defined( _WIN64 )
 #pragma warning( push )
@@ -162,13 +162,13 @@ bool VertexIO< Real >::ReadBinary( FILE *fp , TypeOnDisk typeOnDisk , size_t sz 
 	return true;
 }
 template< typename Real >
-void VertexIO< Real >::WriteASCII( FILE *fp , TypeOnDisk typeOnDisk , size_t sz , const Real *s )
+void DataIO< Real >::WriteASCII( FILE *fp , TypeOnDisk typeOnDisk , size_t sz , const Real *s )
 {
 	for( size_t i=0 ; i<sz ; i++ ) WriteASCII( fp , typeOnDisk , s[i] );
 }
 
 template< typename Real >
-void VertexIO< Real >::WriteBinary( FILE *fp , TypeOnDisk typeOnDisk , size_t sz , const Real *s )
+void DataIO< Real >::WriteBinary( FILE *fp , TypeOnDisk typeOnDisk , size_t sz , const Real *s )
 {
 	if( TypeOnDisk()==typeOnDisk ) fwrite( &s , sizeof(Real) , sz , fp );
 	else for( size_t i=0 ; i<sz ; i++ ) WriteBinary( fp , typeOnDisk , s[i] );
@@ -177,8 +177,8 @@ void VertexIO< Real >::WriteBinary( FILE *fp , TypeOnDisk typeOnDisk , size_t sz
 //////////////
 // _Factory //
 //////////////
-template< typename _VertexType , typename FactoryType >
-bool _Factory< _VertexType , FactoryType >::plyValidReadProperties( const std::vector< GregTurk::PlyProperty > &plyProperties ) const
+template< typename _DataType , typename FactoryType >
+bool _Factory< _DataType , FactoryType >::plyValidReadProperties( const std::vector< GregTurk::PlyProperty > &plyProperties ) const
 {
 	for( unsigned int i=0 ; i<plyReadNum() ; i++ )
 	{
@@ -213,13 +213,13 @@ template< typename Real , unsigned int Dim >
 GregTurk::PlyProperty PointFactory< Real , Dim >::plyStaticReadProperty( unsigned int idx ) const
 {
 	if( idx>=plyReadNum() ) MK_ERROR_OUT( "read property out of bounds" );
-	return GregTurk::PlyProperty( _name(idx) , ToPlyType( _typeOnDisk ) , PLY::Type< Real >() , (int)offsetof( VertexType , coords ) + sizeof(Real)*idx );
+	return GregTurk::PlyProperty( _name(idx) , ToPlyType( _typeOnDisk ) , PLY::Type< Real >() , (int)offsetof( DataType , coords ) + sizeof(Real)*idx );
 }
 template< typename Real , unsigned int Dim >
 GregTurk::PlyProperty PointFactory< Real , Dim >::plyStaticWriteProperty( unsigned int idx ) const
 {
 	if( idx>=plyWriteNum() ) MK_ERROR_OUT( "write property out of bounds" );
-	return GregTurk::PlyProperty( _name(idx) , ToPlyType( _typeOnDisk ) , PLY::Type< Real >() , (int)offsetof( VertexType , coords ) + sizeof(Real)*idx );
+	return GregTurk::PlyProperty( _name(idx) , ToPlyType( _typeOnDisk ) , PLY::Type< Real >() , (int)offsetof( DataType , coords ) + sizeof(Real)*idx );
 }
 
 ///////////////////
@@ -249,13 +249,13 @@ template< typename Real , unsigned int Cols , unsigned int Rows >
 GregTurk::PlyProperty MatrixFactory< Real , Cols , Rows >::plyStaticReadProperty( unsigned int idx ) const
 {
 	if( idx>=plyReadNum() ) MK_ERROR_OUT( "read property out of bounds" );
-	return GregTurk::PlyProperty( _name(idx) , ToPlyType( _typeOnDisk ) , PLY::Type< Real >() , (int)offsetof( VertexType , coords ) + sizeof(Real)*idx );
+	return GregTurk::PlyProperty( _name(idx) , ToPlyType( _typeOnDisk ) , PLY::Type< Real >() , (int)offsetof( DataType , coords ) + sizeof(Real)*idx );
 }
 template< typename Real , unsigned int Cols , unsigned int Rows >
 GregTurk::PlyProperty MatrixFactory< Real , Cols , Rows >::plyStaticWriteProperty( unsigned int idx ) const
 {
 	if( idx>=plyWriteNum() ) MK_ERROR_OUT( "write property out of bounds" );
-	return GregTurk::PlyProperty( _name(idx) , ToPlyType( _typeOnDisk ) , PLY::Type< Real >() , (int)offsetof( VertexType , coords ) + sizeof(Real)*idx );
+	return GregTurk::PlyProperty( _name(idx) , ToPlyType( _typeOnDisk ) , PLY::Type< Real >() , (int)offsetof( DataType , coords ) + sizeof(Real)*idx );
 }
 
 /////////////////////
@@ -278,23 +278,23 @@ template< typename Real , unsigned int Dim >
 GregTurk::PlyProperty PositionFactory< Real , Dim >::plyStaticReadProperty( unsigned int idx ) const
 {
 	if( idx>=plyReadNum() ) MK_ERROR_OUT( "read property out of bounds" );
-	return GregTurk::PlyProperty( _PlyNames[idx] , ToPlyType( _typeOnDisk ) , PLY::Type< Real >() , (int)offsetof( VertexType , coords ) + sizeof(Real)*idx );
+	return GregTurk::PlyProperty( _PlyNames[idx] , ToPlyType( _typeOnDisk ) , PLY::Type< Real >() , (int)offsetof( DataType , coords ) + sizeof(Real)*idx );
 }
 template< typename Real , unsigned int Dim >
 GregTurk::PlyProperty PositionFactory< Real , Dim >::plyStaticWriteProperty( unsigned int idx ) const
 {
 	if( idx>=plyWriteNum() ) MK_ERROR_OUT( "write property out of bounds" );
-	return GregTurk::PlyProperty( _PlyNames[idx] , ToPlyType( _typeOnDisk ) , PLY::Type< Real >() , (int)offsetof( VertexType , coords ) + sizeof(Real)*idx );
+	return GregTurk::PlyProperty( _PlyNames[idx] , ToPlyType( _typeOnDisk ) , PLY::Type< Real >() , (int)offsetof( DataType , coords ) + sizeof(Real)*idx );
 }
 
-template<> const std::string PositionFactory<  float , 1 >::_PlyNames[] = { "x" };
-template<> const std::string PositionFactory< double , 1 >::_PlyNames[] = { "x" };
-template<> const std::string PositionFactory<  float , 2 >::_PlyNames[] = { "x" , "y" };
-template<> const std::string PositionFactory< double , 2 >::_PlyNames[] = { "x" , "y" };
-template<> const std::string PositionFactory<  float , 3 >::_PlyNames[] = { "x" , "y" , "z" };
-template<> const std::string PositionFactory< double , 3 >::_PlyNames[] = { "x" , "y" , "z" };
-template<> const std::string PositionFactory<  float , 4 >::_PlyNames[] = { "x" , "y" , "z" , "w" };
-template<> const std::string PositionFactory< double , 4 >::_PlyNames[] = { "x" , "y" , "z" , "w" };
+template<> inline const std::string PositionFactory<  float , 1 >::_PlyNames[] = { "x" };
+template<> inline const std::string PositionFactory< double , 1 >::_PlyNames[] = { "x" };
+template<> inline const std::string PositionFactory<  float , 2 >::_PlyNames[] = { "x" , "y" };
+template<> inline const std::string PositionFactory< double , 2 >::_PlyNames[] = { "x" , "y" };
+template<> inline const std::string PositionFactory<  float , 3 >::_PlyNames[] = { "x" , "y" , "z" };
+template<> inline const std::string PositionFactory< double , 3 >::_PlyNames[] = { "x" , "y" , "z" };
+template<> inline const std::string PositionFactory<  float , 4 >::_PlyNames[] = { "x" , "y" , "z" , "w" };
+template<> inline const std::string PositionFactory< double , 4 >::_PlyNames[] = { "x" , "y" , "z" , "w" };
 
 ///////////////////
 // NormalFactory //
@@ -316,23 +316,23 @@ template< typename Real , unsigned int Dim >
 GregTurk::PlyProperty NormalFactory< Real , Dim >::plyStaticReadProperty( unsigned int idx ) const
 {
 	if( idx>=plyReadNum() ) MK_ERROR_OUT( "read property out of bounds" );
-	return GregTurk::PlyProperty( _PlyNames[idx] , ToPlyType( _typeOnDisk ) , PLY::Type< Real >() , (int)offsetof( VertexType , coords ) + sizeof(Real)*idx );
+	return GregTurk::PlyProperty( _PlyNames[idx] , ToPlyType( _typeOnDisk ) , PLY::Type< Real >() , (int)offsetof( DataType , coords ) + sizeof(Real)*idx );
 }
 template< typename Real , unsigned int Dim >
 GregTurk::PlyProperty NormalFactory< Real , Dim >::plyStaticWriteProperty( unsigned int idx ) const
 {
 	if( idx>=plyWriteNum() ) MK_ERROR_OUT( "write property out of bounds" );
-	return GregTurk::PlyProperty( _PlyNames[idx] , ToPlyType( _typeOnDisk ) , PLY::Type< Real >() , (int)offsetof( VertexType , coords ) + sizeof(Real)*idx );
+	return GregTurk::PlyProperty( _PlyNames[idx] , ToPlyType( _typeOnDisk ) , PLY::Type< Real >() , (int)offsetof( DataType , coords ) + sizeof(Real)*idx );
 }
 
-template<> const std::string NormalFactory<  float , 1 >::_PlyNames[] = { "nx" };
-template<> const std::string NormalFactory< double , 1 >::_PlyNames[] = { "nx" };
-template<> const std::string NormalFactory<  float , 2 >::_PlyNames[] = { "nx" , "ny" };
-template<> const std::string NormalFactory< double , 2 >::_PlyNames[] = { "nx" , "ny" };
-template<> const std::string NormalFactory<  float , 3 >::_PlyNames[] = { "nx" , "ny" , "nz" };
-template<> const std::string NormalFactory< double , 3 >::_PlyNames[] = { "nx" , "ny" , "nz" };
-template<> const std::string NormalFactory<  float , 4 >::_PlyNames[] = { "nx" , "ny" , "nz" , "nw" };
-template<> const std::string NormalFactory< double , 4 >::_PlyNames[] = { "nx" , "ny" , "nz" , "nw" };
+template<> inline const std::string NormalFactory<  float , 1 >::_PlyNames[] = { "nx" };
+template<> inline const std::string NormalFactory< double , 1 >::_PlyNames[] = { "nx" };
+template<> inline const std::string NormalFactory<  float , 2 >::_PlyNames[] = { "nx" , "ny" };
+template<> inline const std::string NormalFactory< double , 2 >::_PlyNames[] = { "nx" , "ny" };
+template<> inline const std::string NormalFactory<  float , 3 >::_PlyNames[] = { "nx" , "ny" , "nz" };
+template<> inline const std::string NormalFactory< double , 3 >::_PlyNames[] = { "nx" , "ny" , "nz" };
+template<> inline const std::string NormalFactory<  float , 4 >::_PlyNames[] = { "nx" , "ny" , "nz" , "nw" };
+template<> inline const std::string NormalFactory< double , 4 >::_PlyNames[] = { "nx" , "ny" , "nz" , "nw" };
 
 ////////////////////
 // TextureFactory //
@@ -354,21 +354,21 @@ template< typename Real , unsigned int Dim >
 GregTurk::PlyProperty TextureFactory< Real , Dim >::plyStaticReadProperty( unsigned int idx ) const
 {
 	if( idx>=plyReadNum() ) MK_ERROR_OUT( "read property out of bounds" );
-	return GregTurk::PlyProperty( _PlyNames[idx] , ToPlyType( _typeOnDisk ) , PLY::Type< Real >() , (int)offsetof( VertexType , coords ) + sizeof(Real)*idx );
+	return GregTurk::PlyProperty( _PlyNames[idx] , ToPlyType( _typeOnDisk ) , PLY::Type< Real >() , (int)offsetof( DataType , coords ) + sizeof(Real)*idx );
 }
 template< typename Real , unsigned int Dim >
 GregTurk::PlyProperty TextureFactory< Real , Dim >::plyStaticWriteProperty( unsigned int idx ) const
 {
 	if( idx>=plyWriteNum() ) MK_ERROR_OUT( "write property out of bounds" );
-	return GregTurk::PlyProperty( _PlyNames[idx] , ToPlyType( _typeOnDisk ) , PLY::Type< Real >() , (int)offsetof( VertexType , coords ) + sizeof(Real)*idx );
+	return GregTurk::PlyProperty( _PlyNames[idx] , ToPlyType( _typeOnDisk ) , PLY::Type< Real >() , (int)offsetof( DataType , coords ) + sizeof(Real)*idx );
 }
 
-template<> const std::string TextureFactory<  float , 1 >::_PlyNames[] = { "u" };
-template<> const std::string TextureFactory< double , 1 >::_PlyNames[] = { "u" };
-template<> const std::string TextureFactory<  float , 2 >::_PlyNames[] = { "u" , "v" };
-template<> const std::string TextureFactory< double , 2 >::_PlyNames[] = { "u" , "v" };
-template<> const std::string TextureFactory<  float , 3 >::_PlyNames[] = { "u" , "v" , "w" };
-template<> const std::string TextureFactory< double , 3 >::_PlyNames[] = { "u" , "v" , "w" };
+template<> inline const std::string TextureFactory<  float , 1 >::_PlyNames[] = { "u" };
+template<> inline const std::string TextureFactory< double , 1 >::_PlyNames[] = { "u" };
+template<> inline const std::string TextureFactory<  float , 2 >::_PlyNames[] = { "u" , "v" };
+template<> inline const std::string TextureFactory< double , 2 >::_PlyNames[] = { "u" , "v" };
+template<> inline const std::string TextureFactory<  float , 3 >::_PlyNames[] = { "u" , "v" , "w" };
+template<> inline const std::string TextureFactory< double , 3 >::_PlyNames[] = { "u" , "v" , "w" };
 
 /////////////////////
 // RGBColorFactory //
@@ -390,13 +390,13 @@ template< typename Real >
 GregTurk::PlyProperty RGBColorFactory< Real >::plyStaticReadProperty( unsigned int idx ) const
 {
 	if( idx>=plyReadNum() ) MK_ERROR_OUT( "read property out of bounds" );
-	return GregTurk::PlyProperty( _PlyNames[idx] , ToPlyType( _typeOnDisk ) , PLY::Type< Real >() , (int)offsetof( VertexType , coords ) + sizeof(Real)*idx );
+	return GregTurk::PlyProperty( _PlyNames[idx] , ToPlyType( _typeOnDisk ) , PLY::Type< Real >() , (int)offsetof( DataType , coords ) + sizeof(Real)*idx );
 }
 template< typename Real >
 GregTurk::PlyProperty RGBColorFactory< Real >::plyStaticWriteProperty( unsigned int idx ) const
 {
 	if( idx>=plyWriteNum() ) MK_ERROR_OUT( "write property out of bounds" );
-	return GregTurk::PlyProperty( _PlyNames[idx] , ToPlyType( _typeOnDisk ) , PLY::Type< Real >() , (int)offsetof( VertexType , coords ) + sizeof(Real)*idx );
+	return GregTurk::PlyProperty( _PlyNames[idx] , ToPlyType( _typeOnDisk ) , PLY::Type< Real >() , (int)offsetof( DataType , coords ) + sizeof(Real)*idx );
 }
 
 template< typename Real >
@@ -435,13 +435,13 @@ template< typename Real >
 GregTurk::PlyProperty RGBAColorFactory< Real >::plyStaticReadProperty( unsigned int idx ) const
 {
 	if( idx>=plyReadNum() ) MK_ERROR_OUT( "read property out of bounds" );
-	return GregTurk::PlyProperty( _PlyNames[idx] , ToPlyType( _typeOnDisk ) , PLY::Type< Real >() , (int)offsetof( VertexType , coords ) + sizeof(Real)*idx );
+	return GregTurk::PlyProperty( _PlyNames[idx] , ToPlyType( _typeOnDisk ) , PLY::Type< Real >() , (int)offsetof( DataType , coords ) + sizeof(Real)*idx );
 }
 template< typename Real >
 GregTurk::PlyProperty RGBAColorFactory< Real >::plyStaticWriteProperty( unsigned int idx ) const
 {
 	if( idx>=plyWriteNum() ) MK_ERROR_OUT( "write property out of bounds" );
-	return GregTurk::PlyProperty( _PlyNames[idx] , ToPlyType( _typeOnDisk ) , PLY::Type< Real >() , (int)offsetof( VertexType , coords ) + sizeof(Real)*idx );
+	return GregTurk::PlyProperty( _PlyNames[idx] , ToPlyType( _typeOnDisk ) , PLY::Type< Real >() , (int)offsetof( DataType , coords ) + sizeof(Real)*idx );
 }
 
 template< typename Real >
@@ -516,13 +516,13 @@ template< typename Real , unsigned int Dim >
 GregTurk::PlyProperty StaticFactory< Real , Dim >::plyStaticReadProperty( unsigned int idx ) const
 {
 	if( idx>=Dim ) MK_ERROR_OUT( "read property out of bounds" );
-	return GregTurk::PlyProperty( _plyNames[idx] , ToPlyType( _typeOnDisk ) , PLY::Type< Real >() , (int)offsetof( VertexType , coords ) + sizeof(Real)*idx );
+	return GregTurk::PlyProperty( _plyNames[idx] , ToPlyType( _typeOnDisk ) , PLY::Type< Real >() , (int)offsetof( DataType , coords ) + sizeof(Real)*idx );
 }
 template< typename Real , unsigned int Dim >
 GregTurk::PlyProperty StaticFactory< Real , Dim >::plyStaticWriteProperty( unsigned int idx ) const
 {
 	if( idx>=Dim ) MK_ERROR_OUT( "write property out of bounds" );
-	return GregTurk::PlyProperty( _plyNames[idx] , ToPlyType( _typeOnDisk ) , PLY::Type< Real >() , (int)offsetof( VertexType , coords ) + sizeof(Real)*idx );
+	return GregTurk::PlyProperty( _plyNames[idx] , ToPlyType( _typeOnDisk ) , PLY::Type< Real >() , (int)offsetof( DataType , coords ) + sizeof(Real)*idx );
 }
 
 template< typename Real , unsigned int Dim >
@@ -548,26 +548,26 @@ DynamicFactory< Real >::DynamicFactory( const std::vector< GregTurk::PlyProperty
 }
 
 template< typename Real >
-bool DynamicFactory< Real >::readASCII( FILE *fp , VertexType &dt ) const
+bool DynamicFactory< Real >::readASCII( FILE *fp , DataType &dt ) const
 {
-	for( unsigned int i=0 ; i<dt.dim() ; i++ ) if( !VertexIO< Real >::ReadASCII( fp , _namesAndTypesOnDisk[i].second , dt[i] ) ) return false;
+	for( unsigned int i=0 ; i<dt.dim() ; i++ ) if( !DataIO< Real >::ReadASCII( fp , _namesAndTypesOnDisk[i].second , dt[i] ) ) return false;
 	return true;
 }
 template< typename Real >
-bool DynamicFactory< Real >::readBinary( FILE *fp , VertexType &dt ) const
+bool DynamicFactory< Real >::readBinary( FILE *fp , DataType &dt ) const
 {
-	for( unsigned int i=0 ; i<dt.dim() ; i++ ) if( !VertexIO< Real >::ReadBinary( fp , _namesAndTypesOnDisk[i].second , dt[i] ) ) return false;
+	for( unsigned int i=0 ; i<dt.dim() ; i++ ) if( !DataIO< Real >::ReadBinary( fp , _namesAndTypesOnDisk[i].second , dt[i] ) ) return false;
 	return true;
 }
 template< typename Real >
-void DynamicFactory< Real >::writeASCII( FILE *fp , const VertexType &dt ) const
+void DynamicFactory< Real >::writeASCII( FILE *fp , const DataType &dt ) const
 {
-	for( unsigned int i=0 ; i<dt.dim() ; i++ ) VertexIO< Real >::WriteASCII( fp , _namesAndTypesOnDisk[i].second , dt[i] );
+	for( unsigned int i=0 ; i<dt.dim() ; i++ ) DataIO< Real >::WriteASCII( fp , _namesAndTypesOnDisk[i].second , dt[i] );
 }
 template< typename Real >
-void DynamicFactory< Real >::writeBinary( FILE *fp , const VertexType &dt ) const
+void DynamicFactory< Real >::writeBinary( FILE *fp , const DataType &dt ) const
 {
-	for( unsigned int i=0 ; i<dt.dim() ; i++ ) VertexIO< Real >::WriteBinary( fp , _namesAndTypesOnDisk[i].second , dt[i] );
+	for( unsigned int i=0 ; i<dt.dim() ; i++ ) DataIO< Real >::WriteBinary( fp , _namesAndTypesOnDisk[i].second , dt[i] );
 }
 
 template< typename Real >
@@ -626,7 +626,7 @@ typename std::enable_if< I!=sizeof...(Factories) , GregTurk::PlyProperty >::type
 {
 	if( idx<this->template get<I>().plyReadNum() )
 	{
-		VertexType v;
+		DataType v;
 		GregTurk::PlyProperty prop = this->template get<I>().plyStaticReadProperty( idx );
 		prop.offset += (int)( (size_t)&v.template get<I>() - (size_t)&v );
 		return prop;
@@ -640,7 +640,7 @@ typename std::enable_if< I!=sizeof...(Factories) , GregTurk::PlyProperty >::type
 {
 	if( idx<this->template get<I>().plyWriteNum() )
 	{
-		VertexType v;
+		DataType v;
 		GregTurk::PlyProperty prop = this->template get<I>().plyStaticWriteProperty( idx );
 		prop.offset += (int)( (size_t)&v.template get<I>() - (size_t)&v );
 		return prop;

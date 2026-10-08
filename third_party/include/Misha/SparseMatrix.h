@@ -44,8 +44,7 @@ DAMAGE.
 
 namespace MishaK
 {
-	template< class T , class IndexType >
-	class SparseMatrix : public SparseMatrixInterface< T , ConstPointer( MatrixEntry< T , IndexType > ) >
+	template< class T , class IndexType > class SparseMatrix : public SparseMatrixInterface< T , ConstPointer( MatrixEntry< T , IndexType > ) >
 	{
 		template< class T2 , class IndexType2 > friend class SparseMatrix;
 		Pointer( Pointer( MatrixEntry< T , IndexType > ) ) _entries;

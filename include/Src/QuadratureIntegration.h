@@ -272,10 +272,10 @@ namespace MishaK
 						typename ElementSamples::Bilinear::SampleData & _interior_cell_sample = interior_cell_samples[ (p-2)*Samples + s ];
 						SetInteriorCellDuals< Samples >( _interior_cell_sample , Point2D< typename ElementSamples::Real >( pos ) , (typename ElementSamples::Real)( TriangleIntegrator< Samples >::Weights[s] * fragment_to_element_area_scale_factor / 2 ) );
 						SetInteriorCellDuals< Samples >(  interior_cell_sample , Point2D< typename ElementSamples::Real >( pos ) , (typename ElementSamples::Real)( TriangleIntegrator< Samples >::Weights[s] * fragment_to_element_area_scale_factor / 2 ) );
-						_interior_cell_sample.init( pos );
+						_interior_cell_sample.init( static_cast< Point2D< typename ElementSamples::Bilinear::Real > >( pos ) );
 					}
 				}
-				interior_cell_sample.init( Point2D< GeometryReal >( (GeometryReal)0.5 , (GeometryReal)0.5 ) );
+				interior_cell_sample.init( Point2D< typename ElementSamples::Bilinear::Real >( (typename ElementSamples::Bilinear::Real)0.5 , (typename ElementSamples::Bilinear::Real)0.5 ) );
 			}
 
 			auto PolygonCenter = []( const Point2D< GeometryReal >* polygon , unsigned int polygonSize )
@@ -370,9 +370,7 @@ namespace MishaK
 
 								typename ElementSamples::Bilinear bilinearElementSample( fastIntegration ? 1 : 2*Samples );
 								bilinearElementSample.cellOffset = cellLineOffset;
-#ifdef SUPPORT_CONFIDENCE
 								bilinearElementSample.cellIndex = gridChart.chartToAtlasIndex( I );
-#endif // SUPPORT_CONFIDENCE
 								for( unsigned int x=0 ; x<2 ; x++ ) for( unsigned int y=0 ; y<2 ; y++ ) bilinearElementSample.invTensor(x,y) = (typename ElementSamples::Real)element_metric_inverse(x,y);
 
 								if( fastIntegration )
@@ -413,9 +411,7 @@ namespace MishaK
 									// There is a single sample for the whole polygon
 									typename ElementSamples::Bilinear bilinearElementSample( fastIntegration ? 1 : (polygon.size()-2)*Samples );
 									bilinearElementSample.cellOffset = cellLineOffset;
-#ifdef SUPPORT_CONFIDENCE
 									bilinearElementSample.cellIndex = gridChart.chartToAtlasIndex( I );
-#endif // SUPPORT_CONFIDENCE
 									for( unsigned int x=0 ; x<2 ; x++ ) for( unsigned int y=0 ; y<2 ; y++ ) bilinearElementSample.invTensor(x,y) = (typename ElementSamples::Real)element_metric_inverse(x,y);
 
 									for( unsigned int p=2 ; p<polygon.size() ; p++ )
@@ -428,15 +424,15 @@ namespace MishaK
 
 										for( int s=0 ; s<Samples ; s++ )
 										{
-											Point2D< typename ElementSamples::Real > pos = polygon[0] + dm[0] * (typename ElementSamples::Real)TriangleIntegrator< Samples >::Positions[s][0] + dm[1] * (typename ElementSamples::Real)TriangleIntegrator< Samples >::Positions[s][1];
-											if constexpr( SanityCheck ) if( !InUnitSquare( pos ) ) MK_THROW( "Sample position out of unit square! (" , pos[0] , " " , pos[1] , ")" );
+											Point2D< typename ElementSamples::Real > pos = static_cast< Point2D< typename ElementSamples::Real > >( polygon[0] + dm[0] * (typename ElementSamples::Real)TriangleIntegrator< Samples >::Positions[s][0] + dm[1] * (typename ElementSamples::Real)TriangleIntegrator< Samples >::Positions[s][1] );
+											if constexpr( SanityCheck ) if( !InUnitSquare( static_cast< Point2D< GeometryReal > >( pos ) ) ) MK_THROW( "Sample position out of unit square! (" , pos[0] , " " , pos[1] , ")" );
 
 											typename ElementSamples::Bilinear::SampleData& sampleData = bilinearElementSample[ fastIntegration ? 0 : (p-2)*Samples+s ];
 											SetInteriorDuals< Samples >( sampleData , bilinearElementSample , pos , (typename ElementSamples::Real)( TriangleIntegrator< Samples >::Weights[s] * fragment_area ) );
 											sampleData.init( pos );
 										}
 									}
-									if( fastIntegration ) bilinearElementSample[0].init( Point2D< GeometryReal >( PolygonCenter( &polygon[0] , (unsigned int)polygon.size() ) ) );
+									if( fastIntegration ) bilinearElementSample[0].init( Point2D< typename ElementSamples::Real >( PolygonCenter( &polygon[0] , (unsigned int)polygon.size() ) ) );
 									bilinear[ cellLineId ].push_back( bilinearElementSample );
 								}
 							}
@@ -474,9 +470,7 @@ namespace MishaK
 										SquareMatrix< GeometryReal , 2 > element_metric_inverse = element_metric.inverse();
 										GeometryReal element_area = sqrt( element_metric.determinant() );
 										typename ElementSamples::Quadratic quadraticElementSample( fastIntegration ? 1 : (unsigned int)(polygon.size()-2)*Samples );
-#ifdef SUPPORT_CONFIDENCE
 										quadraticElementSample.cellIndex = gridChart.chartToAtlasIndex( I );
-#endif // SUPPORT_CONFIDENCE
 										for( int x=0 ; x<2 ; x++ ) for( int y=0 ; y<2 ; y++ ) quadraticElementSample.invTensor(x,y) = (typename ElementSamples::Real)element_metric_inverse(x,y);
 										const QuadraticElement::Index& triangleElementIndices = gridChart.boundaryTriangles[chartBoundaryIndex][bt].indices;
 										for( unsigned int k=0 ; k<6 ; k++ )
@@ -511,13 +505,13 @@ namespace MishaK
 
 													typename ElementSamples::Quadratic::SampleData& sampleData = quadraticElementSample[ fastIntegration ? 0 : (p-2)*Samples+s ];
 													SetBoundaryDuals< Samples >( sampleData , quadraticElementSample , Point2D< typename ElementSamples::Real >( pos ) , (typename ElementSamples::Real)( TriangleIntegrator< Samples >::Weights[s] * fragment_area ) );
-													sampleData.init( pos );
+													sampleData.init( static_cast< Point2D< typename ElementSamples::Real > >( pos ) );
 												}
 
 											}
 											else MK_WARN( "Element discarded due to zero mass. Triangle " , t , ". Boundary cell " , chartBoundaryIndex , ". Element " , bt , ". Sub triangle " , p-2 );
 										}
-										if( fastIntegration ) quadraticElementSample[0].init( Point2D< GeometryReal >( PolygonCenter( &polygon[0] , (unsigned int)polygon.size() ) ) );
+										if( fastIntegration ) quadraticElementSample[0].init( Point2D< typename ElementSamples::Real >( PolygonCenter( &polygon[0] , (unsigned int)polygon.size() ) ) );
 										quadratic.push_back( quadraticElementSample );
 									}
 								}
@@ -567,21 +561,13 @@ namespace MishaK
 			const BilinearElementScalarSample< Real > &sample ,
 			const ValueFunctionType &ValueFunction ,
 			const InT cornerValues[] ,
-#ifdef SUPPORT_CONFIDENCE
 			OutT rhsValues[] ,
 			Real tensorScale
-#else // !SUPPORT_CONFIDENCE
-			OutT rhsValues[]
-#endif // SUPPORT_CONFIDENCE
 		)
 		{
 			for( unsigned int s=0 ; s<sample.size() ; s++ )
 			{
-#ifdef SUPPORT_CONFIDENCE
 				OutT scalar = ValueFunction( sample[s]( cornerValues ) , sample.invTensor ) * tensorScale;
-#else // !SUPPORT_CONFIDENCE
-				OutT scalar = ValueFunction( sample[s]( cornerValues ) , sample.invTensor );
-#endif // SUPPORT_CONFIDENCE
 				for( unsigned int k=0 ; k<4 ; k++ ) rhsValues[k] += scalar * sample[s].dualValues[k];
 			}
 		}
@@ -592,22 +578,14 @@ namespace MishaK
 			const BilinearElementGradientSample< Real > &sample ,
 			const GradientFunctionType &GradientFunction ,
 			const InT cornerValues[] ,
-#ifdef SUPPORT_CONFIDENCE
 			OutT rhsValues[] ,
 			Real tensorScale
-#else // !SUPPORT_CONFIDENCE
-			OutT rhsValues[]
-#endif // SUPPORT_CONFIDENCE
 		)
 		{
 			for( unsigned int s=0 ; s<sample.size() ; s++ )
 			{
 				Point2D< OutT > gradientVector = GradientFunction( sample[s]( cornerValues ) , sample.invTensor );
-#ifdef SUPPORT_CONFIDENCE
 				for( unsigned int k=0 ; k<4 ; k++ ) for( int d=0 ; d<2 ; d++ ) rhsValues[k] += gradientVector[d] * sample[s].dualGradients[k][d] * tensorScale;
-#else // !SUPPORT_CONFIDENCE
-				for( unsigned int k=0 ; k<4 ; k++ ) for( int d=0 ; d<2 ; d++ ) rhsValues[k] += gradientVector[d] * sample[s].dualGradients[k][d];
-#endif // SUPPORT_CONFIDENCE
 			}
 		}
 
@@ -617,21 +595,13 @@ namespace MishaK
 			const QuadraticElementScalarSample< Real >& sample ,
 			const ValueFunctionType& ValueFunction ,
 			const InT cornerValues[] ,
-#ifdef SUPPORT_CONFIDENCE
 			OutT rhsValues[] ,
 			Real tensorScale
-#else // !SUPPORT_CONFIDENCE
-			OutT rhsValues[]
-#endif // SUPPORT_CONFIDENCE
 		)
 		{
 			for( unsigned int s=0 ; s<sample.size() ; s++ )
 			{
-#ifdef SUPPORT_CONFIDENCE
 				OutT scalar = ValueFunction( sample[s]( cornerValues ) , sample.invTensor ) * tensorScale;
-#else // !SUPPORT_CONFIDENCE
-				OutT scalar = ValueFunction( sample[s]( cornerValues ) , sample.invTensor );
-#endif // SUPPORT_CONFIDENCE
 				for( unsigned int k=0 ; k<6 ; k++ ) rhsValues[k] += scalar * sample[s].dualValues[k];
 			}
 		}
@@ -642,58 +612,36 @@ namespace MishaK
 			const QuadraticElementGradientSample< Real > & sample ,
 			const GradientFunctionType & VectorFunction ,
 			const InT cornerValues[] ,
-#ifdef SUPPORT_CONFIDENCE
 			OutT rhsValues[] ,
 			Real tensorScale
-#else // !SUPPORT_CONFIDENCE
-			OutT rhsValues[]
-#endif // SUPPORT_CONFIDENCE
 		)
 		{
 			for( unsigned int s=0 ; s<sample.size() ; s++ )
 			{
 				Point2D< OutT > gradientVector = VectorFunction( sample[s]( cornerValues ) , sample.invTensor );
-#ifdef SUPPORT_CONFIDENCE
 				for( unsigned int k=0 ; k<6 ; k++ ) for( unsigned int d=0 ; d<2 ; d++ ) rhsValues[k] += gradientVector[d] * sample[s].dualGradients[k][d] * tensorScale;
-#else // !SUPPORT_CONFIDENCE
-				for( unsigned int k=0 ; k<6 ; k++ ) for( unsigned int d=0 ; d<2 ; d++ ) rhsValues[k] += gradientVector[d] * sample[s].dualGradients[k][d];
-#endif // SUPPORT_CONFIDENCE
 			}
 		}
 
-#ifdef SUPPORT_CONFIDENCE
 		template< typename Real , typename OutT , typename InT , typename ElementSamples , typename SampleFunctionType , typename ScaleFunctor = std::function< Real ( typename RegularGrid< 2 >::Index ) > >
-#else // !SUPPORT_CONFIDENCE
-		template< typename Real , typename OutT , typename InT , typename ElementSamples , typename SampleFunctionType >
-#endif // SUPPORT_CONFIDENCE
 		void Integrate
 		(
-			const std::vector< InteriorCellLine >& interiorCellLines ,
-			const ElementSamples &elementSamples ,
-			const std::vector< InT >& potential ,
-			const std::vector< InT >& boundary_potential ,
-			const SampleFunctionType& SampleFunction ,
-			std::vector< OutT >& rhs ,
-			std::vector< OutT >& boundary_rhs ,
-#ifdef SUPPORT_CONFIDENCE
+			const std::vector< InteriorCellLine > & interiorCellLines ,
+			const ElementSamples & elementSamples ,
+			const std::vector< InT > & potential ,
+			const std::vector< InT > & boundary_potential ,
+			const SampleFunctionType & SampleFunction ,
+			std::vector< OutT > & rhs ,
+			std::vector< OutT > & boundary_rhs ,
 			const ScaleFunctor & scaleFunctor = []( typename RegularGrid< 2 >::Index ){ return static_cast< Real >(1.); } ,
-#endif // SUPPORT_CONFIDENCE
 			bool verbose=false
 		)
 		{
-#ifdef SUPPORT_CONFIDENCE
 			static_assert( std::is_convertible_v< ScaleFunctor , std::function< Real ( typename RegularGrid< 2 >::Index ) > > , "[ERROR] ScaleFunctor is poorly formed" );
 			return Integrate< Real >( interiorCellLines , elementSamples , GetPointer( potential ) , GetPointer( boundary_potential ) , SampleFunction , GetPointer( rhs ) , GetPointer( boundary_rhs ) , scaleFunctor , verbose );
-#else // !SUPPORT_CONFIDENCE
-			return Integrate< Real >( interiorCellLines , elementSamples , GetPointer( potential ) , GetPointer( boundary_potential ) , SampleFunction , GetPointer( rhs ) , GetPointer( boundary_rhs ) , verbose );
-#endif // SUPPORT_CONFIDENCE
 		}
 
-#ifdef SUPPORT_CONFIDENCE
 		template< typename Real , typename OutT , typename InT , typename ElementSamples , typename SampleFunctionType , typename ScaleFunctor = std::function< Real ( typename RegularGrid< 2 >::Index ) > >
-#else // !SUPPORT_CONFIDENCE
-		template< typename Real , typename OutT , typename InT , typename ElementSamples , typename SampleFunctionType >
-#endif // SUPPORT_CONFIDENCE
 		void Integrate
 		(
 			const std::vector< InteriorCellLine >& interiorCellLines ,
@@ -703,15 +651,11 @@ namespace MishaK
 			const SampleFunctionType& SampleFunction ,
 			Pointer( OutT ) rhs ,
 			Pointer( OutT ) boundary_rhs ,
-#ifdef SUPPORT_CONFIDENCE
 			const ScaleFunctor & scaleFunctor = []( typename RegularGrid< 2 >::Index ){ return static_cast< Real >(1.); } ,
-#endif // SUPPORT_CONFIDENCE
 			bool verbose=false
 		)
 		{
-#ifdef SUPPORT_CONFIDENCE
 			static_assert( std::is_convertible_v< ScaleFunctor , std::function< Real ( typename RegularGrid< 2 >::Index ) > > , "[ERROR] ScaleFunctor is poorly formed" );
-#endif // SUPPORT_CONFIDENCE
 			Miscellany::Timer timer;
 			auto UpdateRow = [&]( unsigned int r )
 				{
@@ -760,11 +704,7 @@ namespace MishaK
 							currentOffset++;
 						}
 
-#ifdef SUPPORT_CONFIDENCE
 						IntegrateBilinear< Real , OutT , InT >( sample , SampleFunction , cornerValues , rhsValues , scaleFunctor( sample.cellIndex ) );
-#else // !SUPPORT_CONFIDENCE
-						IntegrateBilinear< Real , OutT , InT >( sample , SampleFunction , cornerValues , rhsValues );
-#endif // SUPPORT_CONFIDENCE
 						samplePtr++;
 					}
 
@@ -794,11 +734,7 @@ namespace MishaK
 					boundary_potential[ static_cast< unsigned int >(sample.fineNodes[5]) ]
 				};
 				OutT rhsValues[] = { OutT() , OutT() , OutT() , OutT() , OutT() , OutT() };
-#ifdef SUPPORT_CONFIDENCE
 				IntegrateQuadratic< Real , OutT , InT >( sample , SampleFunction , cornerValues , rhsValues , scaleFunctor( sample.cellIndex ) );
-#else // !SUPPORT_CONFIDENCE
-				IntegrateQuadratic< Real , OutT , InT >( sample , SampleFunction , cornerValues , rhsValues );
-#endif // SUPPORT_CONFIDENCE
 				for( unsigned int k=0 ; k<6 ; k++ ) boundary_rhs[ static_cast< unsigned int >( sample.fineNodes[k] ) ] += rhsValues[k];
 			}
 			if( verbose ) printf( "Integrated quadratic: %.2f(s)\n" , timer.elapsed() );

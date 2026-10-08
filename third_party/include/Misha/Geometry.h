@@ -123,6 +123,9 @@ namespace MishaK
 	template< typename Real , typename ... Vectors >
 	VectorTypeUnion< Real , Vectors ... > operator * ( Real s , VectorTypeUnion< Real , Vectors ... > vu ){ return vu * s; }
 
+	template< typename _Real , typename ... VectorTypes >
+	using DirectSum = VectorTypeUnion< _Real , VectorTypes... >;
+
 	template< class Real > Real Random( void );
 
 	template< typename Real , int Rows , int Cols > class Matrix;
@@ -133,6 +136,7 @@ namespace MishaK
 
 	template< typename T , unsigned int Dim , typename Real=T > struct Point;
 
+#pragma message( "[WARNING] Modify so that this becomes a specialized cases of a tensor" )
 	template< typename T , unsigned int Dim , typename Real >
 	struct Point : public InnerProductSpace< Real , Point< T , Dim , Real > >
 	{
@@ -173,30 +177,33 @@ namespace MishaK
 
 		T coords[Dim];
 
+		Point( void ){ for( unsigned int d=0 ; d<Dim ; d++ ) coords[d] = T{}; }
+
 		template< typename ... Ts >
-		Point( Ts ... ts )
+#if 1 // NEW_CODE
+//		requires( sizeof...(Ts)==Dim-1 )
+#endif
+		Point( T t , Ts ... ts )
 		{
-			static_assert( sizeof...(Ts)==0 || sizeof...(Ts)==Dim , "[ERROR] Invalid number of coefficients" );
-
-			if constexpr( sizeof...(Ts)==0 ) for( unsigned int d=0 ; d<Dim ; d++ ) coords[d] = T{};
-			else _set( ts... );
+			static_assert( sizeof...(Ts)+1==Dim , "[ERROR] Invalid number of coefficients" );
+			_set( t , ts... );
 		}
-		Point( T *c ){ for( unsigned int d=0 ; d<Dim ; d++ ) coords[d] = c[d]; }
-		Point( const T *c ){ for( unsigned int d=0 ; d<Dim ; d++ ) coords[d] = c[d]; }
 
-#if 0 // def NEW_CODE
+		Point( T * c ){ for( unsigned int d=0 ; d<Dim ; d++ ) coords[d] = c[d]; }
+		Point( const T * c ){ for( unsigned int d=0 ; d<Dim ; d++ ) coords[d] = c[d]; }
+
 		template< typename _T , typename _Real >
 		explicit operator Point< _T , Dim , _Real >() const { Point< _T , Dim , _Real > p ; for( unsigned int d=0 ; d<Dim ; d++ ) p[d] = static_cast< _T >( coords[d] ) ; return p; }
-#else // !NEW_CODE
-		template< typename _T , typename _Real >
-		Point( const Point< _T , Dim , _Real > &p ){ for( unsigned int d=0 ; d<Dim ; d++ ) coords[d] = static_cast< T >( p[d] ); }
-
-		template< typename _T , typename _Real >
-		Point( Point< _T , Dim , _Real > &p ){ for( unsigned int d=0 ; d<Dim ; d++ ) coords[d] = static_cast< T >( p[d] ); }
-#endif // NEW_CODE
 
 		T& operator [] ( int idx ) { return coords[idx]; }
 		const T& operator [] ( int idx ) const { return coords[idx]; }
+
+		T operator()( Point< Real , Dim > p ) const
+		{
+			T t{};
+			for( unsigned int d=0 ; d<Dim ; d++ ) t += coords[d] * p[d];
+			return t;
+		}
 
 		volatile T& operator [] ( int idx ) volatile { return coords[idx]; }
 		const volatile T& operator [] ( int idx ) const volatile { return coords[idx]; }
@@ -351,7 +358,9 @@ namespace MishaK
 		Point< T , Dim , Real> operator() ( Real t ) const { return position + direction*t; }
 	};
 
-
+#pragma message( "[WARNING] Modify so that entry type is not assumed to be a field" )
+#pragma message( "[WARNING] Modify so that column/row notation is standard" )
+#pragma message( "[WARNING] Modify so that these become specialized cases of tensors" )
 	template< class Real , int Cols , int Rows >
 	class Matrix : public InnerProductSpace< Real , Matrix< Real , Cols , Rows > >
 	{
@@ -364,21 +373,25 @@ namespace MishaK
 		//////////////////////////
 
 		Real coords[Cols][Rows];
+
 		Matrix ( void ) { memset( coords , 0 , sizeof( Real ) * Cols * Rows ); }
-		template<class Real2>
-		operator Matrix< Real2 , Cols , Rows > ( void ) const
+
+		explicit Matrix( const Point< Point< Real , Rows > , Cols , Real > & m ){ for( unsigned int r=0 ; r<Rows ; r++ ) for( unsigned int c=0 ; c<Cols ; c++ ) coords[c][r] = m[c][r]; }
+
+		template< class Real2 >
+		explicit operator Matrix< Real2 , Cols , Rows > ( void ) const
 		{
 			Matrix< Real2, Cols , Rows > m;
 			for( int c=0 ; c<Cols ; c++ ) for ( int r=0 ; r<Rows ; r++ ) m.coords[c][r] = Real2( coords[c][r] ); 
 			return m;
 		}
-		template<int C,int R>
-		Matrix( const Matrix< Real , C , R> &m )
+
+		template< int C , int R >
+		explicit Matrix( const Matrix< Real , C , R > &m )
 		{
-			for(int i=0;i<Cols && i<C;i++)
-				for(int j=0;j<Rows && j<R;j++)
-					coords[i][j]=m.coords[i][j];
+			for( int i=0 ; i<Cols && i<C ; i++ ) for(int j=0 ; j<Rows && j<R ; j++ ) coords[i][j]=m.coords[i][j];
 		}
+
 		Real& operator () ( unsigned int c , unsigned int r ) { return coords[c][r]; }
 		const Real& operator () ( unsigned int c , unsigned int r ) const { return coords[c][r]; }
 
@@ -431,6 +444,8 @@ namespace MishaK
 
 		Matrix( void ){}
 
+		explicit Matrix( const Point< Point< Real , Rows > , Cols , Real > & m ){}
+
 		template< class Real2 >
 		operator Matrix< Real2 , Cols , Rows > ( void ) const{}
 
@@ -470,6 +485,8 @@ namespace MishaK
 		//////////////////////////
 
 		Matrix( void ){}
+
+		explicit Matrix( const Point< Point< Real , Rows > , Cols , Real > & m ){}
 
 		template< class Real2 >
 		operator Matrix< Real2 , Cols , Rows > ( void ) const{}
@@ -520,6 +537,7 @@ namespace MishaK
 
 		Real coords[Dim][Dim];
 		Matrix ( void ) { memset( coords , 0 , sizeof( Real ) * Cols * Rows ); }
+		explicit Matrix( const Point< Point< Real , Rows > , Cols , Real > & m ){ for( unsigned int r=0 ; r<Rows ; r++ ) for( unsigned int c=0 ; c<Cols ; c++ ) coords[c][r] = m[c][r]; }
 		template< class Real2 >
 		operator Matrix< Real2 , Cols , Rows > ( void ) const
 		{
@@ -580,11 +598,17 @@ namespace MishaK
 		Real subDeterminant( int c , int r ) const;
 		Real determinant( void ) const;
 		Real trace( void ) const;
-		Matrix inverse( bool& success ) const;
+		Matrix inverse( bool & success ) const;
 		Matrix inverse( void ) const;
+		Real cofactor( int i , int j ) const;
+		Matrix adjugate( void ) const;
 		class Polynomial::Polynomial< 1 , Dim , Real , Real > characteristicPolynomial( void ) const;
 
 		template< class Real2 > Point< Real2 , Dim-1 > operator () ( const Point< Real2 , Dim-1 >& v ) const;
+
+		static Real Determinant( const Matrix & m ){ return m.determinant(); }
+		static Real Trace( const Matrix & m ){ return m.trace(); }
+
 	protected:
 		friend Matrix< double , Dim+1 , Dim+1 >;
 		class Polynomial::Polynomial< 1 , Dim , Real , Real > _characteristicPolynomial( Matrix< char , Dim , Dim > mask ) const;
@@ -730,7 +754,7 @@ namespace MishaK
 		Gradient< V , Dim , _R > grad;
 		ConstantFunction( void ) { value *= 0 , grad *= 0;}
 
-		template< class Real > V operator( ) ( const Point< Real , Dim >& p ) const { return value; }
+		template< class Real > V operator() ( const Point< Real , Dim >& p ) const { return value; }
 		template< class Real > Gradient< V , Dim , _R > gradient( const Point< Real , Dim >& p ) const { return grad; }
 
 		//////////////////////////
@@ -753,7 +777,7 @@ namespace MishaK
 		V offset;
 		LinearFunction( void ) : offset(V{}) {}
 		template< class Real >
-		V operator( ) ( const Point< Real , Dim >& p ) const
+		V operator() ( const Point< Real , Dim >& p ) const
 		{
 			V v{};
 			for( int d=0 ; d<Dim ; d++ ) v += grad[d] * p[d];
@@ -950,6 +974,14 @@ namespace MishaK
 	struct Simplex
 	{	
 		Point< Real , Dim > p[K+1];
+
+		static Simplex UnitRight(void)
+		{
+			Simplex s;
+			for( unsigned int k=0 ; k<K ; k++ ) s[k+1][k] = 1;
+			return s;
+		}
+
 		Simplex( void ){ static_assert( K<=Dim , "[ERROR] Bad simplex dimension" ); }
 
 		Simplex( const Point< Real , Dim > p[K+1] ) : Simplex() { _init( p ); }
@@ -964,26 +996,29 @@ namespace MishaK
 
 		Point< Real , Dim >& operator[]( unsigned int k ){ return p[k]; }
 		const Point< Real , Dim >& operator[]( unsigned int k ) const { return p[k]; }
+
+		Matrix< Real , K , Dim > d( void ) const
+		{
+			Matrix< Real , K , Dim > diff;
+			for( unsigned int k=0 ; k<K ; k++ ) for( unsigned int d=0 ; d<Dim ; d++ ) diff( k , d ) = p[k+1][d] - p[0][d];
+			return diff;
+		}
+
 		Real measure( void ) const { return (Real)sqrt( squareMeasure() ); }
 
 		template< unsigned int _K=K >
 		std::enable_if_t< _K==Dim , Real > volume( bool signedVolume=false ) const
 		{
-			SquareMatrix< double , K > M;
-			for( unsigned int k=0 ; k<K ; k++ )
-			{
-				Point< double , Dim > d = p[k+1] - p[0];
-				for( unsigned int j=0 ; j<K ; j++ ) M(k,j) = d[j];
-			}
+			SquareMatrix< double , K > M = d();
 			return ( signedVolume ? -M.determinant() : fabs( -M.determinant() ) ) / Factorial< K >::Value;
 		}
 
 		Real squareMeasure( void ) const { return metric().determinant() / ( Factorial< K >::Value * Factorial< K >::Value ); }
+
 		SquareMatrix< Real , K > metric( void ) const
 		{
-			SquareMatrix< Real , K > m;
-			for( unsigned int i=1 ; i<=K ; i++ ) for( unsigned int j=1 ; j<=K ; j++ ) m(i-1,j-1) = Point< Real , Dim >::Dot( p[i]-p[0] , p[j]-p[0] );
-			return m;
+			Matrix< Real , K , Dim > diff = d();
+			return diff.transpose() * diff;
 		}
 
 		Point< Real , Dim > center( void ) const
@@ -1171,6 +1206,8 @@ namespace MishaK
 	template< class Real , unsigned int Dim >	
 	struct Simplex< Real , Dim , 0 >
 	{
+		static Simplex UnitRight( void ){ return Simplex(); }
+
 		Point< Real , Dim > p[1];
 		Point< Real , Dim >& operator[]( unsigned int k ){ return p[k]; }
 		const Point< Real , Dim >& operator[]( unsigned int k ) const { return p[k]; }
@@ -1319,6 +1356,27 @@ namespace MishaK
 	template< unsigned int K , typename Index >
 	struct SimplexIndex
 	{
+	protected:
+		template< unsigned int _N , unsigned int _K >
+		static constexpr unsigned int _Choose( void )
+		{
+			static_assert( _N>=_K , "[ERROR] K cannot exceed N" );
+			if constexpr( _K==0 ) return 1;
+			else return ( _Choose< _N-1 , _K-1 >() * _N ) / _K;
+		}
+	public:
+		template< unsigned int SubK >
+		static constexpr unsigned int FaceNum( void ){ return _Choose< K+1 , SubK+1 >(); }
+
+		template< unsigned int SubK >
+		struct Faces
+		{
+			static const unsigned int Size = FaceNum< SubK >();
+			Faces( void ){ unsigned int idx=0 ; SimplexIndex::ProcessFaces< SubK >( [&]( SimplexIndex< SubK > si ){ _faces[idx++] = si; } ); }
+			const SimplexIndex< SubK > & operator[]( unsigned int n ) const { return _faces[n]; }
+		protected:
+			SimplexIndex< SubK , Index > _faces[ Size ];
+		};
 		Index idx[K+1];
 		template< class ... Ints >
 		SimplexIndex( Ints ... values ){ static_assert( sizeof...(values)==K+1 || sizeof...(values)==0 , "[ERROR] Invalid number of coefficients" ) ; _init( 0 , (Index)values ... ); }
@@ -1333,11 +1391,19 @@ namespace MishaK
 
 		// Invokes the function on each of the _K-dimensional faces
 		template< unsigned int _K , typename FaceFunctor /* = std::function< void ( SimplexIndex< _K , Index > )*/ >
+#if 0 // NEW_CODE
+		void processFaces( const FaceFunctor & F ) const;
+#else // !NEW_CODE
 		void processFaces( FaceFunctor F ) const;
+#endif // NEW_CODE
 
 		// Invokes the function on each of the _K-dimensional faces
 		template< unsigned int _K , typename FaceFunctor /* = std::function< void ( SimplexIndex< _K , Index > )*/ >
+#if 0 // NEW_CODE
+		static void ProcessFaces( const FaceFunctor & F );
+#else // !NEW_CODE
 		static void ProcessFaces( FaceFunctor F );
+#endif // NEW_CODE
 
 		// Sorts the indices and returns a boolean indicating if the permutation is even
 		bool sort( void );
@@ -1376,7 +1442,11 @@ namespace MishaK
 		static SimplexIndex< K-1 , Index > _Face( bool &oriented , unsigned int k );
 
 		template< unsigned int _K , typename ... UInts , typename FaceFunctor /* = std::function< void ( SimplexIndex< _K , Index > )*/ >
+#if 0 // NEW_CODE
+		void _processFaces( const FaceFunctor & F , unsigned int faceIndex , UInts ... faceIndices ) const;
+#else // !NEW_CODE
 		void _processFaces( FaceFunctor F , unsigned int faceIndex , UInts ... faceIndices ) const;
+#endif // NEW_CODE
 		void _init( unsigned int k )
 		{
 			if( !k ) for( unsigned int k=0 ; k<=K ; k++ ) idx[k] = static_cast< Index >(k);
@@ -1420,7 +1490,11 @@ namespace MishaK
 
 		// Invokes the function on each of the _K-dimensional faces
 		template< unsigned int _K , typename FaceFunctor /* = std::function< void ( SimplexIndex< _K , Index > )*/ >
+#if 0 // NEW_CODE
+		void processFaces( const FaceFunctor & F ) const
+#else // !NEW_CODE
 		void processFaces( FaceFunctor F ) const
+#endif // NEW_CODE
 		{
 			static_assert( _K<=0 , "[ERROR] Sub-simplex dimension larger than simplex dimension" );
 			F( *this );
@@ -1428,7 +1502,11 @@ namespace MishaK
 
 		// Invokes the function on each of the _K-dimensional faces
 		template< unsigned int _K , typename FaceFunctor /* = std::function< void ( SimplexIndex< _K , Index > )*/ >
+#if 0 // NEW_CODE
+		static void ProcessFaces( const FaceFunctor & F )
+#else // !NEW_CODE
 		static void ProcessFaces( FaceFunctor F )
+#endif // NEW_CODE
 		{
 			SimplexIndex< 0 , Index > si;
 			for( unsigned int k=0 ; k<=0 ; k++ ) si[k] = k;
@@ -1452,6 +1530,38 @@ namespace MishaK
 			}
 			return os << " }";
 		}
+	};
+
+	template< unsigned int K , unsigned int SubK , typename Index=unsigned int >
+	struct SimplexIndexFaces
+	{
+		SimplexIndexFaces( void )
+		{
+			static_assert( K>=SubK , "[ERROR] SubK cannot exceed K" );
+			unsigned int count = 0;
+			SimplexIndex< K , Index >::template ProcessFaces< SubK >( [&]( SimplexIndex< SubK , Index > si ){ _subFaces[count++] = si; } );
+		};
+
+		size_t size( void ) const{ return SimplexIndex< K , Index >::template FaceNum< SubK >(); }
+		const SimplexIndex< SubK , Index > & operator[]( unsigned int idx ) const { return _subFaces[idx]; }
+
+		// Invokes the function on each of the _K-dimensional faces
+		template< typename FaceFunctor /* = std::function< void ( SimplexIndex< SubKK , Index > )*/ >
+		void process( FaceFunctor && F ) const { for( unsigned int i=0 ; i<size() ; i++ ) F( _subFaces[i] ); }
+
+		template< typename FaceFunctor /* = std::function< void ( SimplexIndex< SubKK , Index > )*/ >
+		void process( SimplexIndex< K , Index > si , FaceFunctor && F ) const
+		{
+			SimplexIndex< K , Index > _si;
+			for( unsigned int i=0 ; i<size() ; i++ )
+			{
+				for( unsigned int k=0 ; k<=K ; k++ ) _si[k] = si[ _subFaces[i][k] ];
+				F( _si );
+			}
+		}
+
+	protected:
+		SimplexIndex< SubK , Index > _subFaces[ SimplexIndex< K , Index >::template FaceNum< SubK >() ];
 	};
 
 	template< typename Real , unsigned int Dim , unsigned int K >

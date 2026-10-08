@@ -34,7 +34,6 @@ enum
 };
 
 #include <Src/PreProcessing.h>
-//#undef SUPPORT_CONFIDENCE
 
 #ifdef USE_EIGEN_PARDISO
 #include <Eigen/PardisoSupport>
@@ -45,6 +44,8 @@ enum
 #include <Misha/Exceptions.h>
 #include <Misha/FEM.h>
 #include <Misha/MultiThreading.h>
+#include <Misha/AutoDiff/EquationParser.h>
+#include <Misha/SquaredEDT.h>
 #include <Src/Hierarchy.h>
 #include <Src/SimpleTriangleMesh.h>
 #include <Src/Basis.h>
@@ -60,30 +61,42 @@ enum
 using namespace MishaK;
 using namespace MishaK::TSP;
 
+enum struct WeightingType
+{
+	Metric ,
+	Confidence ,
+	GradientScale
+};
+
+const std::vector< std::string > WeightingTypeNames = { "metric" , "confidence" , "gradient scale" };
+
 CmdLineParameterArray< std::string , 2 >
 	In( "in" );
 
 CmdLineParameter< std::string >
 	InMask( "mask" ),
 	InputLowFrequency( "inLow" ) ,
+	ConfidenceFilter( "confFilter" ) ,
 	Output( "out" );
 
 CmdLineParameter< unsigned int >
+	WeightType( "wType" , static_cast< unsigned int >( WeightingType::GradientScale ) ) ,
 	Levels( "levels" , 4 ) ,
 	OutputVCycles( "outVCycles" , 6 ) ,
 	MatrixQuadrature( "mQuadrature" , 6 ) ,
-#ifdef SUPPORT_CONFIDENCE
 	VectorQuadrature( "vQuadrature" , 6 ) ,
-#endif // SUPPORT_CONFIDENCE
 	MultigridBlockHeight ( "mBlockH" ,  16 ) ,
 	MultigridBlockWidth  ( "mBlockW" , 128 ) ,
 	MultigridPaddedHeight( "mPadH"   ,   0 ) ,
 	MultigridPaddedWidth ( "mPadW"   ,   2 ) ,
-	RandomJitter( "jitter" , 0 ) ,
-	ChartMaskErode( "erode" , 0 );
+	ChartMaskErode( "erode" , 0 ) ,
+	RandomJitter( "jitter" , 0 );
 
 CmdLineParameter< double >
 	GradientFittingWeight( "gWeight" , 1e-2 ) ,
+	MinimumConfidence( "minConf" , 0. ) ,
+	ChartMaskErosionEps( "erodeEps" , 0. ) ,
+	ConfidenceRegularizationWeight( "confRegWeight" , 1e-5 ) ,
 	CollapseEpsilon( "collapse" , 0 );
 
 
@@ -106,12 +119,10 @@ CmdLineReadable
 #else // !NO_OPEN_GL_VISUALIZATION
 	Nearest( "nearest" ) ,
 #endif // NO_OPEN_GL_VISUALIZATION
-#ifdef SUPPORT_CONFIDENCE
-	NewConfidence( "newConfidence" ) ,
-#endif // SUPPORT_CONFIDENCE
+	SingleView( "single" ) ,
 	Verbose( "verbose" );
 
-CmdLineReadable* params[] =
+std::vector< CmdLineReadable * > params =
 {
 	&In ,
 	&InMask ,
@@ -130,10 +141,9 @@ CmdLineReadable* params[] =
 	&RandomJitter ,
 	&Double ,
 	&MatrixQuadrature ,
-#ifdef SUPPORT_CONFIDENCE
 	&VectorQuadrature ,
-	&NewConfidence ,
-#endif // SUPPORT_CONFIDENCE
+	&WeightType ,
+	&MinimumConfidence ,
 	&OutputVCycles ,
 	&NoHelp ,
 	&MultiInput ,
@@ -146,10 +156,13 @@ CmdLineReadable* params[] =
 #else // !NO_OPEN_GL_VISUALIZATION
 	&Nearest ,
 #endif // NO_OPEN_GL_VISUALIZATION
+	&SingleView ,
 	&CollapseEpsilon ,
 	&SanityCheck ,
-	&Run ,
-	NULL
+	&ChartMaskErosionEps ,
+	&ConfidenceRegularizationWeight ,
+	&ConfidenceFilter ,
+	&Run
 };
 
 void ShowUsage( const char *ex )
@@ -165,12 +178,14 @@ void ShowUsage( const char *ex )
 	printf( "\t[--%s <output texture>]\n" , Output.name.c_str() );
 #endif // NO_OPEN_GL_VISUALIZATION
 	printf( "\t[--%s <chart mask erosion radius>=%d]\n" , ChartMaskErode.name.c_str() , ChartMaskErode.value );
+	printf( "\t[--%s <chart mask erosion epsilon>=%f]\n" , ChartMaskErosionEps.name.c_str() , ChartMaskErosionEps.value );
+
 	printf( "\t[--%s <output v-cycles>=%d]\n" , OutputVCycles.name.c_str() , OutputVCycles.value );
 	printf( "\t[--%s <gradient fitting weight>=%f]\n" , GradientFittingWeight.name.c_str() , GradientFittingWeight.value );
 	printf( "\t[--%s <system matrix quadrature points per triangle>=%d]\n" , MatrixQuadrature.name.c_str(), MatrixQuadrature.value );
-#ifdef SUPPORT_CONFIDENCE
 	printf( "\t[--%s <system vector quadrature points per triangle>=%d]\n" , VectorQuadrature.name.c_str(), VectorQuadrature.value );
-#endif // SUPPORT_CONFIDENCE
+	printf( "\t[--%s <weight type>=%d]\n" , WeightType.name.c_str() , WeightType.value );
+	for( unsigned int i=0 ; i<WeightingTypeNames.size() ; i++ ) printf( "\t\t%d] %s\n" , i , WeightingTypeNames[i].c_str() );
 	printf( "\t[--%s]\n" , UseDirectSolver.name.c_str() );
 	printf( "\t[--%s]\n" , MultiInput.name.c_str() );
 	printf( "\t[--%s <jittering seed>]\n" , RandomJitter.name.c_str() );
@@ -178,9 +193,6 @@ void ShowUsage( const char *ex )
 #else // !NO_OPEN_GL_VISUALIZATION
 	printf( "\t[--%s]\n" , Nearest.name.c_str() );
 #endif // NO_OPEN_GL_VISUALIZATION
-#ifdef SUPPORT_CONFIDENCE
-	printf( "\t[--%s]\n" , NewConfidence.name.c_str() );
-#endif // SUPPORT_CONFIDENCE
 	printf( "\t[--%s]\n" , Verbose.name.c_str() );
 
 #ifdef NO_OPEN_GL_VISUALIZATION
@@ -193,11 +205,55 @@ void ShowUsage( const char *ex )
 	printf( "\t[--%s <multigrid padded width>=%d]\n" , MultigridPaddedWidth.name.c_str() , MultigridPaddedWidth.value );
 	printf( "\t[--%s <multigrid padded height>=%d]\n" , MultigridPaddedHeight.name.c_str() , MultigridPaddedHeight.value );
 	printf( "\t[--%s <collapse epsilon>=%g]\n" , CollapseEpsilon.name.c_str() , CollapseEpsilon.value );
+	printf( "\t[--%s <minimum confidence>=%g]\n" , MinimumConfidence.name.c_str() , MinimumConfidence.value );
+	printf( "\t[--%s <confidence regularization weight>=%g]\n" , ConfidenceRegularizationWeight.name.c_str() , ConfidenceRegularizationWeight.value );
+	printf( "\t[--%s <confidence filter equation (as a function in variable 's')>]\n" , ConfidenceFilter.name.c_str() );
+	printf( "\t[--%s]\n", SingleView.name.c_str() );
 	printf( "\t[--%s]\n", Serial.name.c_str() );
 	printf( "\t[--%s]\n", Run.name.c_str() );
 	printf( "\t[--%s]\n", DetailVerbose.name.c_str() );
 	printf( "\t[--%s]\n" , SanityCheck.name.c_str() );
 	printf( "\t[--%s]\n" , NoHelp.name.c_str() );
+}
+
+template< typename ActiveTexelFunctor /* = std::function< bool ( typename RegularGrid< 2 >::Index ) > */ >
+RegularGrid< 2 , unsigned int > SquareDistanceToTextureBoundary( unsigned int width , unsigned int height , ActiveTexelFunctor && activeF )
+{
+	static_assert( std::is_convertible_v< ActiveTexelFunctor , std::function< bool ( typename RegularGrid< 2 >::Index ) > > , "[ERROR] ActiveTexelFunctor poorly formed" );
+	using Index = typename RegularGrid< 2 >::Index;
+	using Range = typename RegularGrid< 2 >::Range; 
+
+
+	unsigned int res[] = { width , height };
+	RegularGrid< 2 , unsigned int > d2( res );
+	RegularGrid< 2 , unsigned char > raster( res ) , boundary( res );
+
+	Range range;
+	for( unsigned int d=0 ; d<2 ; d++ ) range.second[d] = res[d];
+
+	// Identify all active texels
+	range.processParallel( [&]( unsigned int , Index I ){ raster( I ) = activeF( I ) ? 1 : 0; } );
+
+	// Identify the boundary texels
+	{
+		auto Kernel = [&]( unsigned int , Index I )
+		{
+			if( raster( I ) ) boundary( I ) = 0;
+			else
+			{
+				bool hasActiveNeighbors = false;
+				Range::Intersect( range , Range(I).dilate(1) ).process( [&]( Index I ){ hasActiveNeighbors |= raster(I)!=0; } );
+				boundary( I ) = hasActiveNeighbors ? 1 : 0;
+			}
+		};
+		range.processParallel( Kernel );
+	}
+
+	d2 = SquaredEDT< double , 2 >::Saito( boundary );
+
+	ThreadPool::ParallelFor( 0 , d2.size() , [&]( size_t i ){ if( !raster[i] ) d2[i] = 0; } );
+
+	return d2;
 }
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth >
@@ -224,9 +280,7 @@ public:
 	// Multiple input mode
 	static int numTextures;
 	static std::vector< RegularGrid< 2 , Real > > inputTexelConfidence;
-#ifdef SUPPORT_CONFIDENCE
 	static std::vector< RegularGrid< 2 , Real > > inputCellConfidence;
-#endif // SUPPORT_CONFIDENCE
 	static std::vector< RegularGrid< 2 , Point3D< Real > > > inputTextures;
 	static std::vector< std::vector< Point3D< Real > > > partialTexelValues;
 	static std::vector< std::vector< Point3D< Real > > > partialEdgeValues;
@@ -273,9 +327,8 @@ public:
 
 	// Linear Operators
 	static MassAndStiffnessOperators< Real > massAndStiffnessOperators;
-#ifdef SUPPORT_CONFIDENCE
 	static ScalarIntegrator< Real > scalarIntegrator;
-#endif // SUPPORT_CONFIDENCE
+	static GradientIntegrator< Real > gradientIntegrator;
 
 	// Stitching UI
 	static int textureIndex;
@@ -293,6 +346,7 @@ public:
 	static StitchingVisualization visualization;
 	static unsigned int updateCount;
 
+	static void ToggleInputOutputCallBack             ( Visualization *v , const char *prompt );
 	static void ToggleForwardReferenceTextureCallBack ( Visualization *v , const char *prompt );
 	static void ToggleBackwardReferenceTextureCallBack( Visualization *v , const char *prompt );
 	static void ToggleMaskCallBack                    ( Visualization *v , const char *prompt );
@@ -374,9 +428,7 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth > Regu
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > int																Stitching< PreReal , Real , TextureBitDepth >::numTextures;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< RegularGrid< 2 , Real > >							Stitching< PreReal , Real , TextureBitDepth >::inputTexelConfidence;
-#ifdef SUPPORT_CONFIDENCE
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< RegularGrid< 2 , Real > >							Stitching< PreReal , Real , TextureBitDepth >::inputCellConfidence;
-#endif // SUPPORT_CONFIDENCE
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< RegularGrid< 2 , Point3D< Real > > >				Stitching< PreReal , Real , TextureBitDepth >::inputTextures;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Point3D< Real > >									Stitching< PreReal , Real , TextureBitDepth >::texelMass;
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Point3D< Real > >									Stitching< PreReal , Real , TextureBitDepth >::texelDivergence;
@@ -394,9 +446,8 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth > std:
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > Padding															Stitching< PreReal , Real , TextureBitDepth >::padding;
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > MassAndStiffnessOperators< Real >								Stitching< PreReal , Real , TextureBitDepth >::massAndStiffnessOperators;
-#ifdef SUPPORT_CONFIDENCE
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > ScalarIntegrator< Real >										Stitching< PreReal , Real , TextureBitDepth >::scalarIntegrator;
-#endif // SUPPORT_CONFIDENCE
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > GradientIntegrator< Real >										Stitching< PreReal , Real , TextureBitDepth >::gradientIntegrator;
 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > unsigned int													Stitching< PreReal , Real , TextureBitDepth >::updateCount = static_cast< unsigned int >(-1);
 
@@ -576,6 +627,12 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth > void
 	glutPostRedisplay();
 }
 
+template< typename PreReal , typename Real , unsigned int TextureBitDepth > void Stitching< PreReal , Real , TextureBitDepth >::ToggleInputOutputCallBack( Visualization * /*v*/ , const char* )
+{
+	visualization.showSource = !visualization.showSource;
+	glutPostRedisplay();
+}
+
 template< typename PreReal , typename Real , unsigned int TextureBitDepth > void Stitching< PreReal , Real , TextureBitDepth >::ToggleForwardReferenceTextureCallBack( Visualization * /*v*/ , const char* )
 {
 	textureIndex = ( textureIndex+1 ) % numTextures;
@@ -655,22 +712,34 @@ void Stitching< PreReal , Real , TextureBitDepth >::UpdateSolution( bool verbose
 	Miscellany::PerformanceMeter pMeter( '.' );
 	if( rhsNeedsUpdating )
 	{
-#ifdef SUPPORT_CONFIDENCE
-		if( inputMode==MULTIPLE_INPUT_MODE && inputCellConfidence.size() && NewConfidence.set )
+		if( inputMode==MULTIPLE_INPUT_MODE && inputCellConfidence.size() )
 		{
-			std::vector< Point3D< Real > > _texelMass( textureNodes.size() );
-			for( unsigned int i=0 ; i<partialTexelValues.size() ; i++ )
+			if( WeightType.value==static_cast< unsigned int >( WeightingType::Metric ) || WeightType.value==static_cast< unsigned int >( WeightingType::Confidence ) )
 			{
-				auto ScalarFunction = []( Point3D< Real > v , SquareMatrix< Real , 2 >  ){ return v; };
-				scalarIntegrator( partialTexelValues[i] , ScalarFunction , _texelMass , [&]( typename RegularGrid< 2 >::Index I ){ return inputCellConfidence[i]( I ); } );
-				for( unsigned int i=0 ; i<_texelMass.size() ; i++ ) texelMass[i] += _texelMass[i];
+				std::vector< Point3D< Real > > _texelMass( textureNodes.size() );
+				for( unsigned int i=0 ; i<partialTexelValues.size() ; i++ )
+				{
+					scalarIntegrator( partialTexelValues[i] , []( Point3D< Real > v , SquareMatrix< Real , 2 >  ){ return v; } , _texelMass , [&]( typename RegularGrid< 2 >::Index I ){ return inputCellConfidence[i]( I ); } );
+					for( unsigned int i=0 ; i<_texelMass.size() ; i++ ) texelMass[i] += _texelMass[i];
+				}
 			}
+			else massAndStiffnessOperators.mass( texelValues , texelMass );
+			if( WeightType.value==static_cast< unsigned int >( WeightingType::Confidence ) )
+			{
+				std::vector< Point3D< Real > > _texelDivergence( textureNodes.size() );
+				for( unsigned int i=0 ; i<partialTexelValues.size() ; i++ )
+				{
+					gradientIntegrator( partialTexelValues[i] , []( Point2D< Point3D< Real > > v , SquareMatrix< Real , 2 > tensor ){ return v; } , _texelDivergence , [&]( typename RegularGrid< 2 >::Index I ){ return inputCellConfidence[i]( I ); } );
+					for( unsigned int j=0 ; j<_texelDivergence.size() ; j++ ) texelDivergence[j] += _texelDivergence[j];
+				}
+			}
+			else divergenceOperator( edgeValues , texelDivergence );
 		}
-		else massAndStiffnessOperators.mass( texelValues , texelMass );
-#else // !SUPPORT_CONFIDENCE
-		massAndStiffnessOperators.mass( texelValues , texelMass );
-#endif // SUPPORT_CONFIDENCE
-		divergenceOperator( edgeValues , texelDivergence );
+		else
+		{
+			massAndStiffnessOperators.mass( texelValues , texelMass );
+			divergenceOperator( edgeValues , texelDivergence );
+		}
 
 		ThreadPool::ParallelFor( 0 , textureNodes.size() , [&]( size_t i ){ multigridStitchingVariables[0].rhs[i] = texelMass[i] + texelDivergence[i] * gradientFittingWeight; } );
 
@@ -697,24 +766,24 @@ void Stitching< PreReal , Real , TextureBitDepth >::InitializeSystem( int width 
 	InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric );
 
 	pMeter.reset();
-#ifdef SUPPORT_CONFIDENCE
 	if( inputMode==MULTIPLE_INPUT_MODE && inputCellConfidence.size() )
 	{
 		RegularGrid< 2 , Real > cellConfidence( inputCellConfidence[0].res() );
 		for( unsigned int j=0 ; j<cellConfidence.size() ; j++ ) cellConfidence[j] = 0;
 		for( unsigned int i=0 ; i<inputCellConfidence.size() ; i++ ) for( size_t j=0 ; j<cellConfidence.size() ; j++ ) cellConfidence[j] += inputCellConfidence[i][j];
-#ifdef NEW_CODE
-		if( NewConfidence.set ) OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , divergenceOperator , std::tie( scalarIntegrator ) , VectorQuadrature.value , false , SanityCheck.set , [&]( typename RegularGrid< 2 >::Index I ){ return cellConfidence(I); } );
-		else                    OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , divergenceOperator , std::tie( scalarIntegrator ) , VectorQuadrature.value , false , SanityCheck.set );
-#else // !NEW_CODE
-		if( NewConfidence.set ) OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , divergenceOperator , scalarIntegrator , VectorQuadrature.value , false , SanityCheck.set , [&]( typename RegularGrid< 2 >::Index I ){ return cellConfidence(I); } );
-		else                    OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , divergenceOperator , scalarIntegrator , VectorQuadrature.value , false , SanityCheck.set );
-#endif // NEW_CODE
+		switch( WeightType.value )
+		{
+		case static_cast< unsigned int >( WeightingType::Metric ):
+			OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , divergenceOperator , std::tie( scalarIntegrator , gradientIntegrator ) , VectorQuadrature.value , false , SanityCheck.set , [&]( typename RegularGrid< 2 >::Index I ){ return cellConfidence(I); } );
+			break;
+		case static_cast< unsigned int >( WeightingType::Confidence ):
+			OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , divergenceOperator , std::tie( scalarIntegrator , gradientIntegrator ) , VectorQuadrature.value , false , SanityCheck.set , [&]( typename RegularGrid< 2 >::Index I ){ return cellConfidence(I); } , [&]( typename RegularGrid< 2 >::Index I ){ return cellConfidence(I) + ConfidenceRegularizationWeight.value; } );
+			break;
+		default:
+			OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , divergenceOperator , std::tie( scalarIntegrator , gradientIntegrator ) , VectorQuadrature.value , false , SanityCheck.set );
+		}
 	}
 	else OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , divergenceOperator , SanityCheck.set );
-#else // !SUPPORT_CONFIDENCE
-	OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , divergenceOperator , SanityCheck.set );
-#endif // SUPPORT_CONFIDENCE
 	if( Verbose.set ) std::cout << pMeter( "Mass and stiffness" ) << std::endl;
 
 	texelMass.resize( textureNodes.size() );
@@ -763,25 +832,38 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth >
 void Stitching< PreReal , Real , TextureBitDepth >::SetUpSystem( void )
 {
 	texelMass.resize( textureNodes.size() );
-	for( unsigned int i=0 ; i<texelMass.size() ; i++ ) texelMass[i] = Point3D< Real >();
+	texelDivergence.resize( textureNodes.size() );
+	for( unsigned int i=0 ; i<texelMass.size() ; i++ ) texelMass[i] = texelDivergence[i] = Point3D< Real >();
 
-#ifdef SUPPORT_CONFIDENCE
-	if( inputMode==MULTIPLE_INPUT_MODE && inputCellConfidence.size() && NewConfidence.set )
+	if( inputMode==MULTIPLE_INPUT_MODE && inputCellConfidence.size() )
 	{
-		std::vector< Point3D< Real > > _texelMass( textureNodes.size() );
-		for( unsigned int i=0 ; i<partialTexelValues.size() ; i++ )
+		if( WeightType.value==static_cast< unsigned int >( WeightingType::Metric ) || WeightType.value==static_cast< unsigned int >( WeightingType::Confidence ) )
 		{
-			auto ScalarFunction = []( Point3D< Real > v , SquareMatrix< Real , 2 > ){ return v; };
-			scalarIntegrator( partialTexelValues[i] , ScalarFunction , _texelMass , [&]( typename RegularGrid< 2 >::Index I ){ return inputCellConfidence[i]( I ); } );
-			for( unsigned int j=0 ; j<_texelMass.size() ; j++ ) texelMass[j] += _texelMass[j];
+			std::vector< Point3D< Real > > _texelMass( textureNodes.size() );
+			for( unsigned int i=0 ; i<partialTexelValues.size() ; i++ )
+			{
+				scalarIntegrator( partialTexelValues[i] , []( Point3D< Real > v , SquareMatrix< Real , 2 >  ){ return v; } , _texelMass , [&]( typename RegularGrid< 2 >::Index I ){ return inputCellConfidence[i]( I ); } );
+				for( unsigned int j=0 ; j<_texelMass.size() ; j++ ) texelMass[j] += _texelMass[j];
+			}
 		}
-	}
-	else massAndStiffnessOperators.mass( texelValues , texelMass );
-#else // !SUPPORT_CONFIDENCE
-	massAndStiffnessOperators.mass( texelValues , texelMass );
-#endif // SUPPORT_CONFIDENCE
+		else massAndStiffnessOperators.mass( texelValues , texelMass );
 
-	divergenceOperator( edgeValues , texelDivergence );
+		if( WeightType.value==static_cast< unsigned int >( WeightingType::Confidence ) )
+		{
+			std::vector< Point3D< Real > > _texelDivergence( textureNodes.size() );
+			for( unsigned int i=0 ; i<partialTexelValues.size() ; i++ )
+			{
+				gradientIntegrator( partialTexelValues[i] , []( Point2D< Point3D< Real > > v , SquareMatrix< Real , 2 > tensor ){ return v; } , _texelDivergence , [&]( typename RegularGrid< 2 >::Index I ){ return inputCellConfidence[i]( I ); } );
+				for( unsigned int j=0 ; j<_texelDivergence.size() ; j++ ) texelDivergence[j] += _texelDivergence[j];
+			}
+		}
+		else divergenceOperator( edgeValues , texelDivergence );
+	}
+	else
+	{
+		massAndStiffnessOperators.mass( texelValues , texelMass );
+		divergenceOperator( edgeValues , texelDivergence );
+	}
 
 	ThreadPool::ParallelFor
 		(
@@ -886,10 +968,30 @@ void Stitching< PreReal , Real , TextureBitDepth >::LoadMasks( void )
 {
 	if( inputMode==MULTIPLE_INPUT_MODE )
 	{
+		RegularGrid< 2 , unsigned char > mask;
+		if( ChartMaskErode.value )
+		{
+			static const bool Nearest = false;
+			static const bool NodeAtCellCenter = true;
+			using Index = unsigned int;
+			using TexelInfo = typename Texels< NodeAtCellCenter , Index >::template TexelInfo< 2 >;
+
+			mask.resize( textureWidth , textureHeight );
+			for( size_t i=0 ; i<mask.size() ; i++ ) mask[i] = 0;
+			TexturedTriangleMesh< PreReal > mesh;
+			mesh.read( In.values[0] , false , CollapseEpsilon.value );
+			auto TextureSimplexFunctor = [&]( size_t sIdx )
+			{
+				Simplex< double , 2 , 2 > simplex;
+				for( unsigned int k=0 ; k<=2 ; k++ ) simplex[k] = mesh.texture.vertices[ mesh.texture.triangles[sIdx][k] ];
+				return simplex;
+			};
+
+			RegularGrid< 2 , TexelInfo > activeTexels = Texels< NodeAtCellCenter , Index >::template GetSupportedTexelInfo< Nearest >( mesh.numTriangles() , TextureSimplexFunctor , mask.res() , 0 , false );
+			for( size_t i=0 ; i<activeTexels.size() ; i++ ) if( activeTexels[i].sIdx!=-1 ) mask[i] = 1;
+		}
 		inputTexelConfidence.resize( numTextures );
-#ifdef SUPPORT_CONFIDENCE
 		inputCellConfidence.resize( numTextures );
-#endif // SUPPORT_CONFIDENCE
 		ThreadPool::ParallelFor
 			(
 				0 , numTextures ,
@@ -897,15 +999,79 @@ void Stitching< PreReal , Real , TextureBitDepth >::LoadMasks( void )
 				{
 					char confidenceName[256];
 					sprintf( confidenceName , InMask.value.c_str() , i );
-					RegularGrid< 2 , Point3D< Real > > textureConfidence;
-					ReadImage< 8 >( textureConfidence , confidenceName );
+					RegularGrid< 2 , Point3D< Real > > confidence;
+					ReadImage< 8 >( confidence , confidenceName );
 					inputTexelConfidence[i].resize( textureWidth , textureHeight );
-					for( size_t p=0 ; p<textureConfidence.size() ; p++ ) inputTexelConfidence[i][p] = Point3D< Real >::Dot( textureConfidence[p] , Point3D< Real >( (Real)1./3 , (Real)1./3 , (Real)1./3 ) );
-#ifdef SUPPORT_CONFIDENCE
+					for( size_t p=0 ; p<confidence.size() ; p++ )
+						inputTexelConfidence[i][p] = Point3D< Real >::Dot( confidence[p] , Point3D< Real >( (Real)1./3 , (Real)1./3 , (Real)1./3 ) );
+					if( ChartMaskErode.value )
+					{
+						auto Erode = [&mask]( RegularGrid< 2 , Real > & conf , int radius , Real epsilon )
+						{
+							unsigned int radius2 = radius * radius;
+							RegularGrid< 2 , unsigned int > d2 = SquareDistanceToTextureBoundary( conf.res(0) , conf.res(1) , [&]( typename RegularGrid< 2 >::Index I ){ return conf( I )>epsilon || !mask( I ); } );
+							if( radius>0 ) ThreadPool::ParallelFor( 0 , conf.size() , [&]( size_t i ){ if( d2[i]<radius2 ) conf[i] = 0; } );
+							else           ThreadPool::ParallelFor( 0 , conf.size() , [&]( size_t i ){ if( d2[i]<radius2 ) conf[i] *= static_cast< Real >( sqrt( static_cast< double >( d2[i] )/radius2 ) ); } );
+						};
+						Erode( inputTexelConfidence[i] , ChartMaskErode.value , ChartMaskErosionEps.value );
+					}
+					for( size_t p=0 ; p<confidence.size() ; p++ ) inputTexelConfidence[i][p] = std::max< Real >( inputTexelConfidence[i][p] , MinimumConfidence.value );
+				}
+			);
+		if( ConfidenceFilter.set )
+		{
+			try
+			{
+				EquationParser::Node filter( ConfidenceFilter.value , { "s" } );
+				ThreadPool::ParallelFor
+				(
+					0 , inputTexelConfidence.size() ,
+					[&]( size_t i )
+					{
+						for( size_t j=0 ; j<inputTexelConfidence[i].size() ; j++ )
+						{
+							double value = std::max< Real >( 0 , std::min< Real >( 1 , inputTexelConfidence[i][j] ) );
+							inputTexelConfidence[i][j] = filter( &value );
+						}
+					}
+				);
+			}
+			catch( const Exception & exception )
+			{
+				std::cout << exception.what() << std::endl;
+				MK_WARN( "Could not parse confidence filter: " , ConfidenceFilter.value );
+			}
+		}
+
+#ifdef NORMALIZE_CONFIDENCE
+		// Normalizing so that the sum of probabilities is in [0,1]
+		ThreadPool::ParallelFor
+		(
+			0 , inputTexelConfidence[0].size() ,
+			[&]( size_t j )
+			{
+				Real sum = 0 , prob = 1;
+				for( unsigned int i=0 ; i<inputTexelConfidence.size() ; i++ )
+				{
+					inputTexelConfidence[i][j] = std::max< Real >( 0 , std::min< Real >( 1 , inputTexelConfidence[i][j] ) );
+					prob *= ( 1 - inputTexelConfidence[i][j] );
+					sum += inputTexelConfidence[i][j];
+				}
+				prob = 1-prob;
+				if( sum>0 && prob>0 ) for( unsigned int i=0 ; i<inputTexelConfidence.size() ; i++ ) inputTexelConfidence[i][j] *= prob / sum;
+				else                  for( unsigned int i=0 ; i<inputTexelConfidence.size() ; i++ ) inputTexelConfidence[i][j] *= 0;
+			}
+		);
+#endif // NORMALIZE_CONFIDENCE
+		// Turn per-texel confidences into per-cell confidences by computing the geometric mean
+		ThreadPool::ParallelFor
+			(
+				0 , numTextures ,
+				[&]( size_t i )
+				{
 					inputCellConfidence[i].resize( textureWidth-1 , textureHeight-1 );
 					for( unsigned int x=0 ; x<static_cast< unsigned int >( textureWidth-1 ) ; x++ ) for( unsigned int y=0 ; y<static_cast< unsigned int >( textureHeight-1 ) ; y++ )
-						inputCellConfidence[i](x,y) = pow( inputTexelConfidence[i](x,y) * inputTexelConfidence[i](x+1,y) * inputTexelConfidence[i](x+1,y+1) * inputTexelConfidence[i](x,y+1) , 0.25 );
-#endif // SUPPORT_CONFIDENCE
+						inputCellConfidence[i](x,y) = pow( fabs( inputTexelConfidence[i](x,y) * inputTexelConfidence[i](x+1,y) * inputTexelConfidence[i](x+1,y+1) * inputTexelConfidence[i](x,y+1) ) , 0.25 );
 				}
 			);
 	}
@@ -940,14 +1106,16 @@ void Stitching< PreReal , Real , TextureBitDepth >::ParseImages( void )
 	if( inputMode==MULTIPLE_INPUT_MODE )
 	{
 		std::vector< Real > texelWeight( numNodes , 0 );
+#ifdef NORMALIZE_CONFIDENCE
+#else // !NORMALIZE_CONFIDENCE
 		std::vector< Real > edgeWeight( numEdges , 0 );
+#endif // NORMALIZE_CONFIDENCE
 
 		partialTexelValues.resize( numTextures );
 		for( int i=0 ; i<numTextures ; i++ ) partialTexelValues[i].resize( numNodes );
 		partialEdgeValues.resize( numTextures );
 		for( int i=0 ; i<numTextures ; i++ ) partialEdgeValues[i].resize( divergenceOperator.edges.size() );
 
-#ifdef SUPPORT_CONFIDENCE
 		for( unsigned int i=0 ; i<textureNodes.size() ; i++ ) for( int textureIter=0 ; textureIter<numTextures ; textureIter++ )
 		{
 			const RegularGrid< 2 , Point3D< Real > > & textureValues = InputLowFrequency.set ? lowFrequencyTexture : inputTextures[textureIter];
@@ -962,6 +1130,27 @@ void Stitching< PreReal , Real , TextureBitDepth >::ParseImages( void )
 
 		for( unsigned int e=0 ; e<divergenceOperator.edges.size() ; e++ )
 		{
+#ifdef NORMALIZE_CONFIDENCE
+			for( int textureIter=0 ; textureIter<numTextures ; textureIter++ )
+			{
+				const RegularGrid< 2 , Point3D< Real > > & textureValues = InputLowFrequency.set ? lowFrequencyTexture : inputTextures[textureIter];
+				const RegularGrid< 2 , Real > & textureConfidence = inputTexelConfidence[textureIter];
+
+				Real weight[2];
+				Point3D< Real > value[2];
+				for( unsigned int k=0 ; k<2 ; k++ )
+				{
+					AtlasTexelIndex i = divergenceOperator.edges[e][k];
+					weight[k] = textureConfidence( textureNodes[ static_cast< unsigned int >(i) ].ci , textureNodes[ static_cast< unsigned int >(i) ].cj );
+					value[k] = textureValues( textureNodes[ static_cast< unsigned int >(i) ].ci , textureNodes[ static_cast< unsigned int >(i) ].cj );
+				}
+				Real eWeight = sqrt( weight[0] * weight[1] );
+				Point3D< Real > eValue = value[1] - value[0];
+				partialEdgeValues[textureIter][e] = eWeight > 0 ? eValue : Point3D< Real >();
+
+				edgeValues[e] += eValue * eWeight;
+			}
+#else // !NORMALIZE_CONFIDENCE
 			Real eWeight = 0 , maxEWeight = 0;
 			Point3D< Real > eValue;
 
@@ -979,10 +1168,6 @@ void Stitching< PreReal , Real , TextureBitDepth >::ParseImages( void )
 					value[k] = textureValues( textureNodes[ static_cast< unsigned int >(i) ].ci , textureNodes[ static_cast< unsigned int >(i) ].cj );
 				}
 				Real _eWeight = weight[0] * weight[1];
-MK_WARN_ONCE( "Re-mapping gradient confidence" );
-double factor = 8;
-if( _eWeight>1./factor ) _eWeight = 1.;
-else                     _eWeight *= factor;
 				Point3D< Real > _eValue = value[1] - value[0];
 				partialEdgeValues[textureIter][e] = _eWeight > 0 ? _eValue : Point3D< Real >();
 
@@ -990,43 +1175,10 @@ else                     _eWeight *= factor;
 				eValue += _eValue * _eWeight;
 				eWeight += _eWeight;
 			}
-			if( NewConfidence.set && maxEWeight ){ eValue *= maxEWeight / eWeight ; eWeight = maxEWeight; }
 			edgeValues[e] = eValue;
 			edgeWeight[e] = eWeight;
+#endif // NORMALIZE_CONFIDENCE
 		}
-#else // !SUPPORT_CONFIDENCE
-		for( int textureIter=0 ; textureIter<numTextures ; textureIter++ )
-		{
-			const RegularGrid< 2 , Point3D< Real > > & textureValues = InputLowFrequency.set ? lowFrequencyTexture : inputTextures[textureIter];
-			const RegularGrid< 2 , Real > & textureConfidence = inputTexelConfidence[textureIter];
-
-			for( unsigned int i=0 ; i<textureNodes.size() ; i++ )
-			{
-				Real weight = textureConfidence( textureNodes[i].ci , textureNodes[i].cj );
-				Point3D< Real > value = textureValues( textureNodes[i].ci , textureNodes[i].cj );
-				partialTexelValues[textureIter][i] = value;
-				texelValues[i] += value * weight;
-				texelWeight[i] += weight;
-			}
-
-			for( unsigned int e=0 ; e<divergenceOperator.edges.size() ; e++ )
-			{
-				Real weight[2];
-				Point3D< Real > value[2];
-				for( unsigned int k=0 ; k<2 ; k++ )
-				{
-					AtlasTexelIndex i = divergenceOperator.edges[e][k];
-					weight[k] = textureConfidence( textureNodes[ static_cast< unsigned int >(i) ].ci , textureNodes[ static_cast< unsigned int >(i) ].cj );
-					value[k] = textureValues( textureNodes[ static_cast< unsigned int >(i) ].ci , textureNodes[ static_cast< unsigned int >(i) ].cj );
-				}
-				Real eWeight = weight[0] * weight[1];
-				Point3D< Real > eValue = value[1] - value[0];
-				partialEdgeValues[textureIter][e] = eWeight > 0 ? eValue : Point3D< Real >();
-				edgeValues[e] += eValue * eWeight;
-				edgeWeight[e] += eWeight;
-			}
-		}
-#endif // SUPPORT_CONFIDENCE
 
 		for( unsigned int i=0 ; i<numNodes ; i++ )
 		{
@@ -1034,11 +1186,10 @@ else                     _eWeight *= factor;
 			if( texelWeight[i]>0 ) texelValues[i] /= texelWeight[i];
 		}
 
-#ifdef SUPPORT_CONFIDENCE
-		if( !NewConfidence.set ) for( unsigned int i=0 ; i<numEdges ; i++ ) if( edgeWeight[i]>0 ) edgeValues[i] /= edgeWeight[i];
-#else // !SUPPORT_CONFIDENCE
-		for( unsigned int i=0 ; i<numEdges ; i++ ) if( edgeWeight[i]>0 ) edgeValues[i] /= edgeWeight[i];
-#endif // SUPPORT_CONFIDENCE
+#ifdef NORMALIZE_CONFIDENCE
+#else // !NORMALIZE_CONFIDENCE
+		if( WeightType.value==static_cast< unsigned int >( WeightingType::GradientScale ) ) for( unsigned int i=0 ; i<numEdges ; i++ ) if( edgeWeight[i]>0 ) edgeValues[i] /= edgeWeight[i];
+#endif // NORMALIZE_CONFIDENCE
 	}
 	else
 	{
@@ -1092,22 +1243,22 @@ void Stitching< PreReal , Real , TextureBitDepth >::InitializeVisualization( voi
 
 	visualization.triangles.resize( tCount );
 	visualization.vertices.resize( 3*tCount );
-	visualization.colors.resize( 3*tCount , Point3D< double >( 0.75 , 0.75 , 0.75 ) );
+	visualization.colors.resize( 3*tCount , Point3D< float >( 0.75f , 0.75f , 0.75f ) );
 	visualization.textureCoordinates.resize( 3*tCount );
 	visualization.normals.resize( 3*tCount );
 
 
 	for( unsigned int t=0 , idx=0 ; t<tCount ; t++ )
 	{
-		Point3D< float > n = mesh.surfaceTriangle( t ).normal();
+		Point3D< float > n = static_cast< Point3D< float > >( mesh.surfaceTriangle( t ).normal() );
 		n /= Point3D< float >::Length( n );
 
 		for( int k=0 ; k<3 ; k++ , idx++ )
 		{
 			visualization.triangles[t][k] = idx;
-			visualization.vertices[idx] = mesh.surface.vertices[ mesh.surface.triangles[t][k] ];
+			visualization.vertices[idx] = static_cast< Point3D< float > >( mesh.surface.vertices[ mesh.surface.triangles[t][k] ] );
 			visualization.normals[idx] = n;
-			visualization.textureCoordinates[idx] = mesh.texture.vertices[ mesh.texture.triangles[t][k] ];
+			visualization.textureCoordinates[idx] = static_cast< Point2D< float > >( mesh.texture.vertices[ mesh.texture.triangles[t][k] ] );
 		}
 	}
 
@@ -1116,11 +1267,12 @@ void Stitching< PreReal , Real , TextureBitDepth >::InitializeVisualization( voi
 	for( int e=0 ; e<boundaryHalfEdges.size() ; e++ )
 	{
 		SimplexIndex< 1 > eIndex = mesh.surface.edgeIndex( boundaryHalfEdges[e] );
-		for( int i=0 ; i<2 ; i++ ) visualization.chartBoundaryVertices.push_back( mesh.surface.vertices[ eIndex[i] ] );
+		for( int i=0 ; i<2 ; i++ ) visualization.chartBoundaryVertices.push_back( static_cast< Point3D< float > >( mesh.surface.vertices[ eIndex[i] ] ) );
 	}
 
 	if( inputMode==SINGLE_INPUT_MODE ) visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , 'M' , "toggle mask" , ToggleMaskCallBack ) );
 	else                               visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , 'M' , "toggle weights" , ToggleMaskCallBack ) );
+	if( SingleView.set ) visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , 'S' , "toggle input/output" , ToggleInputOutputCallBack ) );
 	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , 's' , "export texture" , "Output Texture" , ExportTextureCallBack ) );
 	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , 'y' , "gradient fitting weight" , "Gradient Fitting Weight" , GradientFittingWeightCallBack ) );
 	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization , ' ' , "toggle update" , ToggleUpdateCallBack ) );
@@ -1210,7 +1362,7 @@ void Stitching< PreReal , Real , TextureBitDepth >::Init( void )
 	}
 
 	textureNodePositions.resize( textureNodes.size() );
-	for( int i=0 ; i<textureNodePositions.size() ; i++ ) textureNodePositions[i] = mesh.surface( textureNodes[i] );
+	for( int i=0 ; i<textureNodePositions.size() ; i++ ) textureNodePositions[i] = static_cast< Point3D< float > >( mesh.surface( textureNodes[i] ) );
 
 	textureEdgePositions.resize( divergenceOperator.edges.size() );
 	for( int i=0 ; i<divergenceOperator.edges.size() ; i++ ) textureEdgePositions[i] = ( textureNodePositions[ static_cast< unsigned int >(divergenceOperator.edges[i][0]) ] + textureNodePositions[ static_cast< unsigned int >(divergenceOperator.edges[i][1]) ] ) / 2;
@@ -1250,8 +1402,8 @@ void _main( int argc , char *argv[] )
 	{
 		glutInitDisplayMode( GLUT_RGB | GLUT_DOUBLE );
 		Stitching< PreReal , Real , TextureBitDepth >::visualization.visualizationMode = Stitching< PreReal , Real , TextureBitDepth >::inputMode;
-		Stitching< PreReal , Real , TextureBitDepth >::visualization.displayMode = TWO_REGION_DISPLAY;
-		Stitching< PreReal , Real , TextureBitDepth >::visualization.screenWidth = 1600;
+		Stitching< PreReal , Real , TextureBitDepth >::visualization.displayMode = SingleView.set ? ONE_REGION_DISPLAY : TWO_REGION_DISPLAY;
+		Stitching< PreReal , Real , TextureBitDepth >::visualization.screenWidth = SingleView.set ? 800 : 1600;
 		Stitching< PreReal , Real , TextureBitDepth >::visualization.screenHeight = 800;
 		Stitching< PreReal , Real , TextureBitDepth >::visualization.useNearestSampling = Nearest.set;
 
@@ -1309,13 +1461,12 @@ int main( int argc , char* argv[] )
 		return EXIT_FAILURE;
 	}
 #endif // NO_OPEN_GL_VISUALIZATION
-#ifdef SUPPORT_CONFIDENCE
-	MK_WARN_ONCE( "Remove --" , NewConfidence.name , " flag" );
-#endif // SUPPORT_CONFIDENCE
 	if( MultiInput.set && !InMask.set ) MK_THROW( "Input mask required for multi-input" );
-#ifdef SUPPORT_CONFIDENCE
-	NewConfidence.set &= MultiInput.set;
-#endif // SUPPORT_CONFIDENCE
+#ifdef NORMALIZE_CONFIDENCE
+#else // !NORMALIZE_CONFIDENCE
+	if( MultiInput.set && WeightType.value==static_cast< unsigned int >( WeightingType::Confidence ) && MinimumConfidence.value<=0 )
+		MK_WARN( "Likely need a positive minimum confidence for confidence weighting" );
+#endif // NORMALIZE_CONFIDENCE
 
 	unsigned int bitDepth;
 	{

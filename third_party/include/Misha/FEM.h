@@ -40,9 +40,7 @@ DAMAGE.
 #include <algorithm>
 #include <atomic>
 
-#ifdef EIGEN_WORLD_VERSION
 #include <Eigen/Sparse>
-#endif // EIGEN_WORLD_VERSION
 
 #include "SparseMatrix.h"
 #include <string.h>
@@ -256,7 +254,7 @@ namespace MishaK
 			template< unsigned int Degree >
 			struct ScalarField : public Polynomial::Polynomial< 2 , Degree , Real >
 			{
-				using Polynomial::Polynomial< 2 , Degree , Real >::d;
+				using Polynomial::template Polynomial< 2 , Degree , Real >::d;
 
 				CotangentVectorField< Degree-1 > differential( void ) const;
 			};
@@ -294,11 +292,13 @@ namespace MishaK
 			template< unsigned int BasisType , class V > static   TangentVector< V > EvaluateScalarFieldGradient    ( const SquareMatrix< Real , 2 >& tensor , ConstPointer( V ) coefficients , const Point2D< Real >& position );
 			template< unsigned int BasisType , class V > static CotangentVector< V > EvaluateCovectorField          ( const SquareMatrix< Real , 2 >& tensor , ConstPointer( V ) coefficients , const Point2D< Real >& position );
 			template< unsigned int BasisType , class V > static V                    EvaluateDensityField           ( const SquareMatrix< Real , 2 >& tensor , ConstPointer( V ) coefficients , const Point2D< Real >& position );
+			template< unsigned int BasisType > static Point< Real , BasisInfo< BasisType >::Coefficients > ScalarFieldEvaluation( const Point2D< Real > & position );
+			template< unsigned int BasisType > static Matrix< Real , BasisInfo< BasisType >::Coefficients , 2 > CoVectorFieldEvaluation( const Point2D< Real > & position );
 
 			// Compute the (possibly lumped/weighted) mass matrix
 			template< unsigned int BasisType > static typename BasisInfoSystem< Real , BasisType >::Matrix        GetMassMatrix( const SquareMatrix< Real , 2 >& tensor );
 			template< unsigned int BasisType > static typename BasisInfoSystem< Real , BasisType >::Matrix        GetMassMatrix( const SquareMatrix< Real , 2 >& tensor , const SquareMatrix< Real , 2 >& newTensor );
-			template< unsigned int BasisType > static typename BasisInfoSystem< Real , BasisType >::Point GetDiagonalMassMatrix( const SquareMatrix< Real , 2 >& tensor );
+			template< unsigned int BasisType > static typename BasisInfoSystem< Real , BasisType >::Point GetDiagonalMassMatrix( const SquareMatrix< Real , 2 >& tensor , int centerType=CENTER_CIRCUMCENTRIC );
 
 			// Compute the differential operator
 			template< unsigned int InBasisType , unsigned int OutBasisType > static typename BasisInfoSystem2< Real , InBasisType , OutBasisType >::Matrix GetDMatrix( const SquareMatrix< Real , 2 >& tensor );
@@ -415,6 +415,13 @@ namespace MishaK
 			size_t _tCount , _vCount;
 			EdgeMap _edgeMap;
 		public:
+			struct MassMatrixParameters
+			{
+				bool lump;
+				int centerType;
+				MassMatrixParameters( bool lump=false , int centerType=RightTriangle< Real >::CENTER_CIRCUMCENTRIC ) : lump(lump) , centerType(centerType) {}
+			};
+
 			ConstPointer( TriIndex ) triangles( void     ) const { return _triangles   ; }
 			const         TriIndex&  triangles( size_t t ) const { return _triangles[t]; }
 #if 1
@@ -461,9 +468,10 @@ namespace MishaK
 			/////////////////////////
 			// Geometric Operators //
 			/////////////////////////
-#ifdef EIGEN_WORLD_VERSION 
+			template< unsigned int BasisType , typename SampleFunctor /* = std::function< std::pair< size_t , Point< Real , 2 > ( size_t ) > */ >
+			Eigen::SparseMatrix< Real > evaluationMatrix( size_t sampleNum , SampleFunctor && sampleFunctor ) const;
 			template< unsigned int BasisType , bool UseEigen=false >
-			std::conditional_t< UseEigen , Eigen::SparseMatrix< Real > , SparseMatrix< Real , int > > massMatrix( bool lump=false , ConstPointer( SquareMatrix< Real , 2 > ) newTensors = NullPointer< SquareMatrix< Real , 2 > >() ) const;
+			std::conditional_t< UseEigen , Eigen::SparseMatrix< Real > , SparseMatrix< Real , int > > massMatrix( MassMatrixParameters massParams=MassMatrixParameters() , ConstPointer( SquareMatrix< Real , 2 > ) newTensors = NullPointer< SquareMatrix< Real , 2 > >() ) const;
 			template< unsigned int InBasisType , unsigned int OutBasisType , bool UseEigen=false >
 			std::conditional_t< UseEigen , Eigen::SparseMatrix< Real > , SparseMatrix< Real , int > > dMatrix( void ) const;
 			template< unsigned int BasisType , unsigned int PreBasisType , unsigned int PostBasisType , bool UseEigen=false >
@@ -473,19 +481,10 @@ namespace MishaK
 
 			template< unsigned int BasisType , unsigned int Degree , bool UseEigen=false , typename CotangentVectorFieldFunctor = std::function< typename RightTriangle< Real >::template CotangentVectorField< Degree > ( unsigned int tIdx ) > >
 			std::conditional_t< UseEigen , Eigen::SparseMatrix< Real > , SparseMatrix< Real , int > >  derivation( CotangentVectorFieldFunctor v ) const;
-#else // !EIGEN_WORLD_VERSION 
-			template< unsigned int BasisType > SparseMatrix< Real , int > massMatrix( bool lump=false , ConstPointer( SquareMatrix< Real , 2 > ) newTensors = NullPointer< SquareMatrix< Real , 2 > >() ) const;
-			template< unsigned int InBasisType , unsigned int OutBasisType > SparseMatrix< Real , int > dMatrix( void ) const;
-			template< unsigned int BasisType , unsigned int PreBasisType , unsigned int PostBasisType > SparseMatrix< Real , int > stiffnessMatrix( ConstPointer( SquareMatrix< Real , 2 > ) newTensors = NullPointer< SquareMatrix< Real , 2 > >() ) const;
-			template< unsigned int BasisType > SparseMatrix< Real , int > stiffnessMatrix( void ) const;
-
-			template< unsigned int BasisType , unsigned int Degree , typename CotangentVectorFieldFunctor /* = std::function< RightTriangle< Real >::CotangentVectorField< Degree > ( unsigned int tIdx ) > */ >
-			SparseMatrix< Real , int > derivation( CotangentVectorFieldFunctor v ) const;
-#endif // EIGEN_WORLD_VERSION
 
 			// Integrate the piecewise linear function over the mesh
 			Real getIntegral( ConstPointer( Real ) coefficients ) const;
-			Real getDotProduct( ConstPointer( Real ) c1 , ConstPointer( Real ) c2 , bool lump ) const;
+			Real getDotProduct( ConstPointer( Real ) c1 , ConstPointer( Real ) c2 , MassMatrixParameters massParams=MassMatrixParameters() ) const;
 
 			CoordinateXForm< Real >  exp( ConstPointer( CoordinateXForm< Real > ) xForms , HermiteSamplePoint< Real >& p , Real eps=(Real)0 , bool noWarning=true ) const;
 			CoordinateXForm< Real > flow( ConstPointer( CoordinateXForm< Real > ) xForms , const TangentVectorField< Real >& vf , Real flowTime , SamplePoint< Real >& p , Real minStepSize , Real eps=(Real)0 , std::vector< SamplePoint< Real > >* path=NULL , bool noWarning=true ) const;

@@ -3,7 +3,6 @@
 
 namespace MishaK
 {
-
 	template< unsigned int N , unsigned int K >
 	struct ChooseTable
 	{
@@ -26,7 +25,9 @@ namespace MishaK
 		unsigned int _values[N][K];
 	};
 
-	template< unsigned int K , unsigned int MaxN=(unsigned int)-1 >
+
+	// [WARNING] I believe this assumes that the entries are distinct
+	template< unsigned int K , unsigned int MaxN=static_cast< unsigned int >(-1) >
 	struct MultiIndex
 	{
 		template< unsigned int _K , unsigned int _MaxN > friend struct MultiIndex;
@@ -117,7 +118,16 @@ namespace MishaK
 		struct Hash
 		{
 #if 1
-			size_t operator() ( const MultiIndex &mi ) const { return mi[0]; }
+#if 1
+			size_t operator() ( const MultiIndex & mi ) const { return mi[0]; }
+#else
+			size_t operator() ( const MultiIndex & mi ) const
+			{
+				if      constexpr( K==1 ) return mi[0];
+				else if constexpr( K==2 ) return mi[0] * 31 + mi[1];
+				else                      return ( mi[0] * 31 + mi[1] ) * 31 + mi[2];
+			}
+#endif
 #else
 			size_t operator() ( const MultiIndex &mi ) const
 			{
@@ -187,6 +197,54 @@ namespace MishaK
 		}
 		unsigned int _indices[ K ? K : 1 ];
 	};
+
+	template< unsigned int K , unsigned int MaxN=static_cast< unsigned int >(-1) >
+	struct HashedMultiIndex : public MultiIndex< K , MaxN >
+	{
+		HashedMultiIndex( void ){ for( unsigned int i=0 ; i<K ; i++ ) _indices[i] = i ; _setHash(); }
+		HashedMultiIndex( const unsigned int indices[] ){ _init( indices ) ; _setHash(); }
+		HashedMultiIndex(       unsigned int indices[] ){ _init( indices ) ; _setHash(); }
+		template< typename ... UInts > HashedMultiIndex( UInts ... indices )
+		{
+			static_assert( sizeof ... ( UInts )==K , "[ERROR] Wrong number of indices" );
+			const unsigned int _indices[] = { (unsigned int)indices... };
+			_init( _indices );
+			_setHash();
+		}
+		struct Hash{ size_t operator() ( const HashedMultiIndex & mi ) const { return mi._hash; } };
+	protected:
+		using MultiIndex< K , MaxN >::_init;
+		using MultiIndex< K , MaxN >::_indices;
+		void _setHash( void )
+		{
+#if 1
+#if 1
+			_hash = _indices[0];
+#else
+#if 0
+			if      constexpr( K==1 ) _hash = _indices[0];
+			else                      _hash = _indices[0]+_indices[K-1];
+#else
+			if      constexpr( K==1 ) _hash = _indices[0];
+			else if constexpr( K==2 ) _hash = _indices[0] * 31 + _indices[1];
+			else                      _hash = ( _indices[0] * 31 + _indices[1] ) * 31 + _indices[2];
+#endif
+#endif
+#else
+			{
+#if 0
+				_hash = 0;
+				for( unsigned int s=0 ; s<K ; s++ ) _hash ^= _indices[s];
+#else
+				_hash = 1;
+				for( unsigned int s=0 ; s<K ; s++ ) _hash *= _indices[s];
+#endif
+			}
+#endif
+		}
+		unsigned int _hash;
+	};
+
 
 	template< unsigned int K , unsigned int MaxN >
 	std::conditional_t< MaxN==-1 , char , ChooseTable< MaxN , K+1 > > MultiIndex< K , MaxN >::_ChooseTable;

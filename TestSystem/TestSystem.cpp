@@ -88,7 +88,13 @@ void ShowUsage( const char *ex )
 }
 
 template< typename PreReal , typename Real >
-Eigen::SparseMatrix< Real > Execute( unsigned int textureWidth , unsigned int textureHeight , TexturedTriangleMesh< PreReal > mesh , const RegularGrid< 2 , Real > & conf )
+std::tuple< Eigen::SparseMatrix< Real > , Eigen::SparseMatrix< Real > > Execute
+(
+	unsigned int textureWidth ,
+	unsigned int textureHeight ,
+	TexturedTriangleMesh< PreReal > mesh ,
+	const RegularGrid< 2 , Real > & conf
+)
 {
 	auto Conf = [&]( typename RegularGrid< 2 >::Index I ){ return conf(I); };
 
@@ -97,6 +103,7 @@ Eigen::SparseMatrix< Real > Execute( unsigned int textureWidth , unsigned int te
 	MassAndStiffnessOperators< Real > massAndStiffnessOperators;
 	DivergenceOperator< Real > divergenceOperator;
 	ScalarIntegrator< Real > scalarIntegrator;
+	GradientIntegrator< Real > gradientIntegrator;
 	unsigned int levels = 1;
 
 	Miscellany::PerformanceMeter pMeter( '.' );
@@ -114,30 +121,41 @@ Eigen::SparseMatrix< Real > Execute( unsigned int textureWidth , unsigned int te
 		InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric );
 
 		pMeter.reset();
-#ifdef NEW_CODE
-		OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , divergenceOperator , std::tie( scalarIntegrator ) , VectorQuadrature.value , Approximate.set , SanityCheck.set , Conf );
-#else // !NEW_CODE
-		OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , divergenceOperator , scalarIntegrator , VectorQuadrature.value , Approximate.set , SanityCheck.set , Conf );
-#endif // NEW_CODE
+		OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , divergenceOperator , std::tie( scalarIntegrator , gradientIntegrator ) , VectorQuadrature.value , Approximate.set , SanityCheck.set , Conf , Conf );
 		std::cout << pMeter( "Mass and stiffness" ) << std::endl;
 	}
 	std::cout << pMeter( "Initialized" ) << std::endl;
 	printf( "Resolution: %d / %d x %d\n" , (int)textureNodes.size() , textureWidth , textureHeight );
 
-	Eigen::SparseMatrix< Real > M = massAndStiffnessOperators.mass();
+	Eigen::SparseMatrix< Real > M = massAndStiffnessOperators.mass() , S = massAndStiffnessOperators.stiffness();
 	{
-		std::vector< Real > x( textureNodes.size() ) , b1( textureNodes.size() ) , b2( textureNodes.size() );
-		Eigen::Matrix< Real , Eigen::Dynamic , 1 > _x( textureNodes.size() );
-		for( unsigned int i=0 ; i<textureNodes.size() ; i++ ) x[i] = _x[i] = static_cast< Real >( 1.);
-
-		massAndStiffnessOperators.mass( x , b1 );
 		auto ScalarFunction = []( Real v , SquareMatrix< Real , 2 > ){ return v; };
-		scalarIntegrator( x , ScalarFunction , b2 , Conf );
-		Real area1 = 0 , area2 = 0;
-		for( unsigned int i=0 ; i<x.size() ; i++ ) area1 += x[i] * b1[i] , area2 += x[i] * b2[i];
-		std::cout << "Area: " << mesh.surface.area() << " : " << _x.dot( M * _x ) << " : " << area1 << " : " << area2 << std::endl;
+		auto VectorFunction = []( Point2D< Real > v , SquareMatrix< Real , 2 > ){ return v; };
+
+		std::vector< Real > x( textureNodes.size() ) , b1( textureNodes.size() ) , b2( textureNodes.size() );
+		Eigen::Matrix< Real , Eigen::Dynamic , 1 > _x( textureNodes.size() ) , _b( textureNodes.size() );
+
+		{
+			for( unsigned int i=0 ; i<textureNodes.size() ; i++ ) x[i] = _x[i] = static_cast< Real >( 1.);
+
+			massAndStiffnessOperators.mass( x , b1 );
+			scalarIntegrator( x , ScalarFunction , b2 , Conf );
+			Real area1 = 0 , area2 = 0;
+			for( unsigned int i=0 ; i<x.size() ; i++ ) area1 += x[i] * b1[i] , area2 += x[i] * b2[i];
+			std::cout << "Area: " << mesh.surface.area() << " / " << _x.dot( M * _x ) << " / " << area1 << " / " << area2 << std::endl;
+		}
+		{
+			for( unsigned int i=0 ; i<textureNodes.size() ; i++ ) x[i] = _x[i] = Random< Real >();
+
+			_b = S * _x;
+			massAndStiffnessOperators.stiffness( x , b1 );
+			gradientIntegrator( x , VectorFunction , b2 , Conf );
+			Real err1 = 0 , err2 = 0 , err3 = 0;
+			for( unsigned int i=0 ; i<x.size() ; i++ ) err1 += ( _b[i] - b1[i] ) * ( _b[i] - b1[i] ) , err2 += ( _b[i] - b2[i] ) * ( _b[i] - b2[i] ) , err2 += ( b1[i] - b2[i] ) * ( b1[i] - b2[i] );
+			std::cout << "Stiffness error: " << err1 << " / " << err2 << " / " << err3 << " <- " << _b.squaredNorm() << std::endl;
+		}
 	}
-	return M;
+	return std::make_tuple( M , S );
 }
 
 template< typename PreReal , typename Real >
@@ -161,60 +179,14 @@ void Execute( unsigned int textureWidth , unsigned int textureHeight )
 	confidence.resize( textureWidth-1 , textureHeight-1 );
 	for( size_t i=0 ; i<confidence.size() ; i++ ) confidence[i] = confidences[0][i] + confidences[1][i];
 
-#if 1
-	Eigen::SparseMatrix< Real > mass[3];
-	for( unsigned int c=0 ; c<2 ; c++ ) mass[c] = Execute< PreReal , Real >( textureWidth , textureHeight , mesh , confidences[c] );
-	mass[2] = Execute< PreReal , Real >( textureWidth , textureHeight , mesh , confidence );
-#else
-	for( unsigned int c=0 ; c<2 ; c++ )
-	{
-		auto Conf = [&]( typename RegularGrid< 2 >::Index I ){ return confidences[c](I); };
+	std::tuple< Eigen::SparseMatrix< Real > , Eigen::SparseMatrix< Real > > massAndStiffness[3];
+	for( unsigned int c=0 ; c<2 ; c++ ) massAndStiffness[c] = Execute< PreReal , Real >( textureWidth , textureHeight , mesh , confidences[c] );
+	massAndStiffness[2] = Execute< PreReal , Real >( textureWidth , textureHeight , mesh , confidence );
 
-		HierarchicalSystem< PreReal , Real > hierarchy;
-		std::vector< TextureNodeInfo< PreReal > > textureNodes;
-		MassAndStiffnessOperators< Real > massAndStiffnessOperators;
-		DivergenceOperator< Real > divergenceOperator;
-		ScalarIntegrator< Real > scalarIntegrator;
-
-
-		Miscellany::PerformanceMeter pMeter( '.' );
-		// Initialize the system
-		{
-			Miscellany::PerformanceMeter pMeter( '.' );
-
-			ExplicitIndexVector< ChartIndex , AtlasChart< PreReal > > atlasCharts;
-
-			MultigridBlockInfo multigridBlockInfo;
-			InitializeHierarchy( mesh , textureWidth , textureHeight , levels , textureNodes , hierarchy , atlasCharts , multigridBlockInfo , SanityCheck.set );
-			std::cout << pMeter( "Hierarchy" ) << std::endl;
-
-			ExplicitIndexVector< ChartIndex , ExplicitIndexVector< ChartMeshTriangleIndex , SquareMatrix< PreReal , 2 > > > parameterMetric;
-			InitializeMetric( mesh , EMBEDDING_METRIC , atlasCharts , parameterMetric );
-
-			pMeter.reset();
-			OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , divergenceOperator , scalarIntegrator , VectorQuadrature.value , Approximate.set , SanityCheck.set , Conf );
-			std::cout << pMeter( "Mass and stiffness" ) << std::endl;
-		}
-		std::cout << pMeter( "Initialized" ) << std::endl;
-		printf( "Resolution: %d / %d x %d\n" , (int)textureNodes.size() , textureWidth , textureHeight );
-
-		{
-			std::vector< Real > x( textureNodes.size() ) , b1( textureNodes.size() ) , b2( textureNodes.size() );
-			Eigen::Matrix< Real , Eigen::Dynamic , 1 > _x( textureNodes.size() );
-			for( unsigned int i=0 ; i<textureNodes.size() ; i++ ) x[i] = _x[i] = static_cast< Real >( 1.);
-			Eigen::SparseMatrix< Real > M = massAndStiffnessOperators.mass();
-
-			massAndStiffnessOperators.mass( x , b1 );
-			auto ScalarFunction = []( Real v , SquareMatrix< Real , 2 > ){ return v; };
-			scalarIntegrator( x , ScalarFunction , b2 , Conf );
-			Real area1 = 0 , area2 = 0;
-			for( unsigned int i=0 ; i<x.size() ; i++ ) area1 += x[i] * b1[i] , area2 += x[i] * b2[i];
-			std::cout << "Area: " << mesh.surface.area() << " : " << _x.dot( M * _x ) << " : " << area1 << " : " << area2 << std::endl;
-		}
-	}
-	{
-	}
-#endif
+	auto mass = [&]( unsigned int i ) -> const Eigen::SparseMatrix< Real > & { return std::get<0>( massAndStiffness[i] ); };
+	auto stiffness = [&]( unsigned int i ) -> const Eigen::SparseMatrix< Real > & { return std::get<1>( massAndStiffness[i] ); };
+	std::cout << "Mass Error: " << ( mass(2) - ( mass(0) + mass(1) ) ).squaredNorm() << " <- " << mass(2).squaredNorm() << std::endl;
+	std::cout << "Stiffness Error: " << ( stiffness(2) - ( stiffness(0) + stiffness(1) ) ).squaredNorm() << " <- " << stiffness(2).squaredNorm() << std::endl;
 }
 
 int main( int argc , char* argv[] )

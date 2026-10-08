@@ -61,8 +61,7 @@ namespace MishaK
 		MULTIPLY_NEGATE = 2
 	};
 
-	template< class T , class const_iterator >
-	class SparseMatrixInterface
+	template< class T , class const_iterator > class SparseMatrixInterface
 	{
 	public:
 		virtual const_iterator begin( size_t row ) const = 0;

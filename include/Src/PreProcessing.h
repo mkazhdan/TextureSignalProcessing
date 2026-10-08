@@ -30,6 +30,10 @@ DAMAGE.
 // 1. Added per texel confidence support
 // 2. Fixed off-by-a-factor-of-two bug in integration (geodesics)
 // 3. Changed interpolation-weight -> gradient-fitting-weight (texture stitching)
+// 4. Added confidence erosion parameter to stitching
+// 5. Added option to clamp confidence (from below)
+// 6. Added single-window display for stitching
+// 7. Modified confidence normalization
 
 // To do:
 // -- Pull edges out of the divergence operator
@@ -48,12 +52,11 @@ DAMAGE.
 
 //#define NO_OPEN_GL_VISUALIZATION		// Disable OpenGL visualization
 //#define DEBUG_INDEXING				// Use separate classes to sanity check indexing
-//#define SANITY_CHECK					// Enables sanity checks for debugging purposes
+#define SANITY_CHECK					// Enables sanity checks for debugging purposes
+
+#define NORMALIZE_CONFIDENCE			//
 
 //#define USE_EIGEN_PARDISO
-
-#define SUPPORT_CONFIDENCE				// Supports weghting integrals by confidence
-
 
 #define INSERTION_EPSILON 1e-12			// Separation from interval end-points required for insertion
 #define MIN_TEXEL_WEIGHT 1e-12

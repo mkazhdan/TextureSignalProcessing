@@ -193,6 +193,43 @@ inline Point2D< Real > FEM::RightTriangle< Real >::EdgeReflect( const SquareMatr
 	return c + v - ( 2 * Point2D< Real >::Dot( perp , tensor * v ) / Point2D< Real >::Dot( perp , tensor * perp ) ) * perp;
 }
 
+template< typename Real >
+template< unsigned int BasisType >
+Point< Real , FEM::BasisInfo< BasisType >::Coefficients > FEM::RightTriangle< Real >::ScalarFieldEvaluation( const Point2D< Real > & p )
+{
+	static_assert( BasisType==BASIS_0_WHITNEY , "[ERROR] Only whitney 0-form basis supports evaluation" );
+
+	Point< Real , FEM::BasisInfo< BasisType >::Coefficients > weights;
+
+	if constexpr( BasisType==BASIS_0_WHITNEY )
+	{
+		weights[0] = (Real)( 1. - p[0] - p[1] );
+		weights[1] = p[0];
+		weights[2] = p[1];
+	}
+	return weights;
+}
+template< typename Real >
+template< unsigned int BasisType > 
+Matrix< Real , FEM::BasisInfo< BasisType >::Coefficients , 2 > FEM::RightTriangle< Real >::CoVectorFieldEvaluation( const Point2D< Real > & p )
+{
+	static_assert( BasisType==BASIS_1_WHITNEY || BasisType==BASIS_1_TRIANGLE_CONSTANT , "[ERROR] Only whitney 1-form and triangle-constant bases support evaluation (without a tensor)" );
+
+	Matrix< Real , FEM::BasisInfo< BasisType >::Coefficients , 2 > weights;
+	if constexpr( BasisType==BASIS_1_WHITNEY )
+	{
+		Point3D< Real > v( (Real)( 1. - p[0] - p[1] ) , p[0] , p[1] );
+		for( unsigned int k=0 ; k<2 ; k++ )
+		{
+			weights(0,k) = v[1] * CornerDifferentials[2][k] - v[2] * CornerDifferentials[1][k];
+			weights(1,k) = v[2] * CornerDifferentials[0][k] - v[0] * CornerDifferentials[2][k];
+			weights(2,k) = v[0] * CornerDifferentials[1][k] - v[1] * CornerDifferentials[0][k];
+		}
+	}
+	else if constexpr( BasisType==BASIS_1_TRIANGLE_CONSTANT ) weights(0,0) = weights(1,1) = 1;
+	return weights;
+}
+
 template< class Real >
 template< unsigned int BasisType , class V >
 inline V FEM::RightTriangle< Real >::EvaluateScalarField( ConstPointer( V ) c , const Point2D< Real >& p )
@@ -425,7 +462,7 @@ typename FEM::BasisInfoSystem< Real , BasisType >::Matrix FEM::RightTriangle< Re
 }
 template< class Real >
 template< unsigned int BasisType >
-typename FEM::BasisInfoSystem< Real , BasisType >::Point FEM::RightTriangle< Real >::GetDiagonalMassMatrix( const SquareMatrix< Real , 2 >& tensor )
+typename FEM::BasisInfoSystem< Real , BasisType >::Point FEM::RightTriangle< Real >::GetDiagonalMassMatrix( const SquareMatrix< Real , 2 >& tensor , int centerType )
 {
 	Point< Real , BasisInfo< BasisType >::Coefficients > mass;
 
@@ -436,7 +473,7 @@ typename FEM::BasisInfoSystem< Real , BasisType >::Point FEM::RightTriangle< Rea
 			break;
 		case BASIS_1_CONFORMING:
 		{
-			Point3D< Real > areas = CenterAreas( tensor , CENTER_CIRCUMCENTRIC ) * static_cast< Real >( 2 );
+			Point3D< Real > areas = CenterAreas( tensor , centerType ) * static_cast< Real >( 2 );
 			mass[0] = mass[1] = areas[0] / SquareLength( tensor , EdgeDirections[0] );
 			mass[2] = mass[3] = areas[1] / SquareLength( tensor , EdgeDirections[1] );
 			mass[4] = mass[5] = areas[2] / SquareLength( tensor , EdgeDirections[2] );
@@ -444,7 +481,7 @@ typename FEM::BasisInfoSystem< Real , BasisType >::Point FEM::RightTriangle< Rea
 		}
 		case BASIS_1_WHITNEY:
 		{
-			Point3D< Real > areas = CenterAreas( tensor , CENTER_CIRCUMCENTRIC ) * static_cast< Real >( 2 );
+			Point3D< Real > areas = CenterAreas( tensor , centerType ) * static_cast< Real >( 2 );
 			mass[0] = areas[0] / SquareLength( tensor , EdgeDirections[0] );
 			mass[1] = areas[1] / SquareLength( tensor , EdgeDirections[1] );
 			mass[2] = areas[2] / SquareLength( tensor , EdgeDirections[2] );
@@ -1479,23 +1516,58 @@ FEM::CotangentVector< V > FEM::RiemannianMesh< Real , Index >::evaluateCovectorF
 }
 
 template< class Real , typename Index >
-#ifdef EIGEN_WORLD_VERSION 
-template< unsigned int BasisType , bool UseEigen >
-std::conditional_t< UseEigen , Eigen::SparseMatrix< Real > , SparseMatrix< Real , int > > FEM::RiemannianMesh< Real , Index >::massMatrix( bool lump , ConstPointer( SquareMatrix< Real , 2 > ) newTensors ) const
-#else // !EIGEN_WORLD_VERSION 
-template< unsigned int BasisType >
-SparseMatrix< Real , int > FEM::RiemannianMesh< Real , Index >::massMatrix( bool lump , ConstPointer( SquareMatrix< Real , 2 > ) newTensors ) const
-#endif // EIGEN_WORLD_VERSION 
+template< unsigned int BasisType , typename SampleFunctor /* = std::function< std::pair< size_t , Point< Real , 2 > ( size_t ) > */ >
+Eigen::SparseMatrix< Real > FEM::RiemannianMesh< Real , Index >::evaluationMatrix( size_t sampleNum , SampleFunctor && sampleFunctor ) const
 {
-#ifdef EIGEN_WORLD_VERSION 
+	TestBasisType( BasisType , "FEM::RiemannianMesh::evaluationMatrix" , false );
+	unsigned int valueDim = BasisInfo< BasisType >::Dimension==1 ? 2 : 1;
+
+	std::vector< Eigen::Triplet< Real > > triplets( sampleNum * valueDim * BasisInfo< BasisType >::Coefficients );
+	ThreadPool::ParallelFor
+		(
+			0 , sampleNum , 
+			[&]( size_t s )
+			{
+				size_t idx = s * valueDim * BasisInfo< BasisType >::Coefficients;
+				std::pair< size_t , Point< Real , 2 > > sample = sampleFunctor( s );
+				if constexpr( BasisInfo< BasisType >::Dimension==1 )
+				{
+					Matrix< Real , BasisInfo< BasisType >::Coefficients , 2 > _E = RightTriangle< Real >::template CoVectorFieldEvaluation< BasisType >( sample.second );
+					for( unsigned int i=0 ; i<BasisInfo< BasisType >::Coefficients ; i++ )
+					{
+						bool isAligned;
+						int e = this->template index< BasisType >( static_cast< int >( sample.first ) , i , isAligned );
+						for( unsigned int k=0 ; k<2 ; k++ ) triplets[idx++] = Eigen::Triplet< Real >( static_cast< unsigned int >( s*2+k ) , e , isAligned ? _E(i,k) : -_E(i,k) );
+					}
+				}
+				else if constexpr( BasisInfo< BasisType >::Dimension==0 )
+				{
+					Point< Real , BasisInfo< BasisType >::Coefficients > _E = RightTriangle< Real >::template ScalarFieldEvaluation< BasisType >( sample.second );
+					for( unsigned int i=0 ; i<BasisInfo< BasisType >::Coefficients ; i++ )
+					{
+						bool isAligned;
+						int e = this->template index< BasisType >( static_cast< int >( sample.first ) , i , isAligned );
+						triplets[idx++] = Eigen::Triplet< Real >( static_cast< unsigned int >( s ) , e , isAligned ? _E[i] : -_E[i] );
+					}
+				}
+			}
+		);
+
+	Eigen::SparseMatrix< Real > E;
+	E.resize( sampleNum * valueDim , dimension< BasisType >() );
+	E.setFromTriplets( triplets.begin() , triplets.end() );
+	return E;
+
+}
+
+template< class Real , typename Index >
+template< unsigned int BasisType , bool UseEigen >
+std::conditional_t< UseEigen , Eigen::SparseMatrix< Real > , SparseMatrix< Real , int > > FEM::RiemannianMesh< Real , Index >::massMatrix( MassMatrixParameters massParams , ConstPointer( SquareMatrix< Real , 2 > ) newTensors ) const
+{
 	std::conditional_t< UseEigen , Eigen::SparseMatrix< Real > , SparseMatrix< Real , int > > M;
 	std::vector< Eigen::Triplet< Real > > triplets;
-#else // !EIGEN_WORLD_VERSION 
-	SparseMatrix< Real , int > M;
-#endif // EIGEN_WORLD_VERSION
 	if( BasisType==BASIS_2_VERTEX_CONSTANT )
 	{
-#ifdef EIGEN_WORLD_VERSION
 		if constexpr( UseEigen )
 		{
 			M.resize( _vCount , _vCount );
@@ -1514,7 +1586,6 @@ SparseMatrix< Real , int > FEM::RiemannianMesh< Real , Index >::massMatrix( bool
 			M.setFromTriplets( triplets.begin() , triplets.end() );
 		}
 		else
-#endif // EIGEN_WORLD_VERSION
 		{
 			M.resize( _vCount );
 			ThreadPool::ParallelFor( 0 , _vCount , [&]( unsigned int , size_t i ){ M.SetRowSize( i , 1 ) , M[i][0] = MatrixEntry< Real , int >( (int)i , 0 ); } );
@@ -1537,16 +1608,14 @@ SparseMatrix< Real , int > FEM::RiemannianMesh< Real , Index >::massMatrix( bool
 	for( int i=0 ; i<BasisInfo< BasisType >::Coefficients ; i++ ) for( int j=0 ; j<BasisInfo< BasisType >::Coefficients ; j++ ) if( mask(i,j) ) nonZeroCount[i]++;
 
 	Pointer( std::atomic< int > ) rowSizes = NullPointer< std::atomic< int > >();
-#ifdef EIGEN_WORLD_VERSION
 	if constexpr( UseEigen )
 	{
 		M.resize( dimension< BasisType >() , dimension< BasisType >() );
-		if( lump ) triplets.resize( _tCount * BasisInfo< BasisType >::Coefficients );
-		else       triplets.resize( _tCount * BasisInfo< BasisType >::Coefficients * BasisInfo< BasisType >::Coefficients );
+		if( massParams.lump ) triplets.resize( _tCount * BasisInfo< BasisType >::Coefficients );
+		else                  triplets.resize( _tCount * BasisInfo< BasisType >::Coefficients * BasisInfo< BasisType >::Coefficients );
 		ThreadPool::ParallelFor( 0 , triplets.size() , [&]( unsigned int , size_t i ){ triplets[i] = Eigen::Triplet< Real >(0,0,(Real)0); } );
 	}
 	else
-#endif // EIGEN_WORLD_VERSION
 	{
 		M.resize( dimension< BasisType >() );
 		rowSizes = NewPointer< std::atomic< int > >( M.rows ); // need to support atomic increment and set, which is not supported with OpenMP
@@ -1559,8 +1628,8 @@ SparseMatrix< Real , int > FEM::RiemannianMesh< Real , Index >::massMatrix( bool
 			0 , _tCount ,
 			[&]( unsigned int , size_t t )
 			{
-				if( lump ) for( int i=0 ; i<BasisInfo< BasisType >::Coefficients ; i++ ) rowSizes[ index< BasisType >( (int)t , i ) ]++;
-				else       for( int i=0 ; i<BasisInfo< BasisType >::Coefficients ; i++ ) rowSizes[ index< BasisType >( (int)t , i ) ] += nonZeroCount[i];
+				if( massParams.lump ) for( int i=0 ; i<BasisInfo< BasisType >::Coefficients ; i++ ) rowSizes[ index< BasisType >( (int)t , i ) ]++;
+				else                  for( int i=0 ; i<BasisInfo< BasisType >::Coefficients ; i++ ) rowSizes[ index< BasisType >( (int)t , i ) ] += nonZeroCount[i];
 			}
 		);
 		ThreadPool::ParallelFor( 0 , M.rows , [&]( unsigned int , size_t i ){ M.SetRowSize( i , rowSizes[i] ) , rowSizes[i] = 0; } );
@@ -1572,17 +1641,15 @@ SparseMatrix< Real , int > FEM::RiemannianMesh< Real , Index >::massMatrix( bool
 			0 , _tCount ,
 			[&]( unsigned int , size_t t )
 			{
-				if( lump )
+				if( massParams.lump )
 				{
-					auto m = RightTriangle< Real >::template GetDiagonalMassMatrix< BasisType >( _g[t] );
+					auto m = RightTriangle< Real >::template GetDiagonalMassMatrix< BasisType >( _g[t] , massParams.centerType );
 					for( int i=0 ; i<BasisInfo< BasisType >::Coefficients ; i++ )
 					{
 						int ii = index< BasisType >( (int)t , i );
-#ifdef EIGEN_WORLD_VERSION
 						if constexpr( UseEigen )
 							triplets[t*BasisInfo< BasisType >::Coefficients+i] = Eigen::Triplet< Real >( ii , ii , m[i] );
 						else
-#endif // EIGEN_WORLD_VERSION
 							M[ ii ][ rowSizes[ii]++ ] = MatrixEntry< Real , int >( ii , m[i] );
 					}
 				}
@@ -1599,27 +1666,19 @@ SparseMatrix< Real , int > FEM::RiemannianMesh< Real , Index >::massMatrix( bool
 						{
 							bool jAligned;
 							int jj = index< BasisType >( (int)t , j , jAligned );
-#ifdef EIGEN_WORLD_VERSION
 							if constexpr( UseEigen )
 								triplets[ t * BasisInfo< BasisType >::Coefficients * BasisInfo< BasisType >::Coefficients + BasisInfo< BasisType >::Coefficients * i + j ] = Eigen::Triplet( ii , jj , iAligned==jAligned ? m(i,j) : - m(i,j) );
 							else
-#endif // EIGEN_WORLD_VERSION
 								M[ ii ][ rowSizes[ii]++ ] = MatrixEntry< Real , int >( jj , iAligned==jAligned ? m(i,j) : - m(i,j) );
 						}
 					}
 				}
 			}
 		);
-#ifdef EIGEN_WORLD_VERSION
 	if constexpr( !UseEigen ) DeletePointer( rowSizes );
-#else // !EIGEN_WORLD_VERSION
-	DeletePointer( rowSizes );
-#endif // EIGEN_WORLD_VERSION
 
-#ifdef EIGEN_WORLD_VERSION
 	if constexpr( UseEigen ) M.setFromTriplets( triplets.begin() , triplets.end() );
 	else
-#endif // EIGEN_WORLD_VERSION
 	{
 		// Collapse the duplicate entries (and sort)
 		ThreadPool::ParallelFor
@@ -1641,23 +1700,14 @@ SparseMatrix< Real , int > FEM::RiemannianMesh< Real , Index >::massMatrix( bool
 }
 
 template< class Real , typename Index >
-#ifdef EIGEN_WORLD_VERSION 
 template< unsigned int BasisType , unsigned int Degree , bool UseEigen , typename CotangentVectorFieldFunctor /* = std::function< RightTriangle< Real >::CotangentVectorField< Degree > ( unsigned int tIdx ) > */ >
 std::conditional_t< UseEigen , Eigen::SparseMatrix< Real > , SparseMatrix< Real , int > > FEM::RiemannianMesh< Real , Index >::derivation( CotangentVectorFieldFunctor v ) const
-#else // !EIGEN_WORLD_VERSION 
-template< unsigned int BasisType , unsigned int Degree , typename CotangentVectorFieldFunctor /* = std::function< RightTriangle< Real >::CotangentVectorField< Degree > ( unsigned int tIdx ) > */ >
-SparseMatrix< Real , int > FEM::RiemannianMesh< Real , Index >::derivation( CotangentVectorFieldFunctor v ) const
-#endif // EIGEN_WORLD_VERSION 
 
 {
 	// [WARNING] Hard-coded for Hat basis functions
 
-#ifdef EIGEN_WORLD_VERSION
 	std::conditional_t< UseEigen , Eigen::SparseMatrix< Real > , SparseMatrix< Real , int > > M;
 	std::vector< Eigen::Triplet< Real > > triplets;
-#else // !EIGEN_WORLD_VERSION
-	SparseMatrix< Real , int > M;
-#endif // EIGEN_WORLD_VERSION
 
 	if( BasisType!=BASIS_0_WHITNEY ) MK_ERROR_OUT( "Expected Whitney 0-form basis" );
 	typename RightTriangle< Real >::template ScalarField< 1 > hat[3];
@@ -1672,13 +1722,11 @@ SparseMatrix< Real , int > FEM::RiemannianMesh< Real , Index >::derivation( Cota
 
 	Pointer( std::atomic< int > ) rowSizes = NullPointer< std::atomic< int > >();
 
-#ifdef EIGEN_WORLD_VERSION
 	if constexpr( UseEigen )
 	{
 		M.resize( dimension< BasisType >() , dimension< BasisType >() );
 		triplets.resize( _tCount*3*3 );
 	}
-#endif // EIGEN_WORLD_VERSION
 	{
 		M.resize( dimension< BasisType >() );
 		rowSizes = NewPointer< std::atomic< int > >( M.rows ); // need to support atomic increment and set, which is not supported with OpenMP
@@ -1705,20 +1753,16 @@ SparseMatrix< Real , int > FEM::RiemannianMesh< Real , Index >::derivation( Cota
 					for( unsigned int j=0 ; j<3 ; j++ )
 					{
 						unsigned int jj = index< BasisType >( t , j );
-#ifdef EIGEN_WORLD_VERSION
 						if constexpr( UseEigen )
 							triplets[t*3*3 + i*3 + j ] = Eigen::Triplet< Real >( jj , jj , ( f * hat[j] ).integrateUnitRightSimplex() );
 						else
-#endif // EIGEN_WORLD_VERSION
 							M[ jj ][ rowSizes[jj]++ ] = MatrixEntry< Real , int >( jj , ( f * hat[j] ).integrateUnitRightSimplex() );
 					}
 				}
 			}
 		);
-#ifdef EIGEN_WORLD_VERSION
 	if constexpr( UseEigen ) M.setFromTriplets( triplets.begin() , triplets.end() );
 	else
-#endif // EIGEN_WORLD_VERSION
 	{
 		DeletePointer( rowSizes );
 
@@ -1743,13 +1787,8 @@ SparseMatrix< Real , int > FEM::RiemannianMesh< Real , Index >::derivation( Cota
 }
 
 template< class Real , typename Index >
-#ifdef EIGEN_WORLD_VERSION
 template< unsigned int InBasisType , unsigned int OutBasisType , bool UseEigen >
 std::conditional_t< UseEigen , Eigen::SparseMatrix< Real > , SparseMatrix< Real , int > > FEM::RiemannianMesh< Real , Index >::dMatrix( void ) const
-#else // !EIGEN_WORLD_VERSION
-template< unsigned int InBasisType , unsigned int OutBasisType >
-SparseMatrix< Real , int > FEM::RiemannianMesh< Real , Index >::dMatrix( void ) const
-#endif // EIGEN_WORLD_VERSION
 {
 	TestBasisType(  InBasisType , "FEM::RiemannianMesh::dMatrix" , false );
 	TestBasisType( OutBasisType , "FEM::RiemannianMesh::dMatrix" , false );
@@ -1762,30 +1801,22 @@ SparseMatrix< Real , int > FEM::RiemannianMesh< Real , Index >::dMatrix( void ) 
 	for( int i=0 ; i<BasisInfo< InBasisType >::Coefficients ; i++ ) for( int j=0 ; j<BasisInfo< OutBasisType >::Coefficients ; j++ ) if( mask(i,j) ) nonZeroCount[j]++;
 
 	Pointer( std::atomic< int > ) rowSizes = NullPointer< std::atomic< int > >();
-#ifdef EIGEN_WORLD_VERSION
 	std::conditional_t< UseEigen , Eigen::SparseMatrix< Real > , SparseMatrix< Real , int > > D;
 	std::vector< Eigen::Triplet< Real > > triplets;
-#else // !EIGEN_WORLD_VERSION
-	SparseMatrix< Real , int > D;
-#endif // EIGEN_WORLD_VERSION
 
-#ifdef EIGEN_WORLD_VERSION
 	if constexpr( UseEigen )
 	{
 		D.resize( dimension< OutBasisType >() , dimension< InBasisType >() );
 		triplets.resize( _tCount * BasisInfo< OutBasisType >::Coefficients * BasisInfo< InBasisType >::Coefficients );
 	}
 	else
-#endif // EIGEN_WORLD_VERSION
 	{
 		D.resize( dimension< OutBasisType >() );
 		rowSizes = NewPointer< std::atomic< int > >( D.rows ); // need to support atomic increment and set, which is not supported with OpenMP
 		ThreadPool::ParallelFor( 0 , D.rows , [&]( unsigned int , size_t i ){ rowSizes[i] = 0; } );
 	}
 
-#ifdef EIGEN_WORLD_VERSION
 	if constexpr( !UseEigen )
-#endif // EIGEN_WORLD_VERSION
 	{
 		// First, set the row sizes
 		ThreadPool::ParallelFor( 0 , _tCount , [&]( unsigned int , size_t t ){ for( int j=0 ; j<BasisInfo< OutBasisType >::Coefficients ; j++ ) rowSizes[ index< OutBasisType >( (int)t , j ) ] += nonZeroCount[j]; } );
@@ -1805,21 +1836,17 @@ SparseMatrix< Real , int > FEM::RiemannianMesh< Real , Index >::dMatrix( void ) 
 					for( int i=0 ; i<BasisInfo< InBasisType >::Coefficients ; i++ ) if( mask(i,j) )
 					{
 						bool iAligned ; int ii = index< InBasisType >( (int)t , i , iAligned );
-#ifdef EIGEN_WORLD_VERSION
 						if constexpr( UseEigen )
 							triplets[ t * BasisInfo< OutBasisType >::Coefficients * BasisInfo< InBasisType >::Coefficients + j * BasisInfo< InBasisType >::Coefficients + i ]
 							= Eigen::Triplet< Real >( jj , ii , iAligned==jAligned ? d(i,j) : -d(i,j) );
 						else
-#endif // EIGEN_WORLD_VERSION
 							D[ jj ][ rowSizes[jj]++ ] = MatrixEntry< Real , int >( ii , iAligned==jAligned ? d(i,j) : -d(i,j) );
 					}
 				}
 			}
 		);
-#ifdef EIGEN_WORLD_VERSION
 	if constexpr( UseEigen ) D.setFromTriplets( triplets.begin() , triplets.end() );
 	else
-#endif // EIGEN_WORLD_VERSION
 	{
 		DeletePointer( rowSizes );
 
@@ -1857,7 +1884,6 @@ SparseMatrix< Real , int > FEM::RiemannianMesh< Real , Index >::dMatrix( void ) 
 		}
 		else TestElementType( BasisInfo< OutBasisType >::ElementType , "FEM::RiemannianMesh::dMatrix" , true );
 
-#ifdef EIGEN_WORLD_VERSION
 		if constexpr( UseEigen )
 		{
 			ThreadPool::ParallelFor
@@ -1871,7 +1897,6 @@ SparseMatrix< Real , int > FEM::RiemannianMesh< Real , Index >::dMatrix( void ) 
 			);
 		}
 		else
-#endif // EIGEN_WORLD_VERSION
 		{
 			ThreadPool::ParallelFor
 				(
@@ -1888,22 +1913,12 @@ SparseMatrix< Real , int > FEM::RiemannianMesh< Real , Index >::dMatrix( void ) 
 }
 
 template< class Real , typename Index >
-#ifdef EIGEN_WORLD_VERSION
 template< unsigned int BasisType , unsigned int PreBasisType , unsigned int PostBasisType , bool UseEigen >
 std::conditional_t< UseEigen , Eigen::SparseMatrix< Real > , SparseMatrix< Real , int > > FEM::RiemannianMesh< Real , Index >::stiffnessMatrix( ConstPointer( SquareMatrix< Real , 2 > ) newTensors ) const
-#else // !EIGEN_WORLD_VERSION
-template< unsigned int BasisType , unsigned int PreBasisType , unsigned int PostBasisType >
-SparseMatrix< Real , int > FEM::RiemannianMesh< Real , Index >::stiffnessMatrix( ConstPointer( SquareMatrix< Real , 2 > ) newTensors ) const
-#endif // EIGEN_WORLD_VERSION
 {
-#ifdef EIGEN_WORLD_VERSION
 	using Matrix = std::conditional_t< UseEigen , Eigen::SparseMatrix< Real > , SparseMatrix< Real , int > >;
 	auto MassMatrixInverse = [] ( const Matrix& M )
-#else // !EIGEN_WORLD_VERSION
-	auto MassMatrixInverse = [] ( const SparseMatrix< Real , int >& M )
-#endif // EIGEN_WORLD_VERSION
 	{
-#ifdef EIGEN_WORLD_VERSION
 		if constexpr( UseEigen )
 		{
 			Matrix M_inverse;
@@ -1922,7 +1937,6 @@ SparseMatrix< Real , int > FEM::RiemannianMesh< Real , Index >::stiffnessMatrix(
 			return M_inverse;
 		}
 		else
-#endif // EIGEN_WORLD_VERSION
 		{
 			SparseMatrix< Real , int > M_inverse;
 			M_inverse.resize( M.rows );
@@ -1941,11 +1955,7 @@ SparseMatrix< Real , int > FEM::RiemannianMesh< Real , Index >::stiffnessMatrix(
 		}
 	};
 
-#ifdef EIGEN_WORLD_VERSION
 	Matrix S;
-#else // !EIGEN_WORLD_VERSION
-	SparseMatrix< Real , int > S;
-#endif // EIGEN_WORLD_VERSION
 	TestBasisType( BasisType , "FEM::RiemannianMesh::stiffnessMatrix" , false );
 	switch( BasisInfo< BasisType >::Dimension )
 	{
@@ -1953,13 +1963,8 @@ SparseMatrix< Real , int > FEM::RiemannianMesh< Real , Index >::stiffnessMatrix(
 		{	
 			TestBasisType( PostBasisType , "FEM::RiemannianMesh::stiffnessMatrix" , false );
 			if( BasisInfo< PostBasisType >::Dimension!=BasisInfo< BasisType >::Dimension+1 ) fprintf( stderr , "[ERROR] FEM::RiemannianMesh::stiffnessMatrix: Incompatible basis type: %s -> %s\n" , BasisNames[BasisType] , BasisNames[PostBasisType] ) , exit( 0 );
-#ifdef EIGEN_WORLD_VERSION
 			Matrix M2 = massMatrix< PostBasisType , UseEigen >( BasisInfo< BasisType >::Lumpable , newTensors );
 			Matrix D1 = dMatrix< BasisType , PostBasisType , UseEigen >( );
-#else // !EIGEN_WORLD_VERSION
-			SparseMatrix< Real , int > M2 = massMatrix< PostBasisType >( BasisInfo< BasisType >::Lumpable , newTensors );
-			SparseMatrix< Real , int > D1 = dMatrix< BasisType , PostBasisType >( );
-#endif // EIGEN_WORLD_VERSION
 			S = D1.transpose() * M2 * D1;
 
 			break;
@@ -1970,19 +1975,11 @@ SparseMatrix< Real , int > FEM::RiemannianMesh< Real , Index >::stiffnessMatrix(
 			TestBasisType( PostBasisType , "FEM::RiemannianMesh::stiffnessMatrix" , false );
 			if( BasisInfo< PreBasisType >::Dimension!=BasisInfo< BasisType >::Dimension-1 ) MK_ERROR_OUT( "Incompatible basis type: " , BasisNames[PreBasisType] , " - > " , BasisNames[BasisType] );
 			if( BasisInfo< PostBasisType >::Dimension!=BasisInfo< BasisType >::Dimension+1 ) MK_ERROR_OUT( "Incompatible basis type: " , BasisNames[BasisType] , " -> " , BasisNames[PostBasisType] );
-#ifdef EIGEN_WORLD_VERSION
 			Matrix M0 = massMatrix<  PreBasisType , UseEigen >( true , newTensors );
 			Matrix M1 = massMatrix<     BasisType , UseEigen >( BasisInfo< BasisType >::Lumpable , newTensors );
 			Matrix M2 = massMatrix< PostBasisType , UseEigen >( BasisInfo< BasisType >::Lumpable , newTensors );
 			Matrix D0 = dMatrix< PreBasisType ,     BasisType , UseEigen >( );
 			Matrix D1 = dMatrix<    BasisType , PostBasisType , UseEigen >( );
-#else // !EIGEN_WORLD_VERSION
-			SparseMatrix< Real , int > M0 = massMatrix<  PreBasisType >( true , newTensors );
-			SparseMatrix< Real , int > M1 = massMatrix<     BasisType >( BasisInfo< BasisType >::Lumpable , newTensors );
-			SparseMatrix< Real , int > M2 = massMatrix< PostBasisType >( BasisInfo< BasisType >::Lumpable , newTensors );
-			SparseMatrix< Real , int > D0 = dMatrix< PreBasisType ,     BasisType >( );
-			SparseMatrix< Real , int > D1 = dMatrix<    BasisType , PostBasisType >( );
-#endif // EIGEN_WORLD_VERSION
 #if 1
 			S = M1 * D0 * MassMatrixInverse( M0 ) * D0.transpose() * M1 + D1.transpose() * M2 * D1;
 #else
@@ -1995,24 +1992,16 @@ SparseMatrix< Real , int > FEM::RiemannianMesh< Real , Index >::stiffnessMatrix(
 		{
 			TestBasisType(  PreBasisType , "FEM::RiemannianMesh::stiffnessMatrix" , false );
 			if( BasisInfo< PreBasisType >::Dimension!=BasisInfo< BasisType >::Dimension-1 ) MK_ERROR_OUT( "Incompatible basis type: " , BasisNames[PreBasisType] , " -> " , BasisNames[BasisType] );
-#ifdef EIGEN_WORLD_VERSION
 			Matrix M0 = massMatrix< PreBasisType , UseEigen >( true , newTensors );
 			Matrix M1 = massMatrix<    BasisType , UseEigen >( BasisInfo< BasisType >::Lumpable , newTensors );
 			Matrix D0 = dMatrix< PreBasisType , BasisType , UseEigen >( );
-#else // !EIGEN_WORLD_VERSION
-			SparseMatrix< Real , int > M0 = massMatrix< PreBasisType >( true , newTensors );
-			SparseMatrix< Real , int > M1 = massMatrix<    BasisType >( BasisInfo< BasisType >::Lumpable , newTensors );
-			SparseMatrix< Real , int > D0 = dMatrix< PreBasisType , BasisType >( );
-#endif // EIGEN_WORLD_VERSION
 			S = M1 * D0 * MassMatrixInverse( M0 ) * D0.transpose() * M1;
 			break;
 		}
 		default: TestBasisType( BasisType , "FEM::RiemannianMesh::stiffnessMatrix" , true );
 	}
 
-#ifdef EIGEN_WORLD_VERSION
 	if constexpr( !UseEigen )
-#endif // EIGEN_WORLD_VERSION
 	{
 		ThreadPool::ParallelFor
 		(
@@ -2033,16 +2022,10 @@ SparseMatrix< Real , int > FEM::RiemannianMesh< Real , Index >::stiffnessMatrix(
 }
 
 template< class Real , typename Index >
-#ifdef EIGEN_WORLD_VERSION
 template< unsigned int BasisType , bool UseEigen >
 std::conditional_t< UseEigen , Eigen::SparseMatrix< Real > , SparseMatrix< Real , int > > FEM::RiemannianMesh< Real , Index >::stiffnessMatrix( void ) const
-#else // !EIGEN_WORLD_VERSION
-template< unsigned int BasisType >
-SparseMatrix< Real , int > FEM::RiemannianMesh< Real , Index >::stiffnessMatrix( void ) const
-#endif // EIGEN_WORLD_VERSION
 {
 	TestBasisType( BasisType , "FEM::RiemannianMesh::stiffnessMatrix" , false );
-#ifdef EIGEN_WORLD_VERSION
 	std::conditional_t< UseEigen , Eigen::SparseMatrix< Real > , SparseMatrix< Real , int > > S;
 	switch( BasisInfo< BasisType >::Dimension )
 	{
@@ -2054,19 +2037,6 @@ SparseMatrix< Real , int > FEM::RiemannianMesh< Real , Index >::stiffnessMatrix(
 	case 2: S = stiffnessMatrix< BasisType , BASIS_1_WHITNEY , BasisType , UseEigen>( ) ; break;
 	default: TestBasisType( BasisType , "FEM::RiemannianMesh::stiffnessMatrix" , true );
 }
-#else // !EIGEN_WORLD_VERSION
-	SparseMatrix< Real , int > S;
-	switch( BasisInfo< BasisType >::Dimension )
-	{
-	case 0: S = stiffnessMatrix< BasisType , BasisType       , BASIS_1_WHITNEY >( ) ; break;
-	case 1:
-		if( BasisType==BASIS_1_WHITNEY ) S = stiffnessMatrix< BasisType , BASIS_0_WHITNEY , BASIS_2_WHITNEY  >( );
-		else                             S = stiffnessMatrix< BasisType , BASIS_0_WHITNEY , BASIS_2_VERTEX_CONSTANT >( );
-		break;
-	case 2: S = stiffnessMatrix< BasisType , BASIS_1_WHITNEY , BasisType       >( ) ; break;
-	default: TestBasisType( BasisType , "FEM::RiemannianMesh::stiffnessMatrix" , true );
-	}
-#endif // EIGEN_WORLD_VERSION
 	return S;
 }
 
@@ -2094,7 +2064,7 @@ inline Real FEM::RiemannianMesh< Real , Index >::getIntegral( ConstPointer( Real
 }
 
 template< class Real , typename Index >
-inline Real FEM::RiemannianMesh< Real , Index >::getDotProduct( ConstPointer( Real ) coefficients1 , ConstPointer( Real ) coefficients2 , bool lump ) const
+inline Real FEM::RiemannianMesh< Real , Index >::getDotProduct( ConstPointer( Real ) coefficients1 , ConstPointer( Real ) coefficients2 , MassMatrixParameters massParams ) const
 {
 	Real dotProduct = (Real)0;
 	std::vector< Real > _dotProducts( ThreadPool::NumThreads() , 0 );
@@ -2103,9 +2073,9 @@ inline Real FEM::RiemannianMesh< Real , Index >::getDotProduct( ConstPointer( Re
 			0 , _tCount ,
 			[&]( unsigned int t , size_t i )
 			{
-				if( lump )
+				if( massParams.lump )
 				{
-					Point< Real , 3 > mass = RightTriangle< Real >::GetDiagonalMassMatrix( _g[i] );
+					Point< Real , 3 > mass = RightTriangle< Real >::GetDiagonalMassMatrix( _g[i] , massParams.centerType );
 					for( int j=0 ; j<3 ; j++ ) _dotProducts[t] += mass[j] * coefficients1[ _triangles[i][j] ] * coefficients2[ _triangles[i][j] ];
 				}
 				else

@@ -49,19 +49,31 @@ namespace MishaK
 			ASYNC ,
 			NONE
 		};
-		static const std::vector< std::string > ParallelNames;
-
 		enum ScheduleType
 		{
 			STATIC ,
 			DYNAMIC
 		};
-		static const std::vector< std::string > ScheduleNames;
+
+	protected:
+		static inline unsigned int _NumThreads = std::thread::hardware_concurrency();
+	public:
+		//static inline ParallelType ParallelizationType = ParallelType::NONE; // Default is threading disabled
+		static inline ParallelType ParallelizationType = static_cast< ParallelType >(0); // Default is threading enabled
+		static inline ScheduleType Schedule = ScheduleType::DYNAMIC;
+		static inline size_t ChunkSize = 128;
+
+		static const inline std::vector< std::string > ParallelNames =
+		{
+#ifdef _OPENMP
+			"open mp" ,
+#endif // _OPENMP
+			"async" ,
+			"none"
+		};
+		static const inline std::vector< std::string > ScheduleNames = { "static" , "dynamic" };
 
 		static unsigned int NumThreads( void ){ return _NumThreads; }
-		static ParallelType ParallelizationType;
-		static size_t ChunkSize;
-		static ScheduleType Schedule;
 
 		template< typename Function , typename ... Functions >
 		static void ParallelSections( const Function &function , const Functions & ... functions )
@@ -165,8 +177,6 @@ namespace MishaK
 
 
 	private:
-		static unsigned int _NumThreads;
-
 		template< typename Function , typename ... Functions >
 		static void _ParallelSections( std::vector< std::future< void > > &futures , const Function &function , const Functions & ... functions )
 		{
@@ -180,22 +190,6 @@ namespace MishaK
 			futures.push_back( std::async( std::launch::async , function ) );
 			if constexpr( sizeof...(Functions) ) _ParallelSections( futures , std::move(functions)... );
 		}
-		};
-
-	//inline ThreadPool::ParallelType ThreadPool::ParallelizationType = ThreadPool::ParallelType::NONE; // Default is threading disabled
-	inline ThreadPool::ParallelType ThreadPool::ParallelizationType = (ThreadPool::ParallelType)0; // Default is threading enabled
-	inline unsigned int ThreadPool::_NumThreads = std::thread::hardware_concurrency();
-	inline ThreadPool::ScheduleType ThreadPool::Schedule = ThreadPool::DYNAMIC;
-	inline size_t ThreadPool::ChunkSize = 128;
-
-	const inline std::vector< std::string > ThreadPool::ParallelNames =
-	{
-#ifdef _OPENMP
-		"open mp" ,
-#endif // _OPENMP
-		"async" ,
-		"none"
 	};
-	const inline std::vector< std::string > ThreadPool::ScheduleNames = { "static" , "dynamic" };
 }
 #endif // MULTI_THREADING_INCLUDED

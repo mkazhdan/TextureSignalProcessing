@@ -531,8 +531,8 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeConcentrations( voi
 		for( int i=0 ; i<randomSamples.size() ; i++ )
 		{
 			int tIdx = randomSamples[i].tIdx;
-			Point2D< Real > p = randomSamples[i].p;
-			Point2D< Real > t = mesh.textureTriangle( tIdx )( Point2D< PreReal >( p ) );
+			Point2D< Real > p = static_cast< Point2D< Real > >( randomSamples[i].p );
+			Point2D< Real > t = static_cast< Point2D< Real > >( mesh.textureTriangle( tIdx )( Point2D< PreReal >( p ) ) );
 			t[0] *= nodeIndex.res(0) , t[1] *= nodeIndex.res(1);
 			int idx = nodeIndex( (int)floor( t[0] +0.5 ) , (int)floor( t[1] +0.5 ) );
 			if( idx>=0 && idx<multigridVariables[1][0].x.size() ) multigridVariables[1][0].x[idx] = 1;
@@ -626,11 +626,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeSystem( int width ,
 	for( unsigned int i=0 ; i<parameterMetric.size() ; i++ ) for( unsigned int j=0 ; j<parameterMetric[ ChartIndex(i) ].size() ; j++ ) parameterMetric[ ChartIndex(i) ][ ChartMeshTriangleIndex(j) ] *= textureNodes.size() / 2;
 
 	pMeter.reset();
-#ifdef NEW_CODE
 	OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , std::tie( scalarIntegrator ) , RHSQuadrature.value , ApproximateIntegration.set , SanityCheck.set );
-#else // !NEW_CODE
-	OperatorInitializer::Initialize( MatrixQuadrature.value , massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , scalarIntegrator , RHSQuadrature.value , ApproximateIntegration.set , SanityCheck.set );
-#endif // NEW_CODE
 	scalarIntegratorScratch = scalarIntegrator.template getScratch< Point< Real , 2 > , Point< Real , 2 > >();
 	if( Verbose.set ) std::cout << pMeter( "Mass and stiffness" ) << std::endl;
 
@@ -699,15 +695,15 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeVisualization( void
 	{
 		Simplex< PreReal , 3 , 2 > sSimplex = mesh.surfaceTriangle(t);
 		Simplex< PreReal , 2 , 2 > tSimplex = mesh.textureTriangle(t);
-		Point3D< float > n = sSimplex.normal();
+		Point3D< float > n = static_cast< Point3D< float > >( sSimplex.normal() );
 		n /= Point3D< float >::Length( n );
 
 		for( int k=0 ; k<3 ; k++ , idx++ )
 		{
 			visualization.triangles[t][k] = idx;
-			visualization.vertices[idx] = sSimplex[k];
+			visualization.vertices[idx] = static_cast< Point3D< float > >( sSimplex[k] );
 			visualization.normals[idx] = n;
-			visualization.textureCoordinates[idx] = tSimplex[k];
+			visualization.textureCoordinates[idx] = static_cast< Point2D< float > >( tSimplex[k] );
 		}
 	}
 
@@ -716,7 +712,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::InitializeVisualization( void
 	for( int e=0 ; e<boundaryHalfEdges.size() ; e++ )
 	{
 		SimplexIndex< 1 > eIndex = mesh.surface.edgeIndex( boundaryHalfEdges[e] );
-		for( int i=0 ; i<2 ; i++ ) visualization.chartBoundaryVertices.push_back( mesh.surface.vertices[ eIndex[i] ] );
+		for( int i=0 ; i<2 ; i++ ) visualization.chartBoundaryVertices.push_back( static_cast< Point3D< float > >( mesh.surface.vertices[ eIndex[i] ] ) );
 	}
 
 	visualization.callBacks.push_back( Visualization::KeyboardCallBack( &visualization,  's' , "export texture" , "Output Texture" , ExportTextureCallBack ) );
@@ -830,7 +826,7 @@ void GrayScottReactionDiffusion< PreReal , Real >::Init( void )
 	}
 
 	textureNodePositions.resize( textureNodes.size() );
-	for( int i=0 ; i<textureNodePositions.size() ; i++ ) textureNodePositions[i] = mesh.surface( textureNodes[i] );
+	for( int i=0 ; i<textureNodePositions.size() ; i++ ) textureNodePositions[i] = static_cast< Point3D< float > >( mesh.surface( textureNodes[i] ) );
 
 	InitializeConcentrations();
 

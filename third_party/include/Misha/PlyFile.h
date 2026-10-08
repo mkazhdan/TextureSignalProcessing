@@ -41,7 +41,11 @@ WARRANTY OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
 #include <cstring>
 #include <cmath>
 #include "Exceptions.h"
+#if 1 // NEW_CODE
+#include "Miscellany.h"
+#else // !NEW_CODE
 #include "PlyFile.h"
+#endif // NEW_CODE
 
 namespace GregTurk
 {
@@ -127,7 +131,7 @@ namespace GregTurk
 		PlyProperty( void ) : external_type(0) , internal_type(0) , offset(0) , is_list(0) , count_external(0) , count_internal(0) , count_offset(0){ }
 	};
 
-	std::ostream &operator << ( std::ostream &os , PlyProperty p )
+	inline std::ostream &operator << ( std::ostream &os , PlyProperty p )
 	{
 		return os << "{ " << p.name << " , " << PlyTypes[ p.external_type ] << " , " << PlyTypes[ p.internal_type ] << " , " << p.offset << " }";
 	}

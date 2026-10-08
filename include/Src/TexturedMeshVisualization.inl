@@ -95,29 +95,22 @@ void TexturedMeshVisualization::RenderOffScreenBuffer( RegularGrid< 2 , Point3D<
 void TexturedMeshVisualization::WriteSceneConfigurationCallBack( Visualization* v , const char* prompt )
 {
 	const TexturedMeshVisualization* av = (TexturedMeshVisualization*)v;
-	FILE * file;
-	file = fopen( prompt , "wb" );
-	fwrite( &av->screenWidth  , sizeof( int ) , 1 , file );
-	fwrite( &av->screenHeight , sizeof( int ) , 1 , file );
+	std::ofstream file( prompt , std::ios::out | std::ios::binary );
+	file.write( reinterpret_cast< const char * >( &av->screenWidth ) , sizeof(int) );
+	file.write( reinterpret_cast< const char * >( &av->screenHeight ) , sizeof(int) );
 	av->camera.write( file );
-	fwrite( &av->zoom , sizeof(float) , 1 , file );
-	fclose(file);
+	file.write( reinterpret_cast< const char * >( &av->zoom ) , sizeof(float) );
 }
 
 void TexturedMeshVisualization::ReadSceneConfigurationCallBack( Visualization *v , const char* prompt )
 {
 	TexturedMeshVisualization* av = (TexturedMeshVisualization*)v;
-	FILE * file;
-	file = fopen( prompt , "rb" );
-	if( !file ) MK_THROW( "Camera Configuration File Not Valid: " , prompt );
-	else
-	{
-		fread( &av->screenWidth  , sizeof(int) , 1 , file );
-		fread( &av->screenHeight , sizeof(int) , 1 , file );
-		av->camera.read( file );
-		fread( &av->zoom , sizeof(float) , 1 , file );
-		fclose( file );
-	}
+	std::ifstream file( prompt , std::ios::in | std::ios::binary );
+	if( !file.is_open() ) MK_THROW( "Camera Configuration File Not Valid: " , prompt );
+	file.read( reinterpret_cast< char * >( &av->screenWidth ) , sizeof(int) );
+	file.read( reinterpret_cast< char * >( &av->screenHeight ) , sizeof(int) );
+	av->camera.read( file );
+	file.read( reinterpret_cast< char * >( &av->zoom ) , sizeof(float) );
 }
 void TexturedMeshVisualization::ToggleVectorFieldCallBack( Visualization* v , const char* )
 {
@@ -400,7 +393,7 @@ void TexturedMeshVisualization::DrawGeometry( GLuint& textureBufferId , bool pho
 		glDepthMask(GL_TRUE);
 	}
 
-	if (showEdges)
+	if( showEdges )
 	{
 		glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
 		glEnableClientState(GL_VERTEX_ARRAY);
@@ -667,7 +660,7 @@ void TexturedMeshVisualization::display( void )
 		glEnable( GL_DEPTH_TEST );
 
 		setViewport(0);
-		DrawRegion(showMesh, textureBuffer, false, true);
+		DrawRegion( showMesh , textureBuffer , false , true );
 	}
 	else if( displayMode == TWO_REGION_DISPLAY )
 	{
@@ -765,7 +758,7 @@ TexturedMeshVisualization::TexturedMeshVisualization( bool hasVectorField )
 
 	radius = 1.f;
 
-	camera = Camera( Point3D< float >( 0.f , 0.f , 2.f ) , Point3D< float >( 0.f , 0.f , -1.f ) , Point3D< float >( 0.f , 1.f , 0.f ) );
+	camera = Camera( Point3D< double >( 0.f , 0.f , 2.f ) , Point3D< double >( 0.f , 0.f , -1.f ) , Point3D< double >( 0.f , 1.f , 0.f ) );
 
 	callBacks.push_back(KeyboardCallBack( this , 'C' , "read camera" , "File Name", ReadSceneConfigurationCallBack ) );
 	callBacks.push_back(KeyboardCallBack( this , 'c' , "save camera" , "File Name", WriteSceneConfigurationCallBack ) );

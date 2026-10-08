@@ -29,6 +29,16 @@ DAMAGE.
 ////////////////
 // MultiIndex //
 ////////////////
+
+template< unsigned int Size , typename Index , bool SmallestFirst >
+bool MultiIndex< Size , Index , SmallestFirst >::Sign( const Index index[] )
+{
+	unsigned int count = 0;
+	if constexpr( SmallestFirst ){ for( unsigned int i=0 ; i<Size ; i++ ) for( unsigned int j=i+1 ; j<Size ; j++ ) if( index[i]>index[j] ) count++; }
+	else                         { for( unsigned int i=0 ; i<Size ; i++ ) for( unsigned int j=i+1 ; j<Size ; j++ ) if( index[i]<index[j] ) count++; }
+	return (count%2)==0;
+}
+
 template< unsigned int Size , typename Index , bool SmallestFirst >
 template< typename ... UInts >
 MultiIndex< Size , Index , SmallestFirst >::MultiIndex( UInts ... indices )
@@ -37,6 +47,7 @@ MultiIndex< Size , Index , SmallestFirst >::MultiIndex( UInts ... indices )
 	const Index _indices[] = { (Index)indices... };
 	_init( _indices );
 }
+
 template< unsigned int Size , typename Index , bool SmallestFirst >
 bool MultiIndex< Size , Index , SmallestFirst >::operator < ( const MultiIndex &idx ) const
 {
@@ -57,9 +68,9 @@ bool MultiIndex< Size , Index , SmallestFirst >::operator == ( const MultiIndex 
 template< unsigned int Size , typename Index , bool SmallestFirst >
 void MultiIndex< Size , Index , SmallestFirst >::_init( const Index indices[] )
 {
-	memcpy( _indices , indices, sizeof(unsigned int) * Size );
-	if( SmallestFirst ) std::sort( _indices , _indices + Size , []( unsigned int v1 , unsigned int v2 ){ return v1<v2; } );
-	else                std::sort( _indices , _indices + Size , []( unsigned int v1 , unsigned int v2 ){ return v1>v2; } );
+	memcpy( _indices , indices, sizeof(Index) * Size );
+	if( SmallestFirst ) std::sort( _indices , _indices + Size , []( Index v1 , Index v2 ){ return v1<v2; } );
+	else                std::sort( _indices , _indices + Size , []( Index v1 , Index v2 ){ return v1>v2; } );
 }
 
 template< unsigned int Size , typename Index , bool SmallestFirst >
@@ -419,6 +430,24 @@ double SimplexElements< Dim , Degree >::Volume( SquareMatrix< double , Dim > g )
 	return v;
 }
 
+template< unsigned int Dim , unsigned int Degree >
+Matrix< double , Choose< Degree+Dim , Dim >() , Choose< Degree+1+Dim , Dim >() > SimplexElements< Dim , Degree >::Prolongation( void )
+{
+	static Matrix< double , NodeNum , SimplexElements< Dim , Degree+1 >::NodeNum > P;
+	static bool firstTime = true;
+	if( firstTime )
+	{
+		Polynomial::Polynomial< Dim , Degree , double > elements[ NodeNum ];
+		SetElements( elements );
+		for( unsigned int n=0 ; n<SimplexElements< Dim , Degree+1 >::NodeNum ; n++ )
+		{
+			Point< double , Dim > p = SimplexElements< Dim , Degree+1 >::NodePosition( n );
+			for( unsigned int _n=0 ; _n<NodeNum ; _n++ ) P(_n,n) = elements[_n]( p );
+		}
+		firstTime = false;
+	}
+	return P;
+}
 
 template< unsigned int Dim , unsigned int Degree >
 typename SimplexElements< Dim , Degree >::SystemMatrix SimplexElements< Dim , Degree >::MassMatrix( SquareMatrix< double , Dim > g )
@@ -469,7 +498,8 @@ typename SimplexElements< Dim , Degree >::SystemMatrix SimplexElements< Dim , De
 {
 	SquareMatrix< double , NodeNum > H;
 	Polynomial::Polynomial< Dim , Degree , double > elements[ NodeNum ];
-	typename RightSimplex< Dim >::template PMatrixField< (Degree>2) ? Degree-2 : 0 , double > elementHessians[ NodeNum ];
+	using PMatrixField = std::conditional_t< (Degree>2) , typename RightSimplex< Dim >::template PMatrixField< Degree-2 , double > , typename RightSimplex< Dim >::template PMatrixField< 0 , double > >;
+	PMatrixField elementHessians[ NodeNum ];
 
 	SetElements( elements );
 	for( unsigned int i=0 ; i<NodeNum ; i++ ) elementHessians[i] = RightSimplex< Dim >::Hessian( elements[i] , g );

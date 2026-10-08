@@ -52,8 +52,9 @@ namespace MishaK
 			bool isBrushActive;
 			int diskX, diskY;
 			bool showDisk;
+			bool showSource;
 
-			//Single input
+			// Single input
 			bool showMask;
 			GLuint compositeTextureBuffer;
 			GLuint maskTextureBuffer;
@@ -63,9 +64,9 @@ namespace MishaK
 			void UpdateMaskTextureBuffer( const RegularGrid< 2 , Point3D< Real > > &mask );
 
 
-			//Multiple input
+			// Multiple input
 			int referenceIndex;
-			std::vector<GLuint> referenceTextureBuffers;
+			std::vector< GLuint > referenceTextureBuffers;
 			template< typename Real >
 			void UpdateReferenceTextureBuffers( const std::vector< RegularGrid< 2 , Point3D< Real > > > &images );
 			std::vector< GLuint > referenceConfidenceBuffers;

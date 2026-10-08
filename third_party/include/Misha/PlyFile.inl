@@ -31,7 +31,7 @@ EXPRESS, IMPLIED OR OTHERWISE, INCLUDING WITHOUT LIMITATION, ANY
 WARRANTY OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.   
 */
 
-const char *type_names[] =
+inline const char *type_names[] =
 {
 	"invalid",
 	"char",
@@ -57,7 +57,7 @@ const char *type_names[] =
 	"float64",    // double-precision float    8
 };
 
-int ply_type_size[] =
+inline int ply_type_size[] =
 {
 	0,
 	1,
@@ -106,9 +106,6 @@ void write_scalar_type( FILE * , int );
 
 /* read a line from a file and break it up into separate words */
 std::vector< std::string > get_words( FILE * , char ** );
-
-/* write to a file the word describing a PLY file data type */
-void write_scalar_type( FILE * , int );
 
 /* write an item to a file */
 void write_binary_item( FILE * , int , int , unsigned int , long long , unsigned long long , double , int );
@@ -749,7 +746,7 @@ Entry:
 elem    - element for which we want to save away other properties
 ******************************************************************************/
 
-void setup_other_props( PlyElement *elem )
+inline void setup_other_props( PlyElement *elem )
 {
 	int size = 0;
 
@@ -1221,7 +1218,7 @@ fp   - file pointer
 code - code for type
 ******************************************************************************/
 
-void write_scalar_type( FILE *fp , int code )
+inline void write_scalar_type( FILE *fp , int code )
 {
 	/* make sure this is a valid code */
 	if( code<=PLY_START_TYPE || code>=PLY_END_TYPE ) MK_ERROR_OUT( "Bad data code: " , code );
@@ -1239,7 +1236,7 @@ bytes     - array of bytes to reverse (in place)
 num_bytes - number of bytes in array
 ******************************************************************************/
 
-void swap_bytes( void *bytes , int num_bytes )
+inline void swap_bytes( void *bytes , int num_bytes )
 {
 	char *chars = (char *)bytes;
 
@@ -1260,7 +1257,7 @@ either PLY_BINARY_BE or PLY_BINARY_LE
 
 ******************************************************************************/
 
-void get_native_binary_type( void )
+inline void get_native_binary_type( void )
 {
 	endian_test_type test;
 
@@ -1277,7 +1274,7 @@ Verify that all the native types are the sizes we need
 
 ******************************************************************************/
 
-void check_types()
+inline void check_types()
 {
 	if( (ply_type_size[PLY_CHAR] != sizeof(char)) ||
 	   (ply_type_size[PLY_SHORT] != sizeof(short)) ||	
@@ -1309,7 +1306,7 @@ orig_line - the original line of characters
 returns a list of words from the line, or NULL if end-of-file
 ******************************************************************************/
 
-std::vector< std::string > get_words( FILE *fp , char **orig_line )
+inline std::vector< std::string > get_words( FILE *fp , char **orig_line )
 {
 #define BIG_STRING 4096
 	static char str[BIG_STRING];
@@ -1390,7 +1387,7 @@ Exit:
 returns a double-precision float that contains the value of the item
 ******************************************************************************/
 
-double get_item_value( const void *item , int type )
+inline double get_item_value( const void *item , int type )
 {
 	switch( type )
 	{
@@ -1431,7 +1428,7 @@ double_val - double-precision float version of item
 type       - data type to write out
 ******************************************************************************/
 
-void write_binary_item( FILE *fp , int file_type , int int_val , unsigned int uint_val , long long longlong_val , unsigned long long ulonglong_val , double double_val , int type )
+inline void write_binary_item( FILE *fp , int file_type , int int_val , unsigned int uint_val , long long longlong_val , unsigned long long ulonglong_val , double double_val , int type )
 {
 	unsigned char uchar_val;
 	char char_val;
@@ -1506,7 +1503,7 @@ double_val - double-precision float version of item
 type       - data type to write out
 ******************************************************************************/
 
-void write_ascii_item( FILE *fp , int int_val , unsigned int uint_val , long long longlong_val , unsigned long long ulonglong_val , double double_val , int type )
+inline void write_ascii_item( FILE *fp , int int_val , unsigned int uint_val , long long longlong_val , unsigned long long ulonglong_val , double double_val , int type )
 {
 	switch (type)
 	{
@@ -1558,7 +1555,7 @@ uint_val   - unsigned integer value
 double_val - double-precision floating point value
 ******************************************************************************/
 
-void get_stored_item( void *ptr , int type , int &int_val , unsigned int &uint_val , long long &longlong_val , unsigned long long &ulonglong_val , double &double_val )
+inline void get_stored_item( void *ptr , int type , int &int_val , unsigned int &uint_val , long long &longlong_val , unsigned long long &ulonglong_val , double &double_val )
 {
 	switch( type )
 	{
@@ -1660,7 +1657,7 @@ uint_val   - unsigned integer value
 double_val - double-precision floating point value
 ******************************************************************************/
 
-void get_binary_item( FILE *fp , int file_type , int type , int &int_val , unsigned int &uint_val , long long &longlong_val , unsigned long long &ulonglong_val , double &double_val )
+inline void get_binary_item( FILE *fp , int file_type , int type , int &int_val , unsigned int &uint_val , long long &longlong_val , unsigned long long &ulonglong_val , double &double_val )
 {
 	char c[8];
 	void *ptr;
@@ -1769,7 +1766,7 @@ int_val    - integer value
 uint_val   - unsigned integer value
 double_val - double-precision floating point value
 ******************************************************************************/
-void get_ascii_item( const std::string &word , int type , int &int_val , unsigned int &uint_val , long long &longlong_val , unsigned long long &ulonglong_val , double &double_val )
+inline void get_ascii_item( const std::string &word , int type , int &int_val , unsigned int &uint_val , long long &longlong_val , unsigned long long &ulonglong_val , double &double_val )
 {
 	switch( type )
 	{
@@ -1842,7 +1839,7 @@ Exit:
 item - pointer to stored value
 ******************************************************************************/
 
-void store_item( void *item , int type , int int_val , unsigned int uint_val , long long longlong_val , unsigned long long ulonglong_val , double double_val )
+inline void store_item( void *item , int type , int int_val , unsigned int uint_val , long long longlong_val , unsigned long long ulonglong_val , double double_val )
 {
 	switch( type )
 	{
@@ -1903,7 +1900,7 @@ Exit:
 returns integer code for property, or 0 if not found
 ******************************************************************************/
 
-int get_prop_type( const std::string &type_name )
+inline int get_prop_type( const std::string &type_name )
 {
 	for( int i=PLY_START_TYPE+1 ; i<PLY_END_TYPE ; i++ ) if( type_name==type_names[i] ) return i;
 

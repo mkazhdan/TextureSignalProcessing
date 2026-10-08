@@ -29,6 +29,7 @@ DAMAGE.
 #define UNION_FIND_INCLUDED
 
 #include <optional>
+#include <functional>
 
 namespace MishaK
 {

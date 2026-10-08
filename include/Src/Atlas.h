@@ -73,7 +73,7 @@ namespace MishaK
 			// Displace vertex positions if they are too close to the axes
 			void jitter( unsigned int width , unsigned int height , GeometryReal epsilon=(GeometryReal)DEFAULT_JITTER );
 
-			ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > > getCharts( const std::vector< bool > &isBoundaryHalfEdge , unsigned int width , unsigned int height ) const;
+			ExplicitIndexVector< ChartIndex , AtlasChart< GeometryReal > > getCharts( const std::vector< bool > & isBoundaryHalfEdge , unsigned int width , unsigned int height ) const;
 
 		protected:
 			unsigned int _numCharts;

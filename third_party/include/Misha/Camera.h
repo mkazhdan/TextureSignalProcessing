@@ -134,6 +134,23 @@ namespace MishaK
 			else               return Point2D< double >( x/z , y/1 );
 		}
 
+#if 1 // NEW_CODE
+		void read( std::ifstream & in )
+		{
+			in >> position[0] >> position[1] >> position[2];
+			in >>  forward[0] >>  forward[1] >>  forward[2];
+			in >>       up[0] >>       up[1] >>       up[2];
+			in >>    right[0] >>    right[1] >>    right[2];
+		}
+
+		void write( std::ofstream & out ) const
+		{
+			out << position[0] << " " << position[1] << " " << position[2] << std::endl;
+			out <<  forward[0] << " " <<  forward[1] << " " <<  forward[2] << std::endl;
+			out <<       up[0] << " " <<       up[1] << " " <<       up[2] << std::endl;
+			out <<    right[0] << " " <<    right[1] << " " <<    right[2] << std::endl;
+		}
+#else // !NEW_CODE
 		bool read( FILE* fp )
 		{
 			Point3D< float > temp;
@@ -163,6 +180,7 @@ namespace MishaK
 #endif
 			return true;
 		}
+
 		bool write( FILE* fp ) const
 		{
 			fprintf( fp , "%f %f %f\n" , position[0] , position[1] , position[2] );
@@ -171,6 +189,7 @@ namespace MishaK
 			fprintf( fp , "%f %f %f\n" ,    right[0] ,    right[1] ,    right[2] );
 			return true;
 		}
+#endif // NEW_CODE
 	};
 }
 #endif // CAMERA_INCLUDED

@@ -49,9 +49,10 @@ namespace MishaK
 {
 	namespace TSP
 	{
-		template< typename Real >
+		template< typename _Real >
 		struct BilinearElementScalarSample
 		{
+			using Real = _Real;
 			struct SampleData
 			{
 				Real dualValues[4];				// The integrated values of the four incident bilinear basis functions, dualized
@@ -71,9 +72,7 @@ namespace MishaK
 			protected:
 				Real _weights[4];
 			};
-#ifdef SUPPORT_CONFIDENCE
 			typename RegularGrid< 2 >::Index cellIndex;
-#endif // SUPPORT_CONFIDENCE
 			SquareMatrix< Real , 2 > invTensor; // The inverse metric tensor defined by the intersecting triangle
 			unsigned int cellOffset;
 			bool operator < ( const BilinearElementScalarSample& sample ) const { return cellOffset<sample.cellOffset; }
@@ -84,9 +83,7 @@ namespace MishaK
 			{
 				resize( bilinearElementScalarSample._sampleNum );
 				memcpy( _samples , bilinearElementScalarSample._samples , sizeof( SampleData ) * _sampleNum );
-#ifdef SUPPORT_CONFIDENCE
 				cellIndex = bilinearElementScalarSample.cellIndex;
-#endif // SUPPORT_CONFIDENCE
 				invTensor = bilinearElementScalarSample.invTensor;
 				cellOffset = bilinearElementScalarSample.cellOffset;
 			}
@@ -95,9 +92,7 @@ namespace MishaK
 			{
 				resize( bilinearElementScalarSample._sampleNum );
 				memcpy( _samples , bilinearElementScalarSample._samples , sizeof( SampleData ) * _sampleNum );
-#ifdef SUPPORT_CONFIDENCE
 				cellIndex = bilinearElementScalarSample.cellIndex;
-#endif // SUPPORT_CONFIDENCE
 				invTensor = bilinearElementScalarSample.invTensor;
 				cellOffset = bilinearElementScalarSample.cellOffset;
 				return *this;
@@ -119,9 +114,10 @@ namespace MishaK
 			SampleData* _samples;
 		};
 
-		template< typename Real >
+		template< typename _Real >
 		struct QuadraticElementScalarSample
 		{
+			using Real = _Real;
 			struct SampleData
 			{
 				Real dualValues[6];				// The integrated values of the six incident quadratic basis functions, dualized
@@ -142,9 +138,7 @@ namespace MishaK
 			protected:
 				Real _weights[6];
 			};
-#ifdef SUPPORT_CONFIDENCE
 			typename RegularGrid< 2 >::Index cellIndex;
-#endif // SUPPORT_CONFIDENCE
 			SquareMatrix< Real , 2 > invTensor; // The inverse metric tensor defined by the intersecting triangle
 			AtlasInteriorOrBoundaryNodeIndex fineNodes[6];
 
@@ -154,9 +148,7 @@ namespace MishaK
 			{
 				resize( quadraticElementScalarSample._sampleNum );
 				memcpy( _samples , quadraticElementScalarSample._samples , sizeof( SampleData ) * _sampleNum );
-#ifdef SUPPORT_CONFIDENCE
 				cellIndex = quadraticElementScalarSample.cellIndex;
-#endif // SUPPORT_CONFIDENCE
 				invTensor = quadraticElementScalarSample.invTensor;
 				memcpy( fineNodes , quadraticElementScalarSample.fineNodes , sizeof(int)*6 );
 			}
@@ -164,9 +156,7 @@ namespace MishaK
 			{
 				resize( quadraticElementScalarSample._sampleNum );
 				memcpy( _samples , quadraticElementScalarSample._samples , sizeof( SampleData ) * _sampleNum );
-#ifdef SUPPORT_CONFIDENCE
 				cellIndex = quadraticElementScalarSample.cellIndex;
-#endif // SUPPORT_CONFIDENCE
 				invTensor = quadraticElementScalarSample.invTensor;
 				memcpy( fineNodes , quadraticElementScalarSample.fineNodes , sizeof(int)*6 );
 				return *this;
@@ -198,9 +188,10 @@ namespace MishaK
 			SimplexElements< 2 , 2 >::NodeIndex( 0 , 1 ),
 		};
 
-		template< typename Real >
+		template< typename _Real >
 		struct BilinearElementGradientSample
 		{
+			using Real = _Real;
 			struct SampleData
 			{
 				Point2D< Real > dualGradients[4];	// The integrated gradients of the four incident bilinear basis functions, dualized
@@ -223,9 +214,7 @@ namespace MishaK
 			protected:
 				Point2D< Real > _weights[4];
 			};
-#ifdef SUPPORT_CONFIDENCE
 			typename RegularGrid< 2 >::Index cellIndex;
-#endif // SUPPORT_CONFIDENCE
 			SquareMatrix< Real , 2 > invTensor; // The inverse metric tensor defined by the intersecting triangle
 			unsigned int cellOffset;
 			bool operator < ( const BilinearElementGradientSample& sample ) const { return cellOffset < sample.cellOffset; }
@@ -236,9 +225,7 @@ namespace MishaK
 			{
 				resize( bilinearElementGradientSample._sampleNum );
 				memcpy( _samples , bilinearElementGradientSample._samples , sizeof( SampleData ) * _sampleNum );
-#ifdef SUPPORT_CONFIDENCE
 				cellIndex = bilinearElementGradientSample.cellIndex;
-#endif // SUPPORT_CONFIDENCE
 				invTensor = bilinearElementGradientSample.invTensor;
 				cellOffset = bilinearElementGradientSample.cellOffset;
 			}
@@ -246,9 +233,7 @@ namespace MishaK
 			{
 				resize( bilinearElementGradientSample._sampleNum );
 				memcpy( _samples , bilinearElementGradientSample._samples , sizeof( SampleData ) * _sampleNum );
-#ifdef SUPPORT_CONFIDENCE
 				cellIndex = bilinearElementGradientSample.cellIndex;
-#endif // SUPPORT_CONFIDENCE
 				invTensor = bilinearElementGradientSample.invTensor;
 				cellOffset = bilinearElementGradientSample.cellOffset;
 				return *this;
@@ -268,9 +253,10 @@ namespace MishaK
 			SampleData* _samples;
 		};
 
-		template< typename Real >
+		template< typename _Real >
 		struct QuadraticElementGradientSample
 		{
+			using Real = _Real;
 			struct SampleData
 			{
 				Point2D< Real > dualGradients[6];	// The integrated gradients of the six incident quadratic basis functions, dualized
@@ -294,9 +280,7 @@ namespace MishaK
 			protected:
 				Point2D< Real > _weights[6];
 			};
-#ifdef SUPPORT_CONFIDENCE
 			typename RegularGrid< 2 >::Index cellIndex;
-#endif // SUPPORT_CONFIDENCE
 			SquareMatrix< Real , 2 > invTensor; // The inverse metric tensor defined by the intersecting triangle
 			AtlasInteriorOrBoundaryNodeIndex fineNodes[6];
 
@@ -306,9 +290,7 @@ namespace MishaK
 			{
 				resize( quadraticElementGradientSample._sampleNum );
 				memcpy( _samples , quadraticElementGradientSample._samples , sizeof( SampleData ) * _sampleNum );
-#ifdef SUPPORT_CONFIDENCE
 				cellIndex = quadraticElementGradientSample.cellIndex;
-#endif // SUPPORT_CONFIDENCE
 				invTensor = quadraticElementGradientSample.invTensor;
 				memcpy( fineNodes , quadraticElementGradientSample.fineNodes , sizeof(int)*6 );
 			}
@@ -316,9 +298,7 @@ namespace MishaK
 			{
 				resize( quadraticElementGradientSample._sampleNum );
 				memcpy( _samples , quadraticElementGradientSample._samples , sizeof( SampleData ) * _sampleNum );
-#ifdef SUPPORT_CONFIDENCE
 				cellIndex = quadraticElementGradientSample.cellIndex;
-#endif // SUPPORT_CONFIDENCE
 				invTensor = quadraticElementGradientSample.invTensor;
 				memcpy( fineNodes , quadraticElementGradientSample.fineNodes , sizeof(int)*6 );
 				return *this;
@@ -348,6 +328,79 @@ namespace MishaK
 			SimplexElements< 2 , 2 >::NodeIndex( 1 , 2 ) ,
 			SimplexElements< 2 , 2 >::NodeIndex( 2 , 0 ) ,
 			SimplexElements< 2 , 2 >::NodeIndex( 0 , 1 ),
+		};
+
+		template< typename _Real >
+		struct BilinearElementDivergenceSample
+		{
+			using Real = _Real;
+			struct SampleData
+			{
+				Point2D< Real > dualGradients[4];	// The integrated values of the four incident  basis functions, dualized
+				void init( Point2D< Real > )
+				{
+					//  F(x,y) = (1-y)
+					// dF(x,y) = [ 0 , -1 ]
+					_weights[0] = Point2D< Real >( 0 , -1 );
+					//  F(x,y) = x
+					// dF(x,y) = [ 1 ,  0 ]
+					_weights[1] = Point2D< Real >( 1 , 0 );
+					//  F(x,y) = y
+					// dF(x,y) = [ 0 , 1 ]
+					_weights[2] = Point2D< Real >( 0 , 1 );
+					//  F(x,y) = (1-x)
+					// dF(x,y) = [ -1 , 0 ]
+					_weights[3] = Point2D< Real >( -1 , 0 );
+				}
+				template< typename T >
+				Point2D< T > operator()( const T values[4] ) const
+				{
+					return Point2D< T >
+						(
+							values[0] * _weights[0][0] + values[1] * _weights[1][0] + values[2] * _weights[2][0] + values[3] * _weights[3][0] ,
+							values[0] * _weights[0][1] + values[1] * _weights[1][1] + values[2] * _weights[2][1] + values[3] * _weights[3][1]
+						);
+				}
+			protected:
+				Point2D< Real > _weights[4];
+			};
+			typename RegularGrid< 2 >::Index cellIndex;
+			SquareMatrix< Real , 2 > invTensor; // The inverse metric tensor defined by the intersecting triangle
+			unsigned int cellOffset;
+			bool operator < ( const BilinearElementDivergenceSample& sample ) const { return cellOffset < sample.cellOffset; }
+
+			BilinearElementDivergenceSample( void ) : _sampleNum(0) , _samples(nullptr) {}
+			BilinearElementDivergenceSample( unsigned int sz ) : _sampleNum(0) , _samples(nullptr) { resize(sz); }
+			BilinearElementDivergenceSample( const BilinearElementDivergenceSample& bilinearElementDivergenceSample ) : _sampleNum(0) , _samples(nullptr)
+			{
+				resize( bilinearElementDivergenceSample._sampleNum );
+				memcpy( _samples , bilinearElementDivergenceSample._samples , sizeof( SampleData ) * _sampleNum );
+				cellIndex = bilinearElementDivergenceSample.cellIndex;
+				invTensor = bilinearElementDivergenceSample.invTensor;
+				cellOffset = bilinearElementDivergenceSample.cellOffset;
+			}
+			BilinearElementDivergenceSample& operator = ( const BilinearElementDivergenceSample& bilinearElementDivergenceSample )
+			{
+				resize( bilinearElementDivergenceSample._sampleNum );
+				memcpy( _samples , bilinearElementDivergenceSample._samples , sizeof( SampleData ) * _sampleNum );
+				cellIndex = bilinearElementDivergenceSample.cellIndex;
+				invTensor = bilinearElementDivergenceSample.invTensor;
+				cellOffset = bilinearElementDivergenceSample.cellOffset;
+				return *this;
+			}
+			~BilinearElementDivergenceSample( void ){ resize(0); }
+			void resize( unsigned int sz )
+			{
+				if( _samples ){ delete[] _samples ; _samples = nullptr; }
+				_sampleNum = 0;
+				if( sz ){ _samples = new SampleData[sz] ; _sampleNum = sz; }
+			}
+			unsigned int size( void ) const { return _sampleNum; }
+			SampleData& operator[]( unsigned int idx ){ return _samples[idx]; }
+			const SampleData& operator[]( unsigned int idx ) const { return _samples[idx]; }
+		protected:
+			unsigned int _sampleNum;
+			SampleData* _samples;
 		};
 
 		template< typename _Real >

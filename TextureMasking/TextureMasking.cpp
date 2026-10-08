@@ -61,8 +61,11 @@ std::string RasterizationNames[] =
 	"node incidence count (signed)"
 };
 
+static const double DefaultBackGroundColor[] = { 0. , 0. , 0. };
+
 CmdLineParameter< std::string >
 	Input( "in" ) ,
+	InputTexture( "inTexture" ) ,
 	Output( "out" );
 
 CmdLineParameterArray< unsigned int , 2 >
@@ -71,8 +74,10 @@ CmdLineParameterArray< unsigned int , 2 >
 CmdLineParameter< double >
 	CollapseEpsilon( "collapse" , 0 );
 
+CmdLineParameterArray< double , 3 >
+	BackGroundColor( "bg" , DefaultBackGroundColor );
+
 CmdLineParameter< unsigned int >
-	CheckerWidth( "cWidth" ) ,
 	RasterizationType( "rasterize" , Rasterization::ACTIVE ) ,
 	DilationRadius( "radius" , 0 );
 
@@ -84,6 +89,8 @@ CmdLineReadable
 CmdLineReadable* params[] =
 {
 	&Input ,
+	&InputTexture ,
+	&BackGroundColor ,
 	&Output ,
 	&Resolution ,
 	&UseNearest ,
@@ -91,7 +98,6 @@ CmdLineReadable* params[] =
 	&CollapseEpsilon ,
 	&RasterizationType ,
 	&DilationRadius ,
-	&CheckerWidth ,
 	&Verbose ,
 	NULL
 };
@@ -100,13 +106,14 @@ void ShowUsage( const char* ex )
 {
 	printf( "Usage %s:\n", ex );
 	printf( "\t --%s <input mesh>\n" , Input.name.c_str() );
+	printf( "\t --%s <input texture / checker width>\n" , InputTexture.name.c_str() );
 	printf( "\t --%s <texture width, texture height> \n" , Resolution.name.c_str() );
 	printf( "\t[--%s <output texture image/grid>]\n" , Output.name.c_str() );
 	printf( "\t[--%s <collapse epsilon>=%g]\n" , CollapseEpsilon.name.c_str() , CollapseEpsilon.value );
 	printf( "\t[--%s <dilation radius>]\n" , DilationRadius.name.c_str() );
 	printf( "\t[--%s <rasterization type>=%d]\n" , RasterizationType.name.c_str() , RasterizationType.value );
 	for( unsigned int i=0 ; i<Rasterization::COUNT ; i++ ) printf( "\t\t%d] %s\n" , i , RasterizationNames[i].c_str() );
-	printf( "\t[--%s <checker width>]\n" , CheckerWidth.name.c_str() );
+	printf( "\t[--%s <background color>=(%f %f %f)]\n" , BackGroundColor.name.c_str() , BackGroundColor.values[0] , BackGroundColor.values[1] , BackGroundColor.values[2] );
 	printf( "\t[--%s]\n" , UseNearest.name.c_str() );
 	printf( "\t[--%s]\n" , NodeAtCorner.name.c_str() );
 	printf( "\t[--%s]\n" , Verbose.name.c_str() );
@@ -129,13 +136,14 @@ RegularGrid< K , int > Execute
 	const std::vector< Point< double , Dim > > & vertices ,
 	const std::vector< Point< double , K > > & textureCoordinates ,
 	const std::vector< SimplexIndex< K > > & simplices ,
-	const std::vector< SimplexIndex< K > > & textureSimplices
+	const std::vector< SimplexIndex< K > > & textureSimplices ,
+	const unsigned int res[]
 )
 {
 	using Index = unsigned int;
 	using TexelInfo = typename Texels< NodeAtCellCenter , Index >::template TexelInfo< K >;
 
-	RegularGrid< K , int > mask( Resolution.values );
+	RegularGrid< K , int > mask( res );
 	for( size_t i=0 ; i<mask.size() ; i++ ) mask[i] = 0;
 
 	auto TextureSimplexFunctor = [&]( size_t sIdx )
@@ -211,22 +219,60 @@ RegularGrid< K , int > Execute
 int main( int argc , char* argv[] )
 {
 	CmdLineParse( argc-1 , argv+1 , params );
-	if( !Input.set || !Resolution.set ){ ShowUsage( argv[0] ) ; return EXIT_FAILURE; }
+	if( !Input.set || ( !Resolution.set && !InputTexture.set ) ){ ShowUsage( argv[0] ) ; return EXIT_FAILURE; }
 
 	std::vector< Point< double , Dim > > vertices;
 	std::vector< Point< double , K > > textureCoordinates;
 	std::vector< SimplexIndex< K > > simplices , textureSimplices;
+
+	unsigned int res[K];
+	RegularGrid< K , Point< double , 3 > > inputTexture;
+	if( InputTexture.set )
+	{
+		try
+		{
+			unsigned int checkRes = std::stoi( InputTexture.value );
+			if( !Resolution.set ){ ShowUsage( argv[0] ) ; return EXIT_FAILURE; }
+			for( unsigned int k=0 ; k<K ; k++ ) res[k] = Resolution.values[k];
+			inputTexture.resize( res );
+			auto CheckerColor = []( unsigned int x , unsigned int y , unsigned int cWidth ){ return ( x/cWidth + y/cWidth ) % 2 ? Point3D< double >(0.,0.,0.) : Point3D< double >(1.,1.,1.); };
+
+			for( unsigned int i=0 ; i<Resolution.values[0] ; i++ ) for( unsigned int j=0 ; j<Resolution.values[1] ; j++ ) inputTexture(i,j) = CheckerColor( i , j , checkRes );
+		}
+		catch( ... )
+		{
+			try
+			{
+				ReadImage< 8 >( inputTexture , InputTexture.value );
+				inputTexture = FlipVertical( inputTexture );
+				for( unsigned int k=0 ; k<K ; k++ ) res[k] = inputTexture.res( k );
+			}
+			catch( const Exception & e )
+			{
+				std::cout << e.what() << std::endl;
+				MK_ERROR_OUT( "Terminating" );
+			}
+		}
+	}
+	else for( unsigned int k=0 ; k<K ; k++ ) res[k] = Resolution.values[k];
 
 	ReadTexturedMesh( Input.value , vertices , textureCoordinates , simplices , textureSimplices );
 	if( CollapseEpsilon.value>0 ) CollapseVertices( vertices , simplices , CollapseEpsilon.value );
 
 	RegularGrid< K , int > mask;
 	if( UseNearest.set )
-		if( NodeAtCorner.set ) mask = Execute< true  , false >( vertices , textureCoordinates , simplices , textureSimplices );
-		else                   mask = Execute< true  , true  >( vertices , textureCoordinates , simplices , textureSimplices );
+		if( NodeAtCorner.set ) mask = Execute< true  , false >( vertices , textureCoordinates , simplices , textureSimplices , res );
+		else                   mask = Execute< true  , true  >( vertices , textureCoordinates , simplices , textureSimplices , res );
 	else
-		if( NodeAtCorner.set ) mask = Execute< false , false >( vertices , textureCoordinates , simplices , textureSimplices );
-		else                   mask = Execute< false , true  >( vertices , textureCoordinates , simplices , textureSimplices );
+		if( NodeAtCorner.set ) mask = Execute< false , false >( vertices , textureCoordinates , simplices , textureSimplices , res );
+		else                   mask = Execute< false , true  >( vertices , textureCoordinates , simplices , textureSimplices , res );
+
+	if( Verbose.set && RasterizationType.value==Rasterization::ACTIVE )
+	{
+		size_t count = 0;
+		for( size_t i=0 ; i<mask.size() ; i++ ) if( mask[i] ) count++;
+		std::cout << "Active texels: " << count << std::endl;
+	}
 
 	if( Output.set )
 	{
@@ -257,14 +303,11 @@ int main( int argc , char* argv[] )
 			}
 			else
 			{
-				if( CheckerWidth.value>0 )
+				if( InputTexture.set )
 				{
-					auto CheckerColor = []( unsigned int x , unsigned int y , unsigned int cWidth )
-					{
-						return ( x/cWidth + y/cWidth ) % 2 ? Point3D< double >(0.,0.,0.) : Point3D< double >(1.,1.,1.);
-					};
-
-					for( unsigned int i=0 ; i<mask.res(0) ; i++ ) for( unsigned int j=0 ; j<mask.res(1) ; j++ ) _mask(i,j) = mask(i,j)==0 ? Point< double , 3 >(1.,0.,.0) : CheckerColor( i , j , CheckerWidth.value );
+					for( size_t i=0 ; i<mask.size() ; i++ )
+						if( !mask[i] )  _mask[i] = Point< double , 3 >( BackGroundColor.values[0] , BackGroundColor.values[1] , BackGroundColor.values[2] );
+						else            _mask[i] = mask[i] * inputTexture[i];
 				}
 				else for( size_t i=0 ; i<mask.size() ; i++ ) _mask[i] = mask[i]==0 ? Point< double , 3 >(1.,0.,.0) : Point< double , 3 >(0.,0.,1.);
 			}

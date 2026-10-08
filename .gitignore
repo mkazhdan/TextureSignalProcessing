@@ -5,6 +5,8 @@ replicability_instructions.htm
 /Debug/
 /Bin/
 /x64/
+Temp/
+TestSystem/
 *.bin
 *.vsidx
 *.opensdf

@@ -46,16 +46,16 @@ namespace MishaK
 		static const Point< double , 1 > Positions[];
 	};
 
-	template<> const double SimplexIntegrator< 1 , 1 >::Weights[] = { 1. };
-	template<> const double SimplexIntegrator< 1 , 2 >::Weights[] = { 0.5 , 0.5 };
-	template<> const double SimplexIntegrator< 1 , 3 >::Weights[] = { 5./18 , 8./18 , 5./18 };
-	template<> const double SimplexIntegrator< 1 , 4 >::Weights[] = { ( 18.-sqrt(30) ) / 72 , ( 18.+sqrt(30) ) / 72 , ( 18.+sqrt(30) ) / 72 , ( 18.-sqrt(30) ) / 72 };
-	template<> const double SimplexIntegrator< 1 , 5 >::Weights[] = { ( 322. - 13.*sqrt(70.) )/900. , ( 322. + 13.*sqrt(70.) )/900. , 128./225 , ( 322. + 13.*sqrt(70.) )/900. , ( 322. - 13.*sqrt(70.) )/900. };
-	template<> const Point< double , 1 > SimplexIntegrator< 1 , 1 >::Positions[] = {                      1./2                      };
-	template<> const Point< double , 1 > SimplexIntegrator< 1 , 2 >::Positions[] = { 1./2 - sqrt(1./12) ,        1./2 + sqrt(1./12) };
-	template<> const Point< double , 1 > SimplexIntegrator< 1 , 3 >::Positions[] = { 1./2 - sqrt(3./20) , 1./2 , 1./2 + sqrt(3./20) };
-	template<> const Point< double , 1 > SimplexIntegrator< 1 , 4 >::Positions[] = { 1./2 - sqrt( 3./28 + 2./28 * sqrt(6./5) ) , 1./2 - sqrt( 3./28 - 2./28 * sqrt(6./5) ) , 1./2 + sqrt( 3./28 - 2./28 * sqrt(6./5) ) , 1./2 + sqrt( 3./28 + 2./28 * sqrt(6./5) ) };
-	template<> const Point< double , 1 > SimplexIntegrator< 1 , 5 >::Positions[] = { 1./2 - 1./6 * sqrt( 5. + 2. * sqrt(10./7) ) , 1./2 - 1./6 * sqrt( 5. - 2. * sqrt(10./7) ) , 1./2 , 1./2 + 1./6 * sqrt( 5. - 2. * sqrt(10./7) ) , 1./2 + 1./6 * sqrt( 5. + 2. * sqrt(10./7) ) };
+	template<> inline const double SimplexIntegrator< 1 , 1 >::Weights[] = { 1. };
+	template<> inline const double SimplexIntegrator< 1 , 2 >::Weights[] = { 0.5 , 0.5 };
+	template<> inline const double SimplexIntegrator< 1 , 3 >::Weights[] = { 5./18 , 8./18 , 5./18 };
+	template<> inline const double SimplexIntegrator< 1 , 4 >::Weights[] = { ( 18.-sqrt(30) ) / 72 , ( 18.+sqrt(30) ) / 72 , ( 18.+sqrt(30) ) / 72 , ( 18.-sqrt(30) ) / 72 };
+	template<> inline const double SimplexIntegrator< 1 , 5 >::Weights[] = { ( 322. - 13.*sqrt(70.) )/900. , ( 322. + 13.*sqrt(70.) )/900. , 128./225 , ( 322. + 13.*sqrt(70.) )/900. , ( 322. - 13.*sqrt(70.) )/900. };
+	template<> inline const Point< double , 1 > SimplexIntegrator< 1 , 1 >::Positions[] = {                      1./2                      };
+	template<> inline const Point< double , 1 > SimplexIntegrator< 1 , 2 >::Positions[] = { 1./2 - sqrt(1./12) ,        1./2 + sqrt(1./12) };
+	template<> inline const Point< double , 1 > SimplexIntegrator< 1 , 3 >::Positions[] = { 1./2 - sqrt(3./20) , 1./2 , 1./2 + sqrt(3./20) };
+	template<> inline const Point< double , 1 > SimplexIntegrator< 1 , 4 >::Positions[] = { 1./2 - sqrt( 3./28 + 2./28 * sqrt(6./5) ) , 1./2 - sqrt( 3./28 - 2./28 * sqrt(6./5) ) , 1./2 + sqrt( 3./28 - 2./28 * sqrt(6./5) ) , 1./2 + sqrt( 3./28 + 2./28 * sqrt(6./5) ) };
+	template<> inline const Point< double , 1 > SimplexIntegrator< 1 , 5 >::Positions[] = { 1./2 - 1./6 * sqrt( 5. + 2. * sqrt(10./7) ) , 1./2 - 1./6 * sqrt( 5. - 2. * sqrt(10./7) ) , 1./2 , 1./2 + 1./6 * sqrt( 5. - 2. * sqrt(10./7) ) , 1./2 + 1./6 * sqrt( 5. + 2. * sqrt(10./7) ) };
 
 	template< unsigned int Samples >
 	struct QuadIntegrator
@@ -93,40 +93,41 @@ namespace MishaK
 
 	// Quadrature points and weights below taken from:
 	// http://www.cs.rpi.edu/~flaherje/pdf/fea6.pdf
+	// [Cowper, 1973] Gaussian Quadrature Formulas for Triangles
 
-	template<> const unsigned int SimplexIntegrator< 2 , 1 >::Degree = 1;
-	template<> const double SimplexIntegrator< 2 , 1 >::Weights[] =
+	template<> inline const unsigned int SimplexIntegrator< 2 , 1 >::Degree = 1;
+	template<> inline const double SimplexIntegrator< 2 , 1 >::Weights[] =
 	{
 		1.
 	};
-	template<> const Point2D< double > SimplexIntegrator< 2 , 1 >::Positions[] =
+	template<> inline const Point2D< double > SimplexIntegrator< 2 , 1 >::Positions[] =
 	{
 		Point2D< double >( 1./3 , 1./3 )
 	};
 
-	template<> const unsigned int SimplexIntegrator< 2 , 3 >::Degree = 2;
-	template<> const double SimplexIntegrator< 2 , 3 >::Weights[] =
+	template<> inline const unsigned int SimplexIntegrator< 2 , 3 >::Degree = 2;
+	template<> inline const double SimplexIntegrator< 2 , 3 >::Weights[] =
 	{
 		1./3 ,
 		1./3 ,
 		1./3
 	};
-	template<> const Point2D< double > SimplexIntegrator< 2 , 3 >::Positions[] =
+	template<> inline const Point2D< double > SimplexIntegrator< 2 , 3 >::Positions[] =
 	{
 		Point2D< double >( 1./6 , 1./6 ) ,
 		Point2D< double >( 1./6 , 2./3 ) ,
 		Point2D< double >( 2./3 , 1./6 )
 	};
 
-	template<> const unsigned int SimplexIntegrator< 2 , 4 >::Degree = 3;
-	template<> const double SimplexIntegrator< 2 , 4 >::Weights[] =
+	template<> inline const unsigned int SimplexIntegrator< 2 , 4 >::Degree = 3;
+	template<> inline const double SimplexIntegrator< 2 , 4 >::Weights[] =
 	{
 		-9./16 ,
 		25./48 ,
 		25./48 ,
 		25./48
 	};
-	template<> const Point2D< double > SimplexIntegrator< 2 , 4 >::Positions[] =
+	template<> inline const Point2D< double > SimplexIntegrator< 2 , 4 >::Positions[] =
 	{
 		Point2D< double >( 1./3 , 1./3 ) ,
 		Point2D< double >( 1./5 , 1./5 ) ,
@@ -134,8 +135,8 @@ namespace MishaK
 		Point2D< double >( 1./5 , 3./5 )
 	};
 
-	template<> const unsigned int SimplexIntegrator< 2 , 6 >::Degree = 4;
-	template<> const double SimplexIntegrator< 2 , 6 >::Weights[] =
+	template<> inline const unsigned int SimplexIntegrator< 2 , 6 >::Degree = 4;
+	template<> inline const double SimplexIntegrator< 2 , 6 >::Weights[] =
 	{
 		0.109951743655322 ,
 		0.109951743655322 ,
@@ -144,7 +145,7 @@ namespace MishaK
 		0.223381589678011 ,
 		0.223381589678011
 	};
-	template<> const Point2D< double > SimplexIntegrator< 2 , 6 >::Positions[] =
+	template<> inline const Point2D< double > SimplexIntegrator< 2 , 6 >::Positions[] =
 	{
 		Point2D< double >( 0.816847572980459  , 0.0915762135097705 ),
 		Point2D< double >( 0.0915762135097705 , 0.816847572980459  ),
@@ -155,8 +156,8 @@ namespace MishaK
 		Point2D< double >( 0.445948490915965  , 0.445948490915965  )
 	};
 
-	template<> const unsigned int SimplexIntegrator< 2 , 7 >::Degree = 5;
-	template<> const double SimplexIntegrator< 2 , 7 >::Weights[] =
+	template<> inline const unsigned int SimplexIntegrator< 2 , 7 >::Degree = 5;
+	template<> inline const double SimplexIntegrator< 2 , 7 >::Weights[] =
 	{
 		0.225 ,
 
@@ -168,7 +169,7 @@ namespace MishaK
 		0.132394152788506 ,
 		0.132394152788506
 	};
-	template<> const Point2D< double > SimplexIntegrator< 2 , 7 >::Positions[] =
+	template<> inline const Point2D< double > SimplexIntegrator< 2 , 7 >::Positions[] =
 	{
 		Point2D< double >( 1./3 , 1./3 ),
 
@@ -182,8 +183,8 @@ namespace MishaK
 	};
 
 
-	template<> const unsigned int SimplexIntegrator< 2 , 12 >::Degree = 6;
-	template<> const double SimplexIntegrator< 2 , 12 >::Weights[] =
+	template<> inline const unsigned int SimplexIntegrator< 2 , 12 >::Degree = 6;
+	template<> inline const double SimplexIntegrator< 2 , 12 >::Weights[] =
 	{
 		0.116786275726379 ,
 		0.116786275726379 ,
@@ -200,7 +201,7 @@ namespace MishaK
 		0.082851075618374 ,
 		0.082851075618374
 	};
-	template<> const Point2D< double > SimplexIntegrator< 2 , 12 >::Positions[] =
+	template<> inline const Point2D< double > SimplexIntegrator< 2 , 12 >::Positions[] =
 	{
 		Point2D< double >( 0.249286745170910 , 0.249286745170910 ) ,
 		Point2D< double >( 0.249286745170910 , 0.501426509658179 ) ,
@@ -218,8 +219,8 @@ namespace MishaK
 		Point2D< double >( 0.053145049844816 , 0.636502499121399 )
 	};
 
-	template<> const unsigned int SimplexIntegrator< 2 , 13 >::Degree = 7;
-	template<> const double SimplexIntegrator< 2 , 13 >::Weights[] =
+	template<> inline const unsigned int SimplexIntegrator< 2 , 13 >::Degree = 7;
+	template<> inline const double SimplexIntegrator< 2 , 13 >::Weights[] =
 	{
 		-0.1495700444676670 ,
 
@@ -238,7 +239,7 @@ namespace MishaK
 		0.077113760890257 ,
 		0.077113760890257
 	};
-	template<> const Point2D< double > SimplexIntegrator< 2 , 13 >::Positions[] =
+	template<> inline const Point2D< double > SimplexIntegrator< 2 , 13 >::Positions[] =
 	{
 		Point2D< double >( 1./3 , 1./3 ) ,
 
@@ -261,8 +262,8 @@ namespace MishaK
 	// Quadrature points and weights below taken from:
 	// [Taylor, 2007] Asymmetric cubature formulas for polynomial integration in the triangle and square
 	// https://core.ac.uk/download/pdf/82483320.pdf
-	template<> const unsigned int SimplexIntegrator< 2 , 24 >::Degree = 10;
-	template<> const double SimplexIntegrator< 2 , 24 >::Weights[] =
+	template<> inline const unsigned int SimplexIntegrator< 2 , 24 >::Degree = 10;
+	template<> inline const double SimplexIntegrator< 2 , 24 >::Weights[] =
 	{
 		1.7344807725532943e-01 / 2. ,
 		1.9053311454269983e-01 / 2. ,
@@ -289,7 +290,7 @@ namespace MishaK
 		3.0312523835131357e-02 / 2. ,
 		6.2829404721337689e-02 / 2.
 	};
-	template<> const Point2D< double > SimplexIntegrator< 2 , 24 >::Positions[] =
+	template<> inline const Point2D< double > SimplexIntegrator< 2 , 24 >::Positions[] =
 	{
 		Point2D< double >( 5.0550507373529086e-01 , 2.0776116575484826e-01 ) ,
 		Point2D< double >( 2.7542385024412980e-01 , 4.8123289062464247e-01 ) ,
@@ -317,8 +318,8 @@ namespace MishaK
 		Point2D< double >( 3.0573404093099332e-02 , 1.9305903224251936e-01 )
 	};
 
-	template<> const unsigned int SimplexIntegrator< 2 , 27 >::Degree = 11;
-	template<> const double SimplexIntegrator< 2 , 27 >::Weights[] =
+	template<> inline const unsigned int SimplexIntegrator< 2 , 27 >::Degree = 11;
+	template<> inline const double SimplexIntegrator< 2 , 27 >::Weights[] =
 	{
 		1.3648275991498204e-01 / 2. ,
 		1.2438630022250971e-01 / 2. ,
@@ -349,7 +350,7 @@ namespace MishaK
 		4.8140601001216463e-02 / 2.
 	};
 
-	template<> const Point2D< double > SimplexIntegrator< 2 , 27 >::Positions[] =
+	template<> inline const Point2D< double > SimplexIntegrator< 2 , 27 >::Positions[] =
 	{
 		Point2D< double >( 4.6494564773693992e-01 , 2.9133859436942361e-01 ) ,
 		Point2D< double >( 3.2081957909482994e-01 , 5.3634228112084714e-01 ) ,
@@ -380,8 +381,8 @@ namespace MishaK
 		Point2D< double >( 2.5252704638304480e-02 , 1.7400571673032256e-01 )
 	};
 
-	template<> const unsigned int SimplexIntegrator< 2 , 32 >::Degree = 12;
-	template<> const double SimplexIntegrator< 2 , 32 >::Weights[] =
+	template<> inline const unsigned int SimplexIntegrator< 2 , 32 >::Degree = 12;
+	template<> inline const double SimplexIntegrator< 2 , 32 >::Weights[] =
 	{
 		1.1887566790227083e-01 / 2. ,
 		1.5044412520664885e-01 / 2. ,
@@ -416,7 +417,7 @@ namespace MishaK
 		4.9808146403015403e-02 / 2. ,
 		2.1361687315256585e-02 / 2. 
 	};
-	template<> const Point2D< double > SimplexIntegrator< 2 , 32 >::Positions[] =
+	template<> inline const Point2D< double > SimplexIntegrator< 2 , 32 >::Positions[] =
 	{
 		Point2D< double >( 3.7986021093401956e-01 , 2.1078525939140391e-01 ) ,
 		Point2D< double >( 3.0141709320909305e-01 , 4.0978657777002531e-01 ) ,
@@ -463,25 +464,25 @@ namespace MishaK
 	// Quadrature points and weights below taken from:
 	// http://www.cs.rpi.edu/~flaherje/pdf/fea6.pdf
 
-	template<> const unsigned int SimplexIntegrator< 3 , 1 >::Degree = 1;
-	template<> const double SimplexIntegrator< 3 , 1 >::Weights[] =
+	template<> inline const unsigned int SimplexIntegrator< 3 , 1 >::Degree = 1;
+	template<> inline const double SimplexIntegrator< 3 , 1 >::Weights[] =
 	{
 		1.
 	};
-	template<> const Point3D< double > SimplexIntegrator< 3 , 1 >::Positions[] =
+	template<> inline const Point3D< double > SimplexIntegrator< 3 , 1 >::Positions[] =
 	{
 		Point3D< double >( 0.25 , 0.25 , 0.25 )
 	};
 
-	template<> const unsigned int SimplexIntegrator< 3 , 4 >::Degree = 2;
-	template<> const double SimplexIntegrator< 3 , 4 >::Weights[] =
+	template<> inline const unsigned int SimplexIntegrator< 3 , 4 >::Degree = 2;
+	template<> inline const double SimplexIntegrator< 3 , 4 >::Weights[] =
 	{
 		1./4 ,
 		1./4 ,
 		1./4 ,
 		1./4
 	};
-	template<> const Point3D< double > SimplexIntegrator< 3 , 4 >::Positions[] =
+	template<> inline const Point3D< double > SimplexIntegrator< 3 , 4 >::Positions[] =
 	{
 		Point3D< double >( 0.138196601125011 , 0.138196601125011 , 0.138196601125011 ) ,
 		Point3D< double >( 0.585410196624969 , 0.138196601125011 , 0.138196601125011 ) ,
@@ -489,8 +490,8 @@ namespace MishaK
 		Point3D< double >( 0.138196601125011 , 0.138196601125011 , 0.585410196624969 )
 	};
 
-	template<> const unsigned int SimplexIntegrator< 3 , 5 >::Degree = 3;
-	template<> const double SimplexIntegrator< 3 , 5 >::Weights[] =
+	template<> inline const unsigned int SimplexIntegrator< 3 , 5 >::Degree = 3;
+	template<> inline const double SimplexIntegrator< 3 , 5 >::Weights[] =
 	{
 		-4./5 ,
 
@@ -499,7 +500,7 @@ namespace MishaK
 		9./20 ,
 		9./20 
 	};
-	template<> const Point3D< double > SimplexIntegrator< 3 , 5 >::Positions[] =
+	template<> inline const Point3D< double > SimplexIntegrator< 3 , 5 >::Positions[] =
 	{
 		Point3D< double >( 0.25 , 0.25 , 0.25 ) ,
 
@@ -509,8 +510,8 @@ namespace MishaK
 		Point3D< double >( 1./6 , 1./6 , 1./2 )
 	};
 
-	template<> const unsigned int SimplexIntegrator< 3 , 11 >::Degree = 4;
-	template<> const double SimplexIntegrator< 3 , 11 >::Weights[] =
+	template<> inline const unsigned int SimplexIntegrator< 3 , 11 >::Degree = 4;
+	template<> inline const double SimplexIntegrator< 3 , 11 >::Weights[] =
 	{
 		-0.01315555555555555555 ,
 
@@ -526,7 +527,7 @@ namespace MishaK
 		0.02488888888888888889 ,
 		0.02488888888888888889
 	};
-	template<> const Point3D< double > SimplexIntegrator< 3 , 11 >::Positions[] =
+	template<> inline const Point3D< double > SimplexIntegrator< 3 , 11 >::Positions[] =
 	{
 		Point3D< double >( 0.25 , 0.25 , 0.25 ) ,
 
@@ -543,8 +544,8 @@ namespace MishaK
 		Point3D< double >( 0.100596423833201 , 0.100596423833201 , 0.399403576166799 )
 	};
 
-	template<> const unsigned int SimplexIntegrator< 3 , 15 >::Degree = 5;
-	template<> const double SimplexIntegrator< 3 , 15 >::Weights[] =
+	template<> inline const unsigned int SimplexIntegrator< 3 , 15 >::Degree = 5;
+	template<> inline const double SimplexIntegrator< 3 , 15 >::Weights[] =
 	{
 		0.030283678097089 ,
 
@@ -565,7 +566,7 @@ namespace MishaK
 		0.010949141561386 ,
 		0.010949141561386
 	};
-	template<> const Point3D< double > SimplexIntegrator< 3 , 15 >::Positions[] =
+	template<> inline const Point3D< double > SimplexIntegrator< 3 , 15 >::Positions[] =
 	{
 		Point3D< double >( 0.25 , 0.25 , 0.25 ) ,
 

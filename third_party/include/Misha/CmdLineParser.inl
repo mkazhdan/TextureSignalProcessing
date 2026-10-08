@@ -44,7 +44,7 @@ Type CmdLineReadable::ToType( const std::string &str )
 }
 
 template<>
-std::string CmdLineReadable::ToType( const std::string &str ){ return str; }
+inline std::string CmdLineReadable::ToType( const std::string &str ){ return str; }
 
 //////////////////////
 // CmdLineParameter //
@@ -74,6 +74,10 @@ CmdLineParameterArray< Type , Dim >::CmdLineParameterArray( const std::string &n
 	if( v ) for( int i=0 ; i<Dim ; i++ ) values[i] = v[i];
 	else    for( int i=0 ; i<Dim ; i++ ) values[i] = Type();
 }
+
+template< class Type , int Dim >
+CmdLineParameterArray< Type , Dim >::CmdLineParameterArray( const std::string & name , const std::vector< Type > & v ) : CmdLineParameterArray( name , &v[0] ){}
+
 
 template< class Type , int Dim >
 int CmdLineParameterArray< Type , Dim >::read( char **argv , int argc )
@@ -199,6 +203,34 @@ inline std::string ToLower( const std::string &str )
 	return lower;
 }
 
+inline std::string GetFileHeader( const std::string & fileName )
+{
+	unsigned int pathEnd = -1 , extensionBegin = -1;
+	for( unsigned int i=0 ; i<fileName.length() ; i++ )
+	{
+		if( fileName[i]==std::filesystem::path::preferred_separator ) pathEnd = i;
+		if( fileName[i]=='.' ) extensionBegin = i;
+	}
+	if( pathEnd==-1 )
+	{
+		if( extensionBegin==-1 ) return fileName;
+		else return fileName.substr( 0 , extensionBegin );
+	}
+	else
+	{
+		if( extensionBegin==-1 || extensionBegin<pathEnd+1 ) return fileName.substr( pathEnd+1 );
+		else return fileName.substr( pathEnd+1 , extensionBegin-pathEnd-1 );
+	}
+}
+
+inline std::string GetFilePath( const std::string & fileName )
+{
+	unsigned int pathEnd = -1;
+	for( unsigned int i=0 ; i<fileName.length() ; i++ ) if( fileName[i]==std::filesystem::path::preferred_separator ) pathEnd = i;
+	if( pathEnd==-1 ) return ".";
+	else return fileName.substr( 0 , pathEnd-1 );
+}
+
 inline std::string GetFileExtension( const std::string &fileName )
 {
 	std::string ext;
@@ -236,4 +268,13 @@ inline std::vector< std::string > ReadLines( const std::string &fileName )
 	std::string line;
 	while( std::getline( istream , line ) ) lines.push_back( line );
 	return lines;
+}
+
+inline std::vector< std::string > Tokenize( const std::string & str , char delim )
+{
+	std::vector< std::string > tokens;
+	std::string token;
+	std::stringstream sStream( str );
+	while( std::getline( sStream , token , delim ) ) tokens.push_back( token );
+	return tokens;
 }

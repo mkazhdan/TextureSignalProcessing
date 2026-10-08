@@ -150,6 +150,7 @@ template<> inline double Matrix< double , 3 , 3 >::determinant( void ) const
 		coords[1][0]*( coords[2][1]*coords[0][2] - coords[0][1]*coords[2][2] ) +
 		coords[2][0]*( coords[0][1]*coords[1][2] - coords[0][2]*coords[1][1] ) ;
 }
+
 template< class Real , int Dim >
 Real Matrix< Real , Dim , Dim >::subDeterminant( int c , int r ) const
 {
@@ -166,6 +167,13 @@ Real Matrix< Real , Dim , Dim >::subDeterminant( int c , int r ) const
 		ii++;
 	}
 	return Real( temp.determinant() );
+}
+
+template< class Real , int Dim >
+Real Matrix< Real , Dim , Dim >::cofactor( int c , int r ) const
+{
+	Real subD = subDeterminant(c,r);
+	return (c+r)&1 ? -subD : subD;
 }
 
 template< class Real , int Dim >
@@ -274,7 +282,7 @@ Matrix< Real , Dim , Dim > Matrix< Real , Dim , Dim >::inverse( void ) const
 }
 
 template< class Real , int Dim >
-Matrix< Real , Dim , Dim > Matrix< Real , Dim , Dim >::inverse( bool& success ) const
+Matrix< Real , Dim , Dim > Matrix< Real , Dim , Dim >::inverse( bool & success ) const
 {
 	// Gaussian Elimination
 	Matrix xForm , iXForm , temp;
@@ -303,7 +311,7 @@ Matrix< Real , Dim , Dim > Matrix< Real , Dim , Dim >::inverse( bool& success ) 
 	return iXForm;
 }
 template< >
-inline Matrix< float , 2 , 2 > Matrix< float , 2 , 2 >::inverse( bool& success ) const
+inline Matrix< float , 2 , 2 > Matrix< float , 2 , 2 >::inverse( bool & success ) const
 {
 	Matrix iXForm;
 	float det = ( coords[0][0]*coords[1][1]-coords[0][1]*coords[1][0] );
@@ -329,6 +337,22 @@ inline Matrix< double , 2 , 2 > Matrix< double , 2 , 2 >::inverse( bool& success
 	iXForm.coords[1][0] = -coords[1][0] * d;
 	success = true;
 	return iXForm;
+}
+
+template< typename Real , int Dim >
+inline Matrix< Real , Dim , Dim > Matrix< Real , Dim , Dim >::adjugate( void ) const
+{
+	Matrix< Real , Dim , Dim > adj;
+	if      constexpr( Dim==1 ) adj(0,0) = 1;
+	else if constexpr( Dim==2 )
+	{
+		adj(0,0) = coords[1][1];
+		adj(1,1) = coords[0][0];
+		adj(0,1) = -coords[0][1];
+		adj(1,0) = -coords[1][0];
+	}
+	else for( int i=0 ; i<Dim ; i++ ) for( unsigned int j=0 ; j<Dim ; j++ ) adj(i,j) = cofactor(j,i);
+	return adj;
 }
 
 template< class Real , int Dim >
@@ -393,22 +417,30 @@ Polynomial::Polynomial< 1 , Dim , Real , Real > Matrix< Real , Dim , Dim >::char
 }
 
 
-template<class Real,int Dim>
+template< class Real , int Dim >
 void Matrix< Real , Dim , Dim >::Multiply( const Matrix< Real , Dim , Dim > &m )
 {
-	Matrix temp=*this;
-	for(int i=0;i<Dim;i++)
-		for(int j=0;j<Dim;j++)
-		{
-			this->coords[i][j]=0;
-			for(int k=0;k<Dim;k++)	this->coords[i][j]+=temp.coords[k][j]*m.coords[i][k];
-		}
+	Matrix temp =* this;
+	for( unsigned int i=0 ; i<Dim ; i++ ) for( unsigned int j=0 ; j<Dim ; j++ )
+	{
+		coords[i][j] = {};
+		for( unsigned int k=0 ; k<Dim ; k++ ) coords[i][j] += temp.coords[k][j] * m.coords[i][k];
+	}
 }
 template<class Real,int Dim>
 void Matrix< Real , Dim , Dim >::SetIdentity(void)
 {
+#if 1 // NEW_CODE
+	if constexpr( std::is_arithmetic_v< Real > )
+	{
+		memset(this->coords,0,sizeof(Real)*Dim*Dim);
+		for(int i=0;i<Dim;i++)	this->coords[i][i]=1;
+	}
+	else MK_THROW( "Cannot assign Identity with non-pod coefficient type" );
+#else // !NEW_CODE
 	memset(this->coords,0,sizeof(Real)*Dim*Dim);
 	for(int i=0;i<Dim;i++)	this->coords[i][i]=1;
+#endif // NEW_CODE
 }
 template<class Real,int Dim>
 template<class Real2>
@@ -749,7 +781,11 @@ void Simplex< Real , Dim , K >::split( const Real values[K+1] , std::vector< Sim
 
 template< unsigned int K , typename Index >
 template< unsigned int _K , typename FaceFunctor /* = std::function< void ( SimplexIndex< _K , Index > )*/ >
+#if 0 // NEW_CODE
+void SimplexIndex< K , Index >::ProcessFaces( const FaceFunctor & F )
+#else // !NEW_CODE
 void SimplexIndex< K , Index >::ProcessFaces( FaceFunctor F )
+#endif // NEW_CODE
 {
 	SimplexIndex< K , Index > si;
 	for( unsigned int k=0 ; k<=K ; k++ ) si[k] = k;
@@ -758,7 +794,11 @@ void SimplexIndex< K , Index >::ProcessFaces( FaceFunctor F )
 
 template< unsigned int K , typename Index >
 template< unsigned int _K , typename FaceFunctor /* = std::function< void ( SimplexIndex< _K , Index > )*/ >
+#if 0 // NEW_CODE
+void SimplexIndex< K , Index >::processFaces( const FaceFunctor & F ) const
+#else // !NEW_CODE
 void SimplexIndex< K , Index >::processFaces( FaceFunctor F ) const
+#endif // NEW_CODE
 {
 	static_assert( _K<=K , "[ERROR] Face dimension too high" );
 	if constexpr( K==_K ) F( *this );
@@ -767,7 +807,11 @@ void SimplexIndex< K , Index >::processFaces( FaceFunctor F ) const
 
 template< unsigned int K , typename Index >
 template< unsigned int _K , typename ... UInts , typename FaceFunctor /* = std::function< void ( SimplexIndex< _K , Index > )*/ >
+#if 0 // NEW_CODE
+void SimplexIndex< K , Index >::_processFaces( const FaceFunctor & F , unsigned int faceIndex , UInts ... faceIndices ) const
+#else // !NEW_CODE
 void SimplexIndex< K , Index >::_processFaces( FaceFunctor F , unsigned int faceIndex , UInts ... faceIndices ) const
+#endif // NEW_CODE
 {
 	if constexpr( K-_K==sizeof...(UInts)+1 ) F( face( faceIndex , faceIndices... ) );
 	else for( unsigned int f=0 ; f<faceIndex ; f++ ) _processFaces< _K >( F , f , faceIndex , faceIndices ... );
