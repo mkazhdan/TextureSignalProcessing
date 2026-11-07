@@ -1328,7 +1328,9 @@ void Stitching< PreReal , Real , TextureBitDepth >::Init( void )
 	{
 		padding = Padding::Init( textureWidth , textureHeight , mesh.texture.vertices , DetailVerbose.set );
 		padding.pad( textureWidth , textureHeight , mesh.texture.vertices );
-		if( inputMode==MULTIPLE_INPUT_MODE ) for( int i=0 ; i<numTextures ; i++ ) padding.pad( inputTextures[i] ) , padding.pad( inputTexelConfidence[i] );
+		// The per-cell confidences are padded too: the system is built at the padded size, and
+		// unpadded they were read past their end whenever padding was applied.
+		if( inputMode==MULTIPLE_INPUT_MODE ) for( int i=0 ; i<numTextures ; i++ ) padding.pad( inputTextures[i] ) , padding.pad( inputTexelConfidence[i] ) , padding.pad( inputCellConfidence[i] );
 		else padding.pad( inputComposition ) , padding.pad( inputMask );
 		textureWidth  += padding.width();
 		textureHeight += padding.height();
