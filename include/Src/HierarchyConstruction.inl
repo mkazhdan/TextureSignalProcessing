@@ -165,38 +165,32 @@ void InitializeGridChartsActiveNodes
 
 	// Set the texel nodes
 	{
+		// A texel can belong to several triangles. Assign ownership in triangle order
+		// so its barycentric coordinates do not depend on the last worker to finish.
 		// Mark all nodes containing a triangle in their support
-		ThreadPool::ParallelFor
-		(
-			0 , atlasChart.numTriangles() ,
-			[&]( size_t t )
-			{
-				Simplex< double , 2 , 2 > simplex = GetTriangle( ChartMeshTriangleIndex(t) );
-				auto Kernel = [&]( Index I )
-					{
-						SetAtomic( texelType(I) , TexelType::BoundarySupportedAndUncovered );
-						SetAtomic( chartTriangleID(I) , ChartMeshTriangleIndex(t) );
-					};
-				// Process texels whose support overlaps a triangle
-				Rasterizer2D::RasterizeSupports< false , false >( simplex , Kernel , nodeRange );
-			}
-		);
+		for( size_t t=0 ; t<atlasChart.numTriangles() ; t++ )
+		{
+			Simplex< double , 2 , 2 > simplex = GetTriangle( ChartMeshTriangleIndex(t) );
+			auto Kernel = [&]( Index I )
+				{
+					texelType(I) = TexelType::BoundarySupportedAndUncovered;
+					chartTriangleID(I) = ChartMeshTriangleIndex(t);
+				};
+			// Process texels whose support overlaps a triangle
+			Rasterizer2D::RasterizeSupports< false , false >( simplex , Kernel , nodeRange );
+		}
 
 		// Over-write the node designation for nodes covered by a triangle
-		ThreadPool::ParallelFor
-		(
-			0 , atlasChart.numTriangles() ,
-			[&]( size_t t )
-			{
-				auto Kernel = [&]( Index I )
-					{
-						SetAtomic( texelType(I) , TexelType::BoundarySupportedAndCovered );
-						SetAtomic( chartTriangleID(I) , ChartMeshTriangleIndex(t) );
-					};
-				// Process texel nodes covered by a triangle
-				Rasterizer2D::RasterizeNodes< false >( GetTriangle( ChartMeshTriangleIndex(t) ) , Kernel , nodeRange );
-			}
-		);
+		for( size_t t=0 ; t<atlasChart.numTriangles() ; t++ )
+		{
+			auto Kernel = [&]( Index I )
+				{
+					texelType(I) = TexelType::BoundarySupportedAndCovered;
+					chartTriangleID(I) = ChartMeshTriangleIndex(t);
+				};
+			// Process texel nodes covered by a triangle
+			Rasterizer2D::RasterizeNodes< false >( GetTriangle( ChartMeshTriangleIndex(t) ) , Kernel , nodeRange );
+		}
 
 		// Over-write the node designation for nodes whose support is entirely interior
 		{

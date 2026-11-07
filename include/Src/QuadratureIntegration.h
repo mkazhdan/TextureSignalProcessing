@@ -311,6 +311,8 @@ namespace MishaK
 					return simplex;
 				};
 
+			// These per-worker sample lists are merged in worker order below. Static
+			// assignment makes that order repeatable for a fixed worker count.
 			std::vector< std::vector< std::vector< typename ElementSamples::Bilinear > > > _bilinear( ThreadPool::NumThreads() );
 			std::vector< std::vector< typename ElementSamples::Quadratic > > _quadratic( ThreadPool::NumThreads() );
 			for( unsigned int i=0 ; i<ThreadPool::NumThreads() ; i++ ) _bilinear[i].resize( elementSamples.bilinear.size() );
@@ -519,6 +521,7 @@ namespace MishaK
 						};
 					Rasterizer2D::RasterizeSupports< true , true >( GetSimplex( static_cast< unsigned int >(t) ) , Kernel , cellRange );
 				}
+				, ThreadPool::NumThreads() , ThreadPool::ParallelizationType , ThreadPool::STATIC
 			);
 
 			for( unsigned int i=0 ; i<elementSamples.bilinear.size() ; i++ )

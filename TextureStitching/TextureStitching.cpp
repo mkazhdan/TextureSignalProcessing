@@ -486,15 +486,13 @@ void Stitching< PreReal , Real , TextureBitDepth >::UpdateFilteredColorTexture( 
 template< typename PreReal , typename Real , unsigned int TextureBitDepth >
 void Stitching< PreReal , Real , TextureBitDepth >::UpdateFilteredTexture( const std::vector< Point3D< Real > > &solution )
 {
-	ThreadPool::ParallelFor
-		(
-			0 , textureNodes.size() ,
-			[&]( size_t i )
-			{
-				int ci = textureNodes[i].ci , cj = textureNodes[i].cj;
-				filteredTexture(ci,cj) = solution[i];
-			}
-		);
+	// Distinct chart nodes can occupy the same pixel. Scatter in node order so
+	// the last node wins consistently, without concurrent writes to one color.
+	for( size_t i=0 ; i<textureNodes.size() ; i++ )
+	{
+		int ci = textureNodes[i].ci , cj = textureNodes[i].cj;
+		filteredTexture(ci,cj) = solution[i];
+	}
 }
 
 #ifdef NO_OPEN_GL_VISUALIZATION
