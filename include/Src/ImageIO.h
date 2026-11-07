@@ -180,6 +180,36 @@ namespace MishaK
 			delete[] pixels;
 		}
 
+		// The same, with the bit depth as a run-time value. A caller whose pixel type does not
+		// depend on the bit depth (e.g. Point3D< float >) can then keep it out of its own
+		// template parameters, so that only this dispatch is compiled once per bit depth,
+		// not the whole caller.
+		template< typename Data >
+		void WriteImage( const RegularGrid< 2 , Data > &image , std::string fileName , unsigned int bitDepth )
+		{
+			switch( bitDepth )
+			{
+			case  8: return WriteImage<  8 >( image , fileName );
+			case 16: return WriteImage< 16 >( image , fileName );
+			case 32: return WriteImage< 32 >( image , fileName );
+			case 64: return WriteImage< 64 >( image , fileName );
+			default: MK_THROW( "Only bit depths of 8, 16, 32, and 64 supported: " , bitDepth );
+			}
+		}
+
+		template< typename Data >
+		void ReadImage( RegularGrid< 2 , Data > &image , std::string fileName , unsigned int bitDepth )
+		{
+			switch( bitDepth )
+			{
+			case  8: return ReadImage<  8 >( image , fileName );
+			case 16: return ReadImage< 16 >( image , fileName );
+			case 32: return ReadImage< 32 >( image , fileName );
+			case 64: return ReadImage< 64 >( image , fileName );
+			default: MK_THROW( "Only bit depths of 8, 16, 32, and 64 supported: " , bitDepth );
+			}
+		}
+
 		void GetImageInfo( std::string fileName , unsigned int & width , unsigned int & height , unsigned int & channels , unsigned int & bitDepth )
 		{
 			std::string ext = ToLower( GetFileExtension( fileName ) );
