@@ -146,8 +146,20 @@ namespace MishaK
 			ChartMeshVertexIndex atlasVertexIndices[2]
 		)
 		{
+			// ClipPartiallyIndexedPolygonToIndexedTriangle clips against three edges in turn, and
+			// an earlier edge can leave nothing; the reads of the last two vertices below would
+			// then index before the start of the arrays. Fewer than two vertices have no area.
+			if( polygon.vertices.size()<2 )
+			{
+				polygon.vertices.clear();
+				polygon.vertexIndices.clear();
+				polygon.atlasEdgeIndices.clear();
+				polygon.atlasVertexParentEdge.clear();
+				return;
+			}
+
 			std::vector< Point2D< GeometryReal > > outputVertices;
-			std::vector< ChartMeshVertexIndex > outputVertexIndices; 
+			std::vector< ChartMeshVertexIndex > outputVertexIndices;
 			std::vector< AtlasMeshEdgeIndex > outputEdgeIndices;
 			std::vector< AtlasMeshEdgeIndex > outputParentVertexEdgeIndices;
 			outputVertices.reserve( polygon.vertices.size()+3 );

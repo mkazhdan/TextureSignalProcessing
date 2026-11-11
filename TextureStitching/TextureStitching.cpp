@@ -256,10 +256,13 @@ RegularGrid< 2 , unsigned int > SquareDistanceToTextureBoundary( unsigned int wi
 	return d2;
 }
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth >
+template< typename PreReal , typename Real >
 class Stitching
 {
 public:
+	// A run-time value rather than a template parameter: only image reading and writing
+	// depend on it, and as a template parameter it compiled the whole class once per bit depth.
+	static unsigned int textureBitDepth;
 	static int inputMode;
 	static TexturedTriangleMesh< PreReal > mesh;
 	static int textureWidth;
@@ -391,79 +394,80 @@ public:
 
 #ifdef NO_OPEN_GL_VISUALIZATION
 #else // !NO_OPEN_GL_VISUALIZATION
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > char															Stitching< PreReal , Real , TextureBitDepth >::referenceTextureStr[1024];
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > char															Stitching< PreReal , Real , TextureBitDepth >::gradientFittingStr[1024];
+template< typename PreReal , typename Real > char															Stitching< PreReal , Real >::referenceTextureStr[1024];
+template< typename PreReal , typename Real > char															Stitching< PreReal , Real >::gradientFittingStr[1024];
 #endif // NO_OPEN_GL_VISUALIZATION
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > int																Stitching< PreReal , Real , TextureBitDepth >::inputMode;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > TexturedTriangleMesh< PreReal >									Stitching< PreReal , Real , TextureBitDepth >::mesh;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > int																Stitching< PreReal , Real , TextureBitDepth >::textureWidth;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > int																Stitching< PreReal , Real , TextureBitDepth >::textureHeight;
+template< typename PreReal , typename Real > unsigned int														Stitching< PreReal , Real >::textureBitDepth = 8;
+template< typename PreReal , typename Real > int																Stitching< PreReal , Real >::inputMode;
+template< typename PreReal , typename Real > TexturedTriangleMesh< PreReal >									Stitching< PreReal , Real >::mesh;
+template< typename PreReal , typename Real > int																Stitching< PreReal , Real >::textureWidth;
+template< typename PreReal , typename Real > int																Stitching< PreReal , Real >::textureHeight;
 #ifdef NO_OPEN_GL_VISUALIZATION
 #else // !NO_OPEN_GL_VISUALIZATION
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > StitchingVisualization											Stitching< PreReal , Real , TextureBitDepth >::visualization;
+template< typename PreReal , typename Real > StitchingVisualization											Stitching< PreReal , Real >::visualization;
 #endif // NO_OPEN_GL_VISUALIZATION
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > SparseMatrix< Real , int >										Stitching< PreReal , Real , TextureBitDepth >::mass;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > SparseMatrix< Real , int >										Stitching< PreReal , Real , TextureBitDepth >::stiffness;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > SparseMatrix< Real , int >										Stitching< PreReal , Real , TextureBitDepth >::stitchingMatrix;
+template< typename PreReal , typename Real > SparseMatrix< Real , int >										Stitching< PreReal , Real >::mass;
+template< typename PreReal , typename Real > SparseMatrix< Real , int >										Stitching< PreReal , Real >::stiffness;
+template< typename PreReal , typename Real > SparseMatrix< Real , int >										Stitching< PreReal , Real >::stitchingMatrix;
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > Real															Stitching< PreReal , Real , TextureBitDepth >::gradientFittingWeight;
+template< typename PreReal , typename Real > Real															Stitching< PreReal , Real >::gradientFittingWeight;
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< TextureNodeInfo< PreReal > >						Stitching< PreReal , Real , TextureBitDepth >::textureNodes;
+template< typename PreReal , typename Real > std::vector< TextureNodeInfo< PreReal > >						Stitching< PreReal , Real >::textureNodes;
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > int																Stitching< PreReal , Real , TextureBitDepth >::steps;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > char															Stitching< PreReal , Real , TextureBitDepth >::stepsString[1024];
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > unsigned int													Stitching< PreReal , Real , TextureBitDepth >::levels;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > HierarchicalSystem< PreReal , Real >							Stitching< PreReal , Real , TextureBitDepth >::hierarchy;
+template< typename PreReal , typename Real > int																Stitching< PreReal , Real >::steps;
+template< typename PreReal , typename Real > char															Stitching< PreReal , Real >::stepsString[1024];
+template< typename PreReal , typename Real > unsigned int													Stitching< PreReal , Real >::levels;
+template< typename PreReal , typename Real > HierarchicalSystem< PreReal , Real >							Stitching< PreReal , Real >::hierarchy;
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > bool															Stitching< PreReal , Real , TextureBitDepth >::rhsNeedsUpdating = false;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > bool															Stitching< PreReal , Real , TextureBitDepth >::positiveModulation = true;
+template< typename PreReal , typename Real > bool															Stitching< PreReal , Real >::rhsNeedsUpdating = false;
+template< typename PreReal , typename Real > bool															Stitching< PreReal , Real >::positiveModulation = true;
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > RegularGrid< 2 , Point3D< Real > >								Stitching< PreReal , Real , TextureBitDepth >::filteredTexture;
+template< typename PreReal , typename Real > RegularGrid< 2 , Point3D< Real > >								Stitching< PreReal , Real >::filteredTexture;
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > RegularGrid< 2 , int >										    Stitching< PreReal , Real , TextureBitDepth >::inputMask;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > RegularGrid< 2 , Point3D< Real > >								Stitching< PreReal , Real , TextureBitDepth >::lowFrequencyTexture;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > RegularGrid< 2 , Point3D< Real > >								Stitching< PreReal , Real , TextureBitDepth >::inputComposition;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > RegularGrid< 2 , Point3D< Real > >								Stitching< PreReal , Real , TextureBitDepth >::inputColorMask;
+template< typename PreReal , typename Real > RegularGrid< 2 , int >										    Stitching< PreReal , Real >::inputMask;
+template< typename PreReal , typename Real > RegularGrid< 2 , Point3D< Real > >								Stitching< PreReal , Real >::lowFrequencyTexture;
+template< typename PreReal , typename Real > RegularGrid< 2 , Point3D< Real > >								Stitching< PreReal , Real >::inputComposition;
+template< typename PreReal , typename Real > RegularGrid< 2 , Point3D< Real > >								Stitching< PreReal , Real >::inputColorMask;
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > int																Stitching< PreReal , Real , TextureBitDepth >::numTextures;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< RegularGrid< 2 , Real > >							Stitching< PreReal , Real , TextureBitDepth >::inputTexelConfidence;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< RegularGrid< 2 , Real > >							Stitching< PreReal , Real , TextureBitDepth >::inputCellConfidence;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< RegularGrid< 2 , Point3D< Real > > >				Stitching< PreReal , Real , TextureBitDepth >::inputTextures;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Point3D< Real > >									Stitching< PreReal , Real , TextureBitDepth >::texelMass;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Point3D< Real > >									Stitching< PreReal , Real , TextureBitDepth >::texelDivergence;
+template< typename PreReal , typename Real > int																Stitching< PreReal , Real >::numTextures;
+template< typename PreReal , typename Real > std::vector< RegularGrid< 2 , Real > >							Stitching< PreReal , Real >::inputTexelConfidence;
+template< typename PreReal , typename Real > std::vector< RegularGrid< 2 , Real > >							Stitching< PreReal , Real >::inputCellConfidence;
+template< typename PreReal , typename Real > std::vector< RegularGrid< 2 , Point3D< Real > > >				Stitching< PreReal , Real >::inputTextures;
+template< typename PreReal , typename Real > std::vector< Point3D< Real > >									Stitching< PreReal , Real >::texelMass;
+template< typename PreReal , typename Real > std::vector< Point3D< Real > >									Stitching< PreReal , Real >::texelDivergence;
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< SystemCoefficients< Real > >						Stitching< PreReal , Real , TextureBitDepth >::multigridStitchingCoefficients;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< MultigridLevelVariables< Point3D< Real > > >		Stitching< PreReal , Real , TextureBitDepth >::multigridStitchingVariables;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< MultigridLevelIndices< Real > >					Stitching< PreReal , Real , TextureBitDepth >::multigridIndices;
+template< typename PreReal , typename Real > std::vector< SystemCoefficients< Real > >						Stitching< PreReal , Real >::multigridStitchingCoefficients;
+template< typename PreReal , typename Real > std::vector< MultigridLevelVariables< Point3D< Real > > >		Stitching< PreReal , Real >::multigridStitchingVariables;
+template< typename PreReal , typename Real > std::vector< MultigridLevelIndices< Real > >					Stitching< PreReal , Real >::multigridIndices;
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > VCycleSolvers< typename Stitching< PreReal , Real , TextureBitDepth >::EigenSolver >		Stitching< PreReal , Real , TextureBitDepth >::vCycleSolvers;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > EigenSolverWrapper< typename Stitching< PreReal , Real , TextureBitDepth >::EigenSolver >	Stitching< PreReal , Real , TextureBitDepth >::directSolver;
+template< typename PreReal , typename Real > VCycleSolvers< typename Stitching< PreReal , Real >::EigenSolver >		Stitching< PreReal , Real >::vCycleSolvers;
+template< typename PreReal , typename Real > EigenSolverWrapper< typename Stitching< PreReal , Real >::EigenSolver >	Stitching< PreReal , Real >::directSolver;
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Point3D< float > >									Stitching< PreReal , Real , TextureBitDepth >::textureNodePositions;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > std::vector< Point3D< float > >									Stitching< PreReal , Real , TextureBitDepth >::textureEdgePositions;
+template< typename PreReal , typename Real > std::vector< Point3D< float > >									Stitching< PreReal , Real >::textureNodePositions;
+template< typename PreReal , typename Real > std::vector< Point3D< float > >									Stitching< PreReal , Real >::textureEdgePositions;
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > Padding															Stitching< PreReal , Real , TextureBitDepth >::padding;
+template< typename PreReal , typename Real > Padding															Stitching< PreReal , Real >::padding;
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > MassAndStiffnessOperators< Real >								Stitching< PreReal , Real , TextureBitDepth >::massAndStiffnessOperators;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > ScalarIntegrator< Real >										Stitching< PreReal , Real , TextureBitDepth >::scalarIntegrator;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > GradientIntegrator< Real >										Stitching< PreReal , Real , TextureBitDepth >::gradientIntegrator;
+template< typename PreReal , typename Real > MassAndStiffnessOperators< Real >								Stitching< PreReal , Real >::massAndStiffnessOperators;
+template< typename PreReal , typename Real > ScalarIntegrator< Real >										Stitching< PreReal , Real >::scalarIntegrator;
+template< typename PreReal , typename Real > GradientIntegrator< Real >										Stitching< PreReal , Real >::gradientIntegrator;
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > unsigned int													Stitching< PreReal , Real , TextureBitDepth >::updateCount = static_cast< unsigned int >(-1);
+template< typename PreReal , typename Real > unsigned int													Stitching< PreReal , Real >::updateCount = static_cast< unsigned int >(-1);
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth >  DivergenceOperator< Real >										Stitching< PreReal , Real , TextureBitDepth >::divergenceOperator;
+template< typename PreReal , typename Real >  DivergenceOperator< Real >										Stitching< PreReal , Real >::divergenceOperator;
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth >  std::vector< bool >											Stitching< PreReal , Real , TextureBitDepth >::unobservedTexel;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth >  std::vector< Point3D< Real > >									Stitching< PreReal , Real , TextureBitDepth >::texelValues;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth >  std::vector< Point3D< Real > >									Stitching< PreReal , Real , TextureBitDepth >::edgeValues;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth >  std::vector< std::vector< Point3D< Real > > >					Stitching< PreReal , Real , TextureBitDepth >::partialTexelValues;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth >  std::vector< std::vector< Point3D< Real > > >					Stitching< PreReal , Real , TextureBitDepth >::partialEdgeValues;
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > int																Stitching< PreReal , Real , TextureBitDepth >::textureIndex = 0;
+template< typename PreReal , typename Real >  std::vector< bool >											Stitching< PreReal , Real >::unobservedTexel;
+template< typename PreReal , typename Real >  std::vector< Point3D< Real > >									Stitching< PreReal , Real >::texelValues;
+template< typename PreReal , typename Real >  std::vector< Point3D< Real > >									Stitching< PreReal , Real >::edgeValues;
+template< typename PreReal , typename Real >  std::vector< std::vector< Point3D< Real > > >					Stitching< PreReal , Real >::partialTexelValues;
+template< typename PreReal , typename Real >  std::vector< std::vector< Point3D< Real > > >					Stitching< PreReal , Real >::partialEdgeValues;
+template< typename PreReal , typename Real > int																Stitching< PreReal , Real >::textureIndex = 0;
 
 #ifdef NO_OPEN_GL_VISUALIZATION
 #else // !NO_OPEN_GL_VISUALIZATION
-template< typename PreReal , typename Real , unsigned int TextureBitDepth >
-void Stitching< PreReal , Real , TextureBitDepth >::UpdateFilteredColorTexture( const std::vector< Point3D< Real > > &solution )
+template< typename PreReal , typename Real >
+void Stitching< PreReal , Real >::UpdateFilteredColorTexture( const std::vector< Point3D< Real > > &solution )
 {
 	ThreadPool::ParallelFor
 		(
@@ -483,33 +487,31 @@ void Stitching< PreReal , Real , TextureBitDepth >::UpdateFilteredColorTexture( 
 }
 #endif // NO_OPEN_GL_VISUALIZATION
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth >
-void Stitching< PreReal , Real , TextureBitDepth >::UpdateFilteredTexture( const std::vector< Point3D< Real > > &solution )
+template< typename PreReal , typename Real >
+void Stitching< PreReal , Real >::UpdateFilteredTexture( const std::vector< Point3D< Real > > &solution )
 {
-	ThreadPool::ParallelFor
-		(
-			0 , textureNodes.size() ,
-			[&]( size_t i )
-			{
-				int ci = textureNodes[i].ci , cj = textureNodes[i].cj;
-				filteredTexture(ci,cj) = solution[i];
-			}
-		);
+	// Distinct chart nodes can occupy the same pixel. Scatter in node order so
+	// the last node wins consistently, without concurrent writes to one color.
+	for( size_t i=0 ; i<textureNodes.size() ; i++ )
+	{
+		int ci = textureNodes[i].ci , cj = textureNodes[i].cj;
+		filteredTexture(ci,cj) = solution[i];
+	}
 }
 
 #ifdef NO_OPEN_GL_VISUALIZATION
-template< typename PreReal , typename Real , unsigned int TextureBitDepth >
-void Stitching< PreReal , Real , TextureBitDepth >::WriteTexture( const char *fileName )
+template< typename PreReal , typename Real >
+void Stitching< PreReal , Real >::WriteTexture( const char *fileName )
 {
 	UpdateFilteredTexture( multigridStitchingVariables[0].x );
 	RegularGrid< 2 , Point3D< Real > > outputTexture = filteredTexture;
 	padding.unpad( outputTexture );
-	WriteImage< TextureBitDepth >( outputTexture , fileName );
+	WriteImage( outputTexture , fileName , textureBitDepth );
 }
 
 #else // !NO_OPEN_GL_VISUALIZATION
-template< typename PreReal , typename Real , unsigned int TextureBitDepth >
-void Stitching< PreReal , Real , TextureBitDepth >::Idle( void )
+template< typename PreReal , typename Real >
+void Stitching< PreReal , Real >::Idle( void )
 {
 	visualization.Idle();
 
@@ -544,8 +546,8 @@ void Stitching< PreReal , Real , TextureBitDepth >::Idle( void )
 	glutPostRedisplay();
 }
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth >
-void Stitching< PreReal , Real , TextureBitDepth >::MouseFunc( int button , int state , int x , int y )
+template< typename PreReal , typename Real >
+void Stitching< PreReal , Real >::MouseFunc( int button , int state , int x , int y )
 {
 	visualization.newX = x; visualization.newY = y;
 	visualization.rotating = visualization.scaling = visualization.panning = false;
@@ -582,8 +584,8 @@ void Stitching< PreReal , Real , TextureBitDepth >::MouseFunc( int button , int 
 	glutPostRedisplay();
 }
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth >
-void Stitching< PreReal , Real , TextureBitDepth >::MotionFunc( int x , int y )
+template< typename PreReal , typename Real >
+void Stitching< PreReal , Real >::MotionFunc( int x , int y )
 {
 	if( visualization.isBrushActive )
 	{
@@ -621,19 +623,19 @@ void Stitching< PreReal , Real , TextureBitDepth >::MotionFunc( int x , int y )
 	glutPostRedisplay();
 }
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > void Stitching< PreReal , Real , TextureBitDepth >::ToggleMaskCallBack( Visualization * /*v*/ , const char * )
+template< typename PreReal , typename Real > void Stitching< PreReal , Real >::ToggleMaskCallBack( Visualization * /*v*/ , const char * )
 {
 	visualization.showMask = !visualization.showMask;
 	glutPostRedisplay();
 }
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > void Stitching< PreReal , Real , TextureBitDepth >::ToggleInputOutputCallBack( Visualization * /*v*/ , const char* )
+template< typename PreReal , typename Real > void Stitching< PreReal , Real >::ToggleInputOutputCallBack( Visualization * /*v*/ , const char* )
 {
 	visualization.showSource = !visualization.showSource;
 	glutPostRedisplay();
 }
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > void Stitching< PreReal , Real , TextureBitDepth >::ToggleForwardReferenceTextureCallBack( Visualization * /*v*/ , const char* )
+template< typename PreReal , typename Real > void Stitching< PreReal , Real >::ToggleForwardReferenceTextureCallBack( Visualization * /*v*/ , const char* )
 {
 	textureIndex = ( textureIndex+1 ) % numTextures;
 	visualization.referenceIndex = textureIndex;
@@ -641,7 +643,7 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth > void
 	glutPostRedisplay();
 }
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > void Stitching< PreReal , Real , TextureBitDepth >::ToggleBackwardReferenceTextureCallBack( Visualization * /*v*/ , const char* )
+template< typename PreReal , typename Real > void Stitching< PreReal , Real >::ToggleBackwardReferenceTextureCallBack( Visualization * /*v*/ , const char* )
 {
 	textureIndex = ( textureIndex+numTextures-1 ) % numTextures;
 	visualization.referenceIndex = textureIndex;
@@ -649,30 +651,30 @@ template< typename PreReal , typename Real , unsigned int TextureBitDepth > void
 	glutPostRedisplay();
 }
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth > void Stitching< PreReal , Real , TextureBitDepth >::ToggleUpdateCallBack( Visualization * /*v*/ , const char * )
+template< typename PreReal , typename Real > void Stitching< PreReal , Real >::ToggleUpdateCallBack( Visualization * /*v*/ , const char * )
 {
 	if( updateCount ) updateCount = 0;
 	else              updateCount = -1;
 }
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth >
-void Stitching< PreReal , Real , TextureBitDepth >::IncrementUpdateCallBack( Visualization * /*v*/ , const char * )
+template< typename PreReal , typename Real >
+void Stitching< PreReal , Real >::IncrementUpdateCallBack( Visualization * /*v*/ , const char * )
 {
 	if( updateCount<0 ) updateCount = 1;
 	else                updateCount++;
 }
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth >
-void Stitching< PreReal , Real , TextureBitDepth >::ExportTextureCallBack( Visualization * /*v*/ , const char *prompt )
+template< typename PreReal , typename Real >
+void Stitching< PreReal , Real >::ExportTextureCallBack( Visualization * /*v*/ , const char *prompt )
 {
 	UpdateFilteredTexture( multigridStitchingVariables[0].x );
 	RegularGrid< 2 , Point3D< Real > > outputTexture = filteredTexture;
 	padding.unpad( outputTexture );
-	WriteImage< TextureBitDepth >( outputTexture , prompt );
+	WriteImage( outputTexture , prompt , textureBitDepth );
 }
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth >
-void  Stitching< PreReal , Real , TextureBitDepth >::GradientFittingWeightCallBack( Visualization * /*v*/ , const char *prompt )
+template< typename PreReal , typename Real >
+void  Stitching< PreReal , Real >::GradientFittingWeightCallBack( Visualization * /*v*/ , const char *prompt )
 {
 	Miscellany::PerformanceMeter pMeter( '.' );
 
@@ -698,16 +700,16 @@ void  Stitching< PreReal , Real , TextureBitDepth >::GradientFittingWeightCallBa
 #endif // NO_OPEN_GL_VISUALIZATION
 
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth >
-void Stitching< PreReal , Real , TextureBitDepth >::ComputeExactSolution( bool verbose )
+template< typename PreReal , typename Real >
+void Stitching< PreReal , Real >::ComputeExactSolution( bool verbose )
 {
 	Miscellany::PerformanceMeter pMeter( '.' );
 	directSolver.solve( multigridStitchingVariables[0].x , multigridStitchingVariables[0].rhs );
 	if( verbose ) std::cout << pMeter( "Solved" ) << std::endl;
 }
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth >
-void Stitching< PreReal , Real , TextureBitDepth >::UpdateSolution( bool verbose , bool detailVerbose )
+template< typename PreReal , typename Real >
+void Stitching< PreReal , Real >::UpdateSolution( bool verbose , bool detailVerbose )
 {
 	Miscellany::PerformanceMeter pMeter( '.' );
 	if( rhsNeedsUpdating )
@@ -750,8 +752,8 @@ void Stitching< PreReal , Real , TextureBitDepth >::UpdateSolution( bool verbose
 	VCycle( multigridStitchingVariables , multigridStitchingCoefficients , multigridIndices , vCycleSolvers , 2 , verbose , detailVerbose );
 }
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth >
-void Stitching< PreReal , Real , TextureBitDepth >::InitializeSystem( int width , int height )
+template< typename PreReal , typename Real >
+void Stitching< PreReal , Real >::InitializeSystem( int width , int height )
 {
 	Miscellany::PerformanceMeter pMeter( '.' );
 
@@ -828,8 +830,8 @@ void Stitching< PreReal , Real , TextureBitDepth >::InitializeSystem( int width 
 	}
 }
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth >
-void Stitching< PreReal , Real , TextureBitDepth >::SetUpSystem( void )
+template< typename PreReal , typename Real >
+void Stitching< PreReal , Real >::SetUpSystem( void )
 {
 	texelMass.resize( textureNodes.size() );
 	texelDivergence.resize( textureNodes.size() );
@@ -881,16 +883,16 @@ void Stitching< PreReal , Real , TextureBitDepth >::SetUpSystem( void )
 	UpdateFilteredTexture( multigridStitchingVariables[0].x );
 }
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth >
-void Stitching< PreReal , Real , TextureBitDepth >::SolveSystem( void )
+template< typename PreReal , typename Real >
+void Stitching< PreReal , Real >::SolveSystem( void )
 {
 	if( UseDirectSolver.set ) ComputeExactSolution( Verbose.set );
 	else for( unsigned int i=0 ; i<OutputVCycles.value ; i++ ) VCycle( multigridStitchingVariables , multigridStitchingCoefficients , multigridIndices , vCycleSolvers , 2 , false , false );
 	UpdateFilteredTexture( multigridStitchingVariables[0].x );
 }
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth >
-RegularGrid< 2 , Point3D< unsigned char > > Stitching< PreReal , Real , TextureBitDepth >::GetChartMask( void )
+template< typename PreReal , typename Real >
+RegularGrid< 2 , Point3D< unsigned char > > Stitching< PreReal , Real >::GetChartMask( void )
 {
 	auto IsBlack = []( Point3D< unsigned char > c ){ return !c[0] && !c[1] && !c[2]; };
 
@@ -924,8 +926,8 @@ RegularGrid< 2 , Point3D< unsigned char > > Stitching< PreReal , Real , TextureB
 	return chartMask;
 }
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth >
-void Stitching< PreReal , Real , TextureBitDepth >::LoadTextures( void )
+template< typename PreReal , typename Real >
+void Stitching< PreReal , Real >::LoadTextures( void )
 {
 	if( inputMode==MULTIPLE_INPUT_MODE )
 	{
@@ -948,7 +950,7 @@ void Stitching< PreReal , Real , TextureBitDepth >::LoadTextures( void )
 				{
 					char textureName[256];
 					sprintf( textureName , In.values[1].c_str() , i );
-					ReadImage< TextureBitDepth >( inputTextures[i] , textureName );
+					ReadImage( inputTextures[i] , textureName , textureBitDepth );
 				}
 			);
 
@@ -957,14 +959,14 @@ void Stitching< PreReal , Real , TextureBitDepth >::LoadTextures( void )
 	}
 	else
 	{
-		ReadImage< TextureBitDepth >( inputComposition , In.values[1] );
+		ReadImage( inputComposition , In.values[1] , textureBitDepth );
 		textureWidth = inputComposition.res(0);
 		textureHeight = inputComposition.res(1);
 	}
 }
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth >
-void Stitching< PreReal , Real , TextureBitDepth >::LoadMasks( void )
+template< typename PreReal , typename Real >
+void Stitching< PreReal , Real >::LoadMasks( void )
 {
 	if( inputMode==MULTIPLE_INPUT_MODE )
 	{
@@ -1094,8 +1096,8 @@ void Stitching< PreReal , Real , TextureBitDepth >::LoadMasks( void )
 	}
 }
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth >
-void Stitching< PreReal , Real , TextureBitDepth >::ParseImages( void )
+template< typename PreReal , typename Real >
+void Stitching< PreReal , Real >::ParseImages( void )
 {
 	unsigned int numNodes = (unsigned int)textureNodes.size();
 	unsigned int numEdges = static_cast< unsigned int >( divergenceOperator.edges.size() );
@@ -1227,8 +1229,8 @@ void Stitching< PreReal , Real , TextureBitDepth >::ParseImages( void )
 
 #ifdef NO_OPEN_GL_VISUALIZATION
 #else // !NO_OPEN_GL_VISUALIZATION
-template< typename PreReal , typename Real , unsigned int TextureBitDepth >
-void Stitching< PreReal , Real , TextureBitDepth >::InitializeVisualization( void )
+template< typename PreReal , typename Real >
+void Stitching< PreReal , Real >::InitializeVisualization( void )
 {
 	sprintf( referenceTextureStr , "Reference Texture: %02d of %02d\n" , textureIndex,numTextures );
 	sprintf( gradientFittingStr , "Gradient fitting weight: %.2e\n" , gradientFittingWeight );
@@ -1301,15 +1303,15 @@ void Stitching< PreReal , Real , TextureBitDepth >::InitializeVisualization( voi
 }
 #endif // NO_OPEN_GL_VISUALIZATION
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth >
-void Stitching< PreReal , Real , TextureBitDepth >::Init( void )
+template< typename PreReal , typename Real >
+void Stitching< PreReal , Real >::Init( void )
 {
 	sprintf( stepsString , "Steps: 0" );
 	levels = std::max< unsigned int >( Levels.value , 1 );
 	gradientFittingWeight = GradientFittingWeight.value;
 
 	mesh.read( In.values[0] , DetailVerbose.set , CollapseEpsilon.value );
-	if( InputLowFrequency.set ) ReadImage< TextureBitDepth >( lowFrequencyTexture , InputLowFrequency.value );
+	if( InputLowFrequency.set ) ReadImage( lowFrequencyTexture , InputLowFrequency.value , textureBitDepth );
 
 	// Define centroid and scale for visualization
 	Point3D< PreReal > centroid = mesh.surface.centroid();
@@ -1328,7 +1330,9 @@ void Stitching< PreReal , Real , TextureBitDepth >::Init( void )
 	{
 		padding = Padding::Init( textureWidth , textureHeight , mesh.texture.vertices , DetailVerbose.set );
 		padding.pad( textureWidth , textureHeight , mesh.texture.vertices );
-		if( inputMode==MULTIPLE_INPUT_MODE ) for( int i=0 ; i<numTextures ; i++ ) padding.pad( inputTextures[i] ) , padding.pad( inputTexelConfidence[i] );
+		// The per-cell confidences are padded too: the system is built at the padded size, and
+		// unpadded they were read past their end whenever padding was applied.
+		if( inputMode==MULTIPLE_INPUT_MODE ) for( int i=0 ; i<numTextures ; i++ ) padding.pad( inputTextures[i] ) , padding.pad( inputTexelConfidence[i] ) , padding.pad( inputCellConfidence[i] );
 		else padding.pad( inputComposition ) , padding.pad( inputMask );
 		textureWidth  += padding.width();
 		textureHeight += padding.height();
@@ -1382,66 +1386,55 @@ void Stitching< PreReal , Real , TextureBitDepth >::Init( void )
 	}
 }
 
-template< typename PreReal , typename Real , unsigned int TextureBitDepth >
-void _main( int argc , char *argv[] )
+template< typename PreReal , typename Real >
+void _main( int argc , char *argv[] , unsigned int bitDepth )
 {
-	Stitching< PreReal , Real , TextureBitDepth >::inputMode = MultiInput.set ? MULTIPLE_INPUT_MODE : SINGLE_INPUT_MODE;
-	Stitching< PreReal , Real , TextureBitDepth >::updateCount = Run.set ? static_cast< unsigned int >(-1) : 0;
+	if( bitDepth!=8 && bitDepth!=16 && bitDepth!=32 && bitDepth!=64 ) MK_THROW( "Only bit depths of 8, 16, 32, and 64 supported: " , bitDepth );
+	Stitching< PreReal , Real >::textureBitDepth = bitDepth;
+	Stitching< PreReal , Real >::inputMode = MultiInput.set ? MULTIPLE_INPUT_MODE : SINGLE_INPUT_MODE;
+	Stitching< PreReal , Real >::updateCount = Run.set ? static_cast< unsigned int >(-1) : 0;
 
-	Stitching< PreReal , Real , TextureBitDepth >::LoadTextures();
-	Stitching< PreReal , Real , TextureBitDepth >::LoadMasks();
-	Stitching< PreReal , Real , TextureBitDepth >::Init();
-	Stitching< PreReal , Real , TextureBitDepth >::ParseImages();
-	Stitching< PreReal , Real , TextureBitDepth >::SetUpSystem();
+	Stitching< PreReal , Real >::LoadTextures();
+	Stitching< PreReal , Real >::LoadMasks();
+	Stitching< PreReal , Real >::Init();
+	Stitching< PreReal , Real >::ParseImages();
+	Stitching< PreReal , Real >::SetUpSystem();
 
 #ifdef NO_OPEN_GL_VISUALIZATION
-	Stitching< PreReal , Real , TextureBitDepth >::SolveSystem();
-	Stitching< PreReal , Real , TextureBitDepth >::WriteTexture( Output.value.c_str() );
+	Stitching< PreReal , Real >::SolveSystem();
+	Stitching< PreReal , Real >::WriteTexture( Output.value.c_str() );
 #else // !NO_OPEN_GL_VISUALIZATION
 	if( !Output.set )
 	{
 		glutInitDisplayMode( GLUT_RGB | GLUT_DOUBLE );
-		Stitching< PreReal , Real , TextureBitDepth >::visualization.visualizationMode = Stitching< PreReal , Real , TextureBitDepth >::inputMode;
-		Stitching< PreReal , Real , TextureBitDepth >::visualization.displayMode = SingleView.set ? ONE_REGION_DISPLAY : TWO_REGION_DISPLAY;
-		Stitching< PreReal , Real , TextureBitDepth >::visualization.screenWidth = SingleView.set ? 800 : 1600;
-		Stitching< PreReal , Real , TextureBitDepth >::visualization.screenHeight = 800;
-		Stitching< PreReal , Real , TextureBitDepth >::visualization.useNearestSampling = Nearest.set;
+		Stitching< PreReal , Real >::visualization.visualizationMode = Stitching< PreReal , Real >::inputMode;
+		Stitching< PreReal , Real >::visualization.displayMode = SingleView.set ? ONE_REGION_DISPLAY : TWO_REGION_DISPLAY;
+		Stitching< PreReal , Real >::visualization.screenWidth = SingleView.set ? 800 : 1600;
+		Stitching< PreReal , Real >::visualization.screenHeight = 800;
+		Stitching< PreReal , Real >::visualization.useNearestSampling = Nearest.set;
 
-		glutInitWindowSize( Stitching< PreReal , Real , TextureBitDepth >::visualization.screenWidth , Stitching< PreReal , Real , TextureBitDepth >::visualization.screenHeight );
+		glutInitWindowSize( Stitching< PreReal , Real >::visualization.screenWidth , Stitching< PreReal , Real >::visualization.screenHeight );
 		glutInit( &argc , argv );
 		char windowName[1024];
 		sprintf( windowName , "Stitching" );
 		glutCreateWindow( windowName );
 		if( glewInit()!=GLEW_OK ) MK_THROW( "glewInit failed" );
-		glutDisplayFunc ( Stitching< PreReal , Real , TextureBitDepth >::Display );
-		glutReshapeFunc ( Stitching< PreReal , Real , TextureBitDepth >::Reshape );
-		glutMouseFunc   ( Stitching< PreReal , Real , TextureBitDepth >::MouseFunc );
-		glutMotionFunc  ( Stitching< PreReal , Real , TextureBitDepth >::MotionFunc );
-		glutKeyboardFunc( Stitching< PreReal , Real , TextureBitDepth >::KeyboardFunc );
-		glutIdleFunc    ( Stitching< PreReal , Real , TextureBitDepth >::Idle );
-		if( CameraConfig.set ) Stitching< PreReal , Real , TextureBitDepth >::visualization.ReadSceneConfigurationCallBack( &Stitching< PreReal , Real , TextureBitDepth >::visualization , CameraConfig.value.c_str() );
-		Stitching< PreReal , Real , TextureBitDepth >::InitializeVisualization();
+		glutDisplayFunc ( Stitching< PreReal , Real >::Display );
+		glutReshapeFunc ( Stitching< PreReal , Real >::Reshape );
+		glutMouseFunc   ( Stitching< PreReal , Real >::MouseFunc );
+		glutMotionFunc  ( Stitching< PreReal , Real >::MotionFunc );
+		glutKeyboardFunc( Stitching< PreReal , Real >::KeyboardFunc );
+		glutIdleFunc    ( Stitching< PreReal , Real >::Idle );
+		if( CameraConfig.set ) Stitching< PreReal , Real >::visualization.ReadSceneConfigurationCallBack( &Stitching< PreReal , Real >::visualization , CameraConfig.value.c_str() );
+		Stitching< PreReal , Real >::InitializeVisualization();
 		glutMainLoop();
 	}
 	else
 	{
-		Stitching< PreReal , Real , TextureBitDepth >::SolveSystem();
-		Stitching< PreReal , Real , TextureBitDepth >::ExportTextureCallBack( &Stitching< PreReal , Real , TextureBitDepth >::visualization , Output.value.c_str() );
+		Stitching< PreReal , Real >::SolveSystem();
+		Stitching< PreReal , Real >::ExportTextureCallBack( &Stitching< PreReal , Real >::visualization , Output.value.c_str() );
 	}
 #endif // NO_OPEN_GL_VISUALIZATION
-}
-
-template< typename PreReal , typename Real >
-void _main( int argc , char *argv[] , unsigned int bitDepth )
-{
-	switch( bitDepth )
-	{
-	case  8: return _main< PreReal , Real ,  8 >( argc , argv );
-	case 16: return _main< PreReal , Real , 16 >( argc , argv );
-	case 32: return _main< PreReal , Real , 32 >( argc , argv );
-	case 64: return _main< PreReal , Real , 64 >( argc , argv );
-	default: MK_THROW( "Only bit depths of 8, 16, 32, and 64 supported: " , bitDepth );
-	}
 }
 
 

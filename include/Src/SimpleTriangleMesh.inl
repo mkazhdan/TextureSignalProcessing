@@ -129,7 +129,11 @@ std::vector< unsigned int > SimpleTriangleMesh< Real , Dim >::trianglesToCompone
 	for( unsigned int he=0 ; he<triangles.size()*3 ; he++ ) if( oppositeHalfEdges[he]!=-1 ) uf.merge( he/3 , oppositeHalfEdges[he]/3 );
 
 	std::vector< unsigned int > components( triangles.size() , static_cast< unsigned int >(-1) );
-	std::atomic< unsigned int > componentIndex = 0;
+	// Number roots in triangle order before distributing their labels in parallel.
+	// An atomic counter inside the workers makes chart ordering depend on scheduling,
+	// changing downstream boundary perturbations and the order of numerical assembly.
+	unsigned int componentIndex = 0;
+	for( size_t t=0 ; t<triangles.size() ; t++ ) if( uf.isRoot(t) ) components[t] = componentIndex++;
 	ThreadPool::ParallelFor
 		(
 			0 , triangles.size() ,
@@ -137,7 +141,7 @@ std::vector< unsigned int > SimpleTriangleMesh< Real , Dim >::trianglesToCompone
 			{
 				if( uf.isRoot(t) )
 				{
-					unsigned int idx = componentIndex++;
+					unsigned int idx = components[t];
 					uf.process( t , [&]( size_t t ){ components[t] = idx; } );
 				}
 			}

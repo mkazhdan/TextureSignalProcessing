@@ -1238,15 +1238,17 @@ void OperatorInitializer::_Initialize
 	std::vector< MassAndStiffnessCoefficient< MatrixReal > > boundaryBoundaryMassAndStiffness;
 	std::vector< MassAndStiffnessCoefficient< MatrixReal > > boundaryDeepMassAndStiffness;
 
-	std::vector< std::vector< MassAndStiffnessCoefficient< MatrixReal > > > _boundaryBoundaryMassAndStiffness( ThreadPool::NumThreads() );
-	std::vector< std::vector< MassAndStiffnessCoefficient< MatrixReal > > > _boundaryDeepMassAndStiffness    ( ThreadPool::NumThreads() );
-	std::vector< std::vector< Eigen::Triplet< MatrixReal > > > _boundaryDeepDivergenceTriplets            ( ThreadPool::NumThreads() );
-	std::vector< std::vector< Eigen::Triplet< MatrixReal > > > _boundaryBoundaryDivergenceTriplets        ( ThreadPool::NumThreads() );
+	// Collect by chart, not worker: merging must preserve the order of additions
+	// to shared boundary matrix entries regardless of dynamic scheduling.
+	std::vector< std::vector< MassAndStiffnessCoefficient< MatrixReal > > > _boundaryBoundaryMassAndStiffness( gridCharts.size() );
+	std::vector< std::vector< MassAndStiffnessCoefficient< MatrixReal > > > _boundaryDeepMassAndStiffness    ( gridCharts.size() );
+	std::vector< std::vector< Eigen::Triplet< MatrixReal > > > _boundaryDeepDivergenceTriplets            ( gridCharts.size() );
+	std::vector< std::vector< Eigen::Triplet< MatrixReal > > > _boundaryBoundaryDivergenceTriplets        ( gridCharts.size() );
 
 	ThreadPool::ParallelFor
 	(
 		0 , gridCharts.size() ,
-		[&]( unsigned int thread , size_t i )
+		[&]( size_t i )
 		{
 		_InitializeChart< Samples , SanityCheck >
 				(
@@ -1257,13 +1259,13 @@ void OperatorInitializer::_Initialize
 					fineBoundaryIndex ,
 					deepMassCoefficients ,
 					deepStiffnessCoefficients , 
-					_boundaryBoundaryMassAndStiffness[thread] ,
-					_boundaryDeepMassAndStiffness[thread] ,
+					_boundaryBoundaryMassAndStiffness[i] ,
+					_boundaryDeepMassAndStiffness[i] ,
 					computeDivergence ,
 					fineBoundaryEdgeIndex ,
 					coarseEdgeIndex ,
-					_boundaryDeepDivergenceTriplets[thread] ,
-					_boundaryBoundaryDivergenceTriplets[thread] ,
+					_boundaryDeepDivergenceTriplets[i] ,
+					_boundaryBoundaryDivergenceTriplets[i] ,
 					deepDivergenceCoefficients ,
 					massScaleFunctor , 
 					stiffnessScaleFunctor
