@@ -365,6 +365,16 @@ namespace MishaK
 		{
 			static_assert( std::is_convertible_v< MeshEdgesToKey , std::function< GridMeshIntersectionKey ( AtlasMeshEdgeIndex , AtlasMeshEdgeIndex ) > > , "MeshEdgesToKey poorly formed" );
 
+			// ClipIndexedIntersectionPolygonToIndexedIntersectionTriangle clips against three edges in turn, and
+			// an earlier edge can leave nothing; the reads of the last vertex below would then index before the
+			// start of the arrays.
+			if( polygon.vertices.empty() )
+			{
+				polygon.cornerKeys.clear();
+				polygon.outgoingEdgeIndices.clear();
+				return;
+			}
+
 			std::vector< Point2D< GeometryReal > > outputVertices;
 			std::vector< GridMeshIntersectionKey > outputCornerKeys;
 			std::vector< AtlasGridOrMeshEdgeIndex > outputEdgeIndices;

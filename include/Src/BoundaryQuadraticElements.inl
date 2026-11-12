@@ -184,7 +184,9 @@ InitializeChartBoundaryTriangleGridIntersections
 					if constexpr( SanityCheck ) if( cellID==ChartBoundaryCellIndex(-1) ) MK_THROW( "Boundary cell invalid ID" );
 					IndexedIntersectionPolygon< GeometryReal > poly = GetIndexedIntersectionPolygon( I[0] , I[1] );
 					ClipIndexedIntersectionPolygonToIndexedIntersectionTriangle< SanityCheck >( poly , indexedTriangle );
-					if constexpr( SanityCheck ) if( !poly.vertices.size() ) MK_THROW( "Expected triangle to intersect cell" );
+					// The rasterizer reports every cell the closed triangle meets, so a triangle that only touches the cell,
+					// at a corner or along a side, is reported too but leaves nothing inside it.
+					if( poly.vertices.empty() ) return;
 
 					// Assign indices to the boundary-edge/grid intersections
 					for( unsigned int i=0 ; i<poly.cornerKeys.size() ; i++ )
@@ -363,7 +365,9 @@ GetChartBoundaryPolygons
 					if constexpr( SanityCheck ) if( cellID==ChartBoundaryCellIndex(-1) ) MK_THROW( "Boundary cell invalid ID" );
 					IndexedIntersectionPolygon< GeometryReal > poly = GetIndexedIntersectionPolygon( I[0] , I[1] );
 					ClipIndexedIntersectionPolygonToIndexedIntersectionTriangle< SanityCheck >( poly , indexedTriangle );
-					if constexpr( SanityCheck ) if( !poly.vertices.size() ) MK_THROW( "Expected triangle to intersect cell" );
+					// The rasterizer reports every cell the closed triangle meets, so a triangle that only touches the cell,
+					// at a corner or along a side, is reported too but leaves nothing inside it.
+					if( poly.vertices.empty() ) return;
 					std::vector< std::pair< ChartMeshTriangleIndex , std::vector< GridMeshIntersectionKey > > > & polygons = cellPolygons[cellID];
 					polygons.emplace_back( ChartMeshTriangleIndex(t) , poly.cornerKeys );
 				}
