@@ -50,6 +50,9 @@ namespace MishaK
 			// 2b. Surface vertex index          -> position in 3D
 			// 3.  Triangle index + corner index -> texture vertex index
 			// 4.  Texture vertex index          -> position in the unit square
+			// Building the divergence operator takes most of the memory and time of the construction. If computeDivergence
+			// is false it is skipped: the mass and stiffness operators are unchanged, but there are no edges (numEdges()
+			// returns zero) and divergence() throws.
 			template
 				<
 				typename SurfaceCornerFunctor ,         /* = std::function< size_t ( size_t , unsigned int ) > */
@@ -70,7 +73,8 @@ namespace MishaK
 					unsigned int width ,
 					unsigned int height ,
 					bool normalize = true ,
-					bool sanityCheck = false
+					bool sanityCheck = false ,
+					bool computeDivergence = true
 				);
 
 			// The number of texels
@@ -127,6 +131,7 @@ namespace MishaK
 
 			MassAndStiffnessOperators< Real > _massAndStiffnessOperators;
 			DivergenceOperator< Real > _divergenceOperator;
+			bool _computeDivergence = true;
 			std::vector< TextureNodeInfo< Real > > _textureNodes;
 
 			GradientDomain( void ){}
@@ -154,7 +159,8 @@ namespace MishaK
 					unsigned int height ,
 					unsigned int levels ,
 					bool normalize ,
-					bool sanityCheck
+					bool sanityCheck ,
+					bool computeDivergence
 				);
 		};
 
@@ -167,6 +173,9 @@ namespace MishaK
 			// 2b. Surface vertex index          -> position in 3D
 			// 3.  Triangle index + corner index -> texture vertex index
 			// 4.  Texture vertex index          -> position in the unit square
+			// Building the divergence operator takes most of the memory and time of the construction. If computeDivergence
+			// is false it is skipped: the mass and stiffness operators are unchanged, but there are no edges (numEdges()
+			// returns zero) and divergence() throws.
 			template
 				<
 				typename SurfaceCornerFunctor ,         /* = std::function< size_t ( size_t , unsigned int ) > */
@@ -188,7 +197,8 @@ namespace MishaK
 					unsigned int height ,
 					unsigned int levels ,
 					bool normalize = true ,
-					bool sanityCheck = false
+					bool sanityCheck = false ,
+					bool computeDivergence = true
 				);
 
 			// Access to the system constraints
