@@ -169,41 +169,11 @@ std::vector< unsigned int > SimpleTriangleMesh< Real , Dim >::trianglesToCompone
 	return components;
 }
 
-template< typename Real , unsigned int Dim >
-void SimpleTriangleMesh< Real , Dim >::write( std::string meshName ) const
-{
-	WriteMesh( meshName , vertices , triangles );
-}
-
 //////////////////////////
 // TexturedTriangleMesh //
 //////////////////////////
 template< typename Real >
 size_t TexturedTriangleMesh< Real >::numTriangles( void ) const { return surface.triangles.size(); }
-
-template< typename Real >
-void TexturedTriangleMesh< Real >::read( std::string meshName , bool verbose , double eps , bool flip )
-{
-	surface.vertices.clear();
-	texture.vertices.clear();
-	surface.triangles.clear();
-	texture.triangles.clear();
-	ReadTexturedMesh( meshName , surface.vertices , texture.vertices , surface.triangles , texture.triangles );
-	if( surface.triangles.size()!=texture.triangles.size() ) MK_THROW( "Triangle counts differ: " , surface.triangles.size() , " != " , texture.triangles.size() );
-
-	if( eps>0 ) CollapseVertices( surface.vertices , surface.triangles , eps );
-
-	// Flip the vertical axis
-	if( flip ) for( int i=0 ; i<texture.vertices.size() ; i++ ) texture.vertices[i][1] = (Real)1. - texture.vertices[i][1];
-	for( unsigned int i=0 ; i<texture.triangles.size() ; i++ ) if( texture.triangle(i).measure()==0 )
-		MK_WARN( "Zero area texture triangle: " , i , " : " , texture.triangle(i) , " <-> " , surface.triangle(i) );
-}
-
-template< typename Real >
-void TexturedTriangleMesh< Real >::write( std::string meshName ) const
-{
-	WriteTexturedMesh( meshName , surface.vertices , texture.vertices , surface.triangles , texture.triangles );
-}
 
 template< typename Real >
 Simplex< Real , 3 , 2 > TexturedTriangleMesh< Real >::surfaceTriangle( unsigned int t ) const { return surface.triangle(t); }

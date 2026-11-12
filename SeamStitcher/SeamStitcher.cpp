@@ -39,6 +39,7 @@ DAMAGE.
 #include <Misha/Exceptions.h>
 #include <Src/ImageIO.h>
 #include <Src/GradientDomain.h>
+#include <Src/MeshIO.h>
 
 using namespace MishaK;
 using namespace MishaK::TSP;
