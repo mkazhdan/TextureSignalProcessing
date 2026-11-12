@@ -310,6 +310,10 @@ GetChartBoundaryPolygons
 )
 {
 	ExplicitIndexVector< ChartBoundaryCellIndex , std::vector< std::pair< ChartMeshTriangleIndex , IndexedPolygon< GeometryReal > > > > boundaryPolygons;
+	// For the perturbation below: a generator of its own rather than rand(), as in AtlasMesh::jitter, and one
+	// per chart, so that a chart's perturbation does not depend on the charts processed before it
+	std::mt19937 generator;
+	auto random = [&]( void ){ return (GeometryReal)( (double)generator() / (double)std::mt19937::max() ); };
 	// A mapping giving the clipped polygons, keyed off of cell index
 	Map< ChartBoundaryCellIndex , std::vector< std::pair< ChartMeshTriangleIndex , std::vector< GridMeshIntersectionKey > > > > cellPolygons;
 
@@ -539,7 +543,7 @@ GetChartBoundaryPolygons
 						if( true ) // Add orthogonal perturbation to avoid colinearity. Delanauy triangulation library failed for colinear inputs on some systems.
 						{
 							Point2D< GeometryReal > segmentDir = nextPos - currentPos;
-							interpolatedPos += Point2D< GeometryReal >( -segmentDir[1] , segmentDir[0] ) * (GeometryReal)( ( Random< GeometryReal >()*2 - 1. ) * ORTHOGONAL_PERTURBATION );
+							interpolatedPos += Point2D< GeometryReal >( -segmentDir[1] , segmentDir[0] ) * (GeometryReal)( ( random()*2 - 1. ) * ORTHOGONAL_PERTURBATION );
 						}
 
 						// Validate that the added node is not an original atlas vertex (and has been processed)
