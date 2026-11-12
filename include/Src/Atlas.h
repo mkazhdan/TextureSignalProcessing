@@ -32,6 +32,7 @@ DAMAGE.
 #define DEBUG_ATLAS
 
 #include <set>
+#include <map>
 #include <Misha/Miscellany.h>
 #include <Misha/Exceptions.h>
 #include "SimpleTriangleMesh.h"
