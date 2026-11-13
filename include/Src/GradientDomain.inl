@@ -72,7 +72,8 @@ GradientDomain< Real >::GradientDomain
 	unsigned int width ,
 	unsigned int height ,
 	bool normalize ,
-	bool sanityCheck
+	bool sanityCheck ,
+	bool computeDivergence
 )
 {
 	using PreReal = Real;
@@ -92,7 +93,8 @@ GradientDomain< Real >::GradientDomain
 		height ,
 		1 ,
 		normalize ,
-		sanityCheck
+		sanityCheck ,
+		computeDivergence
 	);
 }
 
@@ -120,7 +122,8 @@ void GradientDomain< Real >::_init
 	unsigned int height ,
 	unsigned int levels ,
 	bool normalize ,
-	bool sanityCheck
+	bool sanityCheck ,
+	bool computeDivergence
 )
 {
 	static_assert( _IsTriangleCornerFunctor< SurfaceCornerFunctor >()                , "[ERROR] SurfaceCornerFunctor poorly formed" );
@@ -165,7 +168,9 @@ void GradientDomain< Real >::_init
 		}
 		InitializeParameterMetric( mesh , surfaceMetric , atlasCharts , parameterMetric );
 	}
-	OperatorInitializer::Initialize( quadraturePointsPerTriangle , _massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , _divergenceOperator , sanityCheck );
+	_computeDivergence = computeDivergence;
+	if( computeDivergence ) OperatorInitializer::Initialize( quadraturePointsPerTriangle , _massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , _divergenceOperator , sanityCheck );
+	else                    OperatorInitializer::Initialize( quadraturePointsPerTriangle , _massAndStiffnessOperators , hierarchy.gridAtlases[0] , parameterMetric , atlasCharts , sanityCheck );
 }
 
 template< typename Real >
@@ -219,6 +224,7 @@ Eigen::SparseMatrix< Real > GradientDomain< Real >::stiffness( void ) const
 template< typename Real >
 Eigen::SparseMatrix< Real > GradientDomain< Real >::divergence( void ) const
 {
+	if( !_computeDivergence ) MK_THROW( "Divergence operator not computed" );
 	return _divergenceOperator();
 }
 
@@ -262,6 +268,7 @@ template< typename Real >
 template< typename T >
 void GradientDomain< Real >::divergence( const T * in , T * out ) const
 {
+	if( !_computeDivergence ) MK_THROW( "Divergence operator not computed" );
 	return _divergenceOperator( in , out );
 }
 
@@ -379,7 +386,8 @@ HierarchicalGradientDomain< Real , Solver , Data >::HierarchicalGradientDomain
 	unsigned int height ,
 	unsigned int levels ,
 	bool normalize ,
-	bool sanityCheck
+	bool sanityCheck ,
+	bool computeDivergence
 )
 {
 	GradientDomain< Real >::_init
@@ -397,7 +405,8 @@ HierarchicalGradientDomain< Real , Solver , Data >::HierarchicalGradientDomain
 		height ,
 		levels ,
 		normalize ,
-		sanityCheck
+		sanityCheck ,
+		computeDivergence
 	);
 	_multigridIndices.resize( levels );
 	_multigridVariables.resize( levels );
