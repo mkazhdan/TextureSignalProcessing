@@ -35,6 +35,7 @@ DAMAGE.
 #include "Misha/CmdLineParser.h"
 #include "Misha/RegularGrid.h"
 #include "Indices.h"
+#include "SimpleTriangleMesh.h"
 
 namespace MishaK
 {
@@ -753,6 +754,39 @@ namespace MishaK
 			{ "vertex_indices" , PLY::Type< Index >() , PLY::Type< Index >() , offsetof( PlyTexturedFace , vertices ) , 1 , PLY_INT , PLY_INT , (int)offsetof( PlyTexturedFace , nr_vertices ) } ,
 			{ "texcoord" , PLY::Type< Real >() , PLY::Type< Real >() , (int)offsetof( PlyTexturedFace , uv_coordinates ) , 1 , PLY_INT , PLY_INT , (int)offsetof( PlyTexturedFace , nr_uv_coordinates ) } ,
 		};
+
+		// The PLY reading and writing of SimpleTriangleMesh and TexturedTriangleMesh. They are defined here,
+		// not in SimpleTriangleMesh.inl, so that code using the meshes without reading or writing files
+		// (GradientDomain.h, for one) does not include the PLY library.
+		template< typename Real , unsigned int Dim >
+		void SimpleTriangleMesh< Real , Dim >::write( std::string meshName ) const
+		{
+			WriteMesh( meshName , vertices , triangles );
+		}
+
+		template< typename Real >
+		void TexturedTriangleMesh< Real >::read( std::string meshName , bool verbose , double eps , bool flip )
+		{
+			surface.vertices.clear();
+			texture.vertices.clear();
+			surface.triangles.clear();
+			texture.triangles.clear();
+			ReadTexturedMesh( meshName , surface.vertices , texture.vertices , surface.triangles , texture.triangles );
+			if( surface.triangles.size()!=texture.triangles.size() ) MK_THROW( "Triangle counts differ: " , surface.triangles.size() , " != " , texture.triangles.size() );
+
+			if( eps>0 ) CollapseVertices( surface.vertices , surface.triangles , eps );
+
+			// Flip the vertical axis
+			if( flip ) for( int i=0 ; i<texture.vertices.size() ; i++ ) texture.vertices[i][1] = (Real)1. - texture.vertices[i][1];
+			for( unsigned int i=0 ; i<texture.triangles.size() ; i++ ) if( texture.triangle(i).measure()==0 )
+				MK_WARN( "Zero area texture triangle: " , i , " : " , texture.triangle(i) , " <-> " , surface.triangle(i) );
+		}
+
+		template< typename Real >
+		void TexturedTriangleMesh< Real >::write( std::string meshName ) const
+		{
+			WriteTexturedMesh( meshName , surface.vertices , texture.vertices , surface.triangles , texture.triangles );
+		}
 	}
 }
 #endif // TEXTURE_INCLUDED

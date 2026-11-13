@@ -30,12 +30,11 @@ DAMAGE.
 
 #include <fstream>
 #include <Eigen/Sparse>
-#include "Misha/PlyData.h"
 #include <Misha/Miscellany.h>
 #include <Misha/Geometry.h>
 #include <Misha/UnionFind.h>
 #include <Src/VectorIO.h>
-#include <Src/MeshIO.h>
+#include <Src/Indices.h>
 
 namespace MishaK
 {
@@ -75,6 +74,7 @@ namespace MishaK
 			Point< Real , Dim > centroid( void ) const;
 			Real boundingRadius( Point< Real , Dim > center=Point< Real , Dim >() ) const;
 
+			// Defined in Src/MeshIO.h, with the rest of the PLY input and output
 			void write( std::string meshName ) const;
 		};
 
@@ -89,6 +89,7 @@ namespace MishaK
 			Simplex< Real , 3 , 2 > surfaceTriangle( unsigned int t ) const;
 			Simplex< Real , 2 , 2 > textureTriangle( unsigned int t ) const;
 
+			// Defined in Src/MeshIO.h, with the rest of the PLY input and output
 			void read( std::string meshName , bool verbose , double eps , bool flip=true );
 			void write( std::string meshName ) const;
 

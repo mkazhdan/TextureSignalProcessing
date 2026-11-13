@@ -48,6 +48,7 @@ enum
 #include <Misha/SquaredEDT.h>
 #include <Src/Hierarchy.h>
 #include <Src/SimpleTriangleMesh.h>
+#include <Src/MeshIO.h>
 #include <Src/Basis.h>
 #include <Src/EigenSolverWrapper.h>
 #include <Src/Operators.h>
