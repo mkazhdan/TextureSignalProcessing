@@ -107,6 +107,10 @@ void AtlasMesh< GeometryReal >::initialize
 template< typename GeometryReal >
 void AtlasMesh< GeometryReal >::jitter( unsigned int width , unsigned int height , GeometryReal epsilon )
 {
+	// A generator of its own rather than rand(), so that the jitter depends on the mesh alone: not on what
+	// else the process has drawn from rand(), and not on the platform's rand()
+	std::mt19937 generator;
+	auto random = [&]( void ){ return (GeometryReal)( (double)generator() / (double)std::mt19937::max() ); };
 	for( int i=0 ; i<SimpleTriangleMesh< GeometryReal , 2 >::vertices.size() ; i++ ) for( int c=0 ; c<2 ; c++ )
 	{
 		GeometryReal dimSize = c == 0 ? (GeometryReal)width : (GeometryReal)height;
@@ -114,8 +118,8 @@ void AtlasMesh< GeometryReal >::jitter( unsigned int width , unsigned int height
 		GeometryReal offset = scaled - (GeometryReal)round(scaled);
 		if( fabs(offset)<epsilon )
 		{
-			if( offset>0 ) scaled = round(scaled) + epsilon*( (GeometryReal)1. + Random< GeometryReal >() );
-			else           scaled = round(scaled) - epsilon*( (GeometryReal)1. + Random< GeometryReal >() );
+			if( offset>0 ) scaled = round(scaled) + epsilon*( (GeometryReal)1. + random() );
+			else           scaled = round(scaled) - epsilon*( (GeometryReal)1. + random() );
 			SimpleTriangleMesh< GeometryReal , 2 >::vertices[i][c] = (GeometryReal)(scaled + 0.5) / dimSize;
 		}
 	}

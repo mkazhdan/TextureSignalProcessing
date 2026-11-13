@@ -31,6 +31,7 @@ DAMAGE.
 
 #define DEBUG_ATLAS
 
+#include <random>
 #include <set>
 #include <Misha/Miscellany.h>
 #include <Misha/Exceptions.h>

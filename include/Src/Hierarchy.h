@@ -30,6 +30,7 @@ DAMAGE.
 
 #include <algorithm>
 #include <unordered_set>
+#include <random>
 #include <Eigen/Sparse>
 #include <Misha/RegularGrid.h>
 #include <Misha/Miscellany.h>
