@@ -46,21 +46,30 @@ const
 		atlasCharts[ ChartIndex(i) ].maxCorner = Point2D< GeometryReal >(0,0);
 	}
 
-	// The map taking a vertex index in the atlas and giving the index of the corresponding vertex within the chart
+	// The map taking a vertex index in the atlas and giving the index of the corresponding vertex within the chart.
+	// Charts can touch at a single vertex, which then belongs to each of them with a different index. So an index in
+	// chartVertexID is only valid for the chart recorded in chartVertexOwner, and the other charts (rare) keep theirs
+	// in otherChartVertexID, keyed by chart and vertex.
 	std::vector< unsigned int > chartVertexID( SimpleTriangleMesh< GeometryReal , 2 >::vertices.size() , static_cast< unsigned int >(-1) );
+	std::vector< unsigned int > chartVertexOwner( SimpleTriangleMesh< GeometryReal , 2 >::vertices.size() , static_cast< unsigned int >(-1) );
+	std::map< std::pair< unsigned int , unsigned int > , unsigned int > otherChartVertexID;
 
 	for( unsigned int t=0 ; t<SimpleTriangleMesh< GeometryReal , 2 >::triangles.size() ; t++ )
 	{
-		AtlasChart< GeometryReal > &atlasChart = atlasCharts[ triangleToChart( AtlasMeshTriangleIndex( t ) ) ];
+		unsigned int chart = static_cast< unsigned int >( triangleToChart( AtlasMeshTriangleIndex( t ) ) );
+		AtlasChart< GeometryReal > &atlasChart = atlasCharts[ ChartIndex( chart ) ];
 
 		SimplexIndex< 2 > tri;
 		for( unsigned int k=0 ; k<3 ; k++ )
 		{
 			atlasChart._chartHalfEdgeToAtlasEdge.push_back( halfEdgeToEdge( AtlasMeshHalfEdgeIndex( 3*t+k ) ) );
 			unsigned int v = SimpleTriangleMesh< GeometryReal , 2 >::triangles[t][k];
-			if( chartVertexID[v]==-1 )
+			unsigned int *id;
+			if( chartVertexOwner[v]==static_cast< unsigned int >(-1) || chartVertexOwner[v]==chart ) chartVertexOwner[v] = chart , id = &chartVertexID[v];
+			else id = &otherChartVertexID.try_emplace( std::make_pair( chart , v ) , static_cast< unsigned int >(-1) ).first->second;
+			if( *id==-1 )
 			{
-				chartVertexID[v] = (unsigned int)atlasChart.vertices.size();
+				*id = (unsigned int)atlasChart.vertices.size();
 				Point2D< GeometryReal > vertexPos = SimpleTriangleMesh< GeometryReal , 2 >::vertices[v];
 				for( unsigned int c=0 ; c<2 ; c++ )
 				{
@@ -71,7 +80,7 @@ const
 				atlasChart._chartToAtlasVertex.push_back( chartToAtlasVertex( ChartMeshVertexIndex(v) ) );
 				atlasChart.vertices.push_back( vertexPos );
 			}
-			tri[k] = chartVertexID[v];
+			tri[k] = *id;
 		}
 
 		atlasChart.triangles.push_back(tri);
