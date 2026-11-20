@@ -109,6 +109,16 @@ void AtlasMesh< GeometryReal >::jitter( unsigned int width , unsigned int height
 {
 	// A generator of its own rather than rand(), so that the jitter depends on the mesh alone: not on what
 	// else the process has drawn from rand(), and not on the platform's rand()
+	//
+	// Every vertex moves, by less than epsilon texels, not only those on a line of texel centers: an
+	// atlas whose vertices sit exactly on the texel grid elsewhere -- a regular grid of UVs whose
+	// spacing is a whole number of texels -- puts edges exactly through texel centers and along the
+	// lines between them. A center on an edge two triangles share can then be covered by neither,
+	// since each triangle computes the edge's crossing on its own, and the interior cells around it
+	// read its covered index, -1 (a crash in OperatorInitializer::_InitializeChart); an edge along a
+	// cell line made the boundary system of a coarser level fail to factor. Which of the two, if any,
+	// depended on the resolution's rounding: on a 64x64 grid of UVs over the whole unit square, 384,
+	// 500 and 512 texels crashed and 128 failed to factor, while 256, 300 and 1024 ran.
 	std::mt19937 generator;
 	auto random = [&]( void ){ return (GeometryReal)( (double)generator() / (double)std::mt19937::max() ); };
 	for( int i=0 ; i<SimpleTriangleMesh< GeometryReal , 2 >::vertices.size() ; i++ ) for( int c=0 ; c<2 ; c++ )
@@ -120,7 +130,8 @@ void AtlasMesh< GeometryReal >::jitter( unsigned int width , unsigned int height
 		{
 			if( offset>0 ) scaled = round(scaled) + epsilon*( (GeometryReal)1. + random() );
 			else           scaled = round(scaled) - epsilon*( (GeometryReal)1. + random() );
-			SimpleTriangleMesh< GeometryReal , 2 >::vertices[i][c] = (GeometryReal)(scaled + 0.5) / dimSize;
 		}
+		else scaled += epsilon*( (GeometryReal)2.*random() - (GeometryReal)1. );
+		SimpleTriangleMesh< GeometryReal , 2 >::vertices[i][c] = (GeometryReal)(scaled + 0.5) / dimSize;
 	}
 }
