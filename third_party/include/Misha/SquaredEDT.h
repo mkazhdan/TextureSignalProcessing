@@ -30,6 +30,9 @@ DAMAGE.
 #define SQUARED_EDT_INCLUDED
 
 #include <limits>
+#if 1 // NEW_CODE
+#include <concepts>
+#endif // NEW_CODE
 #include "Array.h"
 #include "Geometry.h"
 #include "RegularGrid.h"
@@ -38,15 +41,33 @@ DAMAGE.
 
 namespace MishaK
 {
+#if 1 // NEW_CODE
+	template< typename Array >
+	concept HasBinaryArrayEvaluation = requires( Array array , size_t idx ) { { array[idx] } -> std::convertible_to< bool >; };
+
+	template< typename Grid >
+	concept HasGridResolution = requires( Grid grid , unsigned int d ) { { grid.res(d) } -> std::same_as< unsigned int >; };
+
+	template< typename BinaryGrid >
+	concept HasBinaryGrid = HasBinaryArrayEvaluation< BinaryGrid > && HasGridResolution< BinaryGrid >;
+#endif // NEW_CODE
+
 	template< typename Real , unsigned int Dim >
 	struct SquaredEDT
 	{
 		// [Saito and Toriwaki, '94]
 		// New algorithms for Euclidean Distance Transformation of an n-dimensional digitized picture with applications
+#if 1 // NEW_CODE
+		template< HasBinaryGrid BinaryGrid >
+		static RegularGrid< Dim , unsigned int > Saito( const BinaryGrid & binaryGrid , bool verbose=false );
+		template< HasBinaryGrid BinaryGrid >
+		static RegularGrid< Dim , std::pair< unsigned int , size_t > > FullSaito( const BinaryGrid & binaryGrid , bool verbose=false );
+#else // !NEW_CODE
 		template< typename BinaryType >
 		static RegularGrid< Dim , unsigned int > Saito( const RegularGrid< Dim , BinaryType > &binaryGrid , bool verbose=false );
 		template< typename BinaryType >
 		static RegularGrid< Dim , std::pair< unsigned int , size_t > > FullSaito( const RegularGrid< Dim , BinaryType > &binaryGrid , bool verbose=false );
+#endif // NEW_CODE
 		template< typename IndexType , unsigned int K >
 		static RegularGrid< Dim , unsigned int > Saito( const SimplicialComplex< Real , Dim , K > &simplicialComplex , unsigned int depth , unsigned int lockDepth , XForm< Real , Dim+1 > &gridToModel , Real bBoxScale , bool verbose=false );
 

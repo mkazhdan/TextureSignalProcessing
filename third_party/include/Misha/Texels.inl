@@ -512,7 +512,10 @@ Texels< NodeAtCellCenter , Index , Dim >::GetNearestTexelInfo
 				{
 					Simplex< double , Dim , K > s = TexelSimplex( SF( tIndices[i][j] ) , tIndices.res() );
 					double d2 = Point< double , Dim >::SquareDistance( p , s( s.nearestBC( p ) ) );
-					if( d2<dist2 ) dist2 = d2 , tInfo.sIdx = tIndices[i][j];
+					// Support lists are assembled from dynamically scheduled workers. Break
+					// distance ties by simplex index so scheduling cannot change the selected
+					// surface point (and retain the first simplex of a serial traversal).
+					if( d2<dist2 || ( d2==dist2 && tIndices[i][j]<tInfo.sIdx ) ) dist2 = d2 , tInfo.sIdx = tIndices[i][j];
 				}
 
 				Simplex< double , Dim , K > s = TexelSimplex( SF( tInfo.sIdx ) , tIndices.res() );

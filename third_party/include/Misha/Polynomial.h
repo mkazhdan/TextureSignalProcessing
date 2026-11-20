@@ -102,7 +102,7 @@ namespace MishaK
 
 		public:
 			/** The number of coefficients in the polynomial. */
-			static const unsigned int NumCoefficients = NumCoefficients< Dim , Degree >();
+			static const unsigned int NumCoefficients = MishaK::Polynomial::NumCoefficients< Dim , Degree >();
 
 			/** The partial derivative type. */
 			using DerivativeType = Polynomial< Dim , (Degree>1) ? Degree-1 : 0 , Point< T , Dim , Real > , Real >;

@@ -1072,16 +1072,16 @@ double MinimalAreaTriangulation::_getArea( unsigned int i , unsigned int j , con
 
 		temp = AF( rr , i , j );
 
-		if( _bestTriangulation[idx1]>0 )
+		if( _bestTriangulation[idx1]>=0 )
 		{
 			temp += _bestTriangulation[idx1];
 			if( temp>a ) continue;
-			if( _bestTriangulation[idx2]>0 ) temp += _bestTriangulation[idx2];
+			if( _bestTriangulation[idx2]>=0 ) temp += _bestTriangulation[idx2];
 			else temp += _getArea( rr , j , AF , vNum );
 		}
 		else
 		{
-			if( _bestTriangulation[idx2]>0 ) temp += _bestTriangulation[idx2];
+			if( _bestTriangulation[idx2]>=0 ) temp += _bestTriangulation[idx2];
 			else temp += _getArea( rr , j , AF , vNum );
 			if( temp>a ) continue;
 			temp += _getArea( i , rr , AF , vNum );

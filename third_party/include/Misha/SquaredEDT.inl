@@ -30,9 +30,15 @@ DAMAGE.
 // SquaredEDT //
 ////////////////
 
+#if 1 // NEW_CODE
+template< typename Real , unsigned int Dim >
+template< HasBinaryGrid BinaryGrid >
+RegularGrid< Dim , unsigned int > SquaredEDT< Real , Dim >::Saito( const BinaryGrid & binaryGrid , bool verbose )
+#else // !NEW_CODE
 template< typename Real , unsigned int Dim >
 template< typename BinaryType >
 RegularGrid< Dim , unsigned int > SquaredEDT< Real , Dim >::Saito( const RegularGrid< Dim , BinaryType > &binaryGrid , bool verbose )
+#endif // NEW_CODE
 {
 	Miscellany::PerformanceMeter pMeter( '.' );
 
@@ -184,9 +190,15 @@ RegularGrid< Dim , unsigned int > SquaredEDT< Real , Dim >::Saito( const Regular
 	return squaredEDT;
 }
 
+#if 1 // NEW_CODE
+template< typename Real , unsigned int Dim >
+template< HasBinaryGrid BinaryGrid >
+RegularGrid< Dim , std::pair< unsigned int , size_t > > SquaredEDT< Real , Dim >::FullSaito( const BinaryGrid & binaryGrid , bool verbose )
+#else // !NEW_CODE
 template< typename Real , unsigned int Dim >
 template< typename BinaryType >
 RegularGrid< Dim , std::pair< unsigned int , size_t > > SquaredEDT< Real , Dim >::FullSaito( const RegularGrid< Dim , BinaryType > &binaryGrid , bool verbose )
+#endif // NEW_CODE
 {
 	Miscellany::PerformanceMeter pMeter( '.' );
 
